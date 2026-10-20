@@ -399,7 +399,7 @@ describe("named BV-BRC identity operations", () => {
       code: "service_unavailable",
       status: 504,
       message:
-        "The BV-BRC authentication service (auth.test) did not respond (timed out after 15 s).",
+        "The BV-BRC authentication service did not respond (timed out after 15 s).",
     });
 
     vi.useRealTimers();
@@ -410,7 +410,7 @@ describe("named BV-BRC identity operations", () => {
       code: "network",
       status: 502,
       message:
-        "Could not reach the BV-BRC authentication service (auth.test): connection refused.",
+        "Could not reach the BV-BRC authentication service: connection refused.",
     });
     fetchSpy.mockRestore();
   });
@@ -466,7 +466,7 @@ describe("named BV-BRC identity operations", () => {
         code: "service_unavailable",
         status: 504,
         message:
-          "The BV-BRC registration service (auth.test) did not respond (connection timed out after 10 s).",
+          "The BV-BRC registration service did not respond (connection timed out after 10 s).",
       });
     });
 
@@ -480,7 +480,7 @@ describe("named BV-BRC identity operations", () => {
         code: "service_unavailable",
         status: 504,
         message:
-          "The BV-BRC password reset service (auth.test) did not respond (timed out after 15 s).",
+          "The BV-BRC password reset service did not respond (timed out after 15 s).",
       });
     });
   });

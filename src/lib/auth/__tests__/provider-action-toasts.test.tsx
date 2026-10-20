@@ -72,7 +72,7 @@ describe("account action toasts", () => {
 
   it("keeps the server's reason when exiting impersonation fails", async () => {
     const reason =
-      "The BV-BRC authentication service (user.bv-brc.org) did not respond (timed out after 15 s).";
+      "The BV-BRC authentication service did not respond (timed out after 15 s).";
     server.use(
       http.post("*/api/auth/su-exit", () =>
         HttpResponse.json({ error: reason, code: "upstream" }, { status: 504 }),

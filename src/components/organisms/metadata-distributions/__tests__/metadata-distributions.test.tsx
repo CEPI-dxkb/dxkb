@@ -307,7 +307,7 @@ describe("MetadataDistributions", () => {
       fields[0] === "host_common_name"
         ? Promise.reject(
             new Error(
-              "genome host_common_name facet: 503 Service Unavailable: Site Maintenance",
+              "Host Distribution: The BV-BRC data service is unavailable (HTTP 503 Service Unavailable: Site Maintenance).",
             ),
           )
         : Promise.resolve({ genus: [{ name: "Escherichia", count: 20 }] }),
@@ -329,8 +329,9 @@ describe("MetadataDistributions", () => {
     expect(screen.getByRole("img", { name: "Genus distribution" })).toBeInTheDocument();
     expect(screen.getByText("Host Distribution")).toBeInTheDocument();
     expect(screen.getByRole("alert")).toHaveTextContent(
-      "Could not load: genome host_common_name facet: 503 Service Unavailable: Site Maintenance",
+      "Could not load: Host Distribution: The BV-BRC data service is unavailable (HTTP 503 Service Unavailable: Site Maintenance).",
     );
+    // The field name stays in the server log, for an operator.
     expect(warnSpy).toHaveBeenCalledWith(
       expect.stringContaining("genome host_common_name facet fetch failed"),
     );
@@ -340,7 +341,11 @@ describe("MetadataDistributions", () => {
   it("fails the collection-year chart on its own too", async () => {
     vi.mocked(fetchOrganismMetadataFacets).mockImplementation((_scope, fields) =>
       fields[0] === "collection_year"
-        ? Promise.reject(new Error("genome collection_year facet: 504"))
+        ? Promise.reject(
+            new Error(
+              "Collection Year: The BV-BRC data service is unavailable (HTTP 504 Gateway Timeout).",
+            ),
+          )
         : Promise.resolve({ genus: [{ name: "Escherichia", count: 20 }] }),
     );
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => undefined);
@@ -351,16 +356,16 @@ describe("MetadataDistributions", () => {
 
     expect(screen.getByRole("img", { name: "Genus distribution" })).toBeInTheDocument();
     expect(screen.getByRole("alert")).toHaveTextContent(
-      "Could not load: genome collection_year facet: 504",
+      "Could not load: Collection Year: The BV-BRC data service is unavailable (HTTP 504 Gateway Timeout).",
     );
     warnSpy.mockRestore();
   });
 
   it("rethrows once, for the section error, when every request failed", async () => {
-    const outage = new Error("genome genus facet: Could not reach the BV-BRC data service.");
+    const outage = new Error("Genus: Could not reach the BV-BRC data service.");
     vi.mocked(fetchOrganismMetadataFacets).mockRejectedValue(outage);
     vi.mocked(fetchTaxonomicDistribution).mockRejectedValueOnce(
-      new Error("taxonomic: Could not reach the BV-BRC data service."),
+      new Error("Taxonomic Distribution: Could not reach the BV-BRC data service."),
     );
 
     await expect(

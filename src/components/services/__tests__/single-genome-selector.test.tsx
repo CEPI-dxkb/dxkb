@@ -100,7 +100,7 @@ describe("SingleGenomeSelector prefilled genome ID", () => {
         HttpResponse.json(
           {
             error:
-              "The BV-BRC data service (p3.theseed.org) did not respond (timed out after 20 s).",
+              "The BV-BRC data service did not respond (timed out after 20 s).",
             code: "upstream",
           },
           { status: 504 },
@@ -111,7 +111,7 @@ describe("SingleGenomeSelector prefilled genome ID", () => {
 
     const note = await screen.findByRole("alert");
     expect(note).toHaveTextContent(
-      "Name could not be loaded: The BV-BRC data service (p3.theseed.org) did not respond (timed out after 20 s).",
+      "Name could not be loaded: The BV-BRC data service did not respond (timed out after 20 s).",
     );
     const input = screen.getByRole("textbox");
     expect(input).toHaveValue("83332.12");

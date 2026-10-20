@@ -286,7 +286,7 @@ describe("ProteomeComparisonPage genome add by ID", () => {
         HttpResponse.json(
           {
             error:
-              "The BV-BRC data service (p3.theseed.org) did not respond (timed out after 20 s).",
+              "The BV-BRC data service did not respond (timed out after 20 s).",
             code: "upstream",
           },
           { status: 504 },
@@ -300,7 +300,7 @@ describe("ProteomeComparisonPage genome add by ID", () => {
     await user.click(screen.getByRole("button", { name: "Add genome" }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
-      `Added ${genomeId} by ID: its name could not be loaded (The BV-BRC data service (p3.theseed.org) did not respond (timed out after 20 s).).`,
+      `Added ${genomeId} by ID: its name could not be loaded (The BV-BRC data service did not respond (timed out after 20 s).).`,
     );
     expect(screen.getAllByText(genomeId).length).toBeGreaterThan(0);
   });

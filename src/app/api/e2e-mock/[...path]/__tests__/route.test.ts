@@ -433,19 +433,6 @@ describe("api/e2e-mock catch-all — enabled", () => {
     });
   });
 
-  it("GET answers the outage user's profile with a 503 maintenance page", async () => {
-    const resp = await GET(
-      mockNextRequest({
-        url: "http://localhost:3020/api/e2e-mock/user/e2e-outage-user%40patricbrc.org",
-      }),
-      ctx(["user", "e2e-outage-user@patricbrc.org"]),
-    );
-
-    expect(resp.status).toBe(503);
-    expect(resp.headers.get("Content-Type")).toBe("text/html");
-    expect(await resp.text()).toContain("scheduled maintenance");
-  });
-
   it("GET returns 404 instead of substituting an identity for an unknown profile", async () => {
     const resp = await GET(
       mockNextRequest({

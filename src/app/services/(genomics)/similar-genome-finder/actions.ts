@@ -1,6 +1,5 @@
 "use server";
 
-import { UpstreamError } from "@/lib/api/upstream-failure";
 import { requireAuthSession } from "@/lib/auth/server/route";
 import { buildMinhashServicePayload } from "@/lib/forms/(genomics)/similar-genome-finder/similar-genome-finder-form-utils";
 import type { SimilarGenomeFinderFormData } from "@/lib/forms/(genomics)/similar-genome-finder/similar-genome-finder-form-schema";
@@ -85,16 +84,18 @@ function getMinhashRowsAndIds(result: unknown): {
 
 /**
  * What the user sees for a failed search. Service and network failures keep
- * their own message ("The BV-BRC minhash service (p3.theseed.org) did not
- * respond …"); a missing setting is logged with its name and shown without
- * it, since server configuration is not the user's to read.
+ * their own message ("The BV-BRC minhash service did not respond …"); a
+ * missing setting is logged with its name and shown without it, since server
+ * configuration is not the user's to read. An outage is logged too: the
+ * `UpstreamError`'s `host` names the machine that failed, which the user's
+ * message leaves out.
  */
 function describeSearchFailure(error: unknown): string {
   if (error instanceof MinhashConfigurationError) {
     console.error(error.message);
     return error.userMessage;
   }
-  if (!(error instanceof UpstreamError || error instanceof MinhashServiceError)) {
+  if (!(error instanceof MinhashServiceError)) {
     console.error("Similar Genome Finder search failed:", error);
   }
   return formatUserFacingErrorMessage(error, "Similar Genome Finder search failed");

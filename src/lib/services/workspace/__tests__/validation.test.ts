@@ -64,7 +64,7 @@ describe("checkWorkspaceObjectExists", () => {
 
   it("rejects on a workspace outage instead of calling the name available", async () => {
     const message =
-      "The BV-BRC workspace service (p3.theseed.org) did not respond (timed out after 30 s).";
+      "The BV-BRC workspace service did not respond (timed out after 30 s).";
     server.use(
       http.post("/api/services/workspace", () =>
         HttpResponse.json({ error: message, code: "upstream" }, { status: 504 }),

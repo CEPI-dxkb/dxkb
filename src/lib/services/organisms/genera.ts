@@ -3,10 +3,15 @@ import {
   buildGenomeFacetUrl,
   fetchOrganism,
   getBvBrcWebsiteApiBaseUrl,
+  organismResponseError,
   parseSolrFacetList,
   readJsonObject,
-  responseErrorMessage,
+  type OrganismRequest,
 } from "./utils";
+
+// Unlabelled: the card showing a failure names it ("Top genera could not be
+// loaded").
+const generaRequest: OrganismRequest = { source: "genome genus facet" };
 
 export async function fetchOrganismGenera(
   taxonId: number,
@@ -14,16 +19,14 @@ export async function fetchOrganismGenera(
   options: OrganismFetchOptions = {},
 ): Promise<OrganismGenusFacet[]> {
   const baseUrl = getBvBrcWebsiteApiBaseUrl();
-  const response = await fetchOrganism(buildGenomeFacetUrl(baseUrl, taxonId, "genus", limit), "genome genus facet", {
+  const response = await fetchOrganism(buildGenomeFacetUrl(baseUrl, taxonId, "genus", limit), generaRequest, {
     method: "GET",
     headers: { Accept: "application/solr+json" },
     signal: options.signal,
   });
 
-  if (!response.ok) {
-    throw new Error(await responseErrorMessage(response));
-  }
+  if (!response.ok) throw await organismResponseError(response, generaRequest);
 
-  const payload = await readJsonObject(response, "genome genus facet");
+  const payload = await readJsonObject(response, generaRequest);
   return parseSolrFacetList(payload, "genus");
 }

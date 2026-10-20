@@ -11,7 +11,7 @@ import { createQueryClientWrapper } from "@/test-helpers/react";
 import { WorkspaceDropdownContent } from "../workspace-dropdown-content";
 
 const timedOut =
-  "The BV-BRC workspace service (p3.theseed.org) did not respond (connection timed out after 10 s).";
+  "The BV-BRC workspace service did not respond (connection timed out after 10 s).";
 
 function favoritesAnswer(answer: () => Response) {
   const record = { calls: 0 };

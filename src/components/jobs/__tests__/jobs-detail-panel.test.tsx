@@ -17,7 +17,7 @@ const job: JobListItem = {
 
 const stdoutUrl = `/api/services/app-service/jobs/${job.id}/stdout`;
 const outageMessage =
-  "Failed to fetch stdout for job 9000001: The BV-BRC job service (p3.theseed.org) did not respond: connection timed out after 10 s.";
+  "Failed to fetch stdout for job 9000001: The BV-BRC job service did not respond: connection timed out after 10 s.";
 
 function renderPanel() {
   return render(<JobDetailsPanel job={job} />, {

@@ -161,7 +161,7 @@ describe("fetchSerotypeDistribution", () => {
     );
 
     await expect(fetchSerotypeDistribution(1)).rejects.toThrow(
-      "upstream timeout",
+      "Serotype Distribution: The BV-BRC data service is unavailable (HTTP 504 Gateway Timeout: upstream timeout).",
     );
   });
 

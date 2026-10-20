@@ -1,6 +1,7 @@
 import { expect, type Page, type Locator } from "@playwright/test";
 
 import { expectUrlParams } from "../support/url-params";
+import { ErrorAlert } from "./error-alert";
 import { PanelSplit } from "./panel-split";
 
 /**
@@ -15,10 +16,18 @@ export class JobsListPage {
   readonly searchInput: Locator;
   readonly statusTrigger: Locator;
   readonly panels: PanelSplit;
+  /** The list failed with nothing to show; replaces the table. */
+  readonly loadError: ErrorAlert;
+  /** The header's job pill when the job summary failed, instead of the counts. */
+  readonly statusPillUnavailable: Locator;
 
   constructor(page: Page) {
     this.page = page;
     this.heading = page.getByRole("heading", { level: 1, name: /^jobs$/i });
+    this.loadError = new ErrorAlert(page, "Could not load jobs");
+    this.statusPillUnavailable = page.getByRole("button", {
+      name: "Job status unavailable",
+    });
     this.searchInput = page.getByPlaceholder(/search by name, id, or service/i);
     // Named by the trigger's aria-label, so it is the same element whichever
     // status is chosen (its visible text changes from "All Status").

@@ -161,7 +161,7 @@ describe("fetchDbStatistics", () => {
 
     expect(counts.genomes).toBeNull();
     expect(unavailableReason).toBe(
-      `The BV-BRC data service (data-api.test) is unavailable (HTTP 503 Service Unavailable: ${maintenanceSummary}).`,
+      `The BV-BRC data service is unavailable (HTTP 503 Service Unavailable: ${maintenanceSummary}).`,
     );
     const logged = errorSpy.mock.calls.flat().join(" ");
     expect(logged).toContain(maintenanceSummary);
@@ -180,7 +180,7 @@ describe("fetchDbStatistics", () => {
     const { unavailableReason } = await fetchDbStatistics();
 
     expect(unavailableReason).toMatch(
-      /^The BV-BRC data service \(data-api\.test\) did not respond \(connection timed out/,
+      /^The BV-BRC data service did not respond \(connection timed out/,
     );
   });
 

@@ -102,7 +102,12 @@ export const POST = withAuth(async (request: NextRequest, { token }) => {
       } catch {
         apiResponse = responseText || null;
       }
-      console.error("BV-BRC API error:", response.status, response.statusText, apiResponse);
+      console.error(
+        `BV-BRC API error from ${hostOf(response.url) ?? "the workspace"}:`,
+        response.status,
+        response.statusText,
+        apiResponse,
+      );
       const sanitized = sanitizeUpstreamError(apiResponse);
       // A Workspace JSON-RPC error keeps the "BV-BRC API error: <status>"
       // label, with the Workspace's own message in `apiResponse` (which
@@ -114,7 +119,6 @@ export const POST = withAuth(async (request: NextRequest, { token }) => {
             response,
             responseText,
             upstreamServices.workspace,
-            { host: response.url ? hostOf(response.url) : undefined },
           ).message;
       return NextResponse.json(
         {

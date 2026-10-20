@@ -16,18 +16,15 @@ export function fail<T>(
 /**
  * A request that never got an answer. `service` names who did not answer
  * ("the BV-BRC authentication service"); the message keeps the cause
- * ("Could not reach … (user.bv-brc.org): connection refused.").
+ * ("Could not reach …: connection refused."). The host is not in it: the
+ * identity adapter's own log line names it.
  */
-export function networkFailure(
-  cause: unknown,
-  service: string,
-  host?: string,
-): AuthError {
-  const failure = describeUpstreamFailure(cause, service, { host });
+export function networkFailure(cause: unknown, service: string): AuthError {
+  const failure = describeUpstreamFailure(cause, service);
   return {
     message:
       failure?.message ??
-      `Could not reach ${service}${host ? ` (${host})` : ""}${cause instanceof Error && cause.message ? `: ${cause.message}` : ""}.`,
+      `Could not reach ${service}${cause instanceof Error && cause.message ? `: ${cause.message}` : ""}.`,
     // An undici connect timeout is a timeout, like the request budget's own.
     code: failure?.code === "upstream_timeout" ? "service_unavailable" : "network",
     status: failure?.status ?? 502,

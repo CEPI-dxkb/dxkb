@@ -17,7 +17,7 @@ const scrollIntoView = vi.fn();
 Element.prototype.scrollIntoView = scrollIntoView;
 
 const outageMessage =
-  "The BV-BRC registration service (user.bv-brc.org) did not respond (timed out after 15 s).";
+  "The BV-BRC registration service did not respond (timed out after 15 s).";
 
 async function fillSignupForm() {
   const user = userEvent.setup();

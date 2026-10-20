@@ -15,8 +15,11 @@
  * - `fetchUpstream` is `fetch` with a budget that throws `UpstreamError`
  *   carrying either description, and leaves a caller's own abort untouched.
  *
- * Messages name the service and, when known, its host, because the host that
- * is down is the first thing an operator and a user both need.
+ * Messages name the service and the cause, never the host: which machine
+ * answers for a service is deployment detail a user cannot act on. The host
+ * rides along on `UpstreamFailure.host` (and `UpstreamError.host`), so a
+ * route's `console.error` of the error still tells an operator which host is
+ * down.
  */
 
 import { noop } from "@/lib/utils";
@@ -30,17 +33,33 @@ export interface UpstreamFailure {
   status: number;
   code: UpstreamFailureCode;
   message: string;
+  /** The host that failed, for server logs only; never in `message`. */
+  host?: string;
+  /**
+   * The request that failed, by its internal name ("genome isolation_country
+   * facet"), for server logs only; never in `message`.
+   */
+  source?: string;
 }
 
 export class UpstreamError extends Error {
   readonly status: number;
   readonly code: UpstreamFailureCode;
+  /**
+   * Printed by `console.error(error)`, which lists an error's own fields.
+   * `declare` emits no field, so an error without a host has no `host` key.
+   */
+  declare readonly host?: string;
+  /** Printed by `console.error(error)`, as `host` is. */
+  declare readonly source?: string;
 
   constructor(failure: UpstreamFailure, options?: ErrorOptions) {
     super(failure.message, options);
     this.name = "UpstreamError";
     this.status = failure.status;
     this.code = failure.code;
+    if (failure.host) this.host = failure.host;
+    if (failure.source) this.source = failure.source;
   }
 }
 
@@ -169,10 +188,6 @@ function condense(text: string, max = maxDetailLength): string {
     : `${collapsed.slice(0, max).trimEnd()}…`;
 }
 
-function hostSuffix(host: string | undefined): string {
-  return host ? ` (${host})` : "";
-}
-
 export function hostOf(input: string | URL | Request): string | undefined {
   try {
     const url =
@@ -197,7 +212,16 @@ function connectTimeoutMs(chain: unknown[]): number | undefined {
 export interface DescribeFailureOptions {
   /** The budget whose `TimeoutError` this may be, for the message. */
   timeoutMs?: number;
+  /** Carried on the failure for server logs; never part of the message. */
   host?: string;
+}
+
+/** `host` as an optional field, absent rather than `undefined`. */
+function withHost(
+  failure: UpstreamFailure,
+  host: string | undefined,
+): UpstreamFailure {
+  return host ? { ...failure, host } : failure;
 }
 
 /** A spent budget: 504 "… did not respond (timed out after N s)". */
@@ -206,11 +230,14 @@ export function upstreamTimeoutFailure(
   options: DescribeFailureOptions = {},
 ): UpstreamFailure {
   const budget = options.timeoutMs ? ` after ${seconds(options.timeoutMs)}` : "";
-  return {
-    status: 504,
-    code: "upstream_timeout",
-    message: `${capitalize(service)}${hostSuffix(options.host)} did not respond (timed out${budget}).`,
-  };
+  return withHost(
+    {
+      status: 504,
+      code: "upstream_timeout",
+      message: `${capitalize(service)} did not respond (timed out${budget}).`,
+    },
+    options.host,
+  );
 }
 
 /**
@@ -231,11 +258,13 @@ export function describeUpstreamFailure(
   options: DescribeFailureOptions = {},
 ): UpstreamFailure | null {
   if (error instanceof UpstreamError) {
-    return { status: error.status, code: error.code, message: error.message };
+    return withHost(
+      { status: error.status, code: error.code, message: error.message },
+      error.host,
+    );
   }
   const name = errorName(error);
   if (name === "AbortError") return null;
-  const host = hostSuffix(options.host);
 
   if (name === "TimeoutError") return upstreamTimeoutFailure(service, options);
 
@@ -251,11 +280,14 @@ export function describeUpstreamFailure(
         : code === "UND_ERR_BODY_TIMEOUT"
           ? "timed out while sending its response"
           : "timed out";
-    return {
-      status: 504,
-      code: "upstream_timeout",
-      message: `${capitalize(service)}${host} did not respond (${what}).`,
-    };
+    return withHost(
+      {
+        status: 504,
+        code: "upstream_timeout",
+        message: `${capitalize(service)} did not respond (${what}).`,
+      },
+      options.host,
+    );
   }
 
   const reason = code ? unreachableReasons[code] : undefined;
@@ -275,11 +307,14 @@ export function describeUpstreamFailure(
         .at(-1) ??
       code ??
       errorMessage(error);
-    return {
-      status: 502,
-      code: "service_unavailable",
-      message: `Could not reach ${service}${host}${detail ? `: ${condense(detail)}` : ""}.`,
-    };
+    return withHost(
+      {
+        status: 502,
+        code: "service_unavailable",
+        message: `Could not reach ${service}${detail ? `: ${condense(detail)}` : ""}.`,
+      },
+      options.host,
+    );
   }
 
   return null;
@@ -390,7 +425,7 @@ export function describeUpstreamResponse(
   ).replace(/[.\s]+$/, "");
   const statusText = response.statusText?.trim();
   const label = `HTTP ${String(response.status)}${statusText ? ` ${statusText}` : ""}${detail && detail !== statusText ? `: ${detail}` : ""}`;
-  const subject = `${capitalize(service)}${hostSuffix(options.host)}`;
+  const subject = capitalize(service);
 
   if (response.status >= 500) {
     const [status, code]: [number, UpstreamFailureCode] =
@@ -399,13 +434,19 @@ export function describeUpstreamResponse(
         : response.status === 504
           ? [504, "upstream_timeout"]
           : [502, "upstream_error"];
-    return { status, code, message: `${subject} is unavailable (${label}).` };
+    return withHost(
+      { status, code, message: `${subject} is unavailable (${label}).` },
+      options.host,
+    );
   }
-  return {
-    status: response.status,
-    code: "upstream_error",
-    message: `${subject} rejected the request (${label}).`,
-  };
+  return withHost(
+    {
+      status: response.status,
+      code: "upstream_error",
+      message: `${subject} rejected the request (${label}).`,
+    },
+    options.host,
+  );
 }
 
 export interface FetchUpstreamOptions {
@@ -419,6 +460,20 @@ export interface FetchUpstreamOptions {
    */
   streamBody?: boolean;
   fetcher?: typeof fetch;
+}
+
+/**
+ * The budget `fetchUpstream` waits, which is `timeoutMs` everywhere but the
+ * e2e harness. There the loopback mock's "hang" outage never answers, and a
+ * spec would sit out a 20–60 s production budget, so `E2E_UPSTREAM_BUDGET_MS`
+ * (`.env.e2e.test`) caps it. Read only when `E2E_MOCK_ENABLED=1`, the flag
+ * that also guards the mock, so a deploy cannot shorten a budget by setting
+ * one variable. Messages keep naming `timeoutMs`, the production budget.
+ */
+function e2eBudgetMs(timeoutMs: number): number {
+  if (process.env.E2E_MOCK_ENABLED !== "1") return timeoutMs;
+  const cap = Number(process.env.E2E_UPSTREAM_BUDGET_MS);
+  return Number.isFinite(cap) && cap > 0 ? Math.min(timeoutMs, cap) : timeoutMs;
 }
 
 /**
@@ -436,7 +491,7 @@ export async function fetchUpstream(
   init: RequestInit,
   options: FetchUpstreamOptions,
 ): Promise<Response> {
-  const timeout = AbortSignal.timeout(options.timeoutMs);
+  const timeout = AbortSignal.timeout(e2eBudgetMs(options.timeoutMs));
   let budget: AbortSignal = timeout;
   let release = noop;
   if (options.streamBody) {

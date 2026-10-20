@@ -93,7 +93,7 @@ describe("settings save failures", () => {
 
   it("names the password change and keeps the server's reason", async () => {
     const reason =
-      "The BV-BRC password service (user.bv-brc.org) did not respond (timed out after 15 s).";
+      "The BV-BRC password service did not respond (timed out after 15 s).";
     failWith("/api/auth/change-password", reason, 504);
     render(<PasswordChangeForm />, { wrapper: wrapper() });
     const user = userEvent.setup();

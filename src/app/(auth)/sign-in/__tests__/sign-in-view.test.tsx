@@ -32,7 +32,7 @@ describe("SigninView", () => {
 
   it("shows and focuses the route's error when sign-in fails", async () => {
     const message =
-      "The BV-BRC authentication service (user.bv-brc.org) did not respond (timed out after 15 s).";
+      "The BV-BRC authentication service did not respond (timed out after 15 s).";
     server.use(
       http.post("*/api/auth/sign-in/email", () =>
         HttpResponse.json(

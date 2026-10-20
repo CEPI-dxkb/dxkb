@@ -46,7 +46,7 @@ describe("JsonRpcClient upstream failures", () => {
       status: 504,
       code: "upstream_timeout",
       message:
-        "The BV-BRC job service (p3.theseed.test) did not respond (connection timed out after 10 s).",
+        "The BV-BRC job service did not respond (connection timed out after 10 s).",
       cause: expect.objectContaining({
         cause: expect.objectContaining({ code: "UND_ERR_CONNECT_TIMEOUT" }) as unknown,
       }) as unknown,
@@ -61,7 +61,7 @@ describe("JsonRpcClient upstream failures", () => {
       createBvBrcClient("token").call("AppService.query_task_summary_filtered", [{}]),
     ).rejects.toMatchObject({
       status: 504,
-      message: "The BV-BRC job service (p3.theseed.test) did not respond (timed out after 30 s).",
+      message: "The BV-BRC job service did not respond (timed out after 30 s).",
     });
   });
 
@@ -74,7 +74,7 @@ describe("JsonRpcClient upstream failures", () => {
     expect(error).toMatchObject({
       status: 503,
       code: "service_unavailable",
-      message: `The BV-BRC job service (p3.theseed.test) is unavailable (HTTP 503 Service Unavailable: ${maintenanceSummary}).`,
+      message: `The BV-BRC job service is unavailable (HTTP 503 Service Unavailable: ${maintenanceSummary}).`,
     });
     expect((error as Error).message).not.toContain("<");
   });
@@ -125,7 +125,7 @@ describe("AppService.submitService upstream failures", () => {
     await expect(submit()).rejects.toMatchObject({
       status: 504,
       message:
-        "The BV-BRC job service (p3.theseed.test) did not respond (connection timed out after 10 s).",
+        "The BV-BRC job service did not respond (connection timed out after 10 s).",
     });
   });
 });

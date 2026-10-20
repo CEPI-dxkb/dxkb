@@ -111,7 +111,7 @@ export async function resolveWorkspaceDownload(
   if (!wsResponse.ok) {
     const responseText = await wsResponse.text().catch(() => "");
     console.error(
-      "BV-BRC API error:",
+      `BV-BRC API error from ${hostOf(wsResponse.url) ?? "the workspace"}:`,
       wsResponse.status,
       wsResponse.statusText,
       responseText,
@@ -133,7 +133,6 @@ export async function resolveWorkspaceDownload(
       wsResponse,
       responseText,
       upstreamServices.workspace,
-      { host: wsResponse.url ? hostOf(wsResponse.url) : undefined },
     );
     return NextResponse.json(
       { error: failure.message, code: statusToErrorCode(failure.status) },

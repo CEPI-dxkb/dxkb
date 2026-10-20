@@ -25,6 +25,8 @@ export { ProteinStructurePage } from "./protein-structure-page";
 export { TaxonomyCollectionPage } from "./taxonomy-collection-page";
 export { ArchaeopteryxPage } from "./archaeopteryx-page";
 export { PanelSplit } from "./panel-split";
+export { ErrorAlert } from "./error-alert";
+export { SearchResultsPage } from "./search-results-page";
 export { ViewNavRail } from "./view-nav-rail";
 export {
   FolderPickerDialog,

@@ -166,7 +166,7 @@ describe("fetchAmrPhenotypeDistribution", () => {
     );
 
     await expect(fetchAmrPhenotypeDistribution(197)).rejects.toThrow(
-      "amr phenotype distribution: upstream timeout",
+      "Antimicrobial Resistance Profile: The BV-BRC data service is unavailable (HTTP 504 Gateway Timeout: upstream timeout).",
     );
   });
 

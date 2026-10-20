@@ -45,7 +45,7 @@ describe("fetchTypeMatches", () => {
 
   it("keeps the route's own message and status, so an outage is not retried", async () => {
     const message =
-      "The BV-BRC data service (p3.theseed.org) did not respond (connection timed out after 10 s). Please try again.";
+      "The BV-BRC data service did not respond (connection timed out after 10 s).";
     server.use(
       http.post(searchRoute, () =>
         HttpResponse.json(

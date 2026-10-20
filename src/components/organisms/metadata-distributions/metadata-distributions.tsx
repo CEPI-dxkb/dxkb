@@ -1,5 +1,10 @@
 import { fetchAmrPhenotypeDistribution } from "@/lib/services/organisms/amr-distribution";
 import { fetchOrganismMetadataFacets } from "@/lib/services/organisms/metadata-facets";
+import {
+  amrProfileTitle,
+  metadataFieldLabel,
+  taxonomicDistributionTitle,
+} from "@/lib/services/organisms/metadata-field-labels";
 import { fetchTaxonomicDistribution } from "@/lib/services/organisms/taxonomic-distribution";
 import type {
   AmrDistributionData,
@@ -21,19 +26,6 @@ import { formatUserFacingErrorMessage } from "@/lib/utils";
 import { AmrBarStackChart } from "./amr-bar-stack-chart";
 import { BarChart } from "./bar-chart";
 import { DonutChart } from "./donut-chart";
-
-const fieldLabels: Record<string, string> = {
-  genus: "Genus",
-  host: "Host",
-  host_name: "Host Name",
-  host_group: "Host Group",
-  host_common_name: "Host Distribution",
-  isolation_country: "Isolation Country",
-  isolation_source: "Isolation Source Distribution",
-  collection_year: "Collection Year",
-  family: "Family",
-  sequencing_centers: "Sequencing Centers",
-};
 
 type MetadataDistributionsProps = GenomeScopeProps & {
   fields: string[];
@@ -161,7 +153,7 @@ export async function MetadataDistributions({
   const taxonomicChart = (
     <DonutChart
       key={taxonomicDistributionSentinel}
-      title="Taxonomic Distribution"
+      title={taxonomicDistributionTitle}
       tabs={[
         {
           label: "Genus",
@@ -193,7 +185,7 @@ export async function MetadataDistributions({
             return [taxonomicChart];
           }
 
-          const title = fieldLabels[field] ?? field;
+          const title = metadataFieldLabel(field);
           const chart = facetCharts.get(field);
           const data = (chart?.data ?? []).map((facet) =>
             chartDatum(field, facet),
@@ -224,7 +216,7 @@ export async function MetadataDistributions({
         {showAmrChart && (
           <div className={`flex flex-col${amrHasData ? " @[640px]:col-span-2 @[1080px]:col-span-2" : ""}`}>
             <AmrBarStackChart
-              title="Antimicrobial Resistance Profile"
+              title={amrProfileTitle}
               data={amr.data}
               errorMessage={amr.errorMessage}
             />

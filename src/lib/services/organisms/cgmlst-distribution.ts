@@ -27,7 +27,10 @@ export async function fetchCgmlstHcDistribution(
     hcLevels.map((level) =>
       fetchOrganismSolrJson(
         buildGenomeFacetUrl(baseUrl, taxonId, `cgmlst_${level}`, 10),
-        `cgMLST ${level} distribution`,
+        {
+          source: `genome cgmlst_${level} facet`,
+          label: `cgMLST ${level.toUpperCase()} Distribution`,
+        },
         options.signal,
       ).then((payload) => parseSolrFacetList(payload, `cgmlst_${level}`)),
     ),

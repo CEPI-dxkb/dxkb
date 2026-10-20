@@ -33,7 +33,7 @@ afterEach(() => {
 });
 
 const timedOut =
-  "The BV-BRC workspace service (p3.theseed.test) did not respond (connection timed out after 10 s).";
+  "The BV-BRC workspace service did not respond (connection timed out after 10 s).";
 
 function workspaceAnswers(resolver: Parameters<typeof http.post>[1]) {
   server.use(http.post(workspaceApiUrl, resolver));
@@ -70,7 +70,7 @@ describe("workspace proxies on an upstream outage", () => {
       expect(response.status).toBe(504);
       await expect(body(response)).resolves.toEqual({
         error:
-          "The BV-BRC workspace service (p3.theseed.test) did not respond (timed out after 30 s).",
+          "The BV-BRC workspace service did not respond (timed out after 30 s).",
         code: "upstream",
       });
     });
@@ -83,10 +83,27 @@ describe("workspace proxies on an upstream outage", () => {
       const text = await response.text();
       const { error } = JSON.parse(text) as { error: string };
       expect(error).toMatch(
-        /^The BV-BRC workspace service .*is unavailable \(HTTP 503 Service Unavailable/,
+        /^The BV-BRC workspace service is unavailable \(HTTP 503 Service Unavailable/,
       );
       expect(error).toContain(maintenanceSummary);
       expect(text).not.toContain("<");
+    });
+
+    it("names the host in the server log only, not in what the user reads", async () => {
+      const logged = vi.mocked(console.error);
+      logged.mockClear();
+      workspaceAnswers(() => maintenancePage());
+
+      const response = await workspaceProxy(lsRequest(), {});
+      const text = await response.text();
+
+      expect(text).not.toContain("p3.theseed.test");
+      expect(logged).toHaveBeenCalledWith(
+        "BV-BRC API error from p3.theseed.test:",
+        503,
+        "Service Unavailable",
+        expect.any(String),
+      );
     });
 
     it("forwards the JSON-RPC error a 500 reply carries", async () => {
@@ -155,7 +172,7 @@ describe("workspace proxies on an upstream outage", () => {
       expect(response.status).toBe(504);
       await expect(body(response)).resolves.toEqual({
         error:
-          "The BV-BRC file storage service (shock.test) did not respond (timed out after 30 s).",
+          "The BV-BRC file storage service did not respond (timed out after 30 s).",
         code: "upstream",
       });
     });
@@ -171,7 +188,7 @@ describe("workspace proxies on an upstream outage", () => {
       const response = await previewRoute(previewRequest(), makeRouteContext({ path }));
       expect(response.status).toBe(502);
       await expect(body(response)).resolves.toEqual({
-        error: "Could not reach the BV-BRC file storage service (shock.test): connection refused.",
+        error: "Could not reach the BV-BRC file storage service: connection refused.",
         code: "upstream",
       });
     });

@@ -91,7 +91,6 @@ async function request(
       }),
     );
   } catch (cause) {
-    const host = hostOf(input);
     if (cause instanceof Error && cause.name === "AbortError") {
       logUpstreamFailure(
         service,
@@ -100,7 +99,7 @@ async function request(
         `timed out (budget ${String(timeoutMs)} ms)`,
         startedAt,
       );
-      const failure = upstreamTimeoutFailure(service, { timeoutMs, host });
+      const failure = upstreamTimeoutFailure(service, { timeoutMs });
       return fail("service_unavailable", failure.message, failure.status);
     }
     logUpstreamFailure(
@@ -111,7 +110,7 @@ async function request(
         (cause instanceof Error ? cause.name : "network error"),
       startedAt,
     );
-    return { data: null, error: networkFailure(cause, service, host) };
+    return { data: null, error: networkFailure(cause, service) };
   } finally {
     clearTimeout(timeout);
   }

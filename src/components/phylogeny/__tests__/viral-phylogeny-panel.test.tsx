@@ -200,7 +200,7 @@ describe("ViralPhylogenyPanel", () => {
     rerender(
       <ViralPhylogenyPanel taxonId={2955291} taxonName="Influenza A virus" />,
     );
-    expect(screen.getByText("Viral trees unavailable")).toBeInTheDocument();
+    expect(screen.getByText("Viral trees could not be loaded")).toBeInTheDocument();
 
     useViralFamily.mockReturnValue({
       isPending: false,

@@ -327,7 +327,7 @@ describe("fetchOrganismSolrJson", () => {
       }),
     );
 
-    const result = await fetchOrganismSolrJson(`${baseUrl}/genome/`, "test");
+    const result = await fetchOrganismSolrJson(`${baseUrl}/genome/`, { source: "test" });
     expect(receivedAccept).toBe("application/solr+json");
     expect(result).toEqual({ ok: true });
   });
@@ -343,20 +343,27 @@ describe("fetchOrganismSolrJson", () => {
     const controller = new AbortController();
     controller.abort();
     await expect(
-      fetchOrganismSolrJson(`${baseUrl}/genome/`, "test", controller.signal),
+      fetchOrganismSolrJson(`${baseUrl}/genome/`, { source: "test" }, controller.signal),
     ).rejects.toThrow();
   });
 
-  it("prefixes the error message with the source on a non-ok response", async () => {
+  it("prefixes a non-ok response's message with the label, never the source", async () => {
     server.use(
       http.get(`${baseUrl}/genome/`, () =>
         HttpResponse.text("upstream down", { status: 503 }),
       ),
     );
 
-    await expect(fetchOrganismSolrJson(`${baseUrl}/genome/`, "geo facet")).rejects.toThrow(
-      "geo facet: upstream down",
-    );
+    await expect(
+      fetchOrganismSolrJson(`${baseUrl}/genome/`, {
+        source: "genome host_name facet",
+        label: "Host Name",
+      }),
+    ).rejects.toMatchObject({
+      message:
+        "Host Name: The BV-BRC data service is unavailable (HTTP 503 Service Unavailable: upstream down).",
+      source: "genome host_name facet",
+    });
   });
 });
 
@@ -419,7 +426,7 @@ describe("fetchOrganismSolrJsonPost", () => {
       }),
     );
 
-    await fetchOrganismSolrJsonPost(url, "eq(genome_id,*)", "amr test");
+    await fetchOrganismSolrJsonPost(url, "eq(genome_id,*)", { source: "amr test" });
 
     expect(capturedMethod).toBe("POST");
     expect(capturedBody).toBe("eq(genome_id,*)");
@@ -433,17 +440,23 @@ describe("fetchOrganismSolrJsonPost", () => {
     );
 
     await expect(
-      fetchOrganismSolrJsonPost(url, "body", "amr test"),
-    ).rejects.toThrow("upstream timeout");
+      fetchOrganismSolrJsonPost(url, "body", { source: "amr test" }),
+    ).rejects.toThrow(
+      "The BV-BRC data service is unavailable (HTTP 504 Gateway Timeout: upstream timeout).",
+    );
   });
 
-  it("rejects malformed JSON responses", async () => {
+  it("rejects malformed JSON responses behind the label, never the source", async () => {
     server.use(
       http.post(url, () => HttpResponse.text("not json", { status: 200 })),
     );
 
-    await expect(
-      fetchOrganismSolrJsonPost(url, "body", "amr test"),
-    ).rejects.toThrow("amr test");
+    const error: unknown = await fetchOrganismSolrJsonPost(url, "body", {
+      source: "amr test",
+      label: "AMR",
+    }).catch((caught: unknown) => caught);
+
+    expect((error as Error).message).toMatch(/^AMR: Malformed JSON response: /);
+    expect((error as Error).message).not.toContain("amr test");
   });
 });

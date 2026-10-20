@@ -221,7 +221,7 @@ describe("ProteinStructureMember", () => {
             accession: "6VXX",
             metadata: null,
             error:
-              "Could not reach the BV-BRC data service (p3.theseed.org): connection timed out after 10 s.",
+              "Could not reach the BV-BRC data service: connection timed out after 10 s.",
           },
         ]}
       />,
@@ -229,7 +229,7 @@ describe("ProteinStructureMember", () => {
 
     const alert = screen.getByRole("alert");
     expect(alert).toHaveTextContent(
-      "Could not reach the BV-BRC data service (p3.theseed.org): connection timed out after 10 s.",
+      "Could not reach the BV-BRC data service: connection timed out after 10 s.",
     );
     expect(alert).toHaveTextContent(
       "The structure below still loads from the RCSB PDB.",

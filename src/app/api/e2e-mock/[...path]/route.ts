@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { handleIdentityGet, handleIdentityPost } from "./identity";
+import { matchOutage, outageResponse } from "./outage";
 import {
   allOrganismsSummaryRecord,
   ambiguousSerologyRecords,
@@ -107,6 +108,9 @@ function logHit(method: string, path: string, extra?: string): void {
  *   - `identity.ts`'s 401/404s — MODELLED responses (bad credentials, unknown
  *     user) that specs assert on. They are fixture behaviour, not gaps, and
  *     surfacing them as diagnostics would make the grep useless.
+ *   - `outage.ts`'s 503 maintenance page and hang — the same: an outage a
+ *     spec asked for (`src/lib/e2e-fixtures/outages.ts`). Only a malformed
+ *     request for one is a gap, answered through {@link unhandledResponse}.
  *
  * `src/app/api/e2e-mock/[...path]/__tests__/route.test.ts` pins both halves:
  * it drives every rejection branch through the prefix, and it scans this
@@ -119,8 +123,9 @@ function logHit(method: string, path: string, extra?: string): void {
  *
  * The completeness test in `__tests__/route.test.ts` enforces that by scanning
  * *this file*, so the guarantee ends at the module boundary: `identity.ts`
- * already returns its own 401/404 from this directory. A rejection helper has
- * to stay here, or that scan has to grow to cover wherever it moves.
+ * already returns its own 401/404 from this directory, and `outage.ts` its
+ * 503/504. A rejection helper has to stay here, or that scan has to grow to
+ * cover wherever it moves.
  */
 const rejectionPrefix = "e2e-mock: ";
 
@@ -970,6 +975,27 @@ function maybeBvBrcWebsite(
   };
 }
 
+/**
+ * The answer of a backend this request asked to be down, or `null` to run the
+ * fixture dispatch. It comes before every fixture, because a service in an
+ * outage answers every path the same way; a request that asks for no outage
+ * still reaches the fail-closed dispatch below.
+ */
+async function maybeOutage(
+  path: string,
+  request: NextRequest,
+  body?: string,
+): Promise<NextResponse | null> {
+  const match = matchOutage(path, request, body);
+  if (!match) return null;
+  if (match.kind === "invalid") {
+    return unhandledResponse("invalid e2e outage request", match.reason, {
+      path,
+    });
+  }
+  return outageResponse(match, path, request);
+}
+
 export async function GET(
   request: NextRequest,
   context: { params: Promise<{ path: string[] }> },
@@ -977,6 +1003,8 @@ export async function GET(
   if (!isEnabled()) return disabledResponse();
   const path = await resolvePath(context.params);
   logHit("GET", path, new URL(request.url).search);
+  const outage = await maybeOutage(path, request);
+  if (outage) return outage;
   if (path === "phylo-manifest") {
     return NextResponse.json({ trees: { "2955291": "influenza" } });
   }
@@ -1130,6 +1158,9 @@ export async function POST(
 
   logHit("POST", path, rpcMethod ? `method=${rpcMethod}` : "");
 
+  const outage = await maybeOutage(path, request, await request.clone().text());
+  if (outage) return outage;
+
   const bvBrcWebsitePost = await maybeBvBrcWebsitePost(path, request);
   if (bvBrcWebsitePost) {
     if (bvBrcWebsitePost.kind === "unhandled") {
@@ -1194,21 +1225,21 @@ function rejectMutation(method: string, path: string): NextResponse {
 }
 
 export async function PUT(
-  _request: NextRequest,
+  request: NextRequest,
   context: { params: Promise<{ path: string[] }> },
 ): Promise<NextResponse> {
   if (!isEnabled()) return disabledResponse();
   const path = await resolvePath(context.params);
   logHit("PUT", path);
-  return rejectMutation("PUT", path);
+  return (await maybeOutage(path, request)) ?? rejectMutation("PUT", path);
 }
 
 export async function DELETE(
-  _request: NextRequest,
+  request: NextRequest,
   context: { params: Promise<{ path: string[] }> },
 ): Promise<NextResponse> {
   if (!isEnabled()) return disabledResponse();
   const path = await resolvePath(context.params);
   logHit("DELETE", path);
-  return rejectMutation("DELETE", path);
+  return (await maybeOutage(path, request)) ?? rejectMutation("DELETE", path);
 }

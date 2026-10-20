@@ -47,6 +47,12 @@ export {
 } from "./catchall";
 export { journeyOverrides } from "./journey";
 export {
+  outagePassthroughOverrides,
+  outageRecords,
+  signInDuringOutage,
+  type SessionOutages,
+} from "./outage";
+export {
   downloadErrorOverride,
   downloadFeatureCollectionOverride,
   downloadFeatureRows,

@@ -63,7 +63,7 @@ describe("downloadStructure", () => {
         HttpResponse.json(
           {
             error:
-              "The BV-BRC workspace service (p3.theseed.org) did not respond (timed out after 30 s).",
+              "The BV-BRC workspace service did not respond (timed out after 30 s).",
             code: "upstream",
           },
           { status: 504 },
@@ -74,7 +74,7 @@ describe("downloadStructure", () => {
     await expect(
       downloadStructure(workspaceSource, signal()),
     ).rejects.toThrow(
-      "Could not download test.pdb from your workspace: The BV-BRC workspace service (p3.theseed.org) did not respond (timed out after 30 s) (HTTP 504).",
+      "Could not download test.pdb from your workspace: The BV-BRC workspace service did not respond (timed out after 30 s) (HTTP 504).",
     );
   });
 

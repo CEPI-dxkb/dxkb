@@ -42,6 +42,8 @@ export function useOutputNameValidation({
     key: "",
     status: "idle",
   });
+  // Bumped by `retry`, so the effect runs the check again for the same name.
+  const [attempt, setAttempt] = useState(0);
   const [previousValidationKey, setPreviousValidationKey] =
     useState(validationKey);
   if (previousValidationKey !== validationKey) {
@@ -91,7 +93,7 @@ export function useOutputNameValidation({
       clearTimeout(timeoutId);
       controller.abort();
     };
-  }, [fullPath, validationKey]);
+  }, [fullPath, validationKey, attempt]);
 
   const status = validation.key === validationKey ? validation.status : "idle";
   const errorMessage =
@@ -107,5 +109,14 @@ export function useOutputNameValidation({
     isInvalid: status === "taken" || status === "error",
     /** The check's own failure, for "Unable to validate this name: …". */
     errorMessage,
+    /**
+     * Runs the check again after a failure (a workspace outage), which is
+     * otherwise rerun only by editing the name. Submit stays blocked until
+     * the new check answers.
+     */
+    retry: () => {
+      setValidation({ key: "", status: "idle" });
+      setAttempt((current) => current + 1);
+    },
   };
 }

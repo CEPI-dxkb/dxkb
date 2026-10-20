@@ -49,14 +49,13 @@ export async function fetchPhyloManifest(): Promise<PhyloManifest | null> {
     return parseManifest(await response.json());
   } catch (error) {
     // undici's own message is only "fetch failed"; name what timed out or
-    // could not be reached so the log says which host is down.
+    // could not be reached, and the host, so the log says which host is down.
     const failure = describeUpstreamFailure(error, "the BV-BRC phylogeny manifest", {
       timeoutMs: manifestFetchTimeoutMs,
-      host: hostOf(url),
     });
     const message =
       failure?.message ?? (error instanceof Error ? error.message : String(error));
-    console.error(`phylo-manifest: ${message}`);
+    console.error(`phylo-manifest (${hostOf(url) ?? url}): ${message}`);
     return null;
   }
 }

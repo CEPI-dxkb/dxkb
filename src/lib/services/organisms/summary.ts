@@ -3,26 +3,29 @@ import {
   fetchOrganism,
   getBvBrcWebsiteApiBaseUrl,
   numberOrNull,
+  organismResponseError,
   readJsonObject,
-  responseErrorMessage,
+  type OrganismRequest,
 } from "./utils";
+
+// Unlabelled: each place that shows the summary names it ("Data summary could
+// not be loaded", "Taxon counts could not be loaded: …").
+const summaryRequest: OrganismRequest = { source: "summary_by_taxon" };
 
 export async function fetchOrganismSummary(
   taxonId: number,
   options: OrganismFetchOptions = {},
 ): Promise<OrganismSummary> {
   const baseUrl = getBvBrcWebsiteApiBaseUrl();
-  const response = await fetchOrganism(`${baseUrl}/data/summary_by_taxon/${String(taxonId)}`, "summary_by_taxon", {
+  const response = await fetchOrganism(`${baseUrl}/data/summary_by_taxon/${String(taxonId)}`, summaryRequest, {
     method: "GET",
     headers: { Accept: "application/json" },
     signal: options.signal,
   });
 
-  if (!response.ok) {
-    throw new Error(await responseErrorMessage(response));
-  }
+  if (!response.ok) throw await organismResponseError(response, summaryRequest);
 
-  const payload = await readJsonObject(response, "summary_by_taxon");
+  const payload = await readJsonObject(response, summaryRequest);
 
   return {
     count: numberOrNull(payload.count, "count"),

@@ -39,7 +39,7 @@ class ResizeObserverStub {
 vi.stubGlobal("ResizeObserver", ResizeObserverStub);
 
 const timedOut =
-  "The BV-BRC workspace service (p3.theseed.org) did not respond (connection timed out after 10 s).";
+  "The BV-BRC workspace service did not respond (connection timed out after 10 s).";
 
 interface RpcBody {
   method: string;
@@ -303,7 +303,7 @@ describe("WorkspaceBrowser Retry keeps the error on screen", () => {
     await retryAndExpectKeptError(lsCalls);
 
     const refused =
-      "Could not reach the BV-BRC workspace service (p3.theseed.org): connection refused.";
+      "Could not reach the BV-BRC workspace service: connection refused.";
     held.release(() =>
       HttpResponse.json({ error: refused, code: "upstream" }, { status: 502 }),
     );

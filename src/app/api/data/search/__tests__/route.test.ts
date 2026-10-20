@@ -171,7 +171,7 @@ describe("POST /api/data/search", () => {
     const body = await json<{ error: string; code: string }>(response);
     expect(body.code).toBe("upstream_timeout");
     expect(body.error).toMatch(
-      /^The BV-BRC data service \(data\.test\) did not respond \(connection timed out after 10 s\)/,
+      /^The BV-BRC data service did not respond \(connection timed out after 10 s\)/,
     );
   });
 

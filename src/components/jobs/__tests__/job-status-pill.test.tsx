@@ -44,7 +44,7 @@ function renderPillWithClient() {
 }
 
 const outageMessage =
-  "The BV-BRC job service (p3.theseed.org) did not respond: connection timed out after 10 s.";
+  "The BV-BRC job service did not respond: connection timed out after 10 s.";
 
 function mockSummaryOutage() {
   server.use(

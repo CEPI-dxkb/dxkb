@@ -51,7 +51,7 @@ describe("POST /api/auth/ensure-workspace against the Workspace", () => {
     expect(response.status).toBe(504);
     await expect(response.json()).resolves.toEqual({
       error:
-        "The BV-BRC workspace service (p3.theseed.test) did not respond (connection timed out after 10 s).",
+        "The BV-BRC workspace service did not respond (connection timed out after 10 s).",
       code: "upstream",
     });
     expect(methods).toEqual(["Workspace.ls"]);

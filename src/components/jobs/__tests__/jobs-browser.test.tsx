@@ -20,7 +20,7 @@ stubResizableGeometry(800);
 const listUrl = "/api/services/app-service/jobs/enumerate-tasks-filtered";
 const summaryUrl = "/api/services/app-service/jobs/summary";
 const outageMessage =
-  "The BV-BRC job service (p3.theseed.org) did not respond: connection timed out after 10 s.";
+  "The BV-BRC job service did not respond: connection timed out after 10 s.";
 
 const job = {
   id: "9000001",

@@ -92,7 +92,9 @@ it("logs a missing setting by name but shows the user a reason without it", asyn
   );
 });
 
-it("names the MinHash service and host when it cannot be reached", async () => {
+it("names the MinHash service when it cannot be reached, and logs its host", async () => {
+  const logged = vi.mocked(console.error);
+  logged.mockClear();
   server.use(
     http.post(minhashUrl, () => {
       throw connectTimeout();
@@ -102,8 +104,12 @@ it("names the MinHash service and host when it cannot be reached", async () => {
   await expect(submitSimilarGenomes(formData)).resolves.toEqual({
     success: false,
     error:
-      "The BV-BRC minhash service (p3.theseed.test) did not respond (connection timed out after 10 s).",
+      "The BV-BRC minhash service did not respond (connection timed out after 10 s).",
   });
+  expect(logged).toHaveBeenCalledWith(
+    "Similar Genome Finder search failed:",
+    expect.objectContaining({ host: "p3.theseed.test" }),
+  );
 });
 
 it("keeps the service's own error from a MinHash JSON-RPC error body", async () => {
@@ -136,7 +142,7 @@ it("keeps the hits and says why names are missing when the genome lookup fails",
     success: true,
     rows: [expect.objectContaining({ genome_id: "83332.12", genome_name: "" })],
     genomeDetailsError:
-      "The BV-BRC data service (www.bv-brc.test) is unavailable (HTTP 503 Service Unavailable: upstream down).",
+      "The BV-BRC data service is unavailable (HTTP 503 Service Unavailable: upstream down).",
   });
 });
 

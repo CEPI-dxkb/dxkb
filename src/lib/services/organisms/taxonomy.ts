@@ -1,8 +1,6 @@
 import {
   describeUpstreamFailure,
-  UpstreamError,
   upstreamServices,
-  type UpstreamFailureCode,
 } from "@/lib/api/upstream-failure";
 
 import type { OrganismFetchOptions, OrganismTaxonomy } from "./types";
@@ -10,10 +8,11 @@ import {
   fetchOrganism,
   getBvBrcWebsiteApiBaseUrl,
   numberOrNull,
+  organismResponseError,
   readJsonObject,
   requiredNumber,
   requiredString,
-  responseErrorMessage,
+  type OrganismRequest,
 } from "./utils";
 
 function parseLineageNames(value: unknown): string[] {
@@ -40,18 +39,9 @@ function parseLineageIds(value: unknown): number[] {
 
 export class TaxonomyNotFoundError extends Error {
   constructor(public readonly taxonId: number) {
-    super(`taxonomy/${String(taxonId)}: not found`);
+    super(`Taxon ${String(taxonId)} was not found.`);
     this.name = "TaxonomyNotFoundError";
   }
-}
-
-function outageStatus(status: number): {
-  status: number;
-  code: UpstreamFailureCode;
-} {
-  if (status === 503) return { status, code: "service_unavailable" };
-  if (status === 504) return { status, code: "upstream_timeout" };
-  return { status: 502, code: "upstream_error" };
 }
 
 /**
@@ -69,7 +59,10 @@ export async function fetchOrganismTaxonomy(
   options: OrganismFetchOptions = {},
 ): Promise<OrganismTaxonomy> {
   const baseUrl = getBvBrcWebsiteApiBaseUrl();
-  const response = await fetchOrganism(`${baseUrl}/taxonomy/${String(taxonId)}`, `taxonomy/${String(taxonId)}`, {
+  // Unlabelled: the page showing a failure names the taxon ("Taxon 234 could
+  // not be loaded").
+  const request: OrganismRequest = { source: `taxonomy/${String(taxonId)}` };
+  const response = await fetchOrganism(`${baseUrl}/taxonomy/${String(taxonId)}`, request, {
     method: "GET",
     headers: { Accept: "application/json" },
     signal: options.signal,
@@ -79,17 +72,11 @@ export async function fetchOrganismTaxonomy(
     throw new TaxonomyNotFoundError(taxonId);
   }
 
-  if (!response.ok) {
-    const message = await responseErrorMessage(response);
-    // A 5xx is the service failing, not this request: an UpstreamError
-    // carries that (and its status), so a page can tell an outage from a bug.
-    if (response.status >= 500) {
-      throw new UpstreamError({ ...outageStatus(response.status), message });
-    }
-    throw new Error(message);
-  }
+  // The UpstreamError carries the status, so a page can tell a 5xx (the
+  // service failing, not this request) from a bug.
+  if (!response.ok) throw await organismResponseError(response, request);
 
-  const payload = await readJsonObject(response, `taxonomy/${String(taxonId)}`);
+  const payload = await readJsonObject(response, request);
 
   return {
     taxonId: requiredNumber(payload.taxon_id ?? payload.taxonId ?? taxonId, "taxon_id"),

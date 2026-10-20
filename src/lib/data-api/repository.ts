@@ -1,6 +1,7 @@
 import { z } from "zod";
 import {
   describeUpstreamFailure,
+  describeUpstreamResponse,
   fetchUpstream,
   isHtmlBody,
   summarizeUpstreamBody,
@@ -78,19 +79,28 @@ export interface DataApiMultiQuery {
 /**
  * A network failure or spent budget as the `DataApiError` the routes answer
  * with: 504 `upstream_timeout` or 502 `service_unavailable`, naming the
- * cause. Anything else (a caller's `AbortError` included) is returned as is.
+ * cause in the shared wording every backend uses. The `UpstreamError` stays
+ * as `cause`, so the route's log still shows its host. Anything else (a
+ * caller's `AbortError` included) is returned as is.
  */
 function dataApiFailure(error: unknown): unknown {
   const failure = describeUpstreamFailure(error, dataService, {
     timeoutMs: upstreamTimeoutMs.dataApi,
   });
   if (!failure) return error;
-  return new DataApiError(
-    `${failure.message} Please try again.`,
-    failure.status,
-    failure.code,
-    { cause: error },
-  );
+  return new DataApiError(failure.message, failure.status, failure.code, {
+    cause: error,
+  });
+}
+
+/**
+ * The HTML error page a JSON error message quotes ("Unable to parse the query
+ * response. <html>…<h1>503 Service Unavailable</h1>…"), or "" when it quotes
+ * none.
+ */
+function quotedHtmlPage(message: string): string {
+  const start = message.search(/<(html|head|body|title|h1)\b/i);
+  return start === -1 ? "" : message.slice(start);
 }
 
 function appendQuery(url: URL, clause: string): void {
@@ -923,7 +933,7 @@ export class ServerDataRepository {
         payload === null && isHtmlBody(text, contentType)
           ? summarizeUpstreamBody(text, contentType)
           : "";
-      const message =
+      const upstreamText =
         payload === null && detail
           ? `Data service request failed with status ${String(response.status)}: ${detail}.`
           : upstreamMessage(payload, response.status);
@@ -931,7 +941,7 @@ export class ServerDataRepository {
         response.status === 503 ||
         (response.status >= 500 &&
           /503 service unavailable|no server is available to handle this request/i.test(
-            message,
+            upstreamText,
           ));
       const safeStatus = serviceUnavailable
         ? 503
@@ -950,10 +960,22 @@ export class ServerDataRepository {
                 : safeStatus === 503
                   ? "service_unavailable"
                   : "upstream_error";
+      // An outage reads as every backend's does ("The BV-BRC data service is
+      // unavailable (HTTP 503 Service Unavailable: Site Maintenance)."): its
+      // status, then only the title and heading of an HTML page behind it,
+      // or of one a JSON error quotes. A 5xx with a JSON error of the
+      // service's own ("Invalid query near …") keeps that message.
+      const isOutage =
+        serviceUnavailable || (payload === null && response.status >= 500);
+      const message = isOutage
+        ? describeUpstreamResponse(
+            response,
+            payload === null ? (detail ? text : "") : quotedHtmlPage(upstreamText),
+            dataService,
+          ).message
+        : upstreamText;
       throw new DataApiError(
-        serviceUnavailable
-          ? `The data service is temporarily unavailable${detail ? ` (${detail.replace(/[.\s]+$/, "")})` : ""}. Please try again.`
-          : message,
+        message,
         safeStatus,
         code,
       );

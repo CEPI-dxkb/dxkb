@@ -72,7 +72,7 @@ describe("bacterialTreeFilename", () => {
       name: "UpstreamError",
       status: 503,
       message: expect.stringContaining(
-        "phylogeny tree dictionary (www.bv-brc.org) is unavailable (HTTP 503",
+        "phylogeny tree dictionary is unavailable (HTTP 503",
       ) as unknown,
     });
 

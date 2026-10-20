@@ -6,7 +6,7 @@ const proxyUrl = "/api/services/workspace";
 const userId = "alice@bvbrc";
 const favoritesPath = "/alice@bvbrc/home/.preferences/favorites.json";
 const timedOut =
-  "The BV-BRC workspace service (p3.theseed.org) did not respond (connection timed out after 10 s).";
+  "The BV-BRC workspace service did not respond (connection timed out after 10 s).";
 
 interface RpcBody {
   method: string;

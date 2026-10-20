@@ -7,7 +7,7 @@ import {
 } from "@/lib/services/workspace/workspace-errors";
 
 const timedOut =
-  "The BV-BRC workspace service (p3.theseed.org) did not respond (connection timed out after 10 s).";
+  "The BV-BRC workspace service did not respond (connection timed out after 10 s).";
 
 /** What `rpc()` throws for the proxy's answer to a JSON-RPC error inside a 500. */
 function rpcError(message: string, status = 500) {
@@ -43,7 +43,7 @@ describe("isWorkspaceObjectMissing", () => {
     [
       "a 502 'host not found' outage",
       new WorkspaceApiError(
-        "Could not reach the BV-BRC workspace service (p3.theseed.org): host not found.",
+        "Could not reach the BV-BRC workspace service: host not found.",
         "Workspace.ls",
         undefined,
         502,

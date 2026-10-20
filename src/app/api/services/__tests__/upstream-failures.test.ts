@@ -44,7 +44,7 @@ describe("genome search and lookup on an upstream outage", () => {
     expect(response.status).toBe(504);
     await expect(response.json()).resolves.toEqual({
       error:
-        "The BV-BRC data service (p3.theseed.test) did not respond (connection timed out after 10 s).",
+        "The BV-BRC data service did not respond (connection timed out after 10 s).",
       code: "upstream",
     });
   });
@@ -56,7 +56,7 @@ describe("genome search and lookup on an upstream outage", () => {
     const response = await genomeSearch(searchRequest(), {});
     expect(response.status).toBe(504);
     await expect(response.json()).resolves.toMatchObject({
-      error: "The BV-BRC data service (p3.theseed.test) did not respond (timed out after 20 s).",
+      error: "The BV-BRC data service did not respond (timed out after 20 s).",
     });
   });
 
@@ -123,7 +123,7 @@ describe("POST /api/services/minhash on an upstream outage", () => {
     expect(response.status).toBe(504);
     await expect(response.json()).resolves.toEqual({
       error:
-        "The BV-BRC minhash service (p3.theseed.test) did not respond (timed out after 60 s).",
+        "The BV-BRC minhash service did not respond (timed out after 60 s).",
       code: "upstream",
     });
   });

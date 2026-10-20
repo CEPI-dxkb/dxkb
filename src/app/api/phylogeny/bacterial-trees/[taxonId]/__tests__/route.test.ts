@@ -107,7 +107,7 @@ describe("GET /api/phylogeny/bacterial-trees/[taxonId]", () => {
 
     expect(response.status).toBe(503);
     await expect(json(response)).resolves.toEqual({
-      error: `The BV-BRC phylogeny tree dictionary (www.bv-brc.org) is unavailable (HTTP 503 Service Unavailable: ${maintenanceSummary}).`,
+      error: `The BV-BRC phylogeny tree dictionary is unavailable (HTTP 503 Service Unavailable: ${maintenanceSummary}).`,
       code: "service_unavailable",
     });
     logged.mockRestore();

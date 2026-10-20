@@ -1,6 +1,7 @@
 import { expect, type Page, type Locator } from "@playwright/test";
 
 import { awaitPanelLayoutCommitted } from "../a11y/settle";
+import { ErrorAlert } from "./error-alert";
 import { PanelSplit } from "./panel-split";
 
 /**
@@ -20,9 +21,14 @@ export class WorkspacePage {
   readonly showHiddenButton: Locator;
   readonly showDetailsButton: Locator;
   readonly panels: PanelSplit;
+  /** The dialog the browser opens when the Workspace says a path does not exist. */
+  readonly notFoundDialog: Locator;
 
   constructor(page: Page) {
     this.page = page;
+    this.notFoundDialog = page.getByRole("alertdialog", {
+      name: "Folder not found",
+    });
     this.breadcrumbs = page.getByRole("navigation", { name: /workspace path/i });
     this.typeFilterTrigger = page.getByRole("combobox").first();
     this.searchInput = page.getByPlaceholder(/search files/i);
@@ -42,6 +48,14 @@ export class WorkspacePage {
     const target = path ?? "/workspace/e2e-test-user@patricbrc.org/home";
     await this.page.goto(target);
     await expect(this.breadcrumbs).toBeVisible();
+  }
+
+  /**
+   * The folder could not be listed. `title` names where: "Couldn't load your home folder" at the
+   * home root, "Couldn't load this folder" below it.
+   */
+  loadError(title: string): ErrorAlert {
+    return new ErrorAlert(this.page, title);
   }
 
   rowByName(name: string): Locator {

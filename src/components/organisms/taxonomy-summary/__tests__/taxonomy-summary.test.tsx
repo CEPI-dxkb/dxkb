@@ -9,6 +9,7 @@ vi.mock("@/lib/services/organisms/summary", () => ({
 }));
 
 import { TaxonomySummary } from "../taxonomy-summary";
+import { UpstreamError } from "@/lib/api/upstream-failure";
 import { fetchOrganismSummary } from "@/lib/services/organisms/summary";
 
 const brucellaTaxon = {
@@ -47,7 +48,13 @@ describe("TaxonomySummary", () => {
 
   it("says the summary counts are unavailable, and why, when the summary fetch fails", async () => {
     vi.mocked(fetchOrganismSummary).mockRejectedValueOnce(
-      new Error("503 Service Unavailable: Site Maintenance — We’ll be back soon!"),
+      new UpstreamError({
+        status: 503,
+        code: "service_unavailable",
+        message:
+          "The BV-BRC data service is unavailable (HTTP 503 Service Unavailable: Site Maintenance — We’ll be back soon!).",
+        source: "summary_by_taxon",
+      }),
     );
 
     await renderServer(TaxonomySummary({ taxonId: 234, taxon: brucellaTaxon }));
@@ -59,9 +66,12 @@ describe("TaxonomySummary", () => {
     // The taxonomy record still knows the genome count the breadcrumb shows.
     const genomes = screen.getByTitle("Assembled genome records");
     expect(within(genomes).getByText("1,909")).toBeInTheDocument();
+    // The line names the counts, so the message carries no label of its own,
+    // and the endpoint is only for the log.
     expect(screen.getByRole("alert")).toHaveTextContent(
-      "Taxon counts could not be loaded: 503 Service Unavailable: Site Maintenance — We’ll be back soon!",
+      "Taxon counts could not be loaded: The BV-BRC data service is unavailable (HTTP 503 Service Unavailable: Site Maintenance — We’ll be back soon!).",
     );
+    expect(screen.getByRole("alert")).not.toHaveTextContent("summary_by_taxon");
 
     fireEvent.click(screen.getByRole("button", { name: "Retry" }));
     await waitFor(() => {

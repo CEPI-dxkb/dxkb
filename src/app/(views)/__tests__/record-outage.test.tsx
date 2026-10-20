@@ -118,7 +118,7 @@ describe.each(pages)("$name record page during a data-service outage", (record) 
       within(alert).getByRole("heading", { name: `${title} could not be loaded` }),
     ).toBeInTheDocument();
     expect(alert).toHaveTextContent(
-      /The data service is temporarily unavailable \(Site Maintenance/,
+      /The BV-BRC data service is unavailable \(HTTP 503 Service Unavailable: Site Maintenance/,
     );
     expect(within(alert).getByRole("button", { name: "Retry" })).toBeEnabled();
     expect(within(alert).getByRole("link", { name: record.browse })).toHaveAttribute(

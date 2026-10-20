@@ -101,7 +101,7 @@ describe("GET /api/services/taxonomy", () => {
 
     expect(res.status).toBe(502);
     expect(await json(res)).toEqual({
-      error: "The BV-BRC taxonomy service (mock-api) is unavailable (HTTP 502 Bad Gateway: err).",
+      error: "The BV-BRC taxonomy service is unavailable (HTTP 502 Bad Gateway: err).",
       code: "upstream",
     });
   });
@@ -114,7 +114,7 @@ describe("GET /api/services/taxonomy", () => {
     expect(res.status).toBe(503);
     const body = await json<{ error: string }>(res);
     expect(body.error).toBe(
-      "The BV-BRC taxonomy service (mock-api) is unavailable (HTTP 503 Service Unavailable: Site Maintenance — We’ll be back soon!).",
+      "The BV-BRC taxonomy service is unavailable (HTTP 503 Service Unavailable: Site Maintenance — We’ll be back soon!).",
     );
     expect(body.error).not.toContain("<");
   });
@@ -128,7 +128,7 @@ describe("GET /api/services/taxonomy", () => {
     expect(res.status).toBe(504);
     expect(await json(res)).toEqual(
       expect.objectContaining({
-        error: "The BV-BRC taxonomy service (mock-api) did not respond (timed out after 20 s).",
+        error: "The BV-BRC taxonomy service did not respond (timed out after 20 s).",
       }),
     );
   });

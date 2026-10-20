@@ -248,7 +248,7 @@ describe.each(views)(
       expect(loaded).toEqual({
         sampleId: "sample-1",
         unavailable: expect.stringMatching(
-          /^The data service is temporarily unavailable \(Site Maintenance/,
+          /^The BV-BRC data service is unavailable \(HTTP 503 Service Unavailable: Site Maintenance/,
         ) as unknown,
       });
     });

@@ -10,7 +10,7 @@ import { connectTimeout } from "@/test-helpers/upstream-failures";
 
 const workspaceApiUrl = "https://p3.theseed.test/services/Workspace";
 const timedOut =
-  "The BV-BRC workspace service (p3.theseed.test) did not respond (connection timed out after 10 s).";
+  "The BV-BRC workspace service did not respond (connection timed out after 10 s).";
 const documentHeaders = {
   accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
   "sec-fetch-dest": "document",

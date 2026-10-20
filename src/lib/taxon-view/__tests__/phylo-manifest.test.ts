@@ -71,7 +71,7 @@ describe("fetchPhyloManifest", () => {
 
     expect(await fetchPhyloManifest()).toBeNull();
     expect(logged).toHaveBeenCalledWith(
-      "phylo-manifest: The BV-BRC phylogeny manifest (example.test) did not respond (connection timed out after 10 s).",
+      "phylo-manifest (example.test): The BV-BRC phylogeny manifest did not respond (connection timed out after 10 s).",
     );
     logged.mockRestore();
   });

@@ -58,6 +58,10 @@ describe("fetchCgmlstHcDistribution", () => {
       }),
     );
 
-    await expect(fetchCgmlstHcDistribution(234)).rejects.toThrow("hc2 error");
+    await expect(fetchCgmlstHcDistribution(234)).rejects.toMatchObject({
+      message:
+        "cgMLST HC2 Distribution: The BV-BRC data service is unavailable (HTTP 503 Service Unavailable: hc2 error).",
+      source: "genome cgmlst_hc2 facet",
+    });
   });
 });

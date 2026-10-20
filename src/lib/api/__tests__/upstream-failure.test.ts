@@ -7,6 +7,7 @@ import {
   summarizeUpstreamBody,
   UpstreamError,
   upstreamResponseError,
+  upstreamTimeoutFailure,
 } from "@/lib/api/upstream-failure";
 import { server } from "@/test-helpers/msw-server";
 import {
@@ -28,15 +29,52 @@ afterEach(() => {
 });
 
 describe("describeUpstreamFailure", () => {
-  it("names the service, host and connect budget for an undici connect timeout", () => {
+  it("names the service and connect budget, keeping the host out of the message", () => {
     expect(
       describeUpstreamFailure(connectTimeout(), service, { host: "p3.theseed.org" }),
     ).toEqual({
       status: 504,
       code: "upstream_timeout",
       message:
-        "The BV-BRC workspace service (p3.theseed.org) did not respond (connection timed out after 10 s).",
+        "The BV-BRC workspace service did not respond (connection timed out after 10 s).",
+      host: "p3.theseed.org",
     });
+  });
+
+  it("leaves `host` off a failure whose host is unknown", () => {
+    const failure = describeUpstreamFailure(connectTimeout(), service);
+    expect(failure).not.toHaveProperty("host");
+  });
+
+  it("keeps an UpstreamError's host when describing it again", () => {
+    const error = new UpstreamError({
+      status: 502,
+      code: "service_unavailable",
+      message: "Could not reach the BV-BRC workspace service: connection refused.",
+      host: "p3.theseed.org",
+    });
+    expect(describeUpstreamFailure(error, "another service")).toEqual({
+      status: 502,
+      code: "service_unavailable",
+      message: "Could not reach the BV-BRC workspace service: connection refused.",
+      host: "p3.theseed.org",
+    });
+  });
+
+  it("carries a request's source for the log, never in the message", () => {
+    const error = new UpstreamError({
+      status: 503,
+      code: "service_unavailable",
+      message: "The BV-BRC data service is unavailable (HTTP 503 Service Unavailable).",
+      source: "genome genus facet",
+    });
+    // An own field, so `console.error(error)` prints it.
+    expect(Object.keys(error)).toContain("source");
+    expect(error.source).toBe("genome genus facet");
+    expect(error.message).not.toContain("genus");
+    expect(
+      new UpstreamError({ status: 502, code: "upstream_error", message: "x" }),
+    ).not.toHaveProperty("source");
   });
 
   it("maps a headers timeout to 504", () => {
@@ -73,7 +111,8 @@ describe("describeUpstreamFailure", () => {
     ).toEqual({
       status: 502,
       code: "service_unavailable",
-      message: `Could not reach the BV-BRC workspace service (p3.theseed.org): ${reason}.`,
+      message: `Could not reach the BV-BRC workspace service: ${reason}.`,
+      host: "p3.theseed.org",
     });
   });
 
@@ -179,6 +218,23 @@ describe("describeUpstreamResponse", () => {
     });
   });
 
+  it("keeps a given host for logs, out of the message", () => {
+    expect(
+      describeUpstreamResponse(
+        { status: 503, statusText: "Service Unavailable" },
+        "",
+        service,
+        { host: "p3.theseed.org" },
+      ),
+    ).toEqual({
+      status: 503,
+      code: "service_unavailable",
+      message:
+        "The BV-BRC workspace service is unavailable (HTTP 503 Service Unavailable).",
+      host: "p3.theseed.org",
+    });
+  });
+
   it("does not double the punctuation when the page's text ends a sentence", () => {
     const { message } = describeUpstreamResponse(
       {
@@ -227,8 +283,10 @@ describe("fetchUpstream", () => {
     expect(error).toMatchObject({
       status: 503,
       code: "service_unavailable",
-      message: `The BV-BRC workspace service (p3.theseed.org) is unavailable (HTTP 503 Service Unavailable: ${maintenanceSummary}).`,
+      message: `The BV-BRC workspace service is unavailable (HTTP 503 Service Unavailable: ${maintenanceSummary}).`,
+      host: "p3.theseed.org",
     });
+    expect(error.message).not.toContain("p3.theseed.org");
   });
 
   it("throws UpstreamError with the cause for a connect timeout", async () => {
@@ -243,9 +301,24 @@ describe("fetchUpstream", () => {
       status: 504,
       code: "upstream_timeout",
       message:
-        "The BV-BRC workspace service (p3.theseed.org) did not respond (connection timed out after 10 s).",
+        "The BV-BRC workspace service did not respond (connection timed out after 10 s).",
+      host: "p3.theseed.org",
       cause: expect.objectContaining({ message: "fetch failed" }) as unknown,
     });
+  });
+
+  it("prints the host when the error is logged, for an operator", async () => {
+    server.use(
+      http.post(url, () => {
+        throw connectionRefused();
+      }),
+    );
+    const error = await fetchUpstream(url, { method: "POST" }, options).catch(
+      (caught: unknown) => caught,
+    );
+    const { inspect } = await import("node:util");
+    expect(inspect(error)).toContain("host: 'p3.theseed.org'");
+    expect((error as Error).message).not.toContain("p3.theseed.org");
   });
 
   it("throws 502 for a refused connection", async () => {
@@ -256,7 +329,7 @@ describe("fetchUpstream", () => {
     );
     await expect(fetchUpstream(url, { method: "POST" }, options)).rejects.toMatchObject({
       status: 502,
-      message: "Could not reach the BV-BRC workspace service (p3.theseed.org): connection refused.",
+      message: "Could not reach the BV-BRC workspace service: connection refused.",
     });
   });
 
@@ -274,7 +347,7 @@ describe("fetchUpstream", () => {
     await expect(fetchUpstream(url, { method: "POST" }, options)).rejects.toMatchObject({
       status: 504,
       code: "upstream_timeout",
-      message: "The BV-BRC workspace service (p3.theseed.org) did not respond (timed out after 30 s).",
+      message: "The BV-BRC workspace service did not respond (timed out after 30 s).",
     });
   });
 
@@ -308,5 +381,21 @@ describe("fetchUpstream", () => {
 
   it("stops the budget at the headers for a streamed body", async () => {
     expect((await signalAfterBudget(true)).aborted).toBe(false);
+  });
+});
+
+describe("upstreamTimeoutFailure", () => {
+  it("names the service and budget, never the host", () => {
+    expect(
+      upstreamTimeoutFailure("the BV-BRC profile service", {
+        timeoutMs: 15_000,
+        host: "user.bv-brc.org",
+      }),
+    ).toEqual({
+      status: 504,
+      code: "upstream_timeout",
+      message: "The BV-BRC profile service did not respond (timed out after 15 s).",
+      host: "user.bv-brc.org",
+    });
   });
 });

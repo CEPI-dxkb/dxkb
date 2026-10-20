@@ -1,4 +1,5 @@
 import type { GenomeScope } from "./genome-scope";
+import { taxonomicDistributionTitle } from "./metadata-field-labels";
 import type { OrganismFetchOptions, OrganismGenusFacet } from "./types";
 import {
   buildGenomeFacetUrl,
@@ -17,12 +18,12 @@ export async function fetchTaxonomicDistribution(
   const [genusResult, speciesResult] = await Promise.allSettled([
     fetchOrganismSolrJson(
       buildGenomeFacetUrl(baseUrl, scope, "genus", limit),
-      "taxonomic distribution genus",
+      { source: "taxonomic distribution genus", label: taxonomicDistributionTitle },
       options.signal,
     ),
     fetchOrganismSolrJson(
       buildGenomeFacetUrl(baseUrl, scope, "species", limit),
-      "taxonomic distribution species",
+      { source: "taxonomic distribution species", label: taxonomicDistributionTitle },
       options.signal,
     ),
   ]);

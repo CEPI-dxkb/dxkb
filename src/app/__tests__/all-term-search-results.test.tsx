@@ -318,7 +318,7 @@ describe("SearchResults", () => {
   it("shows the route's reason for an outage, and retries it with the error kept on screen", async () => {
     const user = userEvent.setup();
     const outage =
-      "The BV-BRC data service (p3.theseed.org) did not respond (connection timed out after 10 s). Please try again.";
+      "The BV-BRC data service did not respond (connection timed out after 10 s).";
     let release: () => void = () => undefined;
     let calls = 0;
     server.use(

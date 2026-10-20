@@ -238,12 +238,23 @@ describe("fetchOrganismGeoDistribution", () => {
 
   it("throws when a required field facet fails", async () => {
     server.use(defaultGenomeRouter({ stateStatus: 500 }));
-    await expect(fetchOrganismGeoDistribution(234)).rejects.toThrow("state failed");
+    // Unlabelled: the map's card names it ("Geographic distribution could not
+    // be loaded"); the field is only for the log.
+    await expect(fetchOrganismGeoDistribution(234)).rejects.toMatchObject({
+      status: 502,
+      message:
+        "The BV-BRC data service is unavailable (HTTP 500 Internal Server Error: state failed).",
+      source: "genome state_province facet",
+    });
   });
 
   it("throws when the country facet fails", async () => {
     server.use(defaultGenomeRouter({ countryStatus: 502 }));
-    await expect(fetchOrganismGeoDistribution(234)).rejects.toThrow("country failed");
+    await expect(fetchOrganismGeoDistribution(234)).rejects.toMatchObject({
+      message:
+        "The BV-BRC data service is unavailable (HTTP 502 Bad Gateway: country failed).",
+      source: "genome isolation_country facet",
+    });
   });
 
   it("returns empty meta objects when pivot facets fail without throwing", async () => {

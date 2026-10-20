@@ -75,7 +75,7 @@ describe("DBStatistics", () => {
 
   it("says once that the statistics are unavailable, with the reason, when every count failed", async () => {
     const reason =
-      "The BV-BRC data service (p3.theseed.org) is unavailable (HTTP 503 Service Unavailable: Site Maintenance).";
+      "The BV-BRC data service is unavailable (HTTP 503 Service Unavailable: Site Maintenance).";
     mockedFetch.mockResolvedValueOnce({
       counts: Object.fromEntries(
         Object.keys(allNumeric()).map((key) => [key, null]),

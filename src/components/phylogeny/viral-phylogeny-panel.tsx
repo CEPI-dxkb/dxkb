@@ -46,7 +46,7 @@ export function ViralPhylogenyPanel({
     return (
       <div className="p-4">
         <SectionError
-          title="Viral trees unavailable"
+          section="Viral trees"
           error={family.error}
           onRetry={() => {
             void family.refetch();
@@ -177,11 +177,11 @@ function TreeViewer({
 }
 
 function TreeError(
-  props: Omit<ComponentProps<typeof SectionError>, "title">,
+  props: Omit<ComponentProps<typeof SectionError>, "section">,
 ) {
   return (
     <div className="p-4">
-      <SectionError title="Tree unavailable" {...props} />
+      <SectionError section="This tree" {...props} />
     </div>
   );
 }

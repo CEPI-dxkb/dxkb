@@ -236,7 +236,7 @@ describe("ensureUserWorkspace", () => {
       status: 504,
       code: "upstream_timeout",
       message:
-        "The BV-BRC workspace service (p3.theseed.org) did not respond (connection timed out after 10 s).",
+        "The BV-BRC workspace service did not respond (connection timed out after 10 s).",
     });
 
     it.each([

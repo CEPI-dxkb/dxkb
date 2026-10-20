@@ -9,7 +9,11 @@ import {
 } from "@/lib/services/organisms/taxonomy";
 import { UpstreamError } from "@/lib/api/upstream-failure";
 import { server } from "@/test-helpers/msw-server";
-import { connectionRefused, maintenancePage } from "@/test-helpers/upstream-failures";
+import {
+  connectionRefused,
+  maintenancePage,
+  maintenanceSummary,
+} from "@/test-helpers/upstream-failures";
 
 const baseUrl = "https://bvbrc.test/api-for-website";
 
@@ -55,14 +59,20 @@ describe("fetchOrganismTaxonomy", () => {
     await expect(fetchOrganismTaxonomy(2)).rejects.toThrow("taxonomy unavailable");
   });
 
-  it("throws a 5xx as an UpstreamError with its status and condensed message", async () => {
+  it("throws a 5xx as an UpstreamError in the shared outage wording", async () => {
     server.use(http.get(`${baseUrl}/taxonomy/2`, () => maintenancePage()));
 
     const error: unknown = await fetchOrganismTaxonomy(2).catch((caught: unknown) => caught);
 
     expect(error).toBeInstanceOf(UpstreamError);
-    expect(error).toMatchObject({ status: 503, code: "service_unavailable" });
-    expect((error as Error).message).toMatch(/^503 Service Unavailable: Site Maintenance/);
+    // The page names the taxon, so the message carries no label, and the
+    // endpoint is only for the log.
+    expect(error).toMatchObject({
+      status: 503,
+      code: "service_unavailable",
+      message: `The BV-BRC data service is unavailable (HTTP 503 Service Unavailable: ${maintenanceSummary}).`,
+      source: "taxonomy/2",
+    });
     expect(isTaxonomyOutage(error)).toBe(true);
     expect(isTaxonomyOutage(new Error("Missing required environment variable: X"))).toBe(false);
   });
@@ -74,9 +84,9 @@ describe("fetchOrganismTaxonomy", () => {
       ),
     );
 
-    await expect(fetchOrganismTaxonomy(9999)).rejects.toBeInstanceOf(
-      TaxonomyNotFoundError,
-    );
+    const error: unknown = await fetchOrganismTaxonomy(9999).catch((caught: unknown) => caught);
+    expect(error).toBeInstanceOf(TaxonomyNotFoundError);
+    expect(error).toMatchObject({ message: "Taxon 9999 was not found.", taxonId: 9999 });
   });
 
   it("parses numeric lineage_ids returned as numbers", async () => {

@@ -1,12 +1,6 @@
 import { AlertTriangle } from "lucide-react";
 
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatUserFacingErrorMessage } from "@/lib/utils";
 
 import { SectionRetryButton } from "./section-retry-button";
@@ -16,7 +10,11 @@ const genericSectionErrorMessage =
   "This section could not be loaded. Please try again.";
 
 interface SectionErrorProps {
-  title?: string;
+  /**
+   * What the section shows, as the start of a sentence: "Reference genomes"
+   * titles the card "Reference genomes could not be loaded".
+   */
+  section: string;
   /** What failed: the caught error, or a message. Long messages are condensed. */
   error: unknown;
   /**
@@ -31,12 +29,12 @@ interface SectionErrorProps {
 }
 
 /**
- * A section or panel whose data could not be loaded: the condensed real
- * message as text (never a block of upstream page source) and a Retry,
- * announced as an alert.
+ * A section or panel whose data could not be loaded: a title naming the
+ * section, the condensed real message as text (never a block of upstream page
+ * source) and a Retry, announced as an alert.
  */
 export function SectionError({
-  title = "Section unavailable",
+  section,
   error,
   onRetry,
   isRetrying,
@@ -52,10 +50,9 @@ export function SectionError({
         <CardTitle>
           <div className="flex items-center gap-2">
             <AlertTriangle aria-hidden="true" />
-            {title}
+            {section} could not be loaded
           </div>
         </CardTitle>
-        <CardDescription>Upstream data could not be loaded.</CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col items-start gap-3">
         <p

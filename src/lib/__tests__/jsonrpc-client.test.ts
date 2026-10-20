@@ -122,7 +122,7 @@ describe("JsonRpcClient", () => {
         name: "UpstreamError",
         status: 502,
         message:
-          "The JSON-RPC service (api.example.com) is unavailable (HTTP 500 Internal Server Error).",
+          "The JSON-RPC service is unavailable (HTTP 500 Internal Server Error).",
       });
     });
 
@@ -265,7 +265,7 @@ describe("JsonRpcClient", () => {
       ).rejects.toMatchObject({
         status: 502,
         message:
-          "The JSON-RPC service (api.example.com) is unavailable (HTTP 502 Bad Gateway).",
+          "The JSON-RPC service is unavailable (HTTP 502 Bad Gateway).",
       });
     });
 

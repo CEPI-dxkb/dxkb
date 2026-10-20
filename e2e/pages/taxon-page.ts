@@ -1,5 +1,6 @@
 import { expect, type Locator, type Page } from "@playwright/test";
 
+import { ErrorAlert } from "./error-alert";
 import { ViewNavRail } from "./view-nav-rail";
 
 /** Taxonomy landing page with its data-view tabs (serology, strains, epitopes, ...). */
@@ -23,6 +24,11 @@ export class TaxonPage {
     }
     await this.page.goto(`/taxonomy/${taxonId}?tab=${tab}`);
     await expect(this.page).toHaveURL(new RegExp(`tab=${tab}`));
+  }
+
+  /** The in-shell error a taxon page shows when its taxonomy lookup failed. */
+  unavailable(taxonId: string): ErrorAlert {
+    return new ErrorAlert(this.page, `Taxon ${taxonId} could not be loaded`);
   }
 
   /** The tab's nav-sidebar button, e.g. "Serology", "Strains". */

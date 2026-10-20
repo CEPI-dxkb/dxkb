@@ -3,9 +3,14 @@ import type { OrganismFetchOptions } from "./types";
 import {
   fetchOrganism,
   getBvBrcWebsiteApiBaseUrl,
-  responseErrorMessage,
+  organismResponseError,
   throwOrganismFetchError,
+  type OrganismRequest,
 } from "./utils";
+
+// Unlabelled: the card showing a failure names it ("Reference genomes could
+// not be loaded").
+const referenceGenomesRequest: OrganismRequest = { source: "reference-genomes" };
 
 export interface ReferenceGenome {
   reference_genome: string;
@@ -27,26 +32,26 @@ export async function fetchReferenceGenomes(
     `json(nl,map)`,
   ].join("&");
 
-  const response = await fetchOrganism(`${baseUrl}/genome/?${query}`, "reference-genomes", {
+  const response = await fetchOrganism(`${baseUrl}/genome/?${query}`, referenceGenomesRequest, {
     headers: { Accept: "application/json" },
     signal: options.signal,
   });
 
   if (!response.ok) {
-    throw new Error(await responseErrorMessage(response));
+    throw await organismResponseError(response, referenceGenomesRequest);
   }
 
   const payload = (await response.json().catch((error: unknown) =>
-    throwOrganismFetchError(error, "reference-genomes"),
+    throwOrganismFetchError(error, referenceGenomesRequest, response.url || undefined),
   )) as unknown;
 
   if (!Array.isArray(payload)) {
-    throw new Error("reference-genomes: unexpected response shape: expected array");
+    throw new Error("Unexpected BV-BRC response shape: expected an array of genomes");
   }
 
   return payload.map((doc: unknown, index: number) => {
     if (!doc || typeof doc !== "object" || Array.isArray(doc)) {
-      throw new Error(`reference-genomes: unexpected doc shape at index ${String(index)}`);
+      throw new Error(`Unexpected BV-BRC response shape: genome ${String(index)} is not an object`);
     }
     const d = doc as Record<string, unknown>;
     return {

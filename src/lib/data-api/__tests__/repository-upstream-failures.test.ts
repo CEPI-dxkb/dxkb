@@ -40,7 +40,7 @@ describe("ServerDataRepository upstream failures", () => {
       status: 504,
       code: "upstream_timeout",
       message:
-        "The BV-BRC data service (data.test) did not respond (connection timed out after 10 s). Please try again.",
+        "The BV-BRC data service did not respond (connection timed out after 10 s).",
     });
   });
 
@@ -55,7 +55,7 @@ describe("ServerDataRepository upstream failures", () => {
       status: 502,
       code: "service_unavailable",
       message:
-        "Could not reach the BV-BRC data service (data.test): connection refused. Please try again.",
+        "Could not reach the BV-BRC data service: connection refused.",
     });
   });
 
@@ -67,7 +67,7 @@ describe("ServerDataRepository upstream failures", () => {
       status: 504,
       code: "upstream_timeout",
       message:
-        "The BV-BRC data service (data.test) did not respond (timed out after 20 s). Please try again.",
+        "The BV-BRC data service did not respond (timed out after 20 s).",
     });
   });
 
@@ -78,9 +78,86 @@ describe("ServerDataRepository upstream failures", () => {
     expect(error).toMatchObject({
       status: 503,
       code: "service_unavailable",
-      message: `The data service is temporarily unavailable (${maintenanceSummary}). Please try again.`,
+      message: `The BV-BRC data service is unavailable (HTTP 503 Service Unavailable: ${maintenanceSummary}).`,
     });
     expect((error as Error).message).not.toContain("<");
+  });
+
+  it.each([
+    [502, "Bad Gateway"],
+    [500, "Internal Server Error"],
+  ])(
+    "phrases a %i gateway page as every backend's outage does",
+    async (status, statusText) => {
+      server.use(
+        http.get(
+          genomeUrl,
+          () =>
+            new HttpResponse("<html><title>Gateway Error</title></html>", {
+              status,
+              statusText,
+              headers: { "Content-Type": "text/html" },
+            }),
+        ),
+      );
+
+      await expect(readCollection()).rejects.toMatchObject({
+        status: 502,
+        code: "upstream_error",
+        message: `The BV-BRC data service is unavailable (HTTP ${String(status)} ${statusText}: Gateway Error).`,
+      });
+    },
+  );
+
+  it("names the status of an outage whose body is empty or plain text, without reading the text", async () => {
+    server.use(
+      http.get(
+        genomeUrl,
+        () =>
+          new HttpResponse("java.lang.OutOfMemoryError at solr.internal:8983", {
+            status: 500,
+            statusText: "Internal Server Error",
+          }),
+      ),
+    );
+
+    const error = await readCollection().catch((caught: unknown) => caught);
+    expect(error).toMatchObject({
+      status: 502,
+      code: "upstream_error",
+      message:
+        "The BV-BRC data service is unavailable (HTTP 500 Internal Server Error).",
+    });
+    expect((error as Error).message).not.toContain("solr.internal");
+  });
+
+  it("keeps the service's own JSON error for a 5xx that is not an outage", async () => {
+    server.use(
+      http.get(genomeUrl, () =>
+        HttpResponse.json(
+          { error: { msg: "undefined field genus_x" } },
+          { status: 500, statusText: "Internal Server Error" },
+        ),
+      ),
+    );
+
+    await expect(readCollection()).rejects.toMatchObject({
+      status: 502,
+      code: "upstream_error",
+      message: "undefined field genus_x",
+    });
+  });
+
+  it("keeps the failed host on the cause, for the route's log", async () => {
+    server.use(
+      http.get(genomeUrl, () => {
+        throw connectionRefused();
+      }),
+    );
+
+    const error = await readCollection().catch((caught: unknown) => caught);
+    expect((error as Error).message).not.toContain("data.test");
+    expect((error as Error).cause).toMatchObject({ host: "data.test" });
   });
 
   it("does not double the punctuation when the page's text ends a sentence", async () => {
@@ -100,7 +177,7 @@ describe("ServerDataRepository upstream failures", () => {
     );
 
     const error = await readCollection().catch((caught: unknown) => caught);
-    expect((error as Error).message).toMatch(/soon\)\. Please try again\.$/);
+    expect((error as Error).message).toMatch(/soon\)\.$/);
     expect((error as Error).message).not.toContain(".).");
   });
 
@@ -129,7 +206,7 @@ describe("ServerDataRepository upstream failures", () => {
     expect(response.status).toBe(504);
     await expect(response.json()).resolves.toEqual({
       error:
-        "The BV-BRC data service (data.test) did not respond (connection timed out after 10 s). Please try again.",
+        "The BV-BRC data service did not respond (connection timed out after 10 s).",
       code: "upstream_timeout",
     });
   });

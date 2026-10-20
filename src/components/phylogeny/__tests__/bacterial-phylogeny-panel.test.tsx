@@ -8,7 +8,7 @@ import { BacterialPhylogenyPanel } from "../bacterial-phylogeny-panel";
 
 const treePath = "/api/phylogeny/bacterial-trees/562";
 const outageMessage =
-  "The BV-BRC phylogeny tree dictionary (www.bv-brc.org) is unavailable (HTTP 503 Service Unavailable).";
+  "The BV-BRC phylogeny tree dictionary is unavailable (HTTP 503 Service Unavailable).";
 
 describe("BacterialPhylogenyPanel", () => {
   it("shows the route's real cause in an alert and refetches on Retry", async () => {
@@ -31,7 +31,7 @@ describe("BacterialPhylogenyPanel", () => {
     });
 
     const alert = await screen.findByRole("alert");
-    expect(alert).toHaveTextContent("Phylogeny unavailable");
+    expect(alert).toHaveTextContent("Phylogeny could not be loaded");
     expect(alert).toHaveTextContent(outageMessage);
 
     fireEvent.click(screen.getByRole("button", { name: "Retry" }));

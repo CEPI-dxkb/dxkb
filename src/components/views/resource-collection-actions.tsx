@@ -127,6 +127,17 @@ const selectionActionsConfigByResource = {
     singularLabel: "Sequence",
     hasSelectableServices: true,
   },
+  genome_amr: {
+    searchType: "genome_amr",
+    actionIds: copyAndServicesSelectionActionIds,
+    // GENOME is enabled by default; legacy's ANTIBIOTIC waits for an
+    // Antibiotic page.
+    extraEnabledActionIds: [],
+    idField: "genome_id",
+    idKind: "genome",
+    singularLabel: "AMR Phenotype",
+    hasSelectableServices: false,
+  },
   protein_feature: {
     searchType: "protein_feature",
     actionIds: copyAndServicesSelectionActionIds,
@@ -232,6 +243,7 @@ const selectionActionsConfigByResource = {
         | "genome"
         | "genome_feature"
         | "genome_sequence"
+        | "genome_amr"
         | "protein_feature"
         | "protein_structure"
         | "sequence_feature"

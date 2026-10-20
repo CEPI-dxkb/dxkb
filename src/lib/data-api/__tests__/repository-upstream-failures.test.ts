@@ -71,6 +71,30 @@ describe("ServerDataRepository upstream failures", () => {
     });
   });
 
+  it("gives AMR phenotype reads their longer budget", async () => {
+    // A taxon AMR tab's cold genome(...) join outlasts the shared 20 s.
+    const timeoutSpy = vi.spyOn(AbortSignal, "timeout");
+    shortenTimeouts();
+    server.use(http.get("https://data.test/genome_amr/", neverRespond));
+
+    await expect(
+      new ServerDataRepository({ baseUrl: "https://data.test" }).collection(
+        "genome_amr",
+        {
+          operation: "collection",
+          rql: "and(eq(genome_id,*),genome(eq(taxon_lineage_ids,2)))",
+        },
+      ),
+    ).rejects.toMatchObject({
+      status: 504,
+      code: "upstream_timeout",
+      message:
+        "The BV-BRC data service did not respond (timed out after 60 s).",
+    });
+    expect(timeoutSpy).toHaveBeenCalledWith(60_000);
+    expect(timeoutSpy).not.toHaveBeenCalledWith(20_000);
+  });
+
   it("summarizes a fast 503 maintenance page instead of forwarding its HTML", async () => {
     server.use(http.get(genomeUrl, () => maintenancePage()));
 

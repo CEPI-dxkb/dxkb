@@ -33,11 +33,6 @@ interface SelectionServiceChooserProps {
    * with it the row selection behind the dialog — stays mounted.
    */
   signInHref: string;
-  /**
-   * False for collections no service accepts yet. Matches the Taxa Tree chooser:
-   * the dialog still opens, it just reports that there is nothing to run.
-   */
-  hasSelectableServices?: boolean;
 }
 
 interface ServiceOption {
@@ -174,7 +169,6 @@ export function SelectionServiceChooser({
   kind = "genome",
   workspaceUsername,
   signInHref,
-  hasSelectableServices = true,
 }: SelectionServiceChooserProps) {
   const {
     failure,
@@ -209,31 +203,22 @@ export function SelectionServiceChooser({
               : `Use selected ${label} in a service`}
           </DialogTitle>
           <DialogDescription>
-            {!hasSelectableServices
-              ? // `label` is always plural, so no article — "a Epitopes" was wrong.
-                `Services that accept ${label} are not available yet.`
-              : isChoosingBlastSource
-                ? "Search with the selection as the query, or search against it as the source database."
-                : `Open a supported service with ${ids.length.toLocaleString()} ${idLabel}${ids.length === 1 ? "" : "s"} from the current selection.`}
+            {isChoosingBlastSource
+              ? "Search with the selection as the query, or search against it as the source database."
+              : `Open a supported service with ${ids.length.toLocaleString()} ${idLabel}${ids.length === 1 ? "" : "s"} from the current selection.`}
           </DialogDescription>
         </DialogHeader>
-        {hasSelectableServices ? (
-          <ServiceOptions
-            disabled={disabled}
-            isChoosingBlastSource={isChoosingBlastSource}
-            options={options}
-            pendingService={pendingService}
-            onBack={() => {
-              clearFailure();
-              showServiceList();
-            }}
-            onSelect={runService}
-          />
-        ) : (
-          <p className="py-4 text-center text-sm text-muted-foreground">
-            No selectable services
-          </p>
-        )}
+        <ServiceOptions
+          disabled={disabled}
+          isChoosingBlastSource={isChoosingBlastSource}
+          options={options}
+          pendingService={pendingService}
+          onBack={() => {
+            clearFailure();
+            showServiceList();
+          }}
+          onSelect={runService}
+        />
         <ServiceFailure failure={failure} signInHref={signInHref} />
         <DialogFooter showCloseButton />
       </DialogContent>

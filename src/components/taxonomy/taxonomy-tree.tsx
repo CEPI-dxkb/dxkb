@@ -62,6 +62,8 @@ interface ChildrenFailure {
 
 interface TaxonomyTreeProps {
   rootTaxa: readonly OrganismTaxonomy[];
+  /** Root taxa whose taxonomy page has an enabled Phylogeny tab. */
+  phylogenyTaxonIds: readonly number[];
   onSelect?: (rows: TaxonRecord[]) => void;
 }
 
@@ -160,6 +162,7 @@ function usePersistedExpansion(
 interface TreeInstanceProps {
   rootRecords: TaxonRecord[];
   rootIds: number[];
+  phylogenyTaxonIds: readonly number[];
   open: string | null;
   onSelect?: (rows: TaxonRecord[]) => void;
 }
@@ -167,6 +170,7 @@ interface TreeInstanceProps {
 function TaxonomyTreeInstance({
   rootRecords,
   rootIds,
+  phylogenyTaxonIds,
   open,
   onSelect,
 }: TreeInstanceProps) {
@@ -312,6 +316,7 @@ function TaxonomyTreeInstance({
     columns: taxonomyColumns,
     meta: {
       loadingParentIds: queryState.loading,
+      phylogenyTaxonIds,
       onCheckboxClick: handleCheckboxClick,
       clearAnchor: () => {
         lastSelectedIdRef.current = null;
@@ -503,7 +508,11 @@ class SelectionResetBoundary extends Component<{
   }
 }
 
-export function TaxonomyTree({ rootTaxa, onSelect }: TaxonomyTreeProps) {
+export function TaxonomyTree({
+  rootTaxa,
+  phylogenyTaxonIds,
+  onSelect,
+}: TaxonomyTreeProps) {
   const searchParams = useSearchParams();
   const signature = rootSignature(rootTaxa);
   const rootRecords = rootTaxa.map(rootToRecord);
@@ -513,6 +522,7 @@ export function TaxonomyTree({ rootTaxa, onSelect }: TaxonomyTreeProps) {
       <TaxonomyTreeInstance
         rootRecords={rootRecords}
         rootIds={rootIds}
+        phylogenyTaxonIds={phylogenyTaxonIds}
         open={searchParams.get("open")}
         onSelect={onSelect}
       />

@@ -5,6 +5,7 @@ import { makeSerologyView } from "@/components/organisms/taxon-views/serology";
 import { makeSurveillanceView } from "@/components/organisms/taxon-views/surveillance";
 import { makeGenomesView } from "@/components/organisms/taxon-views/genomes";
 import { makeSequencesView } from "@/components/organisms/taxon-views/sequences";
+import { makeAmrPhenotypesView } from "@/components/organisms/taxon-views/amr-phenotypes";
 import { makeProteinStructuresView } from "@/components/organisms/taxon-views/protein-structures";
 import { makeDomainsAndMotifsView } from "@/components/organisms/taxon-views/domains-and-motifs";
 import { makeFeaturesView } from "@/components/organisms/taxon-views/features";
@@ -275,6 +276,21 @@ describe("makeSequencesView", () => {
   });
 });
 
+describe("makeAmrPhenotypesView", () => {
+  it("scopes genome_amr through the genome join, as legacy's taxon AMR tab does", () => {
+    // genome_amr has a row taxon_id but no taxon_lineage_ids, so a lineage
+    // filter applied directly would miss every descendant taxon's phenotypes.
+    const AmrPhenotypesView = makeAmrPhenotypesView({ scope });
+    const { getByTestId } = render(<AmrPhenotypesView />);
+    const panel = getByTestId("taxon-data-panel");
+    expect(panel).toHaveAttribute("data-resource", "genome_amr");
+    expect(panel).toHaveAttribute(
+      "data-q",
+      "and(eq(genome_id,*),genome(eq(taxon_lineage_ids,1234)))",
+    );
+  });
+});
+
 describe("makeProteinStructuresView", () => {
   it("renders the shared collection with the protein_structure cross-core join query", () => {
     const ProteinStructuresView = makeProteinStructuresView({ scope });
@@ -378,6 +394,11 @@ describe("composite scope queries", () => {
       "genome_sequence",
       makeSequencesView,
       `and(eq(genome_id,*),genome(and(${compositeClause},ne(genome_status,Deprecated))))`,
+    ],
+    [
+      "genome_amr",
+      makeAmrPhenotypesView,
+      `and(eq(genome_id,*),genome(${compositeClause}))`,
     ],
     [
       "protein_structure",

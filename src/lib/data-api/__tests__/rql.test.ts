@@ -47,6 +47,7 @@ describe("typed RQL", () => {
   });
 
   it.each([
+    "genome_amr",
     "genome_feature",
     "genome_sequence",
     "protein_feature",

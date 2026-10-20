@@ -84,6 +84,14 @@ export const upstreamServices = {
 export const upstreamTimeoutMs = {
   /** Data API reads. Large facet queries take 5–15 s; the gateway's own 503 takes ~20 s. */
   dataApi: 20_000,
+  /**
+   * Data API reads of AMR phenotypes (`genome_amr`), a per-resource override of
+   * `dataApi` that `ServerDataRepository` applies. A taxon's AMR tab joins
+   * through `genome(...)`, and that join over every bacterial genome takes
+   * well past `dataApi` while Solr's caches are cold (a phylum alone takes
+   * ~11 s), then answers in 2–3 s once warm.
+   */
+  dataApiGenomeAmr: 60_000,
   /** Workspace JSON-RPC (a recursive `Workspace.ls` of a large home is the slow case). */
   workspace: 30_000,
   /** App service JSON-RPC, including `start_app2`, and job stdout/stderr. */

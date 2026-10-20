@@ -18,6 +18,7 @@ import type { SearchParamsRecord } from "./rql";
  * nested table adds its key to this list.
  */
 export const childCollectionUrlKeys = [
+  "amr",
   "assays",
   "biosets",
   "domains",

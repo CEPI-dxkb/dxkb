@@ -54,6 +54,15 @@ export const hasViralTree = (c: TabContext): boolean =>
   c.phyloManifest != null &&
   Object.prototype.hasOwnProperty.call(c.phyloManifest.trees, String(c.taxonomy.taxonId));
 
+/**
+ * The bacterial tree is drawn for the taxon itself, so this keys on its own
+ * lineage, as the Phylogeny view does when it picks the bacterial viewer. Not
+ * isBacteria: its cellular-root shortcut describes a scope containing
+ * bacteria, and cellular organisms (131567) has no bacterial tree.
+ */
+export const hasBacterialTree = (c: TabContext): boolean =>
+  c.taxonomy.lineageNames.includes("Bacteria");
+
 /** Phylogeny is one label over two gates: bacterial (computed) OR viral (manifest). */
 export const hasBacterialOrViralPhylogeny = (c: TabContext): boolean =>
-  isBacteria(c) || hasViralTree(c);
+  hasBacterialTree(c) || hasViralTree(c);

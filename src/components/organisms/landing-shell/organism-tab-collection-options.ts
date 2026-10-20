@@ -19,6 +19,8 @@ export const organismTabCollectionOptionsByView: Record<
   phylogeny: null,
   "taxa-tree": null,
   genomes: genomeCollectionOptions,
+  // A child collection: its state lives under `amr.*` params.
+  "amr-phenotypes": null,
   sequences: null,
   // The taxon Features tab's schema: the Feature list's, PATRIC default included.
   features: featureListCollectionOptions,

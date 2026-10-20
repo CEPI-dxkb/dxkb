@@ -32,6 +32,7 @@ const genomeRelationshipTargets = new Map<
   DataResource,
   RqlGenomeRelationship["target"]
 >([
+  ["genome_amr", undefined],
   ["genome_feature", undefined],
   ["genome_sequence", undefined],
   ["protein_feature", undefined],

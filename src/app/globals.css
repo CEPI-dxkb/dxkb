@@ -1069,46 +1069,95 @@
    one of the theme's categorical chart-* colors and keeps foreground text, so
    the label holds its contrast whatever the chart color's lightness. The
    slots are picked so a rank's hue sits well apart from the ranks above and
-   below it in every theme's chart palette. Ranks without a rule (including
-   "no rank") use the neutral default, which must stay first. */
+   below it in every theme's chart palette; a sub-, super- or infra- rank
+   shares its parent's hue. Only "no rank" is neutral gray. A rank with no rule
+   of its own (BV-BRC's `clade`, or one added later) takes chart-5, which no
+   named rank uses; that default must stay first.
+   src/__tests__/rank-badge-colors.test.ts keeps gray to "no rank". */
 [data-slot="badge"][data-rank] {
+  @apply border-chart-5/50 bg-chart-5/15 text-foreground;
+}
+
+[data-slot="badge"][data-rank="no rank"] {
   @apply border-border bg-muted text-foreground;
 }
 
+[data-slot="badge"][data-rank="acellular root"],
+[data-slot="badge"][data-rank="cellular root"],
+[data-slot="badge"][data-rank="realm"],
+[data-slot="badge"][data-rank="domain"],
 [data-slot="badge"][data-rank="superkingdom"],
-[data-slot="badge"][data-rank="kingdom"] {
+[data-slot="badge"][data-rank="kingdom"],
+[data-slot="badge"][data-rank="subkingdom"] {
   @apply border-chart-2/50 bg-chart-2/15 text-foreground;
 }
 
-[data-slot="badge"][data-rank="phylum"] {
+[data-slot="badge"][data-rank="superphylum"],
+[data-slot="badge"][data-rank="phylum"],
+[data-slot="badge"][data-rank="subphylum"] {
   @apply border-chart-1/50 bg-chart-1/15 text-foreground;
 }
 
-[data-slot="badge"][data-rank="class"] {
+[data-slot="badge"][data-rank="superclass"],
+[data-slot="badge"][data-rank="class"],
+[data-slot="badge"][data-rank="subclass"],
+[data-slot="badge"][data-rank="infraclass"],
+[data-slot="badge"][data-rank="cohort"],
+[data-slot="badge"][data-rank="subcohort"] {
   @apply border-chart-10/50 bg-chart-10/15 text-foreground;
 }
 
-[data-slot="badge"][data-rank="order"] {
+[data-slot="badge"][data-rank="superorder"],
+[data-slot="badge"][data-rank="order"],
+[data-slot="badge"][data-rank="suborder"],
+[data-slot="badge"][data-rank="infraorder"],
+[data-slot="badge"][data-rank="parvorder"] {
   @apply border-chart-4/50 bg-chart-4/15 text-foreground;
 }
 
-[data-slot="badge"][data-rank="family"] {
+[data-slot="badge"][data-rank="superfamily"],
+[data-slot="badge"][data-rank="family"],
+[data-slot="badge"][data-rank="subfamily"],
+[data-slot="badge"][data-rank="tribe"],
+[data-slot="badge"][data-rank="subtribe"] {
   @apply border-chart-6/50 bg-chart-6/15 text-foreground;
 }
 
-[data-slot="badge"][data-rank="genus"] {
+[data-slot="badge"][data-rank="genus"],
+[data-slot="badge"][data-rank="subgenus"],
+[data-slot="badge"][data-rank="section"],
+[data-slot="badge"][data-rank="subsection"],
+[data-slot="badge"][data-rank="series"] {
   @apply border-chart-7/50 bg-chart-7/15 text-foreground;
 }
 
-[data-slot="badge"][data-rank="species"] {
+/* Species groups sit between genus and species in the tree, so they take a
+   hue apart from both; it repeats order's, three levels up. */
+[data-slot="badge"][data-rank="species group"],
+[data-slot="badge"][data-rank="species subgroup"] {
+  @apply border-chart-4/50 bg-chart-4/15 text-foreground;
+}
+
+[data-slot="badge"][data-rank="species"],
+[data-slot="badge"][data-rank="subspecies"] {
   @apply border-chart-8/50 bg-chart-8/15 text-foreground;
 }
 
+[data-slot="badge"][data-rank="varietas"],
+[data-slot="badge"][data-rank="subvariety"],
+[data-slot="badge"][data-rank="forma"],
+[data-slot="badge"][data-rank="forma specialis"],
+[data-slot="badge"][data-rank="morph"],
+[data-slot="badge"][data-rank="biotype"],
+[data-slot="badge"][data-rank="genotype"],
+[data-slot="badge"][data-rank="pathogroup"],
+[data-slot="badge"][data-rank="serogroup"],
 [data-slot="badge"][data-rank="serotype"],
 [data-slot="badge"][data-rank="subtype"] {
   @apply border-chart-3/50 bg-chart-3/15 text-foreground;
 }
 
-[data-slot="badge"][data-rank="strain"] {
+[data-slot="badge"][data-rank="strain"],
+[data-slot="badge"][data-rank="isolate"] {
   @apply border-chart-9/50 bg-chart-9/15 text-foreground;
 }

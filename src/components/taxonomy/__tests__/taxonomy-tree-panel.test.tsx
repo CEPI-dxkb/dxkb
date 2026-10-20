@@ -113,13 +113,13 @@ describe("TaxonomyTreePanel", () => {
       taxonRank: "superkingdom",
     } as unknown as OrganismTaxonomy;
 
-    render(<TaxonomyTreePanel taxa={[taxon, viruses]} />);
+    render(<TaxonomyTreePanel taxa={[taxon, viruses]} phylogenyTaxonIds={[]} />);
 
     expect(treePropsSpy).toHaveBeenLastCalledWith([taxon, viruses]);
   });
 
   it("navigates to the taxon overview when Taxon Overview is clicked with one row", async () => {
-    render(<TaxonomyTreePanel taxa={[taxon]} />);
+    render(<TaxonomyTreePanel taxa={[taxon]} phylogenyTaxonIds={[]} />);
 
     await userEvent.click(screen.getByRole("button", { name: "select-one" }));
     await userEvent.click(
@@ -130,7 +130,7 @@ describe("TaxonomyTreePanel", () => {
   });
 
   it("navigates to the selected taxon's Genomes and Features tabs", async () => {
-    render(<TaxonomyTreePanel taxa={[taxon]} />);
+    render(<TaxonomyTreePanel taxa={[taxon]} phylogenyTaxonIds={[]} />);
 
     await userEvent.click(screen.getByRole("button", { name: "select-one" }));
     await userEvent.click(screen.getByRole("button", { name: /^ggenomes$/i }));
@@ -140,19 +140,23 @@ describe("TaxonomyTreePanel", () => {
     expect(mockPush).toHaveBeenNthCalledWith(2, "/taxonomy/234?tab=features");
   });
 
-  it("opens Services and reports that none are selectable", async () => {
-    render(<TaxonomyTreePanel taxa={[taxon]} />);
+  it("disables Services with a reason instead of opening an empty chooser", async () => {
+    render(<TaxonomyTreePanel taxa={[taxon]} phylogenyTaxonIds={[]} />);
 
     await userEvent.click(screen.getByRole("button", { name: "select-one" }));
-    await userEvent.click(screen.getByRole("button", { name: /services/i }));
+    const services = screen.getByRole("button", { name: /services/i });
+    expect(services).toBeDisabled();
 
-    expect(screen.getByRole("dialog")).toHaveTextContent(
-      "No selectable services",
-    );
+    // The tooltip trigger is the wrapper, since a disabled button gets no hover.
+    await userEvent.hover(services.parentElement as HTMLElement);
+    expect(
+      await screen.findByText("No services available for this Taxon"),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
   it("hides single-row actions when multiple rows are selected", async () => {
-    render(<TaxonomyTreePanel taxa={[taxon]} />);
+    render(<TaxonomyTreePanel taxa={[taxon]} phylogenyTaxonIds={[]} />);
 
     await userEvent.click(screen.getByRole("button", { name: "select-two" }));
 
@@ -163,7 +167,7 @@ describe("TaxonomyTreePanel", () => {
       screen.queryByRole("button", { name: /^ffeatures$/i }),
     ).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: /^ggenomes$/i })).toBeEnabled();
-    expect(screen.getByRole("button", { name: /services/i })).toBeEnabled();
+    expect(screen.getByRole("button", { name: /services/i })).toBeDisabled();
   });
 });
 
@@ -212,7 +216,7 @@ describe("TaxonomyTreePanel across the workspace breakpoint", () => {
     "keeps tree expansion, filter text and focus across a $name transition and back",
     async ({ start, then }) => {
       const viewport = mockViewport(start);
-      const { container } = render(<TaxonomyTreePanel taxa={[taxon]} />);
+      const { container } = render(<TaxonomyTreePanel taxa={[taxon]} phylogenyTaxonIds={[]} />);
 
       // A selection so the detail panel is mounted too.
       await userEvent.click(screen.getByRole("button", { name: "select-one" }));
@@ -246,7 +250,7 @@ describe("TaxonomyTreePanel across the workspace breakpoint", () => {
 
   it("renders one action bar, one tree and one detail panel with no duplicate ids when narrow", async () => {
     mockViewport(true);
-    const { container } = render(<TaxonomyTreePanel taxa={[taxon]} />);
+    const { container } = render(<TaxonomyTreePanel taxa={[taxon]} phylogenyTaxonIds={[]} />);
     await userEvent.click(screen.getByRole("button", { name: "select-one" }));
 
     expect(container.querySelector("[data-layout]")).toHaveAttribute(

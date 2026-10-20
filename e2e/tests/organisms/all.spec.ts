@@ -56,8 +56,8 @@ test.describe("all organisms landing page", () => {
     await page.getByRole("button", { name: /Taxa Tree/ }).click();
     await expect(page).toHaveURL(/\/organisms\/all\?tab=taxa-tree/);
     await expect(page.getByRole("table")).toHaveCount(1);
-    await expect(page.getByRole("link", { name: "cellular organisms" })).toBeVisible();
-    await expect(page.getByRole("link", { name: "Viruses" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "cellular organisms", exact: true })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Viruses", exact: true })).toBeVisible();
 
     await page.getByRole("button", { name: /Genomes/ }).click();
     await expect(page).toHaveURL(/\/organisms\/all\?tab=genomes/);

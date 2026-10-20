@@ -83,14 +83,26 @@ export interface DataApiMultiQuery {
  * as `cause`, so the route's log still shows its host. Anything else (a
  * caller's `AbortError` included) is returned as is.
  */
-function dataApiFailure(error: unknown): unknown {
-  const failure = describeUpstreamFailure(error, dataService, {
-    timeoutMs: upstreamTimeoutMs.dataApi,
-  });
+function dataApiFailure(
+  error: unknown,
+  timeoutMs: number = upstreamTimeoutMs.dataApi,
+): unknown {
+  const failure = describeUpstreamFailure(error, dataService, { timeoutMs });
   if (!failure) return error;
   return new DataApiError(failure.message, failure.status, failure.code, {
     cause: error,
   });
+}
+
+/** Resources whose reads outlast the shared `upstreamTimeoutMs.dataApi` budget. */
+const resourceTimeoutMs: Partial<Record<DataResource, number>> = {
+  genome_amr: upstreamTimeoutMs.dataApiGenomeAmr,
+};
+
+/** Where one upstream request goes, and how long it may take to answer. */
+interface Endpoint {
+  url: URL;
+  timeoutMs: number;
 }
 
 /**
@@ -330,7 +342,8 @@ export class ServerDataRepository {
     const size = request.pageSize ?? defaultPageSize;
     const page = request.page ?? 1;
     const start = (page - 1) * size;
-    const url = this.url(resource);
+    const endpoint = this.endpoint(resource);
+    const { url } = endpoint;
     addPredicate(url, request);
     const projectLocally = addFields(url, request.fields, definition.idField);
     addSort(url, request.sort, definition.idField);
@@ -340,7 +353,7 @@ export class ServerDataRepository {
         `facet(${request.facets.join(",")},(mincount,1),(limit,100))`,
       );
     const payload = await this.request(
-      url,
+      endpoint,
       start,
       start + size,
       signal,
@@ -391,10 +404,17 @@ export class ServerDataRepository {
       throw new DataApiValidationError(
         `Field ${idField} cannot identify ${resource}.`,
       );
-    const url = this.url(resource);
+    const endpoint = this.endpoint(resource);
+    const { url } = endpoint;
     appendQuery(url, eq(resource, idField, request.id));
     const projectLocally = addFields(url, request.fields, definition.idField);
-    const payload = await this.request(url, 0, 2, signal, "application/json");
+    const payload = await this.request(
+      endpoint,
+      0,
+      2,
+      signal,
+      "application/json",
+    );
     const parsedRows = this.parseRows(resource, normalizeRows(payload));
     const rows = projectRows(
       parsedRows,
@@ -417,13 +437,14 @@ export class ServerDataRepository {
     signal?: AbortSignal,
   ): Promise<RowsResult<Record<string, unknown>>> {
     const definition = getResourceDefinition(resource);
-    const url = this.url(resource);
+    const endpoint = this.endpoint(resource);
+    const { url } = endpoint;
     addPredicate(url, request);
     const projectLocally = addFields(url, request.fields, definition.idField);
     addSort(url, request.sort, definition.idField);
     const offset = request.offset ?? 0;
     const payload = await this.request(
-      url,
+      endpoint,
       offset,
       offset + request.limit,
       signal,
@@ -449,7 +470,8 @@ export class ServerDataRepository {
     signal?: AbortSignal,
   ): Promise<RowsResult<Record<string, unknown>>> {
     const definition = getResourceDefinition(resource);
-    const url = this.url(resource);
+    const endpoint = this.endpoint(resource);
+    const { url } = endpoint;
     const predicate = serializeRql(resource, {
       operator: "in",
       field: definition.idField,
@@ -458,7 +480,7 @@ export class ServerDataRepository {
     const projectLocally = addFields(url, fields, definition.idField);
     addSort(url, sort, definition.idField);
     const payload = await this.request(
-      url,
+      endpoint,
       0,
       limit,
       signal,
@@ -498,10 +520,11 @@ export class ServerDataRepository {
     end: number,
     signal?: AbortSignal,
   ): Promise<{ rows: Record<string, unknown>[]; headers: Headers }> {
-    const url = this.url(resource);
+    const endpoint = this.endpoint(resource);
+    const { url } = endpoint;
     appendQuery(url, clause);
     const { payload, headers } = await this.requestWithHeaders(
-      url,
+      endpoint,
       start,
       end,
       signal,
@@ -527,10 +550,11 @@ export class ServerDataRepository {
     end: number,
     signal?: AbortSignal,
   ): Promise<Headers> {
-    const url = this.url(resource);
+    const endpoint = this.endpoint(resource);
+    const { url } = endpoint;
     appendQuery(url, clause);
     const { headers } = await this.requestWithHeaders(
-      url,
+      endpoint,
       start,
       end,
       signal,
@@ -565,7 +589,7 @@ export class ServerDataRepository {
       values: request.ids,
     });
     const response = await this.send(
-      this.url(resource),
+      this.endpoint(resource),
       0,
       request.ids.length,
       signal,
@@ -704,7 +728,7 @@ export class ServerDataRepository {
     }
     clauses.push(`limit(${String(limit)})`);
     const response = await this.send(
-      this.url(target),
+      this.endpoint(target),
       0,
       limit,
       signal,
@@ -779,7 +803,10 @@ export class ServerDataRepository {
   ): Promise<Record<string, unknown>> {
     const base = this.options.baseUrl.replace(/\/$/, "");
     const response = await this.send(
-      new URL(`${base}/query/`),
+      {
+        url: new URL(`${base}/query/`),
+        timeoutMs: upstreamTimeoutMs.dataApi,
+      },
       0,
       0,
       signal,
@@ -805,13 +832,16 @@ export class ServerDataRepository {
     return payload as Record<string, unknown>;
   }
 
-  private url(resource: DataResource): URL {
+  private endpoint(resource: DataResource): Endpoint {
     const base = this.options.baseUrl.replace(/\/$/, "");
-    return new URL(`${base}/${resource}/`);
+    return {
+      url: new URL(`${base}/${resource}/`),
+      timeoutMs: resourceTimeoutMs[resource] ?? upstreamTimeoutMs.dataApi,
+    };
   }
 
   private async request(
-    url: URL,
+    endpoint: Endpoint,
     start: number,
     end: number,
     signal: AbortSignal | undefined,
@@ -820,7 +850,7 @@ export class ServerDataRepository {
     body?: string,
   ): Promise<unknown> {
     const { payload } = await this.requestWithHeaders(
-      url,
+      endpoint,
       start,
       end,
       signal,
@@ -832,7 +862,7 @@ export class ServerDataRepository {
   }
 
   private async requestWithHeaders(
-    url: URL,
+    endpoint: Endpoint,
     start: number,
     end: number,
     signal: AbortSignal | undefined,
@@ -841,7 +871,7 @@ export class ServerDataRepository {
     body?: string,
   ): Promise<{ payload: unknown; headers: Headers }> {
     const response = await this.send(
-      url,
+      endpoint,
       start,
       end,
       signal,
@@ -851,7 +881,7 @@ export class ServerDataRepository {
     );
     // A body that stalls past the budget is a timeout, not malformed JSON.
     const payload: unknown = await response.json().catch((error: unknown) => {
-      const failure = dataApiFailure(error);
+      const failure = dataApiFailure(error, endpoint.timeoutMs);
       if (failure instanceof DataApiError) throw failure;
       if (error instanceof Error && error.name === "AbortError") throw error;
       return null;
@@ -866,7 +896,7 @@ export class ServerDataRepository {
    * every rule up to the point where they consume the body differently.
    */
   private async send(
-    url: URL,
+    { url, timeoutMs }: Endpoint,
     start: number,
     end: number,
     signal: AbortSignal | undefined,
@@ -908,7 +938,7 @@ export class ServerDataRepository {
         },
         {
           service: dataService,
-          timeoutMs: upstreamTimeoutMs.dataApi,
+          timeoutMs,
           // FASTA and table downloads stream through unread and may run far
           // past any budget; JSON reads are bounded through the body.
           streamBody,
@@ -916,7 +946,7 @@ export class ServerDataRepository {
         },
       );
     } catch (error) {
-      throw dataApiFailure(error);
+      throw dataApiFailure(error, timeoutMs);
     }
     if (!response.ok) {
       const text = await response.text().catch(() => "");

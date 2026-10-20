@@ -77,30 +77,23 @@ export function collectionCopyDialogMock() {
 
 /**
  * Surfaces everything a suite has needed to assert: that it opened, the ID kind that
- * picked its service set, whether it has anything to offer, and the resolved IDs. The
- * label and the IDs are separate elements so `getByText("Selectable services")` still
- * matches a whole element.
+ * picked its service set, and the resolved IDs. The label and the IDs are separate
+ * elements so `getByText("Selectable services")` still matches a whole element.
  */
 export function selectionServiceChooserMock() {
   return {
     SelectionServiceChooser: ({
       open,
       kind = "genome",
-      hasSelectableServices = true,
       ids = [],
     }: {
       open: boolean;
       kind?: "genome" | "feature";
-      hasSelectableServices?: boolean;
       ids?: readonly string[];
     }) =>
       open ? (
         <div data-testid="selection-services" data-kind={kind}>
-          <span>
-            {hasSelectableServices
-              ? "Selectable services"
-              : "No selectable services"}
-          </span>
+          <span>Selectable services</span>
           <span data-testid="selection-service-ids">{ids.join(",")}</span>
         </div>
       ) : null,

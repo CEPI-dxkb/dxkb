@@ -5,6 +5,7 @@ export type OrganismViewKey =
   | "phylogeny"
   | "taxa-tree"
   | "genomes"
+  | "amr-phenotypes"
   | "sequences"
   | "features"
   | "protein-structures"

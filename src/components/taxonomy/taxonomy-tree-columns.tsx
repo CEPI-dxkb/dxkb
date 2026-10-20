@@ -18,6 +18,7 @@ import type { CSSProperties } from "react";
 import { ChevronRight, Loader2, Network } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { numberFormatter } from "@/lib/services/organisms/utils";
+import { taxonomyHref } from "@/lib/views/hrefs";
 
 import type { TaxonRecord } from "./taxon-tree-types";
 import { clsx } from "cn";
@@ -36,6 +37,7 @@ export interface PlaceholderRecord extends TaxonRecord {
 
 export interface TreeTableMeta {
   loadingParentIds: Set<number>;
+  phylogenyTaxonIds: readonly number[];
   onCheckboxClick: (rowId: string) => void;
   clearAnchor: () => void;
 }
@@ -195,21 +197,39 @@ export const taxonomyColumns: ColumnDef<TaxonomyTableFeatures, TaxonRecord>[] =
     {
       id: "trees",
       header: "Trees",
-      cell: ({ row }) =>
-        isPlaceholder(row.original) || row.depth !== 0 ? null : (
-          <button
-            type="button"
-            disabled
-            aria-label="View phylogenetic tree (coming soon)"
-            title="Phylogenetic tree - coming soon"
-            className="flex size-4 cursor-not-allowed items-center justify-center text-success opacity-60"
+      cell: ({ row, table }) => {
+        const record = row.original;
+        if (isPlaceholder(record) || row.depth !== 0) return null;
+        const hasPhylogeny = table.options.meta?.phylogenyTaxonIds.includes(
+          numericId(record),
+        );
+        if (!hasPhylogeny) {
+          return (
+            <button
+              type="button"
+              disabled
+              aria-label="No phylogenetic tree available"
+              title="No phylogenetic tree available for this taxon"
+              className="flex size-4 items-center justify-center text-success opacity-60"
+            >
+              <Network className="size-3.5" />
+            </button>
+          );
+        }
+        return (
+          <Link
+            href={`${taxonomyHref(record.taxon_id)}?tab=phylogeny`}
+            aria-label={`View phylogenetic tree for ${record.taxon_name}`}
+            title="View phylogenetic tree"
+            className="flex size-4 items-center justify-center text-success hover:opacity-80"
             onClick={(event) => {
               event.stopPropagation();
             }}
           >
             <Network className="size-3.5" />
-          </button>
-        ),
+          </Link>
+        );
+      },
       size: 64,
     },
   ];

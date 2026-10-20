@@ -6,9 +6,11 @@ import type {
 } from "@/components/organisms/types";
 import type { OrganismTaxonomy } from "@/lib/services/organisms/types";
 import { getCuratedLists } from "@/lib/taxon-view/curated-lists";
+import { hasBacterialOrViralPhylogeny } from "@/lib/taxon-view/predicates";
 import { buildTabContext, type PhyloManifest } from "@/lib/taxon-view/tab-context";
 import { resolveTabs } from "@/lib/taxon-view/tab-policy";
 
+import { makeAmrPhenotypesView } from "./amr-phenotypes";
 import { makeDomainsAndMotifsView } from "./domains-and-motifs";
 import { makeEpitopesView } from "./epitopes";
 import { makeExperimentsView } from "./experiments";
@@ -44,6 +46,13 @@ export function buildTaxonViews({
   surface,
 }: BuildTaxonViewsOptions): OrganismLandingView[] {
   const lists = getCuratedLists();
+  // Each root's own Phylogeny gate, as its taxonomy page would compute it, so
+  // the tree's Trees link only points at a tab that is enabled there.
+  const phylogenyTaxonIds = scopeRoots(scope)
+    .filter((root) =>
+      hasBacterialOrViralPhylogeny(buildTabContext(root, phyloManifest, lists)),
+    )
+    .map((root) => root.taxonId);
   const views = resolveTabs(buildTabContext(taxon, phyloManifest, lists, scopeRoots(scope)), {
     overview: {
       Component:
@@ -51,8 +60,9 @@ export function buildTaxonViews({
         makeOverviewView({ config, taxon, showAmr: config.showAmr ?? false }),
     },
     phylogeny: { Component: makePhylogenyView({ taxon }), layout: "fill" },
-    "taxa-tree": { Component: makeTaxonomyTreeView({ scope }), layout: "fill" },
+    "taxa-tree": { Component: makeTaxonomyTreeView({ scope, phylogenyTaxonIds }), layout: "fill" },
     genomes: { Component: makeGenomesView({ scope }), layout: "fill" },
+    "amr-phenotypes": { Component: makeAmrPhenotypesView({ scope }), layout: "fill" },
     sequences: { Component: makeSequencesView({ scope }), layout: "fill" },
     "protein-structures": { Component: makeProteinStructuresView({ scope }), layout: "fill" },
     "domains-and-motifs": { Component: makeDomainsAndMotifsView({ scope }), layout: "fill" },

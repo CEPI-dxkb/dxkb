@@ -82,8 +82,9 @@ describe("data API contracts", () => {
     // Without a registry entry the gateway 404s `/api/data/genome_amr`.
     expect(resourceRegistry.genome_amr.idField).toBe("id");
     expect(resourceRegistry.genome_amr.fields.antibiotic.facet).toBe(true);
+    // Legacy AMRPanelGridContainer facets the phenotype, visible by default.
     expect(resourceRegistry.genome_amr.fields.resistant_phenotype.facet).toBe(
-      false,
+      true,
     );
     expect(resourceRegistry.genome_amr.fields.evidence.cardinality).toBe("multiple");
     expect(resourceRegistry.genome_amr.fields.evidence.sortable).toBe(false);

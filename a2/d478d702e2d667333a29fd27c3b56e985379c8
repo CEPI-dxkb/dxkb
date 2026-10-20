@@ -1,0 +1,26 @@
+src/lib/services/__tests__/statistics.test.ts
+  s_a79be150fe41dc::t_20f901940ed0d9 106
+  s_a79be150fe41dc::t_409df552490d47 118,122-137
+  s_a79be150fe41dc::t_2a7e907cb10335 9-10,12
+  s_a79be150fe41dc::t_8deb9a1471d66b 138-139
+src/lib/services/statistics.ts
+  s_a79be150fe41dc::t_29456ee644ac25 5
+  s_a79be150fe41dc::t_e2b365566c19c0 86
+  s_a79be150fe41dc::t_92691aaf2a5e0a 75-77
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a2d478d702e2d667333a29fd27c3b56e985379c8",
+  "prompts": {},
+  "sessions": {
+    "s_a79be150fe41dc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "82e9082f-1259-45fb-9abd-de6bc551f0f8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>"
+    }
+  }
+}

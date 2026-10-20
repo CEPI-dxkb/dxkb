@@ -1,0 +1,132 @@
+src/components/views/taxonomy-service-chooser.tsx
+  s_2b791ba4df072c::t_c518810d12991c 46-60
+docs/architecture.md
+  s_2b791ba4df072c::t_fbed3a4c065ab3 79
+src/components/organisms/taxon-views/amr-phenotypes.tsx
+  s_2b791ba4df072c::t_2b30cd3ab93178 1,3-6,9-14,16-21
+  s_2b791ba4df072c::t_046fc1e3e9c230 2,7-8,15
+src/components/taxonomy/taxonomy-tree-columns.tsx
+  s_a47066df48b2ed::t_95d75c392ad1ff 40,200-220,222-224,230-232
+  s_2b791ba4df072c::t_35a56b1dec0662 21,221
+src/app/globals.css
+  s_2b791ba4df072c::t_f706b05f41d8cd 1072-1076,1078-1081,1085-1088,1090-1091,1095-1097,1101-1106,1110-1114,1118-1122,1126-1130,1136,1141-1142,1146-1154,1160-1161
+  s_2b791ba4df072c::t_b1fe485351624b 1134-1135,1137-1140
+src/components/views/resource-child-collection.tsx
+  s_2b791ba4df072c::t_abf8d1011f5a5f 14,87-88
+src/lib/genome-amr-view/query.ts
+  s_2b791ba4df072c::t_fdd32c15e8bbbe 1-8
+src/components/views/selection-service-chooser.tsx
+  s_2b791ba4df072c::t_c518810d12991c 206-208,211-221
+src/app/(views)/taxonomy/[taxonId]/__tests__/nav-items.test.tsx
+  s_2b791ba4df072c::t_c3f9855322b099 20,23-31,39
+src/lib/genome-amr-view/index.ts
+  s_2b791ba4df072c::t_fdd32c15e8bbbe 1-3
+src/lib/data-api/repository.ts
+  s_2b791ba4df072c::t_35a56b1dec0662 99
+  s_2b791ba4df072c::t_4e3fa2207a3f7b 102-107,345-346,356,407-408,411-417,440-441,447,473-474,483,523-524,527,553-554,557,592,731,806-809,835,837-840,844,853,865,874,884
+  s_2b791ba4df072c::t_de95415709db1e 899,941,949
+  s_2b791ba4df072c::t_233c5e5592ca14 86-90,97-98,100-101
+src/components/taxonomy/taxonomy-tree.tsx
+  s_a47066df48b2ed::t_95d75c392ad1ff 65,165,173,319,511-512,514-515,525
+  s_2b791ba4df072c::t_35a56b1dec0662 66,513
+src/lib/data-api/__tests__/validation.test.ts
+  s_2b791ba4df072c::t_c3f9855322b099 85,87
+src/__tests__/rank-badge-colors.test.ts
+  s_2b791ba4df072c::t_3fc3504b721fd1 13,15
+  s_2b791ba4df072c::t_b1fe485351624b 53-58
+  s_2b791ba4df072c::t_9ec01d8ac774f3 1-12,14,16-52,59-62
+src/components/views/resource-collection-actions.tsx
+  s_2b791ba4df072c::t_2b30cd3ab93178 130-140,246
+src/lib/api/upstream-failure.ts
+  s_2b791ba4df072c::t_35a56b1dec0662 88-89,94
+  s_2b791ba4df072c::t_233c5e5592ca14 87,90-93
+src/components/views/__tests__/resource-collection-navigation-actions.test.tsx
+  s_2b791ba4df072c::t_6074ffd380cef7 352,369-371
+src/lib/data-api/__tests__/rql.test.ts
+  s_2b791ba4df072c::t_ff83847ba4cb45 50
+src/components/views/__tests__/fixtures/resource-collection-mocks.tsx
+  s_2b791ba4df072c::t_0ea0103b4a4407 80-81,96
+src/components/views/__tests__/resource-collection-selection-actions.test.tsx
+  s_2b791ba4df072c::t_6074ffd380cef7 692,731,734-736,743,782,785-787,846,875,878-880,887,921,925-927,1052,1079,1082-1084,1091,1119,1123-1125,1132,1160,1164-1166
+  s_2b791ba4df072c::t_ce69fa9092e13e 29
+  s_2b791ba4df072c::t_a2eedf55c6c8a6 1192-1193,1248,1259,1274,1282,1290,1298,1309,1317,1328,1344,1415-1422
+src/lib/taxon-view/tab-policy.tsx
+  s_2b791ba4df072c::t_abf8d1011f5a5f 21,24,34,37,51,76
+src/components/organisms/landing-shell/organism-tab-collection-options.ts
+  s_2b791ba4df072c::t_c461f927bb9865 22-23
+src/lib/genome-amr-view/__tests__/genome-amr-view.test.ts
+  s_2b791ba4df072c::t_ff83847ba4cb45 1-5,7-57,59-64
+  s_2b791ba4df072c::t_046fc1e3e9c230 6,58
+src/components/views/collection-selection-actions.tsx
+  s_2b791ba4df072c::t_5831d586522fbe 13
+  s_2b791ba4df072c::t_2b30cd3ab93178 78
+  s_2b791ba4df072c::t_c518810d12991c 114,351-353
+docs/taxon-view-tab-visibility.md
+  s_2b791ba4df072c::t_40eafef724cca6 25-30
+src/components/taxonomy/__tests__/taxonomy-tree.test.tsx
+  s_2b791ba4df072c::t_35a56b1dec0662 137,155,215,255,300,352,381,395,420,439,458,478,507,552,573,602,624,650,686,759,821,867,908,937,1002,1042,1086,1126,1154,1195
+  s_a47066df48b2ed::t_f5ad8303db3047 172-197
+src/app/(views)/taxonomy/[taxonId]/views/__tests__/view-factories.test.tsx
+  s_2b791ba4df072c::t_c3f9855322b099 8,279-293,398-401
+  s_2b791ba4df072c::t_d0c479d60dd33b 402
+src/lib/views/child-collection-state.ts
+  s_2b791ba4df072c::t_abf8d1011f5a5f 21
+src/components/taxonomy/taxonomy-tree-panel.tsx
+  s_2b791ba4df072c::t_5831d586522fbe 12
+  s_2b791ba4df072c::t_35a56b1dec0662 25
+  s_a47066df48b2ed::t_95d75c392ad1ff 24,35-38,87-90
+  s_2b791ba4df072c::t_c518810d12991c 70-74
+e2e/tests/organisms/all.spec.ts
+  s_2b791ba4df072c::t_046fc1e3e9c230 59-60
+src/components/organisms/taxon-views/taxonomy-tree-view.tsx
+  s_a47066df48b2ed::t_95d75c392ad1ff 4-10,12-17
+src/constants/datafields/genome_amr.ts
+  s_2b791ba4df072c::t_4fa6149d8f4fb5 18,28,65-66
+src/lib/genome-amr-view/fields.ts
+  s_2b791ba4df072c::t_fdd32c15e8bbbe 1-8
+src/components/search/search-action-policy.ts
+  s_2b791ba4df072c::t_c518810d12991c 75-89
+  s_2b791ba4df072c::t_2b30cd3ab93178 128,176
+src/lib/data-api/rql.ts
+  s_2b791ba4df072c::t_4fa6149d8f4fb5 35
+src/components/organisms/types.ts
+  s_2b791ba4df072c::t_abf8d1011f5a5f 8
+src/lib/taxon-view/__tests__/tab-policy.test.ts
+  s_2b791ba4df072c::t_c3f9855322b099 37,39,42,70,113,118
+src/lib/genome-amr-view/profile.ts
+  s_2b791ba4df072c::t_fdd32c15e8bbbe 1-22
+src/components/views/view-icons.tsx
+  s_2b791ba4df072c::t_abf8d1011f5a5f 19,42
+src/lib/data-api/__tests__/repository-upstream-failures.test.ts
+  s_2b791ba4df072c::t_9e1cf5274d7951 74-97
+src/components/taxonomy/__tests__/taxonomy-tree-panel.test.tsx
+  s_2b791ba4df072c::t_0ea0103b4a4407 143,147-148,150-155,170
+  s_2b791ba4df072c::t_35a56b1dec0662 116,122,133,144,159,219,253
+src/components/organisms/taxon-views/build-taxon-views.tsx
+  s_a47066df48b2ed::t_dcc82714cc005e 9,49-55,63
+  s_2b791ba4df072c::t_2b30cd3ab93178 13,65
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "829552843e92d32e589353179928111be644a68b",
+  "prompts": {},
+  "sessions": {
+    "s_2b791ba4df072c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a3a83955-5168-4389-a9f1-04666e300469",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>"
+    },
+    "s_a47066df48b2ed": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f30176ff-2332-47e8-be82-df27fb3666a5",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>"
+    }
+  }
+}

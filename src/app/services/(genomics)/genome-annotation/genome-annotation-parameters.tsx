@@ -24,6 +24,7 @@ import OutputFolder from "@/components/services/output-folder";
 import { WorkspaceObjectSelector } from "@/components/workspace/workspace-object-selector";
 import { TaxIDSelector } from "@/components/taxonomy/tax-id-selector";
 import { TaxonNameSelector } from "@/components/taxonomy/taxon-name-selector";
+import { TaxonomyLookupNote } from "@/components/services/taxonomy-lookup-note";
 import {
   ServiceCardContent,
   ServiceCardHeader,
@@ -54,6 +55,10 @@ export function GenomeAnnotationParameters({
   const outputPath = useSelector(
     form.store,
     (state) => state.values.output_path,
+  );
+  const taxonomyId = useSelector(
+    form.store,
+    (state) => state.values.taxonomy_id,
   );
   const updateOutputName = (name: string | null, label: string) => {
     if (name && label)
@@ -159,10 +164,9 @@ export function GenomeAnnotationParameters({
                       updateOutputName(name, form.state.values.my_label);
                     }}
                     placeholder="e.g. Bacillus cereus..."
-                    required
                     includeEukaryotes={false}
+                    fieldError={fieldErrorMessage(field)}
                   />
-                  <FieldErrors field={field} />
                 </FieldItem>
               )}
             </form.Field>
@@ -191,13 +195,13 @@ export function GenomeAnnotationParameters({
                       updateOutputName(name, form.state.values.my_label);
                     }}
                     placeholder="NCBI Taxonomy ID"
-                    invalid={fieldErrorMessage(field) !== null}
+                    fieldError={fieldErrorMessage(field)}
                   />
-                  <FieldErrors field={field} />
                 </FieldItem>
               )}
             </form.Field>
           </div>
+          <TaxonomyLookupNote form={form} taxonomyId={taxonomyId} />
           <form.Field name="my_label">
             {(field) => (
               <FieldItem>

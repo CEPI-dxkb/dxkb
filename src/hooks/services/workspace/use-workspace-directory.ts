@@ -36,7 +36,10 @@ export interface UseWorkspaceDirectoryReturn {
   items: WorkspaceItem[];
   isLoading: boolean;
   isFetching: boolean;
+  /** True once the listing has loaded (kept while a later refetch fails). */
+  hasLoaded: boolean;
   error: Error | null;
+  /** Refetches the listing and the permission queries that are enabled. */
   refetch: () => void;
   /** Permissions keyed by each item's path (authenticated modes only). */
   memberCountByPath: Record<string, number> | undefined;
@@ -202,15 +205,22 @@ export function useWorkspaceDirectory(
   const items = listingQuery.data ?? [];
   const itemPaths = items.map((item) => item.path);
 
+  const permissionsEnabled =
+    enabled && isAuthenticatedMode(mode) && itemPaths.length > 0;
   const permissionsQuery = useQuery<ListPermissionsResult>({
     queryKey: workspaceQueryKeys.permissions(itemPaths),
     queryFn: () => repository.listPermissions(itemPaths),
-    enabled: enabled && isAuthenticatedMode(mode) && itemPaths.length > 0,
+    enabled: permissionsEnabled,
     initialData: options.initialPermissions,
     staleTime: 2 * 60 * 1000,
   });
 
   const currentPath = modeDirectoryPath(mode);
+  const currentPathPermissionsEnabled =
+    enabled &&
+    isAuthenticatedMode(mode) &&
+    !!currentPath &&
+    mode.kind === "sharedPath";
   const currentPathPermissionsQuery = useQuery<ListPermissionsResult>({
     queryKey: currentPath
       ? workspaceQueryKeys.permissions([currentPath])
@@ -219,11 +229,7 @@ export function useWorkspaceDirectory(
       currentPath
         ? repository.listPermissions([currentPath])
         : Promise.resolve({}),
-    enabled:
-      enabled &&
-      isAuthenticatedMode(mode) &&
-      !!currentPath &&
-      mode.kind === "sharedPath",
+    enabled: currentPathPermissionsEnabled,
     staleTime: 2 * 60 * 1000,
   });
 
@@ -254,16 +260,20 @@ export function useWorkspaceDirectory(
   const listingRefetch = listingQuery.refetch;
   const permissionsRefetch = permissionsQuery.refetch;
   const currentPathPermissionsRefetch = currentPathPermissionsQuery.refetch;
+  // `refetch()` ignores `enabled`, so each call is gated on the condition its
+  // query is enabled by: a refresh of an empty or failed listing otherwise
+  // sent `Workspace.list_permissions` for no paths.
   const refetch = () => {
-    void listingRefetch();
-    void permissionsRefetch();
-    void currentPathPermissionsRefetch();
+    if (enabled) void listingRefetch();
+    if (permissionsEnabled) void permissionsRefetch();
+    if (currentPathPermissionsEnabled) void currentPathPermissionsRefetch();
   };
 
   return {
     items,
     isLoading: listingQuery.isLoading,
     isFetching: listingQuery.isFetching,
+    hasLoaded: listingQuery.data !== undefined,
     error: listingQuery.error ?? null,
     refetch,
     memberCountByPath,

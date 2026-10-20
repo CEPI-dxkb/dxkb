@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { ExperimentBiosetCollection } from "../experiment-bioset-collection";
 import { createQueryClientWrapper } from "@/test-helpers/react";
 
@@ -63,5 +63,38 @@ describe("ExperimentBiosetCollection", () => {
       expect.objectContaining({ keyword: "coli", keywordMode: "exact" }),
       expect.anything(),
     );
+  });
+
+  it("shows why the scoped experiments failed, with a Retry that refetches", async () => {
+    mocks.exportRecords
+      .mockRejectedValueOnce(
+        new Error("The BV-BRC data service did not respond (timed out after 20 s)."),
+      )
+      .mockResolvedValueOnce({ rows: [{ exp_id: "100" }] });
+    render(
+      <ExperimentBiosetCollection
+        experimentState={{
+          keyword: "influenza",
+          filters: {},
+          page: 1,
+          sort: "exp_id:asc",
+        }}
+      />,
+      { wrapper: createQueryClientWrapper() },
+    );
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("Could not load biosets");
+    expect(alert).toHaveTextContent(
+      "The BV-BRC data service did not respond (timed out after 20 s).",
+    );
+
+    fireEvent.click(within(alert).getByRole("button", { name: "Retry" }));
+
+    expect(await screen.findByTestId("bioset-collection")).toHaveAttribute(
+      "data-rql",
+      "in(exp_id,(100))",
+    );
+    expect(mocks.exportRecords).toHaveBeenCalledTimes(2);
   });
 });

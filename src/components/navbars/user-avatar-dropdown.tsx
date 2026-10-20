@@ -41,7 +41,7 @@ import {
 } from "lucide-react";
 
 export function UserAvatarDropdown() {
-  const { user, isAdmin, isImpersonating } = useAuth();
+  const { user, isAdmin, isImpersonating, isVerified } = useAuth();
   const exitImpersonation = useExitImpersonation();
   const resendVerificationEmail = useResendVerificationEmail();
   const wsUsername = workspaceUsername(user);
@@ -111,16 +111,18 @@ export function UserAvatarDropdown() {
                     : "My Jobs"}
                 </DropdownMenuItem>
 
-                <DropdownMenuItem
-                  onClick={() => {
-                    void resendVerificationEmail();
-                  }}
-                >
-                  <span className="flex items-center gap-2">
-                    <Mail className="size-4 text-foreground" />
-                    Resend Verification Email
-                  </span>
-                </DropdownMenuItem>
+                {!isVerified && (
+                  <DropdownMenuItem
+                    onClick={() => {
+                      void resendVerificationEmail();
+                    }}
+                  >
+                    <span className="flex items-center gap-2">
+                      <Mail className="size-4 text-foreground" />
+                      Resend Verification Email
+                    </span>
+                  </DropdownMenuItem>
+                )}
 
                 <DropdownMenuItem render={<Link href="/settings" />}>
                   <Settings className="size-4 text-foreground" />

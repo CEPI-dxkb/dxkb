@@ -105,7 +105,8 @@ export async function fetchBacterialTreeXml(
       isRecord(value) && typeof value.error === "string"
         ? value.error
         : `tree dictionary: ${String(response.status)}`;
-    throw new Error(detail);
+    // The status lets the app-wide retry policy skip an outage (502–504).
+    throw Object.assign(new Error(detail), { status: response.status });
   }
   if (
     !isRecord(value) ||

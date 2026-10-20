@@ -31,7 +31,11 @@ export function BacterialPhylogenyPanel({
       <div className="p-4">
         <SectionError
           title="Phylogeny unavailable"
-          message={tree.error.message}
+          error={tree.error}
+          onRetry={() => {
+            void tree.refetch();
+          }}
+          isRetrying={tree.isFetching}
         />
       </div>
     );

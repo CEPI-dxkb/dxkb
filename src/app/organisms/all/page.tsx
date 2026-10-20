@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 
 import { OrganismLandingShell } from "@/components/organisms/landing-shell/landing-shell";
 import { buildTaxonViews } from "@/components/organisms/taxon-views";
-import { fetchOrganismTaxonomy } from "@/lib/services/organisms/taxonomy";
+import { fetchLandingRootTaxonomy } from "@/lib/services/organisms/taxonomy";
 import { resolveLandingTab } from "@/lib/taxon-view/landing-request";
 
 import { allOrganismsLandingConfig } from "./_config";
@@ -22,7 +22,9 @@ interface AllOrganismsPageProps {
 export default async function AllOrganismsPage({ searchParams }: AllOrganismsPageProps) {
   const [resolvedParams, roots] = await Promise.all([
     searchParams,
-    Promise.all(allOrganismRootIds.map((taxonId) => fetchOrganismTaxonomy(taxonId))),
+    // Each root falls back to its static record during an outage, so one
+    // failing root no longer takes the whole page down.
+    Promise.all(allOrganismRootIds.map((taxonId) => fetchLandingRootTaxonomy(taxonId))),
   ]);
   const scope = { kind: "composite" as const, displayName: "All Organisms", roots };
   const views = buildTaxonViews({

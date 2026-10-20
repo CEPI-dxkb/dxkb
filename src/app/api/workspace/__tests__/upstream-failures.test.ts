@@ -14,6 +14,7 @@ import {
   connectionRefused,
   connectTimeout,
   maintenancePage,
+  maintenanceSummary,
   neverRespond,
   shortenTimeouts,
 } from "@/test-helpers/upstream-failures";
@@ -74,13 +75,17 @@ describe("workspace proxies on an upstream outage", () => {
       });
     });
 
-    it("keeps its status line for a 503 maintenance page and never forwards the HTML", async () => {
+    it("describes a 503 maintenance page by its status and title, never the HTML", async () => {
       workspaceAnswers(() => maintenancePage());
 
       const response = await workspaceProxy(lsRequest(), {});
       expect(response.status).toBe(503);
       const text = await response.text();
-      expect(JSON.parse(text)).toEqual({ error: "BV-BRC API error: 503 Service Unavailable" });
+      const { error } = JSON.parse(text) as { error: string };
+      expect(error).toMatch(
+        /^The BV-BRC workspace service .*is unavailable \(HTTP 503 Service Unavailable/,
+      );
+      expect(error).toContain(maintenanceSummary);
       expect(text).not.toContain("<");
     });
 

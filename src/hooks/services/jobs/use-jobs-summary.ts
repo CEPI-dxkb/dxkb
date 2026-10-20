@@ -9,11 +9,26 @@ interface JobsSummaryData {
 
 const activeStatuses = ["running", "in-progress", "queued", "pending"];
 
-export function useJobsSummary(includeArchived: boolean) {
+interface UseJobsSummaryOptions {
+  /**
+   * Poll on the usual schedule (default). `false` fetches once and then only
+   * on demand (`refetch`), for a caller whose polls are likely to fail, such
+   * as the header pill while the session could not be verified.
+   */
+  poll?: boolean;
+}
+
+export function useJobsSummary(
+  includeArchived: boolean,
+  { poll = true }: UseJobsSummaryOptions = {},
+) {
   return useApiQuery<JobsSummaryData>({
     queryKey: ["jobs-summary", includeArchived],
     refetchInterval: (query) => {
+      // Called first even when not polling, so the back-off keeps its
+      // record of the last success for when polling resumes.
       const backoff = errorBackoffPollInterval(query);
+      if (!poll) return false;
       if (backoff !== undefined) return backoff;
       const data = query.state.data;
       if (!data) return 5_000;

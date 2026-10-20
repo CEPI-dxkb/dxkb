@@ -9,7 +9,10 @@
  */
 
 import {
+  describeUpstreamResponse,
   fetchUpstream,
+  hostOf,
+  UpstreamError,
   upstreamServices,
   upstreamTimeoutMs,
 } from "@/lib/api/upstream-failure";
@@ -52,9 +55,16 @@ export function createServerWorkspaceRpc(token: string): WorkspaceRpcPort {
           // thrown message is surfaced through the ensure-workspace API.
           console.error("Workspace API non-JSON error body:", text);
         }
-        throw new Error(
-          upstreamMessage ||
-            `Workspace API HTTP ${String(response.status)} ${response.statusText}`,
+        // The Workspace's own JSON-RPC message ("User lacks permission")
+        // stays a plain Error: setup.ts reads it to tell a missing home from
+        // an outage.
+        if (upstreamMessage) throw new Error(upstreamMessage);
+        // A maintenance page or empty body: its status and page title, so
+        // ensure-workspace answers 503 with the real cause, never the HTML.
+        throw new UpstreamError(
+          describeUpstreamResponse(response, text, upstreamServices.workspace, {
+            host: response.url ? hostOf(response.url) : undefined,
+          }),
         );
       }
 

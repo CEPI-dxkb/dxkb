@@ -382,10 +382,12 @@ export function describeUpstreamResponse(
   service: string,
   options: { host?: string } = {},
 ): UpstreamFailure {
+  // Trailing sentence punctuation is dropped: the detail sits inside "(…)."
+  // and "Service will be back soon." would otherwise end in "soon.).".
   const detail = summarizeUpstreamBody(
     body,
     response.headers?.get("content-type"),
-  );
+  ).replace(/[.\s]+$/, "");
   const statusText = response.statusText?.trim();
   const label = `HTTP ${String(response.status)}${statusText ? ` ${statusText}` : ""}${detail && detail !== statusText ? `: ${detail}` : ""}`;
   const subject = `${capitalize(service)}${hostSuffix(options.host)}`;

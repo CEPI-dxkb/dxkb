@@ -1,10 +1,12 @@
 import "server-only";
+import { fetchUpstream, upstreamResponseError } from "@/lib/api/upstream-failure";
 
 const defaultDictionaryUrl =
   "https://www.bv-brc.org/api/content/bvbrc_phylogeny_tab/taxon_tree_dict.json";
 // ~32 MB of JSON (4.3 MB gzipped). A cold server-side read takes seconds, so
 // this budget matches the tree download's, not the 2 s metadata budget.
 const dictionaryFetchTimeoutMs = 30_000;
+const dictionaryService = "the BV-BRC phylogeny tree dictionary";
 // BV-BRC republishes the trees rarely (the file was last modified 2024-01-23).
 const dictionaryTtlMs = 24 * 60 * 60 * 1000;
 // After a failed background refresh the saved dictionary keeps serving; wait
@@ -22,16 +24,20 @@ let lastRefreshFailureAt: number | null = null;
 
 async function loadIndex(): Promise<TreeIndex> {
   const url = process.env.PHYLO_TREE_DICTIONARY_URL ?? defaultDictionaryUrl;
-  const response = await fetch(url, {
-    headers: { Accept: "application/json" },
-    signal: AbortSignal.timeout(dictionaryFetchTimeoutMs),
-    // Next's data cache rejects entries over 2 MB; this module is the cache.
-    cache: "no-store",
-  });
+  // A timeout or unreachable host throws an UpstreamError (504 / 502), and a
+  // non-OK answer is described by its status and page title, so the route
+  // can pass the real cause on instead of a fixed sentence.
+  const response = await fetchUpstream(
+    url,
+    {
+      headers: { Accept: "application/json" },
+      // Next's data cache rejects entries over 2 MB; this module is the cache.
+      cache: "no-store",
+    },
+    { service: dictionaryService, timeoutMs: dictionaryFetchTimeoutMs },
+  );
   if (!response.ok) {
-    throw new Error(
-      `tree dictionary: ${`${String(response.status)} ${response.statusText}`.trim()}`,
-    );
+    throw await upstreamResponseError(response, dictionaryService);
   }
   const value: unknown = await response.json();
   if (!value || typeof value !== "object" || Array.isArray(value)) {

@@ -14,6 +14,15 @@ import {
   fetchGenomeSuggestions,
   type GenomeSummary,
 } from "@/lib/services/genome";
+import { formatPrefixedErrorMessage } from "@/lib/utils";
+
+/**
+ * A failed genome search, prefixed with what failed, keeping the server's
+ * reason ("Genome search unavailable: BV-BRC genome search failed: 503 …").
+ */
+export function genomeSearchErrorMessage(error: unknown): string {
+  return formatPrefixedErrorMessage("Genome search unavailable", error);
+}
 
 export function shouldSearch(query: string, minLength: number): boolean {
   const trimmed = query.trim();
@@ -54,6 +63,8 @@ export interface UseGenomeTypeaheadReturn {
   updateSuggestions: (next: GenomeSummary[]) => void;
   /** Fire a fetch immediately (no debounce), bypassing shouldSearch. */
   triggerSearch: (overrideQuery: string) => void;
+  /** Runs the search that failed again: the Retry of a failed lookup. */
+  retry: () => void;
 }
 
 export function useGenomeTypeahead({
@@ -132,11 +143,7 @@ export function useGenomeTypeahead({
           })
           .catch((fetchError: unknown) => {
             if (controller.signal.aborted) return;
-            const message =
-              fetchError instanceof Error
-                ? fetchError.message
-                : "Failed to search genomes";
-            setError(message);
+            setError(genomeSearchErrorMessage(fetchError));
             itemRefs.current = [];
             setSuggestions([]);
             setHighlightedIndex(-1);
@@ -236,11 +243,7 @@ export function useGenomeTypeahead({
       })
       .catch((fetchError: unknown) => {
         if (controller.signal.aborted) return;
-        const message =
-          fetchError instanceof Error
-            ? fetchError.message
-            : "Failed to search genomes";
-        setError(message);
+        setError(genomeSearchErrorMessage(fetchError));
         itemRefs.current = [];
         setSuggestions([]);
         setHighlightedIndex(-1);
@@ -248,6 +251,10 @@ export function useGenomeTypeahead({
       .finally(() => {
         if (!controller.signal.aborted) setIsLoading(false);
       });
+  };
+
+  const retry = () => {
+    triggerSearch(query);
   };
 
   return {
@@ -269,5 +276,6 @@ export function useGenomeTypeahead({
     latestAbortController,
     updateSuggestions,
     triggerSearch,
+    retry,
   };
 }

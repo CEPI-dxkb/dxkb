@@ -83,9 +83,10 @@ describe("phylogeny services", () => {
       ),
     );
 
-    await expect(fetchBacterialTreeXml(562)).rejects.toThrow(
-      "tree dictionary: 503 Service Unavailable",
-    );
+    await expect(fetchBacterialTreeXml(562)).rejects.toMatchObject({
+      message: "tree dictionary: 503 Service Unavailable",
+      status: 502,
+    });
   });
 
   it("refuses a tree filename that leaves the content origin", async () => {

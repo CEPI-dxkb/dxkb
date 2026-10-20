@@ -4,7 +4,7 @@ interface ChartStatusMessageProps {
 
 export function ChartStatusMessage({ errorMessage }: ChartStatusMessageProps) {
   return (
-    <p className="text-sm text-destructive">
+    <p role="alert" className="text-sm text-destructive">
       Could not load: {errorMessage ?? "unknown error"}
     </p>
   );

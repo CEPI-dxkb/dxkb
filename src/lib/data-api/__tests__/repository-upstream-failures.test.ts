@@ -1,4 +1,4 @@
-import { http } from "msw";
+import { http, HttpResponse } from "msw";
 
 import { server } from "@/test-helpers/msw-server";
 import {
@@ -81,6 +81,27 @@ describe("ServerDataRepository upstream failures", () => {
       message: `The data service is temporarily unavailable (${maintenanceSummary}). Please try again.`,
     });
     expect((error as Error).message).not.toContain("<");
+  });
+
+  it("does not double the punctuation when the page's text ends a sentence", async () => {
+    server.use(
+      http.get(
+        genomeUrl,
+        () =>
+          new HttpResponse(
+            "<!doctype html><title>Site Maintenance</title><h1>Service will be back soon.</h1>",
+            {
+              status: 503,
+              statusText: "Service Unavailable",
+              headers: { "Content-Type": "text/html" },
+            },
+          ),
+      ),
+    );
+
+    const error = await readCollection().catch((caught: unknown) => caught);
+    expect((error as Error).message).toMatch(/soon\)\. Please try again\.$/);
+    expect((error as Error).message).not.toContain(".).");
   });
 
   it("keeps a caller's abort as an AbortError for the route's 499", async () => {

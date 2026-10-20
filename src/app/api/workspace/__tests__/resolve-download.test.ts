@@ -108,4 +108,55 @@ describe("resolveWorkspaceDownload", () => {
 
     expect("status" in result && result.status).toBe(401);
   });
+
+  it("answers a missing object with 404 and the Workspace's own message", async () => {
+    server.use(
+      http.post(workspaceApiUrl, () =>
+        HttpResponse.json(
+          {
+            jsonrpc: "2.0",
+            id: 1,
+            error: { code: -32603, message: "_ERROR_Object not found!_" },
+          },
+          { status: 500 },
+        ),
+      ),
+    );
+
+    const result = await resolveWorkspaceDownload(["alice@bvbrc", "gone.pdb"]);
+
+    expect(result).toBeInstanceOf(Response);
+    const response = result as Response;
+    expect(response.status).toBe(404);
+    await expect(response.json()).resolves.toEqual({
+      error: "Object not found!",
+      code: "not_found",
+    });
+  });
+
+  it("answers a maintenance page with its status and title, never the HTML", async () => {
+    server.use(
+      http.post(
+        workspaceApiUrl,
+        () =>
+          new HttpResponse(
+            "<!doctype html><title>Site Maintenance</title><h1>Back soon</h1>",
+            {
+              status: 503,
+              statusText: "Service Unavailable",
+              headers: { "Content-Type": "text/html" },
+            },
+          ),
+      ),
+    );
+
+    const result = await resolveWorkspaceDownload(["alice@bvbrc", "file.pdb"]);
+
+    const response = result as Response;
+    expect(response.status).toBe(503);
+    const body = (await response.json()) as { error: string; code: string };
+    expect(body.code).toBe("upstream");
+    expect(body.error).toMatch(/is unavailable \(HTTP 503.*Site Maintenance/);
+    expect(body.error).not.toMatch(/<[a-z!]/i);
+  });
 });

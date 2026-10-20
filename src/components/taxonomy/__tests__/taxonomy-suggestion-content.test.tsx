@@ -45,8 +45,47 @@ describe("TaxonomySuggestionContent", () => {
       />,
     );
 
-    expect(screen.getByText("Error: service unavailable")).toBeVisible();
+    expect(screen.getByRole("alert")).toHaveTextContent("service unavailable");
     expect(screen.queryByText("Searching...")).not.toBeInTheDocument();
     expect(screen.queryByText("No results")).not.toBeInTheDocument();
+  });
+
+  it("announces a failed search with a Retry that runs it again", () => {
+    const onRetry = vi.fn();
+    render(
+      <TaxonomySuggestionContent
+        results={[]}
+        loading={false}
+        error="Taxonomy search unavailable: BV-BRC Taxonomy API error: 503 Service Unavailable"
+        onRetry={onRetry}
+        emptyMessage="No results"
+        renderPrimary={(item) => item.taxon_name}
+        onSelect={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Taxonomy search unavailable: BV-BRC Taxonomy API error: 503 Service Unavailable",
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+    expect(onRetry).toHaveBeenCalledTimes(1);
+  });
+
+  it("offers no Retry when the caller has none", () => {
+    render(
+      <TaxonomySuggestionContent
+        results={[]}
+        loading={false}
+        error="service unavailable"
+        emptyMessage="No results"
+        renderPrimary={(item) => item.taxon_name}
+        onSelect={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole("alert")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Retry" }),
+    ).not.toBeInTheDocument();
   });
 });

@@ -13,6 +13,9 @@ export interface SimilarGenomeFinderResultRow {
   counts?: number | string;
 }
 
+/** No result rows: one array, never mutated, so it is stable across renders. */
+export const noSimilarGenomeResults: SimilarGenomeFinderResultRow[] = [];
+
 /**
  * Convert columnar result { genome_id: [...], distance: [...] } to row array.
  */

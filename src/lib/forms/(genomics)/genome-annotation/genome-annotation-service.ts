@@ -16,24 +16,21 @@ export const genomeAnnotationService =
     rerun: {
       fields: ["contigs", "recipe", "output_path", "output_file"],
       onApply: (rerunData, form) => {
-        const label =
-          typeof rerunData.my_label === "string" ? rerunData.my_label : "";
-        if (rerunData.taxonomy_id) {
-          applyTaxonomyIdWithLookup(
-            typeof rerunData.taxonomy_id === 'string' ? rerunData.taxonomy_id : (typeof rerunData.taxonomy_id === 'number' ? String(rerunData.taxonomy_id) : ""),
-            form,
-          );
-          if (label) {
-            form.setFieldValue("my_label", label);
-          }
-        } else {
-          if (typeof rerunData.scientific_name === "string") {
-            form.setFieldValue("scientific_name", rerunData.scientific_name);
-          }
-          if (label) {
-            form.setFieldValue("my_label", label);
-          }
+        // Restore what the job carries first, so a taxonomy outage leaves a
+        // submittable form; a successful lookup then refreshes the name.
+        if (typeof rerunData.scientific_name === "string") {
+          form.setFieldValue("scientific_name", rerunData.scientific_name);
         }
+        if (typeof rerunData.my_label === "string" && rerunData.my_label) {
+          form.setFieldValue("my_label", rerunData.my_label);
+        }
+        const taxonomyId =
+          typeof rerunData.taxonomy_id === "string"
+            ? rerunData.taxonomy_id
+            : typeof rerunData.taxonomy_id === "number"
+              ? String(rerunData.taxonomy_id)
+              : "";
+        if (taxonomyId) applyTaxonomyIdWithLookup(taxonomyId, form);
       },
     },
   });

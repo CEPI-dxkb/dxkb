@@ -616,6 +616,44 @@ describe("DataTable Showing display during loading", () => {
     expect(skeletonSelectCell).toHaveClass("justify-center");
   });
 
+  it("says the first read is loading, not 'Showing 0-0 of 0 results', and marks the table busy", () => {
+    render(
+      <DataTable
+        id="first-read"
+        data={[]}
+        columns={columns}
+        totalItems={0}
+        resource="strain"
+        isLoading={true}
+        scrollRegionLabel="Strains results table"
+      />,
+    );
+
+    expect(screen.getByText("Loading results…")).toBeInTheDocument();
+    expect(screen.queryByText(/Showing 0-0/)).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("region", { name: "Strains results table" }),
+    ).toHaveAttribute("aria-busy", "true");
+  });
+
+  it("is not busy, and counts, once the rows are in", () => {
+    render(
+      <DataTable
+        id="loaded"
+        data={[{ strain_name: "A" }]}
+        columns={columns}
+        totalItems={1}
+        resource="strain"
+        scrollRegionLabel="Strains results table"
+      />,
+    );
+
+    expect(screen.getByText("Showing 1-1 of 1 results")).toBeInTheDocument();
+    expect(
+      screen.getByRole("region", { name: "Strains results table" }),
+    ).not.toHaveAttribute("aria-busy");
+  });
+
   it("shows expected page range when isLoading=true and data is empty", () => {
     render(
       <DataTable

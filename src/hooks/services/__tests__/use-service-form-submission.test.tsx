@@ -138,6 +138,81 @@ describe("useServiceFormSubmission", () => {
     });
   });
 
+  it("exposes the real failure as submitError and clears it on the next submit", async () => {
+    let attempt = 0;
+    server.use(
+      http.post("*/api/services/app-service/submit", () => {
+        attempt += 1;
+        return attempt === 1
+          ? HttpResponse.json(
+              { error: "JSON-RPC call failed: fetch failed", code: "upstream" },
+              { status: 502 },
+            )
+          : HttpResponse.json({ job: [{ id: "job-9" }] });
+      }),
+    );
+
+    const { result } = renderHook(
+      () =>
+        useServiceFormSubmission({
+          serviceName: "GenomeAssembly2",
+          displayName: "Genome Assembly",
+        }),
+      { wrapper },
+    );
+    expect(result.current.submitError).toBeNull();
+
+    await act(async () => {
+      await result.current.submit({});
+    });
+    await waitFor(() => {
+      expect(result.current.submitError).toEqual({
+        title: "Submission failed",
+        message: "JSON-RPC call failed: fetch failed",
+        mayHaveBeenQueued: false,
+      });
+    });
+
+    await act(async () => {
+      await result.current.submit({});
+    });
+    await waitFor(() => {
+      expect(result.current.submitError).toBeNull();
+    });
+  });
+
+  it("marks a 504 submitError as possibly queued", async () => {
+    server.use(
+      http.post("*/api/services/app-service/submit", () =>
+        HttpResponse.json(
+          { error: "The BV-BRC job service did not respond within 30 s." },
+          { status: 504 },
+        ),
+      ),
+    );
+
+    const { result } = renderHook(
+      () =>
+        useServiceFormSubmission({
+          serviceName: "GenomeAssembly2",
+          displayName: "Genome Assembly",
+        }),
+      { wrapper },
+    );
+
+    await act(async () => {
+      await result.current.submit({});
+    });
+    await waitFor(() => {
+      expect(result.current.submitError).toEqual(
+        expect.objectContaining({
+          title: "The job service did not respond",
+          mayHaveBeenQueued: true,
+        }),
+      );
+    });
+  });
+
   it("tracks isSubmitting during pending submission", async () => {
     let resolve!: () => void;
     const blocker = new Promise<void>((r) => {

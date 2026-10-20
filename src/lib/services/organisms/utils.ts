@@ -1,4 +1,11 @@
-import { isHtmlBody, summarizeUpstreamBody } from "@/lib/api/upstream-failure";
+import {
+  describeUpstreamFailure,
+  hostOf,
+  isHtmlBody,
+  summarizeUpstreamBody,
+  UpstreamError,
+  upstreamServices,
+} from "@/lib/api/upstream-failure";
 import { getRequiredEnv } from "@/lib/env";
 
 import { genomeScopeRql, type GenomeScope } from "./genome-scope";
@@ -52,15 +59,31 @@ function errorName(error: unknown): unknown {
   return typeof error === "object" && error !== null && "name" in error ? error.name : undefined;
 }
 
+/** How organism failure messages name the backend these endpoints belong to. */
+const organismService = upstreamServices.dataApi;
+
 /**
- * Rethrows a failed organism request. A timeout is reworded to name the
- * endpoint and the budget (the platform message is only "The operation was
- * aborted due to timeout"); anything else is rethrown untouched.
+ * Rethrows a failed organism request. A spent budget or a network failure
+ * becomes an `UpstreamError` that names the endpoint, the service and its
+ * host and says what happened ("genome genus facet: The BV-BRC data service
+ * (www.bv-brc.org) did not respond (timed out after 30 s)."), where the
+ * platform said only "The operation was aborted due to timeout" or undici
+ * only "fetch failed". A caller's own abort and anything else is rethrown
+ * untouched.
  */
-export function throwOrganismFetchError(error: unknown, source: string): never {
-  if (errorName(error) === "TimeoutError") {
-    throw new Error(
-      `${source}: upstream did not respond within ${String(organismFetchTimeoutMs)}ms`,
+export function throwOrganismFetchError(
+  error: unknown,
+  source: string,
+  url?: string,
+): never {
+  const failure = describeUpstreamFailure(error, organismService, {
+    timeoutMs: organismFetchTimeoutMs,
+    host: url ? hostOf(url) : undefined,
+  });
+  if (failure) {
+    throw new UpstreamError(
+      { ...failure, message: `${source}: ${failure.message}` },
+      { cause: error },
     );
   }
   throw error;
@@ -84,7 +107,9 @@ export async function fetchOrganism(
       ...organismFetchCacheInit(organismBvBrcRevalidateSeconds),
     });
   } catch (error) {
-    throwOrganismFetchError(error, source);
+    // The caller's own cancellation is theirs, whatever its reason.
+    if (init.signal?.aborted) throw error;
+    throwOrganismFetchError(error, source, url);
   }
 }
 
@@ -140,7 +165,7 @@ export async function readJsonObject(response: Response, source: string): Promis
     // malformed payload.
     const name = errorName(error);
     if (name === "TimeoutError" || name === "AbortError") {
-      throwOrganismFetchError(error, source);
+      throwOrganismFetchError(error, source, response.url || undefined);
     }
     const message = error instanceof Error ? error.message : String(error);
     throw new Error(`${source}: malformed JSON response: ${message}`);

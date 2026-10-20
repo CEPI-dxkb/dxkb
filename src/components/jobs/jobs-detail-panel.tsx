@@ -8,9 +8,15 @@ import {
   CollapsibleTrigger,
   CollapsibleContent,
 } from "@/components/ui/collapsible";
+import { QueryRetryButton } from "@/components/views/query-retry-button";
+import { useRetryKeepingError } from "@/components/views/use-retry-keeping-error";
 import { useJobOutput } from "@/hooks/services/jobs/use-job-detail";
 import type { JobListItem } from "@/types/workspace";
 import { formatDate } from "@/lib/services/workspace/helpers";
+import { formatUserFacingErrorMessage } from "@/lib/utils";
+
+/** `formatUserFacingErrorMessage` fallback for a failed stdout/stderr read. */
+const outputErrorFallback = "The job service did not return this output.";
 
 function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
@@ -53,7 +59,11 @@ function OutputSection({
   outputType: "stdout" | "stderr";
 }) {
   const [expanded, setExpanded] = useState(false);
-  const { data, isLoading, error } = useJobOutput(jobId, outputType, expanded);
+  const output = useJobOutput(jobId, outputType, expanded);
+  const { data, isLoading } = output;
+  // A Retry keeps the failure up ("Retrying…") instead of going back to
+  // "Loading…" until it answers.
+  const outputRetry = useRetryKeepingError(output, `${jobId}:${outputType}`);
 
   return (
     <Collapsible open={expanded} onOpenChange={setExpanded} className="border-t first:border-t-0">
@@ -70,10 +80,22 @@ function OutputSection({
       </div>
       <CollapsibleContent>
         <div className="bg-muted/20 p-3">
-          {isLoading ? (
+          {outputRetry.error ? (
+            <div role="alert" className="grid justify-items-start gap-2">
+              <p className="text-xs text-destructive">
+                <span className="font-medium">Failed to load output: </span>
+                {formatUserFacingErrorMessage(
+                  outputRetry.error,
+                  outputErrorFallback,
+                )}
+              </p>
+              <QueryRetryButton
+                retrying={outputRetry.retrying}
+                onRetry={outputRetry.retry}
+              />
+            </div>
+          ) : isLoading ? (
             <p className="text-xs text-muted-foreground">Loading…</p>
-          ) : error ? (
-            <p className="text-xs text-destructive">Failed to load output</p>
           ) : data ? (
             <pre className="scrollbar-themed max-h-128 overflow-auto font-mono text-3xs leading-relaxed whitespace-pre">
               {data}

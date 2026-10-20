@@ -88,6 +88,8 @@ vi.mock("../resource-filter-bar", () => ({
       data-facets-error={
         typeof props.facetsError === "string" ? props.facetsError : ""
       }
+      data-facets-unavailable={String(Boolean(props.facetsUnavailable))}
+      data-facets-retrying={String(Boolean(props.facetsRetrying))}
       data-filters-beside-rql={JSON.stringify(props.filtersBesideRql ?? [])}
     >
       <button
@@ -1592,5 +1594,194 @@ describe("ResourceCollection facet state", () => {
     );
 
     expect(useResourceCollection.mock.calls.at(-1)?.[0]?.facetScope).toBeUndefined();
+  });
+});
+
+describe("ResourceCollection loading and failure states", () => {
+  // A fresh element each time: `rerender` with the same element bails out.
+  const view = () => (
+    <ResourceCollection
+      profile={genomeCollectionProfile}
+      repository={repository()}
+      state={state}
+      onStateChange={vi.fn()}
+    />
+  );
+  const liveRegion = (container: HTMLElement) =>
+    container.querySelector('[aria-live="polite"]');
+  /** Nothing loaded yet, as on the first read. */
+  const empty: Partial<ReturnType<typeof useResourceCollectionHook>> = {
+    ...unselected,
+    rows: [],
+    total: 0,
+  };
+
+  it("announces the first read as loading, not as 0 results", () => {
+    useResourceCollection.mockReturnValue(
+      collectionResult({ ...empty, isInitialLoading: true }),
+    );
+
+    const { container } = render(view());
+
+    expect(liveRegion(container)).toHaveTextContent("Loading results…");
+    expect(liveRegion(container)).not.toHaveTextContent("0 results");
+    expect(dataTableProps.isLoading).toBe(true);
+  });
+
+  it("announces no count after a failure, leaving the alert to say what failed", () => {
+    useResourceCollection.mockReturnValue(
+      collectionResult({
+        ...empty,
+        error: new Error("The data service is temporarily unavailable."),
+      }),
+    );
+
+    const { container } = render(view());
+
+    expect(liveRegion(container)).toBeEmptyDOMElement();
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Could not load genomesThe data service is temporarily unavailable.",
+    );
+  });
+
+  it("holds the Download tile's All count while the first read is in flight", async () => {
+    const user = userEvent.setup();
+    useResourceCollection.mockReturnValue(
+      collectionResult({ ...empty, isInitialLoading: true }),
+    );
+
+    render(view());
+    await downloadFromTile(user);
+
+    const all = screen.getByRole("radio", { name: /^All/ });
+    expect(all).toHaveAttribute("aria-disabled", "true");
+    expect(all.closest("label")).toHaveTextContent("All…");
+    const csv = screen.getByRole("button", { name: /^CSV/ });
+    expect(csv).toBeDisabled();
+    expect(csv).toHaveTextContent("Counting matching rows…");
+    expect(csv).not.toHaveTextContent("No matching rows");
+  });
+
+  it("keeps the error on screen, marked Retrying…, while its Retry is in flight", async () => {
+    const user = userEvent.setup();
+    const refetch = vi.fn();
+    const failure = new Error("The data service did not respond.");
+    useResourceCollection.mockReturnValue(
+      collectionResult({ ...empty, error: failure, refetch }),
+    );
+
+    const { container, rerender } = render(view());
+    await user.click(screen.getByRole("button", { name: "Retry" }));
+    expect(refetch).toHaveBeenCalledOnce();
+
+    // TanStack resets a query with no data to pending on refetch: no error.
+    useResourceCollection.mockReturnValue(
+      collectionResult({ ...empty, isInitialLoading: true, refetch }),
+    );
+    rerender(view());
+
+    expect(screen.getByRole("alert")).toHaveTextContent(failure.message);
+    expect(screen.getByRole("button", { name: "Retrying…" })).toBeDisabled();
+    expect(screen.queryByTestId("data-table")).not.toBeInTheDocument();
+    expect(liveRegion(container)).toHaveTextContent("Retrying…");
+
+    // A second failure replaces it, and Retry is offered again.
+    useResourceCollection.mockReturnValue(
+      collectionResult({
+        ...empty,
+        error: new Error("Still unavailable."),
+        refetch,
+      }),
+    );
+    rerender(view());
+    expect(screen.getByRole("alert")).toHaveTextContent("Still unavailable.");
+    expect(screen.getByRole("button", { name: "Retry" })).toBeEnabled();
+
+    // And rows replace the alert once a retry succeeds.
+    await user.click(screen.getByRole("button", { name: "Retry" }));
+    useResourceCollection.mockReturnValue(collectionResult());
+    rerender(view());
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(screen.getByTestId("data-table")).toBeInTheDocument();
+    expect(liveRegion(container)).toHaveTextContent("1 results");
+  });
+
+  it("drops a kept error once the query changes under its retry", async () => {
+    const user = userEvent.setup();
+    useResourceCollection.mockReturnValue(
+      collectionResult({ ...empty, error: new Error("Rows failed.") }),
+    );
+
+    const { rerender } = render(view());
+    await user.click(screen.getByRole("button", { name: "Retry" }));
+    useResourceCollection.mockReturnValue(
+      collectionResult({ ...empty, isInitialLoading: true }),
+    );
+    rerender(
+      <ResourceCollection
+        profile={genomeCollectionProfile}
+        repository={repository()}
+        state={{ ...state, keyword: "salmonella" }}
+        onStateChange={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(dataTableProps.isLoading).toBe(true);
+  });
+
+  it("shows one error when the rows and their counts both failed, and its Retry reloads both", async () => {
+    const user = userEvent.setup();
+    const refetch = vi.fn();
+    const refetchFacets = vi.fn();
+    useResourceCollection.mockReturnValue(
+      collectionResult({
+        ...empty,
+        error: new Error("Rows failed."),
+        facetsError: new Error("Counts failed."),
+        refetch,
+        refetchFacets,
+      }),
+    );
+
+    render(view());
+
+    const filterBar = screen.getByTestId("filter-bar");
+    expect(filterBar).toHaveAttribute("data-facets-error", "");
+    expect(filterBar).toHaveAttribute("data-facets-unavailable", "true");
+    expect(screen.getAllByRole("alert")).toHaveLength(1);
+
+    await user.click(screen.getByRole("button", { name: "Retry" }));
+    expect(refetch).toHaveBeenCalledOnce();
+    expect(refetchFacets).toHaveBeenCalledOnce();
+  });
+
+  it("keeps the counts' error, marked retrying, while their Retry is in flight", async () => {
+    const user = userEvent.setup();
+    const refetchFacets = vi.fn();
+    useResourceCollection.mockReturnValue(
+      collectionResult({
+        facetsError: new Error("Counts failed."),
+        refetchFacets,
+      }),
+    );
+
+    const { rerender } = render(view());
+    await user.click(screen.getByRole("button", { name: "Retry facets" }));
+    expect(refetchFacets).toHaveBeenCalledOnce();
+    useResourceCollection.mockReturnValue(
+      collectionResult({ isFacetsLoading: true, refetchFacets }),
+    );
+    rerender(view());
+
+    const filterBar = screen.getByTestId("filter-bar");
+    expect(filterBar).toHaveAttribute("data-facets-error", "Counts failed.");
+    expect(filterBar).toHaveAttribute("data-facets-retrying", "true");
+    expect(filterBar).toHaveAttribute("data-facets-unavailable", "false");
+
+    useResourceCollection.mockReturnValue(collectionResult({ refetchFacets }));
+    rerender(view());
+    expect(filterBar).toHaveAttribute("data-facets-error", "");
+    expect(filterBar).toHaveAttribute("data-facets-retrying", "false");
   });
 });

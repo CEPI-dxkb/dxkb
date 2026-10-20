@@ -10,13 +10,18 @@ import {
   organismFetchTimeoutMs,
   readJsonObject,
 } from "@/lib/services/organisms/utils";
+import { UpstreamError } from "@/lib/api/upstream-failure";
 import { server } from "@/test-helpers/msw-server";
+import {
+  connectionRefused,
+  connectTimeout,
+} from "@/test-helpers/upstream-failures";
 
 const baseUrl = "https://bvbrc.test/api-for-website";
 const realTimeout = AbortSignal.timeout.bind(AbortSignal);
 
-function timeoutMessage(source: string): string {
-  return `${source}: upstream did not respond within ${String(organismFetchTimeoutMs)}ms`;
+function timeoutMessage(source: string, host = " (bvbrc.test)"): string {
+  return `${source}: The BV-BRC data service${host} did not respond (timed out after ${String(organismFetchTimeoutMs / 1000)} s).`;
 }
 
 function stallEveryRequest() {
@@ -74,8 +79,9 @@ describe("organism fetch timeout", () => {
   it("reports a body that times out as a timeout, not malformed JSON", async () => {
     const timeout = new DOMException("The operation was aborted due to timeout", "TimeoutError");
 
+    // A constructed Response has no URL, so there is no host to name.
     await expect(readJsonObject(abortedBody(timeout), "genome genus facet")).rejects.toThrow(
-      timeoutMessage("genome genus facet"),
+      timeoutMessage("genome genus facet", ""),
     );
   });
 
@@ -94,5 +100,47 @@ describe("organism fetch timeout", () => {
     controller.abort(new Error("caller cancelled"));
 
     await expect(pending).rejects.toThrow("caller cancelled");
+  });
+
+  it.each([
+    ["fetchOrganismSolrJson", "genome genus facet", () =>
+      fetchOrganismSolrJson(`${baseUrl}/genome/`, "genome genus facet")],
+    ["fetchOrganismSolrJsonPost", "genome_amr", () =>
+      fetchOrganismSolrJsonPost(`${baseUrl}/genome_amr/`, "eq(genome_id,*)", "genome_amr")],
+    ["fetchOrganismSummary", "summary_by_taxon", () => fetchOrganismSummary(10239)],
+    ["fetchOrganismGenera", "genome genus facet", () => fetchOrganismGenera(2)],
+  ] as const)(
+    "%s says the data service did not respond when the connect times out, not \"fetch failed\"",
+    async (_name, source, load) => {
+      server.use(
+        http.all(`${baseUrl}/*`, () => {
+          throw connectTimeout();
+        }),
+      );
+
+      const error: unknown = await load().catch((caught: unknown) => caught);
+
+      expect(error).toBeInstanceOf(UpstreamError);
+      expect(error).toMatchObject({
+        status: 504,
+        code: "upstream_timeout",
+        message: `${source}: The BV-BRC data service (bvbrc.test) did not respond (connection timed out after 10 s).`,
+      });
+    },
+  );
+
+  it("says the data service could not be reached when the connection is refused", async () => {
+    server.use(
+      http.all(`${baseUrl}/*`, () => {
+        throw connectionRefused();
+      }),
+    );
+
+    await expect(fetchOrganismSummary(10239)).rejects.toMatchObject({
+      status: 502,
+      code: "service_unavailable",
+      message:
+        "summary_by_taxon: Could not reach the BV-BRC data service (bvbrc.test): connection refused.",
+    });
   });
 });

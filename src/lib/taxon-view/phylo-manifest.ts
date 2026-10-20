@@ -1,4 +1,5 @@
 // src/lib/taxon-view/phylo-manifest.ts
+import { describeUpstreamFailure, hostOf } from "@/lib/api/upstream-failure";
 import {
   organismBvBrcRevalidateSeconds,
   organismFetchCacheInit,
@@ -47,7 +48,14 @@ export async function fetchPhyloManifest(): Promise<PhyloManifest | null> {
     }
     return parseManifest(await response.json());
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
+    // undici's own message is only "fetch failed"; name what timed out or
+    // could not be reached so the log says which host is down.
+    const failure = describeUpstreamFailure(error, "the BV-BRC phylogeny manifest", {
+      timeoutMs: manifestFetchTimeoutMs,
+      host: hostOf(url),
+    });
+    const message =
+      failure?.message ?? (error instanceof Error ? error.message : String(error));
     console.error(`phylo-manifest: ${message}`);
     return null;
   }

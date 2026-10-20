@@ -1,10 +1,14 @@
 import { NextResponse } from "next/server";
 import { readAuthSession } from "@/lib/auth/server/route";
 import {
+  describeUpstreamResponse,
   fetchUpstream,
+  hostOf,
   upstreamServices,
   upstreamTimeoutMs,
 } from "@/lib/api/upstream-failure";
+import { statusToErrorCode } from "@/lib/api/types";
+import { isWorkspaceObjectMissing } from "@/lib/services/workspace/workspace-errors";
 import { getRequiredEnv } from "@/lib/env";
 import { getMimeType } from "@/components/workspace/file-viewer/file-viewer-registry";
 
@@ -57,6 +61,19 @@ export function buildWorkspacePath(segments: string[]): string {
  * Returns either a `ResolvedDownload` on success, or a `NextResponse` error
  * that the caller should return directly.
  */
+/** The `error.message` of a JSON-RPC envelope, or null for any other body. */
+function jsonRpcErrorMessage(body: string): string | null {
+  try {
+    const parsed = JSON.parse(body) as { error?: { message?: unknown } };
+    const message = parsed.error?.message;
+    return typeof message === "string" && message.trim()
+      ? message.replace(/^_ERROR_|_ERROR_$|(?<=!)_$/g, "").trim()
+      : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function resolveWorkspaceDownload(
   segments: string[],
 ): Promise<ResolvedDownload | NextResponse> {
@@ -92,18 +109,35 @@ export async function resolveWorkspaceDownload(
   );
 
   if (!wsResponse.ok) {
-    const responseText = await wsResponse.text();
+    const responseText = await wsResponse.text().catch(() => "");
     console.error(
       "BV-BRC API error:",
       wsResponse.status,
       wsResponse.statusText,
       responseText,
     );
+    // The Workspace reports its own errors ("_ERROR_Object not found!_") as a
+    // JSON-RPC error inside an HTTP 500: pass that message on, as a 404 when
+    // the object is missing, so the viewer can say what went wrong.
+    const rpcMessage = jsonRpcErrorMessage(responseText);
+    if (rpcMessage) {
+      const status = isWorkspaceObjectMissing(new Error(rpcMessage))
+        ? 404
+        : wsResponse.status;
+      return NextResponse.json(
+        { error: rpcMessage, code: statusToErrorCode(status) },
+        { status },
+      );
+    }
+    const failure = describeUpstreamResponse(
+      wsResponse,
+      responseText,
+      upstreamServices.workspace,
+      { host: wsResponse.url ? hostOf(wsResponse.url) : undefined },
+    );
     return NextResponse.json(
-      {
-        error: `BV-BRC API error: ${String(wsResponse.status)} ${wsResponse.statusText}`,
-      },
-      { status: wsResponse.status },
+      { error: failure.message, code: statusToErrorCode(failure.status) },
+      { status: failure.status },
     );
   }
 

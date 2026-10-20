@@ -1,5 +1,8 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { vi } from "vitest";
+
+const { refresh } = vi.hoisted(() => ({ refresh: vi.fn() }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh }) }));
 
 vi.mock("@/lib/services/organisms/summary", () => ({
   fetchOrganismSummary: vi.fn(),
@@ -42,14 +45,56 @@ describe("TaxonomySummary", () => {
     expect(screen.getByText("50")).toBeInTheDocument();
   });
 
-  it("renders taxon fields and '-' for summary metrics when summary fetch fails", async () => {
-    vi.mocked(fetchOrganismSummary).mockRejectedValueOnce(new Error("summary down"));
+  it("says the summary counts are unavailable, and why, when the summary fetch fails", async () => {
+    vi.mocked(fetchOrganismSummary).mockRejectedValueOnce(
+      new Error("503 Service Unavailable: Site Maintenance — We’ll be back soon!"),
+    );
 
     await renderServer(TaxonomySummary({ taxonId: 234, taxon: brucellaTaxon }));
 
     expect(screen.getByText("Brucella")).toBeInTheDocument();
-    // Each summary metric falls back to "-" — there are 4 (species, count, cds, pdb)
-    expect(screen.getAllByText("-").length).toBeGreaterThanOrEqual(4);
+    // Species, CDS and PDB come only from the summary; none reads as "-".
+    expect(screen.getAllByText("Unavailable")).toHaveLength(3);
+    expect(screen.queryByText("-")).toBeNull();
+    // The taxonomy record still knows the genome count the breadcrumb shows.
+    const genomes = screen.getByTitle("Assembled genome records");
+    expect(within(genomes).getByText("1,909")).toBeInTheDocument();
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Taxon counts could not be loaded: 503 Service Unavailable: Site Maintenance — We’ll be back soon!",
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+    await waitFor(() => {
+      expect(refresh).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it("says the genome count is unavailable when neither source has it", async () => {
+    vi.mocked(fetchOrganismSummary).mockRejectedValueOnce(new Error("summary down"));
+
+    await renderServer(
+      TaxonomySummary({ taxonId: 234, taxon: { ...brucellaTaxon, genomes: null } }),
+    );
+
+    expect(screen.getAllByText("Unavailable")).toHaveLength(4);
+  });
+
+  it("falls back to the taxonomy record's genome count when the summary has none", async () => {
+    vi.mocked(fetchOrganismSummary).mockResolvedValueOnce({
+      count: null,
+      uniqueFamily: null,
+      uniqueGenus: null,
+      uniqueSpecies: 5,
+      cds: null,
+      matPeptide: null,
+      pdb: null,
+    });
+
+    await renderServer(TaxonomySummary({ taxonId: 234, taxon: brucellaTaxon }));
+
+    const genomes = screen.getByTitle("Assembled genome records");
+    expect(within(genomes).getByText("1,909")).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).toBeNull();
   });
 
   it("renders summary metrics and '-' for taxon fields when taxon prop is null", async () => {

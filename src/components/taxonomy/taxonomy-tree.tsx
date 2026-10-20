@@ -22,6 +22,8 @@ import {
   useTable,
 } from "@tanstack/react-table";
 
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
 import type { OrganismTaxonomy } from "@/lib/services/organisms/types";
 import { formatUserFacingErrorMessage } from "@/lib/utils";
 import { toQueryString } from "@/lib/url";
@@ -47,6 +49,16 @@ import {
 import { taxonomyRowHeight, TreeTableView } from "./taxonomy-tree-view";
 
 const maxOpenParam = 20;
+/** Failed branches the error alert names before summarizing the rest. */
+const maxListedFailures = 3;
+const genericChildrenErrorMessage = "failed to load sub-taxa";
+const genericChildCountsErrorMessage = "failed to count sub-taxa";
+
+interface ChildrenFailure {
+  parentId: number;
+  message: string;
+  refetch: () => unknown;
+}
 
 interface TaxonomyTreeProps {
   rootTaxa: readonly OrganismTaxonomy[];
@@ -171,6 +183,12 @@ function TaxonomyTreeInstance({
   const [knownChildCounts, setKnownChildCounts] = useState<Map<number, number>>(
     () => new Map(),
   );
+  // Collapsed nodes whose child-count request failed. Their count is unknown,
+  // not zero, so they keep their expand toggle: expanding loads the children
+  // directly, which is the retry.
+  const [uncountedIds, setUncountedIds] = useState<ReadonlySet<number>>(
+    () => new Set(),
+  );
   const lastSelectedIdRef = useRef<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -193,22 +211,25 @@ function TaxonomyTreeInstance({
     combine: (results) => {
       const children = new Map<number, TaxonRecord[]>();
       const loading = new Set<number>();
+      const failures: ChildrenFailure[] = [];
       for (let index = 0; index < results.length; index++) {
         const parentId = fetchParentIds[index];
         const query = results[index];
         if (query.isPending) {
           loading.add(parentId);
         } else if (query.isError) {
+          const message = formatUserFacingErrorMessage(
+            query.error,
+            genericChildrenErrorMessage,
+          );
+          failures.push({ parentId, message, refetch: query.refetch });
           children.set(parentId, [
             {
               taxon_id: `__ph_error_${String(parentId)}`,
               taxon_name: "",
               taxon_rank: "",
               __state: "error",
-              __message: formatUserFacingErrorMessage(
-                query.error,
-                "failed to load sub-taxa",
-              ),
+              __message: message,
             },
           ]);
         } else {
@@ -218,7 +239,10 @@ function TaxonomyTreeInstance({
       const version = results
         .map((result) => `${result.status}:${String(result.dataUpdatedAt)}`)
         .join("|");
-      return { children, loading, version };
+      const isRetrying = results.some(
+        (result) => result.isError && result.isFetching,
+      );
+      return { children, loading, failures, isRetrying, version };
     },
   });
 
@@ -272,8 +296,14 @@ function TaxonomyTreeInstance({
   // outside `data`, and the compiled row views skip a row whose object is
   // unchanged, so either changing has to rebuild the rows.
   const tableData = useMemo(
-    () => tableDataFor(rootRecords, queryState.version, knownChildCounts),
-    [rootRecords, queryState.version, knownChildCounts],
+    () =>
+      tableDataFor(
+        rootRecords,
+        queryState.version,
+        knownChildCounts,
+        uncountedIds,
+      ),
+    [rootRecords, queryState.version, knownChildCounts, uncountedIds],
   );
 
   const table = useTable({
@@ -300,10 +330,13 @@ function TaxonomyTreeInstance({
       if (row.getIsExpanded()) return true;
       const id = numericId(row.original);
       const loaded = queryState.children.get(id);
+      // A failed load says nothing about how many children there are.
+      if (loaded?.some(isPlaceholder)) return true;
       const count = loaded
-        ? loaded.filter((child) => !isPlaceholder(child)).length
+        ? loaded.length
         : knownChildCounts.get(id);
-      return count !== undefined && count > 0;
+      if (count === undefined) return uncountedIds.has(id);
+      return count > 0;
     },
     enableRowSelection: (row) => !isPlaceholder(row.original),
     enableRowRangeSelection: false,
@@ -355,7 +388,23 @@ function TaxonomyTreeInstance({
       }
       return next;
     });
+    setUncountedIds((current) => {
+      if (!settledIds.some((id) => current.has(id))) return current;
+      const next = new Set(current);
+      for (const id of settledIds) next.delete(id);
+      return next;
+    });
   }, [childCountsQuery.data, childCountsQuery.isSuccess, deferredKey]);
+  useLayoutEffect(() => {
+    if (!childCountsQuery.isError) return;
+    const failedIds = deferredKey ? deferredKey.split(",").map(Number) : [];
+    setUncountedIds((current) => {
+      if (failedIds.every((id) => current.has(id))) return current;
+      const next = new Set(current);
+      for (const id of failedIds) next.add(id);
+      return next;
+    });
+  }, [childCountsQuery.isError, deferredKey]);
 
   usePersistedExpansion(fetchParentIds, rootIds, globalFilter);
 
@@ -369,9 +418,58 @@ function TaxonomyTreeInstance({
     }
   }
 
+  const failures = queryState.failures;
+  const countError = childCountsQuery.isError
+    ? formatUserFacingErrorMessage(
+        childCountsQuery.error,
+        genericChildCountsErrorMessage,
+      )
+    : null;
+  function taxonName(parentId: number): string {
+    const row = tableRows.find(
+      (candidate) => candidate.id === String(parentId),
+    );
+    return row?.original.taxon_name || `Taxon ${String(parentId)}`;
+  }
+  function retryFailedLoads() {
+    for (const failure of failures) void failure.refetch();
+    if (childCountsQuery.isError) void childCountsQuery.refetch();
+  }
+  const isRetrying =
+    queryState.isRetrying ||
+    (childCountsQuery.isError && childCountsQuery.isFetching);
+
   return (
-    <TreeTableView
-      table={table}
+    <div className="flex h-full min-h-0 flex-col gap-2">
+      {(failures.length > 0 || countError) && (
+        <Alert variant="destructive" size="sm">
+          <AlertTitle>Could not load sub-taxa</AlertTitle>
+          <AlertDescription>
+            {failures.slice(0, maxListedFailures).map((failure) => (
+              <p key={failure.parentId}>
+                {taxonName(failure.parentId)}: {failure.message}
+              </p>
+            ))}
+            {failures.length > maxListedFailures && (
+              <p>
+                {`…and ${String(failures.length - maxListedFailures)} more branches.`}
+              </p>
+            )}
+            {countError && <p>Sub-taxa counts: {countError}</p>}
+            <Button
+              variant="outline"
+              size="sm"
+              aria-busy={isRetrying || undefined}
+              onClick={retryFailedLoads}
+            >
+              {isRetrying ? "Retrying…" : "Retry"}
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
+      <div className="min-h-0 flex-1">
+        <TreeTableView
+          table={table}
       rows={tableRows}
       rowSelection={selection.selected}
       virtualItems={virtualItems}
@@ -384,9 +482,11 @@ function TaxonomyTreeInstance({
         lastSelectedIdRef.current = null;
         commitSelection({});
       }}
-      handleRowClick={handleWhitespaceClick}
-      modifierHeld={shiftHeld || ctrlOrCmdHeld}
-    />
+          handleRowClick={handleWhitespaceClick}
+          modifierHeld={shiftHeld || ctrlOrCmdHeld}
+        />
+      </div>
+    </div>
   );
 }
 

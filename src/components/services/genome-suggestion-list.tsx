@@ -1,13 +1,17 @@
 import type { RefObject } from "react";
 import { Loader2, ShieldUser } from "lucide-react";
 
+import { LookupErrorAlert } from "@/components/services/lookup-error-alert";
 import type { GenomeSummary } from "@/lib/services/genome";
 import { cn } from "@/lib/utils";
 
 interface GenomeSuggestionListProps {
   suggestions: GenomeSummary[];
   isLoading: boolean;
+  /** The failed search, with what failed ("Genome search unavailable: …"). */
   error: string | null;
+  /** Runs the failed search again (`useGenomeTypeahead`'s `retry`). */
+  onRetry?: () => void;
   emptyMessage: string | null;
   highlightedIndex: number;
   itemRefs: RefObject<(HTMLButtonElement | null)[]>;
@@ -22,6 +26,7 @@ export function GenomeSuggestionList({
   suggestions,
   isLoading,
   error,
+  onRetry,
   emptyMessage,
   highlightedIndex,
   itemRefs,
@@ -41,7 +46,11 @@ export function GenomeSuggestionList({
   }
 
   if (error) {
-    return <div className="p-4 text-sm text-destructive">{error}</div>;
+    return (
+      <div className="p-2">
+        <LookupErrorAlert message={error} onRetry={onRetry} />
+      </div>
+    );
   }
 
   if (suggestions.length === 0) {

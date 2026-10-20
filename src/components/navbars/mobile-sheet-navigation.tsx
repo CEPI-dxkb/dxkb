@@ -27,6 +27,9 @@ import type { RecentFolder } from "@/lib/recent-workspace-folders";
 
 interface MobileSheetNavigationProps {
   favoritePaths: string[];
+  /** Why the favorites failed to load; shown instead of hiding the section. */
+  favoritesError?: Error | null;
+  onRetryFavorites?: () => void;
   isAuthenticated: boolean;
   recentFolders: RecentFolder[];
   wsUsername: string;
@@ -61,6 +64,8 @@ function SectionTrigger({
 
 export function MobileSheetNavigation({
   favoritePaths,
+  favoritesError,
+  onRetryFavorites,
   isAuthenticated,
   recentFolders,
   wsUsername,
@@ -157,6 +162,8 @@ export function MobileSheetNavigation({
           <CollapsibleContent className="*:data-[slot=collapsible-divider]:hidden">
             <MobileWorkspaceSection
               favoritePaths={favoritePaths}
+              favoritesError={favoritesError}
+              onRetryFavorites={onRetryFavorites}
               isAuthenticated={isAuthenticated}
               recentFolders={recentFolders}
               wsUsername={wsUsername}

@@ -3,10 +3,13 @@
 import { useState, useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { SearchIcon, ChevronDownIcon } from "lucide-react";
+import { apiGet } from "@/lib/api/client";
 import { cn } from "@/lib/utils";
 import { ServiceInput } from "@/components/services/form-ui/service-input";
+import { LookupErrorAlert } from "@/components/services/lookup-error-alert";
 import { Button } from "@/components/ui/button";
 import { TaxonomySuggestionContent } from "@/components/taxonomy/taxonomy-suggestion-content";
+import { taxonomyLookupState } from "@/components/taxonomy/taxonomy-lookup-state";
 import { TaxonomyItem, TaxonomySelectorProps } from "@/types";
 
 interface TaxIDSelectorProps extends TaxonomySelectorProps {
@@ -18,6 +21,13 @@ interface TaxIDSelectorProps extends TaxonomySelectorProps {
    * error). Unlike `required`, it adds no message of its own.
    */
   invalid?: boolean;
+  /**
+   * The form field's error (`fieldErrorMessage(field)`), shown under the
+   * input in place of a `FieldErrors` beside it. While nothing is picked
+   * because the search failed, the failure shows instead, so an outage never
+   * reads as "Taxonomy ID is required".
+   */
+  fieldError?: string | null;
 }
 
 async function searchTaxonById(
@@ -36,22 +46,17 @@ async function searchTaxonById(
     params.append("fq", queryFilter);
   }
 
-  const response = await fetch(`${apiUrl}?${params.toString()}`, {
+  // A failure carries the proxy's own message ("BV-BRC Taxonomy API error:
+  // 503 …"). The proxy relays BV-BRC's `Accept: application/json` reply, a
+  // bare array of documents (the Solr `{ response: { docs } }` envelope only
+  // comes with application/solr+json), and the API serializes taxon_id as a
+  // string.
+  const docs = await apiGet<
+    (Omit<TaxonomyItem, "taxon_id"> & { taxon_id: number | string })[]
+  >(`${apiUrl}?${params.toString()}`, undefined, {
     headers: { Accept: "application/json" },
-    credentials: "include",
     signal,
   });
-
-  if (!response.ok) {
-    throw new Error(`HTTP error! status: ${String(response.status)}`);
-  }
-
-  // The proxy relays BV-BRC's `Accept: application/json` reply, a bare array
-  // of documents (the Solr `{ response: { docs } }` envelope only comes with
-  // application/solr+json), and the API serializes taxon_id as a string.
-  const docs = (await response.json()) as (Omit<TaxonomyItem, "taxon_id"> & {
-    taxon_id: number | string;
-  })[];
   return docs.map((doc) => ({ ...doc, taxon_id: Number(doc.taxon_id) }));
 }
 
@@ -64,6 +69,7 @@ export function TaxIDSelector({
   disabled = false,
   className,
   invalid = false,
+  fieldError = null,
   apiServiceUrl = "/api/services/taxonomy",
   queryFilter,
 }: TaxIDSelectorProps) {
@@ -96,11 +102,7 @@ export function TaxIDSelector({
     };
   }, [searchQuery]);
 
-  const {
-    data: results = [],
-    isLoading: loading,
-    error: queryError,
-  } = useQuery<TaxonomyItem[]>({
+  const searchResult = useQuery<TaxonomyItem[]>({
     queryKey: [
       "taxonomy-search-id",
       resolvedApiServiceUrl,
@@ -118,7 +120,8 @@ export function TaxIDSelector({
     staleTime: 5 * 60 * 1000,
   });
 
-  const error = queryError?.message ?? null;
+  const results = searchResult.data ?? [];
+  const lookup = taxonomyLookupState(searchResult);
 
   // Sync searchQuery with value prop when value is set externally
   const [prevValue, setPrevValue] = useState(value);
@@ -164,6 +167,12 @@ export function TaxIDSelector({
 
   const isValid = !required || !!value;
   const displayResults = results;
+  // With nothing picked, a failed search is the reason, not the user: it
+  // takes the required message's place (in the list while that is open).
+  const shownLookupError = value || disabled ? null : lookup.error;
+  const requiredMessage =
+    fieldError ??
+    (touched && required && !isValid ? "NCBI Tax ID is required." : null);
   const inputValue = disabled && value ? String(value.taxon_id) : searchQuery;
 
   return (
@@ -195,7 +204,11 @@ export function TaxIDSelector({
               }, 200);
             }
           }}
-          variant={invalid || (touched && !isValid) ? "invalid" : "default"}
+          variant={
+            invalid || fieldError !== null || (touched && !isValid)
+              ? "invalid"
+              : "default"
+          }
           inset={!disabled ? "both" : value ? "aligned" : "none"}
           className="w-full"
           disabled={disabled}
@@ -220,8 +233,9 @@ export function TaxIDSelector({
           <div className="absolute inset-x-0 top-full z-50 mt-1 max-h-64 scrollbar-thin scrollbar-thumb-muted-foreground/20 scrollbar-track-transparent overflow-y-auto rounded-md border bg-popover shadow-md hover:scrollbar-thumb-muted-foreground/40 dark:scrollbar-thumb-muted-foreground/30 dark:hover:scrollbar-thumb-muted-foreground/50">
             <TaxonomySuggestionContent
               results={displayResults}
-              loading={loading}
-              error={error}
+              loading={lookup.loading}
+              error={lookup.error}
+              onRetry={lookup.retry}
               emptyMessage={
                 searchQuery
                   ? `No taxonomy found for ID: ${searchQuery}`
@@ -235,11 +249,24 @@ export function TaxIDSelector({
         )}
       </div>
 
-      {touched && required && !isValid && (
-        <p className="mt-1 text-sm text-destructive">
-          NCBI Tax ID is required.
+      {shownLookupError !== null ? (
+        showDropdown ? null : (
+          <div className="mt-1">
+            <LookupErrorAlert
+              message={shownLookupError}
+              onRetry={() => {
+                lookup.retry();
+                // Focus reopens the list, where the retry's answer shows.
+                inputRef.current?.querySelector("input")?.focus();
+              }}
+            />
+          </div>
+        )
+      ) : requiredMessage !== null ? (
+        <p data-slot="form-message" className="mt-1 text-sm text-destructive">
+          {requiredMessage}
         </p>
-      )}
+      ) : null}
     </div>
   );
 }

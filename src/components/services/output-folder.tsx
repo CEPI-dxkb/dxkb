@@ -19,8 +19,13 @@ import { HelpCircle } from "lucide-react";
 
 const nameTakenMessage =
   "An object with this name already exists in the selected folder.";
-const validationErrorMessage =
-  "Unable to validate this name. Please try again.";
+/** "Unable to validate this name: <reason>. Please try again." */
+function validationErrorMessage(reason: string | null): string {
+  const detail = reason?.trim().replace(/\.$/, "");
+  return detail
+    ? `Unable to validate this name: ${detail}. Please try again.`
+    : "Unable to validate this name. Please try again.";
+}
 const validatingMessage = "Checking name availability...";
 
 interface OutputFolderProps {
@@ -140,7 +145,7 @@ const OutputFolder = ({
           (validation.status === "taken" || validation.status === "error") && (
             <p className="text-sm text-destructive" role="alert">
               {validation.status === "error"
-                ? validationErrorMessage
+                ? validationErrorMessage(validation.errorMessage)
                 : nameTakenMessage}
             </p>
           )}

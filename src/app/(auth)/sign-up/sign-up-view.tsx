@@ -11,16 +11,19 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { safePostAuthDestination } from "@/lib/auth/redirect";
-import { AlertCircle, Loader2 } from "lucide-react";
+import { formatUserFacingErrorMessage } from "@/lib/utils";
+import { Loader2 } from "lucide-react";
+import { AuthSubmitError } from "../auth-submit-error";
 import { SignupPasswordFields, SignupProfileFields } from "./sign-up-fields";
 import { useSignupForm } from "./use-signup-form";
 
 function SignupForm() {
   const [error, setError] = useState("");
+  // Keys the error alert, so every failed attempt brings it into view again.
+  const [attempt, setAttempt] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { signUp } = useAuthActions();
   const searchParams = useSearchParams();
@@ -29,6 +32,7 @@ function SignupForm() {
   const form = useSignupForm(async (value) => {
     setIsSubmitting(true);
     setError("");
+    setAttempt((count) => count + 1);
     await signUp(value)
       .then(() => {
         toast.success("Account created successfully. Welcome to DXKB!", {
@@ -38,9 +42,7 @@ function SignupForm() {
       })
       .catch((cause: unknown) => {
         setError(
-          cause instanceof Error
-            ? cause.message
-            : "Sign up failed. Please try again.",
+          formatUserFacingErrorMessage(cause, "Sign up failed. Please try again."),
         );
       })
       .finally(() => {
@@ -66,12 +68,7 @@ function SignupForm() {
             }}
             className="space-y-4"
           >
-            {error && (
-              <Alert variant="destructive">
-                <AlertCircle className="size-4" />
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            )}
+            {error && <AuthSubmitError key={attempt} message={error} />}
 
             <SignupProfileFields form={form} disabled={isSubmitting} />
             <SignupPasswordFields form={form} />

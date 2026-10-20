@@ -28,7 +28,7 @@ describe("DomainsAndMotifsError", () => {
     expect(consoleError).toHaveBeenCalledOnce();
     expect(consoleError).toHaveBeenCalledWith(error);
 
-    await userEvent.click(screen.getByRole("button", { name: "Try again" }));
+    await userEvent.click(screen.getByRole("button", { name: "Retry" }));
     expect(retry).toHaveBeenCalledOnce();
     expect(reset).not.toHaveBeenCalled();
   });

@@ -50,7 +50,11 @@ const useMobileNavbar = () => {
     };
   }, []);
 
-  const { data: favoritePaths = [] } = useQuery({
+  const {
+    data: favoritePaths = [],
+    error: favoritesError,
+    refetch: refetchFavorites,
+  } = useQuery({
     queryKey: workspaceQueryKeys.favorites(wsUsername),
     queryFn: () => loadFavorites(wsUsername),
     enabled: isAuthenticated && !!wsUsername,
@@ -93,6 +97,10 @@ const useMobileNavbar = () => {
 
               <MobileSheetNavigation
                 favoritePaths={favoritePaths}
+                favoritesError={favoritesError}
+                onRetryFavorites={() => {
+                  void refetchFavorites();
+                }}
                 isAuthenticated={isAuthenticated}
                 recentFolders={recentFolders}
                 wsUsername={wsUsername}

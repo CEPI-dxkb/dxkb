@@ -179,6 +179,20 @@ describe("describeUpstreamResponse", () => {
     });
   });
 
+  it("does not double the punctuation when the page's text ends a sentence", () => {
+    const { message } = describeUpstreamResponse(
+      {
+        status: 503,
+        statusText: "Service Unavailable",
+        headers: new Headers({ "Content-Type": "text/html" }),
+      },
+      "<!doctype html><title>Site Maintenance</title><h1>Service will be back soon.</h1>",
+      service,
+    );
+    expect(message).toMatch(/soon\)\.$/);
+    expect(message).not.toContain(".).");
+  });
+
   it("maps 504 to upstream_timeout and other 5xx to 502", () => {
     expect(describeUpstreamResponse({ status: 504 }, "", service)).toMatchObject({
       status: 504,

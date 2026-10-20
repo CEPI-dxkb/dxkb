@@ -1,7 +1,9 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { http, HttpResponse } from "msw";
 
 import type { StructureSource } from "@/lib/protein-structure-view/source";
+import { server } from "@/test-helpers/msw-server";
 
 // ---------------------------------------------------------------------------
 // jsdom stubs — ResizeObserver is not implemented in jsdom.
@@ -23,7 +25,12 @@ vi.stubGlobal("ResizeObserver", ResizeObserverStub);
 // ---------------------------------------------------------------------------
 
 const mockDispose = vi.fn();
-const mockDownload = vi.fn();
+// Every structure file request, by URL (same-origin ones by path). The hook
+// fetches the file itself and hands Mol* the contents.
+const mockDownload = vi.fn<(url: string) => Response | Promise<Response>>();
+// Mol* gets the downloaded contents; answering with them lets the parse
+// assertions see exactly what was downloaded.
+const mockRawData = vi.fn(({ data }: { data: unknown }) => Promise.resolve(data));
 const mockParseTrajectory = vi.fn();
 const mockApplyPreset = vi.fn();
 const mockHandleResize = vi.fn();
@@ -32,7 +39,7 @@ const mockPlugin = {
   dispose: mockDispose,
   canvas3d: { handleResize: mockHandleResize },
   builders: {
-    data: { download: mockDownload },
+    data: { rawData: mockRawData },
     structure: {
       parseTrajectory: mockParseTrajectory,
       hierarchy: { applyPreset: mockApplyPreset },
@@ -61,6 +68,18 @@ vi.mock("molstar/lib/mol-plugin-ui/skin/light.scss", () => ({}));
 
 import { StructureSourceViewer } from "../structure-source-viewer";
 
+function requestedUrl(url: string): string {
+  const parsed = new URL(url);
+  return parsed.origin === window.location.origin
+    ? `${parsed.pathname}${parsed.search}`
+    : url;
+}
+
+/** What the app's routes answer when the upstream behind them is down. */
+function routeFailure(error: string, status = 503): Response {
+  return HttpResponse.json({ error, code: "service_unavailable" }, { status });
+}
+
 const testLayout = { showControls: false, regionState: "hidden" } as const;
 
 function directSource(
@@ -78,7 +97,10 @@ function directSource(
 describe("StructureSourceViewer", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockDownload.mockResolvedValue("mock-data");
+    server.use(
+      http.get("*", ({ request }) => mockDownload(requestedUrl(request.url))),
+    );
+    mockDownload.mockImplementation(() => new Response("mock-data"));
     mockParseTrajectory.mockResolvedValue("mock-trajectory");
     mockApplyPreset.mockResolvedValue(undefined);
   });
@@ -90,7 +112,10 @@ describe("StructureSourceViewer", () => {
 
     await waitFor(() => {
       expect(mockDownload).toHaveBeenCalledWith(
-        { url: "https://structures.example/model.cif", isBinary: false },
+        "https://structures.example/model.cif",
+      );
+      expect(mockRawData).toHaveBeenCalledWith(
+        { data: "mock-data", label: "model.cif" },
         { state: { isGhost: true } },
       );
       expect(mockParseTrajectory).toHaveBeenCalledWith("mock-data", "mmcif");
@@ -99,8 +124,8 @@ describe("StructureSourceViewer", () => {
 
   it("falls back to the next source after a load failure", async () => {
     mockDownload
-      .mockRejectedValueOnce(new Error("BV-BRC unavailable"))
-      .mockResolvedValueOnce("fallback-data");
+      .mockImplementationOnce(() => routeFailure("BV-BRC unavailable"))
+      .mockImplementationOnce(() => new Response("fallback-data"));
 
     render(
       <StructureSourceViewer
@@ -119,23 +144,56 @@ describe("StructureSourceViewer", () => {
     await waitFor(() => {
       expect(mockDownload).toHaveBeenNthCalledWith(
         1,
-        { url: "/api/structure/model.pdb", isBinary: false },
-        { state: { isGhost: true } },
+        "/api/structure/model.pdb",
       );
       expect(mockDownload).toHaveBeenNthCalledWith(
         2,
-        { url: "https://files.rcsb.org/download/1ABC.cif", isBinary: false },
-        { state: { isGhost: true } },
+        "https://files.rcsb.org/download/1ABC.cif",
+      );
+      expect(mockParseTrajectory).toHaveBeenCalledWith(
+        "fallback-data",
+        "mmcif",
       );
     });
+  });
+
+  it("announces why the file did not download instead of Mol*'s \"Invalid data cell.\"", async () => {
+    mockDownload.mockImplementationOnce(() =>
+      routeFailure(
+        "The BV-BRC workspace service did not respond (timed out after 30 s).",
+        504,
+      ),
+    );
+
+    render(
+      <StructureSourceViewer
+        source={directSource({
+          url: "/api/workspace/view/6VXX",
+          format: "pdb",
+          label: "6VXX",
+          kind: "workspace",
+        })}
+        layout={testLayout}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByRole("alert")).toHaveTextContent(
+        "Could not download 6VXX from your workspace: The BV-BRC workspace service did not respond (timed out after 30 s) (HTTP 504).",
+      );
+    });
+    // Nothing was handed to Mol* to fail parsing.
+    expect(mockRawData).not.toHaveBeenCalled();
+    expect(mockParseTrajectory).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: "Retry" })).toBeInTheDocument();
   });
 
   it("restarts the fallback chain when retrying after all sources fail", async () => {
     const user = userEvent.setup();
     mockDownload
-      .mockRejectedValueOnce(new Error("BV-BRC unavailable"))
-      .mockRejectedValueOnce(new Error("RCSB unavailable"))
-      .mockResolvedValueOnce("retry-data");
+      .mockImplementationOnce(() => routeFailure("BV-BRC unavailable"))
+      .mockImplementationOnce(() => routeFailure("RCSB unavailable"))
+      .mockImplementationOnce(() => new Response("retry-data"));
 
     render(
       <StructureSourceViewer
@@ -152,27 +210,32 @@ describe("StructureSourceViewer", () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText("RCSB unavailable")).toBeInTheDocument();
+      expect(screen.getByRole("alert")).toHaveTextContent(
+        "Could not download model.cif: RCSB unavailable (HTTP 503).",
+      );
     });
     await user.click(screen.getByRole("button", { name: "Retry" }));
 
     await waitFor(() => {
       expect(mockDownload).toHaveBeenNthCalledWith(
         3,
-        { url: "/api/structure/model.pdb", isBinary: false },
-        { state: { isGhost: true } },
+        "/api/structure/model.pdb",
       );
     });
   });
 
   it("resets status and reloads when the source changes", async () => {
     let resolveSecondDownload: ((value: string) => void) | undefined;
-    mockDownload.mockResolvedValueOnce("first-data").mockImplementationOnce(
-      () =>
-        new Promise<string>((resolve) => {
-          resolveSecondDownload = resolve;
-        }),
-    );
+    mockDownload
+      .mockImplementationOnce(() => new Response("first-data"))
+      .mockImplementationOnce(
+        () =>
+          new Promise<Response>((resolve) => {
+            resolveSecondDownload = (body) => {
+              resolve(new Response(body));
+            };
+          }),
+      );
 
     const { rerender } = render(
       <StructureSourceViewer source={directSource()} layout={testLayout} />,
@@ -199,29 +262,39 @@ describe("StructureSourceViewer", () => {
       ).toBeInTheDocument();
       expect(mockDispose).toHaveBeenCalledTimes(1);
       expect(mockDownload).toHaveBeenLastCalledWith(
-        { url: "https://structures.example/next.bcif", isBinary: true },
-        { state: { isGhost: true } },
+        "https://structures.example/next.bcif",
       );
     });
 
     resolveSecondDownload?.("second-data");
+    // BinaryCIF reaches Mol* as bytes, parsed as mmCIF.
     await waitFor(() => {
-      expect(mockParseTrajectory).toHaveBeenLastCalledWith(
-        "second-data",
-        "mmcif",
-      );
+      expect(mockParseTrajectory).toHaveBeenCalledTimes(2);
     });
+    const [contents, format] = mockParseTrajectory.mock.lastCall as [
+      ArrayLike<number>,
+      string,
+    ];
+    expect(typeof contents).not.toBe("string");
+    // Compared as numbers: the response's bytes come from another realm than
+    // jsdom's TextEncoder.
+    expect(Array.from(contents)).toEqual(
+      Array.from(new TextEncoder().encode("second-data")),
+    );
+    expect(format).toBe("mmcif");
   });
 
   it("resets status and disposes the failed plugin before retrying", async () => {
     const user = userEvent.setup();
     let resolveRetryDownload: ((value: string) => void) | undefined;
     mockDownload
-      .mockRejectedValueOnce(new Error("Network unavailable"))
+      .mockImplementationOnce(() => HttpResponse.error())
       .mockImplementationOnce(
         () =>
-          new Promise<string>((resolve) => {
-            resolveRetryDownload = resolve;
+          new Promise<Response>((resolve) => {
+            resolveRetryDownload = (body) => {
+              resolve(new Response(body));
+            };
           }),
       );
 
@@ -230,7 +303,9 @@ describe("StructureSourceViewer", () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText("Network unavailable")).toBeInTheDocument();
+      expect(screen.getByRole("alert")).toHaveTextContent(
+        /^Could not download model\.cif: \S/,
+      );
     });
 
     await user.click(screen.getByRole("button", { name: "Retry" }));
@@ -321,7 +396,7 @@ describe("StructureSourceViewer", () => {
   it("disposes the plugin exactly once when the download fails", async () => {
     // Plugin creation succeeds (WebGL context allocated); the failure
     // happens afterwards, in the download step.
-    mockDownload.mockRejectedValueOnce(new Error("Network unavailable"));
+    mockDownload.mockImplementationOnce(() => routeFailure("Network unavailable", 502));
 
     render(
       <StructureSourceViewer source={directSource()} layout={testLayout} />,
@@ -331,7 +406,9 @@ describe("StructureSourceViewer", () => {
     // WebGL context) must already be disposed — not merely disposed later
     // on retry or unmount.
     await waitFor(() => {
-      expect(screen.getByText("Network unavailable")).toBeInTheDocument();
+      expect(screen.getByRole("alert")).toHaveTextContent(
+        "Could not download model.cif: Network unavailable (HTTP 502).",
+      );
       expect(mockDispose).toHaveBeenCalledTimes(1);
     });
 
@@ -340,11 +417,14 @@ describe("StructureSourceViewer", () => {
   });
 
   it("does not double-dispose when unmounted while the download is still pending", async () => {
-    let rejectDownload: ((err: Error) => void) | undefined;
+    const { createPluginUI } = await import("molstar/lib/mol-plugin-ui");
+    let failDownload: (() => void) | undefined;
     mockDownload.mockImplementationOnce(
       () =>
-        new Promise<string>((_resolve, reject) => {
-          rejectDownload = reject;
+        new Promise<Response>((resolve) => {
+          failDownload = () => {
+            resolve(routeFailure("Network unavailable"));
+          };
         }),
     );
 
@@ -356,7 +436,12 @@ describe("StructureSourceViewer", () => {
     // download has been kicked off.
     await waitFor(() => {
       expect(mockDownload).toHaveBeenCalled();
+      expect(createPluginUI).toHaveBeenCalled();
     });
+    await waitFor(() => {
+      expect(screen.getByText("Initializing structure\u2026")).toBeInTheDocument();
+    });
+    await new Promise((resolve) => setTimeout(resolve, 0));
 
     unmount();
 
@@ -367,7 +452,7 @@ describe("StructureSourceViewer", () => {
     // catch's own disposal must see the lifecycle as already disposed and
     // skip disposing again — asserting on the call count (not just "no
     // throw") is what actually proves the race is closed.
-    rejectDownload?.(new Error("Network unavailable"));
+    failDownload?.();
     await new Promise((resolve) => setTimeout(resolve, 0));
 
     expect(mockDispose).toHaveBeenCalledTimes(1);

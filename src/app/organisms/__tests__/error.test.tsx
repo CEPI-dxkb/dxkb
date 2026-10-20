@@ -14,23 +14,28 @@ describe("OrganismsError", () => {
     consoleError.mockRestore();
   });
 
-  it("explains the taxonomy failure, logs it, and retries by refetching", async () => {
+  it("announces the failure with its digest, logs it, and retries by refetching", async () => {
     const error = Object.assign(new Error("taxonomy unavailable"), { digest: "digest-1" });
     const reset = vi.fn();
     const retry = vi.fn();
 
     render(<OrganismsError error={error} reset={reset} retry={retry} />);
 
+    const alert = screen.getByRole("alert");
     expect(
       screen.getByRole("heading", { name: "Organism data is temporarily unavailable" }),
     ).toBeInTheDocument();
-    expect(screen.getByText(/could not load the taxonomy data/i)).toBeInTheDocument();
+    // A server error's message is redacted in production, so the digest is
+    // the reference and the copy is fixed.
+    expect(alert).toHaveTextContent(/could not load the organism data/i);
+    expect(alert).toHaveTextContent("Reference: digest-1");
+    expect(alert).not.toHaveTextContent("taxonomy unavailable");
     expect(consoleError).toHaveBeenCalledTimes(1);
     expect(consoleError).toHaveBeenCalledWith(error);
 
     // reset() alone re-renders the same failed server payload; retry() also
     // refreshes the route so the server data is fetched again.
-    await userEvent.click(screen.getByRole("button", { name: "Try again" }));
+    await userEvent.click(screen.getByRole("button", { name: "Retry" }));
     expect(retry).toHaveBeenCalledTimes(1);
     expect(reset).not.toHaveBeenCalled();
   });

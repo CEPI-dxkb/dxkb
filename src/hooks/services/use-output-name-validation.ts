@@ -3,6 +3,7 @@
 import { useEffect, useEffectEvent, useState } from "react";
 
 import { checkWorkspaceObjectExists } from "@/lib/services/workspace/validation";
+import { workspaceErrorMessage } from "@/lib/services/workspace/workspace-errors";
 
 const debounceMs = 350;
 
@@ -19,6 +20,8 @@ interface UseOutputNameValidationOptions {
 interface ValidationState {
   key: string;
   status: OutputNameValidationStatus;
+  /** Why the check could not run, condensed; set with status "error". */
+  error?: string;
 }
 
 function buildFullPath(outputFolderPath: string, outputName: string): string {
@@ -72,9 +75,13 @@ export function useOutputNameValidation({
           });
           notifyValidation(!exists);
         },
-        () => {
+        (error: unknown) => {
           if (controller.signal.aborted) return;
-          setValidation({ key: validationKey, status: "error" });
+          setValidation({
+            key: validationKey,
+            status: "error",
+            error: workspaceErrorMessage(error, "the workspace did not answer"),
+          });
           notifyValidation(false);
         },
       );
@@ -87,6 +94,8 @@ export function useOutputNameValidation({
   }, [fullPath, validationKey]);
 
   const status = validation.key === validationKey ? validation.status : "idle";
+  const errorMessage =
+    status === "error" ? (validation.error ?? null) : null;
   const isPending = !!fullPath && validation.key !== validationKey;
 
   return {
@@ -96,5 +105,7 @@ export function useOutputNameValidation({
     // without marking the field invalid.
     isValidating: isPending || status === "checking",
     isInvalid: status === "taken" || status === "error",
+    /** The check's own failure, for "Unable to validate this name: …". */
+    errorMessage,
   };
 }

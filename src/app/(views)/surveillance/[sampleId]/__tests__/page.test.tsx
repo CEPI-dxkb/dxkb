@@ -180,11 +180,26 @@ describe("Surveillance member page", () => {
       new DataApiError("Forbidden", 403),
     );
     await expect(SurveillancePage(pageProps())).rejects.toThrow("Forbidden");
-    mocks.getSurveillance.mockRejectedValueOnce(
+  });
+
+  it("renders an outage inside the shell with its cause instead of throwing", async () => {
+    mocks.getSurveillance.mockRejectedValue(
       new DataApiError("Surveillance backend unavailable", 503),
     );
-    await expect(SurveillancePage(pageProps())).rejects.toThrow(
-      "Surveillance backend unavailable",
-    );
+
+    render(await SurveillancePage(pageProps()));
+
+    expect(
+      screen.getByRole("heading", { level: 1, name: "Surveillance record sample/1" }),
+    ).toBeInTheDocument();
+    const alert = screen.getByRole("alert");
+    expect(alert).toHaveTextContent("Surveillance backend unavailable");
+    expect(screen.getByRole("button", { name: "Retry" })).toBeEnabled();
+    expect(
+      screen.getByRole("link", { name: "Browse surveillance records" }),
+    ).toHaveAttribute("href", "/surveillance");
+    await expect(generateMetadata(metadataProps())).resolves.toEqual({
+      title: "sample/1 | Surveillance",
+    });
   });
 });

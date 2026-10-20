@@ -8,6 +8,7 @@ import PrimerDesignPage from "@/app/services/(genomics)/primer-design/page";
 import { ServiceDebuggingProvider } from "@/contexts/service-debugging-context";
 import { AuthBoundary } from "@/lib/auth/provider";
 import { server } from "@/test-helpers/msw-server";
+import { workspaceObjectNotFound } from "@/test-helpers/workspace-responses";
 import { testAuthUser } from "@/test-helpers/react";
 
 function Providers({ children }: { children: React.ReactNode }) {
@@ -42,11 +43,11 @@ describe("Primer Design rerun", () => {
       http.get("*/api/auth/profile", () =>
         HttpResponse.json({ settings: { default_job_folder: "" } }),
       ),
-      // Workspace.get is the output name check: 500 means "name available".
+      // Workspace.get is the output name check: "Object not found" means "name available".
       http.post("*/api/services/workspace", async ({ request }) => {
         const body = (await request.json()) as { method?: string };
         if (body.method === "Workspace.get")
-          return new HttpResponse(null, { status: 500 });
+          return workspaceObjectNotFound();
         return HttpResponse.json([[]]);
       }),
       http.post("*/api/services/app-service/submit", async ({ request }) => {
@@ -69,7 +70,8 @@ describe("Primer Design rerun", () => {
       expect(
         await screen.findByRole("radio", { name: "Workspace FASTA" }),
       ).toBeChecked();
-      expect(screen.getByLabelText("FASTA File")).toHaveValue(fastaPath);
+      // A field nobody has opened shows the file name from its path.
+      expect(screen.getByLabelText("FASTA File")).toHaveValue("gene.fna");
 
       const button = screen.getByRole("button", { name: "Submit" });
       await waitFor(() => {

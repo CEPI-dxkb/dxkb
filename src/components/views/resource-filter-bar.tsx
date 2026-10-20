@@ -20,6 +20,7 @@ import {
 } from "@/lib/table-layout";
 import { useUiPreference } from "@/lib/ui-preferences/provider";
 import type { CollectionState } from "@/lib/views/collection-state";
+import { QueryRetryButton } from "./query-retry-button";
 import type { ResourceCollectionFacet } from "./resource-collection";
 
 interface ResourceFilterBarProps {
@@ -42,6 +43,14 @@ interface ResourceFilterBarProps {
   /** Why the counts could not be loaded, already formatted for display. */
   facetsError?: string;
   onRetryFacets?: () => void;
+  /** The facets' Retry is in flight: `facetsError` stays, its button says so. */
+  facetsRetrying?: boolean;
+  /**
+   * The counts failed along with the rows, whose alert already says why and
+   * whose Retry reloads both: a muted note stands in for the columns rather
+   * than a second red error for the same failure.
+   */
+  facetsUnavailable?: boolean;
   definitions: readonly ResourceCollectionFacet[];
   hasExplicitRql?: boolean;
   /**
@@ -68,6 +77,8 @@ export function ResourceFilterBar({
   facetsRefreshing = false,
   facetsError,
   onRetryFacets,
+  facetsRetrying = false,
+  facetsUnavailable = false,
   definitions,
   hasExplicitRql = false,
   filtersBesideRql = [],
@@ -197,16 +208,17 @@ export function ResourceFilterBar({
             >
               <p>Could not load filter values: {facetsError}</p>
               {onRetryFacets && (
-                <Button
-                  type="button"
-                  variant="outline"
+                <QueryRetryButton
                   size="toolbar"
-                  onClick={onRetryFacets}
-                >
-                  Retry
-                </Button>
+                  retrying={facetsRetrying}
+                  onRetry={onRetryFacets}
+                />
               )}
             </div>
+          ) : facetsUnavailable ? (
+            <p className="text-muted-foreground">
+              Filter values are unavailable until the results load.
+            </p>
           ) : (
             definitions
               .filter((definition) => visibleFacets.has(definition.field))

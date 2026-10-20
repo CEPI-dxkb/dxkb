@@ -68,6 +68,13 @@ export class DataApiError extends Error {
 
 const dataService = upstreamServices.dataApi;
 
+/** One search of `ServerDataRepository.multiQuery`. */
+export interface DataApiMultiQuery {
+  dataType: string;
+  accept: string;
+  query: string;
+}
+
 /**
  * A network failure or spent budget as the `DataApiError` the routes answer
  * with: 504 `upstream_timeout` or 502 `service_unavailable`, naming the
@@ -749,6 +756,45 @@ export class ServerDataRepository {
       );
   }
 
+  /**
+   * The Data API's multi-query endpoint (`POST {base}/query/`): several
+   * `{dataType, accept, query}` searches in one round trip, answered keyed as
+   * sent. It reads a JSON body and ignores Range. Same HTTPS-with-token guard,
+   * budget and error mapping as every other read; the all-data-types search
+   * route (`/api/data/search`) is its caller.
+   */
+  async multiQuery(
+    queries: Readonly<Record<string, DataApiMultiQuery>>,
+    signal?: AbortSignal,
+  ): Promise<Record<string, unknown>> {
+    const base = this.options.baseUrl.replace(/\/$/, "");
+    const response = await this.send(
+      new URL(`${base}/query/`),
+      0,
+      0,
+      signal,
+      "application/json",
+      "POST",
+      JSON.stringify(queries),
+      false,
+      "application/json",
+    );
+    const payload: unknown = await response.json().catch((error: unknown) => {
+      const failure = dataApiFailure(error);
+      if (failure instanceof DataApiError) throw failure;
+      if (error instanceof Error && error.name === "AbortError") throw error;
+      return null;
+    });
+    if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+      throw new DataApiError(
+        "Malformed search response: expected an object keyed by data type.",
+        502,
+        "malformed_response",
+      );
+    }
+    return payload as Record<string, unknown>;
+  }
+
   private url(resource: DataResource): URL {
     const base = this.options.baseUrl.replace(/\/$/, "");
     return new URL(`${base}/${resource}/`);
@@ -818,6 +864,8 @@ export class ServerDataRepository {
     method = "GET",
     body?: string,
     streamBody = false,
+    // Every resource endpoint reads an RQL body; `multiQuery` sends JSON.
+    contentType = "application/rqlquery+x-www-form-urlencoded",
   ): Promise<Response> {
     if (this.options.token && url.protocol !== "https:") {
       throw new DataApiError(
@@ -832,8 +880,7 @@ export class ServerDataRepository {
       "X-Range": `items=${String(start)}-${String(end)}`,
     });
     if (this.options.token) headers.set("Authorization", this.options.token);
-    if (body)
-      headers.set("Content-Type", "application/rqlquery+x-www-form-urlencoded");
+    if (body) headers.set("Content-Type", contentType);
     let response: Response;
     try {
       response = await fetchUpstream(
@@ -905,7 +952,7 @@ export class ServerDataRepository {
                   : "upstream_error";
       throw new DataApiError(
         serviceUnavailable
-          ? `The data service is temporarily unavailable${detail ? ` (${detail})` : ""}. Please try again.`
+          ? `The data service is temporarily unavailable${detail ? ` (${detail.replace(/[.\s]+$/, "")})` : ""}. Please try again.`
           : message,
         safeStatus,
         code,

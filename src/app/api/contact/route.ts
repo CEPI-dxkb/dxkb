@@ -5,6 +5,8 @@ import { rateLimit, clientIp } from "@/lib/rate-limit";
 import {
   contactFormSchema,
   inquiryTypeLabel,
+  mailSendFailure,
+  smtpTimeoutsMs,
   type ContactFormData,
 } from "@/app/(footer)/contact/components/contact-form-utils";
 
@@ -81,6 +83,8 @@ export const POST = withErrorHandling(async (request: NextRequest) => {
     port,
     // Implicit TLS on 465; STARTTLS otherwise.
     secure: port === 465,
+    // Answer before the form's own 30 s budget runs out, with the reason.
+    ...smtpTimeoutsMs,
     ...(hasAuth
       ? // Authenticated (remote) relay: verify the server certificate
         // (nodemailer's default) so credentials can't be captured by a
@@ -102,17 +106,15 @@ export const POST = withErrorHandling(async (request: NextRequest) => {
   } catch (error) {
     // Log the raw SMTP error server-side for debugging, but don't forward it
     // to the client: nodemailer errors leak infrastructure details (relay
-    // host, port, auth failure reason) to an anonymous form submitter.
+    // host, port, auth failure reason) to an anonymous form submitter. The
+    // client gets the kind of failure and its code instead.
     const detail =
       error instanceof Error ? error.message : String(error);
     console.error("Contact email send failed:", detail);
+    const failure = mailSendFailure(error);
     return NextResponse.json(
-      {
-        error:
-          "Failed to send message. Please try again or email help@dxkb.org.",
-        code: "email_send_failed",
-      },
-      { status: 502 },
+      { error: failure.message, code: "email_send_failed" },
+      { status: failure.status },
     );
   }
 

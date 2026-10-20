@@ -22,11 +22,12 @@ import {
 } from "@/components/ui/card";
 import { FieldItem, FieldErrors } from "@/components/ui/tanstack-form";
 import { toast } from "sonner";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Loader2, AlertCircle } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import Link from "next/link";
 import { Eye, EyeOff, Lock, User } from "lucide-react";
 import { RequiredFormLabel } from "@/components/forms/required-form-components";
+import { formatUserFacingErrorMessage } from "@/lib/utils";
+import { AuthSubmitError } from "../auth-submit-error";
 
 const formSchema = z.object({
   username: z.string().min(1, {
@@ -39,6 +40,8 @@ const formSchema = z.object({
 
 function SigninForm() {
   const [error, setError] = useState("");
+  // Keys the error alert, so every failed attempt brings it into view again.
+  const [attempt, setAttempt] = useState(0);
   const [showPassword, setShowPassword] = useState(false);
   const { signIn } = useAuthActions();
   const searchParams = useSearchParams();
@@ -52,6 +55,7 @@ function SigninForm() {
     validators: { onChange: formSchema },
     onSubmit: async ({ value }) => {
       setError("");
+      setAttempt((count) => count + 1);
       try {
         const destination = safePostAuthDestination(redirectTo);
         await signIn(value);
@@ -61,9 +65,7 @@ function SigninForm() {
         window.location.replace(destination);
       } catch (cause) {
         setError(
-          cause instanceof Error
-            ? cause.message
-            : "Invalid username or password",
+          formatUserFacingErrorMessage(cause, "Sign in failed. Please try again."),
         );
       }
     },
@@ -81,19 +83,20 @@ function SigninForm() {
           </CardDescription>
         </CardHeader>
         <CardContent>
+          {/*
+            noValidate: the zod schema reports every empty field inline. A
+            native `required` bubble would block the submit first and show
+            a second, different message for one field only.
+          */}
           <form
+            noValidate
             onSubmit={(e) => {
               e.preventDefault();
               void form.handleSubmit();
             }}
             className="space-y-4"
           >
-            {error && (
-              <Alert variant="destructive">
-                <AlertCircle className="size-4" />
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            )}
+            {error && <AuthSubmitError key={attempt} message={error} />}
 
             <form.Field name="username">
               {(field) => (

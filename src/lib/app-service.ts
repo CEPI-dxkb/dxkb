@@ -6,7 +6,7 @@ import {
   upstreamServices,
   upstreamTimeoutMs,
 } from "@/lib/api/upstream-failure";
-import { getAppBaseUrl } from "./env";
+import { getAppBaseUrl, getRequiredEnv } from "./env";
 import { createBvBrcClient } from "./jsonrpc-client";
 import {
   QueryJobDetailsResponse,
@@ -26,6 +26,17 @@ import {
   QueryAppSummaryFilteredParams,
   QueryAppSummaryFilteredResponse,
 } from "@/types/workspace";
+
+/**
+ * The plain-HTTP job output endpoint. It lives under the app service's own
+ * JSON-RPC endpoint (`APP_SERVICE_URL`, e.g.
+ * `https://p3.theseed.org/services/app_service`), so it follows the configured
+ * service rather than always reaching production.
+ */
+export function jobOutputUrl(jobId: string, outputType: "stdout" | "stderr"): string {
+  const base = getRequiredEnv("APP_SERVICE_URL").replace(/\/+$/, "");
+  return `${base}/task_info/${encodeURIComponent(jobId)}/${outputType}`;
+}
 
 export const submitTimeoutMessage = `The BV-BRC job service did not respond within ${String(upstreamTimeoutMs.jobService / 1000)} s. Your job may still have been queued: check Jobs before you submit it again.`;
 
@@ -81,7 +92,7 @@ export class AppService {
   ): Promise<FetchJobOutputResponse> {
     const { job_id, output_type } = params;
 
-    const url = `https://p3.theseed.org/services/app_service/task_info/${job_id}/${output_type}`;
+    const url = jobOutputUrl(job_id, output_type);
 
     const authToken = this.client.getAuthToken();
     if (!authToken) {

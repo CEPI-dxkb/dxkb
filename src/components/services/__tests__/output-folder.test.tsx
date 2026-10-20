@@ -291,7 +291,7 @@ describe("OutputFolder name validation", () => {
     await finishDebounce();
 
     expect(screen.getByRole("alert")).toHaveTextContent(
-      "Unable to validate this name. Please try again.",
+      "Unable to validate this name: network unavailable. Please try again.",
     );
     expect(screen.getByRole("textbox")).toHaveAttribute("aria-invalid", "true");
     expect(onValidationChange).toHaveBeenLastCalledWith(false);
@@ -315,5 +315,29 @@ describe("OutputFolder name validation", () => {
       "false",
     );
     expect(onValidationChange).toHaveBeenLastCalledWith(true);
+  });
+  it("says why the name could not be checked when the workspace is down", async () => {
+    checkWorkspaceObjectExistsMock.mockRejectedValueOnce(
+      Object.assign(
+        new Error(
+          "The BV-BRC workspace service (p3.theseed.org) did not respond (timed out after 30 s).",
+        ),
+        { status: 504 },
+      ),
+    );
+    render(
+      <OutputFolder
+        title={false}
+        variant="name"
+        value="result"
+        outputFolderPath="/user/home"
+      />,
+    );
+
+    await finishDebounce();
+
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Unable to validate this name: The BV-BRC workspace service (p3.theseed.org) did not respond (timed out after 30 s). Please try again.",
+    );
   });
 });

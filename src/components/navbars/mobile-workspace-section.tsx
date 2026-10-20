@@ -9,14 +9,20 @@ import {
   buildFolderHref,
   resolveWorkspaceHref,
 } from "@/components/navbars/workspace-nav-utils";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
 import { buttonVariants } from "@/components/ui/button-variants";
 import {
   getWorkspaceFolderDisplayName,
   type RecentFolder,
 } from "@/lib/recent-workspace-folders";
+import { formatUserFacingErrorMessage } from "@/lib/utils";
 
 interface MobileWorkspaceSectionProps {
   favoritePaths: string[];
+  /** Why the favorites failed to load; shown instead of hiding the section. */
+  favoritesError?: Error | null;
+  onRetryFavorites?: () => void;
   isAuthenticated: boolean;
   recentFolders: RecentFolder[];
   wsUsername: string;
@@ -24,6 +30,8 @@ interface MobileWorkspaceSectionProps {
 
 export function MobileWorkspaceSection({
   favoritePaths,
+  favoritesError,
+  onRetryFavorites,
   isAuthenticated,
   recentFolders,
   wsUsername,
@@ -58,7 +66,7 @@ export function MobileWorkspaceSection({
         ))}
       </MobileDecoratedSubSection>
 
-      {isAuthenticated && favoritePaths.length > 0 && (
+      {isAuthenticated && (favoritePaths.length > 0 || favoritesError) && (
         <MobileDecoratedSubSection
           alwaysShow
           dotColor="bg-highlight/50"
@@ -68,11 +76,30 @@ export function MobileWorkspaceSection({
           <MobileSubSectionLabel>
             Favorites <Star className="size-3 fill-highlight text-highlight" />
           </MobileSubSectionLabel>
-          {favoritePaths.map((path) => (
-            <MobileNavLink key={path} href={buildFolderHref(path)}>
-              {getWorkspaceFolderDisplayName(path)}
-            </MobileNavLink>
-          ))}
+          {favoritesError ? (
+            <Alert variant="destructive" size="sm">
+              <AlertDescription>
+                <p>
+                  Couldn&apos;t load favorites:{" "}
+                  {formatUserFacingErrorMessage(
+                    favoritesError,
+                    "the workspace service did not answer.",
+                  )}
+                </p>
+                {onRetryFavorites && (
+                  <Button variant="outline" size="sm" onClick={onRetryFavorites}>
+                    Retry
+                  </Button>
+                )}
+              </AlertDescription>
+            </Alert>
+          ) : (
+            favoritePaths.map((path) => (
+              <MobileNavLink key={path} href={buildFolderHref(path)}>
+                {getWorkspaceFolderDisplayName(path)}
+              </MobileNavLink>
+            ))
+          )}
         </MobileDecoratedSubSection>
       )}
 

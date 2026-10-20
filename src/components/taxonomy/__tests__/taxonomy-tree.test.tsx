@@ -205,6 +205,149 @@ describe("TaxonomyTree", () => {
     expect(screen.getAllByRole("table")).toHaveLength(1);
   });
 
+  it("announces a failed branch with Retry, and retrying loads it", async () => {
+    let childrenCalls = 0;
+    server.use(
+      http.get(childCountsPath, () => HttpResponse.json({ counts: {} })),
+      http.get(childrenPath, () => {
+        childrenCalls += 1;
+        if (childrenCalls === 1) {
+          return HttpResponse.json(
+            {
+              error: "Could not reach the BV-BRC data service: connection refused.",
+              code: "service_unavailable",
+            },
+            { status: 502 },
+          );
+        }
+        return HttpResponse.json({
+          rows: [child(235, "Brucella abortus", "species", 581)],
+        });
+      }),
+    );
+
+    render(<TaxonomyTree rootTaxa={[rootTaxon]} />, {
+      wrapper: createQueryClientWrapper(),
+    });
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("Could not load sub-taxa");
+    expect(alert).toHaveTextContent(
+      "Brucella: taxonomy children 234: Could not reach the BV-BRC data service: connection refused.",
+    );
+
+    fireEvent.click(within(alert).getByRole("button", { name: "Retry" }));
+
+    expect(
+      await screen.findByRole("link", { name: "Brucella abortus" }),
+    ).toBeInTheDocument();
+    expect(childrenCalls).toBe(2);
+    await waitFor(() => {
+      expect(screen.queryByRole("alert")).toBeNull();
+    });
+  });
+
+  it("keeps the expand toggle on a failed node after collapse, so expanding again retries", async () => {
+    let childrenCalls = 0;
+    server.use(
+      // The outage fails the count the collapsed node asks for too.
+      http.get(childCountsPath, () =>
+        HttpResponse.json(
+          { error: "The BV-BRC data service did not respond.", code: "upstream_timeout" },
+          { status: 504 },
+        ),
+      ),
+      http.get(childrenPath, () => {
+        childrenCalls += 1;
+        if (childrenCalls === 1) {
+          return HttpResponse.json(
+            { error: "The BV-BRC data service did not respond.", code: "upstream_timeout" },
+            { status: 504 },
+          );
+        }
+        return HttpResponse.json({
+          rows: [child(235, "Brucella abortus", "species", 581)],
+        });
+      }),
+    );
+
+    render(<TaxonomyTree rootTaxa={[rootTaxon]} />, {
+      wrapper: createQueryClientWrapper(),
+    });
+
+    expect(
+      await screen.findByText(/taxonomy children 234: The BV-BRC data service did not respond\./, {
+        selector: "td span",
+      }),
+    ).toBeInTheDocument();
+    const rootRow = screen
+      .getByRole("link", { name: "Brucella" })
+      .closest("tr") as HTMLElement;
+
+    fireEvent.click(within(rootRow).getByRole("button", { name: "Collapse" }));
+
+    // Its count failed as well: unknown, not zero, so it does not become a leaf.
+    expect(
+      await screen.findByText(/Sub-taxa counts: .*did not respond/),
+    ).toBeInTheDocument();
+    const expand = within(rootRow).getByRole("button", { name: "Expand" });
+
+    fireEvent.click(expand);
+
+    expect(
+      await screen.findByRole("link", { name: "Brucella abortus" }),
+    ).toBeInTheDocument();
+    expect(childrenCalls).toBe(2);
+  });
+
+  it("keeps the expand toggle on a child whose count could not be loaded", async () => {
+    let countCalls = 0;
+    server.use(
+      http.get(childCountsPath, ({ request }) => {
+        countCalls += 1;
+        if (countCalls === 1) {
+          return HttpResponse.json(
+            { error: "The BV-BRC data service did not respond.", code: "upstream_timeout" },
+            { status: 504 },
+          );
+        }
+        const ids = new URL(request.url).searchParams.getAll("parentId");
+        return HttpResponse.json({
+          counts: Object.fromEntries(ids.map((id) => [id, 0])),
+        });
+      }),
+      http.get(childrenPath, () =>
+        HttpResponse.json({
+          rows: [child(235, "Brucella abortus", "species", 581)],
+        }),
+      ),
+    );
+
+    render(<TaxonomyTree rootTaxa={[rootTaxon]} />, {
+      wrapper: createQueryClientWrapper(),
+    });
+
+    const speciesRow = (
+      await screen.findByRole("link", { name: "Brucella abortus" })
+    ).closest("tr") as HTMLElement;
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent(
+      "Sub-taxa counts: taxonomy child counts: The BV-BRC data service did not respond.",
+    );
+    expect(
+      within(speciesRow).getByRole("button", { name: "Expand" }),
+    ).toBeInTheDocument();
+
+    // Once the count loads and says none, the toggle goes as it should.
+    fireEvent.click(within(alert).getByRole("button", { name: "Retry" }));
+    await waitFor(() => {
+      expect(
+        within(speciesRow).queryByRole("button", { name: "Expand" }),
+      ).toBeNull();
+    });
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
   it("resets stale roots, selection, and filtering when the root set changes", async () => {
     mockChildren(twoRootChildren);
     const onSelect = vi.fn();

@@ -8,6 +8,7 @@ import GeneProteinTreePage from "@/app/services/(protein-tools)/gene-protein-tre
 import { ServiceDebuggingProvider } from "@/contexts/service-debugging-context";
 import { AuthBoundary } from "@/lib/auth/provider";
 import { server } from "@/test-helpers/msw-server";
+import { workspaceObjectNotFound } from "@/test-helpers/workspace-responses";
 import { testAuthUser } from "@/test-helpers/react";
 
 function Providers({ children }: { children: React.ReactNode }) {
@@ -74,11 +75,11 @@ describe("GeneProteinTree page — rerun metadata fields", () => {
       http.get("*/api/auth/profile", () =>
         HttpResponse.json({ settings: { default_job_folder: "" } }),
       ),
-      // Workspace.get returns 500 so the output name counts as available.
+      // Workspace.get answers "Object not found", so the output name is available.
       http.post("*/api/services/workspace", async ({ request }) => {
         const body = (await request.json()) as { method?: string };
         if (body.method === "Workspace.get") {
-          return new HttpResponse(null, { status: 500 });
+          return workspaceObjectNotFound();
         }
         return HttpResponse.json([]);
       }),

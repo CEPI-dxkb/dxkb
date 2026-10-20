@@ -3,6 +3,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { server } from "@/test-helpers/msw-server";
 import {
+  connectTimeout,
+  maintenancePage,
+  maintenanceSummary,
+} from "@/test-helpers/upstream-failures";
+import {
   dbStatisticsDefinitions,
   fetchDbStatistics,
   type StatisticKey,
@@ -44,8 +49,9 @@ describe("fetchDbStatistics", () => {
       protein_feature: 600,
     });
 
-    const counts = await fetchDbStatistics();
+    const { counts, unavailableReason } = await fetchDbStatistics();
 
+    expect(unavailableReason).toBeNull();
     const expectedKeys: StatisticKey[] = [
       "viralGenomes",
       "proteinEntries",
@@ -71,8 +77,9 @@ describe("fetchDbStatistics", () => {
       http.get(`${dataApi}/:core/`, () => solrCount(42)),
     );
 
-    const counts = await fetchDbStatistics();
+    const { counts, unavailableReason } = await fetchDbStatistics();
 
+    expect(unavailableReason).toBeNull();
     expect(counts.proteinStructures).toBeNull();
     expect(counts.viralGenomes).toBe(42);
     expect(counts.genomes).toBe(42);
@@ -85,11 +92,12 @@ describe("fetchDbStatistics", () => {
       ),
     );
 
-    const counts = await fetchDbStatistics();
+    const { counts, unavailableReason } = await fetchDbStatistics();
 
     for (const value of Object.values(counts)) {
       expect(value).toBeNull();
     }
+    expect(unavailableReason).toContain("everything is on fire");
   });
 
   it("applies a request timeout while preserving a caller abort signal", async () => {
@@ -143,6 +151,37 @@ describe("fetchDbStatistics", () => {
     expect(filteredUrl).toContain("/genome/");
     expect(filteredUrl).toContain("limit(1)");
     expect(capturedAccepts.every((a) => a === "application/solr+json")).toBe(true);
+  });
+
+  it("reduces a maintenance page to its title in the reason and the log, never its markup", async () => {
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    server.use(http.get(`${dataApi}/:core/`, () => maintenancePage()));
+
+    const { counts, unavailableReason } = await fetchDbStatistics();
+
+    expect(counts.genomes).toBeNull();
+    expect(unavailableReason).toBe(
+      `The BV-BRC data service (data-api.test) is unavailable (HTTP 503 Service Unavailable: ${maintenanceSummary}).`,
+    );
+    const logged = errorSpy.mock.calls.flat().join(" ");
+    expect(logged).toContain(maintenanceSummary);
+    expect(logged).not.toContain("<");
+    expect(logged).not.toContain("text-align");
+  });
+
+  it("names the data service when a count cannot connect", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    server.use(
+      http.get(`${dataApi}/:core/`, () => {
+        throw connectTimeout();
+      }),
+    );
+
+    const { unavailableReason } = await fetchDbStatistics();
+
+    expect(unavailableReason).toMatch(
+      /^The BV-BRC data service \(data-api\.test\) did not respond \(connection timed out/,
+    );
   });
 
   it("freezes the definitions array so consumers cannot mutate it", () => {

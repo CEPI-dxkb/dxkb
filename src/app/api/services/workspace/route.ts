@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth/server/route";
 import {
+  describeUpstreamResponse,
   fetchUpstream,
+  hostOf,
   upstreamServices,
   upstreamTimeoutMs,
 } from "@/lib/api/upstream-failure";
@@ -102,9 +104,21 @@ export const POST = withAuth(async (request: NextRequest, { token }) => {
       }
       console.error("BV-BRC API error:", response.status, response.statusText, apiResponse);
       const sanitized = sanitizeUpstreamError(apiResponse);
+      // A Workspace JSON-RPC error keeps the "BV-BRC API error: <status>"
+      // label, with the Workspace's own message in `apiResponse` (which
+      // `workspace-errors.ts` reads). Any other body (a maintenance page) is
+      // described by its status and page title, never forwarded.
+      const error = sanitized?.message
+        ? `BV-BRC API error: ${String(response.status)} ${response.statusText}`
+        : describeUpstreamResponse(
+            response,
+            responseText,
+            upstreamServices.workspace,
+            { host: response.url ? hostOf(response.url) : undefined },
+          ).message;
       return NextResponse.json(
         {
-          error: `BV-BRC API error: ${String(response.status)} ${response.statusText}`,
+          error,
           ...(sanitized && { apiResponse: sanitized }),
         },
         { status: response.status },

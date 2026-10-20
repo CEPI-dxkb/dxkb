@@ -2,9 +2,10 @@
 
 import { useState } from "react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
 import { InfoPanel } from "@/components/detail-panel/info-panel";
+import { QueryRetryButton } from "./query-retry-button";
 import { ResourceFilterBar } from "./resource-filter-bar";
+import { useRetryKeepingError } from "./use-retry-keeping-error";
 import { ResourceWorkspace } from "./resource-workspace";
 import { useResourceCollectionActions } from "./resource-collection-actions";
 import { useResourceCollectionRowResolution } from "./use-resource-collection-row-resolution";
@@ -243,6 +244,49 @@ export function ResourceCollection<Row extends DataTableRow>({
           }
         : onStateChange,
   });
+  // A Retry keeps its failure on screen, marked "Retrying…", until it answers,
+  // rather than swapping it for skeletons for the whole wait. The rows' Retry
+  // also reloads failed counts, whose own error is not shown beside theirs.
+  const rowsRetry = useRetryKeepingError(
+    {
+      error: collection.error,
+      isFetching: collection.isInitialLoading || collection.isRefreshing,
+      refetch: () => {
+        if (collection.facetsError) void collection.refetchFacets();
+        return collection.refetch();
+      },
+    },
+    JSON.stringify([
+      effectiveRql,
+      state.filters,
+      requestState.keyword,
+      state.page,
+      state.sort,
+    ]),
+  );
+  const facetsRetry = useRetryKeepingError(
+    {
+      error: collection.facetsError,
+      isFetching: collection.isFacetsLoading || collection.isFacetsRefreshing,
+      refetch: collection.refetchFacets,
+    },
+    JSON.stringify([
+      facetScope?.structuralRql,
+      effectiveRql,
+      (facetState ?? state).filters,
+      requestState.keyword,
+      shownFacetFields,
+    ]),
+  );
+  const collectionError = rowsRetry.error;
+  // A read in flight while the error shows (a Retry, or a background refetch)
+  // is a retry of it.
+  const rowsRetrying =
+    rowsRetry.retrying || (Boolean(collection.error) && collection.isRefreshing);
+  // The total on screen is not this query's yet: a previous query's, or none
+  // while the first read is in flight. Counts wait instead of reading 0.
+  const isTotalPending =
+    collection.isPlaceholderData || collection.isInitialLoading;
   const rowLinkFields = new Set(
     profile.rowLinkFields ?? [profile.rowLinkField ?? profile.idField],
   );
@@ -301,7 +345,7 @@ export function ResourceCollection<Row extends DataTableRow>({
     selectedActionCount,
     isAllPagesSelected: collection.isAllPagesSelected,
     hasLoadedKeyword,
-    isPlaceholderData: collection.isPlaceholderData,
+    isPlaceholderData: isTotalPending,
     currentTotal: collection.currentTotal,
     rql: effectiveRql,
     keyword: requestState.keyword,
@@ -354,7 +398,7 @@ export function ResourceCollection<Row extends DataTableRow>({
       displayedIds: displayedSelectedIds,
       isAllPagesSelected: collection.isAllPagesSelected,
       total: collection.total,
-      isPlaceholderData: collection.isPlaceholderData,
+      isPlaceholderData: isTotalPending,
       currentTotal: collection.currentTotal,
       rowById: selectedRowById,
     },
@@ -425,17 +469,19 @@ export function ResourceCollection<Row extends DataTableRow>({
         // an open panel shows placeholders rather than "No values".
         facetsLoading={!facetsSettled || collection.isFacetsLoading}
         facetsRefreshing={collection.isFacetsRefreshing}
+        // One failure, one alert: while the rows have failed, the panel does
+        // not repeat it (VWA-7: `/strain` showed two red errors).
         facetsError={
-          collection.facetsError
+          facetsRetry.error && !collectionError
             ? formatUserFacingErrorMessage(
-                collection.facetsError,
+                facetsRetry.error,
                 genericFacetErrorMessage,
               )
             : undefined
         }
-        onRetryFacets={() => {
-          void collection.refetchFacets();
-        }}
+        facetsUnavailable={Boolean(facetsRetry.error && collectionError)}
+        facetsRetrying={facetsRetry.retrying}
+        onRetryFacets={facetsRetry.retry}
         definitions={profile.facets ?? []}
         hasExplicitRql={Boolean(state.rql)}
         filtersBesideRql={filtersBesideRql}
@@ -473,10 +519,19 @@ export function ResourceCollection<Row extends DataTableRow>({
           else onStateChange(next);
         }}
       />
+      {/* Never a count the query has not answered: the first read's wait is
+          "Loading results…", and a failure is announced by its own
+          role="alert" below, so this says nothing then but a retry. */}
       <span className="sr-only" aria-live="polite">
-        {collection.isRefreshing
-          ? "Refreshing results..."
-          : `${String(displayedTotal)} results`}
+        {collectionError
+          ? rowsRetrying
+            ? "Retrying…"
+            : ""
+          : collection.isInitialLoading
+            ? "Loading results…"
+            : collection.isRefreshing
+              ? "Refreshing results..."
+              : `${String(displayedTotal)} results`}
       </span>
 
       {actionError && (
@@ -486,25 +541,20 @@ export function ResourceCollection<Row extends DataTableRow>({
         </Alert>
       )}
 
-      {collection.error ? (
-        <Alert variant="destructive">
+      {collectionError ? (
+        <Alert variant="destructive" aria-busy={rowsRetrying || undefined}>
           <AlertTitle>Could not load {profile.label.toLowerCase()}</AlertTitle>
           <AlertDescription>
             <p>
               {formatUserFacingErrorMessage(
-                collection.error,
+                collectionError,
                 genericCollectionErrorMessage,
               )}
             </p>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                void collection.refetch();
-              }}
-            >
-              Retry
-            </Button>
+            <QueryRetryButton
+              retrying={rowsRetrying}
+              onRetry={rowsRetry.retry}
+            />
           </AlertDescription>
         </Alert>
       ) : (

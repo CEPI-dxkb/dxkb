@@ -10,6 +10,7 @@ import type {
 import {
   describeUpstreamResponse,
   hostOf,
+  upstreamCauseCode,
   upstreamTimeoutFailure,
 } from "@/lib/api/upstream-failure";
 import { fail, networkFailure, ok } from "../result";
@@ -25,6 +26,27 @@ function joinUrl(base: string, path = ""): string {
 }
 
 /**
+ * One server log line per failed identity call, so an operator can tell "the
+ * account service hangs" from "users mistyped passwords": the service, host,
+ * method, what failed (an HTTP status, a timeout or the socket error code) and
+ * how long it took. Never the URL path, headers, body or error text, which
+ * carry usernames, credentials and tokens.
+ */
+function logUpstreamFailure(
+  service: string,
+  input: string,
+  init: RequestInit,
+  outcome: string,
+  startedAt: number,
+): void {
+  const host = hostOf(input) ?? "unknown host";
+  const method = (init.method ?? "GET").toUpperCase();
+  console.error(
+    `[auth] ${service} (${host}) ${method} failed: ${outcome} after ${String(Date.now() - startedAt)} ms`,
+  );
+}
+
+/**
  * `service` is the lower-case phrase failure messages name ("the BV-BRC
  * authentication service"): a timeout reads "… did not respond (timed out
  * after 15 s)" and a network failure "Could not reach …: <cause>", never a
@@ -36,6 +58,7 @@ async function request(
   service: string,
   timeoutMs = requestTimeoutMs,
 ): Promise<Result<Response>> {
+  const startedAt = Date.now();
   const controller = new AbortController();
   const timeout = setTimeout(() => {
     controller.abort();
@@ -49,6 +72,17 @@ async function request(
       signal: controller.signal,
     });
     const body = response.body ? await response.arrayBuffer() : null;
+    // A 4xx is the caller's (a wrong password, a taken username), not an
+    // outage, and logging it would only add noise.
+    if (response.status >= 500) {
+      logUpstreamFailure(
+        service,
+        input,
+        init,
+        `HTTP ${String(response.status)}`,
+        startedAt,
+      );
+    }
     return ok(
       new Response(body, {
         status: response.status,
@@ -59,9 +93,24 @@ async function request(
   } catch (cause) {
     const host = hostOf(input);
     if (cause instanceof Error && cause.name === "AbortError") {
+      logUpstreamFailure(
+        service,
+        input,
+        init,
+        `timed out (budget ${String(timeoutMs)} ms)`,
+        startedAt,
+      );
       const failure = upstreamTimeoutFailure(service, { timeoutMs, host });
       return fail("service_unavailable", failure.message, failure.status);
     }
+    logUpstreamFailure(
+      service,
+      input,
+      init,
+      upstreamCauseCode(cause) ??
+        (cause instanceof Error ? cause.name : "network error"),
+      startedAt,
+    );
     return { data: null, error: networkFailure(cause, service, host) };
   } finally {
     clearTimeout(timeout);

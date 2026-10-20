@@ -244,9 +244,14 @@ function FolderColumnsBrowser({
     path === selectedPath ? selectedEvidence : siblings;
 
   const commit = commitStateFor(selectedPath, selectedItem, selectedEvidence);
+  // A failed listing leaves the folder unconfirmed (it may be gone) and its
+  // write access unknown, so nothing is chosen or changed in it until a Retry
+  // in its column loads it.
+  const listingError = containing.error ?? contents.error;
   // Until the column listing the selection has loaded, the folder may still
   // turn out to be gone.
-  const canCommitNow = commit.canCommit && !containing.isLoading;
+  const canCommitNow =
+    commit.canCommit && !containing.isLoading && listingError === null;
   // The folder the info pane describes and Upload saves into: the selection,
   // or, with a file selected, the folder holding it. Until the file's row has
   // loaded the pane shows that folder, never the file as if it were one.
@@ -255,6 +260,7 @@ function FolderColumnsBrowser({
       (rootLocation.kind === "path" ? rootLocation.path : null))
     : selectedPath;
   const canChange =
+    listingError === null &&
     folderPath !== null &&
     isWritable(folderPath, file ? null : selectedItem, selectedEvidence);
 
@@ -455,6 +461,8 @@ function FolderColumnsBrowser({
 
   const commitRow = (item: WorkspaceItem, siblings: WorkspaceItem[]) => {
     const path = pickerRowKey(item, target);
+    // The selection whose listing failed waits for a Retry, as Select does.
+    if (path === selectedPath && listingError !== null) return;
     if (commitStateFor(path, item, evidenceFor(path, siblings)).canCommit)
       onCommit(path, item);
   };
@@ -774,6 +782,7 @@ function FolderColumnsBrowser({
               homePath={homePath}
               item={selectedItem}
               contents={contents}
+              listingError={listingError}
               commit={commit}
               canChange={canChange}
               onNewFolder={() => {

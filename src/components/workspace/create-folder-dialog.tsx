@@ -7,13 +7,16 @@ import {
   DialogFooter,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
+import { workspaceErrorMessage } from "@/lib/services/workspace/workspace-errors";
 
 export interface CreateFolderDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** Resolves once the folder exists; a rejection keeps the dialog open with the reason. */
   onCreateFolder: (folderName: string) => Promise<void>;
   isCreating: boolean;
 }
@@ -25,22 +28,30 @@ export function CreateFolderDialog({
   isCreating,
 }: CreateFolderDialogProps) {
   const [folderName, setFolderName] = React.useState("");
+  const [createError, setCreateError] = React.useState<string | null>(null);
   const [prevOpen, setPrevOpen] = React.useState(open);
 
   if (prevOpen !== open) {
     setPrevOpen(open);
-    if (open) setFolderName("");
+    if (open) {
+      setFolderName("");
+      setCreateError(null);
+    }
   }
 
   const handleCreate = () => {
     const name = folderName.trim();
     if (!name || isCreating) return;
+    setCreateError(null);
     onCreateFolder(name).then(
       () => {
         onOpenChange(false);
       },
-      () => {
-        /* error handled elsewhere */
+      (error: unknown) => {
+        // Stay open with the typed name, so the user can retry as is.
+        setCreateError(
+          `Couldn't create folder "${name}": ${workspaceErrorMessage(error, "the workspace service returned an error.")}`,
+        );
       },
     );
   };
@@ -63,6 +74,7 @@ export function CreateFolderDialog({
             value={folderName}
             onChange={(e) => {
               setFolderName(e.target.value);
+              setCreateError(null);
             }}
             placeholder="My Folder"
             disabled={isCreating}
@@ -73,6 +85,11 @@ export function CreateFolderDialog({
               }
             }}
           />
+          {createError && (
+            <Alert variant="destructive" size="sm">
+              <AlertDescription>{createError}</AlertDescription>
+            </Alert>
+          )}
         </div>
         <DialogFooter showCloseButton={false}>
           <Button

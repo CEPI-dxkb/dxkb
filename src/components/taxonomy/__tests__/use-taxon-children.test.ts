@@ -92,6 +92,18 @@ describe("fetchTaxonChildren", () => {
     );
   });
 
+  it("keeps the HTTP status so an outage is not retried at once", async () => {
+    server.use(
+      http.get(childrenPath, () =>
+        HttpResponse.json({ error: "maintenance" }, { status: 503 }),
+      ),
+    );
+
+    await expect(fetchTaxonChildren(235)).rejects.toMatchObject({
+      status: 503,
+    });
+  });
+
   it("rejects a response with no rows array instead of returning undefined", async () => {
     server.use(http.get(childrenPath, () => HttpResponse.json({})));
 

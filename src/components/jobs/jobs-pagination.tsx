@@ -17,7 +17,15 @@ const pageSizeItems = pageSizeOptions.map((size) => ({
   label: String(size),
 }));
 
+/**
+ * Whether the list behind the footer has loaded. While it has not, and when
+ * it failed with nothing to show, `totalTasks` is a placeholder 0, so the
+ * footer must not report it as "No jobs found".
+ */
+export type JobsListStatus = "loading" | "error" | "ready";
+
 interface JobsPaginationProps {
+  status?: JobsListStatus;
   offset: number;
   limit: number;
   totalOnPage: number;
@@ -55,7 +63,27 @@ function getPageNumbers(current: number, total: number): (number | "ellipsis")[]
   return pages;
 }
 
+function rangeSummary(
+  status: JobsListStatus,
+  offset: number,
+  totalOnPage: number,
+  totalTasks: number,
+) {
+  if (status === "loading") return "Loading jobs…";
+  // The list's own alert explains the failure; a count here would be invented.
+  if (status === "error") return null;
+  if (totalTasks === 0) return "No jobs found";
+  return (
+    <>
+      Showing {offset + 1}
+      {"\u2013"}
+      {offset + totalOnPage} of {totalTasks} jobs
+    </>
+  );
+}
+
 export function JobsPagination({
+  status = "ready",
   offset,
   limit,
   totalOnPage,
@@ -74,9 +102,7 @@ export function JobsPagination({
   return (
     <div className="flex items-center justify-between p-2">
       <span className="text-xs text-muted-foreground">
-        {totalTasks === 0
-          ? "No jobs found"
-          : <>Showing {offset + 1}{"\u2013"}{offset + totalOnPage} of {totalTasks} jobs</>}
+        {rangeSummary(status, offset, totalOnPage, totalTasks)}
       </span>
       <div className="flex items-center gap-1">
         <Select

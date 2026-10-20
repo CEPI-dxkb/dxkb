@@ -112,4 +112,28 @@ describe("GenomeSuggestionList", () => {
     expect(other).toHaveClass("bg-transparent");
     expect(other).not.toHaveClass("bg-accent");
   });
+
+  it("announces a failed search with a Retry that runs it again", () => {
+    const onRetry = vi.fn();
+    render(
+      <GenomeSuggestionList
+        suggestions={[]}
+        isLoading={false}
+        error="Genome search unavailable: BV-BRC genome search failed: 503 Service Unavailable"
+        onRetry={onRetry}
+        emptyMessage="No genomes found"
+        highlightedIndex={-1}
+        itemRefs={{ current: [] }}
+        onSelect={vi.fn()}
+        onHighlight={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Genome search unavailable: BV-BRC genome search failed: 503 Service Unavailable",
+    );
+    expect(screen.queryByText("No genomes found")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+    expect(onRetry).toHaveBeenCalledTimes(1);
+  });
 });

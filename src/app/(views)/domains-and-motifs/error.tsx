@@ -1,37 +1,22 @@
 "use client";
 
-import { useEffect } from "react";
+import {
+  type RouteErrorProps,
+  ViewErrorBoundary,
+} from "@/components/errors/view-error-boundary";
 
-import { Button } from "@/components/ui/button";
-
-export default function DomainsAndMotifsError({
-  error,
-  retry,
-}: {
-  error: Error & { digest?: string };
-  reset: () => void;
-  // Refreshes the route and then resets. reset() alone re-renders the same
-  // failed server payload, so the button could never recover.
-  retry: () => void;
-}) {
-  useEffect(() => {
-    console.error(error);
-  }, [error]);
-
+// This view fetches its data on the client, so an error that reaches the
+// boundary is a client render failure whose message can carry request
+// details; it shows fixed copy (and the digest, when there is one) instead.
+export default function DomainsAndMotifsError(props: RouteErrorProps) {
   return (
-    <div
-      className="m-4 rounded-lg border border-destructive/40 bg-destructive/5 p-6"
-      role="alert"
-    >
-      <h1 className="text-lg font-semibold">
-        Domains and Motifs view could not be loaded
-      </h1>
-      <p className="my-2 text-sm text-muted-foreground">
-        An unexpected error occurred while loading this view.
-      </p>
-      <Button variant="outline" onClick={retry}>
-        Try again
-      </Button>
-    </div>
+    <ViewErrorBoundary
+      {...props}
+      title="Domains and Motifs view could not be loaded"
+      description="An unexpected error occurred while loading this view."
+      hideMessage
+      backHref="/domains-and-motifs"
+      backLabel="Browse domains and motifs"
+    />
   );
 }

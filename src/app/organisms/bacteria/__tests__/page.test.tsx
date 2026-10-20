@@ -7,8 +7,10 @@ const { fetchTaxonomy, redirectMock } = vi.hoisted(() => ({
   redirectMock: vi.fn((path: string) => { throw new Error(`REDIRECT:${path}`); }),
 }));
 
+// The static fallback itself is covered with MSW in
+// src/app/organisms/__tests__/landing-outage.test.tsx.
 vi.mock("@/lib/services/organisms/taxonomy", () => ({
-  fetchOrganismTaxonomy: (taxonId: number) => fetchTaxonomy(taxonId) as unknown,
+  fetchLandingRootTaxonomy: (taxonId: number) => fetchTaxonomy(taxonId) as unknown,
 }));
 vi.mock("next/navigation", () => ({
   redirect: redirectMock,

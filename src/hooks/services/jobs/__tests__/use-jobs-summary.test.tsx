@@ -135,4 +135,28 @@ describe("useJobsSummary", () => {
 
     expect(nextRefetchInterval(queryClient, ["jobs-summary", false])).toBe(3_000);
   });
+
+  it("fetches once and does not poll when poll is false", async () => {
+    let calls = 0;
+    server.use(
+      http.post("/api/services/app-service/jobs/summary", () => {
+        calls += 1;
+        return HttpResponse.json({ taskSummary: { running: 1 }, appSummary: {} });
+      }),
+    );
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+
+    const { result } = renderHook(
+      () => useJobsSummary(false, { poll: false }),
+      { wrapper: createWrapper(queryClient) },
+    );
+
+    await waitFor(() => { expect(result.current.isSuccess).toBe(true); });
+
+    expect(calls).toBe(1);
+    // Running jobs would otherwise poll every 3 s.
+    expect(nextRefetchInterval(queryClient, ["jobs-summary", false])).toBe(false);
+  });
 });

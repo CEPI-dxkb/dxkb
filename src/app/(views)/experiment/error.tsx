@@ -1,31 +1,17 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
+import {
+  type RouteErrorProps,
+  ViewErrorBoundary,
+} from "@/components/errors/view-error-boundary";
 
-interface ExperimentErrorProps {
-  error: Error & { digest?: string };
-  reset: () => void;
-  // Refreshes the route and then resets. reset() alone re-renders the same
-  // failed server payload, so the button could never recover.
-  retry: () => void;
-}
-
-export default function ExperimentError({
-  error,
-  retry,
-}: ExperimentErrorProps) {
+export default function ExperimentError(props: RouteErrorProps) {
   return (
-    <div
-      className="m-4 rounded-lg border border-destructive/40 bg-destructive/5 p-6"
-      role="alert"
-    >
-      <h1 className="text-lg font-semibold">
-        Experiment view could not be loaded
-      </h1>
-      <p className="my-2 text-sm text-muted-foreground">{error.message}</p>
-      <Button variant="outline" onClick={retry}>
-        Try again
-      </Button>
-    </div>
+    <ViewErrorBoundary
+      {...props}
+      title="Experiment view could not be loaded"
+      backHref="/experiment"
+      backLabel="Browse experiments"
+    />
   );
 }

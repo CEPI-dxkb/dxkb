@@ -13,6 +13,7 @@ import {
   type CSSProperties,
   type KeyboardEvent,
 } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { ChevronRight, FolderPlus, Lock } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
@@ -20,6 +21,8 @@ import {
   WorkspaceItemIcon,
   type FolderIconVariant,
 } from "@/components/workspace/workspace-item-icon";
+import { QueryRetryButton } from "@/components/views/query-retry-button";
+import { useRetryKeepingError } from "@/components/views/use-retry-keeping-error";
 import { useWorkspacePickerListing } from "@/hooks/services/workspace/use-workspace-picker-listing";
 import type { WorkspaceItem } from "@/lib/services/workspace/domain";
 import { formatFileSize, formatOwner } from "@/lib/services/workspace/helpers";
@@ -33,7 +36,8 @@ import {
   type PickerLocation,
   type PickerTarget,
 } from "@/lib/services/workspace/picker-views";
-import { cn } from "@/lib/utils";
+import { workspaceQueryKeys } from "@/lib/services/workspace/workspace-query-keys";
+import { cn, formatUserFacingErrorMessage } from "@/lib/utils";
 import { PaneResizeHandle } from "./folder-picker-resize-handle";
 import { columnWidthLimitsFor } from "./folder-picker-utils";
 
@@ -109,6 +113,23 @@ export function FolderPickerColumn({
   onSelectionMissing,
 }: FolderPickerColumnProps) {
   const listing = useWorkspacePickerListing({ location, username });
+  const queryClient = useQueryClient();
+  // Retry reloads every workspace read on screen that failed, not just this
+  // column's: an outage fails the columns and the info pane together, and
+  // they share these reads. The error stays up, "Retrying…", until it answers.
+  const retry = useRetryKeepingError(
+    {
+      error: listing.error,
+      isFetching: listing.isLoading,
+      refetch: () =>
+        queryClient.refetchQueries({
+          queryKey: workspaceQueryKeys.all,
+          type: "active",
+          predicate: (query) => query.state.status === "error",
+        }),
+    },
+    transitionKey,
+  );
   const selectionMissing =
     !listing.isLoading &&
     !listing.error &&
@@ -252,17 +273,21 @@ export function FolderPickerColumn({
         className="scrollbar-themed relative min-h-0 flex-1 overflow-y-auto p-1"
       >
         {newFolder ? <NewFolderRow {...newFolder} /> : null}
-        {listing.isLoading ? (
-          <ColumnSkeleton />
-        ) : listing.error ? (
-          <div className="flex flex-col gap-1 p-2 text-xs">
+        {retry.error ? (
+          <div role="alert" className="flex flex-col items-start gap-1 p-2 text-xs">
             <p className="font-medium text-destructive">
               Couldn&apos;t load this folder.
             </p>
             <p className="wrap-break-word text-muted-foreground">
-              {listing.error.message}
+              {formatUserFacingErrorMessage(
+                retry.error,
+                "The workspace service gave no reason.",
+              )}
             </p>
+            <QueryRetryButton retrying={retry.retrying} onRetry={retry.retry} />
           </div>
+        ) : listing.isLoading ? (
+          <ColumnSkeleton />
         ) : rows.length === 0 ? (
           newFolder ? null : (
             <div className="flex h-full flex-col items-center justify-center gap-1 px-4 text-center text-xs text-muted-foreground">

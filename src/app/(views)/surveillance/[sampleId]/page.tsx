@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
+import { RecordUnavailable } from "@/components/errors/record-unavailable";
 import { isSurveillanceSampleId } from "@/lib/surveillance-view";
 import { getSurveillance } from "@/lib/surveillance-view/server";
 import {
   canonicalizeCompoundSampleUrl,
   type CompoundSampleQuery,
-  loadCompoundSamplePage,
+  loadCompoundSampleState,
   scalarQueryParam,
 } from "@/lib/views/compound-sample-page";
 import { surveillanceHref } from "@/lib/views/hrefs";
@@ -21,7 +22,7 @@ export async function generateMetadata({
   searchParams,
 }: SurveillancePageProps): Promise<Metadata> {
   const [{ sampleId }, query] = await Promise.all([params, searchParams]);
-  const { sampleId: decodedSampleId, result } = await loadCompoundSamplePage(
+  const loaded = await loadCompoundSampleState(
     sampleId,
     scalarQueryParam(query.pathogen_test_type),
     {
@@ -30,6 +31,10 @@ export async function generateMetadata({
       lookup: getSurveillance,
     },
   );
+  if ("unavailable" in loaded) {
+    return { title: `${loaded.sampleId} | Surveillance` };
+  }
+  const { sampleId: decodedSampleId, result } = loaded;
   return {
     title: `${decodedSampleId} | Surveillance`,
     description:
@@ -45,7 +50,7 @@ export default async function SurveillancePage({
 }: SurveillancePageProps) {
   const [{ sampleId }, query] = await Promise.all([params, searchParams]);
   const pathogenTestType = scalarQueryParam(query.pathogen_test_type);
-  const { sampleId: decodedSampleId, result } = await loadCompoundSamplePage(
+  const loaded = await loadCompoundSampleState(
     sampleId,
     pathogenTestType,
     {
@@ -54,6 +59,20 @@ export default async function SurveillancePage({
       lookup: getSurveillance,
     },
   );
+  if ("unavailable" in loaded) {
+    // An outage is rendered, not thrown: production would redact its message.
+    return (
+      <RecordUnavailable
+        viewLabel="Surveillance View"
+        recordLabel="Surveillance record"
+        recordId={loaded.sampleId}
+        message={loaded.unavailable}
+        collectionHref="/surveillance"
+        collectionLabel="Surveillance records"
+      />
+    );
+  }
+  const { sampleId: decodedSampleId, result } = loaded;
   canonicalizeCompoundSampleUrl(decodedSampleId, query, {
     discriminatorParam: "pathogen_test_type",
     href: surveillanceHref,

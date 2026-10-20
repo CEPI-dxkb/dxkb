@@ -160,6 +160,37 @@ describe("FolderPickerInfo with a folder selected", () => {
     expect(detail("Contains")).toBe("…");
   });
 
+  it("says the contents are unknown when the folder's listing failed", () => {
+    renderInfo({
+      contents: {
+        items: [],
+        isLoading: false,
+        error: new Error("Internal server error"),
+      },
+    });
+
+    expect(detail("Contains")).toBe("Couldn't check");
+  });
+
+  it("claims no write access when a listing it relies on failed", () => {
+    renderInfo({
+      contents: {
+        items: [],
+        isLoading: false,
+        error: new Error("Internal server error"),
+      },
+      listingError: new Error("Internal server error"),
+      commit: { canCommit: true, reason: null },
+    });
+
+    expect(
+      screen.getByText(
+        "Couldn't check this folder's contents or write access: Internal server error",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/You can write here/)).not.toBeInTheDocument();
+  });
+
   it("confirms a folder the results can be saved in", () => {
     renderInfo({ commit: { canCommit: true, reason: null } });
 

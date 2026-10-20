@@ -5,12 +5,15 @@ import { useQuery } from "@tanstack/react-query";
 import { Star } from "lucide-react";
 
 import { workspaceNavItems } from "@/components/navbars/navbar-links";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
 import { NavigationMenuLink } from "@/components/ui/navigation-menu";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useRecentWorkspaceFolders } from "@/hooks/use-recent-workspace-folders";
 import { loadFavorites } from "@/lib/services/workspace/favorites";
 import { workspaceQueryKeys } from "@/lib/services/workspace/workspace-query-keys";
 import { getWorkspaceFolderDisplayName } from "@/lib/recent-workspace-folders";
+import { formatUserFacingErrorMessage } from "@/lib/utils";
 import { buildFolderHref, resolveWorkspaceHref } from "./workspace-nav-utils";
 
 interface WorkspaceDropdownContentProps {
@@ -22,7 +25,12 @@ export function WorkspaceDropdownContent({
   isAuthenticated,
   wsUsername,
 }: WorkspaceDropdownContentProps) {
-  const { data: favoritePaths = [], isLoading: favoritesLoading } = useQuery({
+  const {
+    data: favoritePaths = [],
+    isLoading: favoritesLoading,
+    error: favoritesError,
+    refetch: refetchFavorites,
+  } = useQuery({
     queryKey: workspaceQueryKeys.favorites(wsUsername),
     queryFn: () => loadFavorites(wsUsername),
     enabled: isAuthenticated && !!wsUsername,
@@ -68,7 +76,8 @@ export function WorkspaceDropdownContent({
       {isAuthenticated &&
         (favoritePaths.length > 0 ||
           recentFolders.length > 0 ||
-          favoritesLoading) && (
+          favoritesLoading ||
+          favoritesError) && (
           <div className="mt-1 pt-1">
             <div className="grid grid-cols-2 gap-2">
               {/* Favorite Folders */}
@@ -82,6 +91,27 @@ export function WorkspaceDropdownContent({
                     <Skeleton className="h-5 w-32" />
                     <Skeleton className="h-5 w-24" />
                   </div>
+                ) : favoritesError ? (
+                  <Alert variant="destructive" size="sm">
+                    <AlertDescription>
+                      <p>
+                        Couldn&apos;t load favorites:{" "}
+                        {formatUserFacingErrorMessage(
+                          favoritesError,
+                          "the workspace service did not answer.",
+                        )}
+                      </p>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          void refetchFavorites();
+                        }}
+                      >
+                        Retry
+                      </Button>
+                    </AlertDescription>
+                  </Alert>
                 ) : favoritePaths.length > 0 ? (
                   favoritePaths.map((path) => (
                     <NavItem

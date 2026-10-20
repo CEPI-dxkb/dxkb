@@ -6,6 +6,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import * as authClient from "@/lib/auth/client";
+import { formatPrefixedErrorMessage } from "@/lib/utils";
 import type {
   AuthUser,
   ProfilePatch,
@@ -91,8 +92,10 @@ export function useExitImpersonation() {
     try {
       await exitImpersonation();
       toast.success("Returned to your account");
-    } catch {
-      toast.error("Failed to exit impersonation");
+    } catch (error) {
+      toast.error(
+        formatPrefixedErrorMessage("Failed to exit impersonation", error),
+      );
     }
   };
 }
@@ -104,8 +107,10 @@ export function useResendVerificationEmail(): () => Promise<void> {
     try {
       await sendVerificationEmail();
       toast.success("Verification email sent");
-    } catch {
-      toast.error("Failed to send verification email");
+    } catch (error) {
+      toast.error(
+        formatPrefixedErrorMessage("Failed to send verification email", error),
+      );
     }
   };
 }

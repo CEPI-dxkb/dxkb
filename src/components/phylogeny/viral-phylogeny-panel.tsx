@@ -1,7 +1,7 @@
 "use client";
 
 import { ArrowLeft, Network } from "lucide-react";
-import { useState } from "react";
+import { useState, type ComponentProps } from "react";
 
 import { SectionError } from "@/components/organisms/shared/section-error";
 import { Button } from "@/components/ui/button";
@@ -47,7 +47,11 @@ export function ViralPhylogenyPanel({
       <div className="p-4">
         <SectionError
           title="Viral trees unavailable"
-          message={family.error.message}
+          error={family.error}
+          onRetry={() => {
+            void family.refetch();
+          }}
+          isRetrying={family.isFetching}
         />
       </div>
     );
@@ -126,7 +130,10 @@ function TreeViewer({
   if (choice.viewer === "nextstrain") {
     if (auspiceUrl === null) {
       return (
-        <TreeError message="The tree reference contains an invalid dataset identifier." />
+        <TreeError
+          error="The tree reference contains an invalid dataset identifier."
+          onRetry={false}
+        />
       );
     }
     return (
@@ -141,10 +148,25 @@ function TreeViewer({
     );
   }
   if (xmlUrl === null) {
-    return <TreeError message="The tree reference contains an invalid URL." />;
+    return (
+      <TreeError
+        error="The tree reference contains an invalid URL."
+        onRetry={false}
+      />
+    );
   }
   if (tree.isPending) return <Skeleton className="m-4 h-[calc(100%-2rem)]" />;
-  if (tree.isError) return <TreeError message={tree.error.message} />;
+  if (tree.isError) {
+    return (
+      <TreeError
+        error={tree.error}
+        onRetry={() => {
+          void tree.refetch();
+        }}
+        isRetrying={tree.isFetching}
+      />
+    );
+  }
   return (
     <ArchaeopteryxPhylogeny
       key={xmlUrl}
@@ -154,10 +176,12 @@ function TreeViewer({
   );
 }
 
-function TreeError({ message }: { message: string }) {
+function TreeError(
+  props: Omit<ComponentProps<typeof SectionError>, "title">,
+) {
   return (
     <div className="p-4">
-      <SectionError title="Tree unavailable" message={message} />
+      <SectionError title="Tree unavailable" {...props} />
     </div>
   );
 }

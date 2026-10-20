@@ -432,7 +432,14 @@ export function buildWorkspaceOverrides(
     matchBody: (parsed) =>
       (parsed as { method?: string } | null)?.method === "Workspace.get",
     status: 500,
-    body: buildBrowserRpcError(-32000, "Object not found"),
+    // What `/api/services/workspace` really answers for a missing object: the
+    // Workspace's JSON-RPC error arrives as an HTTP 500, and the proxy keeps
+    // its message in `apiResponse` (see `sanitizeUpstreamError`). The app's
+    // "missing vs outage" check (`workspace-errors.ts`) reads it from there.
+    body: {
+      error: "BV-BRC API error: 500 Internal Server Error",
+      apiResponse: { code: -32603, message: "_ERROR_Object not found!_" },
+    },
   };
 
   // Fallback for any Workspace.* methods we haven't explicitly mocked. Off by default —

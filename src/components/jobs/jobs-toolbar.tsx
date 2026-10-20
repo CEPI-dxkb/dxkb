@@ -10,6 +10,7 @@ import {
   XCircle,
   Clock,
   CirclePlay,
+  TriangleAlert,
 } from "lucide-react";
 import { CirclePlaySpinner } from "@/lib/jobs/icons";
 import { Button } from "@/components/ui/button";
@@ -51,6 +52,11 @@ interface JobsToolbarProps {
   onRefresh: () => void;
   isRefreshing: boolean;
   statusSummary?: Record<string, number | undefined>;
+  /**
+   * Why the job summary (the status counts and the service list) could not be
+   * loaded, already condensed for display. Shown in place of the counts.
+   */
+  summaryError?: string;
   dataUpdatedAt?: number;
   dateFrom: Date | undefined;
   dateTo: Date | undefined;
@@ -71,6 +77,7 @@ export function JobsToolbar({
   onRefresh,
   isRefreshing,
   statusSummary,
+  summaryError,
   dataUpdatedAt,
   dateFrom,
   dateTo,
@@ -184,6 +191,12 @@ export function JobsToolbar({
 
       {/* Status bar + refresh */}
       <div className="flex min-w-0 flex-wrap items-center gap-1 text-sm text-muted-foreground">
+        {!statusSummary && summaryError && (
+          <span role="status" className="flex min-w-0 items-center gap-1">
+            <TriangleAlert className="size-3.5 shrink-0 text-warning" />
+            Job counts and the service list are unavailable: {summaryError}
+          </span>
+        )}
         {statusSummary && (
           <>
             <span className="flex items-center gap-1">

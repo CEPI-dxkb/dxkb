@@ -30,6 +30,16 @@ const bvbrcRanks = [
   "tribe", "varietas",
 ];
 
+// Ranks the core lacks but the stylesheet still colors (NCBI's retired
+// `superkingdom`, `subtype`) need the same check, so test every rank either
+// side names.
+const checkedRanks = [
+  ...new Set([
+    ...bvbrcRanks,
+    ...rankRules.flatMap((rule) => rule.ranks).filter((rank) => rank !== "*"),
+  ]),
+];
+
 function classesFor(rank: string): string | undefined {
   return (
     rankRules.find((rule) => rule.ranks.includes(rank)) ??
@@ -44,7 +54,10 @@ describe("taxonomy rank badge colors", () => {
 
   it("draws only 'no rank' in neutral gray", () => {
     expect(classesFor("no rank")).toContain("bg-muted");
-    const gray = bvbrcRanks.filter(
+    expect(checkedRanks).toEqual(
+      expect.arrayContaining(["superkingdom", "subtype"]),
+    );
+    const gray = checkedRanks.filter(
       (rank) => rank !== "no rank" && classesFor(rank)?.includes("bg-muted"),
     );
     expect(gray).toEqual([]);

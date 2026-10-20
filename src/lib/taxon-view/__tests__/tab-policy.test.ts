@@ -118,6 +118,14 @@ describe("resolveTabs — doc §5 truth table (conditional tabs only)", () => {
     expect(result).toEqual(["phylogeny", "amr-phenotypes", "interactions"]);
   });
 
+  it("cellular organisms (131567) — bacterial cluster without phylogeny", () => {
+    // The root's scope holds bacteria, but its own lineage has no "Bacteria",
+    // so the Phylogeny view would open the viral viewer on a tree that does
+    // not exist.
+    const result = condEnabled(tax({ taxonId: 131567, taxonRank: "no rank", lineageNames: ["cellular organisms"], lineageIds: [131567] }));
+    expect(result).toEqual(["amr-phenotypes", "interactions"]);
+  });
+
   it("Fungi (4751) — baseline only (doc §7.5)", () => {
     expect(condEnabled(tax({ taxonId: 4751, lineageNames: ["Eukaryota", "Fungi"], lineageIds: [2759, 4751] }))).toEqual([]);
   });

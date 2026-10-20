@@ -2,6 +2,7 @@
 import { buildTabContext } from "../tab-context";
 import type { PhyloManifest, TabContext } from "../tab-context";
 import {
+  hasBacterialOrViralPhylogeny,
   hasSerology,
   hasSfvt,
   hasStrains,
@@ -39,6 +40,30 @@ describe("organism-kind predicates", () => {
   it("isBacteria true only when lineage contains 'Bacteria'", () => {
     expect(isBacteria(ctx({ lineageNames: ["Bacteria", "Brucella"] }))).toBe(true);
     expect(isBacteria(ctx({ lineageNames: ["Viruses"] }))).toBe(false);
+  });
+});
+
+describe("hasBacterialOrViralPhylogeny", () => {
+  const cellularOrganisms = buildTabContext(
+    {
+      taxonId: 131567,
+      taxonName: "cellular organisms",
+      taxonRank: "no rank",
+      lineageNames: ["cellular organisms"],
+      lineageIds: [131567],
+      genomes: 0,
+    },
+    null,
+    getCuratedLists(),
+  );
+
+  it("does not open a tree for the cellular root, which isBacteria covers by scope", () => {
+    expect(isBacteria(cellularOrganisms)).toBe(true);
+    expect(hasBacterialOrViralPhylogeny(cellularOrganisms)).toBe(false);
+  });
+
+  it("opens one for a taxon whose own lineage holds Bacteria", () => {
+    expect(hasBacterialOrViralPhylogeny(ctx({ lineageNames: ["cellular organisms", "Bacteria"] }))).toBe(true);
   });
 });
 

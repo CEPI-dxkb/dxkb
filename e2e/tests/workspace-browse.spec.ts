@@ -265,7 +265,7 @@ test.describe("workspace browse", () => {
     await page.goto("/workspace/e2e-test-user@patricbrc.org/home");
     await expect(workspace.breadcrumbs).toBeVisible();
     await expect(
-      page.getByText(/failed to load workspace contents/i),
+      page.getByText(/couldn't load your home folder/i),
     ).toBeVisible();
   });
 

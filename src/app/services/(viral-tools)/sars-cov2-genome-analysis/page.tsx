@@ -26,6 +26,7 @@ import {
 } from "@/components/services/form-ui/service-card";
 import { ServiceLabel } from "@/components/services/form-ui/service-label";
 import { ServiceRadioGroup } from "@/components/services/form-ui/service-radio-group";
+import { ServiceSubmitError } from "@/components/services/form-ui/service-submit-error";
 import {
   defaultPrimerVersion,
   defaultSarsCov2GenomeAnalysisFormValues,
@@ -287,6 +288,7 @@ export default function SarsCov2GenomeAnalysisPage() {
             onValidationChange={setState("isOutputNameValid")}
           />
         </div>
+        <ServiceSubmitError form={form} />
         <div className="service-form-controls col-span-full">
           <Button type="button" variant="outline" onClick={reset}>
             Reset

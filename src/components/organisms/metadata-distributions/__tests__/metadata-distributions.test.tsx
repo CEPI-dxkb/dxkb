@@ -1,9 +1,15 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { Suspense } from "react";
 import { vi } from "vitest";
 
-const { push } = vi.hoisted(() => ({ push: vi.fn() }));
-vi.mock("next/navigation", () => ({ useRouter: () => ({ push }) }));
+const { push, refresh } = vi.hoisted(() => ({ push: vi.fn(), refresh: vi.fn() }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push, refresh }) }));
 
 vi.mock("@/lib/services/organisms/metadata-facets", () => ({
   fetchOrganismMetadataFacets: vi.fn(),
@@ -34,7 +40,21 @@ import { taxonomicDistributionSentinel } from "@/components/organisms/types";
 
 const emptyTaxonomic = { genus: [], species: [] };
 
+type Facets = Awaited<ReturnType<typeof fetchOrganismMetadataFacets>>;
+
+/** Answers each per-field facet request from `facets`. */
+function mockFacets(facets: Facets) {
+  vi.mocked(fetchOrganismMetadataFacets).mockImplementation(
+    (_scope, fields) =>
+      Promise.resolve(
+        Object.fromEntries(fields.map((field) => [field, facets[field] ?? []])),
+      ),
+  );
+}
+
 beforeEach(() => {
+  refresh.mockClear();
+  vi.mocked(fetchOrganismMetadataFacets).mockReset();
   vi.mocked(fetchTaxonomicDistribution).mockResolvedValue(emptyTaxonomic);
 });
 
@@ -45,7 +65,7 @@ async function renderServer(node: Promise<React.ReactElement>) {
 
 describe("MetadataDistributions", () => {
   it("renders configured donut charts", async () => {
-    vi.mocked(fetchOrganismMetadataFacets).mockResolvedValueOnce({
+    mockFacets({
       genus: [{ name: "Escherichia", count: 20 }],
       host_name: [{ name: "Homo sapiens", count: 12 }],
     });
@@ -59,7 +79,7 @@ describe("MetadataDistributions", () => {
   });
 
   it("renders Taxonomic Distribution chart", async () => {
-    vi.mocked(fetchOrganismMetadataFacets).mockResolvedValueOnce({});
+    mockFacets({});
     vi.mocked(fetchTaxonomicDistribution).mockResolvedValueOnce({
       genus: [{ name: "Brucella", count: 100 }],
       species: [{ name: "Brucella abortus", count: 50 }],
@@ -72,7 +92,7 @@ describe("MetadataDistributions", () => {
   });
 
   it("still renders when the taxonomic distribution fetch fails and shows an inline error", async () => {
-    vi.mocked(fetchOrganismMetadataFacets).mockResolvedValueOnce({
+    mockFacets({
       genus: [{ name: "Brucella", count: 100 }],
     });
     vi.mocked(fetchTaxonomicDistribution).mockRejectedValueOnce(new Error("taxonomic boom"));
@@ -90,7 +110,7 @@ describe("MetadataDistributions", () => {
   });
 
   it("renders the Taxonomic Distribution chart at the sentinel position and excludes the sentinel from the facets fetch", async () => {
-    vi.mocked(fetchOrganismMetadataFacets).mockResolvedValueOnce({
+    mockFacets({
       host_common_name: [{ name: "Human", count: 50 }],
     });
     vi.mocked(fetchTaxonomicDistribution).mockResolvedValueOnce({
@@ -113,7 +133,7 @@ describe("MetadataDistributions", () => {
   });
 
   it("renders the sequencing_centers field with the 'Sequencing Centers' label", async () => {
-    vi.mocked(fetchOrganismMetadataFacets).mockResolvedValueOnce({
+    mockFacets({
       sequencing_centers: [{ name: "NCBI", count: 100 }],
     });
 
@@ -127,7 +147,7 @@ describe("MetadataDistributions", () => {
   });
 
   it("does not fetch or render the AMR chart by default", async () => {
-    vi.mocked(fetchOrganismMetadataFacets).mockResolvedValueOnce({});
+    mockFacets({});
     amrSpy.mockClear();
 
     await renderServer(MetadataDistributions({ taxonId: 1, fields: [] }));
@@ -149,7 +169,7 @@ describe("MetadataDistributions", () => {
         },
       ],
     };
-    vi.mocked(fetchOrganismMetadataFacets).mockResolvedValueOnce({});
+    mockFacets({});
     vi.mocked(fetchAmrPhenotypeDistribution).mockResolvedValueOnce(amrData);
     amrSpy.mockClear();
 
@@ -168,7 +188,7 @@ describe("MetadataDistributions", () => {
   });
 
   it("falls back to empty AMR data when the AMR fetch fails and surfaces the error", async () => {
-    vi.mocked(fetchOrganismMetadataFacets).mockResolvedValueOnce({});
+    mockFacets({});
     vi.mocked(fetchAmrPhenotypeDistribution).mockRejectedValueOnce(
       new Error("amr boom"),
     );
@@ -193,7 +213,7 @@ describe("MetadataDistributions", () => {
   });
 
   it("summarizes a Genome query and leaves out an empty AMR chart", async () => {
-    vi.mocked(fetchOrganismMetadataFacets).mockResolvedValueOnce({});
+    mockFacets({});
     vi.mocked(fetchAmrPhenotypeDistribution).mockResolvedValueOnce({
       antibiotics: [],
     });
@@ -217,7 +237,7 @@ describe("MetadataDistributions", () => {
   });
 
   it("still shows a failed AMR request when empty AMR charts are hidden", async () => {
-    vi.mocked(fetchOrganismMetadataFacets).mockResolvedValueOnce({});
+    mockFacets({});
     vi.mocked(fetchAmrPhenotypeDistribution).mockRejectedValueOnce(
       new Error("amr boom"),
     );
@@ -241,7 +261,7 @@ describe("MetadataDistributions", () => {
 
   it("links each bucket to its genomes in the given Genomes tab", async () => {
     push.mockClear();
-    vi.mocked(fetchOrganismMetadataFacets).mockResolvedValueOnce({
+    mockFacets({
       host_common_name: [
         { name: "Human", count: 30 },
         { name: "", count: 5 },
@@ -278,7 +298,7 @@ describe("MetadataDistributions", () => {
   });
 
   it("links nothing without a Genomes tab", async () => {
-    vi.mocked(fetchOrganismMetadataFacets).mockResolvedValueOnce({
+    mockFacets({
       host_common_name: [{ name: "Human", count: 30 }],
     });
 
@@ -287,5 +307,88 @@ describe("MetadataDistributions", () => {
     );
 
     expect(screen.queryByRole("link")).toBeNull();
+  });
+
+  it("fails only the chart whose facet failed, keeping the rest of the grid", async () => {
+    vi.mocked(fetchOrganismMetadataFacets).mockImplementation((_scope, fields) =>
+      fields[0] === "host_common_name"
+        ? Promise.reject(
+            new Error(
+              "Host Distribution: The BV-BRC data service is unavailable (HTTP 503 Service Unavailable: Site Maintenance).",
+            ),
+          )
+        : Promise.resolve({ genus: [{ name: "Escherichia", count: 20 }] }),
+    );
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+
+    await renderServer(
+      MetadataDistributions({
+        taxonId: 562,
+        fields: ["genus", "host_common_name"],
+      }),
+    );
+
+    expect(fetchOrganismMetadataFacets).toHaveBeenCalledWith(562, ["genus"]);
+    expect(fetchOrganismMetadataFacets).toHaveBeenCalledWith(562, [
+      "host_common_name",
+    ]);
+    expect(screen.getByTestId("metadata-distributions")).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "Genus distribution" })).toBeInTheDocument();
+    expect(screen.getByText("Host Distribution")).toBeInTheDocument();
+    const alert = screen.getByRole("alert");
+    expect(alert).toHaveTextContent(
+      "Could not load: Host Distribution: The BV-BRC data service is unavailable (HTTP 503 Service Unavailable: Site Maintenance).",
+    );
+    // The section rendered, so its own Retry never appears: the chart's
+    // refreshes the route, re-running the failed facet.
+    fireEvent.click(within(alert).getByRole("button", { name: "Retry" }));
+    await waitFor(() => {
+      expect(refresh).toHaveBeenCalledTimes(1);
+    });
+    // The field name stays in the server log, for an operator.
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining("genome host_common_name facet fetch failed"),
+    );
+    warnSpy.mockRestore();
+  });
+
+  it("fails the collection-year chart on its own too", async () => {
+    vi.mocked(fetchOrganismMetadataFacets).mockImplementation((_scope, fields) =>
+      fields[0] === "collection_year"
+        ? Promise.reject(
+            new Error(
+              "Collection Year: The BV-BRC data service is unavailable (HTTP 504 Gateway Timeout).",
+            ),
+          )
+        : Promise.resolve({ genus: [{ name: "Escherichia", count: 20 }] }),
+    );
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+
+    await renderServer(
+      MetadataDistributions({ taxonId: 562, fields: ["genus", "collection_year"] }),
+    );
+
+    expect(screen.getByRole("img", { name: "Genus distribution" })).toBeInTheDocument();
+    const alert = screen.getByRole("alert");
+    expect(alert).toHaveTextContent(
+      "Could not load: Collection Year: The BV-BRC data service is unavailable (HTTP 504 Gateway Timeout).",
+    );
+    fireEvent.click(within(alert).getByRole("button", { name: "Retry" }));
+    await waitFor(() => {
+      expect(refresh).toHaveBeenCalledTimes(1);
+    });
+    warnSpy.mockRestore();
+  });
+
+  it("rethrows once, for the section error, when every request failed", async () => {
+    const outage = new Error("Genus: Could not reach the BV-BRC data service.");
+    vi.mocked(fetchOrganismMetadataFacets).mockRejectedValue(outage);
+    vi.mocked(fetchTaxonomicDistribution).mockRejectedValueOnce(
+      new Error("Taxonomic Distribution: Could not reach the BV-BRC data service."),
+    );
+
+    await expect(
+      MetadataDistributions({ taxonId: 562, fields: ["genus", "host_name"] }),
+    ).rejects.toBe(outage);
   });
 });

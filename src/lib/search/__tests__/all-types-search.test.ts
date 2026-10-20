@@ -1,15 +1,19 @@
 import { http, HttpResponse } from "msw";
 
 import {
+  allTypesSearchPath,
+  allTypesSearchQueryOptions,
   describeRows,
   fetchTypeMatches,
   formatCompact,
   toAllTypesResults,
   typeSearchQuery,
 } from "../all-types-search";
+import { DataRepositoryError } from "@/lib/data-api/client";
+import { isUpstreamOutage } from "@/lib/api/query-retry";
 import { server } from "@/test-helpers/msw-server";
 
-const dataApi = "https://p3.theseed.org/services/data_api";
+const searchRoute = `*${allTypesSearchPath}`;
 
 describe("typeSearchQuery", () => {
   it.each([
@@ -25,15 +29,65 @@ describe("typeSearchQuery", () => {
 });
 
 describe("fetchTypeMatches", () => {
-  it("reports a failed request with its status", async () => {
+  it("asks the same-origin search route, naming only the keyword", async () => {
+    let sent: unknown;
+    const matches = { genome: { result: { response: { numFound: 3 } } } };
     server.use(
-      http.post(`${dataApi}/query/`, () =>
-        HttpResponse.json({}, { status: 500 }),
+      http.post(searchRoute, async ({ request }) => {
+        sent = await request.json();
+        return HttpResponse.json(matches);
+      }),
+    );
+
+    await expect(fetchTypeMatches("influenza")).resolves.toEqual(matches);
+    expect(sent).toEqual({ keyword: "influenza" });
+  });
+
+  it("keeps the route's own message and status, so an outage is not retried", async () => {
+    const message =
+      "The BV-BRC data service did not respond (connection timed out after 10 s).";
+    server.use(
+      http.post(searchRoute, () =>
+        HttpResponse.json(
+          { error: message, code: "upstream_timeout" },
+          { status: 504 },
+        ),
       ),
     );
-    await expect(fetchTypeMatches(["genome"], "influenza", 5)).rejects.toThrow(
-      "Search request failed with status 500",
+
+    const error: unknown = await fetchTypeMatches("influenza").catch(
+      (caught: unknown) => caught,
     );
+
+    expect(error).toBeInstanceOf(DataRepositoryError);
+    expect(error).toMatchObject({
+      message,
+      status: 504,
+      code: "upstream_timeout",
+    });
+    expect(isUpstreamOutage(error)).toBe(true);
+  });
+
+  it("reports a failed request without a message by its status", async () => {
+    server.use(
+      http.post(searchRoute, () => new HttpResponse("oops", { status: 500 })),
+    );
+    await expect(fetchTypeMatches("influenza")).rejects.toThrow(
+      "Search request failed with status 500.",
+    );
+  });
+
+  it("says the search service could not be reached, keeping the browser's reason", async () => {
+    server.use(http.post(searchRoute, () => HttpResponse.error()));
+
+    await expect(fetchTypeMatches("influenza")).rejects.toThrow(
+      /^Could not reach the DXKB search service \(.+\)\. Check your connection and try again\.$/,
+    );
+  });
+
+  it("is not enabled for text with no search terms", () => {
+    expect(allTypesSearchQueryOptions('""').enabled).toBe(false);
+    expect(allTypesSearchQueryOptions("coli").enabled).toBe(true);
   });
 });
 

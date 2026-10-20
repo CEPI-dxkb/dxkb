@@ -1,3 +1,4 @@
+import { useSelector } from "@tanstack/react-store";
 import {
   FieldErrors,
   FieldItem,
@@ -23,6 +24,7 @@ import OutputFolder from "@/components/services/output-folder";
 import { RequiredFormCardTitle } from "@/components/forms/required-form-components";
 import { TaxonNameSelector } from "@/components/taxonomy/taxon-name-selector";
 import { TaxIDSelector } from "@/components/taxonomy/tax-id-selector";
+import { TaxonomyLookupNote } from "@/components/services/taxonomy-lookup-note";
 import {
   ServiceCardContent,
   ServiceCardHeader,
@@ -55,6 +57,10 @@ export function SarsGenomeParameters({
   outputPath,
   onValidationChange,
 }: Props) {
+  const taxonomyId = useSelector(
+    form.store,
+    (state) => state.values.taxonomy_id,
+  );
   return (
     <Card className="h-full">
       <ServiceCardHeader>
@@ -149,9 +155,8 @@ export function SarsGenomeParameters({
                     includeViruses={false}
                     includeBacteria={false}
                     includeEukaryotes={false}
-                    invalid={fieldErrorMessage(field) !== null}
+                    fieldError={fieldErrorMessage(field)}
                   />
-                  <FieldErrors field={field} />
                 </FieldItem>
               )}
             </form.Field>
@@ -185,14 +190,14 @@ export function SarsGenomeParameters({
                       }
                     }}
                     placeholder="NCBI Taxonomy ID"
-                    invalid={fieldErrorMessage(field) !== null}
+                    fieldError={fieldErrorMessage(field)}
                   />
-                  <FieldErrors field={field} />
                 </FieldItem>
               )}
             </form.Field>
           </div>
         </div>
+        <TaxonomyLookupNote form={form} taxonomyId={taxonomyId} />
         <form.Field name="my_label">
           {(field) => (
             <FieldItem>

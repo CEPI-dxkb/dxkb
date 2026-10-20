@@ -161,7 +161,8 @@ describe("WorkspaceObjectSelector searchOnInteraction", () => {
     searchOnInteraction,
     value,
   }: {
-    searchOnInteraction: boolean;
+    /** Left out, the selector's default applies. */
+    searchOnInteraction?: boolean;
     value?: string;
   }) {
     const repo = new InMemoryWorkspaceRepository({
@@ -200,7 +201,7 @@ describe("WorkspaceObjectSelector searchOnInteraction", () => {
     };
   }
 
-  it("searches on mount by default", async () => {
+  it("searches on mount when asked to", async () => {
     const { searchCount } = renderFolderSelector({
       searchOnInteraction: false,
       value: `${home}/Genome Groups`,
@@ -227,6 +228,19 @@ describe("WorkspaceObjectSelector searchOnInteraction", () => {
     );
   });
 
+  it("waits for the field to be used by default", async () => {
+    const { user, searchCount } = renderFolderSelector({});
+    // Give a mount-time search the chance to start.
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(searchCount()).toBe(0);
+
+    await user.click(screen.getByPlaceholderText("Search for folders..."));
+
+    await waitFor(() => {
+      expect(searchCount()).toBe(1);
+    });
+  });
+
   it("searches once the suggestions are opened", async () => {
     const { user, searchCount } = renderFolderSelector({
       searchOnInteraction: true,
@@ -239,5 +253,82 @@ describe("WorkspaceObjectSelector searchOnInteraction", () => {
       await screen.findByRole("option", { name: /Other/ }),
     ).toBeInTheDocument();
     expect(searchCount()).toBe(1);
+  });
+});
+
+describe("WorkspaceObjectSelector fields on one form", () => {
+  it("list nothing on mount, then once per type set, sharing it between fields of the same types", async () => {
+    const repo = new InMemoryWorkspaceRepository({
+      directories: {
+        "/testuser@bvbrc/home": [
+          { name: "Output", type: "folder" },
+          { name: "sample.fq", type: "reads" },
+          { name: "draft.fasta", type: "contigs" },
+        ],
+      },
+    });
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    render(
+      <QueryClientProvider client={queryClient}>
+        <AuthBoundary user={testAuthUser}>
+          <WorkspaceRepositoryProvider
+            value={{ authenticated: repo, public: repo }}
+          >
+            <WorkspaceObjectSelector
+              placeholder="Read file 1"
+              types="reads"
+              browse={false}
+              onSelectedObjectChange={vi.fn()}
+            />
+            <WorkspaceObjectSelector
+              placeholder="Read file 2"
+              types="reads"
+              browse={false}
+              onSelectedObjectChange={vi.fn()}
+            />
+            <WorkspaceObjectSelector
+              placeholder="Contigs"
+              types="contigs"
+              browse={false}
+              onSelectedObjectChange={vi.fn()}
+            />
+          </WorkspaceRepositoryProvider>
+        </AuthBoundary>
+      </QueryClientProvider>,
+    );
+    const searches = () =>
+      repo.calls.flatMap((call) =>
+        call.method === "searchObjects" ? [call.input.types] : [],
+      );
+    const user = userEvent.setup();
+
+    // Nothing is listed for fields nobody has touched.
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(searches()).toEqual([]);
+
+    await user.type(screen.getByPlaceholderText("Read file 1"), "s");
+    expect(
+      await screen.findByRole("option", { name: /sample\.fq/ }),
+    ).toBeInTheDocument();
+    expect(searches()).toEqual([["reads"]]);
+
+    // The second reads field reuses the first one's listing.
+    await user.type(screen.getByPlaceholderText("Read file 2"), "s");
+    expect(
+      await screen.findByRole("option", { name: /sample\.fq/ }),
+    ).toBeInTheDocument();
+    expect(searches()).toEqual([["reads"]]);
+
+    // Another type set is its own listing, filtered by the server.
+    await user.type(screen.getByPlaceholderText("Contigs"), "d");
+    expect(
+      await screen.findByRole("option", { name: /draft\.fasta/ }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("option", { name: /sample\.fq/ }),
+    ).not.toBeInTheDocument();
+    expect(searches()).toEqual([["reads"], ["contigs"]]);
   });
 });

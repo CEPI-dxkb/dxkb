@@ -61,7 +61,7 @@ export async function rpc<T = unknown>({
         getErrorMessage(apiResponse) ||
         getErrorMessage(errorValue) ||
         `HTTP error! status: ${String(response.status)}`;
-      throw new WorkspaceApiError(message, method, apiResponse);
+      throw new WorkspaceApiError(message, method, apiResponse, response.status);
     }
 
     const rawPayload: unknown = await response.json();

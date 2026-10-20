@@ -44,8 +44,9 @@ export class WorkspaceApiClient {
         const err = new Error(
           errorData.error ||
             `HTTP error! status: ${String(response.status)}`,
-        ) as Error & { apiResponse?: unknown };
+        ) as Error & { apiResponse?: unknown; status?: number };
         err.apiResponse = errorData.apiResponse ?? errorData;
+        err.status = response.status;
         throw err;
       }
 

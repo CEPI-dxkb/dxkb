@@ -1,5 +1,14 @@
 import { z } from "zod";
 import {
+  describeUpstreamFailure,
+  describeUpstreamResponse,
+  fetchUpstream,
+  isHtmlBody,
+  summarizeUpstreamBody,
+  upstreamServices,
+  upstreamTimeoutMs,
+} from "@/lib/api/upstream-failure";
+import {
   downloadFormats,
   downloadUnavailableReason,
   emptyDownloadMessage,
@@ -51,10 +60,47 @@ export class DataApiError extends Error {
     message: string,
     readonly status = 502,
     readonly code = "upstream_error",
+    options?: ErrorOptions,
   ) {
-    super(message);
+    super(message, options);
     this.name = "DataApiError";
   }
+}
+
+const dataService = upstreamServices.dataApi;
+
+/** One search of `ServerDataRepository.multiQuery`. */
+export interface DataApiMultiQuery {
+  dataType: string;
+  accept: string;
+  query: string;
+}
+
+/**
+ * A network failure or spent budget as the `DataApiError` the routes answer
+ * with: 504 `upstream_timeout` or 502 `service_unavailable`, naming the
+ * cause in the shared wording every backend uses. The `UpstreamError` stays
+ * as `cause`, so the route's log still shows its host. Anything else (a
+ * caller's `AbortError` included) is returned as is.
+ */
+function dataApiFailure(error: unknown): unknown {
+  const failure = describeUpstreamFailure(error, dataService, {
+    timeoutMs: upstreamTimeoutMs.dataApi,
+  });
+  if (!failure) return error;
+  return new DataApiError(failure.message, failure.status, failure.code, {
+    cause: error,
+  });
+}
+
+/**
+ * The HTML error page a JSON error message quotes ("Unable to parse the query
+ * response. <html>…<h1>503 Service Unavailable</h1>…"), or "" when it quotes
+ * none.
+ */
+function quotedHtmlPage(message: string): string {
+  const start = message.search(/<(html|head|body|title|h1)\b/i);
+  return start === -1 ? "" : message.slice(start);
 }
 
 function appendQuery(url: URL, clause: string): void {
@@ -526,6 +572,7 @@ export class ServerDataRepository {
       fastaAcceptTypes[request.type],
       "POST",
       predicate,
+      true,
     );
     return response.body;
   }
@@ -664,6 +711,7 @@ export class ServerDataRepository {
       format.accept,
       "POST",
       clauses.join("&"),
+      true,
     );
     const body = await nonEmptyBody(response.body);
     if (!body)
@@ -718,6 +766,45 @@ export class ServerDataRepository {
       );
   }
 
+  /**
+   * The Data API's multi-query endpoint (`POST {base}/query/`): several
+   * `{dataType, accept, query}` searches in one round trip, answered keyed as
+   * sent. It reads a JSON body and ignores Range. Same HTTPS-with-token guard,
+   * budget and error mapping as every other read; the all-data-types search
+   * route (`/api/data/search`) is its caller.
+   */
+  async multiQuery(
+    queries: Readonly<Record<string, DataApiMultiQuery>>,
+    signal?: AbortSignal,
+  ): Promise<Record<string, unknown>> {
+    const base = this.options.baseUrl.replace(/\/$/, "");
+    const response = await this.send(
+      new URL(`${base}/query/`),
+      0,
+      0,
+      signal,
+      "application/json",
+      "POST",
+      JSON.stringify(queries),
+      false,
+      "application/json",
+    );
+    const payload: unknown = await response.json().catch((error: unknown) => {
+      const failure = dataApiFailure(error);
+      if (failure instanceof DataApiError) throw failure;
+      if (error instanceof Error && error.name === "AbortError") throw error;
+      return null;
+    });
+    if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+      throw new DataApiError(
+        "Malformed search response: expected an object keyed by data type.",
+        502,
+        "malformed_response",
+      );
+    }
+    return payload as Record<string, unknown>;
+  }
+
   private url(resource: DataResource): URL {
     const base = this.options.baseUrl.replace(/\/$/, "");
     return new URL(`${base}/${resource}/`);
@@ -762,7 +849,13 @@ export class ServerDataRepository {
       method,
       body,
     );
-    const payload: unknown = await response.json().catch(() => null);
+    // A body that stalls past the budget is a timeout, not malformed JSON.
+    const payload: unknown = await response.json().catch((error: unknown) => {
+      const failure = dataApiFailure(error);
+      if (failure instanceof DataApiError) throw failure;
+      if (error instanceof Error && error.name === "AbortError") throw error;
+      return null;
+    });
     return { payload, headers: response.headers };
   }
 
@@ -780,6 +873,9 @@ export class ServerDataRepository {
     accept: string,
     method = "GET",
     body?: string,
+    streamBody = false,
+    // Every resource endpoint reads an RQL body; `multiQuery` sends JSON.
+    contentType = "application/rqlquery+x-www-form-urlencoded",
   ): Promise<Response> {
     if (this.options.token && url.protocol !== "https:") {
       throw new DataApiError(
@@ -794,27 +890,58 @@ export class ServerDataRepository {
       "X-Range": `items=${String(start)}-${String(end)}`,
     });
     if (this.options.token) headers.set("Authorization", this.options.token);
-    if (body)
-      headers.set("Content-Type", "application/rqlquery+x-www-form-urlencoded");
-    const response = await this.fetcher(url, {
-      method,
-      headers,
-      body,
-      signal,
-      ...(this.options.token ? { redirect: "error" as const } : {}),
-      cache: this.options.cache,
-      next: this.options.revalidate
-        ? { revalidate: this.options.revalidate }
-        : undefined,
-    });
+    if (body) headers.set("Content-Type", contentType);
+    let response: Response;
+    try {
+      response = await fetchUpstream(
+        url,
+        {
+          method,
+          headers,
+          body,
+          signal,
+          ...(this.options.token ? { redirect: "error" as const } : {}),
+          cache: this.options.cache,
+          next: this.options.revalidate
+            ? { revalidate: this.options.revalidate }
+            : undefined,
+        },
+        {
+          service: dataService,
+          timeoutMs: upstreamTimeoutMs.dataApi,
+          // FASTA and table downloads stream through unread and may run far
+          // past any budget; JSON reads are bounded through the body.
+          streamBody,
+          fetcher: this.fetcher,
+        },
+      );
+    } catch (error) {
+      throw dataApiFailure(error);
+    }
     if (!response.ok) {
-      const payload: unknown = await response.json().catch(() => null);
-      const message = upstreamMessage(payload, response.status);
+      const text = await response.text().catch(() => "");
+      let payload: unknown = null;
+      try {
+        payload = text ? JSON.parse(text) : null;
+      } catch {
+        // An HTML error page; summarized below, never forwarded.
+      }
+      // Only an HTML page's title and heading; a plain-text body stays
+      // unread as before, since it can carry upstream internals.
+      const contentType = response.headers.get("content-type");
+      const detail =
+        payload === null && isHtmlBody(text, contentType)
+          ? summarizeUpstreamBody(text, contentType)
+          : "";
+      const upstreamText =
+        payload === null && detail
+          ? `Data service request failed with status ${String(response.status)}: ${detail}.`
+          : upstreamMessage(payload, response.status);
       const serviceUnavailable =
         response.status === 503 ||
         (response.status >= 500 &&
           /503 service unavailable|no server is available to handle this request/i.test(
-            message,
+            upstreamText,
           ));
       const safeStatus = serviceUnavailable
         ? 503
@@ -833,10 +960,22 @@ export class ServerDataRepository {
                 : safeStatus === 503
                   ? "service_unavailable"
                   : "upstream_error";
+      // An outage reads as every backend's does ("The BV-BRC data service is
+      // unavailable (HTTP 503 Service Unavailable: Site Maintenance)."): its
+      // status, then only the title and heading of an HTML page behind it,
+      // or of one a JSON error quotes. A 5xx with a JSON error of the
+      // service's own ("Invalid query near …") keeps that message.
+      const isOutage =
+        serviceUnavailable || (payload === null && response.status >= 500);
+      const message = isOutage
+        ? describeUpstreamResponse(
+            response,
+            payload === null ? (detail ? text : "") : quotedHtmlPage(upstreamText),
+            dataService,
+          ).message
+        : upstreamText;
       throw new DataApiError(
-        serviceUnavailable
-          ? "The data service is temporarily unavailable. Please try again."
-          : message,
+        message,
         safeStatus,
         code,
       );

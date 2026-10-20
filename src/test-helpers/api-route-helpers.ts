@@ -45,6 +45,8 @@ export function mockNextRequest(
     rawBody?: BodyInit;
     headers?: Record<string, string>;
     searchParams?: Record<string, string>;
+    /** Aborts as the client disconnecting would (`request.signal`). */
+    signal?: AbortSignal;
   } = {},
 ): NextRequest {
   const {
@@ -54,6 +56,7 @@ export function mockNextRequest(
     rawBody,
     headers = {},
     searchParams,
+    signal,
   } = opts;
 
   let finalUrl = baseUrl;
@@ -74,6 +77,7 @@ export function mockNextRequest(
     if (rawBody !== undefined) init.body = rawBody;
     else if (body !== undefined) init.body = JSON.stringify(body);
   }
+  if (signal) init.signal = signal;
 
   return new NextRequest(finalUrl, init);
 }

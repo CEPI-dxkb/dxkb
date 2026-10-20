@@ -69,7 +69,7 @@ export async function fetchSerotypeDistribution(
 
   const payload = await fetchOrganismSolrJson(
     url,
-    "serotype distribution pivot",
+    { source: "genome collection_year,serovar pivot", label: "Serotype Distribution" },
     options.signal,
   );
   const rows = parseSerotypeDistributionPivot(payload);

@@ -19,9 +19,12 @@ const countryLimit = 300;
 const stateLimit = 100;
 const countyLimit = 1000;
 
+// Requests go unlabelled: a failed field fails the whole map, whose card names
+// it ("Geographic distribution could not be loaded"), and a failed pivot is
+// only logged.
 async function fetchField(baseUrl: string, scope: GenomeScope, field: string, limit: number | undefined, signal: AbortSignal | undefined): Promise<Record<string, number>> {
   const url = buildGenomeGeoFacetUrl(baseUrl, scope, field, limit);
-  const payload = await fetchOrganismSolrJson(url, `genome ${field} facet`, signal);
+  const payload = await fetchOrganismSolrJson(url, { source: `genome ${field} facet` }, signal);
   const list = parseSolrFacetList(payload, field);
   const map: Record<string, number> = {};
   for (const item of list) {
@@ -32,7 +35,7 @@ async function fetchField(baseUrl: string, scope: GenomeScope, field: string, li
 
 async function fetchPivot(baseUrl: string, scope: GenomeScope, primary: string, secondary: string, limit: number | undefined, signal: AbortSignal | undefined): Promise<Record<string, Record<string, number>>> {
   const url = buildGenomeGeoPivotUrl(baseUrl, scope, primary, secondary, limit);
-  const payload = await fetchOrganismSolrJson(url, `genome ${primary},${secondary} pivot`, signal);
+  const payload = await fetchOrganismSolrJson(url, { source: `genome ${primary},${secondary} pivot` }, signal);
   return parseSolrFacetPivot(payload, `${primary},${secondary}`);
 }
 
@@ -55,7 +58,7 @@ async function fetchPivotOrEmpty(baseUrl: string, scope: GenomeScope, primary: s
 async function fetchPivot3OrEmpty(baseUrl: string, scope: GenomeScope, primary: string, secondary: string, tertiary: string, limit: number | undefined, signal: AbortSignal | undefined): Promise<Record<string, Record<string, Record<string, number>>>> {
   const url = buildGenomeGeoPivot3Url(baseUrl, scope, primary, secondary, tertiary, limit);
   try {
-    const payload = await fetchOrganismSolrJson(url, `genome ${primary},${secondary},${tertiary} pivot`, signal);
+    const payload = await fetchOrganismSolrJson(url, { source: `genome ${primary},${secondary},${tertiary} pivot` }, signal);
     return parseSolrFacetPivot3(payload, `${primary},${secondary},${tertiary}`);
   } catch (err) {
     if (err instanceof DOMException && err.name === "AbortError") throw err;

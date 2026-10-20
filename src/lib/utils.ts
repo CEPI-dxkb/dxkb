@@ -36,6 +36,23 @@ export function formatUserFacingErrorMessage(
 }
 
 /**
+ * `formatUserFacingErrorMessage` behind a prefix naming what failed, for a
+ * toast that would otherwise not say which action it is about:
+ * "Failed to update profile: The BV-BRC profile service is unavailable (…)".
+ * Without a message it is the prefix alone ("Failed to update profile."), and
+ * a message that already starts with the prefix is not repeated.
+ */
+export function formatPrefixedErrorMessage(
+  prefix: string,
+  error: unknown,
+): string {
+  const reason = formatUserFacingErrorMessage(error, "");
+  if (!reason) return `${prefix}.`;
+  if (reason.toLowerCase().startsWith(prefix.toLowerCase())) return reason;
+  return `${prefix}: ${reason}`;
+}
+
+/**
  * Returns the first non-null/undefined value for the given keys on the object.
  */
 export function getFirstDefined(

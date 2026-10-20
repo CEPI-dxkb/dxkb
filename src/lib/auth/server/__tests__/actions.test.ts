@@ -364,20 +364,37 @@ describe("auth actions", () => {
     expect(mocks.restoreBackup).not.toHaveBeenCalled();
   });
 
-  it.each([{ error: unauthorized() }, { error: outage() }])(
-    "treats $error.code as an anonymous current-user read",
-    async ({ error }) => {
-      mocks.readSession.mockResolvedValue({
-        token: "token",
-        userId: "canonical-id",
-      });
-      mocks.getProfile.mockResolvedValue({ data: null, error });
+  it("treats an unauthorized profile read as signed out", async () => {
+    mocks.readSession.mockResolvedValue({
+      token: "token",
+      userId: "canonical-id",
+    });
+    mocks.getProfile.mockResolvedValue({ data: null, error: unauthorized() });
 
-      await expect(getCurrentUser()).resolves.toBeNull();
-      expect(mocks.clearCurrentSession).not.toHaveBeenCalled();
-      expect(mocks.clearSession).not.toHaveBeenCalled();
-    },
-  );
+    await expect(getCurrentUser()).resolves.toBeNull();
+    expect(mocks.clearCurrentSession).not.toHaveBeenCalled();
+    expect(mocks.clearSession).not.toHaveBeenCalled();
+  });
+
+  it("keeps the session user signed in, unverified, during a profile outage", async () => {
+    mocks.readSession.mockResolvedValue({
+      token: "token",
+      userId: "canonical-id",
+      realm: "realm",
+    });
+    mocks.getProfile.mockResolvedValue({ data: null, error: outage() });
+
+    await expect(getCurrentUser()).resolves.toMatchObject({
+      id: "canonical-id",
+      realm: "realm",
+      sessionUnverified: true,
+    });
+    expect(mocks.getProfile).toHaveBeenCalledWith("canonical-id", "token", {
+      timeoutMs: 5_000,
+    });
+    expect(mocks.clearCurrentSession).not.toHaveBeenCalled();
+    expect(mocks.clearSession).not.toHaveBeenCalled();
+  });
 
   it.each([
     {

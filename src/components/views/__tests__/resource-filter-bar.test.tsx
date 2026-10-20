@@ -393,6 +393,50 @@ describe("ResourceFilterBar facet controls", () => {
     expect(onRetryFacets).toHaveBeenCalledOnce();
   });
 
+  it("keeps the facet error, its Retry disabled as Retrying…, while the retry runs", () => {
+    render(
+      <ResourceFilterBar
+        layoutKey={layoutKey}
+        filters={{}}
+        facets={{}}
+        facetsLoading
+        facetsError="Facet query timed out upstream."
+        onRetryFacets={vi.fn()}
+        facetsRetrying
+        definitions={definitions}
+        onChange={vi.fn()}
+      />,
+      { wrapper: createUiPreferencesWrapper({ facetPanelOpen: true }) },
+    );
+
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Could not load filter values: Facet query timed out upstream.",
+    );
+    expect(screen.getByRole("button", { name: "Retrying…" })).toBeDisabled();
+  });
+
+  it("shows a quiet note, not a second alert, when the counts failed with the rows", () => {
+    render(
+      <ResourceFilterBar
+        layoutKey={layoutKey}
+        filters={{}}
+        facets={{}}
+        facetsUnavailable
+        onRetryFacets={vi.fn()}
+        definitions={definitions}
+        onChange={vi.fn()}
+      />,
+      { wrapper: createUiPreferencesWrapper({ facetPanelOpen: true }) },
+    );
+
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(
+      screen.getByText("Filter values are unavailable until the results load."),
+    ).toBeVisible();
+    // Not an empty facet: no "No values" columns stand in for the failure.
+    expect(screen.queryByText("No values")).not.toBeInTheDocument();
+  });
+
   it("opens the facet chooser via keyboard and exposes aria-expanded", async () => {
     const user = userEvent.setup();
     render(

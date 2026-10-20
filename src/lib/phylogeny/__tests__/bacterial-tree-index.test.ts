@@ -68,9 +68,13 @@ describe("bacterialTreeFilename", () => {
     );
     // Substring match: whether statusText survives the interceptor is not
     // this module's concern, the status code is.
-    await expect(bacterialTreeFilename(562)).rejects.toThrow(
-      "tree dictionary: 503",
-    );
+    await expect(bacterialTreeFilename(562)).rejects.toMatchObject({
+      name: "UpstreamError",
+      status: 503,
+      message: expect.stringContaining(
+        "phylogeny tree dictionary is unavailable (HTTP 503",
+      ) as unknown,
+    });
 
     server.use(
       http.get(dictionaryUrl, () => HttpResponse.json({ "562": "e.phyloxml" })),

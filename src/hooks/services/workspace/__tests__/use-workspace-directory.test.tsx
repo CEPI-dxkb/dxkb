@@ -1,4 +1,4 @@
-import { renderHook, waitFor } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { InMemoryWorkspaceRepository } from "@/lib/services/workspace/adapters/in-memory-workspace-repository";
@@ -130,4 +130,84 @@ describe("useWorkspaceDirectory", () => {
     expect(result.current.items).toEqual([]);
     expect(repo.calls.length).toBe(0);
   });
+
+  describe("refetch", () => {
+    const methods = (repo: InMemoryWorkspaceRepository) =>
+      repo.calls.map((call) => call.method);
+
+    it("does not look up permissions for an empty listing", async () => {
+      const repo = new InMemoryWorkspaceRepository({
+        directories: { "/alice@bvbrc/home": [] },
+      });
+      const { result } = renderHook(
+        () => useWorkspaceDirectory({ kind: "home", username: "alice", path: "" }),
+        { wrapper: makeWrapper(repo) },
+      );
+      await waitFor(() => { expect(result.current.hasLoaded).toBe(true); });
+
+      act(() => { result.current.refetch(); });
+      await waitFor(() => {
+        expect(methods(repo).filter((m) => m === "listDirectory")).toHaveLength(2);
+      });
+      expect(methods(repo)).not.toContain("listPermissions");
+    });
+
+    it("does not look up permissions after a failed listing", async () => {
+      const repo = new InMemoryWorkspaceRepository({
+        directories: { "/alice@bvbrc/home": [{ name: "x", type: "folder" }] },
+        errors: { listDirectory: new Error("did not respond") },
+      });
+      const { result } = renderHook(
+        () => useWorkspaceDirectory({ kind: "home", username: "alice", path: "" }),
+        { wrapper: makeWrapper(repo) },
+      );
+      await waitFor(() => { expect(result.current.error).not.toBeNull(); });
+
+      act(() => { result.current.refetch(); });
+      await waitFor(() => { expect(result.current.hasLoaded).toBe(true); });
+      // Only the listing that loaded its items asks for their permissions.
+      await waitFor(() => {
+        expect(repo.calls.filter((call) => call.method === "listPermissions")).toEqual([
+          { method: "listPermissions", paths: ["/alice@bvbrc/home/x"] },
+        ]);
+      });
+    });
+
+    it("sends nothing while the listing is disabled", async () => {
+      const repo = new InMemoryWorkspaceRepository({
+        directories: { "/alice@bvbrc/home": [{ name: "x", type: "folder" }] },
+      });
+      const { result } = renderHook(
+        () =>
+          useWorkspaceDirectory(
+            { kind: "home", username: "alice", path: "" },
+            { enabled: false },
+          ),
+        { wrapper: makeWrapper(repo) },
+      );
+
+      act(() => { result.current.refetch(); });
+      await new Promise((r) => setTimeout(r, 30));
+      expect(repo.calls).toEqual([]);
+    });
+
+    it("refreshes the permissions of loaded items", async () => {
+      const repo = new InMemoryWorkspaceRepository({
+        directories: { "/alice@bvbrc/home": [{ name: "x", type: "folder" }] },
+      });
+      const { result } = renderHook(
+        () => useWorkspaceDirectory({ kind: "home", username: "alice", path: "" }),
+        { wrapper: makeWrapper(repo) },
+      );
+      await waitFor(() => {
+        expect(methods(repo).filter((m) => m === "listPermissions")).toHaveLength(1);
+      });
+
+      act(() => { result.current.refetch(); });
+      await waitFor(() => {
+        expect(methods(repo).filter((m) => m === "listPermissions")).toHaveLength(2);
+      });
+    });
+  });
 });
+

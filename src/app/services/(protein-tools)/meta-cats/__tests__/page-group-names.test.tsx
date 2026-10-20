@@ -1,4 +1,5 @@
 import { render, screen, within } from "@testing-library/react";
+import { createQueryClientWrapper } from "@/test-helpers/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import type { ReactNode } from "react";
@@ -144,7 +145,7 @@ function groupCell(patricId: string) {
 describe("META-Cats Group Names field", () => {
   it("explains, while the grid is empty, where its names come from", async () => {
     const user = userEvent.setup();
-    render(<MetaCATSPage />);
+    render(<MetaCATSPage />, { wrapper: createQueryClientWrapper() });
 
     await openGroupNames(user);
 
@@ -162,7 +163,7 @@ describe("META-Cats Group Names field", () => {
   it("suggests the grid's group names once features are added", async () => {
     serveFeatureGroup(["Human", "Swine"]);
     const user = userEvent.setup();
-    render(<MetaCATSPage />);
+    render(<MetaCATSPage />, { wrapper: createQueryClientWrapper() });
     await addFeatureGroup(user);
 
     await openGroupNames(user);
@@ -175,7 +176,7 @@ describe("META-Cats Group Names field", () => {
   it("moves selected rows into a typed new group, as legacy does", async () => {
     serveFeatureGroup(["Human", "Swine"]);
     const user = userEvent.setup();
-    render(<MetaCATSPage />);
+    render(<MetaCATSPage />, { wrapper: createQueryClientWrapper() });
     await addFeatureGroup(user);
 
     await user.click(
@@ -201,7 +202,7 @@ describe("META-Cats Group Names field", () => {
   it("fills the field from a picked suggestion", async () => {
     serveFeatureGroup(["Human", "Swine"]);
     const user = userEvent.setup();
-    render(<MetaCATSPage />);
+    render(<MetaCATSPage />, { wrapper: createQueryClientWrapper() });
     await addFeatureGroup(user);
 
     await openGroupNames(user);
@@ -213,7 +214,7 @@ describe("META-Cats Group Names field", () => {
   it("says why there is nothing to suggest when no feature has the metadata", async () => {
     serveFeatureGroup([undefined, undefined]);
     const user = userEvent.setup();
-    render(<MetaCATSPage />);
+    render(<MetaCATSPage />, { wrapper: createQueryClientWrapper() });
     await addFeatureGroup(user);
 
     await openGroupNames(user);
@@ -229,7 +230,7 @@ describe("META-Cats Group Names field", () => {
 
   it("does not submit the job when Enter is pressed in the field", async () => {
     const user = userEvent.setup();
-    render(<MetaCATSPage />);
+    render(<MetaCATSPage />, { wrapper: createQueryClientWrapper() });
     const onSubmit = vi.fn((event: SubmitEvent) => {
       event.preventDefault();
     });
@@ -247,7 +248,7 @@ describe("META-Cats Groups Grid", () => {
   it("lists BV-BRC's columns, filled from the feature's genome", async () => {
     const genomeRequests = serveFeatureGroup(["Human", "Swine"]);
     const user = userEvent.setup();
-    render(<MetaCATSPage />);
+    render(<MetaCATSPage />, { wrapper: createQueryClientWrapper() });
     await addFeatureGroup(user);
 
     // The lookup asks for the grouping metadata and the accession.
@@ -287,7 +288,7 @@ describe("META-Cats Groups Grid", () => {
   it("deletes the rows selected in the grid", async () => {
     serveFeatureGroup(["Human", "Swine"]);
     const user = userEvent.setup();
-    render(<MetaCATSPage />);
+    render(<MetaCATSPage />, { wrapper: createQueryClientWrapper() });
     await addFeatureGroup(user);
 
     const deleteRows = screen.getByRole("button", { name: "Delete Rows" });

@@ -134,6 +134,19 @@ describe("InMemoryWorkspaceRepository", () => {
     ]);
   });
 
+  it("searchObjects reads an empty type list as every type", async () => {
+    const repo = new InMemoryWorkspaceRepository({
+      directories: {
+        "/u@bvbrc/home": [
+          { name: "top.reads", type: "reads" },
+          { name: "top.fa", type: "contigs" },
+        ],
+      },
+    });
+    const results = await repo.searchObjects({ username: "u", types: [] });
+    expect(results.map((i) => i.name).sort()).toEqual(["top.fa", "top.reads"]);
+  });
+
   it("getDownloadUrls falls back to fixture URL generator", async () => {
     const repo = new InMemoryWorkspaceRepository();
     const urls = await repo.getDownloadUrls(["/x/y/z"]);

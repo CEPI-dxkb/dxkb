@@ -129,7 +129,7 @@ describe("GET /api/services/sra-validation", () => {
     );
   });
 
-  it("returns 500 on other errors", async () => {
+  it("returns 502 when the upstream cannot be reached", async () => {
     server.use(
       http.get("http://mock-ncbi", () => {
         return HttpResponse.error();
@@ -142,6 +142,6 @@ describe("GET /api/services/sra-validation", () => {
     });
     const res = await GET(req, {});
 
-    expect(res.status).toBe(500);
+    expect(res.status).toBe(502);
   });
 });

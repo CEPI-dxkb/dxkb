@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { ServiceHeader } from "@/components/services/service-header";
 import { JobParamsDialog } from "@/components/services/job-params-dialog";
 import { Spinner } from "@/components/ui/spinner";
+import { ServiceSubmitError } from "@/components/services/form-ui/service-submit-error";
 
 import { useServiceRuntime } from "@/hooks/services/use-service-runtime";
 import { sarsCov2WastewaterAnalysisInfo } from "@/lib/services/info/sars-cov2-wastewater-analysis";
@@ -318,6 +319,7 @@ export default function SarsCov2WastewaterAnalysisPage() {
 
         {/* Form controls */}
         <div className="md:col-span-12">
+          <ServiceSubmitError form={form} />
           <div className="service-form-controls">
             <Button type="button" variant="outline" onClick={handleReset}>
               Reset

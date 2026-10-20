@@ -1,7 +1,6 @@
 "use server";
 
 import { requireAuthSession } from "@/lib/auth/server/route";
-import { getRequiredEnv } from "@/lib/env";
 import { buildMinhashServicePayload } from "@/lib/forms/(genomics)/similar-genome-finder/similar-genome-finder-form-utils";
 import type { SimilarGenomeFinderFormData } from "@/lib/forms/(genomics)/similar-genome-finder/similar-genome-finder-form-schema";
 import {
@@ -9,10 +8,22 @@ import {
   mergeGenomeResults,
   type SimilarGenomeFinderResultRow,
 } from "@/lib/forms/(genomics)/similar-genome-finder/similar-genome-finder-result-utils";
+import {
+  fetchMinhashGenomeDetails,
+  MinhashConfigurationError,
+  MinhashServiceError,
+  searchMinhash,
+} from "@/lib/services/minhash";
+import { formatUserFacingErrorMessage } from "@/lib/utils";
 
 export interface SubmitSimilarGenomesResult {
   success: true;
   rows: SimilarGenomeFinderResultRow[];
+  /**
+   * Why the hits have no genome names: the genome details lookup failed. The
+   * MinHash rows are still returned, keyed by genome ID.
+   */
+  genomeDetailsError?: string;
 }
 
 export interface SubmitSimilarGenomesError {
@@ -22,114 +33,6 @@ export interface SubmitSimilarGenomesError {
 
 export type SubmitSimilarGenomesResponse =
   SubmitSimilarGenomesResult | SubmitSimilarGenomesError;
-
-function getInternalApiOrigin(): string {
-  return new URL(getRequiredEnv("INTERNAL_API_ORIGIN")).origin;
-}
-
-function extractMinhashError(result: unknown): string | null {
-  if (result == null || typeof result !== "object") return null;
-  const err = (result as Record<string, unknown>).error;
-  if (typeof err === "string") return err;
-  if (err && typeof err === "object" && "message" in err) {
-    return String((err as { message?: unknown }).message);
-  }
-  if (err != null) return JSON.stringify(err);
-  return null;
-}
-
-/**
- * Call the minhash API and return normalized { ok, error?, result? } with parsed error.
- */
-async function fetchMinhashResults(
-  baseUrl: string,
-  token: string,
-  payload: unknown,
-): Promise<{ ok: true; result: unknown } | { ok: false; error: string }> {
-  const res = await fetch(new URL("/api/services/minhash", baseUrl), {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: token },
-    body: JSON.stringify(payload),
-  });
-  if (!res.ok) {
-    const result = await (res.json() as Promise<unknown>).catch(() => ({}));
-    return {
-      ok: false,
-      error: extractMinhashError(result) ?? "Minhash service request failed",
-    };
-  }
-
-  const result = await (res.json() as Promise<unknown>).catch(() => ({}));
-  const errorMessage = extractMinhashError(result);
-  if (
-    result != null &&
-    typeof result === "object" &&
-    (result as Record<string, unknown>).error != null &&
-    (result as Record<string, unknown>).error !== "" &&
-    (result as Record<string, unknown>).error !== false
-  ) {
-    return {
-      ok: false,
-      error: errorMessage ?? "Service returned an error",
-    };
-  }
-  return { ok: true, result };
-}
-
-/**
- * Call the genome detail API and return { ok, error?, genomes? }.
- */
-async function fetchGenomeDetails(
-  baseUrl: string,
-  token: string,
-  genomeIds: string[],
-): Promise<
-  | { ok: true; genomes: Record<string, string>[] }
-  | { ok: false; error: string; genomes?: undefined }
-> {
-  const genomeRes = await fetch(
-    new URL("/api/services/genome/website-query", baseUrl),
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: token },
-      body: JSON.stringify({ genome_ids: genomeIds }),
-    },
-  );
-  if (!genomeRes.ok) {
-    const genomeData = await (genomeRes.json() as Promise<unknown>).catch(
-      () => ({}),
-    );
-    return {
-      ok: false,
-      error:
-        typeof (genomeData as Record<string, unknown>).error === "string"
-          ? ((genomeData as Record<string, unknown>).error as string)
-          : "Genome detail request failed",
-    };
-  }
-
-  const genomeData = await (genomeRes.json() as Promise<unknown>).catch(
-    () => ({}),
-  );
-  const rawResults = Array.isArray(
-    (genomeData as Record<string, unknown>).results,
-  )
-    ? ((genomeData as Record<string, unknown>).results as unknown[])
-    : [];
-  const genomes: Record<string, string>[] = rawResults.map((r: unknown) =>
-    r && typeof r === "object"
-      ? (Object.fromEntries(
-          Object.entries(r as Record<string, unknown>).map(([k, v]) => [
-            k,
-            v !== null && v !== undefined
-              ? String(v as string | number | boolean)
-              : "",
-          ]),
-        ) as Record<string, string>)
-      : {},
-  );
-  return { ok: true, genomes };
-}
 
 /**
  * Parse minhash result into rows and genome IDs; apply fallback when rows have no genome_id.
@@ -180,47 +83,60 @@ function getMinhashRowsAndIds(result: unknown): {
 }
 
 /**
- * Merge minhash rows with genome API results, or use minhash rows as placeholder when no genomes.
+ * What the user sees for a failed search. Service and network failures keep
+ * their own message ("The BV-BRC minhash service did not respond …"); a
+ * missing setting is logged with its name and shown without it, since server
+ * configuration is not the user's to read. An outage is logged too: the
+ * `UpstreamError`'s `host` names the machine that failed, which the user's
+ * message leaves out.
  */
-function processResults(
-  minhashRows: SimilarGenomeFinderResultRow[],
-  genomeResult: { ok: true; genomes: Record<string, string>[] } | null,
-): SimilarGenomeFinderResultRow[] {
-  if (genomeResult?.ok && genomeResult.genomes.length > 0) {
-    return mergeGenomeResults(minhashRows, genomeResult.genomes);
+function describeSearchFailure(error: unknown): string {
+  if (error instanceof MinhashConfigurationError) {
+    console.error(error.message);
+    return error.userMessage;
   }
-  return minhashRows;
+  if (!(error instanceof MinhashServiceError)) {
+    console.error("Similar Genome Finder search failed:", error);
+  }
+  return formatUserFacingErrorMessage(error, "Similar Genome Finder search failed");
 }
 
 /**
- * Server Action: run Similar Genome Finder (Minhash + genome enrichment).
- * Orchestrates fetchMinhashResults, fetchGenomeDetails, and processResults; returns rows or error.
+ * Server Action: run Similar Genome Finder (MinHash search, then the genome
+ * details that name each hit). Calls the services directly rather than this
+ * app's own API routes. Returns the failure instead of throwing it, because
+ * production redacts a thrown Server Action error.
  */
 export async function submitSimilarGenomes(
   data: SimilarGenomeFinderFormData,
 ): Promise<SubmitSimilarGenomesResponse> {
   try {
     const { token } = await requireAuthSession();
-    const baseUrl = getInternalApiOrigin();
-    const payload = buildMinhashServicePayload(data);
-    const minhashRes = await fetchMinhashResults(baseUrl, token, payload);
-    if (!minhashRes.ok) {
-      return { success: false, error: minhashRes.error };
+    const minhashResult = await searchMinhash(
+      buildMinhashServicePayload(data),
+      token,
+    );
+    const { minhashRows, genomeIds } = getMinhashRowsAndIds(minhashResult);
+    if (genomeIds.length === 0) return { success: true, rows: minhashRows };
+
+    try {
+      const genomes = await fetchMinhashGenomeDetails(genomeIds, token);
+      return {
+        success: true,
+        rows:
+          genomes.length > 0
+            ? mergeGenomeResults(minhashRows, genomes)
+            : minhashRows,
+      };
+    } catch (error) {
+      // The distances are still the answer; say why the names are missing.
+      return {
+        success: true,
+        rows: minhashRows,
+        genomeDetailsError: describeSearchFailure(error),
+      };
     }
-
-    const { minhashRows, genomeIds } = getMinhashRowsAndIds(minhashRes.result);
-
-    let genomeResult: { ok: true; genomes: Record<string, string>[] } | null =
-      null;
-    if (genomeIds.length > 0) {
-      const res = await fetchGenomeDetails(baseUrl, token, genomeIds);
-      if (res.ok) genomeResult = res;
-    }
-
-    const rows = processResults(minhashRows, genomeResult);
-    return { success: true, rows };
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Submission failed";
-    return { success: false, error: message };
+  } catch (error) {
+    return { success: false, error: describeSearchFailure(error) };
   }
 }

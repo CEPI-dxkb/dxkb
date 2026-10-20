@@ -13,17 +13,19 @@ import { withSectionError } from "@/components/organisms/shared/with-section-err
 import { bacteriaLandingConfig as config } from "../_config";
 
 async function DataSummaryBoundary() {
-  return withSectionError(() => DataSummary({ taxonId: config.taxonId }));
+  return withSectionError("Data summary", () =>
+    DataSummary({ taxonId: config.taxonId }),
+  );
 }
 
 async function GeneraGridBoundary() {
-  return withSectionError(() =>
+  return withSectionError("Top genera", () =>
     GeneraGrid({ taxonId: config.taxonId, limit: 12 }),
   );
 }
 
 async function MetadataDistributionsBoundary() {
-  return withSectionError(() =>
+  return withSectionError("Metadata distributions", () =>
     MetadataDistributions({
       taxonId: config.taxonId,
       fields: config.metadataFields,

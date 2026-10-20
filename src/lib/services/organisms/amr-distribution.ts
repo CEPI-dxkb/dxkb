@@ -1,4 +1,5 @@
 import { genomeLinkedScopeClauses, type GenomeScope } from "./genome-scope";
+import { amrProfileTitle } from "./metadata-field-labels";
 import type {
   AmrAntibioticRow,
   AmrDistributionData,
@@ -53,7 +54,7 @@ export async function fetchAmrPhenotypeDistribution(
   const payload = await fetchOrganismSolrJsonPost(
     url,
     buildBody(scope),
-    "amr phenotype distribution",
+    { source: "genome_amr phenotype pivot", label: amrProfileTitle },
     options.signal,
   );
   const pivot = parseSolrFacetPivot(payload, pivotKey);

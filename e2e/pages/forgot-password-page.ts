@@ -27,11 +27,9 @@ export class ForgotPasswordPage {
     this.successCardTitle = page.locator('[data-slot="card-title"]', {
       hasText: /check your email/i,
     });
-    // The page swallows upstream errors and always shows this generic message.
-    // Scope to the destructive alert slot to avoid false matches elsewhere.
-    this.errorAlert = page
-      .locator('[data-slot="alert"]')
-      .getByText(/unexpected error occurred/i);
+    // Scope to the shadcn Alert component; getByRole("alert") also matches
+    // Next.js's hidden #__next-route-announcer__ and triggers strict-mode failures.
+    this.errorAlert = page.locator('[role="alert"][data-slot="alert"]');
   }
 
   async goto(): Promise<void> {

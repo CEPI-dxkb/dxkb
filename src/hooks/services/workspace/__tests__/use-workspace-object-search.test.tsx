@@ -47,6 +47,89 @@ describe("useWorkspaceObjectSearch", () => {
     expect(result.current.objects[0]?.type).toBe("reads");
   });
 
+  it("lists once per distinct type set, sending the types to the server", async () => {
+    const repo = new InMemoryWorkspaceRepository({
+      directories: {
+        "/alice@bvbrc/home": [
+          { name: "x.fq", type: "reads" },
+          { name: "y.fa", type: "contigs" },
+          { name: "out", type: "folder" },
+        ],
+      },
+    });
+    const { result } = renderHook(
+      () => ({
+        reads1: useWorkspaceObjectSearch({ username: "alice", types: ["reads"] }),
+        reads2: useWorkspaceObjectSearch({ username: "alice", types: ["reads"] }),
+        mixed1: useWorkspaceObjectSearch({
+          username: "alice",
+          types: ["reads", "contigs"],
+        }),
+        mixed2: useWorkspaceObjectSearch({
+          username: "alice",
+          types: ["contigs", "reads"],
+        }),
+        untyped: useWorkspaceObjectSearch({ username: "alice" }),
+        empty: useWorkspaceObjectSearch({ username: "alice", types: [] }),
+      }),
+      { wrapper: makeWrapper(repo) },
+    );
+
+    await waitFor(() => {
+      expect(result.current.reads1.items.map((i) => i.name)).toEqual(["x.fq"]);
+    });
+    await waitFor(() => {
+      expect(result.current.untyped.loading).toBe(false);
+    });
+    expect(result.current.reads2.items.map((i) => i.name)).toEqual(["x.fq"]);
+    expect(result.current.mixed1.items.map((i) => i.name).sort()).toEqual([
+      "x.fq",
+      "y.fa",
+    ]);
+    expect(result.current.mixed2.items).toEqual(result.current.mixed1.items);
+    // An empty type list means every type, as the repository reads it.
+    expect(result.current.empty.items).toEqual(result.current.untyped.items);
+    expect(result.current.untyped.items).toHaveLength(3);
+
+    // Same type set (in any order) shares a query; each distinct set, and
+    // the untyped one, is listed once, with its filter sent to the server.
+    const searchedTypes = repo.calls.flatMap((call) =>
+      call.method === "searchObjects" ? [call.input.types] : [],
+    );
+    expect(searchedTypes).toHaveLength(3);
+    expect(searchedTypes).toEqual(
+      expect.arrayContaining([["reads"], ["reads", "contigs"], undefined]),
+    );
+  });
+
+  it("sends an empty type list as no filter, whichever field asks first", async () => {
+    const repo = new InMemoryWorkspaceRepository({
+      directories: {
+        "/alice@bvbrc/home": [
+          { name: "x.fq", type: "reads" },
+          { name: "y.fa", type: "contigs" },
+        ],
+      },
+    });
+    const { result } = renderHook(
+      () => ({
+        empty: useWorkspaceObjectSearch({ username: "alice", types: [] }),
+        untyped: useWorkspaceObjectSearch({ username: "alice" }),
+      }),
+      { wrapper: makeWrapper(repo) },
+    );
+
+    await waitFor(() => {
+      expect(result.current.empty.loading).toBe(false);
+    });
+    expect(result.current.empty.items).toHaveLength(2);
+    expect(result.current.untyped.items).toEqual(result.current.empty.items);
+    const searchedTypes = repo.calls.flatMap((call) =>
+      call.method === "searchObjects" ? [call.input.types] : [],
+    );
+    expect(searchedTypes).toEqual([undefined]);
+  });
+
   it("filters by searchQuery", async () => {
     const repo = new InMemoryWorkspaceRepository({
       directories: {

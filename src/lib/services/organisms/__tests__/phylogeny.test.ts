@@ -1,5 +1,6 @@
 import { http, HttpResponse } from "msw";
 
+import { isUpstreamOutage } from "@/lib/api/query-retry";
 import { server } from "@/test-helpers/msw-server";
 import {
   fetchBacterialTreeXml,
@@ -83,9 +84,109 @@ describe("phylogeny services", () => {
       ),
     );
 
-    await expect(fetchBacterialTreeXml(562)).rejects.toThrow(
-      "tree dictionary: 503 Service Unavailable",
+    await expect(fetchBacterialTreeXml(562)).rejects.toMatchObject({
+      message: "tree dictionary: 503 Service Unavailable",
+      status: 502,
+    });
+  });
+
+  const maintenancePage = () =>
+    new HttpResponse(
+      "<html><head><title>Site Maintenance</title></head><body><h1>Site Maintenance</h1></body></html>",
+      {
+        status: 503,
+        statusText: "Service Unavailable",
+        headers: { "Content-Type": "text/html" },
+      },
     );
+
+  it("names an outage of the tree file by its status, so it is not retried", async () => {
+    server.use(
+      http.get(treeLookupUrl, () => HttpResponse.json({ filename: "ecoli.xml" })),
+      http.get(treeFileUrl, maintenancePage),
+    );
+
+    const error: unknown = await fetchBacterialTreeXml(562).catch(
+      (caught: unknown) => caught,
+    );
+
+    expect(error).toMatchObject({
+      status: 503,
+      message: expect.stringMatching(
+        /^The BV-BRC phylogeny tree service is unavailable \(HTTP 503/,
+      ) as unknown,
+    });
+    expect(error).not.toHaveProperty("message", expect.stringContaining("<"));
+    expect(isUpstreamOutage(error)).toBe(true);
+  });
+
+  it("names an outage of the tree lookup by its status when its answer is a page", async () => {
+    server.use(http.get(treeLookupUrl, maintenancePage));
+
+    const error: unknown = await fetchBacterialTreeXml(562).catch(
+      (caught: unknown) => caught,
+    );
+
+    expect(error).toMatchObject({
+      status: 503,
+      message:
+        "The BV-BRC phylogeny tree service is unavailable (HTTP 503 Service Unavailable: Site Maintenance).",
+    });
+    expect(isUpstreamOutage(error)).toBe(true);
+  });
+
+  it("names an outage of the viral family index by its status", async () => {
+    server.use(
+      http.get(
+        `${origin}/api/content/phyloxml_trees/families/2955291/2955291.json`,
+        maintenancePage,
+      ),
+    );
+
+    const error: unknown = await fetchViralFamilyBlock(2955291).catch(
+      (caught: unknown) => caught,
+    );
+
+    expect(error).toMatchObject({
+      status: 503,
+      message: expect.stringMatching(/unavailable \(HTTP 503/) as unknown,
+    });
+    expect(isUpstreamOutage(error)).toBe(true);
+  });
+
+  it("says a tree download ran out of time instead of \"signal timed out\"", async () => {
+    // The budget is already spent, so the request fails as a timed-out one.
+    vi.spyOn(AbortSignal, "timeout").mockReturnValue(
+      AbortSignal.abort(new DOMException("x", "TimeoutError")),
+    );
+    server.use(http.get(`${origin}/tree.xml`, () => new HttpResponse("<phyloxml />")));
+
+    const error: unknown = await fetchTreeXml(`${origin}/tree.xml`).catch(
+      (caught: unknown) => caught,
+    );
+
+    expect(error).toMatchObject({
+      status: 504,
+      message:
+        "The BV-BRC phylogeny tree service did not respond (timed out after 30 s).",
+    });
+    expect(isUpstreamOutage(error)).toBe(true);
+  });
+
+  it("says the tree lookup could not connect instead of \"Failed to fetch\"", async () => {
+    server.use(http.get(treeLookupUrl, () => HttpResponse.error()));
+
+    const error: unknown = await fetchBacterialTreeXml(562).catch(
+      (caught: unknown) => caught,
+    );
+
+    expect(error).toMatchObject({
+      status: 502,
+      message: expect.stringMatching(
+        /^Could not reach the BV-BRC phylogeny tree service/,
+      ) as unknown,
+    });
+    expect(isUpstreamOutage(error)).toBe(true);
   });
 
   it("refuses a tree filename that leaves the content origin", async () => {

@@ -222,7 +222,9 @@ describe("UploadDialog", () => {
     await user.click(screen.getByRole("button", { name: "Start Upload" }));
 
     await waitFor(() => {
-      expect(toast.error).toHaveBeenCalledWith("Object already exists");
+      expect(toast.error).toHaveBeenCalledWith("Upload failed: reads.fq", {
+        description: "Object already exists",
+      });
     });
     expect(repository.calls).not.toContainEqual(
       expect.objectContaining({ method: "delete" }),
@@ -293,7 +295,9 @@ describe("UploadDialog", () => {
 
     held.resolve(undefined);
     await waitFor(() => {
-      expect(toast.error).toHaveBeenCalledWith("Upload service unavailable");
+      expect(toast.error).toHaveBeenCalledWith("Upload failed: reads.fq", {
+        description: "Upload service unavailable",
+      });
     });
     await user.keyboard("{Escape}");
     expect(openRequests()).toContain(false);

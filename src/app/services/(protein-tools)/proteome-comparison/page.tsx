@@ -42,6 +42,7 @@ import {
 } from "@/components/services/form-ui/service-input";
 import { ServiceAddButton } from "@/components/services/form-ui/service-add-button";
 import { ServiceFieldSubLabel } from "@/components/services/form-ui/service-field";
+import { ServiceSubmitError } from "@/components/services/form-ui/service-submit-error";
 import {
   ServiceLabel,
   ServiceSubLabel,
@@ -50,6 +51,7 @@ import {
   getGenomeIdsFromGroup,
   fetchGenomesByIds,
 } from "@/lib/services/genome";
+import { formatUserFacingErrorMessage } from "@/lib/utils";
 import {
   proteomeComparisonFormSchema,
   defaultProteomeComparisonFormValues,
@@ -81,6 +83,11 @@ function useProteomeComparisonPage() {
     useState<WorkspaceObject | null>(null);
   const [isLoadingGenomeGroup, setIsLoadingGenomeGroup] = useState(false);
   const [isLoadingCompGenome, setIsLoadingCompGenome] = useState(false);
+  // Why the last genome added by ID went in under its ID: its name lookup
+  // failed. The genome is still added, since the ID is all the job needs.
+  const [compGenomeLookupNote, setCompGenomeLookupNote] = useState<
+    string | null
+  >(null);
   // Reset bumps this, so a genome or group read still in flight neither adds
   // its item to the new comparison nor clears the spinner of an add the user
   // starts after the reset.
@@ -110,6 +117,7 @@ function useProteomeComparisonPage() {
     setSelectedCompGenomeGroup(null);
     setIsLoadingGenomeGroup(false);
     setIsLoadingCompGenome(false);
+    setCompGenomeLookupNote(null);
     setShowAdvancedParams(false);
   }
 
@@ -169,12 +177,17 @@ function useProteomeComparisonPage() {
 
     // Fall back to using the genome ID as the name
     let genomeName = selectedCompGenomeId;
+    let lookupNote: string | null = null;
     try {
       // Fetch the genome name from the API
       const genomes = await fetchGenomesByIds([selectedCompGenomeId]);
       if (genomes.length > 0) genomeName = genomes[0].genome_name;
     } catch (error) {
       console.error("Failed to fetch genome info:", error);
+      lookupNote = `Added ${selectedCompGenomeId} by ID: its name could not be loaded (${formatUserFacingErrorMessage(
+        error,
+        "the genome service did not answer",
+      )}).`;
     }
 
     // A reset during the lookup already cleared the list and this spinner.
@@ -198,6 +211,7 @@ function useProteomeComparisonPage() {
       genomeName,
     );
     form.setFieldValue("comparison_items", [...latestItems, newItem]);
+    setCompGenomeLookupNote(lookupNote);
     setSelectedCompGenomeId("");
   }
 
@@ -661,6 +675,11 @@ function useProteomeComparisonPage() {
                       pending={isLoadingCompGenome}
                     />
                   </div>
+                  {compGenomeLookupNote ? (
+                    <p role="alert" className="text-xs text-muted-foreground">
+                      {compGenomeLookupNote}
+                    </p>
+                  ) : null}
                 </div>
 
                 {/* Select Protein FASTA File */}
@@ -785,6 +804,7 @@ function useProteomeComparisonPage() {
         </div>
 
         {/* Form Controls */}
+        <ServiceSubmitError form={form} />
         <div className="service-form-controls">
           <Button type="button" variant="outline" onClick={handleReset}>
             Reset

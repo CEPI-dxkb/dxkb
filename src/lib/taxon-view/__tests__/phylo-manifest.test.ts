@@ -2,6 +2,7 @@
 import { http, HttpResponse } from "msw";
 
 import { server } from "@/test-helpers/msw-server";
+import { connectTimeout } from "@/test-helpers/upstream-failures";
 import { fetchPhyloManifest } from "../phylo-manifest";
 
 const defaultManifestUrl = "https://www.bv-brc.org/api/content/phyloxml_trees/manifest.json";
@@ -57,6 +58,22 @@ describe("fetchPhyloManifest", () => {
     process.env.PHYLO_MANIFEST_URL = manifestUrl;
     server.use(http.get(manifestUrl, () => HttpResponse.error()));
     expect(await fetchPhyloManifest()).toBeNull();
+  });
+
+  it("logs which host did not respond rather than undici's bare \"fetch failed\"", async () => {
+    process.env.PHYLO_MANIFEST_URL = manifestUrl;
+    server.use(
+      http.get(manifestUrl, () => {
+        throw connectTimeout();
+      }),
+    );
+    const logged = vi.spyOn(console, "error").mockImplementation(() => undefined);
+
+    expect(await fetchPhyloManifest()).toBeNull();
+    expect(logged).toHaveBeenCalledWith(
+      "phylo-manifest (example.test): The BV-BRC phylogeny manifest did not respond (connection timed out after 10 s).",
+    );
+    logged.mockRestore();
   });
 
   it("fails open (null) when the body is the wrong shape", async () => {

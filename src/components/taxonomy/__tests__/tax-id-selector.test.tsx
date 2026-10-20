@@ -146,3 +146,84 @@ describe("TaxIDSelector invalid", () => {
     expect(screen.getByText("NCBI Tax ID is required.")).toBeVisible();
   });
 });
+
+describe("TaxIDSelector failed search", () => {
+  const outage = "BV-BRC Taxonomy API error: 503 Service Unavailable";
+  const shownOutage = `Taxonomy search unavailable: ${outage}`;
+
+  /** The proxy's 503 until `recover()`, then one match for 562. */
+  function failUntilRecovered() {
+    let down = true;
+    server.use(
+      http.get("*/api/services/taxonomy", () =>
+        down
+          ? HttpResponse.json(
+              { error: outage, code: "upstream" },
+              { status: 503 },
+            )
+          : HttpResponse.json([
+              { taxon_id: "562", taxon_name: "Escherichia coli" },
+            ]),
+      ),
+    );
+    return {
+      recover: () => {
+        down = false;
+      },
+    };
+  }
+
+  it("announces the proxy's reason with a Retry that searches again", async () => {
+    const { recover } = failUntilRecovered();
+    const user = userEvent.setup();
+    render(<TaxIDSelector />, { wrapper: createQueryClientWrapper() });
+
+    await user.type(screen.getByRole("textbox"), "562");
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent(shownOutage);
+    expect(screen.queryByText(/HTTP error/)).not.toBeInTheDocument();
+
+    recover();
+    await user.click(screen.getByRole("button", { name: "Retry" }));
+
+    expect(
+      await screen.findByRole("button", { name: /Escherichia coli/ }),
+    ).toBeVisible();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("shows the failure, not the required message, once the list closes", async () => {
+    failUntilRecovered();
+    const user = userEvent.setup();
+    render(<TaxIDSelector required />, { wrapper: createQueryClientWrapper() });
+
+    await user.type(screen.getByRole("textbox"), "562");
+    await screen.findByRole("alert");
+    await user.tab();
+
+    // The list closes 200 ms after blur; the failure stays, under the field.
+    expect(
+      await screen.findByRole("button", { name: "Show suggestions" }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("alert")).toHaveTextContent(shownOutage);
+    expect(screen.queryByText("NCBI Tax ID is required.")).toBeNull();
+    expect(screen.getByRole("button", { name: "Retry" })).toBeVisible();
+  });
+
+  it("shows the form's field error under the input, replaced by a failed search", async () => {
+    failUntilRecovered();
+    const user = userEvent.setup();
+    render(<TaxIDSelector fieldError="Taxonomy ID is required" />, {
+      wrapper: createQueryClientWrapper(),
+    });
+
+    expect(screen.getByText("Taxonomy ID is required")).toBeVisible();
+    expect(screen.getByRole("textbox")).toHaveClass("border-destructive");
+
+    await user.type(screen.getByRole("textbox"), "562");
+    await screen.findByRole("alert");
+
+    expect(screen.queryByText("Taxonomy ID is required")).toBeNull();
+  });
+});

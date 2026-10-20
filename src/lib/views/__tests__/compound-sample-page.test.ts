@@ -28,7 +28,11 @@ vi.mock("next/navigation", () => ({
   },
 }));
 
-import { loadCompoundSamplePage } from "../compound-sample-page";
+import {
+  loadCompoundSamplePage,
+  loadCompoundSampleState,
+} from "../compound-sample-page";
+import { connectTimeout, maintenancePage } from "@/test-helpers/upstream-failures";
 
 /**
  * Full-stack tests for the shared page loader: real `getSurveillance` /
@@ -228,5 +232,63 @@ describe.each(views)(
         });
       },
     );
+  },
+);
+
+describe.each(views)(
+  "loadCompoundSampleState ($name, real lookup over MSW)",
+  ({ resourcePath, isSampleId, lookup }) => {
+    const options = { source: "page" as const, isSampleId, lookup };
+
+    it("returns the condensed cause of a maintenance outage instead of throwing", async () => {
+      server.use(http.get(`${dataApiUrl}/${resourcePath}/`, () => maintenancePage()));
+
+      const loaded = await loadCompoundSampleState("sample-1", undefined, options);
+
+      expect(loaded).toEqual({
+        sampleId: "sample-1",
+        unavailable: expect.stringMatching(
+          /^The BV-BRC data service is unavailable \(HTTP 503 Service Unavailable: Site Maintenance/,
+        ) as unknown,
+      });
+    });
+
+    it("names the unreachable data service for a connect timeout", async () => {
+      server.use(
+        http.get(`${dataApiUrl}/${resourcePath}/`, () => {
+          throw connectTimeout();
+        }),
+      );
+
+      const loaded = await loadCompoundSampleState("sample-1", undefined, options);
+
+      expect(loaded).toMatchObject({
+        unavailable: expect.stringContaining(
+          "did not respond (connection timed out after 10 s)",
+        ) as unknown,
+      });
+    });
+
+    it("keeps notFound() for a 404 and rethrows a 401", async () => {
+      server.use(
+        http.get(`${dataApiUrl}/${resourcePath}/`, () =>
+          upstreamError(404, "Not found"),
+        ),
+      );
+      await expect(
+        loadCompoundSampleState("sample-1", undefined, options),
+      ).rejects.toThrow("NEXT_NOT_FOUND");
+
+      server.use(
+        http.get(`${dataApiUrl}/${resourcePath}/`, () =>
+          upstreamError(401, "Unauthorized"),
+        ),
+      );
+      const error = await rejection(
+        loadCompoundSampleState("sample-1", undefined, options),
+      );
+      expect(error).toBeInstanceOf(DataApiError);
+      expect((error as DataApiError).status).toBe(401);
+    });
   },
 );

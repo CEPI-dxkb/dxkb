@@ -14,6 +14,15 @@ import {
   fetchGenomeSuggestions,
   type GenomeSummary,
 } from "@/lib/services/genome";
+import { formatPrefixedErrorMessage } from "@/lib/utils";
+
+/**
+ * A failed genome search, prefixed with what failed, keeping the server's
+ * reason ("Genome search unavailable: BV-BRC genome search failed: 503 …").
+ */
+export function genomeSearchErrorMessage(error: unknown): string {
+  return formatPrefixedErrorMessage("Genome search unavailable", error);
+}
 
 export function shouldSearch(query: string, minLength: number): boolean {
   const trimmed = query.trim();
@@ -54,6 +63,8 @@ export interface UseGenomeTypeaheadReturn {
   updateSuggestions: (next: GenomeSummary[]) => void;
   /** Fire a fetch immediately (no debounce), bypassing shouldSearch. */
   triggerSearch: (overrideQuery: string) => void;
+  /** Runs the search that failed again: the Retry of a failed lookup. */
+  retry: () => void;
 }
 
 export function useGenomeTypeahead({
@@ -75,6 +86,9 @@ export function useGenomeTypeahead({
   const dropdownRef = useRef<HTMLDivElement | null>(null);
   const itemRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const latestAbortController = useRef<AbortController | null>(null);
+  // The query the latest search sent, which can differ from the typed one
+  // (the dropdown toggle lists every genome): Retry repeats this one.
+  const latestSearchQuery = useRef<string | null>(null);
   const onClickOutsideRef = useRef(onClickOutside);
   const additionalRefsRef = useRef(additionalClickOutsideRefs);
   const skipCurrentFetch = skipFetch?.(query, selectedItem) ?? false;
@@ -121,6 +135,7 @@ export function useGenomeTypeahead({
 
         setIsLoading(true);
         setError(null);
+        latestSearchQuery.current = query;
 
         fetchGenomeSuggestions(query, { signal: controller.signal })
           .then((results) => {
@@ -132,11 +147,7 @@ export function useGenomeTypeahead({
           })
           .catch((fetchError: unknown) => {
             if (controller.signal.aborted) return;
-            const message =
-              fetchError instanceof Error
-                ? fetchError.message
-                : "Failed to search genomes";
-            setError(message);
+            setError(genomeSearchErrorMessage(fetchError));
             itemRefs.current = [];
             setSuggestions([]);
             setHighlightedIndex(-1);
@@ -225,6 +236,7 @@ export function useGenomeTypeahead({
     latestAbortController.current = controller;
     setIsLoading(true);
     setError(null);
+    latestSearchQuery.current = overrideQuery;
 
     fetchGenomeSuggestions(overrideQuery, { signal: controller.signal })
       .then((results) => {
@@ -236,11 +248,7 @@ export function useGenomeTypeahead({
       })
       .catch((fetchError: unknown) => {
         if (controller.signal.aborted) return;
-        const message =
-          fetchError instanceof Error
-            ? fetchError.message
-            : "Failed to search genomes";
-        setError(message);
+        setError(genomeSearchErrorMessage(fetchError));
         itemRefs.current = [];
         setSuggestions([]);
         setHighlightedIndex(-1);
@@ -248,6 +256,10 @@ export function useGenomeTypeahead({
       .finally(() => {
         if (!controller.signal.aborted) setIsLoading(false);
       });
+  };
+
+  const retry = () => {
+    triggerSearch(latestSearchQuery.current ?? query);
   };
 
   return {
@@ -269,5 +281,6 @@ export function useGenomeTypeahead({
     latestAbortController,
     updateSuggestions,
     triggerSearch,
+    retry,
   };
 }

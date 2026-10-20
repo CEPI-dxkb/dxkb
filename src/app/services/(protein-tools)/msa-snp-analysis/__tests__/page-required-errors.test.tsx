@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { createQueryClientWrapper } from "@/test-helpers/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 
@@ -139,7 +140,7 @@ describe("MSA & SNP page required errors on a non-Strict render", () => {
 
   it("opens Feature ID unvalidated after Feature ID -> None -> Feature ID", async () => {
     const user = userEvent.setup();
-    render(<MSAandSNPAnalysisPage />);
+    render(<MSAandSNPAnalysisPage />, { wrapper: createQueryClientWrapper() });
     await fillOutput(user);
 
     await user.click(radio("Feature ID"));
@@ -152,7 +153,7 @@ describe("MSA & SNP page required errors on a non-Strict render", () => {
 
   it("opens Genome ID unvalidated after switching to Viral Genome Group", async () => {
     const user = userEvent.setup();
-    render(<MSAandSNPAnalysisPage />);
+    render(<MSAandSNPAnalysisPage />, { wrapper: createQueryClientWrapper() });
     await fillOutput(user);
 
     await user.click(radio("Viral Genome Group"));
@@ -163,7 +164,7 @@ describe("MSA & SNP page required errors on a non-Strict render", () => {
 
   it("opens Feature ID unvalidated after an input type round trip", async () => {
     const user = userEvent.setup();
-    render(<MSAandSNPAnalysisPage />);
+    render(<MSAandSNPAnalysisPage />, { wrapper: createQueryClientWrapper() });
     await fillOutput(user);
 
     await user.click(radio("Viral Genome Group"));
@@ -174,7 +175,7 @@ describe("MSA & SNP page required errors on a non-Strict render", () => {
 
   it("opens Feature ID unvalidated after Aligned -> Unaligned", async () => {
     const user = userEvent.setup();
-    render(<MSAandSNPAnalysisPage />);
+    render(<MSAandSNPAnalysisPage />, { wrapper: createQueryClientWrapper() });
     await fillOutput(user);
 
     await user.click(radio("Aligned Sequences"));
@@ -185,7 +186,7 @@ describe("MSA & SNP page required errors on a non-Strict render", () => {
 
   it("clears Feature ID quietly when the feature group changes", async () => {
     const user = userEvent.setup();
-    render(<MSAandSNPAnalysisPage />);
+    render(<MSAandSNPAnalysisPage />, { wrapper: createQueryClientWrapper() });
     await fillOutput(user);
 
     await user.click(screen.getByRole("button", { name: "Pick featureGroup A" }));
@@ -196,7 +197,7 @@ describe("MSA & SNP page required errors on a non-Strict render", () => {
 
   it("clears Genome ID quietly when the genome group changes", async () => {
     const user = userEvent.setup();
-    render(<MSAandSNPAnalysisPage />);
+    render(<MSAandSNPAnalysisPage />, { wrapper: createQueryClientWrapper() });
     await fillOutput(user);
 
     await user.click(radio("Viral Genome Group"));
@@ -214,7 +215,7 @@ describe("MSA & SNP page required errors on a non-Strict render", () => {
 
   it("still shows the error once the user types a reference and clears it", async () => {
     const user = userEvent.setup();
-    render(<MSAandSNPAnalysisPage />);
+    render(<MSAandSNPAnalysisPage />, { wrapper: createQueryClientWrapper() });
     await fillOutput(user);
 
     await user.click(radio("Input Reference Sequence"));
@@ -230,7 +231,7 @@ describe("MSA & SNP page required errors on a non-Strict render", () => {
 
   it("still shows the error on a submit attempt", async () => {
     const user = userEvent.setup();
-    const { container } = render(<MSAandSNPAnalysisPage />);
+    const { container } = render(<MSAandSNPAnalysisPage />, { wrapper: createQueryClientWrapper() });
     await fillOutput(user);
 
     await user.click(radio("Feature ID"));

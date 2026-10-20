@@ -200,7 +200,7 @@ describe("ViralPhylogenyPanel", () => {
     rerender(
       <ViralPhylogenyPanel taxonId={2955291} taxonName="Influenza A virus" />,
     );
-    expect(screen.getByText("Viral trees unavailable")).toBeInTheDocument();
+    expect(screen.getByText("Viral trees could not be loaded")).toBeInTheDocument();
 
     useViralFamily.mockReturnValue({
       isPending: false,
@@ -211,6 +211,103 @@ describe("ViralPhylogenyPanel", () => {
       <ViralPhylogenyPanel taxonId={2955291} taxonName="Influenza A virus" />,
     );
     expect(screen.getByText("No published trees")).toBeInTheDocument();
+  });
+
+  // TanStack resets a query without data to pending, error cleared, the moment
+  // it refetches; these drive the panel through that answer by hand.
+  it("keeps a family failure up, retrying, until Retry answers", () => {
+    const refetch = vi.fn();
+    const error = new Error(
+      "The BV-BRC phylogeny tree service did not respond (timed out after 2 s).",
+    );
+    useViralFamily.mockReturnValue({
+      isPending: false,
+      isError: true,
+      isFetching: false,
+      error,
+      refetch,
+    });
+    const { rerender } = render(
+      <ViralPhylogenyPanel taxonId={2955291} taxonName="Influenza A virus" />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+    expect(refetch).toHaveBeenCalledTimes(1);
+    useViralFamily.mockReturnValue({
+      isPending: true,
+      isError: false,
+      isFetching: true,
+      error: null,
+      refetch,
+    });
+    rerender(
+      <ViralPhylogenyPanel taxonId={2955291} taxonName="Influenza A virus" />,
+    );
+
+    const alert = screen.getByRole("alert");
+    expect(alert).toHaveTextContent(error.message);
+    expect(
+      within(alert).getByRole("button", { name: "Retrying…" }),
+    ).toBeDisabled();
+    expect(document.querySelector('[data-slot="skeleton"]')).toBeNull();
+
+    useViralFamily.mockReturnValue({
+      data: family,
+      isPending: false,
+      isError: false,
+      isFetching: false,
+      error: null,
+      refetch,
+    });
+    rerender(
+      <ViralPhylogenyPanel taxonId={2955291} taxonName="Influenza A virus" />,
+    );
+
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(row("XML HA (HA)")).toBeInTheDocument();
+  });
+
+  it("keeps a tree failure up, retrying, until Retry answers", () => {
+    const refetch = vi.fn();
+    const error = new Error(
+      "The BV-BRC phylogeny tree service is unavailable (HTTP 503 Service Unavailable).",
+    );
+    useViralTreeXml.mockReturnValue({
+      isPending: false,
+      isError: true,
+      isFetching: false,
+      error,
+      refetch,
+    });
+    const { rerender } = render(
+      <ViralPhylogenyPanel taxonId={2955291} taxonName="Influenza A virus" />,
+    );
+    fireEvent.click(
+      within(row("XML HA (HA)")).getByRole("button", {
+        name: "Open XML HA (HA) in Archaeopteryx",
+      }),
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+    expect(refetch).toHaveBeenCalledTimes(1);
+    useViralTreeXml.mockReturnValue({
+      isPending: true,
+      isError: false,
+      isFetching: true,
+      error: null,
+      refetch,
+    });
+    rerender(
+      <ViralPhylogenyPanel taxonId={2955291} taxonName="Influenza A virus" />,
+    );
+
+    const alert = screen.getByRole("alert");
+    expect(alert).toHaveTextContent("This tree could not be loaded");
+    expect(alert).toHaveTextContent(error.message);
+    expect(
+      within(alert).getByRole("button", { name: "Retrying…" }),
+    ).toBeDisabled();
+    expect(document.querySelector('[data-slot="skeleton"]')).toBeNull();
   });
 
   it.each([

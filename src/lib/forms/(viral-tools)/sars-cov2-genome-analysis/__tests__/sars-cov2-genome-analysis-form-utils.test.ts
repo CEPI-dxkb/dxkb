@@ -146,6 +146,18 @@ describe("transformSarsCov2GenomeAnalysisParams", () => {
     expect(result.scientific_name).toBe("SARS-CoV-2 run1");
   });
 
+  it("sends My Label itself, trimmed, so a rerun can restore it", () => {
+    expect(transformSarsCov2GenomeAnalysisParams(baseReadsData).my_label).toBe(
+      "run1",
+    );
+    expect(
+      transformSarsCov2GenomeAnalysisParams({
+        ...baseReadsData,
+        my_label: "  run1 ",
+      }).my_label,
+    ).toBe("run1");
+  });
+
   it("uses provided output_file when not empty", () => {
     const data = { ...baseReadsData, output_file: "custom-output" };
     const result = transformSarsCov2GenomeAnalysisParams(data);

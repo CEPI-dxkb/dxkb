@@ -1,3 +1,4 @@
+import { Socket } from "node:net";
 import { NextRequest, NextResponse } from "next/server";
 import nodemailer from "nodemailer";
 import { withErrorHandling } from "@/lib/auth/server/errors";
@@ -5,6 +6,9 @@ import { rateLimit, clientIp } from "@/lib/rate-limit";
 import {
   contactFormSchema,
   inquiryTypeLabel,
+  mailSendFailure,
+  smtpSendDeadlineMs,
+  smtpTimeoutsMs,
   type ContactFormData,
 } from "@/app/(footer)/contact/components/contact-form-utils";
 
@@ -24,6 +28,48 @@ function buildMessageBody(data: ContactFormData): string {
     "",
     data.message,
   ].join("\n");
+}
+
+/**
+ * Runs `send` within `smtpSendDeadlineMs`, and stops it when the submitter
+ * leaves. nodemailer has no way to cancel a send (`close()` leaves a busy
+ * connection open), so the route owns the relay socket and destroys it: the
+ * relay sees the connection drop instead of delivering a message the user
+ * was told had failed. The deadline rejects as nodemailer's own `ETIMEDOUT`.
+ */
+async function sendWithinDeadline(
+  send: Promise<unknown>,
+  socket: Socket,
+  signal: AbortSignal,
+): Promise<void> {
+  const cutOff = () => {
+    socket.destroy();
+    // A socket destroyed while nodemailer is still resolving the relay's
+    // name is revived by its `connect()`; drop it again once it connects.
+    socket.once("connect", () => socket.destroy());
+  };
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const deadline = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => {
+      cutOff();
+      reject(
+        Object.assign(
+          new Error(
+            `SMTP send did not finish within ${String(smtpSendDeadlineMs / 1000)} s`,
+          ),
+          { code: "ETIMEDOUT" },
+        ),
+      );
+    }, smtpSendDeadlineMs);
+  });
+  if (signal.aborted) cutOff();
+  signal.addEventListener("abort", cutOff, { once: true });
+  try {
+    await Promise.race([send, deadline]);
+  } finally {
+    clearTimeout(timer);
+    signal.removeEventListener("abort", cutOff);
+  }
 }
 
 export const POST = withErrorHandling(async (request: NextRequest) => {
@@ -76,11 +122,17 @@ export const POST = withErrorHandling(async (request: NextRequest) => {
   const pass = process.env.SMTP_PASSWORD;
   const hasAuth = Boolean(user && pass);
 
+  // nodemailer connects (and TLS-upgrades) this socket; holding it is what
+  // lets `sendWithinDeadline` end the send.
+  const socket = new Socket();
   const transport = nodemailer.createTransport({
     host,
     port,
     // Implicit TLS on 465; STARTTLS otherwise.
     secure: port === 465,
+    socket,
+    // Name the stalled step; `sendWithinDeadline` bounds the whole send.
+    ...smtpTimeoutsMs,
     ...(hasAuth
       ? // Authenticated (remote) relay: verify the server certificate
         // (nodemailer's default) so credentials can't be captured by a
@@ -92,27 +144,29 @@ export const POST = withErrorHandling(async (request: NextRequest) => {
   });
 
   try {
-    await transport.sendMail({
-      to,
-      from,
-      replyTo: data.email,
-      subject: `[${inquiryTypeLabel(data.inquiryType)}] ${data.subject}`,
-      text: buildMessageBody(data),
-    });
+    await sendWithinDeadline(
+      transport.sendMail({
+        to,
+        from,
+        replyTo: data.email,
+        subject: `[${inquiryTypeLabel(data.inquiryType)}] ${data.subject}`,
+        text: buildMessageBody(data),
+      }),
+      socket,
+      request.signal,
+    );
   } catch (error) {
     // Log the raw SMTP error server-side for debugging, but don't forward it
     // to the client: nodemailer errors leak infrastructure details (relay
-    // host, port, auth failure reason) to an anonymous form submitter.
+    // host, port, auth failure reason) to an anonymous form submitter. The
+    // client gets the kind of failure and its code instead.
     const detail =
       error instanceof Error ? error.message : String(error);
     console.error("Contact email send failed:", detail);
+    const failure = mailSendFailure(error);
     return NextResponse.json(
-      {
-        error:
-          "Failed to send message. Please try again or email help@dxkb.org.",
-        code: "email_send_failed",
-      },
-      { status: 502 },
+      { error: failure.message, code: "email_send_failed" },
+      { status: failure.status },
     );
   }
 

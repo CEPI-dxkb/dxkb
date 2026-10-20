@@ -4,7 +4,9 @@ import { useEffect, useRef, useState } from "react";
 import "molstar/lib/mol-plugin-ui/skin/light.scss";
 
 import type { StructureSource } from "@/lib/protein-structure-view/source";
+import { noop } from "@/lib/utils";
 import { loadMolstar } from "./molstar-loader";
+import { downloadStructure } from "./structure-download";
 
 export type ViewerStatus = "loading" | "initializing" | "ready" | "error";
 
@@ -63,12 +65,28 @@ export function useMolstarPlugin(
     // `true` at any await boundary and all subsequent checks are genuinely needed.
     const lifecycle = { disposed: false };
     const isDisposed = (): boolean => lifecycle.disposed;
+    // Cancels the file download when the source changes or the view unmounts.
+    const downloadController = new AbortController();
 
     async function init() {
       setStatus("loading");
       setErrorMessage(undefined);
 
       if (!source.url || !containerRef.current) return;
+
+      // The file downloads while Mol* loads. Its failure is handled where it
+      // is awaited below; the no-op only keeps it from being reported as
+      // unhandled while Mol* is still loading.
+      const download = downloadStructure(
+        {
+          url: source.url,
+          format: source.format,
+          label: source.label,
+          kind: source.kind,
+        },
+        downloadController.signal,
+      );
+      download.catch(noop);
 
       try {
         const { createPluginUI, renderReact18, DefaultPluginUISpec } =
@@ -110,10 +128,11 @@ export function useMolstarPlugin(
 
         pluginRef.current = plugin;
 
-        const isBinary = source.format === "bcif";
         const format = source.format === "bcif" ? "mmcif" : source.format;
-        const data = await plugin.builders.data.download(
-          { url: source.url, isBinary },
+        const contents = await download;
+        if (isDisposed()) return;
+        const data = await plugin.builders.data.rawData(
+          { data: contents, label: source.label },
           { state: { isGhost: true } },
         );
         const trajectory = await plugin.builders.structure.parseTrajectory(
@@ -152,12 +171,15 @@ export function useMolstarPlugin(
       // unmount) will see `isDisposed()` as true and skip its own dispose,
       // so the plugin is only ever disposed once.
       lifecycle.disposed = true;
+      downloadController.abort();
       disposePlugin(pluginRef.current);
       pluginRef.current = null;
     };
   }, [
     source.url,
     source.format,
+    source.label,
+    source.kind,
     layout.showControls,
     layout.regionState,
     retryCount,

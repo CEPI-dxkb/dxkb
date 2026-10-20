@@ -1,14 +1,14 @@
-import { renderHook, waitFor } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import React from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { http, HttpResponse } from "msw";
 import { server } from "@/test-helpers/msw-server";
 import { ApiCallError } from "@/lib/api/types";
+import { nextRefetchInterval } from "@/test-helpers/react";
 
-function createWrapper() {
-  const queryClient = new QueryClient({
-    defaultOptions: { queries: { retry: false } },
-  });
+function createWrapper(queryClient = new QueryClient({
+  defaultOptions: { queries: { retry: false } },
+})) {
   function Wrapper({ children }: { children: React.ReactNode }) {
     return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
   }
@@ -249,5 +249,67 @@ describe("useJobsData", () => {
 
     expect(result.current.error).toBeInstanceOf(ApiCallError);
     expect(result.current.error?.status).toBe(500);
+  });
+
+  it("keeps the caller's interval while polls succeed and backs off when they fail", async () => {
+    let failing = false;
+    server.use(
+      http.post("/api/services/app-service/jobs/enumerate-tasks-filtered", () =>
+        failing
+          ? HttpResponse.json({ error: "JSON-RPC call failed: fetch failed" }, { status: 500 })
+          : HttpResponse.json({ jobs: [validJob], totalTasks: 1 }),
+      ),
+    );
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+
+    const { result } = renderHook(
+      () => useJobsData({ ...defaultParams, refetchInterval: 10_000 }),
+      { wrapper: createWrapper(queryClient) },
+    );
+
+    await waitFor(() => { expect(result.current.isSuccess).toBe(true); });
+    expect(nextRefetchInterval(queryClient, ["jobs-filtered"])).toBe(10_000);
+
+    failing = true;
+    await act(() => result.current.refetch());
+    expect(queryClient.getQueryCache().find({ queryKey: ["jobs-filtered"], exact: false })?.state.status).toBe("error");
+    expect(nextRefetchInterval(queryClient, ["jobs-filtered"])).toBe(30_000);
+
+    await act(() => result.current.refetch());
+    expect(nextRefetchInterval(queryClient, ["jobs-filtered"])).toBe(60_000);
+
+    failing = false;
+    await act(() => result.current.refetch());
+    expect(queryClient.getQueryCache().find({ queryKey: ["jobs-filtered"], exact: false })?.state.status).toBe("success");
+    expect(nextRefetchInterval(queryClient, ["jobs-filtered"])).toBe(10_000);
+  });
+
+  it("does not poll when the caller passes refetchInterval false, healthy or failing", async () => {
+    let failing = false;
+    server.use(
+      http.post("/api/services/app-service/jobs/enumerate-tasks-filtered", () =>
+        failing
+          ? HttpResponse.json({ error: "JSON-RPC call failed: fetch failed" }, { status: 500 })
+          : HttpResponse.json({ jobs: [validJob], totalTasks: 1 }),
+      ),
+    );
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+
+    const { result } = renderHook(
+      () => useJobsData({ ...defaultParams, refetchInterval: false }),
+      { wrapper: createWrapper(queryClient) },
+    );
+
+    await waitFor(() => { expect(result.current.isSuccess).toBe(true); });
+    expect(nextRefetchInterval(queryClient, ["jobs-filtered"])).toBe(false);
+
+    failing = true;
+    await act(() => result.current.refetch());
+    expect(queryClient.getQueryCache().find({ queryKey: ["jobs-filtered"], exact: false })?.state.status).toBe("error");
+    expect(nextRefetchInterval(queryClient, ["jobs-filtered"])).toBe(false);
   });
 });

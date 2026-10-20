@@ -377,6 +377,47 @@ describe("WorkspaceFolderPickerDialog places", () => {
     );
   });
 
+  it("keeps Recently Used choosable when the favorites read fails", async () => {
+    localStorage.setItem(
+      recentWorkspaceFoldersStorageKey,
+      JSON.stringify([{ path: `${home}/Experiments`, visitedAt: 1 }]),
+    );
+    server.use(
+      http.post("*/api/services/workspace", () =>
+        HttpResponse.json(
+          { error: "Workspace service unavailable" },
+          { status: 503 },
+        ),
+      ),
+    );
+    const { user, onSelect } = renderPicker();
+    await findOption("Home", "Alpha");
+
+    // The favorites read fails (the navbar shares this read)...
+    await user.click(place("Favorites"));
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Couldn't load this folder.",
+    );
+
+    // ...which says nothing about recent folders, kept in browser storage.
+    await user.click(place("Recently Used"));
+    const column = await screen.findByRole("listbox", {
+      name: "Recently Used",
+    });
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    await user.click(within(column).getByRole("option", { name: "Experiments" }));
+
+    expect(selectButton()).toBeEnabled();
+    expect(
+      screen.getByRole("button", { name: "New folder here" }),
+    ).toBeEnabled();
+    await user.click(selectButton());
+    expect(onSelect).toHaveBeenCalledWith(
+      `${home}/Experiments`,
+      expect.anything(),
+    );
+  });
+
   it("lists favorite folders", async () => {
     server.use(
       http.post("*/api/services/workspace", () =>
@@ -536,6 +577,56 @@ describe("WorkspaceFolderPickerDialog info pane", () => {
 
     expect(screen.getByText(home)).toBeInTheDocument();
     expect(detail("Contains")).toBe("2 folders, 1 file");
+  });
+
+  it("claims nothing about a folder whose listing failed, and offers no Select", async () => {
+    const repository = makePickerRepository();
+    repository.failListing(home, new Error("Internal server error"));
+    const { user } = renderPicker({}, repository);
+
+    await screen.findByRole("alert");
+
+    expect(detail("Contains")).toBe("Couldn't check");
+    expect(
+      screen.getByText(
+        "Couldn't check this folder's contents or write access: Internal server error",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/You can write here/)).not.toBeInTheDocument();
+    expect(selectButton()).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: "New folder here" }),
+    ).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Upload here" })).toBeDisabled();
+
+    // While the Retry is in flight the folder is still unconfirmed: nothing
+    // is offered in it, and the pane makes no claim about writing there.
+    repository.restoreListing(home);
+    const gate = repository.holdListing(home);
+    await user.click(screen.getByRole("button", { name: "Retry" }));
+
+    expect(
+      await screen.findByRole("button", { name: "Retrying…" }),
+    ).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: "New folder here" }),
+    ).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Upload here" })).toBeDisabled();
+    expect(selectButton()).toBeDisabled();
+    expect(screen.queryByText(/You can write here/)).not.toBeInTheDocument();
+
+    // Once the Retry loads it, the folder is described and can be chosen.
+    gate.release();
+
+    await waitFor(() => {
+      expect(detail("Contains")).toBe("2 folders, 1 file");
+    });
+    expect(
+      screen.getByText(
+        "You can write here, so results can be saved in this folder.",
+      ),
+    ).toBeInTheDocument();
+    expect(selectButton()).toBeEnabled();
   });
 
   it("says when a folder holds nothing", async () => {

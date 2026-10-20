@@ -7,6 +7,12 @@ import type {
   UpstreamProfilePatch,
   UserProfile,
 } from "@/lib/auth/types";
+import {
+  describeUpstreamResponse,
+  hostOf,
+  upstreamCauseCode,
+  upstreamTimeoutFailure,
+} from "@/lib/api/upstream-failure";
 import { fail, networkFailure, ok } from "../result";
 
 // Cloudflare rejects Node's default user-agent for BV-BRC API requests.
@@ -19,15 +25,44 @@ function joinUrl(base: string, path = ""): string {
     : base;
 }
 
+/**
+ * One server log line per failed identity call, so an operator can tell "the
+ * account service hangs" from "users mistyped passwords": the service, host,
+ * method, what failed (an HTTP status, a timeout or the socket error code) and
+ * how long it took. Never the URL path, headers, body or error text, which
+ * carry usernames, credentials and tokens.
+ */
+function logUpstreamFailure(
+  service: string,
+  input: string,
+  init: RequestInit,
+  outcome: string,
+  startedAt: number,
+): void {
+  const host = hostOf(input) ?? "unknown host";
+  const method = (init.method ?? "GET").toUpperCase();
+  console.error(
+    `[auth] ${service} (${host}) ${method} failed: ${outcome} after ${String(Date.now() - startedAt)} ms`,
+  );
+}
+
+/**
+ * `service` is the lower-case phrase failure messages name ("the BV-BRC
+ * authentication service"): a timeout reads "… did not respond (timed out
+ * after 15 s)" and a network failure "Could not reach …: <cause>", never a
+ * fallback sentence with a suffix glued on.
+ */
 async function request(
   input: string,
   init: RequestInit,
-  fallback: string,
+  service: string,
+  timeoutMs = requestTimeoutMs,
 ): Promise<Result<Response>> {
+  const startedAt = Date.now();
   const controller = new AbortController();
   const timeout = setTimeout(() => {
     controller.abort();
-  }, requestTimeoutMs);
+  }, timeoutMs);
   try {
     const headers = new Headers(init.headers);
     headers.set("User-Agent", serverUserAgent);
@@ -37,6 +72,17 @@ async function request(
       signal: controller.signal,
     });
     const body = response.body ? await response.arrayBuffer() : null;
+    // A 4xx is the caller's (a wrong password, a taken username), not an
+    // outage, and logging it would only add noise.
+    if (response.status >= 500) {
+      logUpstreamFailure(
+        service,
+        input,
+        init,
+        `HTTP ${String(response.status)}`,
+        startedAt,
+      );
+    }
     return ok(
       new Response(body, {
         status: response.status,
@@ -46,9 +92,25 @@ async function request(
     );
   } catch (cause) {
     if (cause instanceof Error && cause.name === "AbortError") {
-      return fail("service_unavailable", `${fallback} timed out`, 504);
+      logUpstreamFailure(
+        service,
+        input,
+        init,
+        `timed out (budget ${String(timeoutMs)} ms)`,
+        startedAt,
+      );
+      const failure = upstreamTimeoutFailure(service, { timeoutMs });
+      return fail("service_unavailable", failure.message, failure.status);
     }
-    return { data: null, error: networkFailure(cause, fallback) };
+    logUpstreamFailure(
+      service,
+      input,
+      init,
+      upstreamCauseCode(cause) ??
+        (cause instanceof Error ? cause.name : "network error"),
+      startedAt,
+    );
+    return { data: null, error: networkFailure(cause, service) };
   } finally {
     clearTimeout(timeout);
   }
@@ -65,17 +127,38 @@ function codeForStatus(status: number): AuthErrorCode {
   return "unknown";
 }
 
-function httpFailure<T>(
+/**
+ * A non-OK answer. A 4xx keeps the operation's own wording ("Authentication
+ * failed"); a 5xx says the service is unavailable, with the status and an
+ * HTML page's title ("… is unavailable (HTTP 503 Service Unavailable: Site
+ * Maintenance)"), so an outage never reads as a wrong password.
+ */
+async function httpFailure<T>(
   response: Response,
   fallback: string,
+  service: string,
   authFailureCode?: "unauthorized" | "invalid_credentials",
-): Result<T> {
+): Promise<Result<T>> {
   const code =
     authFailureCode && (response.status === 401 || response.status === 403)
       ? authFailureCode
       : codeForStatus(response.status);
-  return fail(code, fallback, response.status);
+  if (response.status < 500) return fail(code, fallback, response.status);
+  const body = await response.text().catch(() => "");
+  return fail(
+    code,
+    describeUpstreamResponse(response, body, service).message,
+    response.status,
+  );
 }
+
+const authenticationService = "the BV-BRC authentication service";
+const registrationService = "the BV-BRC registration service";
+const profileService = "the BV-BRC profile service";
+const passwordResetService = "the BV-BRC password reset service";
+const verificationService = "the BV-BRC verification service";
+const emailVerificationService = "the BV-BRC email verification service";
+const passwordService = "the BV-BRC password service";
 
 function isUserProfile(value: unknown): value is UserProfile {
   if (!value || typeof value !== "object") return false;
@@ -118,13 +201,14 @@ export async function authenticate(
         password: credentials.password,
       }),
     },
-    "Authentication service unavailable",
+    authenticationService,
   );
   if (result.error) return result;
   if (!result.data.ok) {
     return httpFailure(
       result.data,
       "Authentication failed",
+      authenticationService,
       "invalid_credentials",
     );
   }
@@ -157,10 +241,12 @@ export async function registerUser(
         registration_site_url: siteUrl,
       }),
     },
-    "Registration service unavailable",
+    registrationService,
   );
   if (result.error) return result;
-  if (!result.data.ok) return httpFailure(result.data, "Registration failed");
+  if (!result.data.ok) {
+    return httpFailure(result.data, "Registration failed", registrationService);
+  }
   return readToken(result.data, "Registration service returned no token");
 }
 
@@ -180,13 +266,14 @@ export async function impersonateUser(
         username: actingUserId,
       }),
     },
-    "Authentication service unavailable",
+    authenticationService,
   );
   if (result.error) return result;
   if (!result.data.ok) {
     return httpFailure(
       result.data,
       "Impersonation failed",
+      authenticationService,
       "invalid_credentials",
     );
   }
@@ -199,15 +286,22 @@ export async function impersonateUser(
 export async function getProfile(
   userId: string,
   token: string,
+  options?: { timeoutMs?: number },
 ): Promise<Result<UserProfile>> {
   const result = await request(
     joinUrl(getRequiredEnv("USER_URL"), encodeURIComponent(userId)),
     { headers: { Accept: "application/json", Authorization: token } },
-    "Profile service unavailable",
+    profileService,
+    options?.timeoutMs,
   );
   if (result.error) return result;
   if (!result.data.ok) {
-    return httpFailure(result.data, "Profile lookup failed", "unauthorized");
+    return httpFailure(
+      result.data,
+      "Profile lookup failed",
+      profileService,
+      "unauthorized",
+    );
   }
   const rawProfile: unknown = await result.data.json().catch(() => null);
   const profile =
@@ -247,12 +341,17 @@ export async function updateProfile(
       },
       body: JSON.stringify(patches),
     },
-    "Profile service unavailable",
+    profileService,
   );
   if (result.error) return result;
   return result.data.ok
     ? ok(undefined)
-    : httpFailure(result.data, "Failed to update profile", "unauthorized");
+    : httpFailure(
+        result.data,
+        "Failed to update profile",
+        profileService,
+        "unauthorized",
+      );
 }
 
 export async function requestPasswordReset(
@@ -265,12 +364,16 @@ export async function requestPasswordReset(
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: new URLSearchParams({ email: usernameOrEmail }),
     },
-    "Password reset service unavailable",
+    passwordResetService,
   );
   if (result.error) return result;
   return result.data.ok
     ? ok(undefined)
-    : httpFailure(result.data, "Failed to send password reset email");
+    : httpFailure(
+        result.data,
+        "Failed to send password reset email",
+        passwordResetService,
+      );
 }
 
 export async function sendVerificationEmail(
@@ -288,7 +391,7 @@ export async function sendVerificationEmail(
       },
       body: JSON.stringify({ id: userId }),
     },
-    "Verification service unavailable",
+    verificationService,
   );
   if (result.error) return result;
   return result.data.ok
@@ -296,6 +399,7 @@ export async function sendVerificationEmail(
     : httpFailure(
         result.data,
         "Failed to send verification email",
+        verificationService,
         "unauthorized",
       );
 }
@@ -314,12 +418,16 @@ export async function verifyEmailToken(
       },
       body: JSON.stringify({ token: verificationToken, username }),
     },
-    "Email verification service unavailable",
+    emailVerificationService,
   );
   if (result.error) return result;
   if (result.data.ok) return ok(undefined);
   if (result.data.status >= 500 || result.data.status === 429) {
-    return httpFailure(result.data, "Email verification failed");
+    return httpFailure(
+      result.data,
+      "Email verification failed",
+      emailVerificationService,
+    );
   }
   return fail("validation", "Email verification failed", result.data.status);
 }
@@ -346,13 +454,14 @@ export async function changePassword(
         params: [userId, currentPassword, newPassword],
       }),
     },
-    "Password service unavailable",
+    passwordService,
   );
   if (result.error) return result;
   if (!result.data.ok) {
     return httpFailure(
       result.data,
       "Failed to change password",
+      passwordService,
       "unauthorized",
     );
   }

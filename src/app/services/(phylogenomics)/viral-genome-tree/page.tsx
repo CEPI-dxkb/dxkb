@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { JobParamsDialog } from "@/components/services/job-params-dialog";
 import { ServiceHeader } from "@/components/services/service-header";
+import { ServiceSubmitError } from "@/components/services/form-ui/service-submit-error";
 import { phylogeneticTreeInfo } from "@/lib/services/info/phylogenetic-tree";
 import { useViralGenomeTree } from "./use-viral-genome-tree";
 import { ViralGenomeTreeInput } from "./viral-genome-tree-input";
@@ -38,6 +39,7 @@ export default function ViralGenomeTreePage() {
         <ViralGenomeTreeInput controller={controller} />
         <ViralGenomeTreeParameters controller={controller} />
         <ViralGenomeTreeMetadata controller={controller} />
+        <ServiceSubmitError form={form} />
         <div className="service-form-controls md:col-span-2">
           <Button type="button" variant="outline" onClick={handleReset}>
             Reset

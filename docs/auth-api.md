@@ -29,6 +29,8 @@ Session mutation responses redact the token as `session.token: ""` and expose th
 
 Current identity is not an HTTP endpoint. Server Components call `getCurrentUser()` from `src/lib/auth/server/actions.ts`; protected route handlers use `withAuth()` or `readAuthSession()` from `src/lib/auth/server/route.ts`. Sign-out submits to the redirecting `signOutAndRedirect` Server Action, which clears cookies before redirecting.
 
+`getCurrentUser()` returns `null` (signed out) only when there is no session or the profile service gives a definitive answer: 401/403 (`unauthorized`), or any other 4xx except 408 and 429, such as 404 for no such user. When the service cannot answer (`service_unavailable` — any 5xx, a 5 s timeout, or a 200 that is not a profile — `network`, a 408 Request Timeout, or `rate_limited` (429)), it returns an `AuthUser` built from the session cookies alone with `sessionUnverified: true` and a plain-text `sessionUnverifiedReason`. That user has `id` and `username` set to the session user id, an empty `email` and empty `roles`, and keeps `isImpersonating`/`originalUsername` when an SU backup is present. Protected pages render for it, the navbar keeps the account menu (and so Sign Out) and shows a dismissible outage banner with Retry, and sign-in/sign-up send it on to their `?redirect=` destination. `getCurrentUser()` never clears cookies; only an `unauthorized` failure on an `/api/auth/*` route does (`respondWithUpstreamFailure`).
+
 Two routes are documented exceptions (see [Exceptions](#exceptions) below).
 
 ---

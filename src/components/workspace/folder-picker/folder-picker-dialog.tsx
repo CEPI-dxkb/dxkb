@@ -33,6 +33,7 @@ import {
 } from "@/components/ui/dialog";
 import type { FolderIconVariant } from "@/components/workspace/workspace-item-icon";
 import { useWorkspaceRepository } from "@/contexts/workspace-repository-context";
+import { useKeptQueryError } from "@/hooks/services/jobs/use-kept-query-error";
 import { useWorkspacePickerListing } from "@/hooks/services/workspace/use-workspace-picker-listing";
 import { useAuth } from "@/lib/auth/provider";
 import type { WorkspaceItem } from "@/lib/services/workspace/domain";
@@ -244,9 +245,32 @@ function FolderColumnsBrowser({
     path === selectedPath ? selectedEvidence : siblings;
 
   const commit = commitStateFor(selectedPath, selectedItem, selectedEvidence);
+  // A failed listing leaves the folder unconfirmed (it may be gone) and its
+  // write access unknown, so nothing is chosen or changed in it until a Retry
+  // in its column loads it. The error is kept through that Retry, as the
+  // column keeps its own: TanStack clears it the moment a listing with no
+  // rows refetches, which would offer New folder, Upload and Select (and say
+  // "You can write here") for the whole wait. The hook hands back the error
+  // it was given, an `Error` here.
+  const listingError = useKeptQueryError(
+    {
+      error: containing.error ?? contents.error,
+      hasData:
+        !containing.isLoading &&
+        !contents.isLoading &&
+        containing.error === null &&
+        contents.error === null,
+    },
+    JSON.stringify([
+      username,
+      columnLocation(Math.max(currentIndex, 0)),
+      lastLocation,
+    ]),
+  ) as Error | null;
   // Until the column listing the selection has loaded, the folder may still
   // turn out to be gone.
-  const canCommitNow = commit.canCommit && !containing.isLoading;
+  const canCommitNow =
+    commit.canCommit && !containing.isLoading && listingError === null;
   // The folder the info pane describes and Upload saves into: the selection,
   // or, with a file selected, the folder holding it. Until the file's row has
   // loaded the pane shows that folder, never the file as if it were one.
@@ -255,6 +279,7 @@ function FolderColumnsBrowser({
       (rootLocation.kind === "path" ? rootLocation.path : null))
     : selectedPath;
   const canChange =
+    listingError === null &&
     folderPath !== null &&
     isWritable(folderPath, file ? null : selectedItem, selectedEvidence);
 
@@ -455,6 +480,8 @@ function FolderColumnsBrowser({
 
   const commitRow = (item: WorkspaceItem, siblings: WorkspaceItem[]) => {
     const path = pickerRowKey(item, target);
+    // The selection whose listing failed waits for a Retry, as Select does.
+    if (path === selectedPath && listingError !== null) return;
     if (commitStateFor(path, item, evidenceFor(path, siblings)).canCommit)
       onCommit(path, item);
   };
@@ -774,6 +801,7 @@ function FolderColumnsBrowser({
               homePath={homePath}
               item={selectedItem}
               contents={contents}
+              listingError={listingError}
               commit={commit}
               canChange={canChange}
               onNewFolder={() => {

@@ -291,7 +291,7 @@ describe("OutputFolder name validation", () => {
     await finishDebounce();
 
     expect(screen.getByRole("alert")).toHaveTextContent(
-      "Unable to validate this name. Please try again.",
+      "Unable to validate this name: network unavailable.",
     );
     expect(screen.getByRole("textbox")).toHaveAttribute("aria-invalid", "true");
     expect(onValidationChange).toHaveBeenLastCalledWith(false);
@@ -315,5 +315,103 @@ describe("OutputFolder name validation", () => {
       "false",
     );
     expect(onValidationChange).toHaveBeenLastCalledWith(true);
+  });
+  it("says why the name could not be checked when the workspace is down", async () => {
+    checkWorkspaceObjectExistsMock.mockRejectedValueOnce(
+      Object.assign(
+        new Error(
+          "The BV-BRC workspace service did not respond (timed out after 30 s).",
+        ),
+        { status: 504 },
+      ),
+    );
+    render(
+      <OutputFolder
+        title={false}
+        variant="name"
+        value="result"
+        outputFolderPath="/user/home"
+      />,
+    );
+
+    await finishDebounce();
+
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Unable to validate this name: The BV-BRC workspace service did not respond (timed out after 30 s).",
+    );
+  });
+
+  it("re-runs a failed check on Retry, so Submit unblocks once the workspace answers", async () => {
+    checkWorkspaceObjectExistsMock
+      .mockRejectedValueOnce(
+        Object.assign(
+          new Error(
+            "The BV-BRC workspace service is unavailable (HTTP 503 Service Unavailable).",
+          ),
+          { status: 503 },
+        ),
+      )
+      .mockResolvedValueOnce(false);
+    const onValidationChange = vi.fn();
+    render(
+      <OutputFolder
+        title={false}
+        variant="name"
+        value="result"
+        outputFolderPath="/user/home"
+        onValidationChange={onValidationChange}
+      />,
+    );
+
+    await finishDebounce();
+    expect(onValidationChange).toHaveBeenLastCalledWith(false);
+    expect(checkWorkspaceObjectExistsMock).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(screen.getByRole("button", { name: "Retry name check" }));
+
+    // Back to checking: the error and its Retry give way to the status line.
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Checking name availability...",
+    );
+    expect(onValidationChange).toHaveBeenLastCalledWith(false);
+
+    await finishDebounce();
+
+    expect(checkWorkspaceObjectExistsMock).toHaveBeenCalledTimes(2);
+    expect(checkWorkspaceObjectExistsMock).toHaveBeenLastCalledWith(
+      "/user/home/result",
+      expect.any(Object),
+    );
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Retry name check" }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole("textbox")).toHaveAttribute(
+      "aria-invalid",
+      "false",
+    );
+    expect(onValidationChange).toHaveBeenLastCalledWith(true);
+  });
+
+  it("offers no Retry when the name is simply taken", async () => {
+    checkWorkspaceObjectExistsMock.mockResolvedValueOnce(true);
+    render(
+      <OutputFolder
+        title={false}
+        variant="name"
+        value="result"
+        outputFolderPath="/user/home"
+      />,
+    );
+
+    await finishDebounce();
+
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "An object with this name already exists in the selected folder.",
+    );
+    expect(
+      screen.queryByRole("button", { name: "Retry name check" }),
+    ).not.toBeInTheDocument();
   });
 });

@@ -2,6 +2,8 @@ import { http, HttpResponse } from "msw";
 import { server } from "@/test-helpers/msw-server";
 import { AppService, createAppService } from "@/lib/app-service";
 import { createBvBrcClient } from "@/lib/jsonrpc-client";
+import { UpstreamError } from "@/lib/api/upstream-failure";
+import { connectTimeout } from "@/test-helpers/upstream-failures";
 
 vi.mock("@/lib/jsonrpc-client", () => ({
   createBvBrcClient: vi.fn(() => ({
@@ -92,13 +94,24 @@ describe("AppService", () => {
   });
 
   describe("fetchJobOutput", () => {
+    // Not the production host: the output endpoint must follow APP_SERVICE_URL.
+    const appServiceUrl = "https://app.example.test/services/app_service";
+
+    beforeEach(() => {
+      vi.stubEnv("APP_SERVICE_URL", appServiceUrl);
+    });
+
+    afterEach(() => {
+      vi.unstubAllEnvs();
+    });
+
     it("makes GET request with OAuth auth header", async () => {
       mockClient.getAuthToken.mockReturnValue("my-token");
 
       let capturedRequest: { url: string; headers: Headers } | undefined;
       server.use(
         http.get(
-          "https://p3.theseed.org/services/app_service/task_info/123/stdout",
+          `${appServiceUrl}/task_info/123/stdout`,
           ({ request }) => {
             capturedRequest = {
               url: request.url,
@@ -132,7 +145,7 @@ describe("AppService", () => {
 
       server.use(
         http.get(
-          "https://p3.theseed.org/services/app_service/task_info/123/stdout",
+          `${appServiceUrl}/task_info/123/stdout`,
           () => {
             return new HttpResponse(null, { status: 404 });
           },
@@ -142,6 +155,120 @@ describe("AppService", () => {
       await expect(
         service.fetchJobOutput({ job_id: "123", output_type: "stdout" }),
       ).rejects.toThrow("Failed to fetch stdout for job 123");
+    });
+
+    it("builds the output URL from APP_SERVICE_URL, ignoring a trailing slash", async () => {
+      vi.stubEnv("APP_SERVICE_URL", `${appServiceUrl}/`);
+      mockClient.getAuthToken.mockReturnValue("my-token");
+      let requestedUrl: string | undefined;
+      server.use(
+        http.get(`${appServiceUrl}/task_info/123/stderr`, ({ request }) => {
+          requestedUrl = request.url;
+          return new HttpResponse("stderr content");
+        }),
+      );
+
+      await expect(
+        service.fetchJobOutput({ job_id: "123", output_type: "stderr" }),
+      ).resolves.toBe("stderr content");
+      expect(requestedUrl).toBe(`${appServiceUrl}/task_info/123/stderr`);
+    });
+
+    it("keeps a job id inside its own path segment", async () => {
+      mockClient.getAuthToken.mockReturnValue("my-token");
+      let requestedUrl: string | undefined;
+      server.use(
+        http.get(`${appServiceUrl}/task_info/*`, ({ request }) => {
+          requestedUrl = request.url;
+          return new HttpResponse("");
+        }),
+      );
+
+      await service.fetchJobOutput({ job_id: "../123", output_type: "stdout" });
+
+      expect(requestedUrl).toBe(`${appServiceUrl}/task_info/..%2F123/stdout`);
+    });
+
+    it("keeps an upstream failure's status and names the job in its message", async () => {
+      mockClient.getAuthToken.mockReturnValue("my-token");
+      server.use(
+        http.get(`${appServiceUrl}/task_info/123/stdout`, () => {
+          throw connectTimeout();
+        }),
+      );
+
+      const failure = await service
+        .fetchJobOutput({ job_id: "123", output_type: "stdout" })
+        .catch((error: unknown) => error);
+
+      expect(failure).toBeInstanceOf(UpstreamError);
+      expect(failure).toEqual(
+        expect.objectContaining({
+          status: 504,
+          code: "upstream_timeout",
+          message: expect.stringMatching(/^Failed to fetch stdout for job 123: /) as unknown,
+        }),
+      );
+    });
+
+    // MSW does not tie the request signal to a mocked body, so the stream
+    // errors the way undici's does when the budget fires or the socket drops.
+    function cutShort(error: Error): HttpResponse<ReadableStream> {
+      return new HttpResponse(
+        new ReadableStream({
+          start(controller) {
+            controller.enqueue(new TextEncoder().encode("Starting job"));
+            controller.error(error);
+          },
+        }),
+      );
+    }
+
+    it("answers output that times out mid-body as a 504 naming the job service", async () => {
+      mockClient.getAuthToken.mockReturnValue("my-token");
+      server.use(
+        http.get(`${appServiceUrl}/task_info/123/stdout`, () =>
+          cutShort(new DOMException("The operation was aborted due to timeout", "TimeoutError")),
+        ),
+      );
+
+      const failure = await service
+        .fetchJobOutput({ job_id: "123", output_type: "stdout" })
+        .catch((error: unknown) => error);
+
+      expect(failure).toBeInstanceOf(UpstreamError);
+      expect(failure).toEqual(
+        expect.objectContaining({
+          status: 504,
+          code: "upstream_timeout",
+          message:
+            "Failed to fetch stdout for job 123: The BV-BRC job service did not respond (timed out after 30 s).",
+        }),
+      );
+    });
+
+    it("answers output cut off by a dropped connection as a 502", async () => {
+      mockClient.getAuthToken.mockReturnValue("my-token");
+      const reset = new TypeError("terminated", {
+        cause: Object.assign(new Error("other side closed"), { code: "UND_ERR_SOCKET" }),
+      });
+      server.use(
+        http.get(`${appServiceUrl}/task_info/123/stderr`, () => cutShort(reset)),
+      );
+
+      const failure = await service
+        .fetchJobOutput({ job_id: "123", output_type: "stderr" })
+        .catch((error: unknown) => error);
+
+      expect(failure).toBeInstanceOf(UpstreamError);
+      expect(failure).toEqual(
+        expect.objectContaining({
+          status: 502,
+          code: "service_unavailable",
+          message:
+            "Failed to fetch stderr for job 123: Could not reach the BV-BRC job service: connection closed.",
+        }),
+      );
     });
   });
 

@@ -27,6 +27,7 @@ import {
 import { ServiceTextarea } from "@/components/services/form-ui/service-input";
 import { ServiceLabel } from "@/components/services/form-ui/service-label";
 import { ServiceRadioGroup } from "@/components/services/form-ui/service-radio-group";
+import { ServiceSubmitError } from "@/components/services/form-ui/service-submit-error";
 
 import {
   haSubtypeNumberingInput,
@@ -343,6 +344,7 @@ export default function HASubtypeNumberingPage() {
 
         {/* Form Controls */}
         <div className="md:col-span-12">
+          <ServiceSubmitError form={form} />
           <div className="service-form-controls">
             <Button type="button" variant="outline" onClick={handleReset}>
               Reset

@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { FlexRender, type Row } from "@tanstack/react-table";
 import { toast } from "sonner";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle, TriangleAlert } from "lucide-react";
 import {
   AlertDialog,
@@ -33,10 +33,13 @@ import { useTableKeyboardNavigation } from "@/hooks/use-table-keyboard-navigatio
 import { useJobsColumns } from "./jobs-table-columns";
 import { JobsToolbar } from "./jobs-toolbar";
 import { JobsActionBar } from "./jobs-action-bar";
-import { JobsPagination } from "./jobs-pagination";
+import { JobsPagination, type JobsListStatus } from "./jobs-pagination";
 import { JobDetailsPanel } from "./jobs-detail-panel";
 import { JobsShell } from "./jobs-shell";
 import { DetailPanel } from "@/components/detail-panel";
+import { QueryRetryButton } from "@/components/views/query-retry-button";
+import { useRetryKeepingError } from "@/components/views/use-retry-keeping-error";
+import { useKeptQueryError } from "@/hooks/services/jobs/use-kept-query-error";
 import type { JobListItem } from "@/types/workspace";
 import { encodeWorkspaceSegment } from "@/lib/services/workspace/path-utils";
 import { getJobResultHref } from "@/lib/jobs/formatting";
@@ -49,7 +52,69 @@ import {
   fromLocalDateParam,
   toLocalDateParam,
 } from "@/lib/jobs/jobs-url-state";
+import { formatUserFacingErrorMessage } from "@/lib/utils";
 import { clsx } from "cn";
+
+/** `formatUserFacingErrorMessage` fallback for a failed job list read. */
+const jobsErrorFallback = "The job list could not be loaded. Please try again.";
+
+/** `formatUserFacingErrorMessage` fallback for a failed job summary read. */
+const summaryErrorFallback = "The job summary could not be loaded.";
+
+/**
+ * In place of the table when the list failed and there is nothing to show.
+ * It stays up, its button reading "Retrying…", until the retry answers.
+ */
+function JobsLoadError({
+  error,
+  retrying,
+  onRetry,
+}: {
+  error: unknown;
+  retrying: boolean;
+  onRetry: () => void;
+}) {
+  return (
+    <div className="px-4">
+      <Alert variant="destructive">
+        <AlertCircle />
+        <AlertTitle>Could not load jobs</AlertTitle>
+        <AlertDescription>
+          <p>{formatUserFacingErrorMessage(error, jobsErrorFallback)}</p>
+          <QueryRetryButton retrying={retrying} onRetry={onRetry} />
+        </AlertDescription>
+      </Alert>
+    </div>
+  );
+}
+
+/**
+ * A poll failed after the list had loaded: the rows stay (they were right a
+ * moment ago) and this says they may be out of date, without taking over.
+ */
+function JobsRefreshError({
+  error,
+  retrying,
+  onRetry,
+}: {
+  error: unknown;
+  retrying: boolean;
+  onRetry: () => void;
+}) {
+  return (
+    <Alert size="sm" role="status">
+      <TriangleAlert />
+      <AlertTitle>Could not refresh jobs</AlertTitle>
+      <AlertDescription>
+        <p>
+          {formatUserFacingErrorMessage(error, jobsErrorFallback)} The list
+          shows the last update.
+        </p>
+        <QueryRetryButton retrying={retrying} onRetry={onRetry} />
+      </AlertDescription>
+    </Alert>
+  );
+}
 
 interface JobDataRowProps {
   row: Row<FileTableFeatures, JobListItem>;
@@ -197,7 +262,13 @@ function useJobsBrowser() {
   };
 
   // Data fetching
-  const { data: summaryData } = useJobsSummary(includeArchived);
+  const summaryQuery = useJobsSummary(includeArchived);
+  const summaryData = summaryQuery.data;
+  // A back-off poll of a summary that never loaded must not hide its error.
+  const summaryError = useKeptQueryError(
+    { error: summaryQuery.error, hasData: summaryData !== undefined },
+    String(includeArchived),
+  );
   const statusSummary = summaryData?.taskSummary;
   const appSummary = summaryData?.appSummary;
 
@@ -206,7 +277,7 @@ function useJobsBrowser() {
   );
   const {
     data: jobsResult,
-    isLoading,
+    isPlaceholderData,
     isFetching,
     error,
     refetch,
@@ -223,14 +294,65 @@ function useJobsBrowser() {
     refetchInterval: hasActiveJobs ? 10_000 : 30_000,
   });
 
-  const jobs = jobsResult?.jobs ?? [];
-  const totalTasks = jobsResult?.totalTasks ?? 0;
+  // The list query's own identity: the kept error of one page or filter is
+  // never shown for another.
+  const listIdentity = JSON.stringify([
+    offset,
+    pageSize,
+    includeArchived,
+    sort.field,
+    sort.direction,
+    serviceFilter,
+    startTime,
+    endTime,
+  ]);
+  // Rows kept from the previous page (`keepPreviousData`) are not this
+  // query's: they may stand in while it loads, never next to its failure.
+  const hasListData = jobsResult !== undefined && !isPlaceholderData;
+  // The failure stays up through back-off polls (useKeptQueryError) and
+  // through a Retry, whose button says it is retrying (useRetryKeepingError).
+  const keptListError = useKeptQueryError(
+    { error, hasData: hasListData },
+    listIdentity,
+  );
+  const listRetry = useRetryKeepingError(
+    { error: keptListError, isFetching, refetch },
+    listIdentity,
+  );
+  const listError = listRetry.error;
+  // Until a list arrives, and after a failure that left none, there are no
+  // rows to count: never present that as "No jobs found".
+  const listStatus: JobsListStatus =
+    listError && !hasListData ? "error" : jobsResult ? "ready" : "loading";
+  const jobs = listStatus === "ready" ? (jobsResult?.jobs ?? []) : [];
+  const totalTasks =
+    listStatus === "ready" ? (jobsResult?.totalTasks ?? 0) : 0;
+
+  // The toolbar notes a failed summary, unless the list's own alert (the load
+  // error in place of the table, or the refresh notice above the toolbar)
+  // already gives the same reason: one outage fails both reads.
+  const summaryErrorMessage = summaryError
+    ? formatUserFacingErrorMessage(summaryError, summaryErrorFallback)
+    : undefined;
+  const toolbarSummaryError =
+    summaryErrorMessage &&
+    !(
+      listError != null &&
+      formatUserFacingErrorMessage(listError, "") === summaryErrorMessage
+    )
+      ? summaryErrorMessage
+      : undefined;
 
   // Kill mutation
   const killMutation = useKillJob();
 
-  // Derived data
-  const availableServices = appSummary ? Object.keys(appSummary).sort() : [];
+  // Derived data. The service list comes from the summary; keep the selected
+  // service in it so the filter still names it when the summary failed.
+  const availableServices = Object.keys(appSummary ?? {});
+  if (serviceFilter !== "all" && !availableServices.includes(serviceFilter)) {
+    availableServices.push(serviceFilter);
+  }
+  availableServices.sort();
 
   // Client-side filters (status, search) applied to the current page
   // Note: serviceFilter is handled server-side via the `app` param in useJobsData
@@ -423,14 +545,13 @@ function useJobsBrowser() {
             <h1 className="text-2xl font-bold text-foreground">Jobs</h1>
           </div>
 
-          {error && (
-            <Alert variant="destructive">
-              <AlertCircle className="size-4" />
-              <AlertDescription>
-                Error loading jobs: {error.message}
-              </AlertDescription>
-            </Alert>
-          )}
+          {listError && hasListData ? (
+            <JobsRefreshError
+              error={listError}
+              retrying={listRetry.retrying}
+              onRetry={listRetry.retry}
+            />
+          ) : null}
 
           <JobsToolbar
             searchQuery={searchQuery}
@@ -443,9 +564,10 @@ function useJobsBrowser() {
             appSummary={appSummary}
             includeArchived={includeArchived}
             onIncludeArchivedChange={handleArchivedChange}
-            onRefresh={() => void refetch()}
+            onRefresh={listRetry.retry}
             isRefreshing={isFetching}
             statusSummary={statusSummary}
+            summaryError={toolbarSummaryError}
             dataUpdatedAt={dataUpdatedAt}
             dateFrom={dateFrom}
             dateTo={dateTo}
@@ -455,34 +577,43 @@ function useJobsBrowser() {
 
         {/* Table */}
         <div className="min-h-0 flex-1">
-          <DataTable<JobListItem>
-            data={filteredJobs}
-            columns={columns}
-            defaultColumnOrder={defaultJobsColumnOrder}
-            layoutKey="jobs"
-            isLoading={isLoading}
-            getRowId={(row) => row.id}
-            sort={sort}
-            onSort={handleSort}
-            dndId="jobs-table-dnd"
-            onKeyDown={handleKeyDown}
-            ariaLabel="Jobs list"
-            tabIndex={0}
-          >
-            <JobsTableBody
-              selectedIds={selectedIds}
-              searchQuery={searchQuery}
-              statusFilter={statusFilter}
-              serviceFilter={serviceFilter}
-              onSelect={handleSelect}
-              onDoubleClick={handleDoubleClick}
+          {listStatus === "error" ? (
+            <JobsLoadError
+              error={listError}
+              retrying={listRetry.retrying}
+              onRetry={listRetry.retry}
             />
-          </DataTable>
+          ) : (
+            <DataTable<JobListItem>
+              data={filteredJobs}
+              columns={columns}
+              defaultColumnOrder={defaultJobsColumnOrder}
+              layoutKey="jobs"
+              isLoading={listStatus === "loading"}
+              getRowId={(row) => row.id}
+              sort={sort}
+              onSort={handleSort}
+              dndId="jobs-table-dnd"
+              onKeyDown={handleKeyDown}
+              ariaLabel="Jobs list"
+              tabIndex={0}
+            >
+              <JobsTableBody
+                selectedIds={selectedIds}
+                searchQuery={searchQuery}
+                statusFilter={statusFilter}
+                serviceFilter={serviceFilter}
+                onSelect={handleSelect}
+                onDoubleClick={handleDoubleClick}
+              />
+            </DataTable>
+          )}
         </div>
 
         {/* Pagination */}
         <div className="shrink-0 border-t">
           <JobsPagination
+            status={listStatus}
             offset={offset}
             limit={pageSize}
             totalOnPage={filteredJobs.length}

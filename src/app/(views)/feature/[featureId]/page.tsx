@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { notFound, permanentRedirect, redirect } from "next/navigation";
+import { recordUnavailableMessage } from "@/components/errors/record-load-failure";
+import { RecordUnavailable } from "@/components/errors/record-unavailable";
 import { DataApiError } from "@/lib/data-api/repository";
 import {
   canonicalFeatureTab,
@@ -37,20 +39,26 @@ async function loadFeature(rawFeatureId: string, source: RouteParamSource) {
       [401, 403, 404, 409].includes(error.status)
     )
       notFound();
-    throw error;
+    // An outage is rendered, not thrown: production would redact its message.
+    const unavailable = recordUnavailableMessage(error);
+    if (unavailable === null) throw error;
+    if (source === "page") console.error(`feature/${featureId}:`, error);
+    return { featureId, unavailable } as const;
   }
   if (!result.feature) notFound();
   if (result.usedAlternateId && result.feature.feature_id !== featureId) {
     permanentRedirect(featureHref(result.feature.feature_id));
   }
-  return result.feature;
+  return { featureId, feature: result.feature } as const;
 }
 
 export async function generateMetadata({
   params,
 }: FeaturePageProps): Promise<Metadata> {
   const { featureId } = await params;
-  const feature = await loadFeature(featureId, "metadata");
+  const loaded = await loadFeature(featureId, "metadata");
+  if (loaded.unavailable !== undefined) return { title: `${loaded.featureId} | Feature` };
+  const { feature } = loaded;
   return {
     title: `${featureDisplayName(feature)} | Feature`,
     description: feature.product ?? `Feature record ${feature.feature_id}`,
@@ -62,7 +70,20 @@ export default async function FeaturePage({
   searchParams,
 }: FeaturePageProps) {
   const [{ featureId }, query] = await Promise.all([params, searchParams]);
-  const feature = await loadFeature(featureId, "page");
+  const loaded = await loadFeature(featureId, "page");
+  if (loaded.unavailable !== undefined) {
+    return (
+      <RecordUnavailable
+        viewLabel="Feature View"
+        recordLabel="Feature"
+        recordId={loaded.featureId}
+        message={loaded.unavailable}
+        collectionHref="/feature"
+        collectionLabel="Features"
+      />
+    );
+  }
+  const { feature } = loaded;
   const activeTab = canonicalFeatureTab(query.tab, feature);
   const canonicalQuery = canonicalizeMemberTabQuery(query, activeTab);
   if (canonicalQuery !== null) {

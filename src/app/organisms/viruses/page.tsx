@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 
 import { OrganismLandingShell } from "@/components/organisms/landing-shell/landing-shell";
 import { buildTaxonViews } from "@/components/organisms/taxon-views";
-import { fetchOrganismTaxonomy } from "@/lib/services/organisms/taxonomy";
+import { fetchLandingRootTaxonomy } from "@/lib/services/organisms/taxonomy";
 import { resolveLandingTab } from "@/lib/taxon-view/landing-request";
 
 import { virusesLandingConfig } from "./_config";
@@ -20,7 +20,9 @@ interface VirusesPageProps {
 export default async function VirusesPage({ searchParams }: VirusesPageProps) {
   const [resolvedParams, taxon] = await Promise.all([
     searchParams,
-    fetchOrganismTaxonomy(virusesLandingConfig.taxonId),
+    // Falls back to the static root during an outage, so the shell, rail and
+    // static sections still render and only the data sections fail.
+    fetchLandingRootTaxonomy(virusesLandingConfig.taxonId),
   ]);
   const views = buildTaxonViews({
     config: virusesLandingConfig,

@@ -63,8 +63,9 @@ describe("getProteinStructures", () => {
       metadata: { title: "One" },
     });
     expect(result[1]).toMatchObject({ accession: "2XYZ", metadata: null });
+    // A plain-text body stays unread: it can carry upstream internals.
     expect(result[1]?.error).toBe(
-      "The data service is temporarily unavailable. Please try again.",
+      "The BV-BRC data service is unavailable (HTTP 503 Service Unavailable).",
     );
   });
 

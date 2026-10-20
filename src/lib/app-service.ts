@@ -1,4 +1,14 @@
-import { getAppBaseUrl } from "./env";
+import {
+  describeUpstreamFailure,
+  fetchUpstream,
+  hostOf,
+  UpstreamError,
+  upstreamCauseCode,
+  upstreamResponseError,
+  upstreamServices,
+  upstreamTimeoutMs,
+} from "@/lib/api/upstream-failure";
+import { getAppBaseUrl, getRequiredEnv } from "./env";
 import { createBvBrcClient } from "./jsonrpc-client";
 import {
   QueryJobDetailsResponse,
@@ -18,6 +28,19 @@ import {
   QueryAppSummaryFilteredParams,
   QueryAppSummaryFilteredResponse,
 } from "@/types/workspace";
+
+/**
+ * The plain-HTTP job output endpoint. It lives under the app service's own
+ * JSON-RPC endpoint (`APP_SERVICE_URL`, e.g.
+ * `https://p3.theseed.org/services/app_service`), so it follows the configured
+ * service rather than always reaching production.
+ */
+export function jobOutputUrl(jobId: string, outputType: "stdout" | "stderr"): string {
+  const base = getRequiredEnv("APP_SERVICE_URL").replace(/\/+$/, "");
+  return `${base}/task_info/${encodeURIComponent(jobId)}/${outputType}`;
+}
+
+export const submitTimeoutMessage = `The BV-BRC job service did not respond within ${String(upstreamTimeoutMs.jobService / 1000)} s. Your job may still have been queued: check Jobs before you submit it again.`;
 
 /**
  * Centralized app service for AppService operations
@@ -71,29 +94,46 @@ export class AppService {
   ): Promise<FetchJobOutputResponse> {
     const { job_id, output_type } = params;
 
-    const url = `https://p3.theseed.org/services/app_service/task_info/${job_id}/${output_type}`;
+    const url = jobOutputUrl(job_id, output_type);
 
     const authToken = this.client.getAuthToken();
     if (!authToken) {
       throw new Error("Authentication token not available");
     }
 
+    const prefix = `Failed to fetch ${output_type} for job ${job_id}`;
     try {
-      const response = await fetch(url, {
-        method: "GET",
-        headers: {
-          Authorization: "OAuth " + authToken,
+      const response = await fetchUpstream(
+        url,
+        { method: "GET", headers: { Authorization: "OAuth " + authToken } },
+        {
+          service: upstreamServices.jobService,
+          timeoutMs: upstreamTimeoutMs.jobService,
         },
-      });
+      );
 
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${String(response.status)}`);
+        throw await upstreamResponseError(response, upstreamServices.jobService);
       }
 
       return await response.text();
     } catch (error) {
+      // Keep the status of an upstream failure so the route answers
+      // 502/503/504, whether `fetchUpstream` threw it or the output stopped
+      // arriving (a budget spent or a socket dropped mid-body).
+      const failure = describeUpstreamFailure(error, upstreamServices.jobService, {
+        timeoutMs: upstreamTimeoutMs.jobService,
+        host: hostOf(url),
+      });
+      if (failure) {
+        throw new UpstreamError(
+          { ...failure, message: `${prefix}: ${failure.message}` },
+          { cause: error },
+        );
+      }
       throw new Error(
-        `Failed to fetch ${output_type} for job ${job_id}: ${error instanceof Error ? error.message : String(error)}`,
+        `${prefix}: ${error instanceof Error ? error.message : String(error)}`,
+        { cause: error },
       );
     }
   }
@@ -174,11 +214,32 @@ export class AppService {
 
     // base_url picks the job's per-site container and becomes P3_BASE_URL in
     // the job, so it comes from server config and never from the request.
-    return this.client.call("AppService.start_app2", [
-      app_name,
-      app_params,
-      { base_url: getAppBaseUrl() },
-    ]);
+    try {
+      return await this.client.call("AppService.start_app2", [
+        app_name,
+        app_params,
+        { base_url: getAppBaseUrl() },
+      ]);
+    } catch (error) {
+      // A submit is not idempotent: once the request was sent, a service that
+      // never answered may still have queued the job. A connect timeout never
+      // sent it, and keeps its own message.
+      if (
+        error instanceof UpstreamError &&
+        error.code === "upstream_timeout" &&
+        upstreamCauseCode(error) !== "UND_ERR_CONNECT_TIMEOUT"
+      ) {
+        throw new UpstreamError(
+          {
+            status: 504,
+            code: "upstream_timeout",
+            message: submitTimeoutMessage,
+          },
+          { cause: error },
+        );
+      }
+      throw error;
+    }
   }
 }
 

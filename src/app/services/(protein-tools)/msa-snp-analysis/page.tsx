@@ -51,6 +51,7 @@ import { ServiceTextarea } from "@/components/services/form-ui/service-input";
 import { ServiceLabel } from "@/components/services/form-ui/service-label";
 import { ServiceRadioGroup } from "@/components/services/form-ui/service-radio-group";
 import { ServiceSelectTrigger } from "@/components/services/form-ui/service-select";
+import { ServiceSubmitError } from "@/components/services/form-ui/service-submit-error";
 import {
   msaSNPAnalysisInfo,
   msaSNPAnalysisStartWith,
@@ -1225,6 +1226,7 @@ function useMSAandSNPAnalysisPage() {
         </MsaParametersCard>
 
         {/* Form Controls */}
+        <ServiceSubmitError form={form} />
         <div className="service-form-controls">
           <Button type="button" variant="outline" onClick={handleReset}>
             Reset

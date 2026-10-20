@@ -10,6 +10,7 @@ import { useAuth } from "@/lib/auth/provider";
 import { useUiPreference } from "@/lib/ui-preferences/provider";
 import { useWorkspacePanel } from "@/contexts/workspace-panel-context";
 import { useWorkspaceDialog } from "@/contexts/workspace-dialog-context";
+import { useRetryKeepingError } from "@/components/views/use-retry-keeping-error";
 import { useWorkspacePathResolve } from "@/hooks/services/workspace/use-workspace-path-resolve";
 import { useWorkspaceDirectory } from "@/hooks/services/workspace/use-workspace-directory";
 import { useEnsureUserWorkspace } from "@/hooks/services/workspace/use-ensure-user-workspace";
@@ -39,6 +40,8 @@ import { WorkspaceNotFoundDialog } from "./workspace-not-found-dialog";
 import { loadFavorites } from "@/lib/services/workspace/favorites";
 import { workspaceQueryKeys } from "@/lib/services/workspace/workspace-query-keys";
 import { addRecentFolder } from "@/lib/recent-workspace-folders";
+import { isFolderType } from "@/lib/services/workspace/utils";
+import { isWorkspaceObjectMissing } from "@/lib/services/workspace/workspace-errors";
 import { type WorkspaceViewMode } from "@/types/workspace-browser";
 import { noop } from "@/lib/utils";
 import {
@@ -158,7 +161,11 @@ function useWorkspaceBrowser({
     publicLevel,
     jobDotPath: dotPath,
   });
-  const enabled = !!directoryMode && !resolveQuery.isError;
+  // Only a path the Workspace says is missing stops the listing. A lookup
+  // that failed for another reason (an outage) says nothing about the folder,
+  // so the listing still runs and reports its own result.
+  const resolveMissing = isWorkspaceObjectMissing(resolveQuery.error);
+  const enabled = !!directoryMode && !resolveMissing;
 
   const directoryResult = useWorkspaceDirectory(
     directoryMode ?? { kind: "publicRoot" },
@@ -172,6 +179,7 @@ function useWorkspaceBrowser({
     items: rawItems,
     isLoading,
     isFetching,
+    hasLoaded,
     error,
     refetch,
     memberCountByPath,
@@ -179,13 +187,22 @@ function useWorkspaceBrowser({
   } = directoryResult;
 
   const items = enabled ? rawItems : [];
+  const listingError = enabled ? error : null;
+  const listingSucceeded = enabled && hasLoaded && !listingError;
+  // What the page reports: the listing's failure, else (when the listing did
+  // not load either) the path lookup's.
+  const loadError =
+    listingError ?? (listingSucceeded ? null : resolveQuery.error) ?? null;
 
   const isOwnHome = mode === "home" && isUrlCurrentUser;
+  // A failed listing is not an empty home: during an outage this fired the
+  // setup writes (and reported them as success) on every visit.
   const homeAppearsEmpty =
-    isOwnHome && path === "" && !isLoading && items.length === 0;
-  useEnsureUserWorkspace({
+    isOwnHome && path === "" && listingSucceeded && items.length === 0;
+  const { retrySetup } = useEnsureUserWorkspace({
     enabled: isOwnHome,
-    listError: enabled ? error : null,
+    userKey: myWorkspaceRoot,
+    listError: listingError,
     homeAppearsEmpty,
   });
 
@@ -239,10 +256,22 @@ function useWorkspaceBrowser({
       myWorkspaceRoot,
     });
 
+  // Remember a folder only once it opened as one: not a path that failed to
+  // load, and not a file path (the home root needs no lookup).
+  const resolvedAsFolder =
+    path === "" || isFolderType(resolveQuery.data?.type);
+  const openedAsFolder = listingSucceeded && resolvedAsFolder;
   useEffect(() => {
     if (isPublic || !currentDirectoryPath || mode !== "home") return;
+    if (!openedAsFolder) return;
     addRecentFolder(currentDirectoryPath, currentUserWorkspaceRoot);
-  }, [isPublic, currentDirectoryPath, mode, currentUserWorkspaceRoot]);
+  }, [
+    isPublic,
+    currentDirectoryPath,
+    mode,
+    currentUserWorkspaceRoot,
+    openedAsFolder,
+  ]);
 
   const canWriteToCurrentDir = computeCanWriteToCurrentDir({
     mode: isPublic ? "public" : isHome ? "home" : "shared",
@@ -309,11 +338,35 @@ function useWorkspaceBrowser({
     router,
   ]);
 
+  // "Folder not found" only when the Workspace said so (404, "not found",
+  // "lacks permission"); an outage shows its own error with Retry instead.
   const pathNotFound =
     !isPublic &&
     !!path &&
     path.trim() !== "" &&
-    (resolveQuery.isError || (enabled && !!error && !resolveQuery.isLoading));
+    (resolveMissing ||
+      (!resolveQuery.isLoading && isWorkspaceObjectMissing(listingError)));
+
+  const retryLoad = () => {
+    if (resolveQuery.isError || isJobResultView) void resolveQuery.refetch();
+    refetch();
+    // A home setup that failed runs again, but only if the home still looks
+    // missing; during an outage this sends nothing.
+    retrySetup();
+  };
+  // Retry and Refresh keep the failure on screen ("Retrying…") until the
+  // refetch answers, instead of the skeletons a query without data falls
+  // back to. Keyed by location, so navigating away drops the kept error.
+  const retry = useRetryKeepingError(
+    {
+      error: loadError,
+      isFetching: isFetching || resolveQuery.isFetching,
+      refetch: retryLoad,
+    },
+    `${mode}:${username}:${path}`,
+  );
+  const shownError = retry.error instanceof Error ? retry.error : null;
+  const keepingError = retry.retrying && shownError !== null;
 
   const handleNotFoundConfirm = () => {
     router.replace(
@@ -323,7 +376,13 @@ function useWorkspaceBrowser({
 
   // --- Early returns ---
 
-  if (!isPublic && path && path.trim() !== "" && resolveQuery.isLoading) {
+  if (
+    !isPublic &&
+    path &&
+    path.trim() !== "" &&
+    resolveQuery.isLoading &&
+    !keepingError
+  ) {
     return (
       <WorkspaceBrowserLoading
         path={path}
@@ -415,7 +474,11 @@ function useWorkspaceBrowser({
       }
       path={path}
       username={username}
-      itemCount={items.length}
+      itemCount={
+        isLoading || (shownError && items.length === 0)
+          ? undefined
+          : items.length
+      }
       currentUsername={currentUser}
       workspaceRootUsername={isHome ? undefined : myWorkspaceRoot}
       toolbar={{
@@ -423,10 +486,7 @@ function useWorkspaceBrowser({
         onSearchChange: isJobResultView ? noop : setSearchQuery,
         typeFilter: isJobResultView ? "all" : typeFilter,
         onTypeFilterChange: isJobResultView ? noop : setTypeFilter,
-        onRefresh: () => {
-          if (isJobResultView) void resolveQuery.refetch();
-          refetch();
-        },
+        onRefresh: retry.retry,
         isRefreshing: isFetching,
         showHiddenFiles: isJobResultView ? true : showHiddenFiles,
         onShowHiddenFilesChange: isJobResultView ? noop : setShowHiddenFiles,
@@ -447,8 +507,10 @@ function useWorkspaceBrowser({
               }
             : undefined,
       }}
-      enabled={enabled}
-      error={error}
+      error={shownError}
+      hasLoadedItems={items.length > 0}
+      retrying={keepingError}
+      onRetry={retry.retry}
       view={
         isJobResultView
           ? {
@@ -464,7 +526,7 @@ function useWorkspaceBrowser({
       }
       tableRef={tableRef}
       items={processedItems}
-      isLoading={isLoading}
+      isLoading={isLoading && !keepingError}
       sort={sort}
       onSortChange={setSort}
       sharedRootUsername={isHome ? undefined : myWorkspaceRoot}

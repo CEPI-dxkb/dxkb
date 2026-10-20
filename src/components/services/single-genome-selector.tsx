@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useEffectEvent, useRef, useState } from "react";
+import { useEffect, useEffectEvent, useId, useRef, useState } from "react";
 import { useHotkey } from "@tanstack/react-hotkeys";
 import { Search, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -8,7 +8,7 @@ import { AnchoredSuggestionPortal } from "@/components/services/anchored-suggest
 import { GenomeSuggestionList } from "@/components/services/genome-suggestion-list";
 import { ServiceInput } from "@/components/services/form-ui/service-input";
 import { ServiceLabel } from "@/components/services/form-ui/service-label";
-import { cn } from "@/lib/utils";
+import { cn, formatUserFacingErrorMessage } from "@/lib/utils";
 import { fetchGenomesByIds, type GenomeSummary } from "@/lib/services/genome";
 import { toast } from "sonner";
 import {
@@ -48,6 +48,13 @@ function useSingleGenomeSelector({
   const buttonRef = useRef<HTMLButtonElement | null>(null);
   const [isManualTrigger, setIsManualTrigger] = useState(false);
   const selectedGenomeIdRef = useRef<string | null>(null);
+  // Typing over a selection reports "" to the parent. The "" a controlled
+  // parent passes back is that edit, not a reset, so it keeps the text.
+  const clearedByEditRef = useRef(false);
+  // Why a prefilled genome ID shows without its name (the lookup failed, or
+  // found no record). The ID is kept, so the form stays submittable.
+  const [lookupNote, setLookupNote] = useState<string | null>(null);
+  const lookupNoteId = useId();
 
   const {
     query,
@@ -67,6 +74,7 @@ function useSingleGenomeSelector({
     itemRefs,
     updateSuggestions,
     triggerSearch,
+    retry,
   } = useGenomeTypeahead({
     minQueryLength,
     disabled,
@@ -90,11 +98,14 @@ function useSingleGenomeSelector({
 
   // Sync query with value prop; resolve genome ID -> name via fetchGenomesByIds.
   const syncValue = useEffectEvent((nextValue: string) => {
+    const clearedByEdit = clearedByEditRef.current;
+    clearedByEditRef.current = false;
     if (!nextValue) {
-      if (query) {
+      if (query && !clearedByEdit) {
         queueMicrotask(() => {
           setQuery("");
           setSelectedGenome(null);
+          setLookupNote(null);
         });
         selectedGenomeIdRef.current = null;
       }
@@ -109,6 +120,14 @@ function useSingleGenomeSelector({
         return;
       }
       if (!selectedGenome || selectedGenome.genome_id !== nextValue) {
+        // Keep an unresolved ID selected as itself: it is already the value,
+        // so it must not start a name search for "83332.12".
+        const keepIdOnly = (note: string) => {
+          selectedGenomeIdRef.current = nextValue;
+          setSelectedGenome({ genome_id: nextValue, genome_name: nextValue });
+          setQuery(nextValue);
+          setLookupNote(note);
+        };
         queueMicrotask(() => {
           setIsLoading(true);
         });
@@ -119,14 +138,18 @@ function useSingleGenomeSelector({
               selectedGenomeIdRef.current = genome.genome_id;
               setSelectedGenome(genome);
               setQuery(genome.genome_name);
+              setLookupNote(null);
             } else {
-              setQuery(nextValue);
-              setSelectedGenome(null);
+              keepIdOnly(`No genome record was found for ${nextValue}.`);
             }
           })
-          .catch(() => {
-            setQuery(nextValue);
-            setSelectedGenome(null);
+          .catch((lookupError: unknown) => {
+            keepIdOnly(
+              `Name could not be loaded: ${formatUserFacingErrorMessage(
+                lookupError,
+                "the genome service did not answer",
+              )}`,
+            );
           })
           .finally(() => {
             setIsLoading(false);
@@ -158,6 +181,7 @@ function useSingleGenomeSelector({
 
   const handleSelect = (genome: GenomeSummary) => {
     selectedGenomeIdRef.current = genome.genome_id;
+    setLookupNote(null);
     onChange(genome.genome_id);
     setQuery(genome.genome_name);
     setSelectedGenome(genome);
@@ -253,11 +277,13 @@ function useSingleGenomeSelector({
           onChange={(event) => {
             const newValue = event.target.value;
             setQuery(newValue);
+            setLookupNote(null);
             setSelectedGenome(null);
             setHighlightedIndex(-1);
             setIsManualTrigger(false);
             setShowDropdown(true);
             if (selectedGenomeIdRef.current !== null) {
+              clearedByEditRef.current = true;
               onChange("");
               selectedGenomeIdRef.current = null;
             }
@@ -269,6 +295,7 @@ function useSingleGenomeSelector({
           }}
           inset="start-end"
           className="w-full"
+          aria-describedby={lookupNote ? lookupNoteId : undefined}
         />
         <Button
           ref={buttonRef}
@@ -299,6 +326,7 @@ function useSingleGenomeSelector({
             suggestions={suggestions}
             isLoading={isLoading}
             error={error}
+            onRetry={retry}
             emptyMessage={
               showEmptyState
                 ? query.trim()
@@ -315,6 +343,15 @@ function useSingleGenomeSelector({
           />
         </AnchoredSuggestionPortal>
       </div>
+      {lookupNote ? (
+        <p
+          id={lookupNoteId}
+          role="alert"
+          className="text-xs text-muted-foreground"
+        >
+          {lookupNote}
+        </p>
+      ) : null}
       {helperText && (
         <p className="text-xs text-muted-foreground">{helperText}</p>
       )}

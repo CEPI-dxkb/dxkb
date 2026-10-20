@@ -1,3 +1,12 @@
+import {
+  describeUpstreamFailure,
+  describeUpstreamResponse,
+  hostOf,
+  isHtmlBody,
+  summarizeUpstreamBody,
+  UpstreamError,
+  upstreamServices,
+} from "@/lib/api/upstream-failure";
 import { getRequiredEnv } from "@/lib/env";
 
 import { genomeScopeRql, type GenomeScope } from "./genome-scope";
@@ -27,9 +36,22 @@ export function getBvBrcWebsiteApiBaseUrl(): string {
   return getRequiredEnv("BVBRC_WEBSITE_API_URL").replace(/\/+$/, "");
 }
 
+/**
+ * A non-OK response as one log line: the body's text, or, for an HTML error
+ * page (BV-BRC's maintenance page), only the status and the page's title and
+ * heading ("503 Service Unavailable: Site Maintenance — We’ll be back soon!"),
+ * never page source. A message the user reads comes from
+ * `organismResponseError` instead.
+ */
 export async function responseErrorMessage(response: Response): Promise<string> {
   const body = await response.text().catch(() => "");
-  return body.trim() || `${String(response.status)} ${response.statusText}`.trim();
+  const status = `${String(response.status)} ${response.statusText}`.trim();
+  const contentType = response.headers.get("content-type");
+  if (isHtmlBody(body, contentType)) {
+    const summary = summarizeUpstreamBody(body, contentType);
+    return summary ? `${status}: ${summary}` : status;
+  }
+  return body.trim() || status;
 }
 
 // Matched by name rather than instanceof: the DOMException an abort produces
@@ -38,15 +60,85 @@ function errorName(error: unknown): unknown {
   return typeof error === "object" && error !== null && "name" in error ? error.name : undefined;
 }
 
+/** How organism failure messages name the backend these endpoints belong to. */
+const organismService = upstreamServices.dataApi;
+
 /**
- * Rethrows a failed organism request. A timeout is reworded to name the
- * endpoint and the budget (the platform message is only "The operation was
- * aborted due to timeout"); anything else is rethrown untouched.
+ * What an organism request fetches, named twice.
+ *
+ * - `label` is what the user knows the data as, the title of the chart that
+ *   shows it ("Isolation Country"), and prefixes a failure's message. Leave
+ *   it out where the card showing the failure already names the data
+ *   ("Reference genomes could not be loaded").
+ * - `source` is the endpoint's internal name ("genome isolation_country
+ *   facet"), for the server log only: a failure carries it as
+ *   `UpstreamError.source`, which `console.error(error)` prints.
  */
-export function throwOrganismFetchError(error: unknown, source: string): never {
-  if (errorName(error) === "TimeoutError") {
-    throw new Error(
-      `${source}: upstream did not respond within ${String(organismFetchTimeoutMs)}ms`,
+export interface OrganismRequest {
+  source: string;
+  label?: string;
+}
+
+function labelled(request: OrganismRequest, message: string): string {
+  return request.label ? `${request.label}: ${message}` : message;
+}
+
+/**
+ * The `UpstreamError` for a non-OK organism response, in the wording every
+ * backend shares (`describeUpstreamResponse`) behind the request's label:
+ * "Isolation Country: The BV-BRC data service is unavailable (HTTP 503
+ * Service Unavailable: Site Maintenance — We’ll be back soon!)." for a 5xx,
+ * "… rejected the request (HTTP 400 Bad Request: undefined field genus)." for
+ * a 4xx.
+ *
+ * An HTML body gives only its title and heading, a JSON error its message. A
+ * plain-text body is kept, condensed to one line, as every other reader of
+ * this Data API through the shared helper keeps it (statistics, minhash): it
+ * is the service's own account of what failed ("undefined field genus"),
+ * which the status alone would hide. The host goes on `host` and the endpoint
+ * on `source`, for logs.
+ */
+export async function organismResponseError(
+  response: Response,
+  request: OrganismRequest,
+): Promise<UpstreamError> {
+  const body = await response.text().catch(() => "");
+  const failure = describeUpstreamResponse(response, body, organismService, {
+    host: response.url ? hostOf(response.url) : undefined,
+  });
+  return new UpstreamError({
+    ...failure,
+    message: labelled(request, failure.message),
+    source: request.source,
+  });
+}
+
+/**
+ * Rethrows a failed organism request. A spent budget or a network failure
+ * becomes an `UpstreamError` that names the service and says what happened,
+ * behind the request's label ("Isolation Country: The BV-BRC data service did
+ * not respond (timed out after 30 s)."), where the platform said only "The
+ * operation was aborted due to timeout" or undici only "fetch failed". The
+ * host goes on the error's `host` and the endpoint on its `source`, for logs.
+ * A caller's own abort and anything else is rethrown untouched.
+ */
+export function throwOrganismFetchError(
+  error: unknown,
+  request: OrganismRequest,
+  url?: string,
+): never {
+  const failure = describeUpstreamFailure(error, organismService, {
+    timeoutMs: organismFetchTimeoutMs,
+    host: url ? hostOf(url) : undefined,
+  });
+  if (failure) {
+    throw new UpstreamError(
+      {
+        ...failure,
+        message: labelled(request, failure.message),
+        source: request.source,
+      },
+      { cause: error },
     );
   }
   throw error;
@@ -59,7 +151,7 @@ export function throwOrganismFetchError(error: unknown, source: string): never {
  */
 export async function fetchOrganism(
   url: string,
-  source: string,
+  request: OrganismRequest,
   init: RequestInit = {},
 ): Promise<Response> {
   const timeout = AbortSignal.timeout(organismFetchTimeoutMs);
@@ -70,7 +162,9 @@ export async function fetchOrganism(
       ...organismFetchCacheInit(organismBvBrcRevalidateSeconds),
     });
   } catch (error) {
-    throwOrganismFetchError(error, source);
+    // The caller's own cancellation is theirs, whatever its reason.
+    if (init.signal?.aborted) throw error;
+    throwOrganismFetchError(error, request, url);
   }
 }
 
@@ -81,18 +175,16 @@ export async function fetchOrganism(
  */
 export async function fetchOrganismSolrJson(
   url: string,
-  source: string,
+  request: OrganismRequest,
   signal?: AbortSignal,
 ): Promise<Record<string, unknown>> {
-  const response = await fetchOrganism(url, source, {
+  const response = await fetchOrganism(url, request, {
     method: "GET",
     headers: { Accept: "application/solr+json" },
     signal,
   });
-  if (!response.ok) {
-    throw new Error(`${source}: ${await responseErrorMessage(response)}`);
-  }
-  return readJsonObject(response, source);
+  if (!response.ok) throw await organismResponseError(response, request);
+  return readJsonObject(response, request);
 }
 
 /**
@@ -102,10 +194,10 @@ export async function fetchOrganismSolrJson(
 export async function fetchOrganismSolrJsonPost(
   url: string,
   body: string,
-  source: string,
+  request: OrganismRequest,
   signal?: AbortSignal,
 ): Promise<Record<string, unknown>> {
-  const response = await fetchOrganism(url, source, {
+  const response = await fetchOrganism(url, request, {
     method: "POST",
     headers: {
       Accept: "application/solr+json",
@@ -114,26 +206,27 @@ export async function fetchOrganismSolrJsonPost(
     body,
     signal,
   });
-  if (!response.ok) {
-    throw new Error(`${source}: ${await responseErrorMessage(response)}`);
-  }
-  return readJsonObject(response, source);
+  if (!response.ok) throw await organismResponseError(response, request);
+  return readJsonObject(response, request);
 }
 
-export async function readJsonObject(response: Response, source: string): Promise<Record<string, unknown>> {
+export async function readJsonObject(
+  response: Response,
+  request: OrganismRequest,
+): Promise<Record<string, unknown>> {
   const payload = (await response.json().catch((error: unknown) => {
     // An abort while the body streams is a timeout or cancellation, not a
     // malformed payload.
     const name = errorName(error);
     if (name === "TimeoutError" || name === "AbortError") {
-      throwOrganismFetchError(error, source);
+      throwOrganismFetchError(error, request, response.url || undefined);
     }
     const message = error instanceof Error ? error.message : String(error);
-    throw new Error(`${source}: malformed JSON response: ${message}`);
+    throw new Error(labelled(request, `Malformed JSON response: ${message}`));
   })) as unknown;
 
   if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
-    throw new Error(`${source}: malformed JSON response`);
+    throw new Error(labelled(request, "Malformed JSON response"));
   }
 
   return payload as Record<string, unknown>;

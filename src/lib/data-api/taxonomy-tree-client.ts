@@ -29,6 +29,20 @@ async function failureDetail(response: Response): Promise<string> {
     : `${String(response.status)} ${response.statusText}`;
 }
 
+/**
+ * A non-OK answer as an error carrying its HTTP `status`, so the app-wide
+ * retry policy skips an immediate retry of an upstream outage (502–504).
+ */
+async function httpFailure(
+  response: Response,
+  subject: string,
+): Promise<Error> {
+  return Object.assign(
+    new Error(`${subject}: ${await failureDetail(response)}`),
+    { status: response.status },
+  );
+}
+
 export class TaxonomyTreeRepository {
   constructor(private readonly basePath = taxonomyTreeBasePath) {}
 
@@ -42,9 +56,7 @@ export class TaxonomyTreeRepository {
       { credentials: "include", signal },
     );
     if (!response.ok) {
-      throw new Error(
-        `taxonomy children ${String(parentId)}: ${await failureDetail(response)}`,
-      );
+      throw await httpFailure(response, `taxonomy children ${String(parentId)}`);
     }
     const payload: unknown = await response.json();
     const rows =
@@ -79,7 +91,7 @@ export class TaxonomyTreeRepository {
       { credentials: "include", signal },
     );
     if (!response.ok) {
-      throw new Error(`taxonomy child counts: ${await failureDetail(response)}`);
+      throw await httpFailure(response, "taxonomy child counts");
     }
     const payload: unknown = await response.json();
     const raw =

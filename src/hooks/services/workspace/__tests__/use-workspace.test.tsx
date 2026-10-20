@@ -17,7 +17,7 @@ vi.mock("sonner", () => ({
 
 describe("useKillJob", () => {
   it("calls the correct URL with POST method", async () => {
-    mockApiCall.mockResolvedValue({ status: "killed" });
+    mockApiCall.mockResolvedValue({ success: true, message: "Canceled 123" });
 
     const wrapper = createQueryClientWrapper();
     const { result } = renderHook(() => useKillJob(), { wrapper });
@@ -35,7 +35,7 @@ describe("useKillJob", () => {
   });
 
   it("includes the jobId in the fetch URL", async () => {
-    mockApiCall.mockResolvedValue({ status: "killed" });
+    mockApiCall.mockResolvedValue({ success: true, message: "Canceled 123" });
 
     const wrapper = createQueryClientWrapper();
     const { result } = renderHook(() => useKillJob(), { wrapper });
@@ -74,7 +74,7 @@ describe("useKillJob", () => {
   });
 
   it("calls toast.success on successful mutation", async () => {
-    mockApiCall.mockResolvedValue({ status: "killed" });
+    mockApiCall.mockResolvedValue({ success: true, message: "Canceled 123" });
 
     const { toast } = await import("sonner");
     const wrapper = createQueryClientWrapper();
@@ -109,8 +109,29 @@ describe("useKillJob", () => {
     );
   });
 
+  it("fails with the job service's reason when kill_task did not cancel", async () => {
+    mockApiCall.mockResolvedValue({ success: false, message: "Task not found" });
+
+    const { toast } = await import("sonner");
+    const wrapper = createQueryClientWrapper();
+    const { result } = renderHook(() => useKillJob(), { wrapper });
+
+    result.current.mutate("job-missing");
+
+    await waitFor(() => {
+      expect(result.current.isError).toBe(true);
+    });
+
+    expect(toast.success).not.toHaveBeenCalledWith(
+      "Kill request for Job job-missing was sent successfully",
+    );
+    expect(toast.error).toHaveBeenCalledWith(
+      "Failed to kill Job job-missing: Task not found",
+    );
+  });
+
   it("invalidates jobs query keys on success", async () => {
-    mockApiCall.mockResolvedValue({ status: "killed" });
+    mockApiCall.mockResolvedValue({ success: true, message: "Canceled 123" });
 
     const wrapper = createQueryClientWrapper();
     const { result } = renderHook(() => useKillJob(), { wrapper });

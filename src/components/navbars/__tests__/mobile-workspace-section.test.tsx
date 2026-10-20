@@ -84,4 +84,23 @@ describe("MobileWorkspaceSection", () => {
       within(prompt as HTMLElement).getByRole("link", { name: "Sign In" }),
     ).toHaveAttribute("href", "/sign-in?redirect=/workspace");
   });
+
+  it("says the favorites could not be loaded rather than hiding them", () => {
+    const onRetryFavorites = vi.fn();
+    render(
+      <MobileWorkspaceSection
+        {...authenticatedProps}
+        favoritePaths={[]}
+        favoritesError={new Error("The BV-BRC workspace service did not respond.")}
+        onRetryFavorites={onRetryFavorites}
+      />,
+    );
+
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Couldn't load favorites: The BV-BRC workspace service did not respond.",
+    );
+    screen.getByRole("button", { name: "Retry" }).click();
+    expect(onRetryFavorites).toHaveBeenCalledTimes(1);
+  });
 });
+

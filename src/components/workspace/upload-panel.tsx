@@ -15,6 +15,7 @@ import {
 import { Spinner } from "@/components/ui/spinner";
 import { knownUploadTypes } from "@/lib/services/workspace/types";
 import { invalidateWorkspace } from "@/lib/services/workspace/workspace-query-keys";
+import { workspaceErrorMessage } from "@/lib/services/workspace/workspace-errors";
 import { useWorkspaceRepository } from "@/contexts/workspace-repository-context";
 import { toast } from "sonner";
 import { XIcon } from "lucide-react";
@@ -121,9 +122,11 @@ export function WorkspaceUploadPanel({
     setIsUploading(true);
     let hasError = false;
     let uploadedCount = 0;
+    let currentFileName: string | null = null;
     const uploaded: { path: string; type: string }[] = [];
     try {
       for (const file of files) {
+        currentFileName = file.name;
         const dir = targetPath.endsWith("/") ? targetPath : targetPath + "/";
         const fullPath = dir + file.name;
         const { linkReference } = await repository.createUploadNode({
@@ -173,8 +176,16 @@ export function WorkspaceUploadPanel({
         onUploadComplete(uploaded);
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Upload failed.";
-      toast.error(message);
+      // Name the file and keep the reason, as the Shock-failure toast does.
+      toast.error(
+        currentFileName ? `Upload failed: ${currentFileName}` : "Upload failed",
+        {
+          description: workspaceErrorMessage(
+            err,
+            "The workspace service returned an error.",
+          ),
+        },
+      );
       hasError = true;
     }
     // The files before the one that failed stay uploaded, and the panel stays

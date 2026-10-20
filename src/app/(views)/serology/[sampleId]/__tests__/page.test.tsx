@@ -157,11 +157,26 @@ describe("Serology member page", () => {
     );
     mocks.getSerology.mockRejectedValueOnce(new DataApiError("Forbidden", 403));
     await expect(SerologyPage(pageProps())).rejects.toThrow("Forbidden");
-    mocks.getSerology.mockRejectedValueOnce(
+  });
+
+  it("renders an outage inside the shell with its cause instead of throwing", async () => {
+    mocks.getSerology.mockRejectedValue(
       new DataApiError("Serology backend unavailable", 503),
     );
-    await expect(SerologyPage(pageProps())).rejects.toThrow(
-      "Serology backend unavailable",
-    );
+
+    render(await SerologyPage(pageProps()));
+
+    expect(
+      screen.getByRole("heading", { level: 1, name: "Serology record 000123" }),
+    ).toBeInTheDocument();
+    const alert = screen.getByRole("alert");
+    expect(alert).toHaveTextContent("Serology backend unavailable");
+    expect(screen.getByRole("button", { name: "Retry" })).toBeEnabled();
+    expect(
+      screen.getByRole("link", { name: "Browse serology records" }),
+    ).toHaveAttribute("href", "/serology");
+    await expect(generateMetadata(metadataProps())).resolves.toEqual({
+      title: "000123 | Serology",
+    });
   });
 });

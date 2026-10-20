@@ -164,7 +164,11 @@ test.describe("jobs lifecycle", () => {
     const jobs = new JobsListPage(page);
     await jobs.goto();
 
-    await expect(page.getByText(/error loading jobs: invalid jobs response/i)).toBeVisible();
+    const loadError = page
+      .getByRole("alert")
+      .filter({ hasText: /could not load jobs/i });
+    await expect(loadError).toBeVisible();
+    await expect(loadError).toContainText(/invalid jobs response/i);
     await expect(jobs.rowById("null")).not.toBeVisible();
   });
 

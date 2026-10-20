@@ -15,7 +15,12 @@ export interface UseWorkspaceObjectSearchOptions {
   username: string;
   /** Subpath under the workspace root (default "/home/"). */
   path?: string;
-  /** Restrict search to these types. */
+  /**
+   * Restrict search to these types. Sent to the server as the listing's type
+   * filter (an unfiltered recursive listing would return every job output
+   * file), so each distinct type set is its own query; fields with the same
+   * set share one.
+   */
   types?: string[];
   /** Whether the query should run. Defaults to true. */
   autoLoad?: boolean;
@@ -72,13 +77,17 @@ export function useWorkspaceObjectSearch({
   const repository = useWorkspaceRepository("authenticated");
   const [searchQuery, setSearchQuery] = useState("");
 
-  const typesKey = types ? JSON.stringify([...types].sort()) : "";
+  // No types, or an empty list, means every type, so both share the untyped
+  // query and send no filter: whichever field fetches fills the cache for
+  // the other, so the request must be the one the key names.
+  const typeFilter = types?.length ? types : undefined;
+  const typesKey = typeFilter ? JSON.stringify([...typeFilter].sort()) : "";
 
   const query = useQuery<WorkspaceItem[]>({
     queryKey: workspaceQueryKeys.search(username, path, typesKey),
     queryFn: async () =>
       assertUniqueWorkspaceObjectPaths(
-        await repository.searchObjects({ username, path, types }),
+        await repository.searchObjects({ username, path, types: typeFilter }),
       ),
     enabled: autoLoad && !!username,
     staleTime: 5 * 60 * 1000,

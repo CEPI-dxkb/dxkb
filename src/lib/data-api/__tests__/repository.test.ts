@@ -367,7 +367,9 @@ describe("ServerDataRepository", () => {
         { operation: "collection", rql: "eq(pdb_id,*)" },
       ),
     ).rejects.toMatchObject({
-      message: "The data service is temporarily unavailable. Please try again.",
+      // The real cause stays: the gateway's 500, and the 503 page it quoted.
+      message:
+        "The BV-BRC data service is unavailable (HTTP 500 Internal Server Error: 503 Service Unavailable).",
       status: 503,
       code: "service_unavailable",
     });

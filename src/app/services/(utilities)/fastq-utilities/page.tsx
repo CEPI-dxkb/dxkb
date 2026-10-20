@@ -31,6 +31,7 @@ import {
   ServiceLibraryHeader,
 } from "@/components/services/form-ui/service-library-header";
 import { ServiceSelectTrigger } from "@/components/services/form-ui/service-select";
+import { ServiceSubmitError } from "@/components/services/form-ui/service-submit-error";
 
 import {
   fastqUtilitiesInfo,
@@ -208,6 +209,7 @@ export default function FastqUtilitiesPage() {
 
         {/* Form Controls */}
         <div className="md:col-span-12">
+          <ServiceSubmitError form={form} />
           <div className="service-form-controls">
             <Button type="button" variant="outline" onClick={handleReset}>
               Reset

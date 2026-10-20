@@ -180,7 +180,9 @@ describe("WorkspaceFolderPickerDialog upload pane", () => {
     await waitFor(() => {
       expect(screen.getByRole("button", { name: "Close" })).toBeEnabled();
     });
-    expect(toast.error).toHaveBeenCalledWith("Upload service unavailable");
+    expect(toast.error).toHaveBeenCalledWith("Upload failed: reads.fq", {
+      description: "Upload service unavailable",
+    });
     expect(screen.getByRole("button", { name: "Cancel" })).toBeEnabled();
     expect(screen.getByRole("navigation", { name: "Places" })).not.toHaveAttribute(
       "inert",

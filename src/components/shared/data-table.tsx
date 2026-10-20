@@ -943,6 +943,9 @@ function useDataTableContent(
           ref={tableContainerRef}
           role="region"
           aria-label={scrollRegionLabel ?? `${resource} results`}
+          // The skeleton rows are not results: assistive tech waits for the
+          // read. (A refresh marks the body busy instead, which dims it.)
+          aria-busy={isLoading || undefined}
           tabIndex={0}
         >
           <div className="relative min-w-max">

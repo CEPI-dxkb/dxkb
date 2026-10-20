@@ -45,7 +45,11 @@ export interface CollectionDownloadProps {
    */
   allResults: { scope: DownloadScope; total: number };
   sort?: DataSort;
-  /** The total belongs to a previous query, so *All results* waits for its count. */
+  /**
+   * The total is not this query's yet (a previous query's placeholder, or none
+   * while the first read is in flight), so *All results* waits for its count
+   * rather than offering a stale one or reading "All 0 / No matching rows".
+   */
   isPlaceholderData: boolean;
   /** The table's visible columns, for the *Visible columns* switch. */
   visibleColumnIds: readonly string[];
@@ -260,7 +264,7 @@ export function CollectionDownloadAction({
               <RadioGroupItem value="all" disabled={isPlaceholderData} />
               All
               <span className="font-semibold tabular-nums">
-                {compactCount.format(allResults.total)}
+                {isPlaceholderData ? "…" : compactCount.format(allResults.total)}
               </span>
             </label>
           </RadioGroup>

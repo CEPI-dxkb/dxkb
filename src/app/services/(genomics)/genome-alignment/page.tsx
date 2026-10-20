@@ -2,10 +2,13 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useForm } from "@tanstack/react-form";
+import { CircleAlert } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { ServiceHeader } from "@/components/services/service-header";
 import { JobParamsDialog } from "@/components/services/job-params-dialog";
+import { ServiceSubmitError } from "@/components/services/form-ui/service-submit-error";
 import { genomeAlignmentMauveInfo } from "@/lib/services/info/genome-alignment";
 import {
   defaultGenomeAlignmentFormValues,
@@ -13,10 +16,14 @@ import {
   type GenomeAlignmentFormData,
 } from "@/lib/forms/(genomics)/genome-alignment/genome-alignment-form-schema";
 import { genomeAlignmentService } from "@/lib/forms/(genomics)/genome-alignment/genome-alignment-service";
+import {
+  idOnlyGenome,
+  type UnverifiedGenomes,
+} from "@/lib/forms/(genomics)/genome-alignment/genome-alignment-form-utils";
 import { useServiceRuntime } from "@/hooks/services/use-service-runtime";
 import { rerunBooleanValue } from "@/lib/rerun-utility";
 import { fetchGenomesByIds, type GenomeSummary } from "@/lib/services/genome";
-import { toast } from "sonner";
+import { formatUserFacingErrorMessage } from "@/lib/utils";
 import {
   AlignmentParameters,
   GenomeSelection,
@@ -47,6 +54,8 @@ export default function GenomeAlignmentServicePage() {
   // internally, and its group fetch state must not outlive the reset.
   const [selectionResetKey, setSelectionResetKey] = useState(0);
   const [isOutputNameValid, setIsOutputNameValid] = useState(true);
+  const [unverified, setUnverified] = useState<UnverifiedGenomes | null>(null);
+  const [isVerifying, setIsVerifying] = useState(false);
   const submitRef = useRef<(value: GenomeAlignmentFormData) => Promise<void>>(
     () => Promise.resolve(),
   );
@@ -76,6 +85,48 @@ export default function GenomeAlignmentServicePage() {
     genomesRef.current = nextGenomes;
     setGenomes(nextGenomes);
   };
+  // Restores a previous job's genomes. Their IDs are the job's, so they are
+  // kept even when the lookup that names them fails (as ID-only rows, which
+  // still submit); what could not be confirmed is shown with a Retry.
+  const restoreGenomes = (ids: string[]) => {
+    const selectionRevision = selectionRevisionRef.current;
+    // A Retry runs over the current list, so keep any entry it already has.
+    const current = (id: string) =>
+      genomesRef.current.find((genome) => genome.genome_id === id) ??
+      idOnlyGenome(id);
+    setIsVerifying(true);
+    void fetchGenomesByIds(ids)
+      .then(
+        (found) => {
+          if (selectionRevision !== selectionRevisionRef.current) return;
+          const byId = new Map(found.map((genome) => [genome.genome_id, genome]));
+          replaceGenomes(ids.map((id) => byId.get(id) ?? current(id)));
+          const missing = ids.filter((id) => !byId.has(id));
+          setUnverified(missing.length ? { ids: missing, error: null } : null);
+        },
+        (error: unknown) => {
+          if (selectionRevision !== selectionRevisionRef.current) return;
+          replaceGenomes(ids.map(current));
+          setUnverified({
+            ids,
+            error: formatUserFacingErrorMessage(error, "Genome lookup failed"),
+          });
+        },
+      )
+      .finally(() => {
+        setIsVerifying(false);
+      });
+  };
+  // Only the unverified genomes still in the list are worth a note.
+  const unverifiedIds = unverified
+    ? genomes
+        .filter(
+          (genome) =>
+            unverified.ids.includes(genome.genome_id) &&
+            genome.genome_name === genome.genome_id,
+        )
+        .map((genome) => genome.genome_id)
+    : [];
   const runtime = useServiceRuntime({
     definition: genomeAlignmentService,
     form,
@@ -91,24 +142,9 @@ export default function GenomeAlignmentServicePage() {
         if (data.weight != null)
           targetForm.setFieldValue("weight", data.weight as never);
         const ids = Array.isArray(data.genome_ids)
-          ? (data.genome_ids as string[])
+          ? (data.genome_ids as unknown[]).map(String)
           : [];
-        if (ids.length) {
-          const selectionRevision = selectionRevisionRef.current;
-          void fetchGenomesByIds(ids)
-            .then((restoredGenomes) => {
-              if (selectionRevision === selectionRevisionRef.current) {
-                replaceGenomes(restoredGenomes);
-              }
-            })
-            .catch(() => {
-              if (selectionRevision === selectionRevisionRef.current) {
-                toast.error("Could not restore genomes from previous job", {
-                  description: "Please re-add your genomes manually.",
-                });
-              }
-            });
-        }
+        if (ids.length) restoreGenomes(ids);
       },
     },
   });
@@ -119,6 +155,7 @@ export default function GenomeAlignmentServicePage() {
     groupRequestRevisionRef.current += 1;
     form.reset(defaultGenomeAlignmentFormValues);
     replaceGenomes(noGenomes);
+    setUnverified(null);
     setShowAdvanced(false);
     setSelectionResetKey((key) => key + 1);
   };
@@ -156,12 +193,46 @@ export default function GenomeAlignmentServicePage() {
           groupRequestRevisionRef={groupRequestRevisionRef}
           replaceGenomes={replaceGenomes}
         />
+        {unverified && unverifiedIds.length > 0 ? (
+          <Alert variant={unverified.error ? "destructive" : "default"}>
+            <CircleAlert aria-hidden="true" />
+            <AlertTitle>
+              {unverified.error
+                ? "Genome names could not be loaded"
+                : "Some genomes from the previous job were not found"}
+            </AlertTitle>
+            <AlertDescription>
+              {unverified.error ? <p>{unverified.error}</p> : null}
+              <p>
+                Listed by ID only: {unverifiedIds.join(", ")}.{" "}
+                {unverified.error
+                  ? "You can still submit them."
+                  : "Remove any that no longer exist before you submit."}
+              </p>
+              {unverified.error ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={isVerifying}
+                  onClick={() => {
+                    restoreGenomes(genomesRef.current.map((genome) => genome.genome_id));
+                  }}
+                >
+                  {isVerifying ? <Spinner /> : null}
+                  Retry
+                </Button>
+              ) : null}
+            </AlertDescription>
+          </Alert>
+        ) : null}
         <AlignmentParameters
           form={form}
           showAdvanced={showAdvanced}
           setShowAdvanced={setShowAdvanced}
           onOutputNameValidationChange={setIsOutputNameValid}
         />
+        <ServiceSubmitError form={form} />
         <div className="service-form-controls">
           <Button
             type="button"

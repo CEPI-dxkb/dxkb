@@ -48,6 +48,8 @@ Requires **Node v24** (`nvm use 24`, pinned in `.nvmrc`). `pnpm start` = prod se
 ### Error handling
 
 - Do NOT swap real errors for generic ones — the original message must still be displayed. Condense if too long, but preserve the meaning.
+- Server code calling a backend uses `fetchUpstream` with a budget from `upstreamTimeoutMs` (`src/lib/api/upstream-failure.ts`), and a route answers its failures through `errorResponse` or `upstreamFailureResponse`, so a timeout or outage reaches the user as "… did not respond" / "Could not reach …" with a 502/503/504 instead of "fetch failed", "Internal server error" or HTML. Details in `docs/architecture.md` → "Backend communication".
+- Error UI: a route `error.tsx` renders `ViewErrorBoundary` (`src/components/errors/`); a server page renders an upstream outage inline (`RecordUnavailable` / `ErrorPanel`) instead of throwing it, because production redacts thrown messages; a client error state is a destructive `Alert` with the condensed message and a Retry, never an empty or zero state. Details in `docs/architecture.md` → "Data fetching".
 
 ### URLs
 

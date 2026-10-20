@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth/server/route";
+import {
+  fetchUpstream,
+  upstreamServices,
+  upstreamTimeoutMs,
+} from "@/lib/api/upstream-failure";
 import { getRequiredEnv } from "@/lib/env";
 
 // Keep letters, digits and the dot of a genome ID. The genome_name wildcard
@@ -39,13 +44,19 @@ export const GET = withAuth(async (request: NextRequest, { token }) => {
 
   const url = `${getRequiredEnv("NEXT_PUBLIC_DATA_API")}/genome/${queryString}`;
 
-  const response = await fetch(url, {
-    method: "GET",
-    headers: {
-      Accept: "application/json",
-      Authorization: token,
+  // A network failure or spent budget throws an UpstreamError, which
+  // withAuth's errorResponse answers with its 502/503/504.
+  const response = await fetchUpstream(
+    url,
+    {
+      method: "GET",
+      headers: {
+        Accept: "application/json",
+        Authorization: token,
+      },
     },
-  });
+    { service: upstreamServices.dataApi, timeoutMs: upstreamTimeoutMs.dataApi },
+  );
 
   if (!response.ok) {
     const errorText = await response.text();

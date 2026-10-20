@@ -1,5 +1,8 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { ProteinStructureMember } from "../protein-structure-member";
+
+const { refresh } = vi.hoisted(() => ({ refresh: vi.fn() }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh }) }));
 
 vi.mock("next/dynamic", () => ({
   default: () =>
@@ -208,5 +211,33 @@ describe("ProteinStructureMember", () => {
     );
     expect(screen.getByText("metadata timeout")).toBeInTheDocument();
     expect(screen.getByTestId("viewer")).toHaveTextContent("1ABC.cif");
+  });
+
+  it("says the structure still loads and retries the metadata lookup", async () => {
+    render(
+      <ProteinStructureMember
+        lookups={[
+          {
+            accession: "6VXX",
+            metadata: null,
+            error:
+              "Could not reach the BV-BRC data service: connection timed out after 10 s.",
+          },
+        ]}
+      />,
+    );
+
+    const alert = screen.getByRole("alert");
+    expect(alert).toHaveTextContent(
+      "Could not reach the BV-BRC data service: connection timed out after 10 s.",
+    );
+    expect(alert).toHaveTextContent(
+      "The structure below still loads from the RCSB PDB.",
+    );
+
+    fireEvent.click(within(alert).getByRole("button", { name: "Retry" }));
+    await waitFor(() => {
+      expect(refresh).toHaveBeenCalledTimes(1);
+    });
   });
 });

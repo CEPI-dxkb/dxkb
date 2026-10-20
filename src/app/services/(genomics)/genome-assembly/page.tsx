@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { ServiceHeader } from "@/components/services/service-header";
 import { JobParamsDialog } from "@/components/services/job-params-dialog";
+import { ServiceSubmitError } from "@/components/services/form-ui/service-submit-error";
 import { genomeAssemblyInfo } from "@/lib/services/info/genome-assembly";
 import { useServiceRuntime } from "@/hooks/services/use-service-runtime";
 import {
@@ -286,6 +287,7 @@ export default function GenomeAssemblyPage() {
           libraries={selectedLibraries}
           onRemove={removeLibrary}
         />
+        <ServiceSubmitError form={form} />
         <div className="service-form-controls md:col-span-12">
           <div className="flex items-center gap-2">
             <Button

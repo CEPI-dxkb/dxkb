@@ -17,8 +17,9 @@ describe("DomainsAndMotifsError", () => {
   it("keeps error details out of the UI, logs the error, and retries", async () => {
     const error = new Error("request failed with token secret-123");
     const reset = vi.fn();
+    const retry = vi.fn();
 
-    render(<DomainsAndMotifsError error={error} reset={reset} />);
+    render(<DomainsAndMotifsError error={error} reset={reset} retry={retry} />);
 
     expect(screen.queryByText(/secret-123/i)).not.toBeInTheDocument();
     expect(
@@ -27,7 +28,8 @@ describe("DomainsAndMotifsError", () => {
     expect(consoleError).toHaveBeenCalledOnce();
     expect(consoleError).toHaveBeenCalledWith(error);
 
-    await userEvent.click(screen.getByRole("button", { name: "Try again" }));
-    expect(reset).toHaveBeenCalledOnce();
+    await userEvent.click(screen.getByRole("button", { name: "Retry" }));
+    expect(retry).toHaveBeenCalledOnce();
+    expect(reset).not.toHaveBeenCalled();
   });
 });

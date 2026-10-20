@@ -1,4 +1,5 @@
 import { act, render, screen, waitFor, within } from "@testing-library/react";
+import { createQueryClientWrapper } from "@/test-helpers/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import { toast } from "sonner";
@@ -139,7 +140,7 @@ async function expectGroupButtonSettled() {
 
 describe("ViralGenomeTreePage add inputs", () => {
   it("keeps every add button disabled until something is picked", () => {
-    render(<ViralGenomeTreePage />);
+    render(<ViralGenomeTreePage />, { wrapper: createQueryClientWrapper() });
 
     expect(addButton("Add genome group")).toBeDisabled();
     expect(addButton("Add aligned sequence")).toBeDisabled();
@@ -164,7 +165,7 @@ describe("ViralGenomeTreePage add inputs", () => {
       },
     ]);
     const user = userEvent.setup();
-    render(<ViralGenomeTreePage />);
+    render(<ViralGenomeTreePage />, { wrapper: createQueryClientWrapper() });
     await user.click(screen.getByRole("button", { name: "Pick alignedDnaFastaOrContigs" }));
 
     await pickAndAddGroup(user);
@@ -207,7 +208,7 @@ describe("ViralGenomeTreePage add inputs", () => {
       ),
     );
     const user = userEvent.setup();
-    render(<ViralGenomeTreePage />);
+    render(<ViralGenomeTreePage />, { wrapper: createQueryClientWrapper() });
 
     await pickAndAddGroup(user);
 
@@ -232,7 +233,7 @@ describe("ViralGenomeTreePage add inputs", () => {
       })),
     );
     const user = userEvent.setup();
-    render(<ViralGenomeTreePage />);
+    render(<ViralGenomeTreePage />, { wrapper: createQueryClientWrapper() });
 
     await pickAndAddGroup(user);
 
@@ -274,7 +275,7 @@ describe("ViralGenomeTreePage add inputs", () => {
       },
     ]);
     const user = userEvent.setup();
-    render(<ViralGenomeTreePage />);
+    render(<ViralGenomeTreePage />, { wrapper: createQueryClientWrapper() });
 
     await pickAndAddGroup(user);
     expect(
@@ -318,7 +319,7 @@ describe("ViralGenomeTreePage add inputs", () => {
     },
   ])("lists the file picked for $button", async ({ preset, button, typeLabel }) => {
     const user = userEvent.setup();
-    render(<ViralGenomeTreePage />);
+    render(<ViralGenomeTreePage />, { wrapper: createQueryClientWrapper() });
 
     await user.click(screen.getByRole("button", { name: `Pick ${preset}` }));
     await user.click(addButton(button));

@@ -4,10 +4,11 @@ import { ExternalLink } from "lucide-react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useState } from "react";
+import { SectionRetryButton } from "@/components/organisms/shared/section-retry-button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { buttonVariants } from "@/components/ui/button-variants";
-import { cn } from "@/lib/utils";
+import { cn, formatUserFacingErrorMessage } from "@/lib/utils";
 import { featureHref, genomeHref, taxonomyHref } from "@/lib/views/hrefs";
 import { isTaxonId } from "@/lib/taxonomy-view";
 import {
@@ -33,6 +34,19 @@ const StructureSourceViewer = dynamic(
 );
 
 const layout = { showControls: true, regionState: "full" as const };
+
+/** Where a structure source's file comes from, mid-sentence. */
+const structureSourceNames: Record<StructureSource["kind"], string> = {
+  "bv-brc": "BV-BRC",
+  alphafold: "AlphaFold",
+  rcsb: "the RCSB PDB",
+  workspace: "your workspace",
+  url: "its source",
+};
+
+/** `formatUserFacingErrorMessage` fallback for a lookup error that says nothing. */
+const genericMetadataErrorMessage =
+  "The BV-BRC metadata lookup failed. Please try again.";
 
 function values(
   value: string | number | readonly (string | number)[],
@@ -261,7 +275,22 @@ export function ProteinStructureMember({
       {lookup?.error && (
         <Alert variant="destructive">
           <AlertTitle>Structure metadata could not be loaded</AlertTitle>
-          <AlertDescription>{lookup.error}</AlertDescription>
+          <AlertDescription>
+            <p>
+              {formatUserFacingErrorMessage(
+                new Error(lookup.error),
+                genericMetadataErrorMessage,
+              )}
+            </p>
+            {primarySource && (
+              <p>
+                The structure below still loads from{" "}
+                {structureSourceNames[primarySource.kind]}.
+              </p>
+            )}
+            {/* The lookup ran on the server, so Retry refreshes the route. */}
+            <SectionRetryButton />
+          </AlertDescription>
         </Alert>
       )}
       {!lookup?.error && lookup && !metadata && (

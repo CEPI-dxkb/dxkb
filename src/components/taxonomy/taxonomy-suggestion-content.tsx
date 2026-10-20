@@ -1,12 +1,16 @@
 import type { ReactNode } from "react";
 import { Loader2Icon } from "lucide-react";
 
+import { LookupErrorAlert } from "@/components/services/lookup-error-alert";
 import type { TaxonomyItem } from "@/types";
 
 interface TaxonomySuggestionContentProps {
   results: TaxonomyItem[];
   loading: boolean;
+  /** The failed search, with what failed ("Taxonomy search unavailable: …"). */
   error: string | null;
+  /** Runs the failed search again. */
+  onRetry?: () => void;
   emptyMessage: string;
   renderPrimary: (item: TaxonomyItem) => ReactNode;
   renderSecondary?: (item: TaxonomyItem) => ReactNode;
@@ -17,13 +21,18 @@ export function TaxonomySuggestionContent({
   results,
   loading,
   error,
+  onRetry,
   emptyMessage,
   renderPrimary,
   renderSecondary,
   onSelect,
 }: TaxonomySuggestionContentProps) {
   if (error) {
-    return <div className="p-4 text-sm text-destructive">Error: {error}</div>;
+    return (
+      <div className="p-2">
+        <LookupErrorAlert message={error} onRetry={onRetry} />
+      </div>
+    );
   }
 
   if (loading) {

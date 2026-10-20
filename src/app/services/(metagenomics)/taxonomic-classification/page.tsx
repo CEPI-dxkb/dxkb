@@ -10,6 +10,7 @@ import { JobParamsDialog } from "@/components/services/job-params-dialog";
 import { ServiceHeader } from "@/components/services/service-header";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
+import { ServiceSubmitError } from "@/components/services/form-ui/service-submit-error";
 import { taxonomyClassificationInfo } from "@/lib/services/info/taxonomic-classification";
 
 export default function TaxonomicClassificationPage() {
@@ -33,6 +34,7 @@ export default function TaxonomicClassificationPage() {
         <ClassificationSelectedLibrariesCard controller={controller} />
         <ClassificationParametersCard controller={controller} />
         <div className="md:col-span-12">
+          <ServiceSubmitError form={controller.form} />
           <div className="service-form-controls">
             <Button
               type="button"

@@ -1,12 +1,22 @@
+import { SectionRetryButton } from "@/components/organisms/shared/section-retry-button";
+
 interface ChartStatusMessageProps {
   errorMessage?: string;
 }
 
+/**
+ * A chart whose facet failed while the rest of the grid loaded. The section
+ * itself rendered, so `withSectionError` adds no Retry; this one refreshes the
+ * route, which re-runs the failed facet.
+ */
 export function ChartStatusMessage({ errorMessage }: ChartStatusMessageProps) {
   return (
-    <p className="text-sm text-destructive">
-      Could not load: {errorMessage ?? "unknown error"}
-    </p>
+    <div role="alert" className="flex flex-col items-start gap-2">
+      <p className="text-sm text-destructive">
+        Could not load: {errorMessage ?? "unknown error"}
+      </p>
+      <SectionRetryButton />
+    </div>
   );
 }
 

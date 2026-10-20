@@ -27,6 +27,9 @@ vi.mock("../workspace-dropdown-content", () => ({
   WorkspaceDropdownContent: () => null,
 }));
 vi.mock("@/components/auth/su-banner", () => ({ SuBanner: () => null }));
+vi.mock("@/components/auth/session-unverified-banner", () => ({
+  SessionUnverifiedBanner: () => null,
+}));
 vi.mock("@/components/jobs/job-status-pill", () => ({
   JobStatusPill: () => null,
 }));

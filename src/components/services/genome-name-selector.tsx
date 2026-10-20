@@ -67,6 +67,7 @@ export function GenomeNameSelector({
     itemRefs,
     updateSuggestions,
     triggerSearch,
+    retry,
   } = useGenomeTypeahead({
     minQueryLength,
     disabled: selectionDisabled,
@@ -236,6 +237,7 @@ export function GenomeNameSelector({
                   suggestions={suggestions}
                   isLoading={isLoading}
                   error={error}
+                  onRetry={retry}
                   emptyMessage={
                     showEmptyState
                       ? query.trim()

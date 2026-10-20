@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
+import { recordUnavailableMessage } from "@/components/errors/record-load-failure";
+import { RecordUnavailable } from "@/components/errors/record-unavailable";
 import { DataApiError } from "@/lib/data-api/repository";
 import { isEpitopeId, parseEpitopeTab } from "@/lib/epitope-view";
 import { getEpitope } from "@/lib/epitope-view/server";
@@ -27,22 +29,29 @@ async function loadEpitope(rawEpitopeId: string, source: RouteParamSource) {
   // containing a literal percent escape. See `readRouteParam`.
   const epitopeId = readRouteParam(rawEpitopeId, source);
   if (!isEpitopeId(epitopeId)) notFound();
+  let epitope: Awaited<ReturnType<typeof getEpitope>>;
   try {
-    const epitope = await getEpitope(epitopeId);
-    if (!epitope) notFound();
-    return epitope;
+    epitope = await getEpitope(epitopeId);
   } catch (error) {
     if (error instanceof DataApiError && [401, 403, 404].includes(error.status))
       notFound();
-    throw error;
+    // An outage is rendered, not thrown: production would redact its message.
+    const unavailable = recordUnavailableMessage(error);
+    if (unavailable === null) throw error;
+    if (source === "page") console.error(`epitope/${epitopeId}:`, error);
+    return { epitopeId, unavailable } as const;
   }
+  if (!epitope) notFound();
+  return { epitopeId, epitope } as const;
 }
 
 export async function generateMetadata({
   params,
 }: EpitopeMetadataProps): Promise<Metadata> {
   const { epitopeId } = await params;
-  const epitope = await loadEpitope(epitopeId, "metadata");
+  const loaded = await loadEpitope(epitopeId, "metadata");
+  if (loaded.unavailable !== undefined) return { title: `${loaded.epitopeId} | Epitope` };
+  const { epitope } = loaded;
   return {
     title: `${epitope.epitope_sequence ?? epitope.epitope_id} | Epitope`,
     description: epitope.protein_name ?? `Epitope record ${epitope.epitope_id}`,
@@ -54,7 +63,20 @@ export default async function EpitopePage({
   searchParams,
 }: EpitopePageProps) {
   const [{ epitopeId }, query] = await Promise.all([params, searchParams]);
-  const epitope = await loadEpitope(epitopeId, "page");
+  const loaded = await loadEpitope(epitopeId, "page");
+  if (loaded.unavailable !== undefined) {
+    return (
+      <RecordUnavailable
+        viewLabel="Epitope View"
+        recordLabel="Epitope"
+        recordId={loaded.epitopeId}
+        message={loaded.unavailable}
+        collectionHref="/epitope"
+        collectionLabel="Epitopes"
+      />
+    );
+  }
+  const { epitope } = loaded;
   const activeTab = parseEpitopeTab(query.tab);
   const canonicalQuery = canonicalizeMemberTabQuery(query, activeTab);
   if (canonicalQuery !== null) {

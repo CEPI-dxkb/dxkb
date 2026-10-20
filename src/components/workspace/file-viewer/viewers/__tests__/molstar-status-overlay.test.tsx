@@ -43,6 +43,30 @@ describe("MolstarStatusOverlay", () => {
     expect(screen.getByRole("button", { name: "Retry" })).toBeInTheDocument();
   });
 
+  it("announces the error as an alert, without the Retry label in it", () => {
+    render(
+      <MolstarStatusOverlay
+        status="error"
+        errorMessage="Could not download 6VXX from your workspace (HTTP 504)."
+        onRetry={onRetry}
+      />,
+    );
+
+    const alert = screen.getByRole("alert");
+    expect(alert).toHaveTextContent(
+      "Could not download 6VXX from your workspace (HTTP 504).",
+    );
+    expect(alert).not.toHaveTextContent("Retry");
+  });
+
+  it("announces nothing while loading", () => {
+    render(
+      <MolstarStatusOverlay status="loading" errorMessage={undefined} onRetry={onRetry} />,
+    );
+
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
   it("calls onRetry when retry button is clicked", async () => {
     const user = userEvent.setup();
 

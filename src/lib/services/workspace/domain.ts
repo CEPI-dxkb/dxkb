@@ -123,12 +123,20 @@ export type ListPermissionsResult = Record<string, [string, string][]>;
 export class WorkspaceApiError extends Error {
   readonly method: string;
   readonly apiResponse: unknown;
+  /** HTTP status of the proxy's answer, when the failure was one (502/503/504 = upstream outage). */
+  readonly status?: number;
 
-  constructor(message: string, method: string, apiResponse: unknown) {
+  constructor(
+    message: string,
+    method: string,
+    apiResponse: unknown,
+    status?: number,
+  ) {
     super(message);
     this.name = "WorkspaceApiError";
     this.method = method;
     this.apiResponse = apiResponse;
+    this.status = status;
   }
 
   /**

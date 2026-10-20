@@ -1,7 +1,10 @@
-import { render, screen } from "@testing-library/react";
+import { http, HttpResponse } from "msw";
+import { render, screen, within } from "@testing-library/react";
 
 import TaxonomyPage from "../page";
 import { TaxonomyNotFoundError } from "@/lib/services/organisms/taxonomy";
+import { server } from "@/test-helpers/msw-server";
+import { connectTimeout, maintenancePage } from "@/test-helpers/upstream-failures";
 
 const { fetchOrganismTaxonomyMock, metadataSpy, notFoundSpy } = vi.hoisted(
   () => ({
@@ -221,16 +224,113 @@ describe("TaxonomyPage", () => {
     expect(notFoundSpy).toHaveBeenCalled();
   });
 
-  it("re-throws when fetchOrganismTaxonomy throws a non-404 error", async () => {
-    notFoundSpy.mockClear();
-    fetchOrganismTaxonomyMock.mockRejectedValueOnce(new Error("upstream 500"));
+  describe("when the taxonomy lookup fails upstream", () => {
+    const baseUrl = "https://bvbrc.test/api-for-website";
 
-    await expect(
-      TaxonomyPage({
-        params: Promise.resolve({ taxonId: "999" }),
-        searchParams: Promise.resolve({}),
-      }),
-    ).rejects.toThrow("upstream 500");
-    expect(notFoundSpy).not.toHaveBeenCalled();
+    beforeEach(async () => {
+      process.env.BVBRC_WEBSITE_API_URL = baseUrl;
+      // Route the lookup through the real fetch, so MSW plays the backend.
+      const actual = await vi.importActual<
+        typeof import("@/lib/services/organisms/taxonomy")
+      >("@/lib/services/organisms/taxonomy");
+      fetchOrganismTaxonomyMock.mockImplementation(actual.fetchOrganismTaxonomy);
+      notFoundSpy.mockClear();
+    });
+
+    afterEach(() => {
+      delete process.env.BVBRC_WEBSITE_API_URL;
+    });
+
+    it("renders the shell with the condensed cause instead of throwing", async () => {
+      server.use(http.get(`${baseUrl}/taxonomy/1773`, () => maintenancePage()));
+
+      render(
+        await TaxonomyPage({
+          params: Promise.resolve({ taxonId: "1773" }),
+          searchParams: Promise.resolve({ tab: "genomes" }),
+        }),
+      );
+
+      expect(
+        screen.getByRole("heading", { level: 1, name: "Taxon 1773" }),
+      ).toBeInTheDocument();
+      const alert = screen.getByRole("alert");
+      expect(
+        within(alert).getByRole("heading", { name: "Taxon 1773 could not be loaded" }),
+      ).toBeInTheDocument();
+      // The maintenance page's status and title, never its HTML.
+      expect(alert).toHaveTextContent(/503/);
+      expect(alert).toHaveTextContent(/Site Maintenance/);
+      expect(alert).not.toHaveTextContent("<");
+      expect(within(alert).getByRole("button", { name: "Retry" })).toBeEnabled();
+      expect(within(alert).getByRole("link", { name: "Browse taxa" })).toHaveAttribute(
+        "href",
+        "/taxonomy",
+      );
+      expect(notFoundSpy).not.toHaveBeenCalled();
+    });
+
+    it("names the unreachable service for a network failure", async () => {
+      server.use(
+        http.get(`${baseUrl}/taxonomy/561`, () => {
+          throw connectTimeout();
+        }),
+      );
+
+      render(
+        await TaxonomyPage({
+          params: Promise.resolve({ taxonId: "561" }),
+          searchParams: Promise.resolve({}),
+        }),
+      );
+
+      // The cause, not undici's bare "fetch failed".
+      const alert = screen.getByRole("alert");
+      expect(alert).toHaveTextContent(
+        /did not respond \(connection timed out after 10 s\)/,
+      );
+      expect(alert).not.toHaveTextContent("fetch failed");
+    });
+
+    it("keeps notFound for a missing taxon", async () => {
+      server.use(
+        http.get(`${baseUrl}/taxonomy/999999999`, () =>
+          new Response("not found", { status: 404 }),
+        ),
+      );
+
+      await expect(
+        TaxonomyPage({
+          params: Promise.resolve({ taxonId: "999999999" }),
+          searchParams: Promise.resolve({}),
+        }),
+      ).rejects.toThrow("NEXT_NOT_FOUND");
+    });
+
+    it("throws a configuration error to the boundary instead of rendering its env var name", async () => {
+      delete process.env.BVBRC_WEBSITE_API_URL;
+
+      await expect(
+        TaxonomyPage({
+          params: Promise.resolve({ taxonId: "1773" }),
+          searchParams: Promise.resolve({}),
+        }),
+      ).rejects.toThrow("Missing required environment variable: BVBRC_WEBSITE_API_URL");
+    });
+
+    it("throws a malformed payload (a bug, not an outage) to the boundary", async () => {
+      server.use(
+        http.get(`${baseUrl}/taxonomy/1773`, () =>
+          HttpResponse.json({ taxon_id: 1773 }),
+        ),
+      );
+
+      await expect(
+        TaxonomyPage({
+          params: Promise.resolve({ taxonId: "1773" }),
+          searchParams: Promise.resolve({}),
+        }),
+      ).rejects.toThrow("Unexpected BV-BRC response shape: taxon_name is missing");
+    });
   });
 });

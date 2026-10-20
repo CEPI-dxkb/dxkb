@@ -10,7 +10,7 @@ import {
 // - the global `<CommandPalette>` mounted in the root layout (Cmd/Ctrl+K
 //   toggles open, arrow keys navigate, Enter routes, Esc closes).
 
-// p3.theseed.org/services/data_api/query/ — bulk multi-type Solr query fired by SearchResults on mount.
+// /api/data/search — the same-origin route behind the bulk multi-type search SearchResults fires on mount.
 // Returns zero hits for every type so the page renders its "No results found" state without errors.
 // Both describe blocks navigate to /search, so this mock has to be in scope for both.
 const emptyDataApiResponse = Object.fromEntries(
@@ -24,7 +24,7 @@ const emptyDataApiResponse = Object.fromEntries(
 );
 
 const dataApiOverride = {
-  url: /theseed\.org\/services\/data_api\/query/,
+  url: /\/api\/data\/search$/,
   method: "POST",
   body: emptyDataApiResponse,
 } as const;
@@ -37,7 +37,7 @@ test.describe("global search (keyboard journey)", () => {
         // (AppService.enumerate_tasks_filtered is covered by jobsOverrides inside journeyOverrides.)
         ...workspacePopulatedOverrides,
         ...journeyOverrides,
-        // p3.theseed.org data_api bulk Solr query — fired by SearchResults when /search mounts.
+        // /api/data/search bulk search — fired by SearchResults when /search mounts.
         dataApiOverride,
       ],
     });

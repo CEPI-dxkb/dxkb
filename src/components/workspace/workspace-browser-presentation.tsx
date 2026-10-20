@@ -2,10 +2,12 @@
 
 import type { ReactNode, RefObject } from "react";
 import { AlertCircle } from "lucide-react";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { QueryRetryButton } from "@/components/views/query-retry-button";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { WorkspaceItem } from "@/lib/services/workspace/domain";
 import type { ResolvedPathObject } from "@/lib/services/workspace/types";
+import { workspaceErrorMessage } from "@/lib/services/workspace/workspace-errors";
 import type {
   WorkspaceSortConfig,
   WorkspaceViewMode,
@@ -52,6 +54,20 @@ export function WorkspaceBrowserLoading({
   );
 }
 
+type WorkspaceBrowserView = WorkspaceBrowserPresentationProps["view"];
+
+/** Names what failed by where the user is, not by which view mode is showing it. */
+function loadErrorTitle(view: WorkspaceBrowserView, path: string): string {
+  const atRoot = path.split("/").filter(Boolean).length === 0;
+  if (view.kind === "jobResult") return "Couldn't load these job results";
+  if (view.kind === "public") {
+    return atRoot ? "Couldn't load public workspaces" : "Couldn't load this folder";
+  }
+  if (view.kind === "shared" && view.atRoot) return "Couldn't load your workspaces";
+  if (view.kind === "home" && atRoot) return "Couldn't load your home folder";
+  return "Couldn't load this folder";
+}
+
 interface WorkspaceBrowserPresentationProps {
   selectedItems: WorkspaceItem[];
   actionBar: ReactNode;
@@ -59,7 +75,8 @@ interface WorkspaceBrowserPresentationProps {
   notFoundDialog: ReactNode;
   path: string;
   username: string;
-  itemCount: number;
+  /** Items in the folder; undefined while nothing has loaded. */
+  itemCount: number | undefined;
   currentUsername: string;
   workspaceRootUsername?: string;
   toolbar: {
@@ -75,8 +92,14 @@ interface WorkspaceBrowserPresentationProps {
     onUpload?: () => void;
     onNewWorkspace?: () => void;
   };
-  enabled: boolean;
+  /** Why the folder could not be shown (listing or path lookup), or null. */
   error: Error | null;
+  /** True when the listing has items to show despite `error` (a failed refetch). */
+  hasLoadedItems: boolean;
+  /** A Retry or Refresh is in flight while `error` stays on screen. */
+  retrying: boolean;
+  /** Refetches what failed: the path lookup and the listing. */
+  onRetry: () => void;
   view:
     | { kind: "home" }
     | { kind: "shared"; atRoot: boolean }
@@ -114,8 +137,10 @@ export function WorkspaceBrowserPresentation({
   currentUsername,
   workspaceRootUsername,
   toolbar,
-  enabled,
   error,
+  hasLoadedItems,
+  retrying,
+  onRetry,
   view,
   tableRef,
   items,
@@ -140,6 +165,17 @@ export function WorkspaceBrowserPresentation({
   const tableViewMode: WorkspaceViewMode =
     view.kind === "jobResult" ? view.source : view.kind;
 
+  const errorTitle = loadErrorTitle(view, path);
+  const errorMessage = error
+    ? workspaceErrorMessage(error, "The workspace service returned an error.")
+    : "";
+  // Nothing loaded: the table shows the error where its rows would be.
+  // Rows from an earlier load: they stay, with the error above them.
+  const tableLoadError =
+    error && !hasLoadedItems
+      ? { title: errorTitle, message: errorMessage, retrying, onRetry }
+      : null;
+
   const table = (
     <WorkspaceDataTable
       ref={tableRef}
@@ -157,6 +193,7 @@ export function WorkspaceBrowserPresentation({
       onSelect={onSelect}
       onItemDoubleClick={onItemDoubleClick}
       onClearSelection={onClearSelection}
+      loadError={tableLoadError}
     />
   );
 
@@ -186,16 +223,13 @@ export function WorkspaceBrowserPresentation({
           isAtRoot={view.kind === "shared" && view.atRoot}
           onNewWorkspace={toolbar.onNewWorkspace}
         />
-        {enabled && error && (
+        {error && hasLoadedItems && (
           <Alert variant="destructive">
             <AlertCircle className="size-4" />
+            <AlertTitle>{errorTitle}</AlertTitle>
             <AlertDescription>
-              {view.kind === "public"
-                ? "Failed to load public workspaces"
-                : view.kind === "home"
-                  ? "Failed to load workspace contents"
-                  : "Failed to load shared folders"}
-              : {error.message}
+              <p>{errorMessage}</p>
+              <QueryRetryButton retrying={retrying} onRetry={onRetry} />
             </AlertDescription>
           </Alert>
         )}

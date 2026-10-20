@@ -1,13 +1,19 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { http, HttpResponse } from "msw";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { delay, http, HttpResponse } from "msw";
+import type { ReactNode } from "react";
 import { server } from "@/test-helpers/msw-server";
-import { createQueryClientWrapper } from "@/test-helpers/react";
+import {
+  createQueryClientWrapper,
+  nextRefetchInterval,
+} from "@/test-helpers/react";
 import type { JobListItem } from "@/types/workspace";
 
 const { mockAuth } = vi.hoisted(() => ({
   mockAuth: {
     isAuthenticated: true,
+    isSessionUnverified: false,
     user: { username: "test-user" },
     status: "authed",
     signOut: vi.fn(),
@@ -22,6 +28,33 @@ import { JobStatusPill } from "../job-status-pill";
 
 function renderPill() {
   return render(<JobStatusPill />, { wrapper: createQueryClientWrapper() });
+}
+
+/** Like renderPill, with the QueryClient exposed to drive and inspect polls. */
+function renderPillWithClient() {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+  function Wrapper({ children }: { children: ReactNode }) {
+    return (
+      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    );
+  }
+  return { queryClient, ...render(<JobStatusPill />, { wrapper: Wrapper }) };
+}
+
+const outageMessage =
+  "The BV-BRC job service did not respond: connection timed out after 10 s.";
+
+function mockSummaryOutage() {
+  server.use(
+    http.post("/api/services/app-service/jobs/summary", () =>
+      HttpResponse.json(
+        { error: outageMessage, code: "upstream_timeout" },
+        { status: 504 },
+      ),
+    ),
+  );
 }
 
 function mockSummary(taskSummary: Record<string, number>) {
@@ -50,6 +83,7 @@ function setAuth(authed: boolean) {
 describe("JobStatusPill", () => {
   beforeEach(() => {
     setAuth(true);
+    mockAuth.isSessionUnverified = false;
     // Default: no jobs so pill is hidden unless tests override
     mockSummary({});
     mockJobsList([]);
@@ -354,5 +388,191 @@ describe("JobStatusPill", () => {
     await waitFor(() =>
       expect(screen.getByText("My Jobs")).toBeInTheDocument(),
     );
+  });
+
+  describe("when the summary fails", () => {
+    it("shows an unavailable pill instead of vanishing, with the reason and a Retry", async () => {
+      mockSummaryOutage();
+      renderPill();
+
+      const pill = await screen.findByRole("button", {
+        name: "Job status unavailable",
+      });
+      expect(pill).toHaveAttribute(
+        "title",
+        `Job status unavailable: ${outageMessage}`,
+      );
+
+      await userEvent.click(pill);
+      const alert = await screen.findByRole("alert");
+      expect(alert).toHaveTextContent(
+        `Job status unavailable: ${outageMessage}`,
+      );
+      expect(screen.getByRole("link", { name: /view all/i })).toHaveAttribute(
+        "href",
+        "/jobs",
+      );
+
+      let releaseRetry: () => void = () => undefined;
+      server.use(
+        http.post("/api/services/app-service/jobs/summary", async () => {
+          await new Promise<void>((resolve) => {
+            releaseRetry = resolve;
+          });
+          return HttpResponse.json({
+            taskSummary: { running: 2 },
+            appSummary: {},
+          });
+        }),
+      );
+      await userEvent.click(within(alert).getByRole("button", { name: "Retry" }));
+
+      // The pill and its popover stay, saying they are retrying, rather than
+      // vanishing while the summary is pending again.
+      expect(
+        await within(alert).findByRole("button", { name: "Retrying…" }),
+      ).toBeDisabled();
+      expect(
+        screen.getByRole("button", { name: "Job status unavailable" }),
+      ).toBeInTheDocument();
+      expect(alert).toHaveTextContent(outageMessage);
+
+      act(() => {
+        releaseRetry();
+      });
+
+      expect(
+        await screen.findByRole("button", { name: /view job status/i }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: "Job status unavailable" }),
+      ).toBeNull();
+    });
+
+    it("keeps the last counts and notes the failed refresh in the popover", async () => {
+      mockSummary({ running: 2 });
+      const { queryClient } = renderPillWithClient();
+      const pill = await screen.findByRole("button", {
+        name: /view job status/i,
+      });
+
+      mockSummaryOutage();
+      await act(() =>
+        queryClient.refetchQueries({ queryKey: ["jobs-summary"] }),
+      );
+
+      expect(within(pill).getByText("2")).toBeInTheDocument();
+      await userEvent.click(pill);
+      expect(
+        await screen.findByText(
+          `Could not refresh job status: ${outageMessage} The counts are from the last update.`,
+        ),
+      ).toBeInTheDocument();
+    });
+  });
+
+  it("fetches once and does not poll while the session is unverified", async () => {
+    mockAuth.isSessionUnverified = true;
+    let summaryCalls = 0;
+    server.use(
+      http.post("/api/services/app-service/jobs/summary", () => {
+        summaryCalls += 1;
+        return HttpResponse.json({ taskSummary: { running: 1 }, appSummary: {} });
+      }),
+    );
+
+    const { queryClient } = renderPillWithClient();
+    expect(
+      await screen.findByRole("button", { name: /view job status/i }),
+    ).toBeInTheDocument();
+    await waitFor(() => {
+      expect(
+        queryClient
+          .getQueryCache()
+          .find({ queryKey: ["jobs-filtered"], exact: false })?.state.status,
+      ).toBe("success");
+    });
+
+    expect(summaryCalls).toBe(1);
+    // A running job would otherwise poll both every 3 s.
+    expect(nextRefetchInterval(queryClient, ["jobs-summary", false])).toBe(false);
+    expect(nextRefetchInterval(queryClient, ["jobs-filtered"])).toBe(false);
+  });
+
+  it("polls running jobs at the fast rate once the session is verified", async () => {
+    mockSummary({ running: 1 });
+    const { queryClient } = renderPillWithClient();
+    await screen.findByRole("button", { name: /view job status/i });
+
+    expect(nextRefetchInterval(queryClient, ["jobs-summary", false])).toBe(3_000);
+  });
+
+  it("holds its place with a loading pill while the first summary is pending", async () => {
+    server.use(
+      http.post("/api/services/app-service/jobs/summary", async () => {
+        await delay("infinite");
+        return HttpResponse.json({ taskSummary: {}, appSummary: {} });
+      }),
+    );
+
+    renderPill();
+
+    expect(
+      await screen.findByRole("status", { name: "Loading job status" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("button")).toBeNull();
+  });
+
+  it("keeps the unavailable pill and its open popover up while a back-off poll is in flight", async () => {
+    let releasePoll: (response: Response) => void = () => undefined;
+    let holding = false;
+    server.use(
+      http.post("/api/services/app-service/jobs/summary", () => {
+        if (!holding) {
+          return HttpResponse.json(
+            { error: outageMessage, code: "upstream_timeout" },
+            { status: 504 },
+          );
+        }
+        return new Promise<Response>((resolve) => {
+          releasePoll = resolve;
+        });
+      }),
+    );
+
+    const { queryClient } = renderPillWithClient();
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Job status unavailable" }),
+    );
+    expect(await screen.findByRole("alert")).toHaveTextContent(outageMessage);
+
+    // A poll, not a Retry: TanStack puts the data-less summary back to pending.
+    holding = true;
+    act(() => {
+      void queryClient.refetchQueries({ queryKey: ["jobs-summary"] });
+    });
+    await waitFor(() => {
+      expect(
+        queryClient.getQueryState(["jobs-summary", false])?.fetchStatus,
+      ).toBe("fetching");
+    });
+
+    expect(
+      screen.getByRole("button", { name: "Job status unavailable" }),
+    ).toBeInTheDocument();
+    const alert = screen.getByRole("alert");
+    expect(alert).toHaveTextContent(outageMessage);
+    // Nobody pressed Retry, so it does not claim to be retrying.
+    expect(within(alert).getByRole("button", { name: "Retry" })).toBeEnabled();
+    expect(screen.queryByRole("status", { name: "Loading job status" })).toBeNull();
+
+    act(() => {
+      releasePoll(
+        HttpResponse.json({ taskSummary: { running: 1 }, appSummary: {} }),
+      );
+    });
+    expect(
+      await screen.findByRole("button", { name: /view job status/i }),
+    ).toBeInTheDocument();
   });
 });

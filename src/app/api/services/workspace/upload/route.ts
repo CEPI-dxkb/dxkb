@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth/server/route";
+import {
+  summarizeUpstreamBody,
+  upstreamServices,
+} from "@/lib/api/upstream-failure";
+import { upstreamFailureResponse } from "@/lib/api/upstream-route";
 import { getRequiredEnv } from "@/lib/env";
 
 function isAllowedShockUrl(urlString: string, allowedOrigins: string): boolean {
@@ -57,6 +62,10 @@ export const POST = withAuth(async (request: NextRequest, { token }) => {
 
     const shockAuth = token.startsWith("OAuth ") ? token : `OAuth ${token}`;
 
+    // No budget of our own: the file is sent before Shock can answer, and a
+    // large one legitimately takes longer than any fixed budget. undici
+    // bounds the connect (10 s) and, once the body is sent, the wait for an
+    // answer (300 s).
     const response = await fetch(urlRaw.trim(), {
       method: "PUT",
       headers: {
@@ -67,11 +76,12 @@ export const POST = withAuth(async (request: NextRequest, { token }) => {
 
     if (!response.ok) {
       const text = await response.text();
-      let body: unknown = text;
+      let body: unknown;
       try {
         body = text ? JSON.parse(text) : null;
       } catch {
-        // leave as text
+        // Text, or an HTML error page: its readable part, never the markup.
+        body = summarizeUpstreamBody(text, response.headers.get("content-type"));
       }
       return NextResponse.json(
         { error: `Shock upload failed: ${String(response.status)} ${response.statusText}`, details: body },
@@ -83,9 +93,6 @@ export const POST = withAuth(async (request: NextRequest, { token }) => {
     return NextResponse.json(data);
   } catch (error) {
     console.error("Workspace upload proxy error:", error);
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 },
-    );
+    return upstreamFailureResponse(error, upstreamServices.fileStorage);
   }
 });

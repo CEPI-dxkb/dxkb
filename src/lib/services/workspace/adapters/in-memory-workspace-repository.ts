@@ -587,7 +587,7 @@ export class InMemoryWorkspaceRepository implements WorkspaceRepository {
 
       const results: WorkspaceItem[] = [];
       const seen = new Set<string>();
-      const typeFilter = input.types ? new Set(input.types) : null;
+      const typeFilter = input.types?.length ? new Set(input.types) : null;
       const nameFilter = input.name?.toLowerCase();
       const visit = (dir: string) => {
         if (seen.has(dir)) return;

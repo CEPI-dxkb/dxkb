@@ -1,6 +1,7 @@
 import { expect, type Locator, type Page } from "@playwright/test";
 
 import { expectUrlParams } from "../support/url-params";
+import { ErrorAlert } from "./error-alert";
 import { ViewNavRail } from "./view-nav-rail";
 
 /**
@@ -40,6 +41,11 @@ export class GenomeMemberPage {
    */
   async waitForHydration(): Promise<void> {
     await this.viewNav.waitForHydration();
+  }
+
+  /** The in-shell error a genome page shows when the data service could not load its record. */
+  unavailable(genomeId: string): ErrorAlert {
+    return new ErrorAlert(this.page, `Genome ${genomeId} could not be loaded`);
   }
 
   /** Switch tab from the view rail (a router navigation, so one history entry). */

@@ -108,6 +108,43 @@ test.describe("auth (signed out)", () => {
     await signIn.expectInlineError(/invalid username or password/i);
   });
 
+  // The pending state only renders when the button subscribes to the form
+  // store; with the React Compiler on, reading form.state in render never
+  // updates. Vitest does not run the compiler, so this is covered here.
+  test("disables the sign-in button while the request is pending", async ({
+    page,
+  }) => {
+    await applyBackendMocks(page, { overrides: [...journeyOverrides] });
+    const responseGate = Promise.withResolvers<undefined>();
+    let signInRequests = 0;
+    // Registered after applyBackendMocks, so it is matched first (LIFO).
+    await page.route("**/api/auth/sign-in/email", async (route) => {
+      signInRequests += 1;
+      await responseGate.promise;
+      await route.fulfill({
+        status: 401,
+        contentType: "application/json",
+        body: JSON.stringify({ error: "Invalid username or password" }),
+      });
+    });
+
+    const signIn = new SignInPage(page);
+    await signIn.goto();
+    await signIn.waitUntilInteractive();
+    await signIn.fill("e2e-test-user", "wrong-password");
+    await signIn.submit();
+
+    const pendingButton = page.getByRole("button", { name: /signing in/i });
+    await expect(pendingButton).toBeDisabled();
+    // Implicit (Enter) submission is blocked while the submit button is disabled.
+    await signIn.passwordInput.press("Enter");
+
+    responseGate.resolve(undefined);
+    await signIn.expectInlineError(/invalid username or password/i);
+    await expect(signIn.submitButton).toBeEnabled();
+    expect(signInRequests).toBe(1);
+  });
+
   test("forgot-password submits the identifier and shows confirmation", async ({
     page,
   }) => {
@@ -140,7 +177,7 @@ test.describe("auth (signed out)", () => {
     await expect(forgot.successCardTitle).toBeVisible();
   });
 
-  test("forgot-password surfaces the generic error when the reset call fails", async ({
+  test("forgot-password surfaces the route's error when the reset call fails", async ({
     page,
   }) => {
     await applyBackendMocks(page, {
@@ -158,7 +195,7 @@ test.describe("auth (signed out)", () => {
     await forgot.goto();
     await forgot.fill("missing@example.com");
     await forgot.submit();
-    await expect(forgot.errorAlert).toBeVisible();
+    await expect(forgot.errorAlert).toContainText("User not found");
   });
 
   test("sign-up submits required fields and shows success", async ({

@@ -1,8 +1,10 @@
 "use client";
 
+import { useState } from "react";
 import { useForm } from "@tanstack/react-form";
 import { toast } from "sonner";
-import { Mail } from "lucide-react";
+import { AlertCircle, Mail } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Card, CardContent } from "@/components/ui/card";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Input } from "@/components/ui/input";
@@ -16,6 +18,9 @@ import {
 } from "@/components/ui/tanstack-form";
 import {
   contactFormSchema,
+  contactRequestError,
+  contactRequestTimeoutMs,
+  contactResponseError,
   defaultContactFormValues,
   inquiryTypes,
   type ContactFormData,
@@ -23,34 +28,32 @@ import {
 } from "./contact-form-utils";
 
 const ContactForm = () => {
+  // Shown under the button until the next submit; the form keeps what the
+  // user typed, so trying again is one click.
+  const [submitError, setSubmitError] = useState<string | null>(null);
+
   const form = useForm({
     defaultValues: defaultContactFormValues,
     validators: { onChange: contactFormSchema },
     onSubmit: async ({ value, formApi }) => {
+      setSubmitError(null);
       try {
         const response = await fetch("/api/contact", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(value satisfies ContactFormData),
+          signal: AbortSignal.timeout(contactRequestTimeoutMs),
         });
 
         if (!response.ok) {
-          const body = (await response.json().catch(() => null)) as {
-            error?: string;
-          } | null;
-          toast.error(
-            body?.error ??
-              `Request failed with status ${String(response.status)}`,
-          );
+          setSubmitError(await contactResponseError(response));
           return;
         }
 
         toast.success("Message sent. We'll be in touch soon.");
         formApi.reset();
       } catch (error) {
-        const message =
-          error instanceof Error ? error.message : "Failed to send message.";
-        toast.error(message);
+        setSubmitError(contactRequestError(error));
       }
     },
   });
@@ -234,7 +237,7 @@ const ContactForm = () => {
                       </form.Field>
                     </div>
 
-                    <div className="pt-2">
+                    <div className="space-y-4 pt-2">
                       <form.Subscribe selector={(state) => state.isSubmitting}>
                         {(isSubmitting) => (
                           <Button
@@ -255,6 +258,26 @@ const ContactForm = () => {
                           </Button>
                         )}
                       </form.Subscribe>
+                      {submitError && (
+                        <Alert variant="destructive">
+                          <AlertCircle className="size-4" />
+                          <AlertTitle>Your message was not sent</AlertTitle>
+                          <AlertDescription>
+                            <p>{submitError}</p>
+                            <p>
+                              What you wrote is still in the form, so you can
+                              try again, or email{" "}
+                              <a
+                                href="mailto:help@dxkb.org"
+                                className="font-medium underline"
+                              >
+                                help@dxkb.org
+                              </a>
+                              .
+                            </p>
+                          </AlertDescription>
+                        </Alert>
+                      )}
                     </div>
                   </form>
                 </CardContent>

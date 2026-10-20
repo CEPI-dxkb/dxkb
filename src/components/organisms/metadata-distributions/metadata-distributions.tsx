@@ -1,7 +1,15 @@
 import { fetchAmrPhenotypeDistribution } from "@/lib/services/organisms/amr-distribution";
 import { fetchOrganismMetadataFacets } from "@/lib/services/organisms/metadata-facets";
+import {
+  amrProfileTitle,
+  metadataFieldLabel,
+  taxonomicDistributionTitle,
+} from "@/lib/services/organisms/metadata-field-labels";
 import { fetchTaxonomicDistribution } from "@/lib/services/organisms/taxonomic-distribution";
-import type { AmrDistributionData } from "@/lib/services/organisms/types";
+import type {
+  AmrDistributionData,
+  OrganismGenusFacet,
+} from "@/lib/services/organisms/types";
 
 import {
   genomeScopeFromProps,
@@ -13,23 +21,11 @@ import {
   type GenomeListLink,
 } from "@/lib/genome-view";
 import { describeGenomeScope } from "@/lib/services/organisms/genome-scope";
+import { formatUserFacingErrorMessage } from "@/lib/utils";
 
 import { AmrBarStackChart } from "./amr-bar-stack-chart";
 import { BarChart } from "./bar-chart";
 import { DonutChart } from "./donut-chart";
-
-const fieldLabels: Record<string, string> = {
-  genus: "Genus",
-  host: "Host",
-  host_name: "Host Name",
-  host_group: "Host Group",
-  host_common_name: "Host Distribution",
-  isolation_country: "Isolation Country",
-  isolation_source: "Isolation Source Distribution",
-  collection_year: "Collection Year",
-  family: "Family",
-  sequencing_centers: "Sequencing Centers",
-};
 
 type MetadataDistributionsProps = GenomeScopeProps & {
   fields: string[];
@@ -55,21 +51,22 @@ interface OptionalChartState<T> {
   errorMessage?: string;
 }
 
+/** `formatUserFacingErrorMessage` fallback for a chart whose error says nothing. */
+const genericChartErrorMessage = "the chart data could not be loaded";
+
 function settledToChart<T>(
   result: PromiseSettledResult<T>,
   fallback: T,
 ): OptionalChartState<T> {
   if (result.status === "fulfilled") return { data: result.value };
   const reason: unknown = result.reason;
-  const message =
-    reason instanceof Error
-      ? reason.message
-      : reason === null || reason === undefined
-        ? "unknown error"
-        : typeof reason === "string" || typeof reason === "number" || typeof reason === "boolean"
-          ? String(reason)
-          : JSON.stringify(reason);
-  return { data: fallback, errorMessage: message };
+  return {
+    data: fallback,
+    errorMessage: formatUserFacingErrorMessage(
+      typeof reason === "string" ? new Error(reason) : reason,
+      genericChartErrorMessage,
+    ),
+  };
 }
 
 export async function MetadataDistributions({
@@ -83,25 +80,51 @@ export async function MetadataDistributions({
   const hasTaxonomicSentinel = fields.includes(taxonomicDistributionSentinel);
   const fetchFields = fields.filter((f) => f !== taxonomicDistributionSentinel);
 
-  const [facetsResult, taxonomicResult, amrResult] =
-    await Promise.allSettled([
-      fetchOrganismMetadataFacets(scope, fetchFields),
+  // One request per facet, so a facet that fails (one slow field, one bad
+  // value) fails its own chart instead of the whole grid.
+  const [facetResults, [taxonomicResult, amrResult]] = await Promise.all([
+    Promise.allSettled(
+      fetchFields.map(async (field) => {
+        const facets = await fetchOrganismMetadataFacets(scope, [field]);
+        return facets[field] ?? [];
+      }),
+    ),
+    Promise.allSettled([
       fetchTaxonomicDistribution(scope),
       showAmr
         ? fetchAmrPhenotypeDistribution(scope)
         : Promise.resolve(emptyAmrData),
-    ]);
+    ]),
+  ]);
 
-  // The facets panel is the spine of this section — if it fails we can't lay
-  // out the rest of the grid, so propagate to the route's error boundary.
-  if (facetsResult.status === "rejected") {
-    throw facetsResult.reason;
+  // When nothing loaded (the service is down), one section error with a
+  // Retry says it once instead of in every chart.
+  const settled: PromiseSettledResult<unknown>[] = [
+    ...facetResults,
+    taxonomicResult,
+    ...(showAmr ? [amrResult] : []),
+  ];
+  const firstFailure = settled.find((result) => result.status === "rejected");
+  if (firstFailure && settled.every((result) => result.status === "rejected")) {
+    throw firstFailure.reason;
   }
 
-  const facets = facetsResult.value;
+  const facetCharts = new Map<string, OptionalChartState<OrganismGenusFacet[]>>(
+    fetchFields.map((field, index) => [
+      field,
+      settledToChart(facetResults[index], []),
+    ]),
+  );
   const taxonomic = settledToChart(taxonomicResult, { genus: [], species: [] });
   const amr = settledToChart(amrResult, emptyAmrData);
 
+  for (const [field, chart] of facetCharts) {
+    if (chart.errorMessage) {
+      console.warn(
+        `[metadata-distributions] genome ${field} facet fetch failed for ${describeGenomeScope(scope)}: ${chart.errorMessage}`,
+      );
+    }
+  }
   if (taxonomic.errorMessage) {
     console.warn(
       `[metadata-distributions] taxonomic distribution fetch failed for ${describeGenomeScope(scope)}: ${taxonomic.errorMessage}`,
@@ -130,7 +153,7 @@ export async function MetadataDistributions({
   const taxonomicChart = (
     <DonutChart
       key={taxonomicDistributionSentinel}
-      title="Taxonomic Distribution"
+      title={taxonomicDistributionTitle}
       tabs={[
         {
           label: "Genus",
@@ -162,8 +185,9 @@ export async function MetadataDistributions({
             return [taxonomicChart];
           }
 
-          const title = fieldLabels[field] ?? field;
-          const data = (facets[field] ?? []).map((facet) =>
+          const title = metadataFieldLabel(field);
+          const chart = facetCharts.get(field);
+          const data = (chart?.data ?? []).map((facet) =>
             chartDatum(field, facet),
           );
 
@@ -173,19 +197,26 @@ export async function MetadataDistributions({
                 key={`${field}-bar`}
                 title={title}
                 data={data}
+                errorMessage={chart?.errorMessage}
               />,
             ];
           }
 
           return [
-            <DonutChart key={field} title={title} data={data} layout="side" />,
+            <DonutChart
+              key={field}
+              title={title}
+              data={data}
+              layout="side"
+              errorMessage={chart?.errorMessage}
+            />,
           ];
         })}
         {!hasTaxonomicSentinel && taxonomicChart}
         {showAmrChart && (
           <div className={`flex flex-col${amrHasData ? " @[640px]:col-span-2 @[1080px]:col-span-2" : ""}`}>
             <AmrBarStackChart
-              title="Antimicrobial Resistance Profile"
+              title={amrProfileTitle}
               data={amr.data}
               errorMessage={amr.errorMessage}
             />

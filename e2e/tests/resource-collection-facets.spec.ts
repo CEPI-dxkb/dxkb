@@ -197,9 +197,10 @@ test.describe("resource collection facet counts", () => {
     page,
   }) => {
     const collection = await openGenomeCollection(page);
-    // The app's query client retries a failed read once before it reports it.
+    // A 502 is an upstream outage, which the app's query client does not
+    // retry on its own (`shouldRetryQuery`): one failed read reports it.
     const reads = await routeFacetReads(page, async (route, url, index) => {
-      if (index < 2) {
+      if (index < 1) {
         await route.fulfill({
           status: 502,
           json: { error: "Facet query timed out upstream." },
@@ -229,6 +230,6 @@ test.describe("resource collection facet counts", () => {
     await collection.retryFacets();
     await expect(collection.facetValue("Complete (5)")).toBeVisible();
     await expect(collection.facetError()).toHaveCount(0);
-    expect(reads).toHaveLength(3);
+    expect(reads).toHaveLength(2);
   });
 });

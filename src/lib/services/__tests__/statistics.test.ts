@@ -6,7 +6,10 @@ import {
   connectTimeout,
   maintenancePage,
   maintenanceSummary,
+  neverRespond,
+  shortenTimeouts,
 } from "@/test-helpers/upstream-failures";
+import { upstreamTimeoutMs } from "@/lib/api/upstream-failure";
 import {
   dbStatisticsDefinitions,
   fetchDbStatistics,
@@ -100,7 +103,7 @@ describe("fetchDbStatistics", () => {
     expect(unavailableReason).toContain("everything is on fire");
   });
 
-  it("applies a request timeout while preserving a caller abort signal", async () => {
+  it("applies the shared Data API budget while preserving a caller abort signal", async () => {
     const callerSignal = new AbortController().signal;
     const timeoutSignal = new AbortController().signal;
     const timeoutSpy = vi
@@ -112,8 +115,26 @@ describe("fetchDbStatistics", () => {
     await fetchDbStatistics({ signal: callerSignal });
 
     expect(timeoutSpy).toHaveBeenCalledTimes(dbStatisticsDefinitions.length);
-    expect(timeoutSpy).toHaveBeenCalledWith(10_000);
+    expect(timeoutSpy).toHaveBeenCalledWith(upstreamTimeoutMs.dataApi);
     expect(anySpy).toHaveBeenCalledWith([callerSignal, timeoutSignal]);
+  });
+
+  it("names the Data API budget when a slow count runs out of time", async () => {
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    shortenTimeouts();
+    server.use(
+      http.get(`${dataApi}/genome_feature/`, neverRespond),
+      http.get(`${dataApi}/:core/`, () => solrCount(1)),
+    );
+
+    const { counts, unavailableReason } = await fetchDbStatistics();
+
+    expect(unavailableReason).toBeNull();
+    expect(counts.proteinEntries).toBeNull();
+    expect(counts.genomes).toBe(1);
+    expect(errorSpy.mock.calls.flat().join(" ")).toContain(
+      "BV-BRC count failed for genome_feature: The BV-BRC data service did not respond (timed out after 20 s).",
+    );
   });
 
   it("logs the original upstream error message verbatim", async () => {

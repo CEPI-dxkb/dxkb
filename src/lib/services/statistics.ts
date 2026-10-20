@@ -2,6 +2,7 @@ import {
   fetchUpstream,
   upstreamResponseError,
   upstreamServices,
+  upstreamTimeoutMs,
 } from "@/lib/api/upstream-failure";
 import { getRequiredEnv } from "@/lib/env";
 import { formatUserFacingErrorMessage } from "@/lib/utils";
@@ -56,7 +57,6 @@ interface SolrCountResponse {
 }
 
 const oneHourSeconds = 3600;
-const requestTimeoutMs = 10_000;
 
 function buildCountUrl(baseUrl: string, definition: StatisticDefinition): string {
   const trimmedBase = baseUrl.replace(/\/+$/, "");
@@ -72,7 +72,9 @@ async function fetchCount(
   const url = buildCountUrl(baseUrl, definition);
   // A spent budget or a refused connection throws an `UpstreamError` naming
   // the service and host; a non-OK answer is described from its status and
-  // the readable part of its body, never the maintenance page's markup.
+  // the readable part of its body, never the maintenance page's markup. The
+  // shared Data API budget applies: the CDS count over `genome_feature`
+  // routinely takes 7–8 s.
   const response = await fetchUpstream(
     url,
     {
@@ -81,7 +83,7 @@ async function fetchCount(
       signal,
       next: { revalidate: oneHourSeconds },
     },
-    { service: upstreamServices.dataApi, timeoutMs: requestTimeoutMs },
+    { service: upstreamServices.dataApi, timeoutMs: upstreamTimeoutMs.dataApi },
   );
 
   if (!response.ok) {

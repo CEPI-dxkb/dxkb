@@ -1,0 +1,256 @@
+src/hooks/services/workspace/__tests__/use-workspace-object-search.test.tsx
+  s_73455df534e3e7::t_f41171e8dfefc9 105-132
+src/hooks/services/__tests__/use-service-form-submission.test.tsx
+  s_73455df534e3e7::t_95e6dbdcc9b463 141,145-146,148-180,182-184
+  s_73455df534e3e7::t_0714e2d5cb7daf 142-144,147,181
+src/app/services/(metagenomics)/metagenomic-binning/page.tsx
+  s_73455df534e3e7::t_a073e78ec0a870 45
+src/components/phylogeny/bacterial-phylogeny-panel.tsx
+  s_73455df534e3e7::t_338f64583b0e41 7,23-25,32,37-39,44-45
+  s_73455df534e3e7::t_3db29c1d64425b 46
+src/app/services/(metagenomics)/taxonomic-classification/page.tsx
+  s_73455df534e3e7::t_a073e78ec0a870 37
+src/components/navbars/__tests__/workspace-dropdown-favorites.test.tsx
+  s_73455df534e3e7::t_9462b85425f0f7 1,67,75,90
+  s_73455df534e3e7::t_d95eba520835ca 61-66,68-74,76-89,91-96
+src/lib/auth/server/actions.ts
+  s_73455df534e3e7::t_284f11801e0dd7 273-278,283,324
+src/app/services/(genomics)/genome-assembly/page.tsx
+  s_73455df534e3e7::t_a073e78ec0a870 290
+src/lib/services/workspace/adapters/__tests__/in-memory-workspace-repository.test.ts
+  s_73455df534e3e7::t_f41171e8dfefc9 137-149
+src/components/workspace/folder-picker/folder-picker-dialog.tsx
+  s_73455df534e3e7::t_7b40344b54d58c 253-254
+  s_73455df534e3e7::t_c8706e6e5800f8 36,250-252,255-269
+src/hooks/services/workspace/use-workspace-object-search.ts
+  s_73455df534e3e7::t_4e91e728082adf 80-84,90
+src/app/api/workspace/resolve-download.ts
+  s_73455df534e3e7::t_192bcf94de543b 4,8,113-123,125,156-158
+src/app/api/workspace/__tests__/resolve-download.test.ts
+  s_73455df534e3e7::t_afe0ddeefbde90 20
+  s_73455df534e3e7::t_fc79331cbf240e 163-193
+src/app/services/(genomics)/primer-design/page.tsx
+  s_73455df534e3e7::t_a073e78ec0a870 37
+src/app/services/(protein-tools)/meta-cats/page.tsx
+  s_73455df534e3e7::t_a073e78ec0a870 943
+src/components/phylogeny/viral-phylogeny-panel.tsx
+  s_73455df534e3e7::t_338f64583b0e41 9,30-32,48,53-55,60-62,134,163,166-168,172-173
+  s_73455df534e3e7::t_23df96e6f1e36d 174
+src/app/api/contact/__tests__/route.test.ts
+  s_73455df534e3e7::t_f474196dcbbf7f 1,23,30,34-65,126-167
+  s_73455df534e3e7::t_a25dbcc48f9a1d 183
+src/components/jobs/__tests__/jobs-browser.test.tsx
+  s_73455df534e3e7::t_569113a71b0692 247-302
+src/lib/services/organisms/__tests__/phylogeny.test.ts
+  s_73455df534e3e7::t_3fa8d89684aed1 3,93-190
+  s_73455df534e3e7::t_5e5e6f855048a1 191
+src/hooks/services/use-genome-typeahead.ts
+  s_73455df534e3e7::t_47397e1d81a4bf 89-91,138,239,262
+src/app/api/contact/route.ts
+  s_73455df534e3e7::t_c9096b8ff84644 1,10,33-74,125-127,133-134,147-157
+src/components/services/form-ui/service-submit-error.tsx
+  s_73455df534e3e7::t_5826195ba4ccff 56
+  s_73455df534e3e7::t_99051473020dfa 5,7,20-21,27-31,33,35-36,47,57-65
+  s_73455df534e3e7::t_ea01e0df4263d9 66
+src/test-helpers/api-route-helpers.ts
+  s_73455df534e3e7::t_c9096b8ff84644 48-49,59,80
+src/components/organisms/metadata-distributions/__tests__/metadata-distributions.test.tsx
+  s_73455df534e3e7::t_e6d8371bee083c 1-7,11-12,56,338-339,342-347,372-373,376-379
+src/components/workspace/file-viewer/viewers/structure-download.ts
+  s_73455df534e3e7::t_7b9d4e6fc7834c 100-105
+  s_73455df534e3e7::t_b9ef2bf4c0af62 78-99,106-115
+  s_73455df534e3e7::t_c784df17ece776 51
+src/components/navbars/mobile-sheet-navigation.tsx
+  s_73455df534e3e7::t_2fdd2b30b0b0a7 31-33,70,169
+src/components/taxonomy/taxonomy-lookup-state.ts
+  s_73455df534e3e7::t_7907338e35f2a4 5-10,23-26,29,31,33-37
+docs/auth-api.md
+  s_73455df534e3e7::t_6e8da0759bf9bb 32
+src/app/api/workspace/public/route.ts
+  s_73455df534e3e7::t_7c52e3794d9a87 9
+  s_73455df534e3e7::t_564b44b1793dc7 67
+src/components/taxonomy/__tests__/taxonomy-lookup-state.test.ts
+  s_73455df534e3e7::t_13a10e1206275f 1-82,89-105
+  s_73455df534e3e7::t_3ce71569b0ec62 83-88
+  s_73455df534e3e7::t_6d27ada908f538 106
+src/app/services/(genomics)/blast/page.tsx
+  s_73455df534e3e7::t_a073e78ec0a870 222
+src/app/api/workspace/view/[...path]/__tests__/route.test.ts
+  s_73455df534e3e7::t_ac9ad846576a28 79-110
+src/app/api/auth/ensure-workspace/route.ts
+  s_73455df534e3e7::t_1e0a4285525df8 14-17,32,42-46,48-54,63
+src/components/interactions/interactions-graph.tsx
+  s_73455df534e3e7::t_442adc69e7727a 73,143-144
+  s_73455df534e3e7::t_b47833926097aa 7-8,72,74-78,116,129,133-136,145-151
+  s_73455df534e3e7::t_0a66740c186579 152-155
+src/components/services/single-genome-selector.tsx
+  s_73455df534e3e7::t_afe0ddeefbde90 51-53,101-102,104,286
+src/components/workspace/file-viewer/viewers/__tests__/structure-download.test.ts
+  s_73455df534e3e7::t_3d9da0aa109873 2,61-120
+  s_73455df534e3e7::t_ca41216aaa3c64 121
+src/components/navbars/__tests__/mobile-navbar-favorites.test.tsx
+  s_73455df534e3e7::t_9462b85425f0f7 58-59,69,77,98
+  s_73455df534e3e7::t_a7102150e307fb 1-57,60-68,70-76,78-97,99-107
+src/app/services/(protein-tools)/msa-snp-analysis/page.tsx
+  s_73455df534e3e7::t_a073e78ec0a870 1229
+src/app/api/auth/ensure-workspace/__tests__/route.test.ts
+  s_73455df534e3e7::t_92ee4e748a115f 75,78-81,85-98
+  s_73455df534e3e7::t_4d676b58edaca8 99
+src/lib/app-service.ts
+  s_73455df534e3e7::t_192bcf94de543b 2,4,121,124-128,130
+  s_73455df534e3e7::t_6b93ee409eff98 122-123
+src/components/organisms/metadata-distributions/_shared/chart-status-message.tsx
+  s_73455df534e3e7::t_c9686ab3c9267e 1-2,7-11,14-19
+src/app/services/(genomics)/variation-analysis/page.tsx
+  s_73455df534e3e7::t_a073e78ec0a870 44
+src/components/jobs/jobs-browser.tsx
+  s_73455df534e3e7::t_6eeb8834e5a5c0 331-333,340
+src/app/(footer)/contact/components/contact-form-utils.ts
+  s_73455df534e3e7::t_21d315c20e3e3c 62-66,74-79
+  s_73455df534e3e7::t_edb549cfdd806d 56
+  s_73455df534e3e7::t_bb6879ff5381c7 80
+src/app/services/(viral-tools)/influenza-ha-subtype/page.tsx
+  s_73455df534e3e7::t_a073e78ec0a870 347
+src/app/services/(viral-tools)/sars-cov2-genome-analysis/page.tsx
+  s_73455df534e3e7::t_a073e78ec0a870 291
+src/hooks/services/use-service-form-submission.ts
+  s_73455df534e3e7::t_d811e1339e9af9 86-88,92-94,101
+src/lib/forms/(viral-tools)/sars-cov2-genome-analysis/sars-cov2-genome-analysis-service.ts
+  s_73455df534e3e7::t_889b494fbca1b9 47
+  s_73455df534e3e7::t_e1e1f67141ceab 28-30,42-46,48
+src/components/organisms/shared/section-error.tsx
+  s_73455df534e3e7::t_0302ae1d54aae9 27
+src/components/organisms/shared/__tests__/section-error.test.tsx
+  s_73455df534e3e7::t_c061d50f904c32 97-99
+src/lib/services/workspace/adapters/in-memory-workspace-repository.ts
+  s_73455df534e3e7::t_4e91e728082adf 590
+src/app/(auth)/sign-up/sign-up-view.tsx
+  s_73455df534e3e7::t_b0e8222b1fda9a 65-69,71
+src/components/organisms/shared/section-retry-button.tsx
+  s_73455df534e3e7::t_a0ec9716db937b 3-4,13,20-21,27-30
+src/components/navbars/workspace-dropdown-content.tsx
+  s_73455df534e3e7::t_c556038330ea58 80
+  s_73455df534e3e7::t_c9fed3f454e6bf 11-12,29,35-38,79,89,95,99-102,105-109
+src/components/navbars/mobile-navbar.tsx
+  s_73455df534e3e7::t_2fdd2b30b0b0a7 32,54,60-62,99-102
+src/app/services/(genomics)/genome-alignment/page.tsx
+  s_73455df534e3e7::t_a073e78ec0a870 235
+src/hooks/services/workspace/use-ensure-user-workspace.ts
+  s_73455df534e3e7::t_fea2ebc6edcc56 50-51
+  s_73455df534e3e7::t_8280b46d39c972 20-27,35-36,49,52-53,57,61-66,68,77,79-81,91-94,102,104-114
+src/lib/auth/server/__tests__/current-user.test.ts
+  s_73455df534e3e7::t_3d9de2b17a71a8 150-162
+src/app/services/(metagenomics)/metagenomic-read-mapping/page.tsx
+  s_73455df534e3e7::t_a073e78ec0a870 39
+src/lib/services/workspace/favorites.ts
+  s_73455df534e3e7::t_b9f33c79b04fb2 2-5,121
+src/app/services/(phylogenomics)/viral-genome-tree/page.tsx
+  s_73455df534e3e7::t_a073e78ec0a870 42
+src/app/services/(genomics)/genome-annotation/page.tsx
+  s_73455df534e3e7::t_a073e78ec0a870 73
+src/app/services/(viral-tools)/sars-cov2-wastewater-analysis/page.tsx
+  s_73455df534e3e7::t_a073e78ec0a870 322
+src/lib/services/workspace/workspace-errors.ts
+  s_73455df534e3e7::t_9b078dc2d4b5b0 32,34
+  s_73455df534e3e7::t_80c3601b0e011d 16-24,31,33,58-60
+  s_73455df534e3e7::t_4d838676acb7b1 72-73
+src/lib/services/organisms/phylogeny.ts
+  s_73455df534e3e7::t_99051473020dfa 1-6,14-15,68-104,140,142-158,179-188,218-226
+src/app/services/(viral-tools)/subspecies-classification/page.tsx
+  s_73455df534e3e7::t_a073e78ec0a870 324
+src/components/workspace/workspace-browser.tsx
+  s_73455df534e3e7::t_fea2ebc6edcc56 202,353-355
+src/lib/__tests__/app-service.test.ts
+  s_73455df534e3e7::t_ac9ad846576a28 213-272
+src/hooks/services/__tests__/use-genome-typeahead.test.ts
+  s_73455df534e3e7::t_33b7699faa2d17 88-128
+src/lib/services/workspace/server-rpc.ts
+  s_73455df534e3e7::t_a718e9282feff3 11,13,48-62,64,71-74,79-83,93-95
+src/lib/forms/(viral-tools)/sars-cov2-genome-analysis/__tests__/sars-cov2-genome-analysis-service.test.ts
+  s_73455df534e3e7::t_4f8d6cd0643a87 11-14,112-116
+  s_73455df534e3e7::t_338f64583b0e41 1,4-8,10,28-29,103-106,108-110,117,119-166
+  s_73455df534e3e7::t_48c41dbdbdfa17 107,111,118,167
+src/lib/services/workspace/__tests__/workspace-errors.test.ts
+  s_73455df534e3e7::t_2d9bae3b2cdb24 36-38,61-64,76-78,91
+  s_73455df534e3e7::t_b68b517bedc517 35
+src/app/(views)/experiment/__tests__/experiment-bioset-collection.test.tsx
+  s_73455df534e3e7::t_9daffb9c11d291 1
+  s_73455df534e3e7::t_f6c2e9c6f9b729 100-148
+src/lib/services/workspace/__tests__/favorites.test.ts
+  s_73455df534e3e7::t_9b078dc2d4b5b0 69
+src/components/workspace/folder-picker/__tests__/folder-picker-dialog.test.tsx
+  s_73455df534e3e7::t_9e11676ce19102 602-603,605,608-619
+  s_73455df534e3e7::t_c99004bc805aec 620
+src/app/api/workspace/__tests__/upstream-failures.test.ts
+  s_73455df534e3e7::t_faad85576e5916 166-195
+  s_73455df534e3e7::t_730eef3faccffa 53-66
+  s_73455df534e3e7::t_261cd877c18a9e 196-204
+  s_73455df534e3e7::t_c9f518c0568847 138-146
+src/lib/api/workspace-proxy-error.ts
+  s_73455df534e3e7::t_d5ed65581e74be 1-41,45-79
+  s_73455df534e3e7::t_d2a561ac118350 42-44
+src/app/services/(protein-tools)/gene-protein-tree/page.tsx
+  s_73455df534e3e7::t_a073e78ec0a870 42
+src/components/phylogeny/__tests__/bacterial-phylogeny-panel.test.tsx
+  s_73455df534e3e7::t_de711aeb17ce65 1-7,49-88
+  s_73455df534e3e7::t_182af3424b8956 89-90
+src/app/(views)/experiment/experiment-bioset-collection.tsx
+  s_73455df534e3e7::t_b1a4b20a9234d4 7-8,57-62,66,74,78-81,87-93
+  s_73455df534e3e7::t_8d65ce0e7c6f5e 94-95
+src/app/api/auth/ensure-workspace/__tests__/route-upstream.test.ts
+  s_73455df534e3e7::t_3ce71569b0ec62 33-56,98-126,129-152
+src/components/interactions/__tests__/interactions-graph.test.tsx
+  s_73455df534e3e7::t_35c1bf3309fbea 1-7
+  s_73455df534e3e7::t_b87ab046b9437b 200-203
+  s_73455df534e3e7::t_7ff0257b456eb6 181-199,204-221
+src/app/(auth)/sign-up/__tests__/sign-up-view.test.tsx
+  s_73455df534e3e7::t_59abdab72c76cf 50-67
+src/app/services/(protein-tools)/proteome-comparison/page.tsx
+  s_73455df534e3e7::t_a073e78ec0a870 807
+src/lib/forms/(viral-tools)/sars-cov2-genome-analysis/__tests__/sars-cov2-genome-analysis-form-utils.test.ts
+  s_73455df534e3e7::t_b6bf4d909e0b8f 149-160
+src/app/api/services/workspace/route.ts
+  s_73455df534e3e7::t_564b44b1793dc7 70
+  s_73455df534e3e7::t_e48cc16570f1fc 9
+src/components/navbars/mobile-workspace-section.tsx
+  s_73455df534e3e7::t_2fdd2b30b0b0a7 14,24-26,36,72,93-96
+src/app/services/(utilities)/fastq-utilities/page.tsx
+  s_73455df534e3e7::t_a073e78ec0a870 212
+src/components/services/__tests__/single-genome-selector.test.tsx
+  s_73455df534e3e7::t_854cde83f5a74c 227-246
+  s_73455df534e3e7::t_6d3adc0bfd164c 1,4,181-226,247-277
+src/app/services/(viral-tools)/viral-assembly/page.tsx
+  s_73455df534e3e7::t_a073e78ec0a870 427
+src/lib/services/workspace/__tests__/favorites-failures.test.ts
+  s_73455df534e3e7::t_8eea7f3b667d71 104-121
+src/app/settings/__tests__/page.test.tsx
+  s_73455df534e3e7::t_c1937fee735c56 1,13-14,16,48-70,85-86,101-176
+src/app/settings/page.tsx
+  s_73455df534e3e7::t_0606aed2cf6b1c 4,7,12-13,21-22,33-44,46-48,70,75-78
+src/components/jobs/jobs-toolbar.tsx
+  s_73455df534e3e7::t_1906d242e4f4ff 57-59,235-243
+src/components/phylogeny/__tests__/viral-phylogeny-panel.test.tsx
+  s_73455df534e3e7::t_eae63f9d8dafdc 216-312
+src/components/services/form-ui/__tests__/service-submit-error.test.tsx
+  s_73455df534e3e7::t_cde43a73fae299 3,18-20,26-32,37,40,42-44,68,114-150
+src/hooks/services/workspace/__tests__/use-ensure-user-workspace.test.tsx
+  s_73455df534e3e7::t_c677f0faaee81c 2,17,19,26,54,208-350
+src/lib/forms/(viral-tools)/sars-cov2-genome-analysis/sars-cov2-genome-analysis-form-utils.ts
+  s_73455df534e3e7::t_94f9e677f5459b 105-106
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "cfa7d592c9d5ea8dbc4d6d3ae204f9b885014750",
+  "prompts": {},
+  "sessions": {
+    "s_73455df534e3e7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8d2dca9b-8451-4b35-9b77-1d4e36f9c652",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>"
+    }
+  }
+}

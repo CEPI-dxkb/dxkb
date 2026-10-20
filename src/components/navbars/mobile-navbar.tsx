@@ -29,6 +29,7 @@ import { SuBanner } from "@/components/auth/su-banner";
 import { SessionUnverifiedBanner } from "@/components/auth/session-unverified-banner";
 import { JobStatusPill } from "@/components/jobs/job-status-pill";
 import { MobileSheetNavigation } from "@/components/navbars/mobile-sheet-navigation";
+import { useRetryKeepingError } from "@/components/views/use-retry-keeping-error";
 
 const useMobileNavbar = () => {
   const { isAuthenticated, user } = useAuth();
@@ -50,16 +51,15 @@ const useMobileNavbar = () => {
     };
   }, []);
 
-  const {
-    data: favoritePaths = [],
-    error: favoritesError,
-    refetch: refetchFavorites,
-  } = useQuery({
+  const favorites = useQuery({
     queryKey: workspaceQueryKeys.favorites(wsUsername),
     queryFn: () => loadFavorites(wsUsername),
     enabled: isAuthenticated && !!wsUsername,
     staleTime: 2 * 60 * 1000,
   });
+  // A Retry keeps the failure up ("Retrying…") instead of the Favorites
+  // subsection vanishing until it answers.
+  const favoritesRetry = useRetryKeepingError(favorites, wsUsername);
 
   const recentFolders = useRecentWorkspaceFolders(
     isAuthenticated ? wsUsername : undefined,
@@ -96,11 +96,10 @@ const useMobileNavbar = () => {
               </SheetTitle>
 
               <MobileSheetNavigation
-                favoritePaths={favoritePaths}
-                favoritesError={favoritesError}
-                onRetryFavorites={() => {
-                  void refetchFavorites();
-                }}
+                favoritePaths={favorites.data ?? []}
+                favoritesError={favoritesRetry.error}
+                favoritesRetrying={favoritesRetry.retrying}
+                onRetryFavorites={favoritesRetry.retry}
                 isAuthenticated={isAuthenticated}
                 recentFolders={recentFolders}
                 wsUsername={wsUsername}

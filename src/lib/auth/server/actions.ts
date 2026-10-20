@@ -270,11 +270,17 @@ const transientProfileFailures: readonly AuthErrorCode[] = [
   "rate_limited",
 ];
 
+// A 408 (Request Timeout) is a transient answer too, but the shared
+// `codeForStatus` files it under `validation` with the other 4xx answers.
+function isTransientProfileFailure(error: AuthError): boolean {
+  return transientProfileFailures.includes(error.code) || error.status === 408;
+}
+
 function describeProfileFailure(error: AuthError): string {
   if (error.code === "network") {
     return "The account service could not be reached.";
   }
-  if (error.status === 504) {
+  if (error.status === 504 || error.status === 408) {
     return "The account service did not respond in time.";
   }
   return error.status
@@ -315,7 +321,7 @@ async function readCurrentUser(): Promise<AuthUser | null> {
     timeoutMs: currentUserLookupTimeoutMs,
   });
   if (profile.error) {
-    if (!transientProfileFailures.includes(profile.error.code)) return null;
+    if (!isTransientProfileFailure(profile.error)) return null;
     return buildUnverifiedUser(
       current,
       profile.error,

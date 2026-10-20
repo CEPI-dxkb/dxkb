@@ -288,7 +288,7 @@ export default function SarsCov2GenomeAnalysisPage() {
             onValidationChange={setState("isOutputNameValid")}
           />
         </div>
-        <ServiceSubmitError />
+        <ServiceSubmitError form={form} />
         <div className="service-form-controls col-span-full">
           <Button type="button" variant="outline" onClick={reset}>
             Reset

@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server";
 import { readAuthSession } from "@/lib/auth/server/route";
 import {
+  describeUpstreamFailure,
   describeUpstreamResponse,
   fetchUpstream,
   hostOf,
+  UpstreamError,
   upstreamServices,
   upstreamTimeoutMs,
 } from "@/lib/api/upstream-failure";
@@ -108,8 +110,19 @@ export async function resolveWorkspaceDownload(
     },
   );
 
+  // The budget also bounds the Workspace's body. A budget spent (or a socket
+  // dropped) mid-body is the Workspace's failure, described here: the routes'
+  // catch-alls would otherwise blame file storage for it.
+  const bodyFailure = (error: unknown): never => {
+    const failure = describeUpstreamFailure(error, upstreamServices.workspace, {
+      timeoutMs: upstreamTimeoutMs.workspace,
+      host: hostOf(wsResponse.url),
+    });
+    throw failure ? new UpstreamError(failure, { cause: error }) : error;
+  };
+
   if (!wsResponse.ok) {
-    const responseText = await wsResponse.text().catch(() => "");
+    const responseText = await wsResponse.text().catch(bodyFailure);
     console.error(
       `BV-BRC API error from ${hostOf(wsResponse.url) ?? "the workspace"}:`,
       wsResponse.status,
@@ -140,7 +153,9 @@ export async function resolveWorkspaceDownload(
     );
   }
 
-  const data = (await wsResponse.json()) as { result?: [[string]] } | null;
+  const data = (await wsResponse.json().catch(bodyFailure)) as {
+    result?: [[string]];
+  } | null;
   const downloadUrl = data?.result?.[0]?.[0];
 
   if (!downloadUrl) {

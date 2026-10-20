@@ -147,6 +147,19 @@ describe("getCurrentUser", () => {
     });
   });
 
+  it("keeps the session user signed in, unverified, on a 408", async () => {
+    server.use(
+      http.get(profileUrl, () => new HttpResponse(null, { status: 408 })),
+    );
+
+    await expect(getCurrentUser()).resolves.toMatchObject({
+      id: "alice@patricbrc.org",
+      sessionUnverified: true,
+      sessionUnverifiedReason: "The account service did not respond in time.",
+    });
+    expectSessionCookiesKept();
+  });
+
   it("keeps the session user signed in when the profile service is unreachable", async () => {
     server.use(http.get(profileUrl, () => HttpResponse.error()));
 

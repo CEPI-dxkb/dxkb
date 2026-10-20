@@ -1,4 +1,10 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  within,
+} from "@testing-library/react";
 import { http, HttpResponse } from "msw";
 
 import { server } from "@/test-helpers/msw-server";
@@ -38,6 +44,48 @@ describe("BacterialPhylogenyPanel", () => {
 
     expect(await screen.findByText("No published tree")).toBeInTheDocument();
     expect(calls).toBe(2);
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it("keeps the failure up, retrying, until Retry answers", async () => {
+    server.use(
+      http.get(treePath, () =>
+        HttpResponse.json(
+          { error: outageMessage, code: "service_unavailable" },
+          { status: 503 },
+        ),
+      ),
+    );
+
+    render(<BacterialPhylogenyPanel taxonId={562} taxonName="Escherichia coli" />, {
+      wrapper: createQueryClientWrapper(),
+    });
+
+    const alert = await screen.findByRole("alert");
+
+    let releaseRetry: () => void = () => undefined;
+    server.use(
+      http.get(treePath, async () => {
+        await new Promise<void>((resolve) => {
+          releaseRetry = resolve;
+        });
+        return HttpResponse.json({ filename: null });
+      }),
+    );
+    fireEvent.click(within(alert).getByRole("button", { name: "Retry" }));
+
+    // The failure stays up instead of going back to the loading skeleton.
+    expect(
+      await within(alert).findByRole("button", { name: "Retrying…" }),
+    ).toBeDisabled();
+    expect(alert).toHaveTextContent(outageMessage);
+    expect(document.querySelector('[data-slot="skeleton"]')).toBeNull();
+
+    act(() => {
+      releaseRetry();
+    });
+
+    expect(await screen.findByText("No published tree")).toBeInTheDocument();
     expect(screen.queryByRole("alert")).toBeNull();
   });
 });

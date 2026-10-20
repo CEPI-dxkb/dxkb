@@ -34,7 +34,7 @@ export default function PrimerDesignServicePage() {
           <PrimerAdvancedSection controller={controller} />
         </PrimerInputSection>
         <PrimerOutputSection controller={controller} />
-        <ServiceSubmitError />
+        <ServiceSubmitError form={form} />
         <div className="service-form-controls">
           <Button type="button" variant="outline" onClick={handleReset}>
             Reset

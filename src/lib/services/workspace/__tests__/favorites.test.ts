@@ -66,7 +66,7 @@ describe("favorites", () => {
     });
 
     it("returns empty array for missing file (makeRequest throws)", async () => {
-      mockMakeRequest.mockRejectedValue(new Error("Not found"));
+      mockMakeRequest.mockRejectedValue(new Error("_ERROR_Object not found!_ERROR_"));
 
       const result = await loadFavorites("user@bvbrc");
 

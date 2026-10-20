@@ -599,9 +599,24 @@ describe("WorkspaceFolderPickerDialog info pane", () => {
     ).toBeDisabled();
     expect(screen.getByRole("button", { name: "Upload here" })).toBeDisabled();
 
-    // Once a Retry loads it, the folder is described and can be chosen.
+    // While the Retry is in flight the folder is still unconfirmed: nothing
+    // is offered in it, and the pane makes no claim about writing there.
     repository.restoreListing(home);
+    const gate = repository.holdListing(home);
     await user.click(screen.getByRole("button", { name: "Retry" }));
+
+    expect(
+      await screen.findByRole("button", { name: "Retrying…" }),
+    ).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: "New folder here" }),
+    ).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Upload here" })).toBeDisabled();
+    expect(selectButton()).toBeDisabled();
+    expect(screen.queryByText(/You can write here/)).not.toBeInTheDocument();
+
+    // Once the Retry loads it, the folder is described and can be chosen.
+    gate.release();
 
     await waitFor(() => {
       expect(detail("Contains")).toBe("2 folders, 1 file");

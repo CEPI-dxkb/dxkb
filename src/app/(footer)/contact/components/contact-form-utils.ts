@@ -53,21 +53,30 @@ export const inquiryTypeLabel = (value: InquiryType): string =>
 /**
  * How long the form waits for `/api/contact`. Without a budget a hung relay
  * left the button on "Sending..." until the browser gave up minutes later.
- * The route bounds its own SMTP wait below this (see `smtpTimeoutsMs`), so a
+ * The route bounds its own SMTP wait below this (see `smtpSendDeadlineMs`), so a
  * slow relay answers with its reason before the form stops waiting.
  */
 export const contactRequestTimeoutMs = 30_000;
 
 /**
- * nodemailer's SMTP budgets for `/api/contact` (its defaults are 2 min to
- * connect and 10 min of socket inactivity), together inside
- * `contactRequestTimeoutMs`.
+ * nodemailer's per-step SMTP budgets for `/api/contact` (its defaults are
+ * 2 min to connect and 10 min of socket inactivity). They name the step that
+ * stalled, but do not bound the send: `socketTimeout` is inactivity, so each
+ * command may wait that long, and a relay that keeps trickling replies resets
+ * it forever. `smtpSendDeadlineMs` is the bound.
  */
 export const smtpTimeoutsMs = {
   connectionTimeout: 8_000,
   greetingTimeout: 8_000,
   socketTimeout: 10_000,
 } as const;
+
+/**
+ * The whole send's deadline in `/api/contact`, inside
+ * `contactRequestTimeoutMs` so the form hears the reason before it stops
+ * waiting. At the deadline the route destroys the relay connection.
+ */
+export const smtpSendDeadlineMs = 25_000;
 
 const contactService = "the contact service";
 

@@ -32,7 +32,10 @@ describe("isWorkspaceObjectMissing", () => {
     ["an rpc 'Object not found'", rpcError("_ERROR_Object not found!_")],
     ["a client 'Object not found'", clientError("_ERROR_Object /u/home/x not found_ERROR_")],
     ["'lacks permission'", rpcError("_ERROR_User lacks permission to /u/home/_ERROR_")],
-    ["'does not exist'", rpcError("Path does not exist")],
+    ["'lacks permission' against its marker", rpcError("_ERROR_User lacks permission_ERROR_")],
+    ["'Workspace not found'", rpcError("_ERROR_Workspace not found!_ERROR_")],
+    ["'Workspace … does not exist'", rpcError("_ERROR_Workspace u@bvbrc/home does not exist!_ERROR_")],
+    ["a marker-stripped 'Object not found'", new Error("Object not found!")],
     ["a 404", Object.assign(new Error("BV-BRC API error: 404 Not Found"), { status: 404 })],
   ])("is true for %s", (_label, error) => {
     expect(isWorkspaceObjectMissing(error)).toBe(true);
@@ -55,6 +58,10 @@ describe("isWorkspaceObjectMissing", () => {
     ],
     ["a browser network failure", new WorkspaceApiError("Failed to fetch", "Workspace.ls", undefined)],
     ["a generic 500", clientError("Internal error")],
+    ["a JSON-RPC 'Method not found'", clientError("Method not found")],
+    ["an rpc 'Method not found'", rpcError("Method not found")],
+    ["'host not found' without an outage status", new Error("Could not reach the BV-BRC workspace service: host not found.")],
+    ["an unrelated 'not found'", new Error("Download URL not found for the requested path")],
     ["no error", null],
   ])("is false for %s", (_label, error) => {
     expect(isWorkspaceObjectMissing(error)).toBe(false);
@@ -65,6 +72,9 @@ describe("isWorkspaceHomeMissing", () => {
   it("is true for the permission error a missing home answers", () => {
     expect(
       isWorkspaceHomeMissing(new Error("_ERROR_User lacks permission to /a@bvbrc/home/_ERROR_")),
+    ).toBe(true);
+    expect(
+      isWorkspaceHomeMissing(rpcError("_ERROR_Workspace a@bvbrc/home does not exist!_ERROR_")),
     ).toBe(true);
   });
 
@@ -78,6 +88,7 @@ describe("isWorkspaceHomeMissing", () => {
     expect(isWorkspaceHomeMissing(new Error("Workspace API HTTP 503 Service Unavailable"))).toBe(
       false,
     );
+    expect(isWorkspaceHomeMissing(clientError("Method not found"))).toBe(false);
   });
 });
 

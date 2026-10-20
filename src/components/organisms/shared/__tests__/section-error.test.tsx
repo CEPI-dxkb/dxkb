@@ -94,10 +94,9 @@ describe("SectionError", () => {
       />,
     );
 
-    expect(screen.getByRole("button", { name: "Retrying…" })).toHaveAttribute(
-      "aria-busy",
-      "true",
-    );
+    const button = screen.getByRole("button", { name: "Retrying…" });
+    expect(button).toHaveAttribute("aria-busy", "true");
+    expect(button).toBeDisabled();
   });
 
   it("leaves Retry out when loading again cannot help", () => {

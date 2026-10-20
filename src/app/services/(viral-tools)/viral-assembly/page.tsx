@@ -424,7 +424,7 @@ const ViralAssemblyPage = function ViralAssemblyPage() {
 
         {/* Form controls */}
         <div className="md:col-span-12">
-          <ServiceSubmitError />
+          <ServiceSubmitError form={form} />
           <div className="service-form-controls">
             <Button type="button" variant="outline" onClick={handleReset}>
               Reset

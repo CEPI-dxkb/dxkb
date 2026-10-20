@@ -1,4 +1,5 @@
 import { http, HttpResponse } from "msw";
+import { gzipSync } from "node:zlib";
 
 import {
   buildWorkspaceStructureSource,
@@ -55,6 +56,67 @@ describe("downloadStructure", () => {
 
     expect(typeof contents).not.toBe("string");
     expect(Array.from(contents as Uint8Array)).toEqual([1, 2, 3]);
+  });
+
+  it("decompresses a gzipped workspace PDB or mmCIF file to its text", async () => {
+    server.use(
+      http.get(
+        "*/api/workspace/view/*",
+        () => new HttpResponse(gzipSync("ATOM 1\nEND\n")),
+      ),
+    );
+
+    await expect(
+      downloadStructure(
+        buildWorkspaceStructureSource("u@bvbrc/home/model.cif.gz"),
+        signal(),
+      ),
+    ).resolves.toBe("ATOM 1\nEND\n");
+  });
+
+  it("decompresses a gzipped BinaryCIF file to its bytes", async () => {
+    server.use(
+      http.get(
+        "*/api/workspace/view/*",
+        () => new HttpResponse(gzipSync(new Uint8Array([1, 2, 3]))),
+      ),
+    );
+
+    const contents = await downloadStructure(
+      buildWorkspaceStructureSource("u@bvbrc/home/model.bcif.gz"),
+      signal(),
+    );
+
+    expect(Array.from(contents as Uint8Array)).toEqual([1, 2, 3]);
+  });
+
+  it("reads a .gz file that arrives already inflated as is", async () => {
+    server.use(
+      http.get("*/api/workspace/view/*", () => new HttpResponse("ATOM 1")),
+    );
+
+    await expect(
+      downloadStructure(
+        buildWorkspaceStructureSource("u@bvbrc/home/model.pdb.gz"),
+        signal(),
+      ),
+    ).resolves.toBe("ATOM 1");
+  });
+
+  it("names the file when its gzip data is corrupt", async () => {
+    server.use(
+      http.get(
+        "*/api/workspace/view/*",
+        () => new HttpResponse(new Uint8Array([0x1f, 0x8b, 0, 0, 0])),
+      ),
+    );
+
+    await expect(
+      downloadStructure(
+        buildWorkspaceStructureSource("u@bvbrc/home/model.pdb.gz"),
+        signal(),
+      ),
+    ).rejects.toThrow(/^Could not decompress model\.pdb\.gz: /);
   });
 
   it("names the file, the server's reason and the status when the workspace route fails", async () => {

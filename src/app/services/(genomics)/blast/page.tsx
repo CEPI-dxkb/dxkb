@@ -219,7 +219,7 @@ export default function BlastServicePage() {
           onDatabaseChange={changeDatabase}
           onOutputValidationChange={setIsOutputNameValid}
         />
-        <ServiceSubmitError />
+        <ServiceSubmitError form={form} />
         <div className="service-form-controls">
           <div className="flex items-center gap-2">
             <Button

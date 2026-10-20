@@ -2,9 +2,10 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ResourceChildCollection } from "@/components/views";
+import { QueryRetryButton } from "@/components/views/query-retry-button";
+import { useRetryKeepingError } from "@/components/views/use-retry-keeping-error";
 import { DataRepository } from "@/lib/data-api";
 import { keywordQuery } from "@/lib/data-api/keyword-terms";
 import {
@@ -53,19 +54,16 @@ export function ExperimentBiosetCollection({
       ),
     enabled: hasExperimentScope,
   });
+  // A Retry keeps the failure up ("Retrying…") instead of going back to the
+  // loading skeleton until it answers.
+  const scopeRetry = useRetryKeepingError(
+    experimentIds,
+    JSON.stringify([experimentRql, keyword]),
+  );
 
-  if (experimentIds.isPending && hasExperimentScope) {
-    return (
-      <Skeleton
-        className="m-4 min-h-96 flex-1"
-        role="status"
-        aria-label="Loading Biosets"
-      />
-    );
-  }
   // The alerts sit in padding rather than taking a margin: an Alert is
   // `w-full`, so a horizontal margin pushed it past the content's right edge.
-  if (experimentIds.error) {
+  if (scopeRetry.error) {
     return (
       <div className="p-4">
         <Alert variant="destructive">
@@ -73,23 +71,26 @@ export function ExperimentBiosetCollection({
           <AlertDescription>
             <p>
               {formatUserFacingErrorMessage(
-                experimentIds.error,
+                scopeRetry.error,
                 genericScopeErrorMessage,
               )}
             </p>
-            <Button
-              variant="outline"
-              size="sm"
-              aria-busy={experimentIds.isFetching || undefined}
-              onClick={() => {
-                void experimentIds.refetch();
-              }}
-            >
-              {experimentIds.isFetching ? "Retrying…" : "Retry"}
-            </Button>
+            <QueryRetryButton
+              retrying={scopeRetry.retrying}
+              onRetry={scopeRetry.retry}
+            />
           </AlertDescription>
         </Alert>
       </div>
+    );
+  }
+  if (experimentIds.isPending && hasExperimentScope) {
+    return (
+      <Skeleton
+        className="m-4 min-h-96 flex-1"
+        role="status"
+        aria-label="Loading Biosets"
+      />
     );
   }
 

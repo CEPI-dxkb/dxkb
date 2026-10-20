@@ -1,6 +1,8 @@
-import { formatUserFacingErrorMessage } from "@/lib/utils";
 import { workspaceApi } from "./client";
-import { isWorkspaceObjectMissing } from "./workspace-errors";
+import {
+  isWorkspaceObjectMissing,
+  workspaceErrorMessage,
+} from "./workspace-errors";
 
 const favoritesFile = "favorites.json";
 const preferencesDir = ".preferences";
@@ -116,7 +118,7 @@ export async function toggleFavorite(
     folders = await loadFavorites(userId);
   } catch (cause) {
     throw new Error(
-      `Couldn't update favorites, nothing was changed: ${formatUserFacingErrorMessage(cause, "your saved favorites could not be read.")}`,
+      `Couldn't update favorites, nothing was changed: ${workspaceErrorMessage(cause, "your saved favorites could not be read.")}`,
       { cause },
     );
   }

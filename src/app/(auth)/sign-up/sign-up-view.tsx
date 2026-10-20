@@ -62,7 +62,13 @@ function SignupForm() {
           </CardDescription>
         </CardHeader>
         <CardContent>
+          {/*
+            noValidate: the zod schema reports every empty field inline. A
+            native `required` bubble would block the submit first and show
+            a second, different message for one field only.
+          */}
           <form
+            noValidate
             action={() => {
               void form.handleSubmit();
             }}

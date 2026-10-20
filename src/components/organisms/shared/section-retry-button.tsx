@@ -1,9 +1,7 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useTransition } from "react";
-
-import { Button } from "@/components/ui/button";
+import { RefreshRetryButton } from "@/components/errors/retry-button";
+import { QueryRetryButton } from "@/components/views/query-retry-button";
 
 interface SectionRetryButtonProps {
   /**
@@ -12,48 +10,22 @@ interface SectionRetryButtonProps {
    * failed while the page rendered.
    */
   onRetry?: () => void;
-  /** The caller's load is running again (a query's `isFetching`). */
+  /** The caller's load is running again (`useRetryKeepingError`'s `retrying`). */
   isRetrying?: boolean;
-}
-
-function RetryButton({ busy, onClick }: { busy: boolean; onClick: () => void }) {
-  return (
-    <Button
-      type="button"
-      variant="outline"
-      size="sm"
-      aria-busy={busy || undefined}
-      onClick={onClick}
-    >
-      {busy ? "Retrying…" : "Retry"}
-    </Button>
-  );
-}
-
-function RouteRefreshRetryButton() {
-  const router = useRouter();
-  const [isRefreshing, startRefresh] = useTransition();
-  return (
-    <RetryButton
-      busy={isRefreshing}
-      onClick={() => {
-        startRefresh(() => {
-          router.refresh();
-        });
-      }}
-    />
-  );
 }
 
 /**
  * The Retry of a section or panel that failed to load. `SectionError` renders
  * it, so a server-rendered section gets a working Retry without becoming a
- * client component itself.
+ * client component itself. Either way the button stays disabled while the
+ * retry runs, so repeated clicks cannot queue more refetches or refreshes.
  */
 export function SectionRetryButton({
   onRetry,
   isRetrying = false,
 }: SectionRetryButtonProps) {
-  if (onRetry) return <RetryButton busy={isRetrying} onClick={onRetry} />;
-  return <RouteRefreshRetryButton />;
+  if (onRetry) {
+    return <QueryRetryButton retrying={isRetrying} onRetry={onRetry} />;
+  }
+  return <RefreshRetryButton />;
 }

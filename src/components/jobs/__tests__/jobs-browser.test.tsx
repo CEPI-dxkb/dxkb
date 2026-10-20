@@ -244,6 +244,62 @@ describe("JobsBrowser load states", () => {
     ).toBeNull();
   });
 
+  it("flags the counts as out of date when a later summary refresh fails", async () => {
+    let failing = false;
+    server.use(
+      http.post(summaryUrl, () => (failing ? outage() : okSummary())),
+      http.post(listUrl, () => HttpResponse.json({ jobs: [job], totalTasks: 1 })),
+    );
+
+    const { queryClient } = renderBrowser();
+    expect(await screen.findByText("my assembly")).toBeInTheDocument();
+    expect(await screen.findByText("completed:")).toBeInTheDocument();
+
+    failing = true;
+    await act(() => queryClient.refetchQueries({ queryKey: ["jobs-summary"] }));
+
+    // The last counts stay, and a note says they may be stale and why.
+    const note = await screen.findByText(
+      (_, element) =>
+        element?.getAttribute("role") === "status" &&
+        element.textContent.includes("Counts may be out of date"),
+    );
+    expect(note).toHaveTextContent(outageMessage);
+    expect(screen.getByText("completed:")).toBeInTheDocument();
+    expect(
+      screen.queryByText(/Job counts and the service list are unavailable/),
+    ).toBeNull();
+  });
+
+  it("gives one outage's reason once when both reads fail after loading", async () => {
+    let failing = false;
+    server.use(
+      http.post(summaryUrl, () => (failing ? outage() : okSummary())),
+      http.post(listUrl, () =>
+        failing ? outage() : HttpResponse.json({ jobs: [job], totalTasks: 1 }),
+      ),
+    );
+
+    const { queryClient } = renderBrowser();
+    expect(await screen.findByText("my assembly")).toBeInTheDocument();
+    expect(await screen.findByText("completed:")).toBeInTheDocument();
+
+    failing = true;
+    await act(() =>
+      Promise.all([
+        queryClient.refetchQueries({ queryKey: ["jobs-summary"] }),
+        queryClient.refetchQueries({ queryKey: ["jobs-filtered"] }),
+      ]),
+    );
+
+    expect(await screen.findByText("Could not refresh jobs")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getAllByText(outageMessage, { exact: false })).toHaveLength(1);
+    });
+    expect(screen.queryByText(/Counts may be out of date/)).toBeNull();
+    expect(screen.getByText("completed:")).toBeInTheDocument();
+  });
+
   it("keeps a service filter from the address in the list when the summary fails", async () => {
     history.replaceState(null, "", "/jobs?service=GenomeAssembly2");
     server.use(

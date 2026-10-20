@@ -1,5 +1,7 @@
 import {
+  describeUpstreamFailure,
   fetchUpstream,
+  hostOf,
   UpstreamError,
   upstreamCauseCode,
   upstreamResponseError,
@@ -116,10 +118,16 @@ export class AppService {
 
       return await response.text();
     } catch (error) {
-      // Keep the status of an upstream failure so the route answers 503/504.
-      if (error instanceof UpstreamError) {
+      // Keep the status of an upstream failure so the route answers
+      // 502/503/504, whether `fetchUpstream` threw it or the output stopped
+      // arriving (a budget spent or a socket dropped mid-body).
+      const failure = describeUpstreamFailure(error, upstreamServices.jobService, {
+        timeoutMs: upstreamTimeoutMs.jobService,
+        host: hostOf(url),
+      });
+      if (failure) {
         throw new UpstreamError(
-          { status: error.status, code: error.code, message: `${prefix}: ${error.message}` },
+          { ...failure, message: `${prefix}: ${failure.message}` },
           { cause: error },
         );
       }

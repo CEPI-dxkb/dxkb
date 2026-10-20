@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { renderHook, waitFor } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import { http, HttpResponse } from "msw";
 import type { ReactNode } from "react";
 import { WorkspaceApiError } from "@/lib/services/workspace/domain";
@@ -14,15 +14,16 @@ interface EndpointTracker {
   calls: number;
 }
 
+/** `respond` gets the 1-based number of the call it answers. */
 function trackEndpoint(
-  respond: () => Response = () =>
+  respond: (call: number) => Response = () =>
     HttpResponse.json({ success: true, created: [], failures: {} }),
 ): EndpointTracker {
   const state: EndpointTracker = { calls: 0 };
   server.use(
     http.post("/api/auth/ensure-workspace", () => {
       state.calls += 1;
-      return respond();
+      return respond(state.calls);
     }),
   );
   return state;
@@ -50,9 +51,7 @@ function renderEnsure(
   wrapper = createQueryClientWrapper(),
 ) {
   return renderHook(
-    (props: UseEnsureUserWorkspaceOptions) => {
-      useEnsureUserWorkspace(props);
-    },
+    (props: UseEnsureUserWorkspaceOptions) => useEnsureUserWorkspace(props),
     { wrapper, initialProps: options },
   );
 }
@@ -204,6 +203,149 @@ describe("useEnsureUserWorkspace", () => {
 
     await waitFor(() => {
       expect(invalidate).toHaveBeenCalledWith({ queryKey: ["workspace"] });
+    });
+  });
+
+  it("refetches workspace queries when an incomplete setup still created folders", async () => {
+    const tracker = trackEndpoint(() =>
+      HttpResponse.json(
+        {
+          error: "Couldn't create /u@bvbrc/home/Experiments: Quota exceeded",
+          code: "upstream",
+          created: ["/u@bvbrc/home/"],
+          failures: { "/u@bvbrc/home/Experiments": "Quota exceeded" },
+        },
+        { status: 502 },
+      ),
+    );
+    const { invalidate, Wrapper } = spyingWrapper();
+
+    renderEnsure(
+      { enabled: true, userKey: nextUser(), listError: lacksPermission(), homeAppearsEmpty: false },
+      Wrapper,
+    );
+
+    await waitFor(() => {
+      expect(tracker.calls).toBe(1);
+    });
+    await waitFor(() => {
+      expect(invalidate).toHaveBeenCalledWith({ queryKey: ["workspace"] });
+    });
+  });
+
+  it("does not refetch workspace queries when a failed setup created nothing", async () => {
+    const tracker = trackEndpoint(() =>
+      HttpResponse.json(
+        {
+          error: "The BV-BRC workspace service did not respond (timed out after 30 s).",
+          code: "upstream_timeout",
+        },
+        { status: 504 },
+      ),
+    );
+    const { invalidate, Wrapper } = spyingWrapper();
+
+    renderEnsure(
+      { enabled: true, userKey: nextUser(), listError: lacksPermission(), homeAppearsEmpty: false },
+      Wrapper,
+    );
+
+    await waitFor(() => {
+      expect(tracker.calls).toBe(1);
+    });
+    await settle();
+    expect(invalidate).not.toHaveBeenCalled();
+  });
+
+  describe("retrySetup", () => {
+    const timedOut = () =>
+      HttpResponse.json(
+        {
+          error: "The BV-BRC workspace service did not respond (timed out after 30 s).",
+          code: "upstream_timeout",
+        },
+        { status: 504 },
+      );
+
+    it("runs a failed setup again while the home still looks missing", async () => {
+      const tracker = trackEndpoint((call) =>
+        call === 1
+          ? timedOut()
+          : HttpResponse.json({ success: true, created: ["/u@bvbrc/home/"], failures: {} }),
+      );
+
+      const { result } = renderEnsure({
+        enabled: true,
+        userKey: nextUser(),
+        listError: lacksPermission(),
+        homeAppearsEmpty: false,
+      });
+      await waitFor(() => {
+        expect(tracker.calls).toBe(1);
+      });
+      await settle();
+
+      act(() => {
+        result.current.retrySetup();
+      });
+
+      await waitFor(() => {
+        expect(tracker.calls).toBe(2);
+      });
+    });
+
+    it("does not run a setup that succeeded again", async () => {
+      const tracker = trackEndpoint();
+
+      const { result } = renderEnsure({
+        enabled: true,
+        userKey: nextUser(),
+        listError: lacksPermission(),
+        homeAppearsEmpty: false,
+      });
+      await waitFor(() => {
+        expect(tracker.calls).toBe(1);
+      });
+      await settle();
+
+      act(() => {
+        result.current.retrySetup();
+      });
+
+      await settle();
+      expect(tracker.calls).toBe(1);
+    });
+
+    it("sends nothing while the listing fails with an outage", async () => {
+      const tracker = trackEndpoint(timedOut);
+      const options = {
+        enabled: true,
+        userKey: nextUser(),
+        listError: lacksPermission(),
+        homeAppearsEmpty: false,
+      };
+
+      const { result, rerender } = renderEnsure(options);
+      await waitFor(() => {
+        expect(tracker.calls).toBe(1);
+      });
+      await settle();
+
+      rerender({
+        ...options,
+        listError: new WorkspaceApiError(
+          "The BV-BRC workspace service did not respond (timed out after 30 s).",
+          "Workspace.ls",
+          undefined,
+          504,
+        ),
+      });
+      act(() => {
+        result.current.retrySetup();
+      });
+
+      await settle();
+      expect(tracker.calls).toBe(1);
     });
   });
 });

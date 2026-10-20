@@ -48,7 +48,7 @@ export async function structureDownloadError(
 
 /**
  * Downloads a structure file for Mol*: the text of a PDB/mmCIF file, the
- * bytes of a BinaryCIF one.
+ * bytes of a BinaryCIF one, either inflated first when it is gzipped.
  *
  * Mol*'s own `builders.data.download` does not reject on an HTTP error: it
  * leaves a failed state cell, and parsing that cell then throws Mol*'s
@@ -75,7 +75,42 @@ export async function downloadStructure(
     );
   }
   if (!response.ok) throw await structureDownloadError(response, source);
-  return source.format === "bcif"
-    ? new Uint8Array(await response.arrayBuffer())
-    : response.text();
+  let bytes = new Uint8Array(await response.arrayBuffer());
+  if (isGzip(bytes)) bytes = await gunzip(bytes, source);
+  return source.format === "bcif" ? bytes : new TextDecoder().decode(bytes);
+}
+
+/** Every gzip member starts with these two bytes (RFC 1952). */
+function isGzip(bytes: Uint8Array): boolean {
+  return bytes.length >= 2 && bytes[0] === 0x1f && bytes[1] === 0x8b;
+}
+
+/**
+ * Inflates a gzipped structure file. A workspace `.pdb.gz` / `.cif.gz`
+ * arrives as the stored gzip bytes (the view route streams the file as is),
+ * and Mol*'s parsers read only the uncompressed formats; its own download
+ * never inflated a URL either, only a local file. The magic bytes decide,
+ * not the name, so a body the browser already inflated is not inflated twice.
+ */
+async function gunzip(
+  bytes: Uint8Array<ArrayBuffer>,
+  source: StructureSource,
+): Promise<Uint8Array<ArrayBuffer>> {
+  try {
+    const inflated = new ReadableStream<Uint8Array<ArrayBuffer>>({
+      start(controller) {
+        controller.enqueue(bytes);
+        controller.close();
+      },
+    }).pipeThrough(new DecompressionStream("gzip"));
+    return new Uint8Array(await new Response(inflated).arrayBuffer());
+  } catch (error) {
+    const reason =
+      error instanceof Error && error.message.trim()
+        ? error.message.trim()
+        : "the gzip data is not valid";
+    throw new Error(`Could not decompress ${source.label}: ${reason}`, {
+      cause: error,
+    });
+  }
 }

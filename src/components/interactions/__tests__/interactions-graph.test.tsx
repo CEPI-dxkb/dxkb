@@ -1,4 +1,10 @@
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import {
+  render,
+  screen,
+  fireEvent,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { InteractionsGraph } from "../interactions-graph";
@@ -170,6 +176,47 @@ describe("InteractionsGraph error state", () => {
     await userEvent.click(screen.getByRole("button", { name: "Retry" }));
 
     expect(refetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps the failure up, retrying, until the Retry answers", async () => {
+    const refetch = failed(new Error("Bad gateway"));
+    // What TanStack does to a failed query with no data when it refetches:
+    // back to pending, the error cleared, a read in flight.
+    refetch.mockImplementation(() => {
+      vi.mocked(useInteractions).mockReturnValue({
+        data: undefined,
+        isPending: true,
+        isError: false,
+        error: null,
+        isFetching: true,
+        refetch,
+      } as unknown as ReturnType<typeof useInteractions>);
+    });
+
+    const { rerender } = render(
+      <InteractionsGraph rql="" keywordValue="" onKeywordChange={vi.fn()} />,
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Retry" }));
+    // The query's own re-render once its state changed.
+    rerender(
+      <InteractionsGraph rql="" keywordValue="" onKeywordChange={vi.fn()} />,
+    );
+
+    // The alert, not the loading skeleton, until the retry answers.
+    const alert = screen.getByRole("alert");
+    expect(alert).toHaveTextContent("Bad gateway");
+    expect(
+      within(alert).getByRole("button", { name: "Retrying…" }),
+    ).toBeDisabled();
+    expect(screen.queryByRole("status")).toBeNull();
+
+    resolved({ rows: [], isTruncated: false });
+    rerender(
+      <InteractionsGraph rql="" keywordValue="" onKeywordChange={vi.fn()} />,
+    );
+
+    expect(screen.getByText("No Interactions")).toBeInTheDocument();
+    expect(screen.queryByText("Could not load interactions")).toBeNull();
   });
 
   it("falls back to readable text when the query fails with an empty Error", () => {

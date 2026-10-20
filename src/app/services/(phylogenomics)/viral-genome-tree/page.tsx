@@ -39,7 +39,7 @@ export default function ViralGenomeTreePage() {
         <ViralGenomeTreeInput controller={controller} />
         <ViralGenomeTreeParameters controller={controller} />
         <ViralGenomeTreeMetadata controller={controller} />
-        <ServiceSubmitError />
+        <ServiceSubmitError form={form} />
         <div className="service-form-controls md:col-span-2">
           <Button type="button" variant="outline" onClick={handleReset}>
             Reset

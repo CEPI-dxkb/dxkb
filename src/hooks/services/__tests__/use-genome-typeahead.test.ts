@@ -85,6 +85,47 @@ describe("useGenomeTypeahead failed search", () => {
     expect(queries).toEqual(["Mycobacterium", "Mycobacterium"]);
   });
 
+  it("retries the all-genomes lookup that failed, not the typed text", async () => {
+    let down = true;
+    const queries: (string | null)[] = [];
+    server.use(
+      http.get("*/api/services/genome/search", ({ request }) => {
+        queries.push(new URL(request.url).searchParams.get("q"));
+        return down
+          ? HttpResponse.json(
+              { error: outage, code: "upstream" },
+              { status: 503 },
+            )
+          : HttpResponse.json({ results: [] });
+      }),
+    );
+    const { result } = renderHook(() => useGenomeTypeahead({ minQueryLength: 3 }));
+
+    // Too short to search as typed; the dropdown toggle lists every genome.
+    act(() => {
+      result.current.setQuery("My");
+    });
+    act(() => {
+      result.current.triggerSearch("");
+    });
+    await waitFor(() => {
+      expect(result.current.error).toBe(`Genome search unavailable: ${outage}`);
+    });
+
+    down = false;
+    act(() => {
+      result.current.retry();
+    });
+
+    await waitFor(() => {
+      expect(result.current.error).toBeNull();
+    });
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+    expect(queries).toEqual(["", ""]);
+  });
+
   it("names a network failure as the genome search's", () => {
     expect(genomeSearchErrorMessage(new TypeError("Failed to fetch"))).toBe(
       "Genome search unavailable: Failed to fetch",

@@ -210,6 +210,66 @@ describe("AppService", () => {
         }),
       );
     });
+
+    // MSW does not tie the request signal to a mocked body, so the stream
+    // errors the way undici's does when the budget fires or the socket drops.
+    function cutShort(error: Error): HttpResponse<ReadableStream> {
+      return new HttpResponse(
+        new ReadableStream({
+          start(controller) {
+            controller.enqueue(new TextEncoder().encode("Starting job"));
+            controller.error(error);
+          },
+        }),
+      );
+    }
+
+    it("answers output that times out mid-body as a 504 naming the job service", async () => {
+      mockClient.getAuthToken.mockReturnValue("my-token");
+      server.use(
+        http.get(`${appServiceUrl}/task_info/123/stdout`, () =>
+          cutShort(new DOMException("The operation was aborted due to timeout", "TimeoutError")),
+        ),
+      );
+
+      const failure = await service
+        .fetchJobOutput({ job_id: "123", output_type: "stdout" })
+        .catch((error: unknown) => error);
+
+      expect(failure).toBeInstanceOf(UpstreamError);
+      expect(failure).toEqual(
+        expect.objectContaining({
+          status: 504,
+          code: "upstream_timeout",
+          message:
+            "Failed to fetch stdout for job 123: The BV-BRC job service did not respond (timed out after 30 s).",
+        }),
+      );
+    });
+
+    it("answers output cut off by a dropped connection as a 502", async () => {
+      mockClient.getAuthToken.mockReturnValue("my-token");
+      const reset = new TypeError("terminated", {
+        cause: Object.assign(new Error("other side closed"), { code: "UND_ERR_SOCKET" }),
+      });
+      server.use(
+        http.get(`${appServiceUrl}/task_info/123/stderr`, () => cutShort(reset)),
+      );
+
+      const failure = await service
+        .fetchJobOutput({ job_id: "123", output_type: "stderr" })
+        .catch((error: unknown) => error);
+
+      expect(failure).toBeInstanceOf(UpstreamError);
+      expect(failure).toEqual(
+        expect.objectContaining({
+          status: 502,
+          code: "service_unavailable",
+          message:
+            "Failed to fetch stderr for job 123: Could not reach the BV-BRC job service: connection closed.",
+        }),
+      );
+    });
   });
 
   describe("enumerateTasksFiltered", () => {

@@ -25,7 +25,9 @@ function labelFromOutputName(outputFile: string, taxonName: string): string {
  * The taxon name a rerun can restore without a lookup. A job's
  * `scientific_name` is usually its output name (`transformParams` sends the
  * output name in both), so it counts only when it differs from the output
- * name; otherwise the form's default taxon, when the job used it.
+ * name. Otherwise it is that name less the job's `my_label` (the sanitized
+ * taxon name, which a successful lookup replaces), or the form's default
+ * taxon, when the job used it.
  */
 function knownTaxonName(
   rerunData: Record<string, unknown>,
@@ -37,6 +39,13 @@ function knownTaxonName(
       ? rerunData.scientific_name.trim()
       : "";
   if (jobName && jobName !== outputFile.trim()) return jobName;
+  const labelSuffix =
+    typeof rerunData.my_label === "string" && rerunData.my_label.trim()
+      ? ` ${rerunData.my_label.trim()}`
+      : "";
+  if (labelSuffix && jobName.endsWith(labelSuffix)) {
+    return jobName.slice(0, -labelSuffix.length).trim();
+  }
   return taxonomyId === defaultSarsCov2GenomeAnalysisFormValues.taxonomy_id
     ? defaultSarsCov2GenomeAnalysisFormValues.scientific_name
     : "";

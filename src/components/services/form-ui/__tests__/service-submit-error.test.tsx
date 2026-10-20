@@ -1,5 +1,6 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { useForm } from "@tanstack/react-form";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { http, HttpResponse } from "msw";
 import type { ReactNode } from "react";
@@ -14,20 +15,33 @@ vi.mock("sonner", () => ({
 
 const submitUrl = "*/api/services/app-service/submit";
 
+// Set by a test to make the form's own validation stop the next Submit.
+let submitBlocked = false;
+
 function ServiceForm({ serviceName }: { serviceName: string }) {
   const { submit, isSubmitting } = useServiceFormSubmission({
     serviceName,
     displayName: serviceName,
   });
+  const form = useForm({
+    defaultValues: { name: "" },
+    validators: {
+      onSubmit: () => (submitBlocked ? "Fix the form first" : undefined),
+    },
+    onSubmit: () => submit({}),
+  });
   return (
     <form
       onSubmit={(event) => {
         event.preventDefault();
-        void submit({});
+        void form.handleSubmit();
       }}
     >
-      <ServiceSubmitError />
+      <ServiceSubmitError form={form} />
       <div className="service-form-controls">
+        <button type="button" onClick={() => { form.reset(); }}>
+          Reset
+        </button>
         <button type="submit" disabled={isSubmitting}>
           Submit
         </button>
@@ -51,6 +65,7 @@ function newClient() {
 describe("ServiceSubmitError", () => {
   afterEach(() => {
     vi.useRealTimers();
+    submitBlocked = false;
   });
 
   it("keeps the real failure by the Submit row and clears it on the next submit", async () => {
@@ -94,6 +109,43 @@ describe("ServiceSubmitError", () => {
       expect(screen.getByRole("button", { name: "Submit" })).toBeEnabled();
     });
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("drops the failure on Reset, and a Submit the form blocks keeps it gone", async () => {
+    let attempt = 0;
+    server.use(
+      http.post(submitUrl, () => {
+        attempt += 1;
+        return HttpResponse.json(
+          { error: `bad params ${String(attempt)}` },
+          { status: 400 },
+        );
+      }),
+    );
+    const user = userEvent.setup();
+    renderWithClient(<ServiceForm serviceName="BLAST" />, newClient());
+
+    await user.click(screen.getByRole("button", { name: "Submit" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("bad params 1");
+
+    // The failure was about the inputs Reset just cleared.
+    await user.click(screen.getByRole("button", { name: "Reset" }));
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+
+    // Validation stops this Submit before any job is sent; the old failure
+    // must not come back with it.
+    submitBlocked = true;
+    await user.click(screen.getByRole("button", { name: "Submit" }));
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Submit" })).toBeEnabled();
+    });
+    expect(attempt).toBe(1);
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+
+    // A submission after the Reset still reports its own failure.
+    submitBlocked = false;
+    await user.click(screen.getByRole("button", { name: "Submit" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("bad params 2");
   });
 
   it("offers a way to check Jobs when the job service timed out", async () => {

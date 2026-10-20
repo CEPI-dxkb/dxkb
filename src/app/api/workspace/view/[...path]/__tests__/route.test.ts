@@ -76,6 +76,38 @@ describe("GET /api/workspace/view opened as a document", () => {
     expect(html).toContain("Download URL not found for the requested path");
   });
 
+  it("blames a Workspace reply that times out mid-body on the workspace, not file storage", async () => {
+    // MSW does not tie the request signal to a mocked body, so the stream
+    // errors the way undici's does when `AbortSignal.timeout` fires mid-body.
+    server.use(
+      http.post(
+        workspaceApiUrl,
+        () =>
+          new HttpResponse(
+            new ReadableStream({
+              start(controller) {
+                controller.enqueue(new TextEncoder().encode('{"result":'));
+                controller.error(
+                  new DOMException("The operation was aborted due to timeout", "TimeoutError"),
+                );
+              },
+            }),
+          ),
+      ),
+    );
+
+    const response = await GET(
+      viewRequest(path, { accept: "*/*" }),
+      makeRouteContext({ path }),
+    );
+
+    expect(response.status).toBe(504);
+    await expect(response.json()).resolves.toEqual({
+      error: "The BV-BRC workspace service did not respond (timed out after 30 s).",
+      code: "upstream",
+    });
+  });
+
   it("keeps the JSON answer for fetch callers", async () => {
     server.use(
       http.post(workspaceApiUrl, () => {

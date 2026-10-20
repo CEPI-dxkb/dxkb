@@ -11,7 +11,10 @@ import {
 } from "@/lib/services/workspace/setup";
 import { createServerWorkspaceRpc } from "@/lib/services/workspace/server-rpc";
 import { getDefaultRealm } from "@/lib/services/workspace/realm";
-import { formatUserFacingErrorMessage } from "@/lib/utils";
+import { workspaceErrorMessage } from "@/lib/services/workspace/workspace-errors";
+
+/** The reason shown when the Workspace's own reply carries no text. */
+const setupFailed = "the workspace service returned an error";
 
 /**
  * The answer when the home could not be checked: an outage keeps its
@@ -26,10 +29,7 @@ function checkFailedResponse(error: unknown): NextResponse {
       { status: failure.status },
     );
   }
-  const reason = formatUserFacingErrorMessage(
-    error,
-    "the workspace service returned an error",
-  );
+  const reason = workspaceErrorMessage(error, setupFailed);
   return NextResponse.json(
     {
       error: `Couldn't check your workspace home folder: ${reason}`,
@@ -39,9 +39,19 @@ function checkFailedResponse(error: unknown): NextResponse {
   );
 }
 
-/** Some folders could not be created: report it, never as success. */
+/**
+ * Some folders could not be created: report it, never as success. The
+ * reasons are the Workspace's raw replies ("_ERROR_Quota exceeded_ERROR_"),
+ * which the log keeps; the response carries their condensed text.
+ */
 function incompleteResponse(result: EnsureUserWorkspaceResult): NextResponse {
-  const failed = Object.entries(result.failures);
+  const failures = Object.fromEntries(
+    Object.entries(result.failures).map(([path, reason]) => [
+      path,
+      workspaceErrorMessage({ message: reason }, setupFailed),
+    ]),
+  );
+  const failed = Object.entries(failures);
   const [firstPath, firstReason] = failed[0];
   const others =
     failed.length > 1 ? ` (and ${String(failed.length - 1)} more)` : "";
@@ -50,7 +60,7 @@ function incompleteResponse(result: EnsureUserWorkspaceResult): NextResponse {
       error: `Couldn't create ${firstPath}${others}: ${firstReason}`,
       code: "upstream",
       created: result.created,
-      failures: result.failures,
+      failures,
     },
     { status: 502 },
   );

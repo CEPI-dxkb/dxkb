@@ -232,7 +232,7 @@ export default function GenomeAlignmentServicePage() {
           setShowAdvanced={setShowAdvanced}
           onOutputNameValidationChange={setIsOutputNameValid}
         />
-        <ServiceSubmitError />
+        <ServiceSubmitError form={form} />
         <div className="service-form-controls">
           <Button
             type="button"

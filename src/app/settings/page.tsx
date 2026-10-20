@@ -1,14 +1,16 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+import { useRouter } from "next/navigation";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertCircle, Loader2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { AlertCircle } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ProfileForm } from "@/components/settings/profile-form";
 import { PreferencesForm } from "@/components/settings/preferences-form";
 import { PasswordChangeForm } from "@/components/settings/password-change-form";
+import { QueryRetryButton } from "@/components/views/query-retry-button";
+import { useRetryKeepingError } from "@/components/views/use-retry-keeping-error";
 
 import { getProfile } from "@/lib/auth/client";
 import { useAuth } from "@/lib/auth/provider";
@@ -16,7 +18,8 @@ import type { UserProfile } from "@/lib/auth/types";
 import { formatUserFacingErrorMessage } from "@/lib/utils";
 
 export default function SettingsPage() {
-  const { user } = useAuth();
+  const { user, isSessionUnverified } = useAuth();
+  const router = useRouter();
   const {
     data: profile,
     error,
@@ -27,8 +30,22 @@ export default function SettingsPage() {
     queryKey: ["user-profile"],
     queryFn: getProfile,
   });
+  const profileRetry = useRetryKeepingError({
+    error,
+    isFetching,
+    // The root layout's `getCurrentUser()` asks the same profile service for
+    // the `<AuthBoundary>` user, and a client refetch does not reach it, so a
+    // Retry that loads the profile re-renders the server components (as the
+    // outage banner's Retry does) to verify the session again.
+    refetch: async () => {
+      const result = await refetch();
+      if (isSessionUnverified && result.isSuccess) router.refresh();
+    },
+  });
 
-  if (isLoading) {
+  // A Retry keeps the failure up ("Retrying…") instead of going back to the
+  // skeletons until it answers.
+  if (isLoading && !profileRetry.error) {
     return (
       <div className="grid gap-6">
         <Skeleton className="h-120 w-full rounded-xl" />
@@ -50,24 +67,15 @@ export default function SettingsPage() {
           <AlertDescription>
             <p>
               {formatUserFacingErrorMessage(
-                error,
+                profileRetry.error,
                 user?.sessionUnverifiedReason ??
                   "The profile service returned no profile.",
               )}
             </p>
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={isFetching}
-              onClick={() => {
-                void refetch();
-              }}
-            >
-              {isFetching && (
-                <Loader2 className="animate-spin" data-icon="inline-start" />
-              )}
-              Retry
-            </Button>
+            <QueryRetryButton
+              retrying={profileRetry.retrying}
+              onRetry={profileRetry.retry}
+            />
           </AlertDescription>
         </Alert>
       </div>

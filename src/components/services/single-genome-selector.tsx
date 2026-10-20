@@ -48,6 +48,9 @@ function useSingleGenomeSelector({
   const buttonRef = useRef<HTMLButtonElement | null>(null);
   const [isManualTrigger, setIsManualTrigger] = useState(false);
   const selectedGenomeIdRef = useRef<string | null>(null);
+  // Typing over a selection reports "" to the parent. The "" a controlled
+  // parent passes back is that edit, not a reset, so it keeps the text.
+  const clearedByEditRef = useRef(false);
   // Why a prefilled genome ID shows without its name (the lookup failed, or
   // found no record). The ID is kept, so the form stays submittable.
   const [lookupNote, setLookupNote] = useState<string | null>(null);
@@ -95,8 +98,10 @@ function useSingleGenomeSelector({
 
   // Sync query with value prop; resolve genome ID -> name via fetchGenomesByIds.
   const syncValue = useEffectEvent((nextValue: string) => {
+    const clearedByEdit = clearedByEditRef.current;
+    clearedByEditRef.current = false;
     if (!nextValue) {
-      if (query) {
+      if (query && !clearedByEdit) {
         queueMicrotask(() => {
           setQuery("");
           setSelectedGenome(null);
@@ -278,6 +283,7 @@ function useSingleGenomeSelector({
             setIsManualTrigger(false);
             setShowDropdown(true);
             if (selectedGenomeIdRef.current !== null) {
+              clearedByEditRef.current = true;
               onChange("");
               selectedGenomeIdRef.current = null;
             }

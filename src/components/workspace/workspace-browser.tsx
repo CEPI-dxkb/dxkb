@@ -199,7 +199,7 @@ function useWorkspaceBrowser({
   // setup writes (and reported them as success) on every visit.
   const homeAppearsEmpty =
     isOwnHome && path === "" && listingSucceeded && items.length === 0;
-  useEnsureUserWorkspace({
+  const { retrySetup } = useEnsureUserWorkspace({
     enabled: isOwnHome,
     userKey: myWorkspaceRoot,
     listError: listingError,
@@ -350,6 +350,9 @@ function useWorkspaceBrowser({
   const retryLoad = () => {
     if (resolveQuery.isError || isJobResultView) void resolveQuery.refetch();
     refetch();
+    // A home setup that failed runs again, but only if the home still looks
+    // missing; during an outage this sends nothing.
+    retrySetup();
   };
   // Retry and Refresh keep the failure on screen ("Retrying…") until the
   // refetch answers, instead of the skeletons a query without data falls

@@ -33,6 +33,7 @@ import {
 } from "@/components/ui/dialog";
 import type { FolderIconVariant } from "@/components/workspace/workspace-item-icon";
 import { useWorkspaceRepository } from "@/contexts/workspace-repository-context";
+import { useKeptQueryError } from "@/hooks/services/jobs/use-kept-query-error";
 import { useWorkspacePickerListing } from "@/hooks/services/workspace/use-workspace-picker-listing";
 import { useAuth } from "@/lib/auth/provider";
 import type { WorkspaceItem } from "@/lib/services/workspace/domain";
@@ -246,8 +247,26 @@ function FolderColumnsBrowser({
   const commit = commitStateFor(selectedPath, selectedItem, selectedEvidence);
   // A failed listing leaves the folder unconfirmed (it may be gone) and its
   // write access unknown, so nothing is chosen or changed in it until a Retry
-  // in its column loads it.
-  const listingError = containing.error ?? contents.error;
+  // in its column loads it. The error is kept through that Retry, as the
+  // column keeps its own: TanStack clears it the moment a listing with no
+  // rows refetches, which would offer New folder, Upload and Select (and say
+  // "You can write here") for the whole wait. The hook hands back the error
+  // it was given, an `Error` here.
+  const listingError = useKeptQueryError(
+    {
+      error: containing.error ?? contents.error,
+      hasData:
+        !containing.isLoading &&
+        !contents.isLoading &&
+        containing.error === null &&
+        contents.error === null,
+    },
+    JSON.stringify([
+      username,
+      columnLocation(Math.max(currentIndex, 0)),
+      lastLocation,
+    ]),
+  ) as Error | null;
   // Until the column listing the selection has loaded, the folder may still
   // turn out to be gone.
   const canCommitNow =

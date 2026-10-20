@@ -101,6 +101,24 @@ describe("toggleFavorite never overwrites favorites from a failed read", () => {
     expect(proxy.methods).toEqual(["Workspace.get"]);
   });
 
+  it("names the Workspace's reason, not the proxy's label, when the read fails", async () => {
+    const proxy = workspaceProxy({
+      "Workspace.get": () =>
+        HttpResponse.json(
+          {
+            error: "BV-BRC API error: 500 Internal Server Error",
+            apiResponse: { code: -32603, message: "_ERROR_Internal error reading object_ERROR_" },
+          },
+          { status: 500 },
+        ),
+    });
+
+    await expect(toggleFavorite(userId, "/alice@bvbrc/home/c")).rejects.toThrow(
+      "Couldn't update favorites, nothing was changed: Internal error reading object",
+    );
+    expect(proxy.methods).toEqual(["Workspace.get"]);
+  });
+
   it("writes the saved folders plus the new one after a good read", async () => {
     let written: unknown;
     let gets = 0;

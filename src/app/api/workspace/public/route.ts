@@ -6,6 +6,7 @@ import {
   upstreamTimeoutMs,
 } from "@/lib/api/upstream-failure";
 import { upstreamFailureResponse } from "@/lib/api/upstream-route";
+import { workspaceErrorReply } from "@/lib/api/workspace-proxy-error";
 import { getRequiredEnv } from "@/lib/env";
 
 const allowedMethods = new Set(["Workspace.ls", "Workspace.get"]);
@@ -63,18 +64,7 @@ export async function POST(request: NextRequest) {
     );
 
     if (!response.ok) {
-      const responseText = await response.text();
-      let apiResponse: unknown = null;
-      try {
-        apiResponse = responseText ? JSON.parse(responseText) : null;
-      } catch {
-        apiResponse = responseText || null;
-      }
-      console.error("Public workspace API error:", response.status, response.statusText, apiResponse);
-      return NextResponse.json(
-        { error: `BV-BRC API error: ${String(response.status)} ${response.statusText}` },
-        { status: response.status },
-      );
+      return await workspaceErrorReply(response, "Public workspace API error");
     }
 
     const data: unknown = await response.json();

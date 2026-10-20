@@ -13,15 +13,25 @@
  * that as "not found" told users their folders had been deleted and drove
  * folder creation and favorites overwrites from a failed read. Outage answers
  * are the proxy's 502/503/504 (`isUpstreamOutage`) or, server-side, an
- * `UpstreamError`; their messages ("…: host not found") are not matched.
+ * `UpstreamError`.
+ *
+ * Only the Workspace's own wording counts (`_error` in BV-BRC's
+ * `WorkspaceImpl.pm`): "Object not found!", "Workspace not found!",
+ * "Workspace u/home does not exist!" and "User lacks permission to u/home for
+ * requested action!", at the start of a message or right after its `_ERROR_`
+ * marker. A bare "not found" is not enough: JSON-RPC's "Method not found" and
+ * an outage's "…: host not found" contain it too, and reading either as
+ * "missing" would report a taken name as free or overwrite favorites.
  */
 
 import { isUpstreamOutage } from "@/lib/api/query-retry";
 import { UpstreamError } from "@/lib/api/upstream-failure";
 import { formatUserFacingErrorMessage } from "@/lib/utils";
 
-const missingObjectPattern = /not found|does not exist|lacks permission/i;
-const missingHomePattern = /lacks permission|does not exist/i;
+const missingObjectPattern =
+  /(?:^|_ERROR_)\s*(?:Object\b.*\bnot found|Workspace not found|Workspace\b.*\bdoes not exist|User lacks permission)/i;
+const missingHomePattern =
+  /(?:^|_ERROR_)\s*(?:Workspace\b.*\bdoes not exist|User lacks permission)/i;
 
 function property(value: unknown, key: string): unknown {
   return typeof value === "object" && value !== null && key in value
@@ -45,8 +55,9 @@ function isOutage(error: unknown): boolean {
 
 /**
  * True when the Workspace answered that the object does not exist or is not
- * readable by this user: an HTTP 404, or a "not found / does not exist /
- * lacks permission" message. False for outages and every other failure.
+ * readable by this user: an HTTP 404, or one of the Workspace's "not found /
+ * does not exist / lacks permission" replies. False for outages and every
+ * other failure.
  */
 export function isWorkspaceObjectMissing(error: unknown): boolean {
   if (!error || isOutage(error)) return false;
@@ -58,8 +69,8 @@ export function isWorkspaceObjectMissing(error: unknown): boolean {
 
 /**
  * True when listing a user's home failed because the home was never created
- * ("User lacks permission" / "does not exist"), the one failure that makes
- * provisioning it the right response.
+ * ("User lacks permission" / "Workspace … does not exist"), the one failure
+ * that makes provisioning it the right response.
  */
 export function isWorkspaceHomeMissing(error: unknown): boolean {
   if (!error || isOutage(error)) return false;

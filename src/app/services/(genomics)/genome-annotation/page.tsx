@@ -70,7 +70,7 @@ export default function GenomeAnnotationPage() {
           form={form}
           onOutputNameValidationChange={setIsOutputNameValid}
         />
-        <ServiceSubmitError />
+        <ServiceSubmitError form={form} />
         <div className="service-form-controls">
           <div className="flex items-center gap-2">
             <Button

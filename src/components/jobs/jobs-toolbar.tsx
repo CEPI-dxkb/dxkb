@@ -54,7 +54,9 @@ interface JobsToolbarProps {
   statusSummary?: Record<string, number | undefined>;
   /**
    * Why the job summary (the status counts and the service list) could not be
-   * loaded, already condensed for display. Shown in place of the counts.
+   * loaded, already condensed for display. Shown in place of the counts, or,
+   * when a later refresh failed, beside the last counts as a note that they
+   * may be out of date.
    */
   summaryError?: string;
   dataUpdatedAt?: number;
@@ -230,6 +232,15 @@ export function JobsToolbar({
                 {statusSummary.failed ?? 0}
               </span>
             </span>
+            {summaryError && (
+              <>
+                <span>&middot;</span>
+                <span role="status" className="flex min-w-0 items-center gap-1">
+                  <TriangleAlert className="size-3.5 shrink-0 text-warning" />
+                  Counts may be out of date: {summaryError}
+                </span>
+              </>
+            )}
           </>
         )}
 

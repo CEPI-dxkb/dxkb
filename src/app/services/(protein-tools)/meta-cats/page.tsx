@@ -940,7 +940,7 @@ function useMetaCATSPage() {
         </Card>
 
         {/* Form Controls */}
-        <ServiceSubmitError />
+        <ServiceSubmitError form={form} />
         <div className="service-form-controls">
           <Button type="button" variant="outline" onClick={handleReset}>
             Reset

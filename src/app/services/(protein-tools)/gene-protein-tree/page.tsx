@@ -39,7 +39,7 @@ export default function GeneProteinTreePage() {
         <GeneProteinTreeInput controller={controller} />
         <GeneProteinTreeParameters controller={controller} />
         <GeneProteinTreeMetadata controller={controller} />
-        <ServiceSubmitError />
+        <ServiceSubmitError form={form} />
         <div className="service-form-controls md:col-span-2">
           <Button type="button" variant="outline" onClick={handleReset}>
             Reset

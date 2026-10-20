@@ -287,7 +287,7 @@ export default function GenomeAssemblyPage() {
           libraries={selectedLibraries}
           onRemove={removeLibrary}
         />
-        <ServiceSubmitError />
+        <ServiceSubmitError form={form} />
         <div className="service-form-controls md:col-span-12">
           <div className="flex items-center gap-2">
             <Button

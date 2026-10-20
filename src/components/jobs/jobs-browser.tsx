@@ -328,15 +328,16 @@ function useJobsBrowser() {
   const totalTasks =
     listStatus === "ready" ? (jobsResult?.totalTasks ?? 0) : 0;
 
-  // The toolbar notes a failed summary, unless the list's own alert below
-  // already gives the same reason (one outage fails both reads).
+  // The toolbar notes a failed summary, unless the list's own alert (the load
+  // error in place of the table, or the refresh notice above the toolbar)
+  // already gives the same reason: one outage fails both reads.
   const summaryErrorMessage = summaryError
     ? formatUserFacingErrorMessage(summaryError, summaryErrorFallback)
     : undefined;
   const toolbarSummaryError =
     summaryErrorMessage &&
     !(
-      listStatus === "error" &&
+      listError != null &&
       formatUserFacingErrorMessage(listError, "") === summaryErrorMessage
     )
       ? summaryErrorMessage

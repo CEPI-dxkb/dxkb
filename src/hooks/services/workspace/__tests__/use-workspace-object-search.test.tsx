@@ -102,6 +102,34 @@ describe("useWorkspaceObjectSearch", () => {
     );
   });
 
+  it("sends an empty type list as no filter, whichever field asks first", async () => {
+    const repo = new InMemoryWorkspaceRepository({
+      directories: {
+        "/alice@bvbrc/home": [
+          { name: "x.fq", type: "reads" },
+          { name: "y.fa", type: "contigs" },
+        ],
+      },
+    });
+    const { result } = renderHook(
+      () => ({
+        empty: useWorkspaceObjectSearch({ username: "alice", types: [] }),
+        untyped: useWorkspaceObjectSearch({ username: "alice" }),
+      }),
+      { wrapper: makeWrapper(repo) },
+    );
+
+    await waitFor(() => {
+      expect(result.current.empty.loading).toBe(false);
+    });
+    expect(result.current.empty.items).toHaveLength(2);
+    expect(result.current.untyped.items).toEqual(result.current.empty.items);
+    const searchedTypes = repo.calls.flatMap((call) =>
+      call.method === "searchObjects" ? [call.input.types] : [],
+    );
+    expect(searchedTypes).toEqual([undefined]);
+  });
+
   it("filters by searchQuery", async () => {
     const repo = new InMemoryWorkspaceRepository({
       directories: {

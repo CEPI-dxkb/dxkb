@@ -6,9 +6,10 @@ import { Star } from "lucide-react";
 
 import { workspaceNavItems } from "@/components/navbars/navbar-links";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
 import { NavigationMenuLink } from "@/components/ui/navigation-menu";
 import { Skeleton } from "@/components/ui/skeleton";
+import { QueryRetryButton } from "@/components/views/query-retry-button";
+import { useRetryKeepingError } from "@/components/views/use-retry-keeping-error";
 import { useRecentWorkspaceFolders } from "@/hooks/use-recent-workspace-folders";
 import { loadFavorites } from "@/lib/services/workspace/favorites";
 import { workspaceQueryKeys } from "@/lib/services/workspace/workspace-query-keys";
@@ -25,17 +26,16 @@ export function WorkspaceDropdownContent({
   isAuthenticated,
   wsUsername,
 }: WorkspaceDropdownContentProps) {
-  const {
-    data: favoritePaths = [],
-    isLoading: favoritesLoading,
-    error: favoritesError,
-    refetch: refetchFavorites,
-  } = useQuery({
+  const favorites = useQuery({
     queryKey: workspaceQueryKeys.favorites(wsUsername),
     queryFn: () => loadFavorites(wsUsername),
     enabled: isAuthenticated && !!wsUsername,
     staleTime: 2 * 60 * 1000,
   });
+  const favoritePaths = favorites.data ?? [];
+  // A Retry keeps the failure up ("Retrying…") instead of going back to the
+  // skeletons until it answers.
+  const favoritesRetry = useRetryKeepingError(favorites, wsUsername);
 
   const recentFolders = useRecentWorkspaceFolders(
     isAuthenticated ? wsUsername : undefined,
@@ -76,8 +76,8 @@ export function WorkspaceDropdownContent({
       {isAuthenticated &&
         (favoritePaths.length > 0 ||
           recentFolders.length > 0 ||
-          favoritesLoading ||
-          favoritesError) && (
+          favorites.isLoading ||
+          favoritesRetry.error != null) && (
           <div className="mt-1 pt-1">
             <div className="grid grid-cols-2 gap-2">
               {/* Favorite Folders */}
@@ -86,32 +86,27 @@ export function WorkspaceDropdownContent({
                   Favorite Folders{" "}
                   <Star className="size-4 text-highlight" fill="currentColor" />
                 </SectionHeader>
-                {favoritesLoading ? (
-                  <div className="space-y-1 p-2">
-                    <Skeleton className="h-5 w-32" />
-                    <Skeleton className="h-5 w-24" />
-                  </div>
-                ) : favoritesError ? (
+                {favoritesRetry.error ? (
                   <Alert variant="destructive" size="sm">
                     <AlertDescription>
                       <p>
                         Couldn&apos;t load favorites:{" "}
                         {formatUserFacingErrorMessage(
-                          favoritesError,
+                          favoritesRetry.error,
                           "the workspace service did not answer.",
                         )}
                       </p>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          void refetchFavorites();
-                        }}
-                      >
-                        Retry
-                      </Button>
+                      <QueryRetryButton
+                        retrying={favoritesRetry.retrying}
+                        onRetry={favoritesRetry.retry}
+                      />
                     </AlertDescription>
                   </Alert>
+                ) : favorites.isLoading ? (
+                  <div className="space-y-1 p-2">
+                    <Skeleton className="h-5 w-32" />
+                    <Skeleton className="h-5 w-24" />
+                  </div>
                 ) : favoritePaths.length > 0 ? (
                   favoritePaths.map((path) => (
                     <NavItem

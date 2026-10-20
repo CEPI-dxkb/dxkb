@@ -72,11 +72,30 @@ describe("POST /api/auth/ensure-workspace", () => {
     const body = (await response.json()) as Record<string, unknown>;
     expect(body).toMatchObject({
       error:
-        "Couldn't create /alice@bvbrc/home/Genome Groups (and 1 more): _ERROR_Quota exceeded_ERROR_",
+        "Couldn't create /alice@bvbrc/home/Genome Groups (and 1 more): Quota exceeded",
       code: "upstream",
       created: ["/alice@bvbrc/home/"],
+      failures: {
+        "/alice@bvbrc/home/Genome Groups": "Quota exceeded",
+        "/alice@bvbrc/home/Experiments": "Quota exceeded",
+      },
     });
     expect(body).not.toHaveProperty("success");
+  });
+
+  it("reports a Workspace fault while checking the home without its _ERROR_ markers", async () => {
+    setTestSession({ token: "token", userId: "alice" });
+    mocks.ensureUserWorkspace.mockRejectedValue(
+      new Error("_ERROR_Internal failure_ERROR_"),
+    );
+
+    const response = await POST(mockNextRequest({ method: "POST" }), {});
+
+    expect(response.status).toBe(502);
+    await expect(response.json()).resolves.toEqual({
+      error: "Couldn't check your workspace home folder: Internal failure",
+      code: "upstream",
+    });
   });
 });
 

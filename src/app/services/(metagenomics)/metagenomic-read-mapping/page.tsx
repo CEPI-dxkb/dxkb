@@ -36,7 +36,7 @@ export default function MetagenomicReadMappingPage() {
         <SelectedLibrariesCard controller={controller} />
         <ReadMappingParametersCard controller={controller} />
         <div className="md:col-span-12">
-          <ServiceSubmitError />
+          <ServiceSubmitError form={controller.form} />
           <div className="service-form-controls">
             <Button
               type="button"

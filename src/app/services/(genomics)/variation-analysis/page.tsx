@@ -41,7 +41,7 @@ export default function VariationAnalysisPage() {
           controller={controller}
           className="hidden md:col-span-5 md:block"
         />
-        <ServiceSubmitError />
+        <ServiceSubmitError form={form} />
         <div className="service-form-controls md:col-span-12">
           <div className="flex items-center gap-2">
             <Button

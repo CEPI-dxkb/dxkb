@@ -83,20 +83,22 @@ export function useServiceFormSubmission(
     },
     onError: (error) => {
       console.error(`Failed to submit ${displayName} job:`, error);
-      const errorMessage = error instanceof Error ? error.message : "Failed to submit job";
+      // The same condensed text as the inline <ServiceSubmitError>.
+      const { title, message, mayHaveBeenQueued } =
+        describeServiceSubmitError(error);
       // 504: the job service never answered, so the job may still have been
       // queued (the server's message says which). Keep it on screen with a
       // way to check before the user submits again.
-      if ((error as { status?: unknown }).status === 504) {
-        toast.error("The job service did not respond", {
-          description: errorMessage,
+      if (mayHaveBeenQueued) {
+        toast.error(title, {
+          description: message,
           closeButton: true,
           duration: Infinity,
           action: { label: "View Jobs", onClick: () => { router.push("/jobs"); } },
         });
         return;
       }
-      toast.error("Submission failed", { description: errorMessage, closeButton: true });
+      toast.error(title, { description: message, closeButton: true });
     },
   });
 

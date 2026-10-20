@@ -344,7 +344,7 @@ export default function HASubtypeNumberingPage() {
 
         {/* Form Controls */}
         <div className="md:col-span-12">
-          <ServiceSubmitError />
+          <ServiceSubmitError form={form} />
           <div className="service-form-controls">
             <Button type="button" variant="outline" onClick={handleReset}>
               Reset

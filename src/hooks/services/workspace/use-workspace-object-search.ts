@@ -77,15 +77,17 @@ export function useWorkspaceObjectSearch({
   const repository = useWorkspaceRepository("authenticated");
   const [searchQuery, setSearchQuery] = useState("");
 
-  // No types, or an empty list, means every type (as the repository reads
-  // it), so both share the untyped query.
-  const typesKey = types?.length ? JSON.stringify([...types].sort()) : "";
+  // No types, or an empty list, means every type, so both share the untyped
+  // query and send no filter: whichever field fetches fills the cache for
+  // the other, so the request must be the one the key names.
+  const typeFilter = types?.length ? types : undefined;
+  const typesKey = typeFilter ? JSON.stringify([...typeFilter].sort()) : "";
 
   const query = useQuery<WorkspaceItem[]>({
     queryKey: workspaceQueryKeys.search(username, path, typesKey),
     queryFn: async () =>
       assertUniqueWorkspaceObjectPaths(
-        await repository.searchObjects({ username, path, types }),
+        await repository.searchObjects({ username, path, types: typeFilter }),
       ),
     enabled: autoLoad && !!username,
     staleTime: 5 * 60 * 1000,

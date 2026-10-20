@@ -42,7 +42,7 @@ export default function MetagenomicBinningPage() {
         )}
         <BinningParametersCard controller={controller} />
         <div className="md:col-span-12">
-          <ServiceSubmitError />
+          <ServiceSubmitError form={controller.form} />
           <div className="service-form-controls">
             <Button
               type="button"

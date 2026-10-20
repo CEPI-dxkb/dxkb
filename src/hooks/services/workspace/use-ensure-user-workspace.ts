@@ -17,6 +17,14 @@ export interface UseEnsureUserWorkspaceOptions {
   homeAppearsEmpty: boolean;
 }
 
+export interface UseEnsureUserWorkspaceResult {
+  /**
+   * Run this user's setup again if its last attempt failed and the home
+   * still looks missing. For the listing's Retry: remounts never re-run it.
+   */
+  retrySetup: () => void;
+}
+
 /**
  * Users whose setup already ran in this page session, successful or not.
  * Module-level rather than a ref: the browser remounts on every visit to
@@ -24,6 +32,8 @@ export interface UseEnsureUserWorkspaceOptions {
  * on each one during an outage.
  */
 const attemptedUsers = new Set<string>();
+/** Of those, the users whose last attempt failed: only Retry runs it again. */
+const failedUsers = new Set<string>();
 
 function shouldFire(
   listError: Error | null,
@@ -36,19 +46,26 @@ function shouldFire(
 /**
  * Reactive workspace setup. When the workspace browser sees that a user's
  * home is missing ("User lacks permission") or loaded empty, POST
- * `/api/auth/ensure-workspace` at most once per user per page session, and
- * refetch workspace queries only when folders were actually created. Any
- * other listing failure (an outage) never triggers it. Silent: no toast; a
- * failure leaves the listing's own error in place.
+ * `/api/auth/ensure-workspace` at most once per user per page session (a
+ * failed one runs again only through `retrySetup`), and refetch workspace
+ * queries only when folders were actually created. Any other listing failure (an
+ * outage) never triggers it. Silent: no toast; a failure leaves the
+ * listing's own error in place.
  */
 export function useEnsureUserWorkspace(
   options: UseEnsureUserWorkspaceOptions,
-): void {
+): UseEnsureUserWorkspaceResult {
   const { enabled, userKey, listError, homeAppearsEmpty } = options;
   const queryClient = useQueryClient();
 
+  // A no-op (everything already existed) changes nothing to refetch.
+  const refetchIfCreated = (created: unknown) => {
+    if (!Array.isArray(created) || created.length === 0) return;
+    void queryClient.invalidateQueries({ queryKey: workspaceQueryKeys.all });
+  };
+
   const { mutate } = useMutation({
-    mutationFn: async (): Promise<EnsureUserWorkspaceResult> => {
+    mutationFn: async (_user: string): Promise<EnsureUserWorkspaceResult> => {
       const response = await fetch("/api/auth/ensure-workspace", {
         method: "POST",
         credentials: "include",
@@ -57,7 +74,11 @@ export function useEnsureUserWorkspace(
         const body = (await response.json().catch(() => ({}))) as {
           error?: string;
           message?: string;
+          created?: unknown;
         };
+        // An incomplete setup (a 502) can still have created the home: the
+        // listing's "missing home" error is stale either way.
+        refetchIfCreated(body.created);
         throw new Error(
           body.error ??
             body.message ??
@@ -67,9 +88,10 @@ export function useEnsureUserWorkspace(
       return response.json() as Promise<EnsureUserWorkspaceResult>;
     },
     onSuccess: (result) => {
-      // A no-op (everything already existed) changes nothing to refetch.
-      if (!Array.isArray(result.created) || result.created.length === 0) return;
-      void queryClient.invalidateQueries({ queryKey: workspaceQueryKeys.all });
+      refetchIfCreated(result.created);
+    },
+    onError: (_error, user) => {
+      failedUsers.add(user);
     },
   });
 
@@ -77,6 +99,17 @@ export function useEnsureUserWorkspace(
     if (!enabled || !userKey || attemptedUsers.has(userKey)) return;
     if (!shouldFire(listError, homeAppearsEmpty)) return;
     attemptedUsers.add(userKey);
-    mutate();
+    mutate(userKey);
   }, [enabled, userKey, listError, homeAppearsEmpty, mutate]);
+
+  // Called directly: the effect's inputs may not change on a Retry. During
+  // an outage `shouldFire` is false, so a Retry sends no writes.
+  const retrySetup = () => {
+    if (!failedUsers.has(userKey)) return;
+    if (!enabled || !shouldFire(listError, homeAppearsEmpty)) return;
+    failedUsers.delete(userKey);
+    mutate(userKey);
+  };
+
+  return { retrySetup };
 }

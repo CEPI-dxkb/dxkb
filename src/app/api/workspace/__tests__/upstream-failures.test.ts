@@ -50,6 +50,20 @@ async function body(response: Response): Promise<unknown> {
   return response.json();
 }
 
+/** An error reply whose body stalls until the budget ends the read. */
+function bodyTimesOut(): HttpResponse<ReadableStream> {
+  const stream = new ReadableStream({
+    start(controller) {
+      controller.error(
+        new DOMException("The operation was aborted due to timeout", "TimeoutError"),
+      );
+    },
+  });
+  return new HttpResponse(stream, { status: 503 });
+}
+
+const bodyTimedOut = /^The BV-BRC workspace service did not respond \(timed out/;
+
 describe("workspace proxies on an upstream outage", () => {
   describe("POST /api/services/workspace", () => {
     it("answers a connect timeout with 504 and the cause, not 'Internal server error'", async () => {
@@ -121,6 +135,15 @@ describe("workspace proxies on an upstream outage", () => {
         apiResponse: { code: -32603, message: "_ERROR_Object not found!_" },
       });
     });
+
+    it("answers 504 when an error reply's body times out", async () => {
+      workspaceAnswers(() => bodyTimesOut());
+
+      const response = await workspaceProxy(lsRequest(), {});
+      expect(response.status).toBe(504);
+      const { error } = (await body(response)) as { error: string };
+      expect(error).toMatch(bodyTimedOut);
+    });
   });
 
   describe("POST /api/workspace/public", () => {
@@ -139,6 +162,45 @@ describe("workspace proxies on an upstream outage", () => {
       workspaceAnswers(neverRespond);
 
       expect((await publicProxy(lsRequest())).status).toBe(504);
+    });
+
+    it("describes a 503 maintenance page by its status and title, never the HTML", async () => {
+      workspaceAnswers(() => maintenancePage());
+
+      const response = await publicProxy(lsRequest());
+      expect(response.status).toBe(503);
+      const text = await response.text();
+      const { error } = JSON.parse(text) as { error: string };
+      expect(error).toMatch(
+        /^The BV-BRC workspace service is unavailable \(HTTP 503 Service Unavailable/,
+      );
+      expect(error).toContain(maintenanceSummary);
+      expect(text).not.toContain("<");
+    });
+
+    it("forwards the JSON-RPC error a 500 reply carries", async () => {
+      workspaceAnswers(() =>
+        HttpResponse.json(
+          { id: 1, error: { code: -32603, message: "_ERROR_Object not found!_" } },
+          { status: 500 },
+        ),
+      );
+
+      const response = await publicProxy(lsRequest());
+      expect(response.status).toBe(500);
+      await expect(body(response)).resolves.toEqual({
+        error: "BV-BRC API error: 500 Internal Server Error",
+        apiResponse: { code: -32603, message: "_ERROR_Object not found!_" },
+      });
+    });
+
+    it("answers 504 when an error reply's body times out", async () => {
+      workspaceAnswers(() => bodyTimesOut());
+
+      const response = await publicProxy(lsRequest());
+      expect(response.status).toBe(504);
+      const { error } = (await body(response)) as { error: string };
+      expect(error).toMatch(bodyTimedOut);
     });
   });
 

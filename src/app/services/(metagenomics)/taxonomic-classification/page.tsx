@@ -34,7 +34,7 @@ export default function TaxonomicClassificationPage() {
         <ClassificationSelectedLibrariesCard controller={controller} />
         <ClassificationParametersCard controller={controller} />
         <div className="md:col-span-12">
-          <ServiceSubmitError />
+          <ServiceSubmitError form={controller.form} />
           <div className="service-form-controls">
             <Button
               type="button"

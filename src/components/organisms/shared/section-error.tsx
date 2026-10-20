@@ -24,7 +24,7 @@ interface SectionErrorProps {
    * reference in the data itself).
    */
   onRetry?: (() => void) | false;
-  /** The caller's load is running again (a query's `isFetching`). */
+  /** The caller's load is running again (`useRetryKeepingError`'s `retrying`). */
   isRetrying?: boolean;
 }
 

@@ -47,6 +47,24 @@ describe("SignupView", () => {
     );
   });
 
+  it("reports the empty fields inline, with no native validation bubble", async () => {
+    render(<SignupView />, { wrapper: createQueryClientWrapper() });
+    const user = userEvent.setup();
+
+    await user.click(screen.getByRole("button", { name: "Create account" }));
+
+    expect(
+      await screen.findByText("First name is required"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Username is required")).toBeInTheDocument();
+    expect(
+      screen.getByText("Password must be at least 8 characters long"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Create account" }).closest("form"),
+    ).toHaveAttribute("novalidate");
+  });
+
   it("brings a failed sign-up's error into view and focuses it", async () => {
     render(<SignupView />, { wrapper: createQueryClientWrapper() });
     const user = await fillSignupForm();

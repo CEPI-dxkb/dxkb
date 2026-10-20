@@ -1,9 +1,15 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { Suspense } from "react";
 import { vi } from "vitest";
 
-const { push } = vi.hoisted(() => ({ push: vi.fn() }));
-vi.mock("next/navigation", () => ({ useRouter: () => ({ push }) }));
+const { push, refresh } = vi.hoisted(() => ({ push: vi.fn(), refresh: vi.fn() }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push, refresh }) }));
 
 vi.mock("@/lib/services/organisms/metadata-facets", () => ({
   fetchOrganismMetadataFacets: vi.fn(),
@@ -47,6 +53,7 @@ function mockFacets(facets: Facets) {
 }
 
 beforeEach(() => {
+  refresh.mockClear();
   vi.mocked(fetchOrganismMetadataFacets).mockReset();
   vi.mocked(fetchTaxonomicDistribution).mockResolvedValue(emptyTaxonomic);
 });
@@ -328,9 +335,16 @@ describe("MetadataDistributions", () => {
     expect(screen.getByTestId("metadata-distributions")).toBeInTheDocument();
     expect(screen.getByRole("img", { name: "Genus distribution" })).toBeInTheDocument();
     expect(screen.getByText("Host Distribution")).toBeInTheDocument();
-    expect(screen.getByRole("alert")).toHaveTextContent(
+    const alert = screen.getByRole("alert");
+    expect(alert).toHaveTextContent(
       "Could not load: Host Distribution: The BV-BRC data service is unavailable (HTTP 503 Service Unavailable: Site Maintenance).",
     );
+    // The section rendered, so its own Retry never appears: the chart's
+    // refreshes the route, re-running the failed facet.
+    fireEvent.click(within(alert).getByRole("button", { name: "Retry" }));
+    await waitFor(() => {
+      expect(refresh).toHaveBeenCalledTimes(1);
+    });
     // The field name stays in the server log, for an operator.
     expect(warnSpy).toHaveBeenCalledWith(
       expect.stringContaining("genome host_common_name facet fetch failed"),
@@ -355,9 +369,14 @@ describe("MetadataDistributions", () => {
     );
 
     expect(screen.getByRole("img", { name: "Genus distribution" })).toBeInTheDocument();
-    expect(screen.getByRole("alert")).toHaveTextContent(
+    const alert = screen.getByRole("alert");
+    expect(alert).toHaveTextContent(
       "Could not load: Collection Year: The BV-BRC data service is unavailable (HTTP 504 Gateway Timeout).",
     );
+    fireEvent.click(within(alert).getByRole("button", { name: "Retry" }));
+    await waitFor(() => {
+      expect(refresh).toHaveBeenCalledTimes(1);
+    });
     warnSpy.mockRestore();
   });
 

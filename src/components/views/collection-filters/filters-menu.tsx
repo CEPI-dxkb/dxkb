@@ -304,6 +304,17 @@ export function FiltersMenu({
     menu.setFocusTarget("right");
     rightInputRef.current?.focus();
   };
+  /**
+   * Enter or → on a facet. The checklist is keyed by its field, so opening a
+   * facet the pane is not showing (an uncounted one is only highlighted)
+   * replaces it: commit that first, then focus the new one.
+   */
+  const openFacetAndFocus = (row: Extract<LeftRow, { kind: "facet" }>) => {
+    flushSync(() => {
+      openFacet(row);
+    });
+    focusRight();
+  };
   const focusLeft = () => {
     menu.setFocusTarget("left");
     leftInputRef.current?.focus();
@@ -336,18 +347,14 @@ export function FiltersMenu({
     } else if (event.key === "Enter") {
       event.preventDefault();
       if (row.kind === "value") toggleRowValue(row);
-      else if (row.kind === "facet") {
-        openFacet(row);
-        focusRight();
-      }
+      else if (row.kind === "facet") openFacetAndFocus(row);
     } else if (
       event.key === "ArrowRight" &&
       row.kind === "facet" &&
       event.currentTarget.selectionStart === event.currentTarget.value.length
     ) {
       event.preventDefault();
-      openFacet(row);
-      focusRight();
+      openFacetAndFocus(row);
     }
   };
 
@@ -562,16 +569,18 @@ export function FiltersMenu({
         align="start"
         size="flush"
         variant="raised"
-        className="w-150 overflow-hidden"
+        className="@container w-150 overflow-hidden"
         initialFocus={() =>
           menu.focusTarget() === "right"
             ? rightInputRef.current
             : leftInputRef.current
         }
       >
-        <div className="relative flex h-90">
+        {/* Two panes side by side; in a popup narrower than @lg (a phone)
+            the facets sit above the values instead. */}
+        <div className="relative flex h-120 max-h-(--available-height) flex-col @lg:h-90 @lg:flex-row">
           <RefreshHairline active={busy} />
-          <div className="flex w-56 shrink-0 flex-col border-r border-border">
+          <div className="flex h-44 shrink-0 flex-col border-b border-border @lg:h-auto @lg:w-56 @lg:border-r @lg:border-b-0">
             <MenuSearch
               inputRef={leftInputRef}
               label="Find a facet or value"
@@ -673,7 +682,7 @@ export function FiltersMenu({
             </div>
           </div>
 
-          <div className="flex min-w-0 flex-1 flex-col">
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col">
             {shownView ? (
               <FacetValueList
                 key={shownView.field}

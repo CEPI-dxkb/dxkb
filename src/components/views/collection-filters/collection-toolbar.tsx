@@ -133,185 +133,190 @@ export function CollectionToolbar(props: CollectionToolbarProps) {
   const facetsErrorMessage =
     facetsError && `Could not load filter values: ${facetsError}`;
 
+  // Narrower than @2xl (a phone, or a squeezed panel) the keyword box takes
+  // its own row and the rest wraps beneath it, so every control stays
+  // reachable; ResourceWorkspace clips anything wider than the pane.
   return (
-    <div
-      role="toolbar"
-      aria-label="Filters"
-      className="relative mb-1 flex h-10 shrink-0 items-center gap-2 px-1"
-    >
-      <KeywordBox
-        value={keyword}
-        onChange={onKeywordChange}
-        placeholder={keywordPlaceholder}
-      />
-
-      {definitions.length > 0 && (
-        <FiltersMenu
-          menu={{
-            ...menu,
-            setOpen: (next) => {
-              if (next) countActiveFacets();
-              menu.setOpen(next);
-            },
-          }}
-          menuFields={menuFields}
-          groupOf={groupOf}
-          viewOf={viewOf}
-          isDefined={isDefined}
-          labelFor={labelFor}
-          filters={filters}
-          facetActions={facetActions}
-          refreshing={refreshing}
-          activeCount={activeFields.length}
-          toggleValue={toggleValue}
-          setFieldValues={setFieldValues}
-          facetsError={facetsError}
-          facetsUnavailable={facetsUnavailable}
-          onPrefetchFacets={onPrefetchFacets}
-        />
-      )}
-
+    <div className="@container mb-1 shrink-0">
       <div
-        ref={trackRef}
-        className={cn(
-          "flex h-full min-w-0 flex-1 items-center gap-1.5 overflow-hidden px-1 transition-opacity duration-100",
-          !measured && "opacity-0",
-        )}
+        role="toolbar"
+        aria-label="Filters"
+        className="relative flex flex-wrap items-center gap-2 p-1 @2xl:h-10 @2xl:flex-nowrap @2xl:py-0"
       >
-        {rowFields.length > 0 && (
-          <span
-            aria-hidden="true"
-            className="mr-0.5 h-5 w-px shrink-0 bg-border"
-          />
-        )}
-        {shownPills.map((field) => (
-          <ActiveFilterPill
-            key={field}
-            view={viewOf(field)}
-            refreshing={refreshing}
-            error={facetsError}
-            unavailable={facetsUnavailable}
-            onToggle={(value) => {
-              toggleValue(field, value);
-            }}
-            onClear={() => {
-              setFieldValues(field, []);
-            }}
-            onOpenChange={(open) => {
-              if (open) {
-                setHeldField(field);
-                countActiveFacets();
-              } else {
-                setHeldField((current) => (current === field ? null : current));
-              }
-            }}
-          />
-        ))}
-        {hiddenPills.length > 0 && (
-          <button
-            type="button"
-            aria-label={`${String(hiddenPills.length)} more filters: ${hiddenPillLabels}. Open in the Filters menu`}
-            title={hiddenPillLabels}
-            onClick={() => {
-              countActiveFacets();
-              menu.openAt(hiddenPills[0]);
-            }}
-            className="shrink-0 rounded-md outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
-          >
-            <MorePillFace count={hiddenPills.length} />
-          </button>
-        )}
-      </div>
+        <KeywordBox
+          value={keyword}
+          onChange={onKeywordChange}
+          placeholder={keywordPlaceholder}
+        />
 
-      {facetsErrorMessage && (
-        <div className="flex shrink-0 items-center gap-1.5">
+        {definitions.length > 0 && (
+          <FiltersMenu
+            menu={{
+              ...menu,
+              setOpen: (next) => {
+                if (next) countActiveFacets();
+                menu.setOpen(next);
+              },
+            }}
+            menuFields={menuFields}
+            groupOf={groupOf}
+            viewOf={viewOf}
+            isDefined={isDefined}
+            labelFor={labelFor}
+            filters={filters}
+            facetActions={facetActions}
+            refreshing={refreshing}
+            activeCount={activeFields.length}
+            toggleValue={toggleValue}
+            setFieldValues={setFieldValues}
+            facetsError={facetsError}
+            facetsUnavailable={facetsUnavailable}
+            onPrefetchFacets={onPrefetchFacets}
+          />
+        )}
+
+        <div
+          ref={trackRef}
+          className={cn(
+            "flex h-8 min-w-0 flex-1 items-center gap-1.5 overflow-hidden px-1 transition-opacity duration-100 @2xl:h-full",
+            !measured && "opacity-0",
+          )}
+        >
+          {rowFields.length > 0 && (
+            <span
+              aria-hidden="true"
+              className="mr-0.5 h-5 w-px shrink-0 bg-border"
+            />
+          )}
+          {shownPills.map((field) => (
+            <ActiveFilterPill
+              key={field}
+              view={viewOf(field)}
+              refreshing={refreshing}
+              error={facetsError}
+              unavailable={facetsUnavailable}
+              onToggle={(value) => {
+                toggleValue(field, value);
+              }}
+              onClear={() => {
+                setFieldValues(field, []);
+              }}
+              onOpenChange={(open) => {
+                if (open) {
+                  setHeldField(field);
+                  countActiveFacets();
+                } else {
+                  setHeldField((current) => (current === field ? null : current));
+                }
+              }}
+            />
+          ))}
+          {hiddenPills.length > 0 && (
+            <button
+              type="button"
+              aria-label={`${String(hiddenPills.length)} more filters: ${hiddenPillLabels}. Open in the Filters menu`}
+              title={hiddenPillLabels}
+              onClick={() => {
+                countActiveFacets();
+                menu.openAt(hiddenPills[0]);
+              }}
+              className="shrink-0 rounded-md outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+            >
+              <MorePillFace count={hiddenPills.length} />
+            </button>
+          )}
+        </div>
+
+        {facetsErrorMessage && (
+          <div className="flex shrink-0 items-center gap-1.5">
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <span
+                    role="alert"
+                    tabIndex={0}
+                    className="flex max-w-56 items-center gap-1 rounded-sm text-xs text-destructive outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  />
+                }
+              >
+                <CircleAlert aria-hidden="true" className="size-3.5 shrink-0" />
+                <span className="truncate">{facetsErrorMessage}</span>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">{facetsErrorMessage}</TooltipContent>
+            </Tooltip>
+            {onRetryFacets && (
+              <QueryRetryButton
+                size="toolbar"
+                retrying={facetsRetrying}
+                onRetry={onRetryFacets}
+              />
+            )}
+          </div>
+        )}
+
+        {hasExplicitRql && (
           <Tooltip>
             <TooltipTrigger
               render={
                 <span
-                  role="alert"
                   tabIndex={0}
-                  className="flex max-w-56 items-center gap-1 rounded-sm text-xs text-destructive outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  className="inline-flex h-8 shrink-0 items-center gap-1 rounded-md border border-info/40 bg-info/10 px-2 text-2xs font-medium text-info outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
                 />
               }
             >
-              <CircleAlert aria-hidden="true" className="size-3.5 shrink-0" />
-              <span className="truncate">{facetsErrorMessage}</span>
+              <Braces aria-hidden="true" className="size-3" />
+              Custom query
             </TooltipTrigger>
-            <TooltipContent side="bottom">{facetsErrorMessage}</TooltipContent>
+            <TooltipContent side="bottom">
+              The link carries a hand-written query the filters cannot show.
+              Clear all removes it.
+            </TooltipContent>
           </Tooltip>
-          {onRetryFacets && (
-            <QueryRetryButton
+        )}
+
+        {canClear && (
+          <>
+            <Button
+              type="button"
+              variant="ghost"
               size="toolbar"
-              retrying={facetsRetrying}
-              onRetry={onRetryFacets}
-            />
-          )}
-        </div>
-      )}
+              onClick={clearAll}
+            >
+              Clear all
+            </Button>
+            <span aria-hidden="true" className="h-5 w-px shrink-0 bg-border" />
+          </>
+        )}
 
-      {hasExplicitRql && (
-        <Tooltip>
-          <TooltipTrigger
-            render={
-              <span
-                tabIndex={0}
-                className="inline-flex h-8 shrink-0 items-center gap-1 rounded-md border border-info/40 bg-info/10 px-2 text-2xs font-medium text-info outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
-              />
-            }
-          >
-            <Braces aria-hidden="true" className="size-3" />
-            Custom query
-          </TooltipTrigger>
-          <TooltipContent side="bottom">
-            The link carries a hand-written query the filters cannot show.
-            Clear all removes it.
-          </TooltipContent>
-        </Tooltip>
-      )}
+        {columns.length > 0 && (
+          <ColumnsMenu
+            columns={columns}
+            setColumns={setColumns}
+            resetColumns={resetColumns}
+          />
+        )}
 
-      {canClear && (
-        <>
-          <Button
-            type="button"
-            variant="ghost"
-            size="toolbar"
-            onClick={clearAll}
-          >
-            Clear all
-          </Button>
-          <span aria-hidden="true" className="h-5 w-px shrink-0 bg-border" />
-        </>
-      )}
-
-      {columns.length > 0 && (
-        <ColumnsMenu
-          columns={columns}
-          setColumns={setColumns}
-          resetColumns={resetColumns}
-        />
-      )}
-
-      {/* Off-screen copies of every row pill (and the "+N" pill) at their
-          natural width, so the overflow can be computed. */}
-      <div
-        ref={measureRef}
-        inert
-        aria-hidden="true"
-        className="invisible absolute inset-x-0 top-0 flex h-0 gap-1.5 overflow-hidden"
-      >
-        {rowFields.map((field) => (
-          <div
-            key={field}
-            data-measure-field={field}
-            data-measure-held={field === heldField || undefined}
-            className="shrink-0"
-          >
-            <PillFace label={labelFor(field)} values={filters[field] ?? []} />
+        {/* Off-screen copies of every row pill (and the "+N" pill) at their
+            natural width, so the overflow can be computed. */}
+        <div
+          ref={measureRef}
+          inert
+          aria-hidden="true"
+          className="invisible absolute inset-x-0 top-0 flex h-0 gap-1.5 overflow-hidden"
+        >
+          {rowFields.map((field) => (
+            <div
+              key={field}
+              data-measure-field={field}
+              data-measure-held={field === heldField || undefined}
+              className="shrink-0"
+            >
+              <PillFace label={labelFor(field)} values={filters[field] ?? []} />
+            </div>
+          ))}
+          <div data-measure-more className="shrink-0">
+            <MorePillFace count={9} />
           </div>
-        ))}
-        <div data-measure-more className="shrink-0">
-          <MorePillFace count={9} />
         </div>
       </div>
     </div>
@@ -331,8 +336,8 @@ function KeywordBox({
   return (
     <div
       className={cn(
-        "flex h-8 shrink-0 items-center gap-1.5 rounded-md border bg-background pr-1 pl-2 transition-[width] duration-100 focus-within:w-64 focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/50 motion-reduce:transition-none",
-        value ? "w-56 border-primary/60" : "w-44 border-input",
+        "flex h-8 w-full shrink-0 items-center gap-1.5 rounded-md border bg-background pr-1 pl-2 transition-[width] duration-100 focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/50 motion-reduce:transition-none @2xl:w-44 @2xl:focus-within:w-64",
+        value ? "border-primary/60 @2xl:w-56" : "border-input",
       )}
     >
       <Search

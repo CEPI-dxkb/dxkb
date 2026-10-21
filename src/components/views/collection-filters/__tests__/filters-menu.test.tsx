@@ -447,6 +447,34 @@ describe("FiltersMenu keyboard", () => {
     expect(leftSearch()).toHaveFocus();
   });
 
+  it("focuses the new checklist when Enter or → opens an uncounted facet", async () => {
+    const user = userEvent.setup();
+    renderToolbar();
+    await openFilters(user);
+    await waitFor(() => {
+      expect(leftSearch()).toHaveFocus();
+    });
+
+    // A search lists Species while More is folded, so it is only highlighted
+    // and the pane still shows Genome Status: Enter replaces the checklist.
+    await user.type(leftSearch(), "spec");
+    await user.keyboard("{Enter}");
+
+    expect(
+      screen.getByRole("combobox", { name: "Filter Species values" }),
+    ).toHaveFocus();
+
+    await user.keyboard("{ArrowLeft}");
+    await user.clear(leftSearch());
+    await user.type(leftSearch(), "isol");
+    // Counted now, so the highlight has already switched the pane; → keeps it.
+    await user.keyboard("{ArrowRight}");
+
+    expect(
+      screen.getByRole("combobox", { name: "Filter Isolation Country values" }),
+    ).toHaveFocus();
+  });
+
   it("toggles a matched value with Enter", async () => {
     const user = userEvent.setup();
     const { spies } = renderToolbar();

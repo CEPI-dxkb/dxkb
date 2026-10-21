@@ -1,13 +1,19 @@
 import { expect, type Page } from "@playwright/test";
+import { CollectionToolbar } from "./collection-toolbar";
 
 export class ResourceCollectionPage {
+  /** The filter toolbar above the table: keyword, Filters, pills, Columns. */
+  readonly toolbar: CollectionToolbar;
+
   constructor(
     readonly page: Page,
     readonly route: string,
     readonly resource: string,
     readonly selectedId: string,
     readonly detailText: string,
-  ) {}
+  ) {
+    this.toolbar = new CollectionToolbar(page);
+  }
 
   async goto(keyword: string) {
     await this.page.goto(`/${this.route}?keyword=${encodeURIComponent(keyword)}`);
@@ -110,62 +116,6 @@ export class ResourceCollectionPage {
     return this.page.getByText(
       `All ${String(total)} results are selected across all pages.`,
     );
-  }
-
-  async showFilters() {
-    await this.page.getByRole("button", { name: "Show Filters" }).click();
-  }
-
-  facetChooserTrigger() {
-    return this.page.getByRole("button", { name: "Facets" });
-  }
-
-  async openFacetChooser() {
-    await this.facetChooserTrigger().click();
-  }
-
-  async closeFacetChooser() {
-    await this.page.keyboard.press("Escape");
-  }
-
-  facetOption(label: string) {
-    return this.page.getByRole("menuitemcheckbox", { name: label });
-  }
-
-  /** The chooser's checked entries: the facets the panel shows. */
-  checkedFacetOptions() {
-    return this.page.getByRole("menuitemcheckbox", { checked: true });
-  }
-
-  /** A facet value button, named like "Complete (5)". */
-  facetValue(name: string) {
-    return this.page.getByRole("button", { name, exact: true });
-  }
-
-  /** Facet columns that have no counted values. */
-  emptyFacetColumns() {
-    return this.page.getByText("No values");
-  }
-
-  /** The filter panel while its counts belong to a previous scope or facet set. */
-  staleFacetPanel() {
-    return this.page.locator('[data-stale][aria-busy="true"]');
-  }
-
-  /** Placeholders in the stale panel for facets that are not counted yet. */
-  staleFacetPlaceholders() {
-    return this.staleFacetPanel().locator('[data-slot="skeleton"]');
-  }
-
-  /** The filter panel's error. Filtered by text: Next's route announcer is an alert too. */
-  facetError() {
-    return this.page
-      .getByRole("alert")
-      .filter({ hasText: "Could not load filter values" });
-  }
-
-  async retryFacets() {
-    await this.page.getByRole("button", { name: "Retry", exact: true }).click();
   }
 
   /** The action rail's Download tile; its name ends in the selection badge. */

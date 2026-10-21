@@ -2,6 +2,7 @@ export { DataRepository, DataRepositoryError } from "./client";
 export {
   collectionQueryOptions,
   dataQueryKeys,
+  facetCountQueryOptions,
   memberQueryOptions,
 } from "./query-options";
 export {

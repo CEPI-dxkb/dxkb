@@ -31,8 +31,6 @@ export interface UiPreferences {
   workspaceShowHiddenFiles: boolean;
   /** Workspace file list sort; applies in every folder. */
   workspaceSort: WorkspaceSortConfig;
-  /** Show/Hide Filters on every collection filter bar. */
-  facetPanelOpen: boolean;
 }
 
 export type UiPreferenceKey = keyof UiPreferences;
@@ -98,11 +96,6 @@ export const uiPreferenceDefinitions: {
       direction: z.enum(["asc", "desc"]),
     }),
     defaultValue: { field: "name", direction: "asc" },
-  },
-  facetPanelOpen: {
-    cookieName: "dxkb-facet-panel-open",
-    schema: z.boolean(),
-    defaultValue: false,
   },
 };
 

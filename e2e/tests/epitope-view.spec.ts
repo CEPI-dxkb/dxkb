@@ -63,7 +63,7 @@ test.describe("Epitope view", () => {
         url.searchParams.get("rql")?.includes("epitope_type") === true
       );
     });
-    await epitopePage.selectFacet("Discontinuous peptide (1)");
+    await epitopePage.selectFacet("Epitope Type", "Discontinuous peptide");
     await filteredRequest;
     await expect(page).toHaveURL(
       /\/epitope\?keyword=Brucella&epitope_type=Discontinuous\+peptide$/,

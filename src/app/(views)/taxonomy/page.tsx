@@ -12,10 +12,9 @@ export default async function TaxonomyCollectionPage({
   searchParams,
 }: TaxonomyCollectionPageProps) {
   const state = parseTaxonomyCollectionState(await searchParams);
-  const queryKey = JSON.stringify([state.keyword, state.rql, state.filters]);
   return (
     <Suspense fallback={<TaxonomyLoading />}>
-      <TaxonomyCollection key={queryKey} initialState={state} />
+      <TaxonomyCollection initialState={state} />
     </Suspense>
   );
 }

@@ -83,7 +83,7 @@ describe("Genome collection route", () => {
     expect(screen.queryByTestId("overview")).not.toBeInTheDocument();
   });
 
-  it("remounts for a new query but not for pagination or sorting", async () => {
+  it("keeps the collection mounted across queries, so its open menus survive a pick", async () => {
     const collectionKey = async (params: Record<string, string>) => {
       const page = (await GenomeCollectionPage({
         searchParams: Promise.resolve(params),
@@ -91,17 +91,7 @@ describe("Genome collection route", () => {
       return page.props.children.key;
     };
 
-    const initialKey = await collectionKey({ taxon_id: "561" });
-
-    expect(await collectionKey({ taxon_id: "561", page: "2" })).toBe(
-      initialKey,
-    );
-    expect(
-      await collectionKey({
-        taxon_id: "561",
-        sort: "genome_length:desc",
-      }),
-    ).toBe(initialKey);
-    expect(await collectionKey({ taxon_id: "562" })).not.toBe(initialKey);
+    expect(await collectionKey({ taxon_id: "561" })).toBeNull();
+    expect(await collectionKey({ taxon_id: "562", page: "2" })).toBeNull();
   });
 });

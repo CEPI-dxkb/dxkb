@@ -1,13 +1,16 @@
 import { expect, type Locator, type Page } from "@playwright/test";
+import { CollectionToolbar } from "./collection-toolbar";
 import { encodePathSegment, encodeQueryComponent } from "@/lib/url";
 
 export class SurveillancePage {
   readonly page: Page;
+  readonly toolbar: CollectionToolbar;
   readonly collectionKeyword: Locator;
 
   constructor(page: Page) {
     this.page = page;
-    this.collectionKeyword = page.getByPlaceholder("Search keywords...");
+    this.toolbar = new CollectionToolbar(page);
+    this.collectionKeyword = this.toolbar.keyword();
   }
 
   async searchFromWelcome(query: string): Promise<void> {
@@ -60,9 +63,9 @@ export class SurveillancePage {
     await expect(this.memberLink(sampleIdentifier)).toBeVisible();
   }
 
-  async selectFacet(name: string): Promise<void> {
-    await this.page.getByRole("button", { name: "Show Filters" }).click();
-    await this.page.getByRole("button", { name }).click();
+  /** Tick one value of a facet in the toolbar's Filters menu. */
+  async selectFacet(label: string, value: string): Promise<void> {
+    await this.toolbar.pickFacetValue(label, value);
   }
 
   async openMember(

@@ -183,7 +183,7 @@ export function taxonomyServiceChooserMock() {
 }
 
 /**
- * A flat stand-in for `ResourceWorkspace`: all three slots, one parent, no responsive
+ * A flat stand-in for `ResourceWorkspace`: all four slots, one parent, no responsive
  * behaviour. Suites that care *where* the slots mount use the real component instead
  * — see `resource-collection-actions.test.tsx`.
  */
@@ -191,15 +191,18 @@ export function flatResourceWorkspaceMock() {
   return {
     ResourceWorkspace: ({
       children,
+      toolbar,
       actionBar,
       sidePanel,
     }: {
       children: ReactNode;
+      toolbar?: ReactNode;
       actionBar: ReactNode;
       sidePanel: ReactNode;
     }) => (
       <div>
         {actionBar}
+        {toolbar}
         {children}
         {sidePanel}
       </div>

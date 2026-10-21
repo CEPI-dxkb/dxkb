@@ -60,6 +60,63 @@ describe("ServerDataRepository", () => {
     });
   });
 
+  it("counts several facets in parallel, one upstream read each, and merges them", async () => {
+    const requested: Request[] = [];
+    server.use(
+      http.get("https://data.test/genome/", ({ request }) => {
+        requested.push(request);
+        const field = /facet\((\w+),/.exec(decodeURIComponent(request.url))?.[1];
+        return HttpResponse.json({
+          response: {
+            numFound: 251,
+            docs: [{ genome_id: "1.1", genome_name: "One" }],
+          },
+          facet_counts: {
+            facet_fields: field ? { [field]: [`${field} value`, 3] } : {},
+          },
+        });
+      }),
+    );
+
+    const result = await new ServerDataRepository({
+      baseUrl: "https://data.test",
+    }).collection("genome", {
+      operation: "collection",
+      page: 2,
+      pageSize: 200,
+      keyword: "coli",
+      fields: ["genome_id", "genome_name"],
+      facets: ["genus", "genome_status", "host_name"],
+      sort: { field: "genome_name", direction: "asc" },
+    });
+
+    expect(requested).toHaveLength(3);
+    const urls = requested.map((request) => decodeURIComponent(request.url));
+    // The rows ride with the first facet; the others read one id each over
+    // the same predicate, unsorted.
+    expect(urls[0]).toContain("facet(genus,");
+    expect(requested[0].headers.get("Range")).toBe("items=200-400");
+    for (const [index, field] of ["genome_status", "host_name"].entries()) {
+      const url = urls[index + 1];
+      expect(url).toContain(`facet(${field},`);
+      expect(url).toContain("coli");
+      expect(url).toContain("select(genome_id)");
+      expect(url).not.toContain("sort(");
+      expect(requested[index + 1].headers.get("Range")).toBe("items=0-1");
+    }
+    expect(result).toEqual({
+      rows: [{ genome_id: "1.1", genome_name: "One" }],
+      total: 251,
+      facets: {
+        genus: [{ value: "genus value", count: 3 }],
+        genome_status: [{ value: "genome_status value", count: 3 }],
+        host_name: [{ value: "host_name value", count: 3 }],
+      },
+      page: 2,
+      pageSize: 200,
+    });
+  });
+
   it("breaks a sort's ties with its next keys, in order, before the id", async () => {
     const requested = captureGets("genome_feature");
 

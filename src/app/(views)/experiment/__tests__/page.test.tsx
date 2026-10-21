@@ -15,11 +15,9 @@ describe("Experiment collection route", () => {
     expect(screen.getByTestId("state")).toHaveAttribute("data-tab", "biosets");
   });
 
-  it("remounts for query changes but not page or sort", async () => {
+  it("keeps the collection mounted across queries, so its open menus survive a pick", async () => {
     const key = async (params: Record<string, string>) => ((await ExperimentCollectionPage({ searchParams: Promise.resolve(params) })) as ReactElement<{ children: ReactElement }>).props.children.key;
-    const initial = await key({ taxon_id: "561" });
-    expect(await key({ taxon_id: "561", page: "2" })).toBe(initial);
-    expect(await key({ taxon_id: "561", sort: "exp_id:desc" })).toBe(initial);
-    expect(await key({ taxon_id: "562" })).not.toBe(initial);
+    expect(await key({ taxon_id: "561" })).toBeNull();
+    expect(await key({ taxon_id: "562", page: "2" })).toBeNull();
   });
 });

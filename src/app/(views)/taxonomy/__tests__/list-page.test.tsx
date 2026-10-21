@@ -28,18 +28,14 @@ describe("Taxonomy collection route", () => {
     expect(screen.getByTestId("state")).toHaveTextContent('"page":2');
   });
 
-  it("remounts for query changes but not pagination or sorting", async () => {
+  it("keeps the collection mounted across queries, so its open menus survive a pick", async () => {
     const collectionKey = async (params: Record<string, string>) => {
       const page = (await TaxonomyCollectionPage({
         searchParams: Promise.resolve(params),
       })) as ReactElement<{ children: ReactElement }>;
       return page.props.children.key;
     };
-    const initialKey = await collectionKey({ taxon_id: "10239" });
-    expect(await collectionKey({ taxon_id: "10239", page: "2" })).toBe(initialKey);
-    expect(
-      await collectionKey({ taxon_id: "10239", sort: "taxon_name:asc" }),
-    ).toBe(initialKey);
-    expect(await collectionKey({ taxon_id: "11520" })).not.toBe(initialKey);
+    expect(await collectionKey({ taxon_id: "10239" })).toBeNull();
+    expect(await collectionKey({ taxon_id: "11520", page: "2" })).toBeNull();
   });
 });

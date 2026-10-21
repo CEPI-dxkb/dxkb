@@ -15,11 +15,9 @@ export default async function ExperimentCollectionPage({
   const params = await searchParams;
   const state = parseExperimentCollectionState(params);
   const activeTab = parseExperimentCollectionTab(params.tab);
-  const queryKey = JSON.stringify([state.keyword, state.rql, state.filters]);
   return (
     <Suspense fallback={<ExperimentLoading />}>
       <ExperimentCollection
-        key={queryKey}
         initialState={state}
         activeTab={activeTab}
       />

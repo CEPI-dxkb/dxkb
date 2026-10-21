@@ -1,4 +1,5 @@
 import { expect, type Page, type Request } from "@playwright/test";
+import { CollectionToolbar } from "./collection-toolbar";
 
 export class DomainsAndMotifsPage {
   constructor(readonly page: Page) {}
@@ -26,9 +27,7 @@ export class DomainsAndMotifsPage {
   }
 
   async expectFiltersAvailable(): Promise<void> {
-    await expect(
-      this.page.getByRole("button", { name: "Show filters" }),
-    ).toBeVisible();
+    await expect(new CollectionToolbar(this.page).filtersButton()).toBeVisible();
   }
 
   async expectLegacyRedirect(

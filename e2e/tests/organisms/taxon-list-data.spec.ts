@@ -108,8 +108,9 @@ test.describe("taxon strains actions", () => {
     expect(baseStyles.scalarPadding).toEqual(["2px", "2px", "2px", "2px"]);
     expect(baseStyles.scalarOverflowX).not.toBe("auto");
 
-    await page.getByRole("button", { name: /Columns/ }).click();
-    await page.getByText("Genome IDs", { exact: true }).click();
+    const { toolbar } = new TaxonPage(page);
+    await toolbar.toggleColumn("Genome IDs");
+    await toolbar.closeColumns();
     const firstGenomeLink = page.getByRole("link", { name: "641501.3" });
     await expect(firstGenomeLink).toBeVisible();
 
@@ -520,7 +521,7 @@ test.describe("taxon collection tabs: local keyword filtering", () => {
       });
       const requestCount = collectionRequests.length;
 
-      await page.getByPlaceholder("Search keywords...").fill(keyword);
+      await new TaxonPage(page).toolbar.fillKeyword(keyword);
       await expect(page.getByText(/Showing 1-1 of 1 results/)).toBeVisible();
       await expect(
         page.getByRole("textbox", {
@@ -554,7 +555,7 @@ test.describe("taxon epitopes tab: local filtering and facets", () => {
     });
     const requestCount = collectionRequests.length;
 
-    await page.getByPlaceholder("Search keywords...").fill("hemag");
+    await new TaxonPage(page).toolbar.fillKeyword("hemag");
     await expect(page.getByText(/Showing 1-1 of 1 results/)).toBeVisible();
     await expect(
       page.getByRole("textbox", {
@@ -612,8 +613,10 @@ test.describe("taxon epitopes tab: local filtering and facets", () => {
     await page.goto(`/taxonomy/${influenzaTaxonId}?tab=epitopes`);
     await expect(page.getByText("SEQ0")).toBeVisible({ timeout: 10_000 });
 
-    await page.getByRole("button", { name: "Show Filters" }).click();
-    await page.getByRole("button", { name: /^Linear peptide \(/ }).click();
+    await new TaxonPage(page).toolbar.pickFacetValue(
+      "Epitope Type",
+      "Linear peptide",
+    );
 
     // The regression hangs here forever at "Showing 0-0 of 0 results" — assert the
     // real match count instead, proving the request carried a quoted phrase value.

@@ -1,12 +1,15 @@
 import { expect, type Locator, type Page } from "@playwright/test";
+import { CollectionToolbar } from "./collection-toolbar";
 
 export class ExperimentPage {
   readonly page: Page;
+  readonly toolbar: CollectionToolbar;
   readonly collectionKeyword: Locator;
 
   constructor(page: Page) {
     this.page = page;
-    this.collectionKeyword = page.getByPlaceholder("Search keywords...");
+    this.toolbar = new CollectionToolbar(page);
+    this.collectionKeyword = this.toolbar.keyword();
   }
 
   async openMember(experimentId: string): Promise<void> {

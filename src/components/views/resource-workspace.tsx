@@ -12,6 +12,11 @@ import { useUiPreference } from "@/lib/ui-preferences/provider";
 
 interface ResourceWorkspaceProps {
   children: ReactNode;
+  /**
+   * A row above `children` in the content column, so it spans the table and
+   * not the action strip beside it (the collection's filter toolbar).
+   */
+  toolbar?: ReactNode;
   sidePanel: ReactNode;
   actionBar?: ReactNode;
   hasSidePanel?: boolean;
@@ -87,6 +92,7 @@ const detailPanelSizes = {
  */
 export function ResourceWorkspace({
   children,
+  toolbar,
   sidePanel,
   actionBar,
   hasSidePanel = true,
@@ -155,6 +161,7 @@ export function ResourceWorkspace({
           className="flex min-h-0 min-w-0 overflow-hidden max-md:flex-col"
         >
           <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+            {toolbar}
             {children}
           </div>
           <aside className="shrink-0 max-md:max-h-20 max-md:min-w-0">

@@ -11,6 +11,7 @@ import {
   experimentRecord,
   findOrganismSummaryRecord,
   findOrganismTaxonomyRecord,
+  findTaxonGenomeCount,
   genomeRecord,
   proteinStructureRecords,
   serologyRecord,
@@ -912,22 +913,33 @@ function maybeBvBrcWebsite(
     const taxonId = /^\d+$/.test(rawTaxonId ?? "") ? Number(rawTaxonId) : null;
 
     // The Taxonomy header's genome count (`fetchTaxonGenomeCount`): one
-    // `genome_id` and no facet, read for `numFound`, the taxon's summary count.
+    // `genome_id` and no facet, read for `numFound`. It counts the lineage
+    // less Deprecated genomes, so it is answered from taxonGenomeCounts (below
+    // the summary count, which includes them) and only for a request that
+    // leaves them out. The scope is spelled out here rather than imported from
+    // genome-scope.ts, so a product regression cannot drag the mock along.
     if (
       !hasCall(query, "facet") &&
       hasClause(query, "select(genome_id)") &&
       hasClause(query, "limit(1)")
     ) {
-      const summary =
-        taxonId === null ? undefined : findOrganismSummaryRecord(String(taxonId));
-      return summary
+      const genomeCount =
+        taxonId === null ? undefined : findTaxonGenomeCount(String(taxonId));
+      if (rawTaxonId === undefined || genomeCount === undefined) {
+        return {
+          kind: "unhandled",
+          reason: `no genome count fixture for taxon ${rawTaxonId ?? "(none)"} — add one to taxonGenomeCounts in src/lib/e2e-fixtures/records.ts`,
+        };
+      }
+      const lineageScope = `and(eq(taxon_lineage_ids,${rawTaxonId}),ne(genome_status,Deprecated))`;
+      return hasClause(query, lineageScope)
         ? {
             kind: "ok",
-            body: { response: { numFound: summary.count, docs: [] } },
+            body: { response: { numFound: genomeCount, docs: [] } },
           }
         : {
             kind: "unhandled",
-            reason: `no genome count fixture for taxon ${rawTaxonId ?? "(none)"} — add one to organismSummaryRecords in src/lib/e2e-fixtures/records.ts`,
+            reason: `genome count for taxon ${rawTaxonId} does not leave out Deprecated genomes — expected the clause ${lineageScope}`,
           };
     }
 

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import type { ReactNode } from "react";
+import { Suspense, use, type ReactNode } from "react";
 import { viewIcons } from "@/components/views/view-icons";
 import {
   EntityViewShell,
@@ -35,14 +35,13 @@ const featureTabIcons: Record<FeatureTab, ReactNode> = {
   structures: viewIcons.proteinStructures,
 };
 
-/**
- * BV-BRC's Feature View header: the taxon lineage and the genome as one
- * breadcrumb, then the feature's identifiers in bold, separated by pipes.
- */
-function breadcrumbs(
-  feature: FeatureViewRecord,
-  lineage: readonly LineageCrumb[],
-) {
+interface CrumbTrailProps {
+  feature: FeatureViewRecord;
+  lineage: readonly LineageCrumb[];
+}
+
+/** The taxon lineage and the genome as one breadcrumb, root first. */
+function CrumbTrail({ feature, lineage }: CrumbTrailProps) {
   const crumbs = lineage.map(({ taxonId, name }) => ({
     key: `taxon-${taxonId}`,
     href: taxonomyHref(taxonId),
@@ -55,26 +54,52 @@ function breadcrumbs(
       label: feature.genome_name ?? feature.genome_id,
     });
   }
+  if (crumbs.length === 0) return null;
+  return (
+    <div className="flex flex-wrap items-baseline gap-x-1 text-sm">
+      {crumbs.map(({ key, href, label }, index) => (
+        <span key={key} className="contents">
+          {index > 0 && (
+            <span className="text-muted-foreground/50 select-none">»</span>
+          )}
+          <Link
+            className="text-muted-foreground transition-colors hover:text-foreground"
+            href={href}
+          >
+            {label}
+          </Link>
+        </span>
+      ))}
+    </div>
+  );
+}
+
+function LineageCrumbTrail({
+  feature,
+  lineage,
+}: {
+  feature: FeatureViewRecord;
+  lineage: Promise<readonly LineageCrumb[]>;
+}) {
+  return <CrumbTrail feature={feature} lineage={use(lineage)} />;
+}
+
+/**
+ * BV-BRC's Feature View header: the taxon lineage and the genome as one
+ * breadcrumb, then the feature's identifiers in bold, separated by pipes.
+ * The lineage is a second lookup, so it streams in: until it lands the
+ * breadcrumb holds the genome alone.
+ */
+function breadcrumbs(
+  feature: FeatureViewRecord,
+  lineage: Promise<readonly LineageCrumb[]>,
+) {
   const { name, details } = featureHeaderParts(feature);
   return (
     <>
-      {crumbs.length > 0 && (
-        <div className="flex flex-wrap items-baseline gap-x-1 text-sm">
-          {crumbs.map(({ key, href, label }, index) => (
-            <span key={key} className="contents">
-              {index > 0 && (
-                <span className="text-muted-foreground/50 select-none">»</span>
-              )}
-              <Link
-                className="text-muted-foreground transition-colors hover:text-foreground"
-                href={href}
-              >
-                {label}
-              </Link>
-            </span>
-          ))}
-        </div>
-      )}
+      <Suspense fallback={<CrumbTrail feature={feature} lineage={[]} />}>
+        <LineageCrumbTrail feature={feature} lineage={lineage} />
+      </Suspense>
       <div className="mt-1 flex flex-wrap items-baseline gap-x-1.5 text-sm font-bold">
         <h1 className="m-0 inline text-sm leading-none font-bold text-secondary">
           {name}
@@ -94,8 +119,11 @@ function breadcrumbs(
 
 interface FeatureMemberProps {
   feature: FeatureViewRecord;
-  /** The taxa leading the breadcrumb, root first; see `featureLineageCrumbs`. */
-  lineage: readonly LineageCrumb[];
+  /**
+   * The taxa leading the breadcrumb, root first (see `featureLineageCrumbs`).
+   * A promise, so a slow taxonomy lookup holds the breadcrumb, not the page.
+   */
+  lineage: Promise<readonly LineageCrumb[]>;
   activeTab: FeatureTab;
 }
 

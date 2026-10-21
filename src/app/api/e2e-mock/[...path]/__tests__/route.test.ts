@@ -8,6 +8,7 @@ import { genomeDownloadTsv } from "@/lib/e2e-fixtures/downloads";
 import {
   brucellaPpiTotal,
   findOrganismSummaryRecord,
+  findTaxonGenomeCount,
 } from "@/lib/e2e-fixtures/records";
 import { DELETE, GET, POST, PUT } from "../route";
 
@@ -338,7 +339,7 @@ describe("api/e2e-mock catch-all — enabled", () => {
     });
   });
 
-  it("GET answers the Taxonomy header's genome count with the taxon's summary count", async () => {
+  it("GET answers the Taxonomy header's genome count less Deprecated genomes", async () => {
     const resp = await GET(
       mockNextRequest({
         url: "http://localhost:3020/api/e2e-mock/bvbrc-website/genome/?and(eq(taxon_lineage_ids,234),ne(genome_status,Deprecated))&select(genome_id)&limit(1)",
@@ -348,7 +349,27 @@ describe("api/e2e-mock catch-all — enabled", () => {
 
     expect(resp.status).toBe(200);
     expect((await resp.json()) as unknown).toEqual({
-      response: { numFound: findOrganismSummaryRecord("234")?.count, docs: [] },
+      response: { numFound: findTaxonGenomeCount("234"), docs: [] },
+    });
+    // The summary count includes Deprecated genomes; the header must not.
+    expect(findTaxonGenomeCount("234")).not.toBe(
+      findOrganismSummaryRecord("234")?.count,
+    );
+  });
+
+  it("GET fails closed on a genome count that does not leave out Deprecated genomes", async () => {
+    const resp = await GET(
+      mockNextRequest({
+        url: "http://localhost:3020/api/e2e-mock/bvbrc-website/genome/?eq(taxon_lineage_ids,234)&select(genome_id)&limit(1)",
+      }),
+      ctx(["bvbrc-website", "genome"]),
+    );
+
+    expect(resp.status).toBe(400);
+    expect((await resp.json()) as unknown).toMatchObject({
+      reason: expect.stringContaining(
+        "does not leave out Deprecated genomes",
+      ) as unknown,
     });
   });
 

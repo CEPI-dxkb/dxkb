@@ -1007,6 +1007,23 @@ export const organismSummaryRecords: Record<
 };
 
 /**
+ * The Taxonomy header's "(N Genomes)" — `fetchTaxonGenomeCount`'s `numFound`:
+ * the taxon's lineage less Deprecated genomes, so each sits below the summary
+ * `count`, which includes them. Kept 1:1 with {@link organismSummaryRecords};
+ * both invariants are pinned in src/lib/e2e-fixtures/__tests__/records.test.ts.
+ */
+export const taxonGenomeCounts: Record<string, number> = {
+  "2": 1_334_871,
+  "234": 1896,
+  "1763": 62_158,
+  "10239": 889_604,
+  "11520": 244_617,
+  "11974": 86_190,
+  "131567": 9_791_342,
+  "2955291": 1_875_903,
+};
+
+/**
  * Lookups rather than bare indexing: the tables above are
  * `Record<string, …>`, and this project does not enable
  * `noUncheckedIndexedAccess`, so `table[id]` types as present even for a taxon
@@ -1026,5 +1043,11 @@ export function findOrganismSummaryRecord(
 ): OrganismSummaryFixtureRecord | undefined {
   return Object.hasOwn(organismSummaryRecords, taxonId)
     ? organismSummaryRecords[taxonId]
+    : undefined;
+}
+
+export function findTaxonGenomeCount(taxonId: string): number | undefined {
+  return Object.hasOwn(taxonGenomeCounts, taxonId)
+    ? taxonGenomeCounts[taxonId]
     : undefined;
 }

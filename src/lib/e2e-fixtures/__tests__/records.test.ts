@@ -36,6 +36,7 @@ import {
   serologyRecord,
   strainRecords,
   surveillanceRecord,
+  taxonGenomeCounts,
   taxonomyRecord,
 } from "../records";
 
@@ -582,6 +583,22 @@ describe("BV-BRC website organism tables stay paired", () => {
       expect(organismSummaryRecords[taxonId].count).toBe(
         organismTaxonomyRecords[taxonId].genomes,
       );
+    },
+  );
+
+  // The Taxonomy header's genome count leaves out Deprecated genomes, which
+  // the summary count includes. Strictly below, so a loopback that served
+  // the summary count for the header would render a different number.
+  it("covers the same taxon ids in the header genome counts", () => {
+    expect(Object.keys(taxonGenomeCounts).sort()).toEqual(
+      Object.keys(organismSummaryRecords).sort(),
+    );
+  });
+
+  it.each(Object.entries(taxonGenomeCounts))(
+    "taxon %s header genome count leaves out Deprecated genomes",
+    (taxonId, count) => {
+      expect(count).toBeLessThan(organismSummaryRecords[taxonId].count);
     },
   );
 

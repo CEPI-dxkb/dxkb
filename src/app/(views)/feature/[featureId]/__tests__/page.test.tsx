@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import { DataApiError } from "@/lib/data-api/repository";
 import { createQueryClientWrapper } from "@/test-helpers/react";
 
@@ -111,12 +111,15 @@ describe("Feature member route", () => {
         "species",
       ],
     });
-    render(
-      await FeaturePage({
-        params: Promise.resolve({ featureId: feature.feature_id }),
-        searchParams: Promise.resolve({}),
-      }),
-    );
+    const page = await FeaturePage({
+      params: Promise.resolve({ featureId: feature.feature_id }),
+      searchParams: Promise.resolve({}),
+    });
+    // The lineage streams in behind a Suspense boundary; let it land.
+    await act(async () => {
+      render(page);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
     expect(mocks.getTaxonomy).toHaveBeenCalledWith("1335626");
     const heading = screen.getByRole("heading", {
       level: 1,
@@ -146,12 +149,14 @@ describe("Feature member route", () => {
       .spyOn(console, "error")
       .mockImplementation(() => undefined);
     mocks.getTaxonomy.mockRejectedValue(new Error("Taxonomy unavailable"));
-    render(
-      await FeaturePage({
-        params: Promise.resolve({ featureId: feature.feature_id }),
-        searchParams: Promise.resolve({}),
-      }),
-    );
+    const page = await FeaturePage({
+      params: Promise.resolve({ featureId: feature.feature_id }),
+      searchParams: Promise.resolve({}),
+    });
+    await act(async () => {
+      render(page);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
     expect(
       screen.getByRole("heading", { level: 1, name: feature.patric_id }),
     ).toBeInTheDocument();
@@ -163,6 +168,25 @@ describe("Feature member route", () => {
       expect.objectContaining({ message: "Taxonomy unavailable" }),
     );
     consoleError.mockRestore();
+  });
+
+  it("shows the feature without waiting for its lineage", async () => {
+    // A stalled taxonomy lookup runs to the Data API's 20 s budget; the
+    // record has loaded by then, so only the breadcrumb's taxa wait for it.
+    mocks.getTaxonomy.mockReturnValue(new Promise(() => undefined));
+    render(
+      await FeaturePage({
+        params: Promise.resolve({ featureId: feature.feature_id }),
+        searchParams: Promise.resolve({}),
+      }),
+    );
+    expect(
+      screen.getByRole("heading", { level: 1, name: feature.patric_id }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Genome and source")).toBeInTheDocument();
+    expect(
+      screen.getAllByRole("link", { name: "MERS-CoV" })[0],
+    ).toHaveAttribute("href", "/genome/1282460.2049");
   });
 
   it("renders the grouped overview and metadata", async () => {

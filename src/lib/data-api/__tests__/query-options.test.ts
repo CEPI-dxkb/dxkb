@@ -2,9 +2,14 @@ import { createElement, type ReactNode } from "react";
 import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query";
 import { renderHook, waitFor } from "@testing-library/react";
 import { http, HttpResponse } from "msw";
+import { noop } from "@/lib/utils";
 import { server } from "@/test-helpers/msw-server";
 import { DataRepository } from "../client";
-import { dataQueryKeys, memberQueryOptions } from "../query-options";
+import {
+  dataQueryKeys,
+  facetCountQueryOptions,
+  memberQueryOptions,
+} from "../query-options";
 
 function wrapper(client: QueryClient) {
   return function Wrapper({ children }: { children: ReactNode }) {
@@ -81,5 +86,71 @@ describe("memberQueryOptions", () => {
       expect(result.current.data?.row).toMatchObject({ host_name: "Human" });
     });
     expect(requestCount).toBe(2);
+  });
+});
+
+describe("facetCountQueryOptions", () => {
+  const scope = { keyword: "coli", pageSize: 1, fields: ["genome_id"] };
+
+  /** A repository whose reads stay pending until their signal aborts. */
+  function pendingRepository() {
+    const repository = new DataRepository();
+    const collection = vi
+      .spyOn(repository, "collection")
+      .mockImplementation(
+        (_resource, _request, signal) =>
+          new Promise((_resolve, reject) => {
+            signal?.addEventListener("abort", () => {
+              reject(signal.reason as Error);
+            });
+          }),
+      );
+    return { repository, collection };
+  }
+
+  it("aborts a shared read only once every facet waiting on it is cancelled", async () => {
+    const { repository, collection } = pendingRepository();
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    const [status, host] = ["genome_status", "host_name"].map((field) =>
+      facetCountQueryOptions(repository, "genome", scope, field),
+    );
+    void client.query(status).catch(noop);
+    void client.query(host).catch(noop);
+    await vi.waitFor(() => {
+      expect(collection).toHaveBeenCalledOnce();
+    });
+    const [, request, signal] = collection.mock.calls[0];
+    expect(request.facets).toEqual(["genome_status", "host_name"]);
+
+    await client.cancelQueries({ queryKey: status.queryKey });
+    expect(signal?.aborted).toBe(false);
+    await client.cancelQueries({ queryKey: host.queryKey });
+    expect(signal?.aborted).toBe(true);
+  });
+
+  it("sends nothing when every facet is cancelled before the read goes out", async () => {
+    const { repository, collection } = pendingRepository();
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    const status = facetCountQueryOptions(
+      repository,
+      "genome",
+      scope,
+      "genome_status",
+    );
+    void client.query(status).catch(noop);
+    await client.cancelQueries({ queryKey: status.queryKey });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(collection).not.toHaveBeenCalled();
+
+    // A later read of the same scope is a new request, not the abandoned one.
+    void client.query(status).catch(noop);
+    await vi.waitFor(() => {
+      expect(collection).toHaveBeenCalledOnce();
+    });
+    expect(collection.mock.calls[0][2]?.aborted).toBe(false);
   });
 });

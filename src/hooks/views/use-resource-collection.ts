@@ -19,7 +19,8 @@ export type ResourceRow = Record<string, unknown>;
 export type ResourceFacets = Partial<Record<string, FacetBucket[]>>;
 /**
  * A counted facet's counts: none yet (`loading`), the previous scope's while
- * this one's load (`stale`), or this scope's (`ready`).
+ * this one's load (`stale`), or settled (`ready`): this scope's, or none
+ * because its read failed.
  */
 export type FacetStatus = "loading" | "stale" | "ready";
 
@@ -179,13 +180,16 @@ export function useResourceCollection<Row extends ResourceRow>({
     if (data) freshFacets[field] = data.facets[field] ?? noBuckets;
   });
   // The counts on screen: this scope's where they have landed, otherwise the
-  // ones shown for that field before (the previous scope's) until they do.
+  // ones shown for that field before (the previous scope's) while its read is
+  // pending. A failed read drops them: they are not this scope's counts.
   const [shownFacets, setShownFacets] = useState<ResourceFacets>(emptyFacets);
   const facets: ResourceFacets = {};
-  for (const field of facetFields) {
-    const buckets = freshFacets[field] ?? shownFacets[field];
+  facetFields.forEach((field, index) => {
+    const buckets =
+      freshFacets[field] ??
+      (facetQueries[index]?.isPending ? shownFacets[field] : undefined);
     if (buckets) facets[field] = buckets;
-  }
+  });
   const facetKeys = Object.keys(facets);
   const facetsChanged =
     facetKeys.length !== Object.keys(shownFacets).length ||
@@ -280,10 +284,7 @@ export function useResourceCollection<Row extends ResourceRow>({
     ),
     // A shown facet's counts on screen belong to the previous scope.
     isFacetsRefreshing: facetFields.some(
-      (field, index) =>
-        facetQueries[index]?.isPending &&
-        !Object.hasOwn(freshFacets, field) &&
-        Object.hasOwn(facets, field),
+      (field) => facetStatuses[field] === "stale",
     ),
     isInitialLoading: query.isLoading,
     isRefreshing: query.isFetching && !query.isLoading,

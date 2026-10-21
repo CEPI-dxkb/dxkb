@@ -97,25 +97,14 @@ export function ResourceFilterBar({
   setColumns,
   resetColumns,
 }: ResourceFilterBarProps) {
-  const [keywordDraft, setKeywordDraft] = useDebouncedDraft(
-    keyword ?? "",
-    (value) => {
-      onChange({ keyword: value || undefined, filters });
-    },
-    { normalize: (value) => value.trim() },
-  );
-  const [layout, updateLayout] = useTableLayout(layoutKey);
-  const { defaults: defaultFacetVisibility, visibility: facetVisibility } =
-    resolveFacetVisibility(definitions, layout.facets);
-  const pinnedFields = new Set(
-    Object.keys(facetVisibility).filter((field) => facetVisibility[field]),
-  );
-
-  const [optimistic, setOptimistic] = useState<
-    CollectionState["filters"] | null
-  >(null);
+  const [optimistic, setOptimistic] = useState<{
+    filters: CollectionState["filters"];
+    /** The pick replaced the explicit rql, which the page still holds. */
+    clearRql: boolean;
+  } | null>(null);
   const optimisticMatched =
-    optimistic !== null && JSON.stringify(optimistic) === JSON.stringify(filters);
+    optimistic !== null &&
+    JSON.stringify(optimistic.filters) === JSON.stringify(filters);
   if (optimisticMatched) setOptimistic(null);
   useEffect(() => {
     if (!optimistic) return;
@@ -126,19 +115,41 @@ export function ResourceFilterBar({
       window.clearTimeout(timer);
     };
   }, [optimistic]);
-  const shownFilters =
-    optimistic && !optimisticMatched ? optimistic : filters;
+  const pending = optimistic && !optimisticMatched ? optimistic : null;
+  // `filters` itself, not a copy, when nothing is pending: loaded keyword mode
+  // tells a keyword-only write apart by that identity.
+  const shownFilters = pending ? pending.filters : filters;
+
+  // Every write starts from what is shown, so a write made before the page
+  // catches up (a keyword commit, a second pick) carries the pending pick and
+  // its rql replacement instead of the page's stale filters.
+  const [keywordDraft, setKeywordDraft] = useDebouncedDraft(
+    keyword ?? "",
+    (value) => {
+      onChange({
+        keyword: value || undefined,
+        filters: shownFilters,
+        clearRql: pending?.clearRql,
+      });
+    },
+    { normalize: (value) => value.trim() },
+  );
+  const [layout, updateLayout] = useTableLayout(layoutKey);
+  const { defaults: defaultFacetVisibility, visibility: facetVisibility } =
+    resolveFacetVisibility(definitions, layout.facets);
+  const pinnedFields = new Set(
+    Object.keys(facetVisibility).filter((field) => facetVisibility[field]),
+  );
 
   const setFieldValues = (field: string, values: string[]) => {
     const next = { ...shownFilters };
     if (values.length > 0) next[field] = values;
     else Reflect.deleteProperty(next, field);
-    setOptimistic(next);
-    onChange({
-      keyword,
-      filters: next,
-      clearRql: hasExplicitRql && !filtersBesideRql.includes(field),
-    });
+    const clearRql =
+      Boolean(pending?.clearRql) ||
+      (hasExplicitRql && !filtersBesideRql.includes(field));
+    setOptimistic({ filters: next, clearRql });
+    onChange({ keyword, filters: next, clearRql });
   };
 
   return (
@@ -179,7 +190,7 @@ export function ResourceFilterBar({
       setFieldValues={setFieldValues}
       clearAll={() => {
         setKeywordDraft("");
-        setOptimistic({});
+        setOptimistic({ filters: {}, clearRql: true });
         onChange({
           keyword: undefined,
           filters: {},

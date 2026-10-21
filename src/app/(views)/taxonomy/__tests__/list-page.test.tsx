@@ -1,11 +1,19 @@
-import type { ReactElement } from "react";
 import { render, screen } from "@testing-library/react";
 
-vi.mock("../taxonomy-collection", () => ({
-  TaxonomyCollection: ({ initialState }: { initialState: unknown }) => (
-    <div data-testid="state">{JSON.stringify(initialState)}</div>
-  ),
-}));
+vi.mock("../taxonomy-collection", async () => {
+  const { useState } = await import("react");
+  return {
+    // The first props it mounted with live in state, so a remount shows.
+    TaxonomyCollection: ({ initialState }: { initialState: unknown }) => {
+      const [mountedWith] = useState(() => JSON.stringify(initialState));
+      return (
+        <div data-testid="state" data-mounted-with={mountedWith}>
+          {JSON.stringify(initialState)}
+        </div>
+      );
+    },
+  };
+});
 
 import TaxonomyCollectionPage from "../page";
 
@@ -29,13 +37,22 @@ describe("Taxonomy collection route", () => {
   });
 
   it("keeps the collection mounted across queries, so its open menus survive a pick", async () => {
-    const collectionKey = async (params: Record<string, string>) => {
-      const page = (await TaxonomyCollectionPage({
-        searchParams: Promise.resolve(params),
-      })) as ReactElement<{ children: ReactElement }>;
-      return page.props.children.key;
-    };
-    expect(await collectionKey({ taxon_id: "10239" })).toBeNull();
-    expect(await collectionKey({ taxon_id: "11520", page: "2" })).toBeNull();
+    const { rerender } = render(
+      await TaxonomyCollectionPage({
+        searchParams: Promise.resolve({ taxon_id: "10239" }),
+      }),
+    );
+    const collection = screen.getByTestId("state");
+
+    rerender(
+      await TaxonomyCollectionPage({
+        searchParams: Promise.resolve({ taxon_id: "11520", page: "2" }),
+      }),
+    );
+
+    expect(screen.getByTestId("state")).toBe(collection);
+    expect(collection).toHaveTextContent('"taxon_id":["11520"]');
+    expect(collection).toHaveTextContent('"page":2');
+    expect(collection.dataset.mountedWith).toContain('"taxon_id":["10239"]');
   });
 });

@@ -117,6 +117,49 @@ describe("ServerDataRepository", () => {
     });
   });
 
+  it("counts a facet asked for more than once with one upstream read", async () => {
+    const requested: Request[] = [];
+    server.use(
+      http.get("https://data.test/genome/", ({ request }) => {
+        requested.push(request);
+        const field = /facet\((\w+),/.exec(decodeURIComponent(request.url))?.[1];
+        return HttpResponse.json({
+          response: { numFound: 251, docs: [{ genome_id: "1.1" }] },
+          facet_counts: {
+            facet_fields: field ? { [field]: [`${field} value`, 3] } : {},
+          },
+        });
+      }),
+    );
+    const repository = new ServerDataRepository({
+      baseUrl: "https://data.test",
+    });
+
+    const result = await repository.collection("genome", {
+      operation: "collection",
+      fields: ["genome_id"],
+      facets: ["genus", "genus", "host_name", "genus"],
+    });
+
+    expect(requested).toHaveLength(2);
+    expect(result.facets).toEqual({
+      genus: [{ value: "genus value", count: 3 }],
+      host_name: [{ value: "host_name value", count: 3 }],
+    });
+
+    // One distinct facet is one read, which names it once.
+    requested.length = 0;
+    await repository.collection("genome", {
+      operation: "collection",
+      fields: ["genome_id"],
+      facets: ["genus", "genus"],
+    });
+    expect(requested).toHaveLength(1);
+    expect(decodeURIComponent(requested[0].url)).toContain(
+      "facet(genus,(mincount,1)",
+    );
+  });
+
   it("breaks a sort's ties with its next keys, in order, before the id", async () => {
     const requested = captureGets("genome_feature");
 

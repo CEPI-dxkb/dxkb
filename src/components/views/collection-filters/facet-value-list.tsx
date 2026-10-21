@@ -397,6 +397,7 @@ export function FacetValueList({
               query: query.trim(),
               listed: options.length,
               unavailable,
+              notCounted,
             })}
             action={
               needle ? (
@@ -493,16 +494,25 @@ function emptyValuesMessage({
   query,
   listed,
   unavailable,
+  notCounted,
 }: {
   label: string;
   query: string;
   listed: number;
   unavailable: boolean;
+  notCounted: boolean;
 }): { title: string; detail: string } {
   if (query) {
     return {
       title: `No ${label.toLowerCase()} matches “${query}”`,
       detail: `${listed.toLocaleString()} ${listed === 1 ? "value is" : "values are"} listed; try fewer letters.`,
+    };
+  }
+  // Nothing counts the field, so whether any record has it is unknown.
+  if (notCounted) {
+    return {
+      title: "No values picked",
+      detail: "Without a facet, only picked values are listed.",
     };
   }
   if (unavailable) {

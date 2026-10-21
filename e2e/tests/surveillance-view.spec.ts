@@ -65,6 +65,7 @@ test.describe("Surveillance view", () => {
     await expect(page).toHaveURL(
       /\/surveillance\?keyword=sentinel&refine=Nasal\+swab&pathogen_test_type=RAT\/antigen$/,
     );
+    await surveillancePage.toolbar.closeFilters();
 
     await surveillancePage.openMember("sample/1", "RAT/antigen");
     await surveillancePage.expectOverview();

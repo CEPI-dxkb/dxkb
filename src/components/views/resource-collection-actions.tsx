@@ -498,10 +498,9 @@ export interface ResourceCollectionActionsOptions<Row extends DataTableRow> {
  * message. The running download lives here (`useCollectionDownload`), in the shell's
  * instance, for the same reason the Taxonomy chooser does.
  *
- * **A hook returning two slots, deliberately, not a component.** The shell renders
- * `ResourceWorkspace` only on the success path: a collection error (including one from
- * a background refetch) replaces the whole workspace, action bar included, with an
- * alert. The Taxonomy launch resolves IDs over the network before it can navigate, so
+ * **A hook returning two slots, deliberately, not a component.** A collection error
+ * (including one from a background refetch) drops the action bar and its rail, and
+ * an alert takes the table's place; only the toolbar stays. The Taxonomy launch resolves IDs over the network before it can navigate, so
  * a chooser living inside the bar would vanish mid-flight the moment that happened —
  * no chooser, no error, no spinner. Running here puts `loadingActionIds`, the overlap
  * ref and the chooser's own state in the shell's instance, and hands the chooser back

@@ -409,11 +409,11 @@ export function ResourceCollection<Row extends DataTableRow>({
 
   /**
    * Everything resource-specific about the action bar. A hook rather than a
-   * component so its state lives in this instance: a collection error replaces the
-   * whole workspace, action bar included, with the alert below, and `actionDialogs` is
-   * rendered at section level as a sibling of the workspace, so an in-flight launch
-   * survives that. (Crossing the `md` breakpoint does not remount the slot — the
-   * workspace renders one stable subtree at every width.)
+   * component so its state lives in this instance: a collection error drops the
+   * action rail, action bar included, and puts the alert below in the table's place,
+   * and `actionDialogs` is rendered at section level as a sibling of the workspace,
+   * so an in-flight launch survives that. (Crossing the `md` breakpoint does not
+   * remount the slot — the workspace renders one stable subtree at every width.)
    */
   const { actionBar, actionDialogs } = useResourceCollectionActions({
     profile,
@@ -599,9 +599,25 @@ export function ResourceCollection<Row extends DataTableRow>({
         </Alert>
       )}
 
-      {collectionError ? (
-        <>
-          {toolbar}
+      {/* One workspace whether or not the rows failed, so the toolbar (keyword
+          draft and focus, a pending pick, an open Filters menu) is never
+          remounted by a failure or by the Retry that ends it. A failure drops
+          the action rail and the detail panel; the alert takes the table's
+          place. */}
+      <ResourceWorkspace
+        toolbar={toolbar}
+        hasActionRail={!collectionError}
+        hasSidePanel={
+          !collectionError &&
+          (hasLoadedKeyword
+            ? displayedSelectedIds.length > 0
+            : collection.isAllPagesSelected ||
+              collection.selectedIds.length > 0)
+        }
+        actionBar={actionBar}
+        sidePanel={detailContent}
+      >
+        {collectionError ? (
           <Alert variant="destructive" aria-busy={rowsRetrying || undefined}>
             <AlertTitle>
               Could not load {profile.label.toLowerCase()}
@@ -619,19 +635,7 @@ export function ResourceCollection<Row extends DataTableRow>({
               />
             </AlertDescription>
           </Alert>
-        </>
-      ) : (
-        <ResourceWorkspace
-          toolbar={toolbar}
-          hasSidePanel={
-            hasLoadedKeyword
-              ? displayedSelectedIds.length > 0
-              : collection.isAllPagesSelected ||
-                collection.selectedIds.length > 0
-          }
-          actionBar={actionBar}
-          sidePanel={detailContent}
-        >
+        ) : (
           <DataTable
             id={`${profile.resource}-collection`}
             resource={profile.resource}
@@ -688,8 +692,8 @@ export function ResourceCollection<Row extends DataTableRow>({
             isLoading={collection.isInitialLoading || collection.isPageLoading}
             isRefreshing={collection.isPlaceholderData}
           />
-        </ResourceWorkspace>
-      )}
+        )}
+      </ResourceWorkspace>
       {actionDialogs}
     </section>
   );

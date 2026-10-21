@@ -65,19 +65,20 @@ export function CollectionToolbar(props: CollectionToolbarProps) {
     definitions.find((definition) => definition.field === field)?.label ??
     field;
   const hasFilter = (field: string) => (filters[field]?.length ?? 0) > 0;
-  // Every facet the resource offers, then any filtered field no facet names
-  // (a link's filter), so every filter is reachable.
-  const menuFields = [
-    ...definedFields,
-    ...Object.keys(filters).filter(
-      (field) => !isDefined(field) && hasFilter(field),
-    ),
-  ];
-  const activeFields = menuFields.filter(hasFilter);
-
   // The pill whose popover is open stays on the row after its last value is
   // unticked, so the popover keeps its anchor.
   const [heldField, setHeldField] = useState<string | null>(null);
+  // Every facet the resource offers, then any filtered field no facet names
+  // (a link's filter), so every filter is reachable. A held link filter stays
+  // too, though unticking its last value drops it from `filters`.
+  const linkFields = new Set(
+    [...Object.keys(filters).filter(hasFilter), heldField].filter(
+      (field): field is string => field !== null && !isDefined(field),
+    ),
+  );
+  const menuFields = [...definedFields, ...linkFields];
+  const activeFields = menuFields.filter(hasFilter);
+
   const rowFields = menuFields.filter(
     (field) => hasFilter(field) || field === heldField,
   );

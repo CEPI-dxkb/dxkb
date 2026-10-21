@@ -1958,6 +1958,28 @@ describe("ResourceCollection loading and failure states", () => {
     expect(filterBarProps.filters).toEqual(state.filters);
   });
 
+  it("keeps the same toolbar through a failed read and its recovery", () => {
+    useResourceCollection.mockReturnValue(collectionResult());
+    const { rerender } = render(view());
+    // The toolbar holds the keyword draft, its focus, a pending pick and an
+    // open Filters menu, so a remount would throw all of them away.
+    const toolbar = screen.getByTestId("filter-bar");
+
+    useResourceCollection.mockReturnValue(
+      collectionResult({ ...empty, error: new Error("Rows failed.") }),
+    );
+    rerender(view());
+    expect(screen.getByRole("alert")).toHaveTextContent("Rows failed.");
+    expect(screen.queryByTestId("data-table")).not.toBeInTheDocument();
+    expect(screen.getByTestId("filter-bar")).toBe(toolbar);
+
+    useResourceCollection.mockReturnValue(collectionResult());
+    rerender(view());
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(screen.getByTestId("data-table")).toBeInTheDocument();
+    expect(screen.getByTestId("filter-bar")).toBe(toolbar);
+  });
+
   it("drops a kept error once the query changes under its retry", async () => {
     const user = userEvent.setup();
     useResourceCollection.mockReturnValue(

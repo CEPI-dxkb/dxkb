@@ -667,6 +667,7 @@ describe("useResourceCollection", () => {
           fields: ["genome_id"],
           facets: ["genome_status"],
         },
+        expect.any(AbortSignal),
       ],
     ]);
     expect(rowRequests()).toEqual([
@@ -1340,6 +1341,7 @@ describe("useResourceCollection", () => {
       [
         "genome",
         expect.objectContaining({ facets: ["genome_status", "host_name"] }),
+        expect.any(AbortSignal),
       ],
     ]);
     // The settled counts keep their identity across renders.
@@ -1347,6 +1349,137 @@ describe("useResourceCollection", () => {
     await waitFor(() => {
       expect(result.current.facets.genome_status).toBe(settled.genome_status);
     });
+  });
+
+  /**
+   * A repository whose facet reads stay pending until their signal aborts,
+   * recording each one's signal.
+   */
+  function pendingFacetRepository() {
+    const data = repository();
+    const facetSignals: (AbortSignal | undefined)[] = [];
+    vi.spyOn(data, "collection").mockImplementation(
+      (_resource, request, signal) => {
+        if (!request.facets)
+          return Promise.resolve({
+            rows: [{ genome_id: "100.1", genome_name: "Page value" }],
+            total: 1,
+            facets: {},
+            page: 1,
+            pageSize: 200,
+          });
+        facetSignals.push(signal);
+        return new Promise((_resolve, reject) => {
+          signal?.addEventListener("abort", () => {
+            reject(signal.reason as Error);
+          });
+        });
+      },
+    );
+    return { data, facetSignals };
+  }
+
+  it("aborts the shared facet read of a scope that is no longer shown", async () => {
+    const { data, facetSignals } = pendingFacetRepository();
+    const { result, rerender } = renderHook(
+      ({ state }: { state: CollectionState }) =>
+        useResourceCollection({
+          repository: data,
+          resource: "genome",
+          idField: "genome_id",
+          fields: ["genome_id", "genome_name"],
+          facetFields: ["genome_status", "host_name"],
+          prefetchNextPage: false,
+          state,
+          onStateChange: vi.fn(),
+        }),
+      { wrapper: sharedClientWrapper(), initialProps: { state: initialState } },
+    );
+    await waitFor(() => {
+      expect(facetSignals).toHaveLength(1);
+    });
+    expect(facetSignals[0]).toBeInstanceOf(AbortSignal);
+    expect(facetSignals[0]?.aborted).toBe(false);
+
+    rerender({ state: { ...initialState, rql: "eq(genus,Escherichia)" } });
+    await waitFor(() => {
+      expect(facetSignals).toHaveLength(2);
+    });
+    expect(facetSignals[0]?.aborted).toBe(true);
+    expect(facetSignals[1]?.aborted).toBe(false);
+    // The abandoned read's abort is not this scope's error.
+    expect(result.current.facetsError).toBeNull();
+    expect(result.current.isFacetsLoading).toBe(true);
+  });
+
+  it("keeps reading the other facets of a scope when one is turned off mid-load", async () => {
+    const data = repository();
+    const facetRead = Promise.withResolvers<
+      Awaited<ReturnType<DataRepository["collection"]>>
+    >();
+    const facetSignals: (AbortSignal | undefined)[] = [];
+    vi.spyOn(data, "collection").mockImplementation(
+      (_resource, request, signal) => {
+        if (!request.facets)
+          return Promise.resolve({
+            rows: [{ genome_id: "100.1", genome_name: "Page value" }],
+            total: 1,
+            facets: {},
+            page: 1,
+            pageSize: 200,
+          });
+        facetSignals.push(signal);
+        return facetRead.promise;
+      },
+    );
+    const { result, rerender } = renderHook(
+      ({ facetFields }: { facetFields: readonly string[] }) =>
+        useResourceCollection({
+          repository: data,
+          resource: "genome",
+          idField: "genome_id",
+          fields: ["genome_id", "genome_name"],
+          facetFields,
+          prefetchNextPage: false,
+          state: initialState,
+          onStateChange: vi.fn(),
+        }),
+      {
+        wrapper: sharedClientWrapper(),
+        initialProps: {
+          facetFields: ["genome_status", "host_name"] as readonly string[],
+        },
+      },
+    );
+    await waitFor(() => {
+      expect(facetSignals).toHaveLength(1);
+    });
+    expect(facetSignals[0]).toBeInstanceOf(AbortSignal);
+
+    // The user unpins Host Name while both counts load.
+    rerender({ facetFields: ["genome_status"] });
+    expect(facetSignals[0]?.aborted).toBe(false);
+
+    act(() => {
+      facetRead.resolve({
+        rows: [],
+        total: 1,
+        facets: {
+          genome_status: [{ value: "Complete", count: 1 }],
+          host_name: [{ value: "Human", count: 1 }],
+        },
+        page: 1,
+        pageSize: 1,
+      });
+    });
+    await waitFor(() => {
+      expect(result.current.facetStatuses).toEqual({ genome_status: "ready" });
+    });
+    expect(result.current.facets).toEqual({
+      genome_status: [{ value: "Complete", count: 1 }],
+    });
+    expect(result.current.facetsError).toBeNull();
+    expect(facetSignals).toHaveLength(1);
   });
 
   it("starts reading facets it is asked to prefetch, without reading fresh ones again", async () => {
@@ -1388,6 +1521,7 @@ describe("useResourceCollection", () => {
         keyword: "coli",
         facets: ["genome_status", "host_name"],
       }),
+      expect.any(AbortSignal),
     ]);
 
     // Opening the panel, or pointing at its button again, reuses those reads.
@@ -1436,6 +1570,7 @@ describe("useResourceCollection facet scope", () => {
           keyword: "Dnak",
           rql: "eq(feature_id,*)",
         }),
+        expect.any(AbortSignal),
       );
     });
     expect(collection).toHaveBeenCalledWith(
@@ -1656,5 +1791,67 @@ describe("useResourceCollection facet scope", () => {
       genome_status: [{ value: "Complete", count: 2 }],
       host_name: [{ value: "Human", count: 2 }],
     });
+  });
+
+  it("settles a field whose new scope's read fails instead of leaving it stale", async () => {
+    const data = repository();
+    const nextScope = Promise.withResolvers<
+      Awaited<ReturnType<DataRepository["collection"]>>
+    >();
+    vi.spyOn(data, "collection").mockImplementation((_resource, request) => {
+      if (!request.facets)
+        return Promise.resolve({
+          rows: [{ genome_id: "100.1", genome_name: "Page value" }],
+          total: 1,
+          facets: {},
+          page: 1,
+          pageSize: 200,
+        });
+      if (request.keyword === "coli") return nextScope.promise;
+      return Promise.resolve({
+        rows: [],
+        total: 9,
+        facets: { genome_status: [{ value: "Complete", count: 9 }] },
+        page: 1,
+        pageSize: 1,
+      });
+    });
+    const { result, rerender } = renderHook(
+      ({ state }: { state: CollectionState }) =>
+        useResourceCollection({
+          repository: data,
+          resource: "genome",
+          idField: "genome_id",
+          fields: ["genome_id", "genome_name"],
+          facetFields: ["genome_status"],
+          prefetchNextPage: false,
+          state,
+          onStateChange: vi.fn(),
+        }),
+      { wrapper: sharedClientWrapper(), initialProps: { state: initialState } },
+    );
+    await waitFor(() => {
+      expect(result.current.facetStatuses).toEqual({ genome_status: "ready" });
+    });
+
+    rerender({ state: { ...initialState, keyword: "coli" } });
+    await waitFor(() => {
+      expect(result.current.facetStatuses).toEqual({ genome_status: "stale" });
+    });
+
+    act(() => {
+      nextScope.reject(new Error("Facet query timed out upstream."));
+    });
+    await waitFor(() => {
+      expect(result.current.facetsError?.message).toBe(
+        "Facet query timed out upstream.",
+      );
+    });
+    // The previous scope's counts are not this scope's, so none are shown and
+    // the error says why.
+    expect(result.current.facetStatuses).toEqual({ genome_status: "ready" });
+    expect(result.current.isFacetsRefreshing).toBe(false);
+    expect(result.current.isFacetsLoading).toBe(false);
+    expect(result.current.facets).toEqual({});
   });
 });

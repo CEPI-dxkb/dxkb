@@ -176,6 +176,92 @@ describe("ResourceFilterBar picks", () => {
     expect(statusOption("WGS")).toHaveAttribute("aria-selected", "true");
   });
 
+  it("commits a keyword with a pick made while it was pending", async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    render(<ResourceFilterBar {...filterBarProps({ onChange })} />);
+    await openFilters(user);
+    vi.useFakeTimers();
+
+    fireEvent.change(screen.getByRole("searchbox", { hidden: true }), {
+      target: { value: "influenza" },
+    });
+    fireEvent.click(statusOption("WGS"));
+    act(() => {
+      vi.advanceTimersByTime(300);
+    });
+
+    // The page's filters have not caught up, so the keyword carries the pick.
+    expect(onChange).toHaveBeenLastCalledWith({
+      keyword: "influenza",
+      filters: { genome_status: ["WGS"] },
+      clearRql: false,
+    });
+  });
+
+  it("keeps a pending pick's rql replacement when the keyword commits", async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    render(
+      <ResourceFilterBar
+        {...filterBarProps({ hasExplicitRql: true, onChange })}
+      />,
+    );
+    await openFilters(user);
+    vi.useFakeTimers();
+
+    fireEvent.change(screen.getByRole("searchbox", { hidden: true }), {
+      target: { value: "influenza" },
+    });
+    fireEvent.click(statusOption("WGS"));
+    act(() => {
+      vi.advanceTimersByTime(300);
+    });
+
+    expect(onChange).toHaveBeenLastCalledWith({
+      keyword: "influenza",
+      filters: { genome_status: ["WGS"] },
+      clearRql: true,
+    });
+  });
+
+  it("keeps a pending pick's rql replacement through a pick kept beside the rql", async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    render(
+      <ResourceFilterBar
+        {...filterBarProps({
+          facets: { ...facets, host: [{ value: "Human", count: 5 }] },
+          facetStatuses: { genome_status: "ready", host: "ready" },
+          definitions: [
+            ...definitions,
+            { field: "host", label: "Host", initiallyVisible: true },
+          ],
+          hasExplicitRql: true,
+          filtersBesideRql: ["host"],
+          onChange,
+        })}
+      />,
+    );
+    await openFilters(user);
+
+    await user.click(statusOption("WGS"));
+    await user.click(screen.getByRole("option", { name: /^Host/ }));
+    await user.click(
+      within(
+        screen.getByRole("listbox", { name: "Host values" }),
+      ).getByRole("option", { name: /^Human/ }),
+    );
+
+    // The first pick replaced the rql; the page has not caught up, so the
+    // second must not bring the rql back over it.
+    expect(onChange).toHaveBeenLastCalledWith({
+      keyword: undefined,
+      filters: { genome_status: ["WGS"], host: ["Human"] },
+      clearRql: true,
+    });
+  });
+
   it("reverts a pick the page drops", async () => {
     const user = userEvent.setup();
     render(<ResourceFilterBar {...filterBarProps()} />);

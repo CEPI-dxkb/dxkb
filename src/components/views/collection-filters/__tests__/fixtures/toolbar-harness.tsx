@@ -132,7 +132,10 @@ export function renderToolbar({
           );
         }}
         setFieldValues={setFieldValues}
-        clearAll={spies.clearAll}
+        clearAll={() => {
+          spies.clearAll();
+          setFilters({});
+        }}
         canClear={Object.keys(filters).length > 0}
         hasExplicitRql={false}
         columns={[]}

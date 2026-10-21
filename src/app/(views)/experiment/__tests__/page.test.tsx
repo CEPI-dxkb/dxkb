@@ -1,9 +1,15 @@
 import { render, screen } from "@testing-library/react";
-import type { ReactElement } from "react";
 
-vi.mock("../experiment-collection", () => ({
-  ExperimentCollection: ({ initialState, activeTab }: { initialState: unknown; activeTab: string }) => <div data-testid="state" data-tab={activeTab}>{JSON.stringify(initialState)}</div>,
-}));
+vi.mock("../experiment-collection", async () => {
+  const { useState } = await import("react");
+  return {
+    // The first props it mounted with live in state, so a remount shows.
+    ExperimentCollection: ({ initialState, activeTab }: { initialState: unknown; activeTab: string }) => {
+      const [mountedWith] = useState(() => JSON.stringify(initialState));
+      return <div data-testid="state" data-tab={activeTab} data-mounted-with={mountedWith}>{JSON.stringify(initialState)}</div>;
+    },
+  };
+});
 import ExperimentCollectionPage from "../page";
 
 describe("Experiment collection route", () => {
@@ -16,8 +22,15 @@ describe("Experiment collection route", () => {
   });
 
   it("keeps the collection mounted across queries, so its open menus survive a pick", async () => {
-    const key = async (params: Record<string, string>) => ((await ExperimentCollectionPage({ searchParams: Promise.resolve(params) })) as ReactElement<{ children: ReactElement }>).props.children.key;
-    expect(await key({ taxon_id: "561" })).toBeNull();
-    expect(await key({ taxon_id: "562", page: "2" })).toBeNull();
+    const { rerender } = render(await ExperimentCollectionPage({ searchParams: Promise.resolve({ taxon_id: "561" }) }));
+    const collection = screen.getByTestId("state");
+
+    rerender(await ExperimentCollectionPage({ searchParams: Promise.resolve({ taxon_id: "562", page: "2", tab: "biosets" }) }));
+
+    expect(screen.getByTestId("state")).toBe(collection);
+    expect(collection).toHaveTextContent('"taxon_id":["562"]');
+    expect(collection).toHaveTextContent('"page":2');
+    expect(collection).toHaveAttribute("data-tab", "biosets");
+    expect(collection.dataset.mountedWith).toContain('"taxon_id":["561"]');
   });
 });

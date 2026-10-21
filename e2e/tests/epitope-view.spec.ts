@@ -68,6 +68,7 @@ test.describe("Epitope view", () => {
     await expect(page).toHaveURL(
       /\/epitope\?keyword=Brucella&epitope_type=Discontinuous\+peptide$/,
     );
+    await epitopePage.toolbar.closeFilters();
 
     await epitopePage.openMember("15780");
     await epitopePage.expectStructure("A1, C4, D8");

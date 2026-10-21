@@ -60,11 +60,12 @@ test.describe("Surveillance view", () => {
         url.searchParams.get("rql")?.includes("pathogen_test_type") === true
       );
     });
-    await surveillancePage.selectFacet("RAT/antigen (1)");
+    await surveillancePage.selectFacet("Pathogen Test Type", "RAT/antigen");
     await filteredRequest;
     await expect(page).toHaveURL(
       /\/surveillance\?keyword=sentinel&refine=Nasal\+swab&pathogen_test_type=RAT\/antigen$/,
     );
+    await surveillancePage.toolbar.closeFilters();
 
     await surveillancePage.openMember("sample/1", "RAT/antigen");
     await surveillancePage.expectOverview();

@@ -20,6 +20,7 @@ export { SerologyPage } from "./serology-page";
 export { StrainPage } from "./strain-page";
 export { SurveillancePage } from "./surveillance-page";
 export { ResourceCollectionPage } from "./resource-collection-page";
+export { CollectionToolbar } from "./collection-toolbar";
 export { DomainsAndMotifsPage } from "./domains-and-motifs-page";
 export { ProteinStructurePage } from "./protein-structure-page";
 export { TaxonomyCollectionPage } from "./taxonomy-collection-page";

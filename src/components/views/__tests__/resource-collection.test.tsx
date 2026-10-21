@@ -12,7 +12,6 @@ import type { useResourceCollection as useResourceCollectionHook } from "@/hooks
 import { ResourceCollection } from "../resource-collection";
 import { writeStorageItem } from "@/lib/browser-storage";
 import { jsdomLocalStorage } from "@/test-helpers/storage";
-import { createUiPreferencesWrapper } from "@/test-helpers/react";
 import { createResourceCollectionResult } from "./fixtures/resource-collection-result";
 
 // Generic ResourceCollection behaviour: rendering the same profile across scopes,
@@ -32,6 +31,7 @@ const { push, downloadResourceExport, useResourceCollection, collectionDownload 
   }));
 let dataTableProps: Record<string, unknown>;
 let actionBarProps: Record<string, unknown>;
+let filterBarProps: Record<string, unknown>;
 
 vi.mock("next/navigation", async () =>
   (await import("./fixtures/resource-collection-mocks")).nextNavigationMock({
@@ -78,65 +78,70 @@ vi.mock("@/hooks/views/use-resource-collection", () => ({
   useResourceCollection,
 }));
 vi.mock("../resource-filter-bar", () => ({
-  ResourceFilterBar: (props: Record<string, unknown>) => (
-    <div
-      data-testid="filter-bar"
-      data-definitions={JSON.stringify(props.definitions)}
-      data-keyword={typeof props.keyword === "string" ? props.keyword : ""}
-      data-facets-loading={String(props.facetsLoading)}
-      data-facets-refreshing={String(props.facetsRefreshing)}
-      data-facets-error={
-        typeof props.facetsError === "string" ? props.facetsError : ""
-      }
-      data-facets-unavailable={String(Boolean(props.facetsUnavailable))}
-      data-facets-retrying={String(Boolean(props.facetsRetrying))}
-      data-filters-beside-rql={JSON.stringify(props.filtersBesideRql ?? [])}
-    >
-      <button
-        onClick={() => {
-          (props.onRetryFacets as () => void)();
-        }}
+  ResourceFilterBar: (props: Record<string, unknown>) => {
+    filterBarProps = props;
+    return (
+      <div
+        data-testid="filter-bar"
+        data-definitions={JSON.stringify(props.definitions)}
+        data-keyword={typeof props.keyword === "string" ? props.keyword : ""}
+        data-facet-statuses={JSON.stringify(props.facetStatuses)}
+        data-facets-error={
+          typeof props.facetsError === "string" ? props.facetsError : ""
+        }
+        data-facets-unavailable={String(Boolean(props.facetsUnavailable))}
+        data-facets-retrying={String(Boolean(props.facetsRetrying))}
+        data-filters-beside-rql={JSON.stringify(props.filtersBesideRql ?? [])}
       >
-        Retry facets
-      </button>
-      <button
-        onClick={() => {
-          const onChange = props.onChange as (update: {
-            keyword?: string;
-            filters: CollectionState["filters"];
-          }) => void;
-          onChange({ keyword: props.keyword as string | undefined, filters: {} });
-        }}
-      >
-        Remove every chip
-      </button>
-      {["dna gy", "HUMAN", "absent", "N034", undefined].map((keyword) => (
         <button
-          key={keyword ?? "clear"}
+          onClick={() => {
+            (props.onRetryFacets as () => void)();
+          }}
+        >
+          Retry facets
+        </button>
+        <button
           onClick={() => {
             const onChange = props.onChange as (update: {
               keyword?: string;
               filters: CollectionState["filters"];
             }) => void;
             onChange({
-              keyword,
-              filters: props.filters as CollectionState["filters"],
+              keyword: props.keyword as string | undefined,
+              filters: {},
             });
           }}
         >
-          {keyword === "dna gy"
-            ? "Filter loaded rows"
-            : keyword === "HUMAN"
-              ? "Filter array value"
-              : keyword === "N034"
-                ? "Refine server results"
-                : keyword
-                  ? "Filter no matches"
-                  : "Clear loaded filter"}
+          Remove every chip
         </button>
-      ))}
-    </div>
-  ),
+        {["dna gy", "HUMAN", "absent", "N034", undefined].map((keyword) => (
+          <button
+            key={keyword ?? "clear"}
+            onClick={() => {
+              const onChange = props.onChange as (update: {
+                keyword?: string;
+                filters: CollectionState["filters"];
+              }) => void;
+              onChange({
+                keyword,
+                filters: props.filters as CollectionState["filters"],
+              });
+            }}
+          >
+            {keyword === "dna gy"
+              ? "Filter loaded rows"
+              : keyword === "HUMAN"
+                ? "Filter array value"
+                : keyword === "N034"
+                  ? "Refine server results"
+                  : keyword
+                    ? "Filter no matches"
+                    : "Clear loaded filter"}
+          </button>
+        ))}
+      </div>
+    );
+  },
 }));
 // The `SearchActionBar` fake shared with every resource-collection*.test.tsx suite.
 // It calls the same `visibleSearchActions` / `isSearchActionDisabled` policy
@@ -250,6 +255,13 @@ const unselected: Partial<ReturnType<typeof useResourceCollectionHook>> = {
   selection: {},
   selectedIds: [],
 };
+
+/** Calls one of the toolbar's callbacks, as the real toolbar does. */
+function callToolbar(name: string, ...args: unknown[]) {
+  act(() => {
+    (filterBarProps[name] as (...callArgs: unknown[]) => void)(...args);
+  });
+}
 
 // `genomeCollectionProfile` stands in for "any resource" throughout this block; none
 // of these assertions are Genome-specific. Renamed from "Genome integration contracts"
@@ -797,8 +809,7 @@ describe("ResourceCollection generic collection, export and filter behaviour", (
     const refetchFacets = vi.fn();
     useResourceCollection.mockReturnValue(
       collectionResult({
-        isFacetsLoading: true,
-        isFacetsRefreshing: true,
+        facetStatuses: { genome_status: "stale", host_group: "loading" },
         facetsError: new Error("Facet query timed out upstream."),
         refetchFacets,
       }),
@@ -814,8 +825,10 @@ describe("ResourceCollection generic collection, export and filter behaviour", (
     );
 
     const filterBar = screen.getByTestId("filter-bar");
-    expect(filterBar).toHaveAttribute("data-facets-loading", "true");
-    expect(filterBar).toHaveAttribute("data-facets-refreshing", "true");
+    expect(filterBar).toHaveAttribute(
+      "data-facet-statuses",
+      JSON.stringify({ genome_status: "stale", host_group: "loading" }),
+    );
     expect(filterBar).toHaveAttribute(
       "data-facets-error",
       "Facet query timed out upstream.",
@@ -1455,8 +1468,10 @@ describe("ResourceCollection column layout", () => {
     expect(workingStorage.getItem(storageKey)).toBeNull();
   });
 
-  it("requests no facet counts while the filter panel is closed", () => {
-    render(
+  it("requests no facet counts until the toolbar asks for them", () => {
+    const prefetchFacets = vi.fn();
+    useResourceCollection.mockReturnValue(collectionResult({ prefetchFacets }));
+    const { rerender } = render(
       <ResourceCollection
         profile={genomeCollectionProfile}
         repository={repository()}
@@ -1464,19 +1479,36 @@ describe("ResourceCollection column layout", () => {
         onStateChange={vi.fn()}
       />,
     );
-
-    expect(useResourceCollection.mock.calls.at(-1)?.[0]).toEqual(
-      expect.objectContaining({ facetFields: [] }),
+    // A new scope alone does not start the counts either.
+    rerender(
+      <ResourceCollection
+        profile={genomeCollectionProfile}
+        repository={repository()}
+        state={{ ...state, keyword: "salmonella" }}
+        onStateChange={vi.fn()}
+      />,
     );
+
+    expect(
+      useResourceCollection.mock.calls.every(
+        ([options]) => options.facetFields?.length === 0,
+      ),
+    ).toBe(true);
+    expect(prefetchFacets).not.toHaveBeenCalled();
   });
 
-  it("requests counts only for the facets the open filter panel shows", () => {
+  it("counts the pinned facets once the toolbar wants them, and the peeked ones beside them", () => {
+    const prefetchFacets = vi.fn();
+    useResourceCollection.mockReturnValue(collectionResult({ prefetchFacets }));
     const facetsShownByDefault = (genomeCollectionProfile.facets ?? []).filter(
       (facet) => facet.initiallyVisible !== false,
     );
     const collapsedByUser = facetsShownByDefault.at(0);
-    if (!collapsedByUser) throw new Error("fixture needs a default-visible facet");
-    const stillShown = facetsShownByDefault.slice(1);
+    if (!collapsedByUser)
+      throw new Error("fixture needs a default-visible facet");
+    const stillShown = facetsShownByDefault
+      .slice(1)
+      .map((facet) => facet.field);
     localStorage.setItem(
       storageKey,
       JSON.stringify({ facets: { [collapsedByUser.field]: false } }),
@@ -1489,69 +1521,93 @@ describe("ResourceCollection column layout", () => {
         state={state}
         onStateChange={vi.fn()}
       />,
-      { wrapper: createUiPreferencesWrapper({ facetPanelOpen: true }) },
+    );
+    expect(useResourceCollection.mock.calls.at(-1)?.[0].facetFields).toEqual(
+      [],
     );
 
-    expect(useResourceCollection.mock.calls.at(-1)?.[0]).toEqual(
-      expect.objectContaining({
-        facetFields: stillShown.map((facet) => facet.field),
-      }),
+    // Hovering Filters prefetches the pinned set without showing it.
+    callToolbar("onPrefetchFacets");
+    expect(prefetchFacets).toHaveBeenLastCalledWith(stillShown);
+    expect(useResourceCollection.mock.calls.at(-1)?.[0].facetFields).toEqual(
+      [],
     );
+
+    callToolbar("onFacetsWanted");
+    expect(useResourceCollection.mock.calls.at(-1)?.[0].facetFields).toEqual(
+      stillShown,
+    );
+
+    // Opening a facet outside the pinned set counts it too, after them, once.
+    callToolbar(
+      "onPeekedFieldsChange",
+      new Set([collapsedByUser.field, stillShown[0]]),
+    );
+    expect(useResourceCollection.mock.calls.at(-1)?.[0].facetFields).toEqual([
+      ...stillShown,
+      collapsedByUser.field,
+    ]);
+    expect(filterBarProps.peekedFields).toEqual(
+      new Set([collapsedByUser.field, stillShown[0]]),
+    );
+    callToolbar("onPrefetchFacets");
+    expect(prefetchFacets).toHaveBeenLastCalledWith([
+      ...stillShown,
+      collapsedByUser.field,
+    ]);
   });
 
-  it("waits for the saved facet set before requesting counts, showing placeholders meanwhile", () => {
+  it("waits for the saved facet set before requesting counts", () => {
+    const prefetchFacets = vi.fn();
+    useResourceCollection.mockReturnValue(collectionResult({ prefetchFacets }));
     const facetsShownByDefault = (genomeCollectionProfile.facets ?? []).filter(
       (facet) => facet.initiallyVisible !== false,
     );
     const collapsedByUser = facetsShownByDefault.at(0);
-    if (!collapsedByUser) throw new Error("fixture needs a default-visible facet");
+    if (!collapsedByUser)
+      throw new Error("fixture needs a default-visible facet");
     localStorage.setItem(
       storageKey,
       JSON.stringify({ facets: { [collapsedByUser.field]: false } }),
     );
-    const Wrapper = createUiPreferencesWrapper({ facetPanelOpen: true });
     const tree = (
-      <Wrapper>
-        <ResourceCollection
-          profile={genomeCollectionProfile}
-          repository={repository()}
-          state={state}
-          onStateChange={vi.fn()}
-        />
-      </Wrapper>
+      <ResourceCollection
+        profile={genomeCollectionProfile}
+        repository={repository()}
+        state={state}
+        onStateChange={vi.fn()}
+      />
     );
 
     // Server HTML first (storage reads as empty there), then hydrate it, which
     // is the render pair a full page load goes through.
     const container = document.createElement("div");
     document.body.append(container);
-    container.innerHTML = renderToString(tree);
-    // Before the saved set is known, a request would count the collapsed facet.
-    expect(
-      useResourceCollection.mock.calls.map(([options]) => options.facetFields),
-    ).toEqual([[]]);
-    expect(
-      container.querySelector('[data-testid="filter-bar"]'),
-    ).toHaveAttribute("data-facets-loading", "true");
-
     let root: ReturnType<typeof hydrateRoot> | undefined;
     try {
+      container.innerHTML = renderToString(tree);
+      // Before the saved set is known, a request would count the collapsed
+      // facet, and so would a prefetch.
+      expect(
+        useResourceCollection.mock.calls.map(
+          ([options]) => options.facetFields,
+        ),
+      ).toEqual([[]]);
+      callToolbar("onPrefetchFacets");
+      expect(prefetchFacets).not.toHaveBeenCalled();
+
       act(() => {
         root = hydrateRoot(container, tree);
       });
+      callToolbar("onFacetsWanted");
 
       expect(
         useResourceCollection.mock.calls.every(
-          ([options]) =>
-            !options.facetFields?.includes(collapsedByUser.field),
+          ([options]) => !options.facetFields?.includes(collapsedByUser.field),
         ),
       ).toBe(true);
       expect(useResourceCollection.mock.calls.at(-1)?.[0].facetFields).toEqual(
         facetsShownByDefault.slice(1).map((facet) => facet.field),
-      );
-      expect(screen.getByTestId("filter-bar")).toHaveAttribute(
-        "data-facets-loading",
-        "false",
       );
     } finally {
       act(() => {
@@ -1560,27 +1616,173 @@ describe("ResourceCollection column layout", () => {
       container.remove();
     }
   });
+
+  it("hands DataTable the saved column order, the selection column first", () => {
+    const [first, second, ...rest] = genomeCollectionProfile.columns.map(
+      (column) => column.id,
+    );
+    localStorage.setItem(
+      storageKey,
+      JSON.stringify({ order: [second, first, "retired_column"] }),
+    );
+    render(
+      <ResourceCollection
+        profile={genomeCollectionProfile}
+        repository={repository()}
+        state={state}
+        onStateChange={vi.fn()}
+      />,
+    );
+
+    // An id the profile no longer has is dropped; the rest keep their place.
+    expect(dataTableProps).toMatchObject({
+      hideColumnControls: true,
+      columnOrder: ["__select__", second, first, ...rest],
+    });
+    const toolbarColumns = filterBarProps.columns as {
+      id: string;
+      defaultIndex: number;
+    }[];
+    expect(toolbarColumns.map((column) => column.id)).toEqual([
+      second,
+      first,
+      ...rest,
+    ]);
+    expect(toolbarColumns.slice(0, 2)).toEqual([
+      expect.objectContaining({ id: second, defaultIndex: 1 }),
+      expect.objectContaining({ id: first, defaultIndex: 0 }),
+    ]);
+  });
+
+  it("saves a header drag's order without the selection column, and the default order as none", () => {
+    const defaultOrder = genomeCollectionProfile.columns.map(
+      (column) => column.id,
+    );
+    const [first, second, ...rest] = defaultOrder;
+    render(
+      <ResourceCollection
+        profile={genomeCollectionProfile}
+        repository={repository()}
+        state={state}
+        onStateChange={vi.fn()}
+      />,
+    );
+    const reorder = dataTableProps.onColumnOrderChange as (
+      order: string[],
+    ) => void;
+
+    act(() => {
+      reorder(["__select__", second, first, ...rest]);
+    });
+    expect(
+      JSON.parse(localStorage.getItem(storageKey) ?? "null"),
+    ).toStrictEqual({
+      order: [second, first, ...rest],
+    });
+    expect(dataTableProps.columnOrder).toEqual([
+      "__select__",
+      second,
+      first,
+      ...rest,
+    ]);
+
+    act(() => {
+      reorder(["__select__", ...defaultOrder]);
+    });
+    expect(localStorage.getItem(storageKey)).toBeNull();
+  });
+
+  it("writes the Columns menu's changes to the layout, and its reset clears them", () => {
+    const defaultOrder = genomeCollectionProfile.columns.map(
+      (column) => column.id,
+    );
+    const [first, second, ...rest] = defaultOrder;
+    render(
+      <ResourceCollection
+        profile={genomeCollectionProfile}
+        repository={repository()}
+        state={state}
+        onStateChange={vi.fn()}
+      />,
+    );
+    const stored = () =>
+      JSON.parse(localStorage.getItem(storageKey) ?? "null") as unknown;
+
+    callToolbar("setColumns", { visibility: { [shownByDefault.id]: false } });
+    expect(stored()).toStrictEqual({
+      visibility: { [shownByDefault.id]: false },
+    });
+    expect(dataTableProps.columnVisibility).toMatchObject({
+      [shownByDefault.id]: false,
+    });
+    expect(
+      (filterBarProps.columns as { id: string; visible: boolean }[]).find(
+        (column) => column.id === shownByDefault.id,
+      ),
+    ).toEqual(
+      expect.objectContaining({ visible: false, defaultVisible: true }),
+    );
+
+    callToolbar("setColumns", { order: [second, first, ...rest] });
+    expect(stored()).toStrictEqual({
+      visibility: { [shownByDefault.id]: false },
+      order: [second, first, ...rest],
+    });
+    expect(dataTableProps.columnOrder).toEqual([
+      "__select__",
+      second,
+      first,
+      ...rest,
+    ]);
+
+    // Moving back to the default order stores no order at all.
+    callToolbar("setColumns", { order: defaultOrder });
+    expect(stored()).toStrictEqual({
+      visibility: { [shownByDefault.id]: false },
+    });
+
+    callToolbar("setColumns", { order: [second, first, ...rest] });
+    callToolbar("resetColumns");
+    expect(localStorage.getItem(storageKey)).toBeNull();
+    expect(dataTableProps.columnOrder).toEqual(["__select__", ...defaultOrder]);
+    expect(dataTableProps.columnVisibility).toMatchObject({
+      [shownByDefault.id]: true,
+    });
+  });
 });
 
 describe("ResourceCollection facet state", () => {
+  /** The `facetStructuralRql` the collection last handed its hook. */
+  const facetStructuralRql = () => {
+    const scope =
+      useResourceCollection.mock.calls.at(-1)?.[0].facetStructuralRql;
+    if (!scope) throw new Error("No facet scope was passed");
+    return scope;
+  };
+
   it("reads facet counts for facetState while the rows keep state", () => {
     render(
       <ResourceCollection
         profile={genomeCollectionProfile}
         repository={repository()}
         state={state}
-        facetState={{ ...state, filters: {} }}
+        facetState={{ ...state, filters: { host_group: ["Human"] } }}
         onStateChange={vi.fn()}
         baseRql="eq(taxon_lineage_ids,561)"
       />,
     );
 
     expect(useResourceCollection.mock.calls.at(-1)?.[0]).toMatchObject({
-      structuralRql: "and(eq(taxon_lineage_ids,561),eq(genome_status,Complete))",
-      facetScope: {
-        structuralRql: "and(eq(taxon_lineage_ids,561),eq(genome_id,*))",
-      },
+      structuralRql:
+        "and(eq(taxon_lineage_ids,561),eq(genome_status,Complete))",
     });
+    // The rows' genome_status filter is not part of facetState's scope.
+    expect(facetStructuralRql()("genome_status")).toBe(
+      "and(eq(taxon_lineage_ids,561),eq(host_group,Human))",
+    );
+    expect(facetStructuralRql()("host_group")).toBe(
+      "and(eq(taxon_lineage_ids,561),eq(genome_id,*))",
+    );
   });
 
   it("reads facet counts for the rows' own scope by default", () => {
@@ -1593,7 +1795,40 @@ describe("ResourceCollection facet state", () => {
       />,
     );
 
-    expect(useResourceCollection.mock.calls.at(-1)?.[0]?.facetScope).toBeUndefined();
+    const options = useResourceCollection.mock.calls.at(-1)?.[0];
+    // An unfiltered field counts over exactly the rows' scope.
+    expect(facetStructuralRql()("host_group")).toBe(options?.structuralRql);
+  });
+
+  // Multi-select faceting: a field's counts list every value a pick could add,
+  // so its own filter is left out while every other field's stays in.
+  it("leaves each field's own filter out of its counts and keeps the others'", () => {
+    render(
+      <ResourceCollection
+        profile={genomeCollectionProfile}
+        repository={repository()}
+        state={{
+          ...state,
+          filters: { genome_status: ["Complete"], host_group: ["Human"] },
+        }}
+        onStateChange={vi.fn()}
+        baseRql="eq(taxon_lineage_ids,561)"
+      />,
+    );
+
+    const options = useResourceCollection.mock.calls.at(-1)?.[0];
+    const statusScope = facetStructuralRql()("genome_status");
+    const hostScope = facetStructuralRql()("host_group");
+    expect(options?.structuralRql).toContain("eq(genome_status,Complete)");
+    expect(options?.structuralRql).toContain("eq(host_group,Human)");
+    expect(statusScope).toContain("eq(taxon_lineage_ids,561)");
+    expect(statusScope).toContain("eq(host_group,Human)");
+    expect(statusScope).not.toContain("genome_status");
+    expect(hostScope).toContain("eq(taxon_lineage_ids,561)");
+    expect(hostScope).toContain("eq(genome_status,Complete)");
+    expect(hostScope).not.toContain("host_group");
+    // A field nothing filters counts over the full scope, as the rows do.
+    expect(facetStructuralRql()("genome_quality")).toBe(options?.structuralRql);
   });
 });
 
@@ -1704,6 +1939,45 @@ describe("ResourceCollection loading and failure states", () => {
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     expect(screen.getByTestId("data-table")).toBeInTheDocument();
     expect(liveRegion(container)).toHaveTextContent("1 results");
+  });
+
+  it("keeps the toolbar above the alert when the rows fail, so a filter can still be changed", () => {
+    useResourceCollection.mockReturnValue(
+      collectionResult({ ...empty, error: new Error("Rows failed.") }),
+    );
+
+    render(view());
+
+    const toolbar = screen.getByTestId("filter-bar");
+    const alert = screen.getByRole("alert");
+    expect(alert).not.toContainElement(toolbar);
+    expect(
+      toolbar.compareDocumentPosition(alert) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(screen.queryByTestId("data-table")).not.toBeInTheDocument();
+    expect(filterBarProps.filters).toEqual(state.filters);
+  });
+
+  it("keeps the same toolbar through a failed read and its recovery", () => {
+    useResourceCollection.mockReturnValue(collectionResult());
+    const { rerender } = render(view());
+    // The toolbar holds the keyword draft, its focus, a pending pick and an
+    // open Filters menu, so a remount would throw all of them away.
+    const toolbar = screen.getByTestId("filter-bar");
+
+    useResourceCollection.mockReturnValue(
+      collectionResult({ ...empty, error: new Error("Rows failed.") }),
+    );
+    rerender(view());
+    expect(screen.getByRole("alert")).toHaveTextContent("Rows failed.");
+    expect(screen.queryByTestId("data-table")).not.toBeInTheDocument();
+    expect(screen.getByTestId("filter-bar")).toBe(toolbar);
+
+    useResourceCollection.mockReturnValue(collectionResult());
+    rerender(view());
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(screen.getByTestId("data-table")).toBeInTheDocument();
+    expect(screen.getByTestId("filter-bar")).toBe(toolbar);
   });
 
   it("drops a kept error once the query changes under its retry", async () => {

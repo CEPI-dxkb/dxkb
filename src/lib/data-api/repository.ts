@@ -333,7 +333,51 @@ export class ServerDataRepository {
     return this.export(resource, request, signal);
   }
 
+  /**
+   * One collection read. Several facets are counted in parallel, one upstream
+   * read each, and merged: the upstream counts the fields of one request one
+   * after another (Genome's 14 default facets took ~3.2 s combined and ~1.2 s
+   * apart). The rows ride with the first facet; the others read one id each.
+   * A facet named twice is counted once. Any failed part fails the whole read.
+   */
   async collection(
+    resource: DataResource,
+    request: CollectionRequest,
+    signal?: AbortSignal,
+  ): Promise<CollectionResult<Record<string, unknown>>> {
+    const facetFields = [...new Set(request.facets ?? [])];
+    const [first, ...rest] = facetFields;
+    if (rest.length === 0)
+      return this.collectionRead(
+        resource,
+        { ...request, facets: facetFields },
+        signal,
+      );
+    const { idField } = getResourceDefinition(resource);
+    const [main, ...counts] = await Promise.all([
+      this.collectionRead(resource, { ...request, facets: [first] }, signal),
+      ...rest.map((field) =>
+        this.collectionRead(
+          resource,
+          {
+            operation: "collection",
+            rql: request.rql,
+            keyword: request.keyword,
+            keywordMode: request.keywordMode,
+            pageSize: 1,
+            fields: [idField],
+            facets: [field],
+          },
+          signal,
+        ),
+      ),
+    ]);
+    const facets = { ...main.facets };
+    for (const count of counts) Object.assign(facets, count.facets);
+    return { ...main, facets };
+  }
+
+  private async collectionRead(
     resource: DataResource,
     request: CollectionRequest,
     signal?: AbortSignal,

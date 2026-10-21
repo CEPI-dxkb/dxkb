@@ -1,9 +1,15 @@
 import { render, screen } from "@testing-library/react";
-import type { ReactElement } from "react";
 
-vi.mock("../experiment-collection", () => ({
-  ExperimentCollection: ({ initialState, activeTab }: { initialState: unknown; activeTab: string }) => <div data-testid="state" data-tab={activeTab}>{JSON.stringify(initialState)}</div>,
-}));
+vi.mock("../experiment-collection", async () => {
+  const { useState } = await import("react");
+  return {
+    // The first props it mounted with live in state, so a remount shows.
+    ExperimentCollection: ({ initialState, activeTab }: { initialState: unknown; activeTab: string }) => {
+      const [mountedWith] = useState(() => JSON.stringify(initialState));
+      return <div data-testid="state" data-tab={activeTab} data-mounted-with={mountedWith}>{JSON.stringify(initialState)}</div>;
+    },
+  };
+});
 import ExperimentCollectionPage from "../page";
 
 describe("Experiment collection route", () => {
@@ -15,11 +21,16 @@ describe("Experiment collection route", () => {
     expect(screen.getByTestId("state")).toHaveAttribute("data-tab", "biosets");
   });
 
-  it("remounts for query changes but not page or sort", async () => {
-    const key = async (params: Record<string, string>) => ((await ExperimentCollectionPage({ searchParams: Promise.resolve(params) })) as ReactElement<{ children: ReactElement }>).props.children.key;
-    const initial = await key({ taxon_id: "561" });
-    expect(await key({ taxon_id: "561", page: "2" })).toBe(initial);
-    expect(await key({ taxon_id: "561", sort: "exp_id:desc" })).toBe(initial);
-    expect(await key({ taxon_id: "562" })).not.toBe(initial);
+  it("keeps the collection mounted across queries, so its open menus survive a pick", async () => {
+    const { rerender } = render(await ExperimentCollectionPage({ searchParams: Promise.resolve({ taxon_id: "561" }) }));
+    const collection = screen.getByTestId("state");
+
+    rerender(await ExperimentCollectionPage({ searchParams: Promise.resolve({ taxon_id: "562", page: "2", tab: "biosets" }) }));
+
+    expect(screen.getByTestId("state")).toBe(collection);
+    expect(collection).toHaveTextContent('"taxon_id":["562"]');
+    expect(collection).toHaveTextContent('"page":2');
+    expect(collection).toHaveAttribute("data-tab", "biosets");
+    expect(collection.dataset.mountedWith).toContain('"taxon_id":["561"]');
   });
 });

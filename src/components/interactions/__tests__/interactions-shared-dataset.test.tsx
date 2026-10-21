@@ -71,7 +71,18 @@ vi.mock("@/components/shared/data-table", () => ({
   ),
 }));
 vi.mock("@/components/views/resource-workspace", () => ({
-  ResourceWorkspace: ({ children }: { children: React.ReactNode }) => children,
+  ResourceWorkspace: ({
+    toolbar,
+    children,
+  }: {
+    toolbar?: React.ReactNode;
+    children: React.ReactNode;
+  }) => (
+    <>
+      {toolbar}
+      {children}
+    </>
+  ),
 }));
 vi.mock("@/components/views/collection-selection-actions", async (
   importOriginal,

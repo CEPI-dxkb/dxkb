@@ -6,7 +6,7 @@ import {
   genomeSequenceScenarioOverrides,
   taxonGenomesScenarioOverrides,
 } from "../fixtures/overrides";
-import { GenomeMemberPage } from "../pages";
+import { CollectionToolbar, GenomeMemberPage } from "../pages";
 
 const genomeViewOverrides = [
   ...taxonGenomesScenarioOverrides,
@@ -30,7 +30,8 @@ test.describe("Genome view", () => {
   }) => {
     await page.goto("/taxonomy/11974?tab=genomes");
 
-    const keyword = page.getByRole("searchbox", { name: "Search keywords..." });
+    const toolbar = new CollectionToolbar(page);
+    const keyword = toolbar.keyword();
     const unmatchedRow = page.getByRole("row", { name: /Select row 11983\.1 / });
     await expect(unmatchedRow).toBeVisible();
     await expect(
@@ -45,7 +46,6 @@ test.describe("Genome view", () => {
     await keyword.fill("MERS");
     await expect(unmatchedRow).toHaveCount(0);
     await expect(page).toHaveURL(/\/taxonomy\/11974\?tab=genomes$/);
-    await page.getByRole("button", { name: "Show Filters" }).click();
     const filteredResponse = page.waitForResponse((response) => {
       const url = new URL(response.url());
       return (
@@ -53,8 +53,14 @@ test.describe("Genome view", () => {
         url.searchParams.get("rql")?.includes("eq(genome_status,Complete)") === true
       );
     });
-    await page.getByRole("button", { name: "Complete (1)" }).click();
+    await toolbar.openFacet("Genome Status");
+    await expect(
+      toolbar.facetValueOption("Genome Status", "Complete", 1),
+    ).toBeVisible();
+    await toolbar.pickFacetValue("Genome Status", "Complete");
     await filteredResponse;
+    await toolbar.closeFilters();
+    await expect(toolbar.activeFilterPill("Genome Status")).toBeVisible();
     await expect(page).toHaveURL(
       /\/taxonomy\/11974\?tab=genomes&genome_status=Complete$/,
     );
@@ -93,7 +99,7 @@ test.describe("Genome view", () => {
     await genomeRequest;
     await expect(page.getByRole("banner").getByRole("combobox", { name: "Search type" })).toContainText("Genomes");
     await expect(page.getByRole("banner").getByRole("textbox")).toHaveValue("MERS");
-    const genomeFilter = page.getByRole("searchbox", { name: "Search keywords..." });
+    const genomeFilter = new CollectionToolbar(page).keyword();
     await expect(genomeFilter).toHaveValue("");
     await expect(page.getByRole("row", { name: /Select row 1282460\.2049/ })).toBeVisible();
 
@@ -117,7 +123,7 @@ test.describe("Genome view", () => {
     await featureRequest;
     await expect(page.getByRole("banner").getByRole("combobox", { name: "Search type" })).toContainText("Features");
     await expect(page.getByRole("banner").getByRole("textbox")).toHaveValue("replicase");
-    const featureFilter = page.getByRole("searchbox", { name: "Search keywords..." });
+    const featureFilter = new CollectionToolbar(page).keyword();
     await expect(featureFilter).toHaveValue("");
     await expect(page.getByRole("row", { name: /replicase polyprotein/ })).toBeVisible();
 
@@ -166,7 +172,7 @@ test.describe("Genome view", () => {
       "MERS",
     );
     await expect(
-      page.getByRole("searchbox", { name: "Search keywords..." }),
+      new CollectionToolbar(page).keyword(),
     ).toHaveValue("");
 
     const row = page.getByRole("row", { name: /Select row 1282460\.2049/ });
@@ -224,7 +230,7 @@ test.describe("Genome view", () => {
       "MERS",
     );
     await expect(
-      page.getByRole("searchbox", { name: "Search keywords..." }),
+      new CollectionToolbar(page).keyword(),
     ).toHaveValue("");
   });
 

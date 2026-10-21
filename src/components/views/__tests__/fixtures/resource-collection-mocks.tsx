@@ -183,25 +183,34 @@ export function taxonomyServiceChooserMock() {
 }
 
 /**
- * A flat stand-in for `ResourceWorkspace`: all three slots, one parent, no responsive
+ * A flat stand-in for `ResourceWorkspace`: all four slots, one parent, no responsive
  * behaviour. Suites that care *where* the slots mount use the real component instead
- * — see `resource-collection-actions.test.tsx`.
+ * — see `resource-collection-actions.test.tsx`. Like the real one it drops the action
+ * bar without `hasActionRail` and the side panel without `hasSidePanel` (a failed
+ * read turns both off), each in its own slot, so the toolbar keeps its place.
  */
 export function flatResourceWorkspaceMock() {
   return {
     ResourceWorkspace: ({
       children,
+      toolbar,
       actionBar,
       sidePanel,
+      hasActionRail = true,
+      hasSidePanel = true,
     }: {
       children: ReactNode;
+      toolbar?: ReactNode;
       actionBar: ReactNode;
       sidePanel: ReactNode;
+      hasActionRail?: boolean;
+      hasSidePanel?: boolean;
     }) => (
       <div>
-        {actionBar}
+        {hasActionRail && actionBar}
+        {toolbar}
         {children}
-        {sidePanel}
+        {hasSidePanel && sidePanel}
       </div>
     ),
   };

@@ -1207,9 +1207,9 @@ describe("useResourceCollection", () => {
     expect(result.current.facets).toEqual({});
   });
 
-  it("re-reads the counts for a changed facet set, keeping the previous ones marked refreshing", async () => {
+  it("reads only a newly shown facet, keeping the counted ones as they are", async () => {
     const data = repository();
-    const widerSet = Promise.withResolvers<
+    const hostName = Promise.withResolvers<
       Awaited<ReturnType<DataRepository["collection"]>>
     >();
     const collection = vi
@@ -1224,7 +1224,7 @@ describe("useResourceCollection", () => {
             pageSize: 200,
           });
         }
-        if (request.facets.includes("host_name")) return widerSet.promise;
+        if (request.facets.includes("host_name")) return hostName.promise;
         return Promise.resolve({
           rows: [],
           total: 1,
@@ -1259,8 +1259,10 @@ describe("useResourceCollection", () => {
     // The user turns another facet on in the Facets menu.
     rerender({ facetFields: ["genome_status", "host_name"] });
     await waitFor(() => {
-      expect(result.current.isFacetsRefreshing).toBe(true);
+      expect(result.current.isFacetsLoading).toBe(true);
     });
+    // Genome Status is still this scope's count, so nothing on screen is stale.
+    expect(result.current.isFacetsRefreshing).toBe(false);
     expect(result.current.facets).toEqual({
       genome_status: [{ value: "Complete", count: 1 }],
     });
@@ -1268,14 +1270,198 @@ describe("useResourceCollection", () => {
       collection.mock.calls
         .filter(([, request]) => request.facets)
         .map(([, request]) => request.facets),
-    ).toEqual([["genome_status"], ["genome_status", "host_name"]]);
+    ).toEqual([["genome_status"], ["host_name"]]);
     // The rows are not re-read for a facet change.
     expect(
       collection.mock.calls.filter(([, request]) => !request.facets),
     ).toHaveLength(1);
 
     act(() => {
-      widerSet.resolve({
+      hostName.resolve({
+        rows: [],
+        total: 1,
+        facets: { host_name: [{ value: "Human", count: 1 }] },
+        page: 1,
+        pageSize: 1,
+      });
+    });
+    await waitFor(() => {
+      expect(result.current.isFacetsLoading).toBe(false);
+    });
+    expect(result.current.facets).toEqual({
+      genome_status: [{ value: "Complete", count: 1 }],
+      host_name: [{ value: "Human", count: 1 }],
+    });
+  });
+
+  it("reads the shown facets of one scope in one request, each kept as its own count", async () => {
+    const data = repository();
+    const collection = vi
+      .spyOn(data, "collection")
+      .mockImplementation((_resource, request) =>
+        Promise.resolve({
+          rows: request.facets
+            ? []
+            : [{ genome_id: "100.1", genome_name: "Page value" }],
+          total: 1,
+          // A field counted with no values is absent from the upstream answer.
+          facets: request.facets
+            ? { host_name: [{ value: "Human", count: 1 }] }
+            : {},
+          page: 1,
+          pageSize: request.pageSize ?? 200,
+        }),
+      );
+    const { result } = renderHook(
+      () =>
+        useResourceCollection({
+          repository: data,
+          resource: "genome",
+          idField: "genome_id",
+          fields: ["genome_id", "genome_name"],
+          facetFields: ["genome_status", "host_name"],
+          prefetchNextPage: false,
+          state: initialState,
+          onStateChange: vi.fn(),
+        }),
+      { wrapper },
+    );
+
+    await waitFor(() => {
+      expect(result.current.isFacetsLoading).toBe(false);
+    });
+    expect(result.current.facets).toEqual({
+      genome_status: [],
+      host_name: [{ value: "Human", count: 1 }],
+    });
+    const facetRequests = collection.mock.calls.filter(
+      ([, request]) => request.facets,
+    );
+    expect(facetRequests).toEqual([
+      [
+        "genome",
+        expect.objectContaining({ facets: ["genome_status", "host_name"] }),
+        expect.any(AbortSignal),
+      ],
+    ]);
+    // The settled counts keep their identity across renders.
+    const settled = result.current.facets;
+    await waitFor(() => {
+      expect(result.current.facets.genome_status).toBe(settled.genome_status);
+    });
+  });
+
+  /**
+   * A repository whose facet reads stay pending until their signal aborts,
+   * recording each one's signal.
+   */
+  function pendingFacetRepository() {
+    const data = repository();
+    const facetSignals: (AbortSignal | undefined)[] = [];
+    vi.spyOn(data, "collection").mockImplementation(
+      (_resource, request, signal) => {
+        if (!request.facets)
+          return Promise.resolve({
+            rows: [{ genome_id: "100.1", genome_name: "Page value" }],
+            total: 1,
+            facets: {},
+            page: 1,
+            pageSize: 200,
+          });
+        facetSignals.push(signal);
+        return new Promise((_resolve, reject) => {
+          signal?.addEventListener("abort", () => {
+            reject(signal.reason as Error);
+          });
+        });
+      },
+    );
+    return { data, facetSignals };
+  }
+
+  it("aborts the shared facet read of a scope that is no longer shown", async () => {
+    const { data, facetSignals } = pendingFacetRepository();
+    const { result, rerender } = renderHook(
+      ({ state }: { state: CollectionState }) =>
+        useResourceCollection({
+          repository: data,
+          resource: "genome",
+          idField: "genome_id",
+          fields: ["genome_id", "genome_name"],
+          facetFields: ["genome_status", "host_name"],
+          prefetchNextPage: false,
+          state,
+          onStateChange: vi.fn(),
+        }),
+      { wrapper: sharedClientWrapper(), initialProps: { state: initialState } },
+    );
+    await waitFor(() => {
+      expect(facetSignals).toHaveLength(1);
+    });
+    expect(facetSignals[0]).toBeInstanceOf(AbortSignal);
+    expect(facetSignals[0]?.aborted).toBe(false);
+
+    rerender({ state: { ...initialState, rql: "eq(genus,Escherichia)" } });
+    await waitFor(() => {
+      expect(facetSignals).toHaveLength(2);
+    });
+    expect(facetSignals[0]?.aborted).toBe(true);
+    expect(facetSignals[1]?.aborted).toBe(false);
+    // The abandoned read's abort is not this scope's error.
+    expect(result.current.facetsError).toBeNull();
+    expect(result.current.isFacetsLoading).toBe(true);
+  });
+
+  it("keeps reading the other facets of a scope when one is turned off mid-load", async () => {
+    const data = repository();
+    const facetRead = Promise.withResolvers<
+      Awaited<ReturnType<DataRepository["collection"]>>
+    >();
+    const facetSignals: (AbortSignal | undefined)[] = [];
+    vi.spyOn(data, "collection").mockImplementation(
+      (_resource, request, signal) => {
+        if (!request.facets)
+          return Promise.resolve({
+            rows: [{ genome_id: "100.1", genome_name: "Page value" }],
+            total: 1,
+            facets: {},
+            page: 1,
+            pageSize: 200,
+          });
+        facetSignals.push(signal);
+        return facetRead.promise;
+      },
+    );
+    const { result, rerender } = renderHook(
+      ({ facetFields }: { facetFields: readonly string[] }) =>
+        useResourceCollection({
+          repository: data,
+          resource: "genome",
+          idField: "genome_id",
+          fields: ["genome_id", "genome_name"],
+          facetFields,
+          prefetchNextPage: false,
+          state: initialState,
+          onStateChange: vi.fn(),
+        }),
+      {
+        wrapper: sharedClientWrapper(),
+        initialProps: {
+          facetFields: ["genome_status", "host_name"] as readonly string[],
+        },
+      },
+    );
+    await waitFor(() => {
+      expect(facetSignals).toHaveLength(1);
+    });
+    expect(facetSignals[0]).toBeInstanceOf(AbortSignal);
+
+    // The user unpins Host Name while both counts load.
+    rerender({ facetFields: ["genome_status"] });
+    expect(facetSignals[0]?.aborted).toBe(false);
+
+    act(() => {
+      facetRead.resolve({
         rows: [],
         total: 1,
         facets: {
@@ -1287,11 +1473,66 @@ describe("useResourceCollection", () => {
       });
     });
     await waitFor(() => {
-      expect(result.current.isFacetsRefreshing).toBe(false);
+      expect(result.current.facetStatuses).toEqual({ genome_status: "ready" });
     });
-    expect(result.current.facets).toHaveProperty("host_name", [
-      { value: "Human", count: 1 },
+    expect(result.current.facets).toEqual({
+      genome_status: [{ value: "Complete", count: 1 }],
+    });
+    expect(result.current.facetsError).toBeNull();
+    expect(facetSignals).toHaveLength(1);
+  });
+
+  it("starts reading facets it is asked to prefetch, without reading fresh ones again", async () => {
+    const data = repository();
+    const collection = vi.spyOn(data, "collection");
+    const { result, rerender } = renderHook(
+      ({ facetFields }: { facetFields: readonly string[] }) =>
+        useResourceCollection({
+          repository: data,
+          resource: "genome",
+          idField: "genome_id",
+          fields: ["genome_id", "genome_name"],
+          facetFields,
+          prefetchNextPage: false,
+          state: { ...initialState, keyword: "coli" },
+          onStateChange: vi.fn(),
+        }),
+      {
+        wrapper: sharedClientWrapper(),
+        initialProps: { facetFields: [] as readonly string[] },
+      },
+    );
+    await waitFor(() => {
+      expect(result.current.rows).toHaveLength(1);
+    });
+
+    act(() => {
+      result.current.prefetchFacets(["genome_status", "host_name"]);
+    });
+    const facetRequests = () =>
+      collection.mock.calls.filter(([, request]) => request.facets);
+    // Both fields go out in one request.
+    await waitFor(() => {
+      expect(facetRequests()).toHaveLength(1);
+    });
+    expect(facetRequests()).toContainEqual([
+      "genome",
+      expect.objectContaining({
+        keyword: "coli",
+        facets: ["genome_status", "host_name"],
+      }),
+      expect.any(AbortSignal),
     ]);
+
+    // Opening the panel, or pointing at its button again, reuses those reads.
+    act(() => {
+      result.current.prefetchFacets(["genome_status", "host_name"]);
+    });
+    rerender({ facetFields: ["genome_status", "host_name"] });
+    await waitFor(() => {
+      expect(result.current.isFacetsLoading).toBe(false);
+    });
+    expect(facetRequests()).toHaveLength(1);
   });
 });
 
@@ -1307,7 +1548,7 @@ describe("useResourceCollection facet scope", () => {
           idField: "feature_id",
           fields: ["feature_id"],
           facetFields: ["annotation"],
-          facetScope: { structuralRql: "eq(feature_id,*)" },
+          facetStructuralRql: () => "eq(feature_id,*)",
           prefetchNextPage: false,
           structuralRql: "eq(annotation,PATRIC)",
           state: {
@@ -1341,5 +1582,276 @@ describe("useResourceCollection facet scope", () => {
       }),
       expect.any(AbortSignal),
     );
+  });
+
+  /** A repository whose facet reads answer one bucket per requested field. */
+  function facetEchoRepository() {
+    const data = repository();
+    const collection = vi
+      .spyOn(data, "collection")
+      .mockImplementation((_resource, request) =>
+        Promise.resolve({
+          rows: request.facets ? [] : [{ feature_id: "fig|1.1.peg.1" }],
+          total: 1,
+          facets: Object.fromEntries(
+            (request.facets ?? []).map((field) => [
+              field,
+              [{ value: `${field} value`, count: 1 }],
+            ]),
+          ),
+          page: 1,
+          pageSize: request.pageSize ?? 200,
+        }),
+      );
+    const facetRequests = () =>
+      collection.mock.calls
+        .map(([, request]) => request)
+        .filter((request) => request.facets);
+    return { data, facetRequests };
+  }
+
+  it("reads a field with its own scope apart from the fields that share one", async () => {
+    const { data, facetRequests } = facetEchoRepository();
+    const { result } = renderHook(
+      () =>
+        useResourceCollection({
+          repository: data,
+          resource: "genome_feature",
+          idField: "feature_id",
+          fields: ["feature_id"],
+          facetFields: ["annotation", "feature_type", "product"],
+          // `annotation` is filtered, so its own counts leave that filter out.
+          facetStructuralRql: (field) =>
+            field === "annotation" ? undefined : "eq(annotation,PATRIC)",
+          prefetchNextPage: false,
+          structuralRql: "eq(annotation,PATRIC)",
+          state: {
+            rql: "eq(genome_id,83332.12)",
+            filters: { annotation: ["PATRIC"] },
+            page: 1,
+            sort: "unsorted",
+          },
+          onStateChange: vi.fn(),
+        }),
+      { wrapper },
+    );
+
+    await waitFor(() => {
+      expect(result.current.facetStatuses).toEqual({
+        annotation: "ready",
+        feature_type: "ready",
+        product: "ready",
+      });
+    });
+    expect(facetRequests()).toHaveLength(2);
+    expect(facetRequests()).toEqual(
+      expect.arrayContaining([
+        // The explicit rql stays in every scope.
+        expect.objectContaining({
+          rql: "eq(genome_id,83332.12)",
+          facets: ["annotation"],
+        }),
+        expect.objectContaining({
+          rql: "and(eq(annotation,PATRIC),eq(genome_id,83332.12))",
+          facets: ["feature_type", "product"],
+        }),
+      ]),
+    );
+    expect(result.current.facets).toEqual({
+      annotation: [{ value: "annotation value", count: 1 }],
+      feature_type: [{ value: "feature_type value", count: 1 }],
+      product: [{ value: "product value", count: 1 }],
+    });
+  });
+
+  it("reads fields whose scopes match in one batched request", async () => {
+    const { data, facetRequests } = facetEchoRepository();
+    const { result } = renderHook(
+      () =>
+        useResourceCollection({
+          repository: data,
+          resource: "genome_feature",
+          idField: "feature_id",
+          fields: ["feature_id"],
+          facetFields: ["annotation", "feature_type"],
+          facetStructuralRql: () => "eq(feature_id,*)",
+          prefetchNextPage: false,
+          structuralRql: "eq(annotation,PATRIC)",
+          state: { filters: {}, page: 1, sort: "unsorted" },
+          onStateChange: vi.fn(),
+        }),
+      { wrapper },
+    );
+
+    await waitFor(() => {
+      expect(Object.keys(result.current.facets)).toHaveLength(2);
+    });
+    expect(facetRequests()).toEqual([
+      expect.objectContaining({
+        rql: "eq(feature_id,*)",
+        facets: ["annotation", "feature_type"],
+      }),
+    ]);
+  });
+
+  it("reports each field loading, then ready, then stale while a new scope loads", async () => {
+    const data = repository();
+    type Answer = Awaited<ReturnType<DataRepository["collection"]>>;
+    const firstScope = Promise.withResolvers<Answer>();
+    const nextScope = Promise.withResolvers<Answer>();
+    vi.spyOn(data, "collection").mockImplementation((_resource, request) => {
+      if (!request.facets)
+        return Promise.resolve({
+          rows: [{ genome_id: "100.1", genome_name: "Page value" }],
+          total: 1,
+          facets: {},
+          page: 1,
+          pageSize: 200,
+        });
+      return request.keyword === "coli"
+        ? nextScope.promise
+        : firstScope.promise;
+    });
+    const answer = (count: number): Answer => ({
+      rows: [],
+      total: count,
+      facets: {
+        genome_status: [{ value: "Complete", count }],
+        host_name: [{ value: "Human", count }],
+      },
+      page: 1,
+      pageSize: 1,
+    });
+    const { result, rerender } = renderHook(
+      ({
+        state,
+        facetFields,
+      }: {
+        state: CollectionState;
+        facetFields: readonly string[];
+      }) =>
+        useResourceCollection({
+          repository: data,
+          resource: "genome",
+          idField: "genome_id",
+          fields: ["genome_id", "genome_name"],
+          facetFields,
+          prefetchNextPage: false,
+          state,
+          onStateChange: vi.fn(),
+        }),
+      {
+        wrapper: sharedClientWrapper(),
+        initialProps: {
+          state: initialState,
+          facetFields: ["genome_status"] as readonly string[],
+        },
+      },
+    );
+
+    // Nothing counted yet: no previous counts stand in.
+    await waitFor(() => {
+      expect(result.current.rows).toHaveLength(1);
+    });
+    expect(result.current.facetStatuses).toEqual({ genome_status: "loading" });
+
+    act(() => {
+      firstScope.resolve(answer(9));
+    });
+    await waitFor(() => {
+      expect(result.current.facetStatuses).toEqual({ genome_status: "ready" });
+    });
+
+    // A new scope: the old counts stay on screen, marked stale, while a field
+    // counted for the first time has none to show.
+    rerender({
+      state: { ...initialState, keyword: "coli" },
+      facetFields: ["genome_status", "host_name"],
+    });
+    await waitFor(() => {
+      expect(result.current.facetStatuses).toEqual({
+        genome_status: "stale",
+        host_name: "loading",
+      });
+    });
+    expect(result.current.facets).toEqual({
+      genome_status: [{ value: "Complete", count: 9 }],
+    });
+
+    act(() => {
+      nextScope.resolve(answer(2));
+    });
+    await waitFor(() => {
+      expect(result.current.facetStatuses).toEqual({
+        genome_status: "ready",
+        host_name: "ready",
+      });
+    });
+    expect(result.current.facets).toEqual({
+      genome_status: [{ value: "Complete", count: 2 }],
+      host_name: [{ value: "Human", count: 2 }],
+    });
+  });
+
+  it("settles a field whose new scope's read fails instead of leaving it stale", async () => {
+    const data = repository();
+    const nextScope = Promise.withResolvers<
+      Awaited<ReturnType<DataRepository["collection"]>>
+    >();
+    vi.spyOn(data, "collection").mockImplementation((_resource, request) => {
+      if (!request.facets)
+        return Promise.resolve({
+          rows: [{ genome_id: "100.1", genome_name: "Page value" }],
+          total: 1,
+          facets: {},
+          page: 1,
+          pageSize: 200,
+        });
+      if (request.keyword === "coli") return nextScope.promise;
+      return Promise.resolve({
+        rows: [],
+        total: 9,
+        facets: { genome_status: [{ value: "Complete", count: 9 }] },
+        page: 1,
+        pageSize: 1,
+      });
+    });
+    const { result, rerender } = renderHook(
+      ({ state }: { state: CollectionState }) =>
+        useResourceCollection({
+          repository: data,
+          resource: "genome",
+          idField: "genome_id",
+          fields: ["genome_id", "genome_name"],
+          facetFields: ["genome_status"],
+          prefetchNextPage: false,
+          state,
+          onStateChange: vi.fn(),
+        }),
+      { wrapper: sharedClientWrapper(), initialProps: { state: initialState } },
+    );
+    await waitFor(() => {
+      expect(result.current.facetStatuses).toEqual({ genome_status: "ready" });
+    });
+
+    rerender({ state: { ...initialState, keyword: "coli" } });
+    await waitFor(() => {
+      expect(result.current.facetStatuses).toEqual({ genome_status: "stale" });
+    });
+
+    act(() => {
+      nextScope.reject(new Error("Facet query timed out upstream."));
+    });
+    await waitFor(() => {
+      expect(result.current.facetsError?.message).toBe(
+        "Facet query timed out upstream.",
+      );
+    });
+    // The previous scope's counts are not this scope's, so none are shown and
+    // the error says why.
+    expect(result.current.facetStatuses).toEqual({ genome_status: "ready" });
+    expect(result.current.isFacetsRefreshing).toBe(false);
+    expect(result.current.isFacetsLoading).toBe(false);
+    expect(result.current.facets).toEqual({});
   });
 });

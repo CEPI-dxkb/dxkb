@@ -456,6 +456,11 @@ export interface DataTableProps {
     visibleColumns: string[] | null,
   ) => void | Promise<void>;
   showExportControls?: boolean;
+  /**
+   * The owner draws its own Columns control (`ResourceCollection`'s toolbar),
+   * so the table's row of controls is left out.
+   */
+  hideColumnControls?: boolean;
   scrollRegionLabel?: string;
   // Loading indicator: parent can set this while data is being fetched
   isLoading?: boolean;
@@ -502,6 +507,7 @@ function useDataTableContent(
     onDownloadAll,
     onDownloadSelected,
     showExportControls = true,
+    hideColumnControls = false,
     scrollRegionLabel,
     isLoading = false,
     isRefreshing = false,
@@ -914,15 +920,17 @@ function useDataTableContent(
           </div>
         </div>
       )}
-      <DataTableControls
-        table={table}
-        resource={resource}
-        selectedIds={selectedIds}
-        isAllPagesSelected={isAllPagesSelected}
-        onDownloadAll={onDownloadAll}
-        onDownloadSelected={onDownloadSelected}
-        showExportControls={showExportControls}
-      />
+      {!hideColumnControls && (
+        <DataTableControls
+          table={table}
+          resource={resource}
+          selectedIds={selectedIds}
+          isAllPagesSelected={isAllPagesSelected}
+          onDownloadAll={onDownloadAll}
+          onDownloadSelected={onDownloadSelected}
+          showExportControls={showExportControls}
+        />
+      )}
       <div className="relative flex min-h-0 w-full flex-1 flex-col overflow-hidden rounded border border-border">
         {isRefreshing && !isLoading && (
           // Not a live region: the owner announces the refresh (see

@@ -1,5 +1,6 @@
 import { expect, type Locator, type Page } from "@playwright/test";
 
+import { CollectionToolbar } from "./collection-toolbar";
 import { ErrorAlert } from "./error-alert";
 import { ViewNavRail } from "./view-nav-rail";
 
@@ -7,12 +8,15 @@ import { ViewNavRail } from "./view-nav-rail";
 export class TaxonPage {
   readonly page: Page;
   readonly viewNav: ViewNavRail;
+  /** The current tab's collection toolbar (keyword, Filters, Columns). */
+  readonly toolbar: CollectionToolbar;
   /** Links to other taxon pages (the lineage breadcrumb), which Next prefetches. */
   readonly taxonomyLinks: Locator;
 
   constructor(page: Page) {
     this.page = page;
     this.viewNav = new ViewNavRail(page);
+    this.toolbar = new CollectionToolbar(page);
     this.taxonomyLinks = page.locator('a[href^="/taxonomy/"]');
   }
 

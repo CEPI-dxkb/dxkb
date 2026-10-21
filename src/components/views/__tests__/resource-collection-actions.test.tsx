@@ -26,8 +26,8 @@ import { createResourceCollectionResult } from "./fixtures/resource-collection-r
  *    window resize or a tablet rotation must not remount the table or the bar, and
  *    must not discard table-local state. It used to return two structurally different
  *    trees and did exactly that.
- * 2. A collection error still replaces the whole workspace — action bar included —
- *    with the retry alert. The Taxonomy launch resolves IDs over the network first, so
+ * 2. A collection error still drops the action bar, and the retry alert takes the
+ *    table's place. The Taxonomy launch resolves IDs over the network first, so
  *    anything it kept inside that slot would be thrown away mid-flight: no chooser, no
  *    error, no spinner, just a click that vanished. That is why the chooser is a
  *    sibling of the workspace rather than a descendant.
@@ -421,8 +421,8 @@ describe("ResourceCollection action mounting across the workspace breakpoint", (
       "234",
     );
 
-    // A background refetch failing replaces the whole workspace with an error
-    // alert, taking the action bar with it.
+    // A background refetch failing swaps the table for an error alert and
+    // takes the action bar with it.
     useResourceCollection.mockReturnValue({
       ...allPagesTaxonomyCollection(),
       error: new Error("Data service is unavailable (503)"),

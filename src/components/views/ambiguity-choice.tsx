@@ -37,7 +37,7 @@ export function AmbiguityChoice({
           {testTypes.map((testType) => (
             <li key={testType}>
               <Link
-                className="block rounded-md border px-4 py-3 text-primary underline-offset-4 hover:bg-muted hover:underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                className="block rounded-md border px-4 py-3 text-primary underline-offset-4 hover:bg-muted hover:underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none dark:text-link"
                 href={getChoiceHref(sampleId, testType)}
               >
                 {testType}
@@ -51,7 +51,7 @@ export function AmbiguityChoice({
         </p>
       )}
       <Link
-        className="mt-6 inline-block text-sm text-primary underline underline-offset-2"
+        className="mt-6 inline-block text-sm text-primary underline underline-offset-2 dark:text-link"
         href={browseHref}
       >
         Browse {recordType} records

@@ -61,7 +61,8 @@
   --secondary: oklch(0.274 0.006 286.033);
   --secondary-foreground: oklch(0.969 0.016 293.756);
   --muted: oklch(0.274 0.006 286.033);
-  --muted-foreground: oklch(0.705 0.015 286.067);
+  /* Lifted for small muted text: see dxkb-dark in globals.css. */
+  --muted-foreground: oklch(0.775 0.015 286.067);
   --accent: oklch(32.865% 0.08836 327.333);
   --accent-foreground: oklch(76.44% 0.19814 324.74);
   --destructive: oklch(0.704 0.191 22.216);

@@ -127,3 +127,38 @@ describe("theme contrast: secondary surfaces", () => {
     },
   );
 });
+
+/**
+ * Small muted text (field labels, breadcrumbs, descriptions) reads dim on a
+ * dark surface well before it fails AA, so the dark themes hold it to AAA.
+ */
+const darkMutedContrast = 7;
+
+const darkThemeBlocks = themeBlocks.filter((block) =>
+  themeOf(block)?.endsWith("-dark"),
+);
+
+describe("theme contrast: dark-theme text", () => {
+  it("finds the three dark theme blocks", () => {
+    expect(darkThemeBlocks.map(themeOf).sort()).toEqual([
+      "bvbrc-dark",
+      "dxkb-dark",
+      "violet-dark",
+    ]);
+  });
+
+  it.each(darkThemeBlocks.map((block) => [themeOf(block), block] as const))(
+    "%s keeps muted text at 7:1 and links at 4.5:1 on its card and page",
+    (_theme, block) => {
+      for (const surface of ["--card", "--background"]) {
+        const fill = token(block, surface);
+        expect(
+          contrast(token(block, "--muted-foreground"), fill),
+        ).toBeGreaterThanOrEqual(darkMutedContrast);
+        expect(contrast(token(block, "--link"), fill)).toBeGreaterThanOrEqual(
+          minimumContrast,
+        );
+      }
+    },
+  );
+});

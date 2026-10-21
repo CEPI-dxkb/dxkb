@@ -87,7 +87,7 @@ function SignupForm() {
               Already have an account?{" "}
               <Link
                 href="/sign-in"
-                className="font-medium text-primary hover:underline"
+                className="font-medium text-primary hover:underline dark:text-link"
               >
                 Sign in
               </Link>

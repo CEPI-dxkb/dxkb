@@ -8,7 +8,7 @@ export default function SerologyNotFound() {
         The sample identifier is invalid, missing, or inaccessible.
       </p>
       <Link
-        className="text-primary underline underline-offset-2"
+        className="text-primary underline underline-offset-2 dark:text-link"
         href="/serology"
       >
         Browse serology records

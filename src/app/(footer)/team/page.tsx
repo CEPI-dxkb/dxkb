@@ -275,7 +275,7 @@ const MemberName = ({
       href={member.bioLink}
       target="_blank"
       rel="noopener noreferrer"
-      className="font-semibold text-primary underline decoration-dotted underline-offset-4 hover:decoration-solid"
+      className="font-semibold text-primary underline decoration-dotted underline-offset-4 hover:decoration-solid dark:text-link"
       aria-label={`${member.name} bio, opens in a new tab`}
     >
       {member.name}

@@ -1,4 +1,8 @@
 import type { FastaTypeFor } from "@/lib/data-api/fasta";
+import {
+  isTaxonId,
+  type TaxonomyViewRecord,
+} from "@/lib/taxonomy-view/schema";
 import type { FeatureViewRecord } from "./schema";
 
 /**
@@ -14,6 +18,70 @@ export function featureDisplayName(feature: FeatureViewRecord): string {
       (id): id is string => Boolean(id?.trim()),
     ) ?? feature.feature_id
   );
+}
+
+/**
+ * What BV-BRC's Feature View prints in bold under its breadcrumb, in its
+ * order: BRC ID, RefSeq locus tag, gene, product. `name` is the page's name
+ * (the heading), so a record with no BRC ID leads with what stands in for one;
+ * `details` are the rest, minus blanks.
+ */
+export function featureHeaderParts(feature: FeatureViewRecord): {
+  name: string;
+  details: string[];
+} {
+  const name = featureDisplayName(feature);
+  const details = [feature.refseq_locus_tag, feature.gene, feature.product]
+    .map((value) => value?.trim())
+    .filter((value): value is string => Boolean(value) && value !== name);
+  return { name, details };
+}
+
+/** One taxon in a feature's lineage breadcrumb. */
+export interface LineageCrumb {
+  taxonId: string;
+  name: string;
+}
+
+/**
+ * The ranks BV-BRC's Feature View names in its breadcrumb (`visibleRanks` in
+ * `buildHeaderContent`, `p3/widget/viewer/Feature.js`). The root, realm,
+ * kingdom, sub-ranks and unranked strains between them are left out, so
+ * Influenza A reads "Negarnaviricota » Insthoviricetes » … » Alphainfluenzavirus
+ * influenzae" rather than starting at "Viruses » Riboviria".
+ */
+const breadcrumbRanks = new Set([
+  "superkingdom",
+  "phylum",
+  "class",
+  "order",
+  "family",
+  "genus",
+  "species",
+]);
+
+function asList(value: string | number | (string | number)[] | undefined) {
+  if (value === undefined) return [];
+  return (Array.isArray(value) ? value : [value]).map(String);
+}
+
+/**
+ * The feature's lineage as BV-BRC's breadcrumb shows it: the taxa of the
+ * ranks above, root first. A taxon without a usable id or name is skipped
+ * rather than rendered as a dead link.
+ */
+export function featureLineageCrumbs(
+  taxon: Pick<TaxonomyViewRecord, "lineage_ids" | "lineage_names" | "lineage_ranks">,
+): LineageCrumb[] {
+  const ids = asList(taxon.lineage_ids);
+  const names = asList(taxon.lineage_names);
+  return asList(taxon.lineage_ranks).flatMap((rank, index) => {
+    const taxonId = ids[index];
+    const name = names[index]?.trim();
+    return breadcrumbRanks.has(rank) && isTaxonId(taxonId) && name
+      ? [{ taxonId, name }]
+      : [];
+  });
 }
 
 function hasLength(value: FeatureViewRecord["na_length"]): boolean {

@@ -97,7 +97,7 @@ Accept:       application/solr+json
 
 The body is **URL-encoded RQL** (Resource Query Language) sent as a raw string — not JSON. All 8 calls use `limit(0)` so no document rows are returned, only facet aggregations.
 
-The calls below are the ones MAAGE-Web sends, with the taxon wrapped in a genome self-join (`eq(genome_id,*)&genome(...)`). DXKB sends the lineage predicate `eq(taxon_lineage_ids,{TAXON_ID})` on its own (`genomeScopeRql` in `src/lib/services/organisms/genome-scope.ts`). The self-join selects the same genomes: on 2026-10-14 both forms returned the same `numFound` and the same facet and pivot counts for all 8 calls on taxa 2, 234, 286, 1280, 1773, 11320 and 2955291, and the self-join was the slower of the two.
+The calls below are the ones MAAGE-Web sends, with the taxon wrapped in a genome self-join (`eq(genome_id,*)&genome(...)`). DXKB sends the lineage predicate on its own, less Deprecated genomes: `and(eq(taxon_lineage_ids,{TAXON_ID}),ne(genome_status,Deprecated))` (`genomeScopeRql` in `src/lib/services/organisms/genome-scope.ts`; the Deprecated filter was added on 2026-10-21, after the comparison below). The self-join selects the same genomes: on 2026-10-14 both forms returned the same `numFound` and the same facet and pivot counts for all 8 calls on taxa 2, 234, 286, 1280, 1773, 11320 and 2955291, and the self-join was the slower of the two.
 
 ---
 

@@ -5,7 +5,10 @@ import {
   mockNextRequest,
 } from "@/test-helpers/api-route-helpers";
 import { genomeDownloadTsv } from "@/lib/e2e-fixtures/downloads";
-import { brucellaPpiTotal } from "@/lib/e2e-fixtures/records";
+import {
+  brucellaPpiTotal,
+  findOrganismSummaryRecord,
+} from "@/lib/e2e-fixtures/records";
 import { DELETE, GET, POST, PUT } from "../route";
 
 interface RouteContext {
@@ -333,6 +336,31 @@ describe("api/e2e-mock catch-all — enabled", () => {
       count: 9800000,
       unique_family: 1204,
     });
+  });
+
+  it("GET answers the Taxonomy header's genome count with the taxon's summary count", async () => {
+    const resp = await GET(
+      mockNextRequest({
+        url: "http://localhost:3020/api/e2e-mock/bvbrc-website/genome/?and(eq(taxon_lineage_ids,234),ne(genome_status,Deprecated))&select(genome_id)&limit(1)",
+      }),
+      ctx(["bvbrc-website", "genome"]),
+    );
+
+    expect(resp.status).toBe(200);
+    expect((await resp.json()) as unknown).toEqual({
+      response: { numFound: findOrganismSummaryRecord("234")?.count, docs: [] },
+    });
+  });
+
+  it("GET fails closed on a genome count for a taxon without a fixture", async () => {
+    const resp = await GET(
+      mockNextRequest({
+        url: "http://localhost:3020/api/e2e-mock/bvbrc-website/genome/?and(eq(taxon_lineage_ids,999999),ne(genome_status,Deprecated))&select(genome_id)&limit(1)",
+      }),
+      ctx(["bvbrc-website", "genome"]),
+    );
+
+    expect(resp.status).toBe(400);
   });
 
   it("GET returns SOLR-shaped bacteria genome facet fixtures", async () => {

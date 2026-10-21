@@ -240,11 +240,14 @@ describe("makeSerologyView", () => {
 });
 
 describe("makeGenomesView", () => {
-  it("renders the shared Genome collection with taxon scope", () => {
+  it("renders the shared Genome collection with taxon scope, less Deprecated genomes", () => {
     const GenomesView = makeGenomesView({ scope });
     const { getByTestId } = render(<GenomesView />);
     const collection = getByTestId("genome-resource-collection");
-    expect(collection).toHaveAttribute("data-q", "eq(taxon_lineage_ids,1234)");
+    expect(collection).toHaveAttribute(
+      "data-q",
+      "and(eq(taxon_lineage_ids,1234),ne(genome_status,Deprecated))",
+    );
     expect(collection).toHaveAttribute("data-row-links", "false");
     expect(collection).toHaveAttribute("data-keyword-mode", "loaded");
   });
@@ -389,7 +392,11 @@ describe("makeExperimentsView", () => {
 
 describe("composite scope queries", () => {
   it.each([
-    ["genome", makeGenomesView, compositeClause],
+    [
+      "genome",
+      makeGenomesView,
+      `and(${compositeClause},ne(genome_status,Deprecated))`,
+    ],
     [
       "genome_sequence",
       makeSequencesView,

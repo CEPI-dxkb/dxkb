@@ -911,6 +911,26 @@ function maybeBvBrcWebsite(
     const rawTaxonId = equalsValue(query, "taxon_lineage_ids");
     const taxonId = /^\d+$/.test(rawTaxonId ?? "") ? Number(rawTaxonId) : null;
 
+    // The Taxonomy header's genome count (`fetchTaxonGenomeCount`): one
+    // `genome_id` and no facet, read for `numFound`, the taxon's summary count.
+    if (
+      !hasCall(query, "facet") &&
+      hasClause(query, "select(genome_id)") &&
+      hasClause(query, "limit(1)")
+    ) {
+      const summary =
+        taxonId === null ? undefined : findOrganismSummaryRecord(String(taxonId));
+      return summary
+        ? {
+            kind: "ok",
+            body: { response: { numFound: summary.count, docs: [] } },
+          }
+        : {
+            kind: "unhandled",
+            reason: `no genome count fixture for taxon ${rawTaxonId ?? "(none)"} — add one to organismSummaryRecords in src/lib/e2e-fixtures/records.ts`,
+          };
+    }
+
     const pivot = pivotKeyFromQuery(query);
     if (pivot) {
       const pivotKey = pivot.tertiary

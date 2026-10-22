@@ -74,7 +74,7 @@ export default function PublicationsPage() {
                         href={publication.url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="font-semibold text-primary hover:underline"
+                        className="font-semibold text-primary hover:underline dark:text-link"
                       >
                         {publication.title}
                       </Link>
@@ -85,7 +85,7 @@ export default function PublicationsPage() {
                           href={`https://doi.org/${publication.doi}`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-primary underline"
+                          className="text-primary underline dark:text-link"
                         >
                           {publication.doi}
                         </Link>
@@ -103,7 +103,7 @@ export default function PublicationsPage() {
               href="https://scholar.google.com/citations?hl=en&user=wtbrhBgAAAAJ&view_op=list_works&sortby=pubdate"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-primary underline"
+              className="text-primary underline dark:text-link"
             >
               Google Scholar
             </Link>

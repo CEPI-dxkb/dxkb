@@ -6,9 +6,14 @@ import { DataApiError } from "@/lib/data-api/repository";
 import {
   canonicalFeatureTab,
   featureDisplayName,
+  featureLineageCrumbs,
   isFeatureId,
+  type FeatureViewRecord,
+  type LineageCrumb,
 } from "@/lib/feature-view";
 import { getFeature, type FeatureLookup } from "@/lib/feature-view/server";
+import { isTaxonId } from "@/lib/taxonomy-view";
+import { getTaxonomy } from "@/lib/taxonomy-view/server";
 import { featureHref } from "@/lib/views/hrefs";
 import type { SearchParamsRecord } from "@/lib/views/rql";
 import {
@@ -52,6 +57,31 @@ async function loadFeature(rawFeatureId: string, source: RouteParamSource) {
   return { featureId, feature: result.feature } as const;
 }
 
+/**
+ * The taxa that lead the breadcrumb. The feature record names only its taxon,
+ * so its lineage is the taxonomy record's, as BV-BRC's Feature View reads it.
+ * The record itself has loaded by now, so a failed lookup costs the breadcrumb
+ * its taxa, not the page. The page passes this on unawaited and the breadcrumb
+ * streams it in, so a stalled lookup does not hold the record behind the
+ * loading screen for the Data API's whole budget either.
+ */
+async function loadLineage(
+  feature: FeatureViewRecord,
+): Promise<LineageCrumb[]> {
+  const taxonId = String(feature.taxon_id ?? "");
+  if (!isTaxonId(taxonId)) return [];
+  try {
+    const taxon = await getTaxonomy(taxonId);
+    return taxon ? featureLineageCrumbs(taxon) : [];
+  } catch (error) {
+    console.error(
+      `feature/${feature.feature_id}: taxonomy/${taxonId} lookup failed`,
+      error,
+    );
+    return [];
+  }
+}
+
 export async function generateMetadata({
   params,
 }: FeaturePageProps): Promise<Metadata> {
@@ -91,5 +121,11 @@ export default async function FeaturePage({
       `${featureHref(feature.feature_id)}${canonicalQuery ? `?${canonicalQuery}` : ""}`,
     );
   }
-  return <FeatureMember feature={feature} activeTab={activeTab} />;
+  return (
+    <FeatureMember
+      feature={feature}
+      lineage={loadLineage(feature)}
+      activeTab={activeTab}
+    />
+  );
 }

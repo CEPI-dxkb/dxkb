@@ -11,10 +11,18 @@
  * ------------------------------------------------------------------------- */
 
 .msp-plugin.msp-plugin {
+  /* The color of hovered and toggled-on controls. --primary is a button fill,
+     too dark to read as text or a glyph on a dark theme's panels (2.1-3.0:1),
+     so dark themes use --link instead. */
+  --msp-accent: var(--primary);
   font-family: inherit;
   background: var(--background);
   color: var(--foreground);
   font-size: 13px;
+}
+
+[data-theme$="-dark"] .msp-plugin.msp-plugin {
+  --msp-accent: var(--link);
 }
 
 .msp-plugin.msp-plugin .msp-plugin-content {
@@ -75,7 +83,7 @@
 }
 
 .msp-plugin.msp-plugin .msp-viewport-controls-buttons button:hover {
-  color: var(--primary);
+  color: var(--msp-accent);
   background: var(--background);
 }
 
@@ -91,7 +99,7 @@
 
 .msp-plugin.msp-plugin .msp-viewport .msp-btn-link:hover {
   background: var(--muted);
-  color: var(--primary);
+  color: var(--msp-accent);
 }
 
 /* Viewport control panel (popover) */
@@ -129,7 +137,7 @@
 }
 
 .msp-plugin.msp-plugin .msp-transform-wrapper > .msp-transform-header > button:hover {
-  color: var(--primary);
+  color: var(--msp-accent);
 }
 
 /* Brand accent bottom borders on section headers */
@@ -205,11 +213,11 @@
 }
 
 .msp-plugin.msp-plugin .msp-left-panel-controls-buttons button:hover {
-  color: var(--primary);
+  color: var(--msp-accent);
 }
 
 .msp-plugin.msp-plugin .msp-left-panel-controls-buttons .msp-btn-link-toggle-on {
-  color: var(--primary);
+  color: var(--msp-accent);
 }
 
 /* ---------------------------------------------------------------------------
@@ -232,7 +240,7 @@
 }
 
 .msp-plugin.msp-plugin .msp-control-row > button.msp-control-button-label:hover {
-  color: var(--primary);
+  color: var(--msp-accent);
 }
 
 .msp-plugin.msp-plugin .msp-control-row > div {
@@ -290,7 +298,7 @@
 }
 
 .msp-plugin.msp-plugin .msp-btn:hover {
-  color: var(--primary);
+  color: var(--msp-accent);
 }
 
 /* Link-style buttons */
@@ -302,7 +310,7 @@
 }
 
 .msp-plugin.msp-plugin .msp-btn-link:hover {
-  color: var(--primary);
+  color: var(--msp-accent);
   background: color-mix(in oklch, var(--primary) 8%, transparent);
 }
 
@@ -316,14 +324,14 @@
 
 .msp-plugin.msp-plugin .msp-btn-link-toggle-on:hover,
 .msp-plugin.msp-plugin .msp-btn-link-toggle-off:hover {
-  color: var(--primary);
+  color: var(--msp-accent);
 }
 
 /* Commit (apply) buttons — primary accent */
 .msp-plugin.msp-plugin .msp-btn-commit-on,
 .msp-plugin.msp-plugin .msp-btn-commit-on:active,
 .msp-plugin.msp-plugin .msp-btn-commit-on:focus {
-  color: var(--primary);
+  color: var(--msp-accent);
   background: color-mix(in oklch, var(--primary) 10%, var(--background));
 }
 
@@ -348,7 +356,7 @@
 }
 
 .msp-plugin.msp-plugin .msp-btn-action:hover {
-  color: var(--primary);
+  color: var(--msp-accent);
   background: color-mix(in oklch, var(--primary) 8%, var(--input));
 }
 
@@ -370,7 +378,7 @@
 }
 
 .msp-plugin.msp-plugin .msp-btn-icon:hover {
-  color: var(--primary);
+  color: var(--msp-accent);
 }
 
 /* ---------------------------------------------------------------------------
@@ -384,7 +392,7 @@
 
 .msp-plugin.msp-plugin .msp-toggle-button > div > button:hover {
   outline-color: var(--primary) !important;
-  color: var(--primary);
+  color: var(--msp-accent);
 }
 
 /* ---------------------------------------------------------------------------
@@ -398,7 +406,7 @@
 }
 
 .msp-plugin.msp-plugin .msp-control-group-header:hover {
-  color: var(--primary);
+  color: var(--msp-accent);
 }
 
 .msp-plugin.msp-plugin .msp-control-group-wrapper {
@@ -463,7 +471,7 @@
 .msp-plugin.msp-plugin .msp-sequence-wrapper .msp-sequence-label,
 .msp-plugin.msp-plugin .msp-sequence-wrapper .msp-sequence-number,
 .msp-plugin.msp-plugin .msp-sequence-chain-label {
-  color: var(--primary);
+  color: var(--msp-accent);
 }
 
 /* ---------------------------------------------------------------------------
@@ -510,7 +518,7 @@
 }
 
 .msp-plugin.msp-plugin .msp-snapshot-description-wrapper a {
-  color: var(--primary);
+  color: var(--msp-accent);
 }
 
 /* ---------------------------------------------------------------------------
@@ -678,7 +686,7 @@
 .msp-plugin.msp-plugin .msp-drag-drop-overlay {
   border-color: var(--primary);
   background: color-mix(in oklch, var(--primary) 20%, transparent);
-  color: var(--primary);
+  color: var(--msp-accent);
 }
 
 /* ---------------------------------------------------------------------------
@@ -690,5 +698,5 @@
 }
 
 .msp-plugin.msp-plugin .msp-control-group-presets-wrapper button:hover {
-  color: var(--primary);
+  color: var(--msp-accent);
 }

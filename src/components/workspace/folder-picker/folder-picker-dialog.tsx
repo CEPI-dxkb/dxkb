@@ -614,7 +614,7 @@ function FolderColumnsBrowser({
                     className={cn(
                       "flex h-8 shrink-0 items-center gap-2 rounded-md px-2 text-left text-sm transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring md:w-full",
                       isActive
-                        ? "bg-primary/10 font-medium text-primary"
+                        ? "bg-primary/10 font-medium text-primary dark:text-foreground"
                         : "text-foreground/80 hover:bg-foreground/5 hover:text-foreground",
                     )}
                   >
@@ -625,7 +625,7 @@ function FolderColumnsBrowser({
                         view === "favorites"
                           ? "text-highlight"
                           : isActive
-                            ? "text-primary"
+                            ? "text-primary dark:text-foreground"
                             : "text-muted-foreground",
                       )}
                     />

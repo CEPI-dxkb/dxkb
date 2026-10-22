@@ -127,10 +127,10 @@ function SigninForm() {
                 <FieldItem>
                   <div className="flex items-center justify-between">
                     <RequiredFormLabel>Password</RequiredFormLabel>
-                    <p className="text-xs text-primary">
+                    <p className="text-xs text-primary dark:text-link">
                       <Link
                         href="/forgot-password"
-                        className="transition-colors duration-300 hover:font-medium hover:text-secondary"
+                        className="transition-colors duration-300 hover:font-medium hover:text-secondary dark:hover:text-foreground"
                       >
                         Forgot your password?
                       </Link>
@@ -200,7 +200,7 @@ function SigninForm() {
               Don&apos;t have an account?{" "}
               <Link
                 href="/sign-up"
-                className="font-medium text-primary transition-colors duration-300 hover:font-medium hover:text-secondary"
+                className="font-medium text-primary transition-colors duration-300 hover:font-medium hover:text-secondary dark:text-link dark:hover:text-foreground"
               >
                 Sign up on DXKB
               </Link>

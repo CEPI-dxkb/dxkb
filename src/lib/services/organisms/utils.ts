@@ -148,18 +148,34 @@ export function throwOrganismFetchError(
  * fetch() for BV-BRC organism endpoints. Applies the shared cache policy and
  * bounds the request with organismFetchTimeoutMs, composed with any caller
  * signal so caller cancellation keeps working.
+ *
+ * A `token` makes it the signed-in user's request, as `ServerDataRepository`
+ * sends one: the answer includes their private genomes, so it is never cached
+ * (a cached entry would serve one user's genomes to another), a redirect is
+ * refused rather than followed with the token, and plain HTTP is refused.
  */
 export async function fetchOrganism(
   url: string,
   request: OrganismRequest,
   init: RequestInit = {},
+  token?: string,
 ): Promise<Response> {
+  if (token && new URL(url).protocol !== "https:") {
+    throw new Error(
+      labelled(request, "Authenticated data service requests require HTTPS."),
+    );
+  }
   const timeout = AbortSignal.timeout(organismFetchTimeoutMs);
+  const headers = new Headers(init.headers);
+  if (token) headers.set("Authorization", token);
   try {
     return await fetch(url, {
       ...init,
+      headers,
       signal: init.signal ? AbortSignal.any([init.signal, timeout]) : timeout,
-      ...organismFetchCacheInit(organismBvBrcRevalidateSeconds),
+      ...(token
+        ? { cache: "no-store" as const, redirect: "error" as const }
+        : organismFetchCacheInit(organismBvBrcRevalidateSeconds)),
     });
   } catch (error) {
     // The caller's own cancellation is theirs, whatever its reason.
@@ -177,12 +193,18 @@ export async function fetchOrganismSolrJson(
   url: string,
   request: OrganismRequest,
   signal?: AbortSignal,
+  token?: string,
 ): Promise<Record<string, unknown>> {
-  const response = await fetchOrganism(url, request, {
-    method: "GET",
-    headers: { Accept: "application/solr+json" },
-    signal,
-  });
+  const response = await fetchOrganism(
+    url,
+    request,
+    {
+      method: "GET",
+      headers: { Accept: "application/solr+json" },
+      signal,
+    },
+    token,
+  );
   if (!response.ok) throw await organismResponseError(response, request);
   return readJsonObject(response, request);
 }

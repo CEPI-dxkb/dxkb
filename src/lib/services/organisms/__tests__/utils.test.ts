@@ -116,15 +116,15 @@ describe("genome-query scopes", () => {
     );
   });
 
-  it("runs a taxon's geographic requests on its lineage without the self-join", () => {
+  it("runs a taxon's geographic requests on its non-Deprecated lineage without the self-join", () => {
     expect(buildGenomeGeoFacetUrl(baseUrl, 234, "isolation_country")).toBe(
-      `${baseUrl}/genome/?eq(taxon_lineage_ids,234)&facet((field,isolation_country),(mincount,1))&limit(0)`,
+      `${baseUrl}/genome/?and(eq(taxon_lineage_ids,234),ne(genome_status,Deprecated))&facet((field,isolation_country),(mincount,1))&limit(0)`,
     );
     expect(buildGenomeGeoPivotUrl(baseUrl, 234, "a", "b", 1000)).toBe(
-      `${baseUrl}/genome/?eq(taxon_lineage_ids,234)&facet((pivot,(a,b)),(mincount,1),(limit,1000))&limit(0)`,
+      `${baseUrl}/genome/?and(eq(taxon_lineage_ids,234),ne(genome_status,Deprecated))&facet((pivot,(a,b)),(mincount,1),(limit,1000))&limit(0)`,
     );
     expect(buildGenomeGeoPivot3Url(baseUrl, 234, "a", "b", "c")).toBe(
-      `${baseUrl}/genome/?eq(taxon_lineage_ids,234)&facet((pivot,(a,b,c)),(mincount,1))&limit(0)`,
+      `${baseUrl}/genome/?and(eq(taxon_lineage_ids,234),ne(genome_status,Deprecated))&facet((pivot,(a,b,c)),(mincount,1))&limit(0)`,
     );
   });
 });

@@ -1,7 +1,9 @@
 import { notFound } from "next/navigation";
+import { Suspense } from "react";
 
 import { upstreamOutageMessage } from "@/components/errors/record-load-failure";
 import { TaxonBreadcrumb } from "@/components/organisms/taxon-breadcrumb";
+import { TaxonGenomeCount } from "@/components/organisms/taxon-genome-count";
 import { upstreamServices } from "@/lib/api/upstream-failure";
 import { OrganismLandingShell } from "@/components/organisms/landing-shell/landing-shell";
 import { buildTaxonViews } from "@/components/organisms/taxon-views";
@@ -85,6 +87,11 @@ export default async function TaxonomyPage({ params, searchParams }: TaxonomyPag
         <TaxonBreadcrumb
           taxon={taxon}
           displayName={config.displayName}
+          genomeCount={
+            <Suspense fallback={null}>
+              <TaxonGenomeCount taxonId={taxon.taxonId} />
+            </Suspense>
+          }
         />
       }
     />

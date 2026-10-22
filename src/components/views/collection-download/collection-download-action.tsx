@@ -198,7 +198,7 @@ export function CollectionDownloadAction({
         ) : done === format ? (
           <Check className="size-3.5 text-success animate-in zoom-in-50" />
         ) : (
-          <Download className="size-3.5 text-primary opacity-0 transition-opacity group-hover/button:opacity-100 group-focus-visible/button:opacity-100" />
+          <Download className="size-3.5 text-primary opacity-0 transition-opacity group-hover/button:opacity-100 group-focus-visible/button:opacity-100 dark:text-link" />
         )}
       </Button>
     );

@@ -331,7 +331,7 @@ function createColumnDefs(columns: DataTableColumn[]) {
                   <TableValueLink
                     key={itemValue}
                     href={itemHref}
-                    className="shrink-0 text-primary underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2"
+                    className="shrink-0 text-primary underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 dark:text-link"
                   >
                     {itemValue}
                   </TableValueLink>
@@ -355,7 +355,7 @@ function createColumnDefs(columns: DataTableColumn[]) {
         return cellHref && classifyHref(cellHref) !== "unsafe" ? (
           <TableValueLink
             href={cellHref}
-            className="truncate text-primary underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2"
+            className="truncate text-primary underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 dark:text-link"
           >
             {value as React.ReactNode}
           </TableValueLink>

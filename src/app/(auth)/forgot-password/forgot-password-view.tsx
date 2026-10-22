@@ -171,7 +171,7 @@ export function ForgotPasswordView() {
             <div className="text-center text-sm">
               <Link
                 href="/sign-in"
-                className="group font-medium text-primary transition-colors duration-300 hover:font-medium hover:text-secondary"
+                className="group font-medium text-primary transition-colors duration-300 hover:font-medium hover:text-secondary dark:text-link dark:hover:text-foreground"
               >
                 <ArrowLeft className="mr-1 inline size-3" />
                 Back to sign in

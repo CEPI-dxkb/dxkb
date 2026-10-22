@@ -64,7 +64,9 @@
   --secondary: oklch(0.52 0.09 185.18);
   --secondary-foreground: oklch(.9612 0 0);
   --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
+  /* Lifted for small muted text: see dxkb-dark in globals.css. A notch above
+     dxkb-dark's, because the services layout tints this theme's card. */
+  --muted-foreground: oklch(0.79 0 0);
   --accent: oklch(.6692 0.1588 129.43);
   /* Dark text: the dark theme keeps the pale light-theme accent fill. */
   --accent-foreground: oklch(0.205 0 0);

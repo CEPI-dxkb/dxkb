@@ -75,7 +75,7 @@ describe("TaxonBreadcrumb", () => {
     expect(screen.getByText("Bacteria")).toBeInTheDocument();
   });
 
-  it("shows the genome count when > 0", () => {
+  it("shows the genome count it is given after the heading", () => {
     render(
       <TaxonBreadcrumb
         displayName="Brucella"
@@ -87,35 +87,21 @@ describe("TaxonBreadcrumb", () => {
           lineageNames: ["Brucella"],
           lineageIds: [234],
         }}
+        genomeCount={<span>(1,500 Genomes)</span>}
       />,
     );
-    expect(screen.getByText(/1,909 Genomes/)).toBeInTheDocument();
+    expect(screen.getByText("(1,500 Genomes)")).toBeInTheDocument();
   });
 
-  it("hides the genome count when null or 0", () => {
-    const { rerender } = render(
+  it("never shows the taxonomy record's genome count, which includes Deprecated genomes", () => {
+    render(
       <TaxonBreadcrumb
         displayName="Brucella"
         taxon={{
           taxonId: 234,
           taxonName: "Brucella",
           taxonRank: "genus",
-          genomes: 0,
-          lineageNames: ["Brucella"],
-          lineageIds: [234],
-        }}
-      />,
-    );
-    expect(screen.queryByText(/Genomes/)).not.toBeInTheDocument();
-
-    rerender(
-      <TaxonBreadcrumb
-        displayName="Brucella"
-        taxon={{
-          taxonId: 234,
-          taxonName: "Brucella",
-          taxonRank: "genus",
-          genomes: null,
+          genomes: 1909,
           lineageNames: ["Brucella"],
           lineageIds: [234],
         }}

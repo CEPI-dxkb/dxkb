@@ -171,7 +171,7 @@ export default function GenomeAlignmentServicePage() {
               href="https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0011147"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-primary hover:text-primary/80"
+              className="text-primary hover:text-primary/80 dark:text-link dark:hover:text-foreground"
             >
               progressiveMauve
             </a>

@@ -32,6 +32,7 @@ export const taxonomyRecordSchema = z.looseObject({
   genetic_code: stringOrNumber.optional(),
   lineage_ids: scalarList.optional(),
   lineage_names: stringList.optional(),
+  lineage_ranks: stringList.optional(),
   parent_id: stringOrNumber.optional(),
   division: z.string().optional(),
   description: z.string().optional(),

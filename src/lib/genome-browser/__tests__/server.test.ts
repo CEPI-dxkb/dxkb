@@ -25,6 +25,29 @@ function params(query: Record<string, string>) {
   return new URLSearchParams(query);
 }
 
+/** Answers every `genome_sequence` read with contig `A` as `sequence`, counting the reads. */
+function serveSequence(sequence: string) {
+  const upstream = { reads: 0 };
+  server.use(
+    http.get("https://data.test/genome_sequence/", () => {
+      upstream.reads += 1;
+      return HttpResponse.json([{ sequence_id: "s1", accession: "A", sequence }]);
+    }),
+  );
+  return upstream;
+}
+
+const newCache = (options: { maxChars?: number; maxLoads?: number } = {}) =>
+  new SequenceCache({
+    maxChars: options.maxChars ?? 100,
+    ttlMs: 60_000,
+    maxLoads: options.maxLoads ?? 4,
+  });
+
+/** Reads `[start, end)` of genome 1.1's contig `A`. */
+const readSlice = (cache: SequenceCache, start: number, end: number, scope = "user-1") =>
+  readSequence(repository(), { genomeId: "1.1", refName: "A", start, end }, { cache, scope });
+
 describe("genome browser query parsing", () => {
   const span = { genomeId: "470.36849", refName: "470.36849.con.0001", start: "0", end: "100000" };
 
@@ -207,39 +230,19 @@ describe("genome browser reads", () => {
   });
 
   it("slices a cached sequence and reads it once", async () => {
-    let reads = 0;
-    server.use(
-      http.get("https://data.test/genome_sequence/", () => {
-        reads += 1;
-        return HttpResponse.json([
-          { sequence_id: "s1", accession: "A", sequence: "acgtacgtac" },
-        ]);
-      }),
-    );
-    const cache = new SequenceCache({ maxChars: 100, ttlMs: 60_000, maxLoads: 4 });
-    const query = { genomeId: "1.1", refName: "A", start: 2, end: 6 };
-    await expect(
-      readSequence(repository(), query, { cache, scope: "user-1" }),
-    ).resolves.toEqual({ start: 2, end: 6, seq: "gtac" });
-    await expect(
-      readSequence(repository(), { ...query, start: 8, end: 20 }, { cache, scope: "user-1" }),
-    ).resolves.toEqual({ start: 8, end: 10, seq: "ac" });
-    expect(reads).toBe(1);
+    const upstream = serveSequence("acgtacgtac");
+    const cache = newCache();
+    await expect(readSlice(cache, 2, 6)).resolves.toEqual({ start: 2, end: 6, seq: "gtac" });
+    await expect(readSlice(cache, 8, 20)).resolves.toEqual({ start: 8, end: 10, seq: "ac" });
+    expect(upstream.reads).toBe(1);
   });
 
   it("keeps one caller's cached sequence from another caller", async () => {
-    let reads = 0;
-    server.use(
-      http.get("https://data.test/genome_sequence/", () => {
-        reads += 1;
-        return HttpResponse.json([{ sequence_id: "s1", accession: "A", sequence: "acgt" }]);
-      }),
-    );
-    const cache = new SequenceCache({ maxChars: 100, ttlMs: 60_000, maxLoads: 4 });
-    const query = { genomeId: "1.1", refName: "A", start: 0, end: 4 };
-    await readSequence(repository(), query, { cache, scope: "user-1" });
-    await readSequence(repository(), query, { cache, scope: "anonymous" });
-    expect(reads).toBe(2);
+    const upstream = serveSequence("acgt");
+    const cache = newCache();
+    await readSlice(cache, 0, 4, "user-1");
+    await readSlice(cache, 0, 4, "anonymous");
+    expect(upstream.reads).toBe(2);
   });
 
   it("answers 404 for a sequence the genome does not have", async () => {
@@ -264,32 +267,19 @@ function deferred<T>() {
 }
 
 describe("genome browser sequence cache", () => {
-  const newCache = (options: { maxChars?: number; maxLoads?: number } = {}) =>
-    new SequenceCache({
-      maxChars: options.maxChars ?? 100,
-      ttlMs: 60_000,
-      maxLoads: options.maxLoads ?? 4,
-    });
-
   it("shares one upstream request between concurrent reads of one contig", async () => {
-    let reads = 0;
-    server.use(
-      http.get("https://data.test/genome_sequence/", () => {
-        reads += 1;
-        return HttpResponse.json([{ sequence_id: "s1", accession: "A", sequence: "acgtacgtac" }]);
-      }),
-    );
+    const upstream = serveSequence("acgtacgtac");
     const cache = newCache({ maxLoads: 1 });
-    const read = (start: number, end: number) =>
-      readSequence(repository(), { genomeId: "1.1", refName: "A", start, end }, { cache, scope: "user-1" });
     // One load slot: the second and third reads must wait on the first one's
     // load rather than claim a slot of their own.
-    await expect(Promise.all([read(0, 2), read(2, 4), read(4, 6)])).resolves.toEqual([
+    await expect(
+      Promise.all([readSlice(cache, 0, 2), readSlice(cache, 2, 4), readSlice(cache, 4, 6)]),
+    ).resolves.toEqual([
       { start: 0, end: 2, seq: "ac" },
       { start: 2, end: 4, seq: "gt" },
       { start: 4, end: 6, seq: "ac" },
     ]);
-    expect(reads).toBe(1);
+    expect(upstream.reads).toBe(1);
   });
 
   it("forgets a failed load, so the next read retries it", async () => {
@@ -325,24 +315,16 @@ describe("genome browser sequence cache", () => {
   });
 
   it("refuses a contig too long to cache with a 422, without reading it again per slice", async () => {
-    let reads = 0;
-    server.use(
-      http.get("https://data.test/genome_sequence/", () => {
-        reads += 1;
-        return HttpResponse.json([{ sequence_id: "s1", accession: "A", sequence: "acgtacgtac" }]);
-      }),
-    );
+    const upstream = serveSequence("acgtacgtac");
     const cache = newCache({ maxChars: 8 });
-    const read = (start: number, end: number) =>
-      readSequence(repository(), { genomeId: "1.1", refName: "A", start, end }, { cache, scope: "user-1" });
     const refusal = {
       status: 422,
       code: "sequence_too_long",
       message: "Sequence A of genome 1.1 is 10 bp long, more than the 8 bp the Genome Browser can open.",
     };
-    await expect(read(0, 4)).rejects.toMatchObject(refusal);
-    await expect(read(4, 8)).rejects.toMatchObject(refusal);
-    expect(reads).toBe(1);
+    await expect(readSlice(cache, 0, 4)).rejects.toMatchObject(refusal);
+    await expect(readSlice(cache, 4, 8)).rejects.toMatchObject(refusal);
+    expect(upstream.reads).toBe(1);
   });
 
   it("scopes a cached contig by a digest of the caller's token", () => {

@@ -45,7 +45,7 @@ function escapeHtml(value: string): string {
  * The feature as JBrowse shows it, plus a link to its Feature View in the
  * details dialog (JBrowse renders attribute HTML through DOMPurify).
  */
-export function featureDetails({
+function featureDetails({
   subfeatures,
   ...feature
 }: GenomeBrowserFeature): SimpleFeatureSerialized {

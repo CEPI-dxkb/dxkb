@@ -140,41 +140,32 @@ describe("genome browser route", () => {
     expectPrivateNoStore(response);
   });
 
-  it("marks a rate-limited answer private, with Retry-After", async () => {
-    const clientIp = "198.51.100.7";
-    // Validation fails before any upstream call, so the 60 allowed `regions`
-    // reads spend the bucket without touching the backend.
-    for (let attempt = 0; attempt < 60; attempt += 1) {
-      const allowed = await call("regions", "genomeId=bad", clientIp);
-      expect(allowed.status).toBe(400);
-    }
-    const response = await call("regions", "genomeId=bad", clientIp);
-    expect(response.status).toBe(429);
-    expectPrivateNoStore(response);
-    expect(response.headers.get("Retry-After")).not.toBeNull();
-    expect(await json(response)).toEqual({
-      error: "Too many Genome Browser requests. Please try again shortly.",
-      code: "rate_limited",
-    });
-  });
 });
 
 describe("genome browser rate limits", () => {
   // Validation fails before any upstream call, so each allowed request spends
   // the bucket without touching the backend.
   it.each([
-    ["sequence", 60],
-    ["features", 300],
-  ])("allows %s %i requests a minute per client", async (operation, budget) => {
-    const clientIp = `198.51.100.${String(budget === 60 ? 21 : 22)}`;
-    for (let attempt = 0; attempt < budget; attempt += 1) {
-      const allowed = await call(operation, "genomeId=bad", clientIp);
-      expect(allowed.status).toBe(400);
-    }
-    const response = await call(operation, "genomeId=bad", clientIp);
-    expect(response.status).toBe(429);
-    expectPrivateNoStore(response);
-  });
+    ["regions", 60, "198.51.100.7"],
+    ["sequence", 60, "198.51.100.21"],
+    ["features", 300, "198.51.100.22"],
+  ])(
+    "allows %s %i requests a minute per client, then answers 429 privately with Retry-After",
+    async (operation, budget, clientIp) => {
+      for (let attempt = 0; attempt < budget; attempt += 1) {
+        const allowed = await call(operation, "genomeId=bad", clientIp);
+        expect(allowed.status).toBe(400);
+      }
+      const response = await call(operation, "genomeId=bad", clientIp);
+      expect(response.status).toBe(429);
+      expectPrivateNoStore(response);
+      expect(response.headers.get("Retry-After")).not.toBeNull();
+      expect(await json(response)).toEqual({
+        error: "Too many Genome Browser requests. Please try again shortly.",
+        code: "rate_limited",
+      });
+    },
+  );
 });
 
 describe("genome browser sequence loads", () => {

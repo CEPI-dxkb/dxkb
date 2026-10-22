@@ -65,6 +65,16 @@ export class BoundedCache<V> {
     this.totalWeight -= entry.weight;
   }
 
+  /**
+   * Deletes `key` only while it still holds `value`, without touching its
+   * recency. A failed request evicts itself this way, so a failure that lands
+   * after a `clear()` and a newer request for the same key leaves the newer
+   * entry in place.
+   */
+  deleteIfCurrent(key: string, value: V): void {
+    if (this.entries.get(key)?.value === value) this.delete(key);
+  }
+
   clear(): void {
     this.entries.clear();
     this.totalWeight = 0;

@@ -6,7 +6,11 @@ import {
   genomeScenarioOverrides,
   genomeSequenceScenarioOverrides,
 } from "../fixtures/overrides";
-import { GenomeBrowserPanelPage, ThemeSwitcher } from "../pages";
+import {
+  GenomeBrowserPanelPage,
+  GenomeMemberPage,
+  ThemeSwitcher,
+} from "../pages";
 import { failOnRuntimeErrors } from "../support/runtime-errors";
 import { expectUrlParams } from "../support/url-params";
 
@@ -117,7 +121,7 @@ test.describe("Genome Browser", () => {
       "/genome/1282460.2049?tab=genome-browser&browser.loc=JX869059:1..5000",
     );
     await new GenomeBrowserPanelPage(page).expectLoaded();
-    await page.getByRole("button", { name: "Sequences" }).click();
+    await new GenomeMemberPage(page).openTab("Sequences");
     await expect(page).toHaveURL(/\?tab=sequences$/);
     // The engine is destroyed with the tab (`useCreateViewState`).
     await expect(page.getByTestId("app-ready-marker")).toHaveCount(0);

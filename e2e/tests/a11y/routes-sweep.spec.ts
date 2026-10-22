@@ -46,6 +46,10 @@ const genomeBrowserSelector = '[data-testid="genome-browser"]';
  * dependency. Both are critical-impact, which the baseline mechanism refuses by
  * design (see canBaseline in e2e/a11y/baseline.ts), so they are disabled here
  * with their upstream cause named rather than silently suppressed.
+ *
+ * The assertions are callbacks rather than scan-key strings so that each caller
+ * passes its keys to `assertNoBlockingViolations` as string literals, the only
+ * form `extractScannedKeys` (e2e/a11y/scan-keys.ts) counts as scanned.
  */
 async function scanGenomeBrowserTab(
   page: Page,

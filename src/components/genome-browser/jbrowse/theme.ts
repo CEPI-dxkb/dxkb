@@ -56,10 +56,8 @@ export function rgbToHex(red: number, green: number, blue: number): string {
     .join("")}`;
 }
 
-export function readThemeColors(
-  root: HTMLElement = document.documentElement,
-): ThemeColors {
-  const styles = getComputedStyle(root);
+export function readThemeColors(): ThemeColors {
+  const styles = getComputedStyle(document.documentElement);
   const canvas = document.createElement("canvas");
   canvas.width = 1;
   canvas.height = 1;
@@ -74,15 +72,12 @@ export function readThemeColors(
     const [red = 0, green = 0, blue = 0] = context.getImageData(0, 0, 1, 1).data;
     return rgbToHex(red, green, blue);
   };
-  const entries = (Object.keys(tokenNames) as (keyof ThemeColors)[]).map(
-    (key) =>
-      [
-        key,
-        resolve(styles.getPropertyValue(tokenNames[key]).trim()) ??
-          fallbackColors[key],
-      ] as const,
-  );
-  return Object.fromEntries(entries) as unknown as ThemeColors;
+  const colors = { ...fallbackColors };
+  for (const key of Object.keys(tokenNames) as (keyof ThemeColors)[]) {
+    colors[key] =
+      resolve(styles.getPropertyValue(tokenNames[key]).trim()) ?? colors[key];
+  }
+  return colors;
 }
 
 export function buildJBrowseTheme(

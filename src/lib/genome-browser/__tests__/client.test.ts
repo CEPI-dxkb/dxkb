@@ -75,6 +75,38 @@ describe("genome browser client", () => {
     await expect(loadGenomeBrowserRegions("1.1")).resolves.toEqual([]);
   });
 
+  it("keeps the regions read after an account change when an earlier read fails", async () => {
+    let reads = 0;
+    const staleAnswer = Promise.withResolvers<undefined>();
+    server.use(
+      http.get("/api/genome-browser/regions", async () => {
+        reads += 1;
+        if (reads === 1) {
+          await staleAnswer.promise;
+          return HttpResponse.json(
+            { error: "The BV-BRC data service did not respond.", code: "upstream_timeout" },
+            { status: 504 },
+          );
+        }
+        return HttpResponse.json({ regions: [{ refName: "A", start: 0, end: 10 }] });
+      }),
+    );
+    const staleRead = loadGenomeBrowserRegions("1.1");
+    await vi.waitFor(() => {
+      expect(reads).toBe(1);
+    });
+    clearAccountCaches();
+    await loadGenomeBrowserRegions("1.1");
+    staleAnswer.resolve(undefined);
+    await expect(staleRead).rejects.toThrow(
+      "Genome Browser sequences of 1.1: The BV-BRC data service did not respond.",
+    );
+    await expect(loadGenomeBrowserRegions("1.1")).resolves.toEqual([
+      { refName: "A", start: 0, end: 10 },
+    ]);
+    expect(reads).toBe(2);
+  });
+
   it("reads aligned feature chunks and returns each overlapping feature once", async () => {
     const requested: string[] = [];
     server.use(

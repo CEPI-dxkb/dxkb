@@ -14,7 +14,7 @@ import {
   type GenomeBrowserTrackId,
 } from "./contract";
 
-export const genomeBrowserUrlParams = {
+const genomeBrowserUrlParams = {
   location: "browser.loc",
   tracks: "browser.tracks",
   highlight: "browser.highlight",
@@ -63,6 +63,14 @@ function isDefaultTracks(tracks: readonly GenomeBrowserTrackId[]): boolean {
   );
 }
 
+function serializeTracks(
+  tracks: readonly GenomeBrowserTrackId[],
+): string | undefined {
+  if (isDefaultTracks(tracks)) return undefined;
+  if (tracks.length === 0) return noTracks;
+  return tracks.join(",");
+}
+
 export function applyGenomeBrowserUrlState(
   params: URLSearchParams,
   state: GenomeBrowserUrlState,
@@ -72,14 +80,7 @@ export function applyGenomeBrowserUrlState(
     else params.set(name, value);
   };
   set(genomeBrowserUrlParams.location, state.location);
-  set(
-    genomeBrowserUrlParams.tracks,
-    isDefaultTracks(state.tracks)
-      ? undefined
-      : state.tracks.length === 0
-        ? noTracks
-        : state.tracks.join(","),
-  );
+  set(genomeBrowserUrlParams.tracks, serializeTracks(state.tracks));
   set(genomeBrowserUrlParams.highlight, state.highlight);
 }
 
@@ -109,11 +110,12 @@ export interface GenomeBrowserViewSource {
 }
 
 /**
- * The URL carries the view's first visible region only, and none when that
- * region is longer than the read side accepts (likewise the first highlight): a location that spans two
- * sequences (`ctg1:9000..10000 ctg2:1..500`) names no sequence on reload, and a
+ * The URL carries the view's first visible region only, and likewise the
+ * first highlight: a location that spans two sequences
+ * (`ctg1:9000..10000 ctg2:1..500`) names no sequence on reload, and a
  * zoomed-out view of a many-contig genome would write one entry per contig on
- * every pan. A reopened link opens on that first region.
+ * every pan. A reopened link opens on that first region. A region or highlight
+ * longer than the read side accepts is not written.
  */
 export function viewUrlState(
   view: GenomeBrowserViewSource,

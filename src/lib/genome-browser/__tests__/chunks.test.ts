@@ -88,4 +88,21 @@ describe("loadChunks", () => {
     await expect(loadChunks(request)).resolves.toEqual(["0-10"]);
     expect(failing).toHaveBeenCalledTimes(2);
   });
+
+  it("keeps the newer chunk when a request from before a clear fails", async () => {
+    const { options } = sliceLoader();
+    const stale = Promise.withResolvers<{ start: number; end: number }>();
+    const fetchSpan = vi
+      .fn()
+      .mockReturnValueOnce(stale.promise)
+      .mockResolvedValue({ start: 0, end: 10 });
+    const request = { ...options(0, 10), fetchSpan };
+    const staleRead = loadChunks(request);
+    request.cache.clear(); // an account change, while the first read is in flight
+    await expect(loadChunks(request)).resolves.toEqual(["0-10"]);
+    stale.reject(new Error("Could not reach the data service"));
+    await expect(staleRead).rejects.toThrow("Could not reach the data service");
+    await expect(loadChunks(request)).resolves.toEqual(["0-10"]);
+    expect(fetchSpan).toHaveBeenCalledTimes(2);
+  });
 });

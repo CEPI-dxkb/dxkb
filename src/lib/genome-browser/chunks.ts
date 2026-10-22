@@ -82,7 +82,7 @@ export async function loadChunks<Result, Chunk>(
       );
       const cacheKey = chunkKey(index);
       void chunk.catch(() => {
-        cache.delete(cacheKey);
+        cache.deleteIfCurrent(cacheKey, chunk);
       });
       cache.set(cacheKey, chunk);
       pending.set(index, chunk);

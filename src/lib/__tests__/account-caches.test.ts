@@ -13,7 +13,7 @@ describe("account caches", () => {
     expect(second).toHaveBeenCalledOnce();
   });
 
-  it("clears a cache registered twice (a re-evaluated module) once", () => {
+  it("clears a cache whose clear function is registered twice only once", () => {
     const clear = vi.fn();
     registerAccountCacheClear(clear);
     registerAccountCacheClear(clear);

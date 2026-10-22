@@ -44,6 +44,17 @@ function renderPanel(props: Parameters<typeof GenomeBrowserPanel>[0]) {
   });
 }
 
+/** Waits until the view opens at `location`, then returns it. */
+async function viewOpenedAt(location: string): Promise<HTMLElement> {
+  await vi.waitFor(() =>
+    expect(screen.getByTestId("view")).toHaveAttribute(
+      "data-location",
+      location,
+    ),
+  );
+  return screen.getByTestId("view");
+}
+
 beforeEach(() => {
   search.value = "";
   clearGenomeBrowserCaches();
@@ -55,13 +66,7 @@ describe("GenomeBrowserPanel", () => {
       regions: [{ refName: "470.36849.con.0001", start: 0, end: 305802 }],
     });
     renderPanel({ genomeId: "470.36849" });
-    const view = await screen.findByTestId("view", {}, { timeout: 2000 });
-    await vi.waitFor(() =>
-      expect(view).toHaveAttribute(
-        "data-location",
-        "470.36849.con.0001:1..100000",
-      ),
-    );
+    const view = await viewOpenedAt("470.36849.con.0001:1..100000");
     expect(view).toHaveAttribute("data-tracks", "refseqs,PATRICGenes,RefSeqGenes");
   });
 
@@ -72,16 +77,8 @@ describe("GenomeBrowserPanel", () => {
       regions: [{ refName: "470.36849.con.0001", start: 0, end: 305802 }],
     });
     renderPanel({ genomeId: "470.36849" });
-    await vi.waitFor(() =>
-      expect(screen.getByTestId("view")).toHaveAttribute(
-        "data-location",
-        "470.36849.con.0001:500..900",
-      ),
-    );
-    expect(screen.getByTestId("view")).toHaveAttribute(
-      "data-tracks",
-      "PATRICGenes",
-    );
+    const view = await viewOpenedAt("470.36849.con.0001:500..900");
+    expect(view).toHaveAttribute("data-tracks", "PATRICGenes");
   });
 
   it("opens a feature with its flanks and highlight", async () => {
@@ -93,16 +90,8 @@ describe("GenomeBrowserPanel", () => {
         highlight: "ATGO01000001:9610..10707",
       },
     });
-    await vi.waitFor(() =>
-      expect(screen.getByTestId("view")).toHaveAttribute(
-        "data-location",
-        "ATGO01000001:6610..13707",
-      ),
-    );
-    expect(screen.getByTestId("view")).toHaveAttribute(
-      "data-highlight",
-      "ATGO01000001:9610..10707",
-    );
+    const view = await viewOpenedAt("ATGO01000001:6610..13707");
+    expect(view).toHaveAttribute("data-highlight", "ATGO01000001:9610..10707");
   });
 
   it("opens on the default location when the URL's coordinates are malformed", async () => {
@@ -111,12 +100,7 @@ describe("GenomeBrowserPanel", () => {
       regions: [{ refName: "470.36849.con.0001", start: 0, end: 305802 }],
     });
     renderPanel({ genomeId: "470.36849" });
-    await vi.waitFor(() =>
-      expect(screen.getByTestId("view")).toHaveAttribute(
-        "data-location",
-        "470.36849.con.0001:1..100000",
-      ),
-    );
+    await viewOpenedAt("470.36849.con.0001:1..100000");
   });
 
   it("drops a malformed highlight from the URL", async () => {
@@ -125,13 +109,8 @@ describe("GenomeBrowserPanel", () => {
       regions: [{ refName: "470.36849.con.0001", start: 0, end: 305802 }],
     });
     renderPanel({ genomeId: "470.36849" });
-    await vi.waitFor(() =>
-      expect(screen.getByTestId("view")).toHaveAttribute(
-        "data-location",
-        "470.36849.con.0001:1..100000",
-      ),
-    );
-    expect(screen.getByTestId("view")).toHaveAttribute("data-highlight", "");
+    const view = await viewOpenedAt("470.36849.con.0001:1..100000");
+    expect(view).toHaveAttribute("data-highlight", "");
   });
 
   it("falls back to the feature's highlight when the URL's is another genome's", async () => {
@@ -144,16 +123,8 @@ describe("GenomeBrowserPanel", () => {
         highlight: "ATGO01000001:9610..10707",
       },
     });
-    await vi.waitFor(() =>
-      expect(screen.getByTestId("view")).toHaveAttribute(
-        "data-location",
-        "ATGO01000001:6610..13707",
-      ),
-    );
-    expect(screen.getByTestId("view")).toHaveAttribute(
-      "data-highlight",
-      "ATGO01000001:9610..10707",
-    );
+    const view = await viewOpenedAt("ATGO01000001:6610..13707");
+    expect(view).toHaveAttribute("data-highlight", "ATGO01000001:9610..10707");
   });
 
   it("opens on the genome's default when the feature's focus names a sequence it does not have", async () => {
@@ -167,13 +138,8 @@ describe("GenomeBrowserPanel", () => {
         highlight: "NZ_OTHER01000001:9610..10707",
       },
     });
-    await vi.waitFor(() =>
-      expect(screen.getByTestId("view")).toHaveAttribute(
-        "data-location",
-        "ATGO01000001:1..33406",
-      ),
-    );
-    expect(screen.getByTestId("view")).toHaveAttribute("data-highlight", "");
+    const view = await viewOpenedAt("ATGO01000001:1..33406");
+    expect(view).toHaveAttribute("data-highlight", "");
   });
 
   it("keeps a valid highlight from the URL", async () => {
@@ -209,11 +175,6 @@ describe("GenomeBrowserPanel", () => {
     expect(await screen.findByText(/Site Maintenance/)).toBeInTheDocument();
     regions({ regions: [{ refName: "A", start: 0, end: 10 }] });
     await userEvent.click(screen.getByRole("button", { name: "Retry" }));
-    await vi.waitFor(() =>
-      expect(screen.getByTestId("view")).toHaveAttribute(
-        "data-location",
-        "A:1..10",
-      ),
-    );
+    await viewOpenedAt("A:1..10");
   });
 });

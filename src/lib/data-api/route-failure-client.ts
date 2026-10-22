@@ -5,7 +5,7 @@
  * status line only when there is no JSON body (an aborted response, a proxy
  * error page).
  */
-export async function failureDetail(response: Response): Promise<string> {
+async function failureDetail(response: Response): Promise<string> {
   const payload: unknown = await response.json().catch(() => null);
   const error =
     payload && typeof payload === "object"

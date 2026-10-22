@@ -153,14 +153,17 @@ export function genomeDefaultLocation(
   );
 }
 
-function coordinate(value: string | number | undefined): number | undefined {
+/**
+ * An integer as the Data API sends one (a number or a numeric string), or
+ * `undefined` for anything else. Shared by `featureBrowserFocus` and
+ * `server.ts`'s row mapping.
+ */
+export function asInteger(value: unknown): number | undefined {
   const number =
-    typeof value === "number"
-      ? value
-      : typeof value === "string" && value.trim() !== ""
-        ? Number(value)
-        : Number.NaN;
-  return Number.isInteger(number) ? number : undefined;
+    typeof value === "string" && value.trim() !== "" ? Number(value) : value;
+  return typeof number === "number" && Number.isInteger(number)
+    ? number
+    : undefined;
 }
 
 /**
@@ -173,8 +176,8 @@ export function featureBrowserFocus(feature: {
   start?: string | number;
   end?: string | number;
 }): GenomeBrowserFocus | null {
-  const start = coordinate(feature.start);
-  const end = coordinate(feature.end);
+  const start = asInteger(feature.start);
+  const end = asInteger(feature.end);
   if (!feature.accession || start === undefined || end === undefined) {
     return null;
   }

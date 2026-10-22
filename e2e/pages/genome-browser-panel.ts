@@ -176,10 +176,6 @@ export class GenomeBrowserDataRequests {
     });
   }
 
-  urls(): URL[] {
-    return [...this.requests];
-  }
-
   /** The browser has made at least one read of this kind. */
   async expectRead(operation: "features" | "sequence"): Promise<void> {
     await expect
@@ -199,10 +195,12 @@ export class GenomeBrowserDataRequests {
   expectWellFormedRanges(): void {
     expect(this.requests.length, "no feature or sequence read was made").toBeGreaterThan(0);
     for (const url of this.requests) {
-      const start = Number(url.searchParams.get("start"));
-      const end = Number(url.searchParams.get("end"));
+      // Digits only, as the route's `parseCoordinate` requires: `Number()`
+      // alone would pass a missing start (0), `1e3` or `0x10`.
+      const start = url.searchParams.get("start") ?? "";
+      const end = url.searchParams.get("end") ?? "";
       expect(
-        Number.isInteger(start) && start >= 0 && Number.isInteger(end) && end > start,
+        /^\d+$/.test(start) && /^\d+$/.test(end) && Number(end) > Number(start),
         url.href,
       ).toBe(true);
     }

@@ -26,7 +26,7 @@ import {
   type GenomeBrowserSequenceResult,
 } from "./contract";
 
-export const genomeBrowserBasePath = "/api/genome-browser";
+const genomeBrowserBasePath = "/api/genome-browser";
 
 export const genomeBrowserQueryKeys = {
   all: ["genome-browser"] as const,
@@ -86,7 +86,7 @@ export function loadGenomeBrowserRegions(
   ).then((result) => result.regions);
   regionsCache.set(genomeId, loading);
   void loading.catch(() => {
-    regionsCache.delete(genomeId);
+    regionsCache.deleteIfCurrent(genomeId, loading);
   });
   return loading;
 }

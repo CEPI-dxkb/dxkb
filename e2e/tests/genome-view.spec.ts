@@ -1,7 +1,6 @@
 import { applyBackendMocks, expect, test } from "../mocks/backends";
 import {
   emptyBackendFallbackOverrides,
-  genomeBrowserScenarioOverrides,
   genomeFeatureScenarioOverrides,
   genomeScenarioOverrides,
   genomeSequenceScenarioOverrides,
@@ -10,7 +9,6 @@ import {
 import { CollectionToolbar, GenomeMemberPage } from "../pages";
 
 const genomeViewOverrides = [
-  ...genomeBrowserScenarioOverrides,
   ...taxonGenomesScenarioOverrides,
   ...genomeScenarioOverrides,
   ...genomeFeatureScenarioOverrides,

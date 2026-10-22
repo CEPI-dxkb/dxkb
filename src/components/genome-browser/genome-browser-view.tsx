@@ -42,10 +42,10 @@ export interface GenomeBrowserViewProps {
  * JBrowse. A theme switch remounts the browser (its palette and track colors
  * come from theme tokens read when the engine is built), which reopens it at
  * the location the URL holds by then; the unmount destroys the old engine and
- * evicts its adapters (see `GenomeBrowserInstance`). The
- * remount follows the theme attribute on `<html>`, not `useTheme()`: next-themes
- * writes the attribute from its own passive effect, which runs after the one
- * that builds the engine in a child mounted by the same commit, so keying on
+ * evicts its adapters (see `GenomeBrowserInstance`). The remount follows the
+ * theme attribute on `<html>`, not `useTheme()`: next-themes writes the
+ * attribute from its own passive effect, which runs after the one that builds
+ * the engine in a child mounted by the same commit, so keying on
  * `resolvedTheme` would read the previous theme's tokens (the same ordering
  * `sigma-canvas.tsx` observes the attribute for). A different genome rebuilds
  * too, since the builder reads `genomeId` once.
@@ -129,7 +129,7 @@ function GenomeBrowserInstance({
         const next = viewUrlState(viewState.session.view);
         if (!next) return;
         if (next.tracks.length > 0) tracksShown.current = true;
-        else if (!tracksShown.current) return;
+        if (!tracksShown.current) return;
         writeGenomeBrowserUrlState(next);
       },
     });

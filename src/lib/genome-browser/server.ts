@@ -18,6 +18,7 @@ import { isGenomeId } from "@/lib/genome-view/schema";
 import { escapeRqlValue } from "@/lib/views/rql";
 import { BoundedCache } from "./bounded-cache";
 import {
+  asInteger,
   genomeBrowserAnnotations,
   isGenomeBrowserAnnotation,
   maxFeatureRows,
@@ -129,7 +130,7 @@ export function parseSequenceQuery(
   return parseSpan(params, maxSequenceSpan);
 }
 
-export const featureBrowserFields = [
+const featureBrowserFields = [
   "feature_id",
   "patric_id",
   "refseq_locus_tag",
@@ -176,16 +177,6 @@ function text(value: unknown): string | undefined {
   return typeof value === "string" && value.trim() !== "" ? value : undefined;
 }
 
-function integer(value: unknown): number | undefined {
-  const number =
-    typeof value === "number"
-      ? value
-      : typeof value === "string" && value.trim() !== ""
-        ? Number(value)
-        : Number.NaN;
-  return Number.isInteger(number) ? number : undefined;
-}
-
 function strandOf(value: unknown): -1 | 0 | 1 {
   if (value === "+") return 1;
   if (value === "-") return -1;
@@ -194,11 +185,7 @@ function strandOf(value: unknown): -1 | 0 | 1 {
 
 /** `segments` is `["9610..10707"]`, or one entry per part of a joined feature. */
 export function parseSegments(value: unknown): [number, number][] {
-  const items: unknown[] = Array.isArray(value)
-    ? value
-    : typeof value === "string"
-      ? [value]
-      : [];
+  const items: unknown[] = Array.isArray(value) ? value : [value];
   return items.flatMap((item): [number, number][] => {
     const match =
       typeof item === "string" ? /^(\d+)\.\.(\d+)$/.exec(item.trim()) : null;
@@ -217,8 +204,8 @@ export function toGenomeBrowserFeature(
   refName: string,
 ): GenomeBrowserFeature | null {
   const featureId = text(row.feature_id);
-  const start = integer(row.start);
-  const end = integer(row.end);
+  const start = asInteger(row.start);
+  const end = asInteger(row.end);
   if (featureId === undefined || start === undefined || end === undefined) {
     return null;
   }
@@ -245,8 +232,8 @@ export function toGenomeBrowserFeature(
     gene,
     product: text(row.product),
     protein_id: text(row.protein_id),
-    na_length: integer(row.na_length),
-    aa_length: integer(row.aa_length),
+    na_length: asInteger(row.na_length),
+    aa_length: asInteger(row.aa_length),
   };
   for (const [key, value] of Object.entries(optional)) {
     if (value !== undefined) Object.assign(feature, { [key]: value });
@@ -286,7 +273,7 @@ export async function readRegions(
   return {
     regions: rows.flatMap((row) => {
       const refName = text(row.accession);
-      const length = integer(row.length);
+      const length = asInteger(row.length);
       return refName && length !== undefined && length > 0
         ? [{ refName, start: 0, end: length }]
         : [];
@@ -336,7 +323,7 @@ export function sequenceCacheScope(token: string | undefined): string {
  * cache, so every contig it answers from can stay cached. A longer one would be
  * read whole (megabytes) again for every 100 kb slice the browser asks for.
  */
-export const maxContigLength = 64_000_000;
+const maxContigLength = 64_000_000;
 
 export interface SequenceCacheOptions {
   /** Characters held in total, and so the longest contig that can be held. */

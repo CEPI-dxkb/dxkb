@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { readSession } from "@/lib/auth/server/session";
+import type { ServerDataRepository } from "@/lib/data-api/repository";
 import {
   dataApiErrorResponse,
   dataApiNotConfiguredMessage,
@@ -49,6 +50,53 @@ function isGenomeBrowserOperation(
   return (genomeBrowserOperations as readonly string[]).includes(value);
 }
 
+/** `"query"`: every answer depends on the caller's token (private genomes). */
+async function dataRepository(): Promise<ServerDataRepository> {
+  const { repository } = await resolveServerDataRepository({
+    readScope: "query",
+    notConfigured: {
+      message: dataApiNotConfiguredMessage,
+      log: "Genome Browser route is not configured: set DATA_API_URL (or NEXT_PUBLIC_DATA_API).",
+    },
+  });
+  return repository;
+}
+
+/**
+ * Each operation validates its parameters before the repository is resolved,
+ * so a malformed request answers 400 even where the Data API is not configured.
+ */
+async function readOperation(
+  operation: GenomeBrowserOperation,
+  request: NextRequest,
+): Promise<unknown> {
+  const params = request.nextUrl.searchParams;
+  switch (operation) {
+    case "regions": {
+      const { genomeId } = parseRegionsQuery(params);
+      return readRegions(await dataRepository(), genomeId, request.signal);
+    }
+    case "features": {
+      const query = parseFeaturesQuery(params);
+      return readFeatures(await dataRepository(), query, request.signal);
+    }
+    case "sequence": {
+      const query = parseSequenceQuery(params);
+      const repository = await dataRepository();
+      const session = await readSession();
+      return readSequence(repository, query, {
+        // An E2E run never caches (same rule as the Data API gateway).
+        cache:
+          process.env.E2E_MOCK_ENABLED === "1"
+            ? null
+            : genomeBrowserSequenceCache,
+        // The token, not the user id: see `sequenceCacheScope`.
+        scope: sequenceCacheScope(session?.token),
+      });
+    }
+  }
+}
+
 async function answer(
   request: NextRequest,
   context: { params: Promise<{ operation: string }> },
@@ -74,39 +122,7 @@ async function answer(
   if (blocked) return blocked;
 
   try {
-    const params = request.nextUrl.searchParams;
-    const parsed =
-      operation === "regions"
-        ? ({ operation, query: parseRegionsQuery(params) } as const)
-        : operation === "features"
-          ? ({ operation, query: parseFeaturesQuery(params) } as const)
-          : ({ operation, query: parseSequenceQuery(params) } as const);
-    // `"query"`: every answer depends on the caller's token (private genomes).
-    const { repository } = await resolveServerDataRepository({
-      readScope: "query",
-      notConfigured: {
-        message: dataApiNotConfiguredMessage,
-        log: "Genome Browser route is not configured: set DATA_API_URL (or NEXT_PUBLIC_DATA_API).",
-      },
-    });
-    let body: unknown;
-    if (parsed.operation === "regions") {
-      body = await readRegions(repository, parsed.query.genomeId, request.signal);
-    } else if (parsed.operation === "features") {
-      body = await readFeatures(repository, parsed.query, request.signal);
-    } else {
-      const session = await readSession();
-      body = await readSequence(repository, parsed.query, {
-        // An E2E run never caches (same rule as the Data API gateway).
-        cache:
-          process.env.E2E_MOCK_ENABLED === "1"
-            ? null
-            : genomeBrowserSequenceCache,
-        // The token, not the user id: see `sequenceCacheScope`.
-        scope: sequenceCacheScope(session?.token),
-      });
-    }
-    return NextResponse.json(body);
+    return NextResponse.json(await readOperation(operation, request));
   } catch (error) {
     return dataApiErrorResponse(error);
   }

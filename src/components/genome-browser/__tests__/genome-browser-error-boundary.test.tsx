@@ -2,8 +2,6 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { GenomeBrowserErrorBoundary } from "../genome-browser-error-boundary";
 
-vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
-
 const engine = vi.hoisted(() => ({ failing: true }));
 
 // Fails on every render until the test says the cause is gone: React 19

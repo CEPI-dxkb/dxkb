@@ -1,6 +1,17 @@
 import { BoundedCache } from "../bounded-cache";
 
 describe("BoundedCache", () => {
+  it("deletes an entry only while it still holds the given value", () => {
+    const cache = new BoundedCache<string>({ maxWeight: 2 });
+    cache.set("a", "old");
+    cache.set("a", "new");
+    cache.deleteIfCurrent("a", "old");
+    expect(cache.get("a")).toBe("new");
+    cache.deleteIfCurrent("a", "new");
+    expect(cache.get("a")).toBeUndefined();
+    expect(cache.size).toBe(0);
+  });
+
   it("evicts the least recently used entries past its weight", () => {
     const cache = new BoundedCache<string>({ maxWeight: 2 });
     cache.set("a", "1");

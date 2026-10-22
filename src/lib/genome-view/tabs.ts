@@ -14,10 +14,16 @@ export const genomeTabKeys = [
 ] as const;
 export type GenomeTab = (typeof genomeTabKeys)[number];
 
+/** Legacy BV-BRC tab names (`#view_tab=browser`) the server redirects. */
+const legacyGenomeTabs: Partial<Record<string, GenomeTab>> = {
+  browser: "genome-browser",
+};
+
 export function parseGenomeTab(
   value: string | string[] | undefined,
 ): GenomeTab {
-  const tab = Array.isArray(value) ? value[0] : value;
+  const raw = Array.isArray(value) ? value[0] : value;
+  const tab = raw === undefined ? undefined : (legacyGenomeTabs[raw] ?? raw);
   return genomeTabKeys.includes(tab as GenomeTab)
     ? (tab as GenomeTab)
     : "overview";
@@ -42,12 +48,7 @@ export function buildGenomeTabs(
         ? undefined
         : "Interactions are currently available for bacterial genomes only.",
     },
-    {
-      key: "genome-browser",
-      label: "Genome Browser",
-      enabled: false,
-      disabledReason: "A supported modern genome browser is not yet available.",
-    },
+    { key: "genome-browser", label: "Genome Browser" },
     { key: "features", label: "Features" },
     { key: "proteins", label: "Proteins" },
     { key: "domains", label: "Domains and Motifs" },

@@ -581,6 +581,47 @@ describe("api/e2e-mock catch-all — enabled", () => {
     });
   });
 
+  it.each([
+    ["feature_id", "PATRIC.1282460.2049.JX869059.CDS.1.100.fwd"],
+    ["patric_id", "fig|1282460.2049.peg.1"],
+  ])(
+    "GET returns the Feature fixture for a lookup by %s",
+    async (field, id) => {
+      const resp = await GET(
+        mockNextRequest({
+          url: `http://localhost:3020/api/e2e-mock/data/genome_feature/?eq(${field},${encodeURIComponent(id)})`,
+        }),
+        ctx(["data", "genome_feature"]),
+      );
+
+      expect(resp.status).toBe(200);
+      expect((await resp.json()) as unknown).toMatchObject({
+        response: {
+          docs: [
+            {
+              feature_id: "PATRIC.1282460.2049.JX869059.CDS.1.100.fwd",
+              genome_id: "1282460.2049",
+            },
+          ],
+        },
+      });
+    },
+  );
+
+  it("GET does not return the Feature fixture for another id", async () => {
+    const resp = await GET(
+      mockNextRequest({
+        url: "http://localhost:3020/api/e2e-mock/data/genome_feature/?eq(feature_id,PATRIC.0.0.X.CDS.1.2.fwd)",
+      }),
+      ctx(["data", "genome_feature"]),
+    );
+
+    expect(resp.status).toBe(200);
+    expect((await resp.json()) as unknown).toMatchObject({
+      response: { docs: [] },
+    });
+  });
+
   it("GET omits the Genome fixture when Range excludes its row", async () => {
     const resp = await GET(
       mockNextRequest({

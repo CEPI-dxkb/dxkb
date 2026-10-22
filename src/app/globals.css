@@ -438,6 +438,19 @@
   code {
     font-family: var(--font-mono);
   }
+
+  /* JBrowse 5's embedded Genome Browser (src/components/genome-browser/).
+     MUI's ScopedCssBaseline wrapper sits between the component root and its
+     bounded grid without a height, so `height: "100%"` would let the view
+     spill its box; and preflight's `a { color: inherit }` leaves the feature
+     dialog's "Open Feature View" link looking like plain text. */
+  [data-slot="genome-browser"] .MuiScopedCssBaseline-root {
+    height: 100%;
+  }
+  [data-slot="genome-browser"] a {
+    color: var(--link);
+    text-decoration: underline;
+  }
 }
 
 /* Themed scrollbars: use --muted-foreground so they match light/dark theme */

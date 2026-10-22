@@ -57,13 +57,19 @@ export function LegacyHashAdapter() {
     const path = hashParams.get("path");
     const keyword = hashParams.get("keyword");
     const defaultSort = hashParams.get("defaultSort");
+    const loc = hashParams.get("loc");
+    const tracks = hashParams.get("tracks");
+    const highlight = hashParams.get("highlight");
     if (
       tab === null &&
       filter === null &&
       accession === null &&
       path === null &&
       keyword === null &&
-      defaultSort === null
+      defaultSort === null &&
+      loc === null &&
+      tracks === null &&
+      highlight === null
     )
       return;
 
@@ -92,6 +98,12 @@ export function LegacyHashAdapter() {
     ) {
       params.set("sort", "score:desc");
     }
+    // Legacy Genome Browser state (JBrowse 1's hash), under the tab's own
+    // `browser.` prefix. Literal names, not imported from the Genome Browser's
+    // url-state module, so this layout-wide component stays out of its bundle.
+    if (loc) params.set("browser.loc", loc);
+    if (tracks) params.set("browser.tracks", tracks);
+    if (highlight) params.set("browser.highlight", highlight);
     const query = toQueryString(params);
     router.replace(`${url.pathname}${query ? `?${query}` : ""}`);
   }, [router]);

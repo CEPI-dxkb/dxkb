@@ -43,6 +43,7 @@ vi.mock("@/app/(auth)/redirect-action", () => ({
   signOutAndRedirect: mockSignOut,
 }));
 
+import * as accountCaches from "@/lib/account-caches";
 import { CommandPalette } from "../command-palette";
 import { openCommandPalette } from "../command-palette-events";
 
@@ -370,6 +371,22 @@ describe("CommandPalette", () => {
       await waitFor(() => {
         expect(mockSignOut).toHaveBeenCalled();
       });
+    });
+
+    it("drops the account caches, which outlive the query cache", async () => {
+      setAuth(true, { username: "alice", realm: "bvbrc" });
+      const clearSpy = vi.spyOn(accountCaches, "clearAccountCaches");
+
+      renderPalette();
+      await openPalette();
+
+      const user = userEvent.setup();
+      await user.click(screen.getByRole("option", { name: /sign out/i }));
+
+      await waitFor(() => {
+        expect(mockSignOut).toHaveBeenCalled();
+      });
+      expect(clearSpy).toHaveBeenCalledOnce();
     });
   });
 });

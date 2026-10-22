@@ -1,6 +1,7 @@
 import { applyBackendMocks, expect, test } from "../mocks/backends";
 import {
   emptyBackendFallbackOverrides,
+  genomeBrowserScenarioOverrides,
   genomeFeatureScenarioOverrides,
   genomeScenarioOverrides,
   genomeSequenceScenarioOverrides,
@@ -9,6 +10,7 @@ import {
 import { CollectionToolbar, GenomeMemberPage } from "../pages";
 
 const genomeViewOverrides = [
+  ...genomeBrowserScenarioOverrides,
   ...taxonGenomesScenarioOverrides,
   ...genomeScenarioOverrides,
   ...genomeFeatureScenarioOverrides,
@@ -220,7 +222,7 @@ test.describe("Genome view", () => {
     await genome.expectRow(/JX869059/);
     await expect(
       genomePage.getByRole("button", { name: "Genome Browser" }),
-    ).toHaveAttribute("aria-disabled", "true");
+    ).not.toHaveAttribute("aria-disabled", "true");
 
     await genomePage.goBack();
     await expect(genomePage).toHaveURL(/\/genome\/1282460\.2049$/);

@@ -61,6 +61,12 @@ vi.mock("@/components/views", async (importOriginal) => {
   };
 });
 
+vi.mock("@/components/compare-region", () => ({
+  CompareRegionPanel: ({ patricId }: { patricId: string }) => (
+    <div data-testid="compare-region" data-peg={patricId} />
+  ),
+}));
+
 import FeaturePage, { generateMetadata } from "../page";
 
 const feature = {
@@ -343,12 +349,43 @@ describe("Feature member route", () => {
 
   it("permanently redirects a PATRIC ID lookup to feature_id", async () => {
     mocks.getFeature.mockResolvedValue({ feature, usedAlternateId: true });
+    // The exact target: no query, so no trailing "?".
     await expect(
       FeaturePage({
         params: Promise.resolve({ featureId: feature.patric_id }),
         searchParams: Promise.resolve({}),
       }),
-    ).rejects.toThrow(`NEXT_REDIRECT:/feature/${feature.feature_id}`);
+    ).rejects.toThrow(new Error(`NEXT_REDIRECT:/feature/${feature.feature_id}`));
+  });
+
+  it("opens the Compare Region Viewer on the feature's BRC ID", async () => {
+    render(
+      await FeaturePage({
+        params: Promise.resolve({ featureId: feature.feature_id }),
+        searchParams: Promise.resolve({ tab: "compare-region" }),
+      }),
+    );
+    expect(screen.getByTestId("compare-region")).toHaveAttribute(
+      "data-peg",
+      feature.patric_id,
+    );
+  });
+
+  it("keeps the query when it redirects a BRC ID to the feature's own URL", async () => {
+    mocks.getFeature.mockResolvedValue({ feature, usedAlternateId: true });
+    await expect(
+      FeaturePage({
+        params: Promise.resolve({
+          featureId: encodeURIComponent(feature.patric_id),
+        }),
+        searchParams: Promise.resolve({
+          tab: "compare-region",
+          "compare.genomes": "20",
+        }),
+      }),
+    ).rejects.toThrow(
+      `NEXT_REDIRECT:/feature/${feature.feature_id}?tab=compare-region&compare.genomes=20`,
+    );
   });
 
   it("uses notFound for absent, inaccessible, and ambiguous records", async () => {

@@ -70,6 +70,7 @@ export const upstreamServices = {
   jobService: "the BV-BRC job service",
   fileStorage: "the BV-BRC file storage service",
   minhash: "the BV-BRC minhash service",
+  compareRegion: "the BV-BRC compare region service",
 } as const;
 
 /**
@@ -100,6 +101,12 @@ export const upstreamTimeoutMs = {
   fileStorage: 30_000,
   /** Similar Genome Finder computes distances before it answers. */
   minhash: 60_000,
+  /**
+   * The SEED compare_regions service pins homologs in every compared genome
+   * before it answers: 7–20 s for 5–10 genomes, 72 s for 50 genomes over all
+   * genomes (measured 2026-10-23).
+   */
+  compareRegion: 120_000,
 } as const;
 
 const timeoutCodes = new Set([

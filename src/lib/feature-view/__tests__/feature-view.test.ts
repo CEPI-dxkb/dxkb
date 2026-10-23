@@ -3,6 +3,7 @@ import {
   canonicalFeatureTab,
   featureCollectionOptions,
   featureCollectionProfile,
+  featureCompareRegionPeg,
   featureGenomeBrowserTarget,
   featureListCollectionOptions,
   featureListOptionsFor,
@@ -135,6 +136,26 @@ describe("Feature view contracts", () => {
         buildFeatureTabs(record).find((tab) => tab.key === "genome-browser")
           ?.enabled,
       ).toBe(featureGenomeBrowserTarget(record) !== null);
+    }
+  });
+  it("opens the Compare Region Viewer for a CDS with a BRC ID, as legacy did", () => {
+    const cds = featureViewRecordSchema.parse({
+      feature_id: "PATRIC.1",
+      feature_type: "CDS",
+      patric_id: "fig|1.1.peg.1",
+    });
+    expect(featureCompareRegionPeg(cds)).toBe("fig|1.1.peg.1");
+    expect(canonicalFeatureTab("compare-region", cds)).toBe("compare-region");
+    expect(canonicalFeatureTab("compareRegionViewer", cds)).toBe("compare-region");
+
+    const trna = featureViewRecordSchema.parse({ ...cds, feature_type: "tRNA" });
+    const unnamed = featureViewRecordSchema.parse({
+      feature_id: "PATRIC.1",
+      feature_type: "CDS",
+    });
+    for (const record of [trna, unnamed]) {
+      expect(featureCompareRegionPeg(record)).toBeNull();
+      expect(canonicalFeatureTab("compare-region", record)).toBe("overview");
     }
   });
 });

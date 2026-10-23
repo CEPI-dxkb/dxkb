@@ -8,7 +8,7 @@
  * where the browser would otherwise open with one (the Feature View's focus).
  * JBrowse-free, so the panel and its tests never load JBrowse.
  */
-import { toQueryString } from "@/lib/url";
+import { replaceQuery } from "@/lib/url";
 import {
   formatLocation,
   genomeBrowserTrackIds,
@@ -95,15 +95,9 @@ export function applyGenomeBrowserUrlState(
 }
 
 export function writeGenomeBrowserUrlState(state: GenomeBrowserUrlState): void {
-  const { pathname, search, hash } = window.location;
-  // A separate URLSearchParams: mutating url.searchParams re-escapes the query.
-  const params = new URLSearchParams(search);
-  applyGenomeBrowserUrlState(params, state);
-  const query = toQueryString(params);
-  const next = `${pathname}${query ? `?${query}` : ""}${hash}`;
-  if (next !== `${pathname}${search}${hash}`) {
-    window.history.replaceState(null, "", next);
-  }
+  replaceQuery((params) => {
+    applyGenomeBrowserUrlState(params, state);
+  });
 }
 
 /**

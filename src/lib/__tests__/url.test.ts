@@ -1,6 +1,7 @@
 import {
   encodePathSegment,
   encodeQueryComponent,
+  replaceQuery,
   safeDecode,
   toQueryString,
 } from "@/lib/url";
@@ -107,6 +108,47 @@ describe("toQueryString", () => {
     const params = new URLSearchParams([["redirect", "/genome?rql=eq(a,b)&x=1"]]);
     expect(new URLSearchParams(toQueryString(params)).get("redirect")).toBe(
       "/genome?rql=eq(a,b)&x=1",
+    );
+  });
+});
+
+describe("replaceQuery", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("replaces the query readably, keeping the pathname and hash", () => {
+    window.history.replaceState(null, "", "/genome/83332.12?tab=a#top");
+    const replace = vi.spyOn(window.history, "replaceState");
+    replaceQuery((params) => {
+      params.set("browser.loc", "NC_000962:1..100");
+    });
+    expect(replace).toHaveBeenCalledExactlyOnceWith(
+      null,
+      "",
+      "/genome/83332.12?tab=a&browser.loc=NC_000962:1..100#top",
+    );
+  });
+
+  it("leaves the history alone when the query does not change", () => {
+    window.history.replaceState(null, "", "/genome/83332.12?tab=a#top");
+    const replace = vi.spyOn(window.history, "replaceState");
+    replaceQuery((params) => {
+      params.set("tab", "a");
+    });
+    expect(replace).not.toHaveBeenCalled();
+  });
+
+  it("drops the ? when the query empties", () => {
+    window.history.replaceState(null, "", "/genome/83332.12?tab=a#top");
+    const replace = vi.spyOn(window.history, "replaceState");
+    replaceQuery((params) => {
+      params.delete("tab");
+    });
+    expect(replace).toHaveBeenCalledExactlyOnceWith(
+      null,
+      "",
+      "/genome/83332.12#top",
     );
   });
 });

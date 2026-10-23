@@ -1,0 +1,64 @@
+diff --git a/esm/Zoom.js b/esm/Zoom.js
+index 44985a55c7944687d6a10a5e27b8888adfa22aff..5d56228f65df9a014520e84ad205c6b2765fde1b 100644
+--- a/esm/Zoom.js
++++ b/esm/Zoom.js
+@@ -215,7 +215,26 @@ function Zoom(_ref2) {
+       memo
+     } = state;
+     let currentMemo = memo;
+-    if (containerRef.current) {
++    // Patched (DXKB): map the origin through the container's screen CTM, as
++    // localPoint does for wheel and drag. A nested <svg> has no CSS box, so
++    // its getBoundingClientRect() is its content's, which moves as it zooms.
++    const node = containerRef.current;
++    const ctm = node && typeof node.getScreenCTM === "function" ? node.getScreenCTM() : null;
++    if (ctm) {
++      const point = new DOMPoint(ox, oy).matrixTransform(ctm.inverse());
++      const {
++        scaleX,
++        scaleY
++      } = pinchDelta(state);
++      scale({
++        scaleX,
++        scaleY,
++        point: {
++          x: point.x,
++          y: point.y
++        }
++      });
++    } else if (containerRef.current) {
+       const {
+         top,
+         left
+diff --git a/lib/Zoom.js b/lib/Zoom.js
+index 67d3fe52b72bf68300a66d71733db931fd348df8..654ad2d16567a4a5d5b2a10293d72ef8c366151e 100644
+--- a/lib/Zoom.js
++++ b/lib/Zoom.js
+@@ -221,7 +221,26 @@ function Zoom(_ref2) {
+       memo
+     } = state;
+     let currentMemo = memo;
+-    if (containerRef.current) {
++    // Patched (DXKB): map the origin through the container's screen CTM, as
++    // localPoint does for wheel and drag. A nested <svg> has no CSS box, so
++    // its getBoundingClientRect() is its content's, which moves as it zooms.
++    const node = containerRef.current;
++    const ctm = node && typeof node.getScreenCTM === "function" ? node.getScreenCTM() : null;
++    if (ctm) {
++      const point = new DOMPoint(ox, oy).matrixTransform(ctm.inverse());
++      const {
++        scaleX,
++        scaleY
++      } = pinchDelta(state);
++      scale({
++        scaleX,
++        scaleY,
++        point: {
++          x: point.x,
++          y: point.y
++        }
++      });
++    } else if (containerRef.current) {
+       const {
+         top,
+         left

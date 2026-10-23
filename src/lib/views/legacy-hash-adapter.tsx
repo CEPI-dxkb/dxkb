@@ -57,9 +57,13 @@ export function LegacyHashAdapter() {
     const path = hashParams.get("path");
     const keyword = hashParams.get("keyword");
     const defaultSort = hashParams.get("defaultSort");
-    const loc = hashParams.get("loc");
-    const tracks = hashParams.get("tracks");
-    const highlight = hashParams.get("highlight");
+    // Legacy wrote JBrowse 1's state only beside its browser tab (`browser` on
+    // the Genome View, `genomeBrowser` on the Feature View). Elsewhere these
+    // names are an ordinary anchor or another page's hash, not browser state.
+    const browserTab = tab === "browser" || tab === "genomeBrowser";
+    const loc = browserTab ? hashParams.get("loc") : null;
+    const tracks = browserTab ? hashParams.get("tracks") : null;
+    const highlight = browserTab ? hashParams.get("highlight") : null;
     if (
       tab === null &&
       filter === null &&

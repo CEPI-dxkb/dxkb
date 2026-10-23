@@ -272,3 +272,17 @@ it("promotes a legacy Feature View browser highlight", () => {
     "/feature/PATRIC.1?tab=genomeBrowser&browser.loc=ATGO01000001:6609..13706&browser.highlight=ATGO01000001:9610..10707",
   );
 });
+
+it("ignores browser-looking hash params without a browser tab", () => {
+  window.history.replaceState(null, "", "/genome/470.36849");
+  window.location.hash = "#loc=section-2&tracks=a&highlight=b";
+  render(<LegacyHashAdapter />);
+  expect(mockReplace).not.toHaveBeenCalled();
+});
+
+it("drops browser-looking hash params beside another tab", () => {
+  window.history.replaceState(null, "", "/genome/470.36849");
+  window.location.hash = "#view_tab=features&loc=A%3A1..100&highlight=A%3A5..9";
+  render(<LegacyHashAdapter />);
+  expect(mockReplace).toHaveBeenCalledWith("/genome/470.36849?tab=features");
+});

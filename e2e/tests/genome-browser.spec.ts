@@ -98,6 +98,20 @@ test.describe("Genome Browser", () => {
     dataRequests.expectWellFormedRanges();
   });
 
+  test("a feature whose highlight was cleared stays unhighlighted", async ({
+    page,
+  }) => {
+    const browser = new GenomeBrowserPanelPage(page);
+    await page.goto(
+      "/feature/PATRIC.1282460.2049.JX869059.CDS.1.100.fwd?tab=genome-browser&browser.highlight=none",
+    );
+    await browser.expectLoaded();
+    await expect(page).toHaveURL(/browser\.loc=JX869059:1\.\.3100/);
+    // The view's read-back keeps the opt-out instead of dropping it, which
+    // would restore the feature's highlight on the next remount.
+    await expectUrlParams(page, { "browser.highlight": "none" });
+  });
+
   test("a legacy Genome Browser link keeps its location and tracks", async ({
     page,
   }) => {

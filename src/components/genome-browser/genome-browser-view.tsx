@@ -34,6 +34,12 @@ export interface GenomeBrowserViewProps {
   /** Undefined until the panel knows the genome's sequences. */
   location?: string;
   highlight?: string;
+  /**
+   * Whether the browser opens highlighted when the URL names no highlight
+   * (the Feature View's focus). A cleared highlight is then written as
+   * `browser.highlight=none`, so it is not restored on a remount.
+   */
+  hasDefaultHighlight?: boolean;
   tracks: readonly GenomeBrowserTrackId[];
 }
 
@@ -76,6 +82,7 @@ function GenomeBrowserInstance({
   genomeId,
   location,
   highlight,
+  hasDefaultHighlight = false,
   tracks,
   mode,
 }: GenomeBrowserViewProps & { location: string; mode: ThemeMode }) {
@@ -126,14 +133,16 @@ function GenomeBrowserInstance({
     if (!viewState) return;
     return observeSession(viewState, {
       onLocationChange: () => {
-        const next = viewUrlState(viewState.session.view);
+        const next = viewUrlState(viewState.session.view, {
+          hasDefaultHighlight,
+        });
         if (!next) return;
         if (next.tracks.length > 0) tracksShown.current = true;
         if (!tracksShown.current) return;
         writeGenomeBrowserUrlState(next);
       },
     });
-  }, [viewState]);
+  }, [viewState, hasDefaultHighlight]);
 
   // Works around a JBrowse 5.0.0-beta.17 teardown bug. `destroyViewState`
   // destroys the RPC manager before the view tree, so each track's disposer

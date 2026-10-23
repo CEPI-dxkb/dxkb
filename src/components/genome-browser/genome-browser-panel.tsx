@@ -85,18 +85,26 @@ export function GenomeBrowserPanel({
         ),
       )
     : undefined;
-  const highlight = regions.data
-    ? resolveInitialLocation(
-        urlState.highlight,
-        regions.data,
-        resolveInitialLocation(focus?.highlight, regions.data, undefined),
-      )
+  // The focus's highlight is the default; `browser.highlight=none` (a cleared
+  // highlight, parsed as `null`) opts out of it, so a remount (a theme switch,
+  // a return to the tab) does not bring the highlight back.
+  const defaultHighlight = regions.data
+    ? resolveInitialLocation(focus?.highlight, regions.data, undefined)
     : undefined;
+  const highlight =
+    regions.data && urlState.highlight !== null
+      ? resolveInitialLocation(
+          urlState.highlight,
+          regions.data,
+          defaultHighlight,
+        )
+      : undefined;
   return (
     <GenomeBrowserView
       genomeId={genomeId}
       location={location}
       highlight={highlight}
+      hasDefaultHighlight={defaultHighlight !== undefined}
       tracks={urlState.tracks}
     />
   );

@@ -17,6 +17,7 @@ vi.mock("next/dynamic", () => ({
     function View(props: {
       location?: string;
       highlight?: string;
+      hasDefaultHighlight?: boolean;
       tracks: string[];
     }) {
       return (
@@ -24,6 +25,7 @@ vi.mock("next/dynamic", () => ({
           data-testid="view"
           data-location={props.location ?? ""}
           data-highlight={props.highlight ?? ""}
+          data-has-default-highlight={String(props.hasDefaultHighlight)}
           data-tracks={props.tracks.join(",")}
         />
       );
@@ -140,6 +142,23 @@ describe("GenomeBrowserPanel", () => {
     });
     const view = await viewOpenedAt("ATGO01000001:1..33406");
     expect(view).toHaveAttribute("data-highlight", "");
+  });
+
+  it("keeps a cleared highlight cleared instead of restoring the feature's", async () => {
+    search.value = "browser.highlight=none";
+    regions({
+      regions: [{ refName: "ATGO01000001", start: 0, end: 40000 }],
+    });
+    renderPanel({
+      genomeId: "1.1",
+      focus: {
+        location: "ATGO01000001:6610..13707",
+        highlight: "ATGO01000001:9610..10707",
+      },
+    });
+    const view = await viewOpenedAt("ATGO01000001:6610..13707");
+    expect(view).toHaveAttribute("data-highlight", "");
+    expect(view).toHaveAttribute("data-has-default-highlight", "true");
   });
 
   it("keeps a valid highlight from the URL", async () => {

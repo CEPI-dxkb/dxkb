@@ -58,6 +58,25 @@ describe("BoundedCache", () => {
     expect(cache.get("a")).toBeUndefined();
   });
 
+  it("drops expired entries before evicting a live one", () => {
+    let now = 0;
+    const cache = new BoundedCache<string>({
+      maxWeight: 2,
+      ttlMs: 100,
+      now: () => now,
+    });
+    cache.set("a", "1"); // expires at 100
+    now = 50;
+    cache.set("b", "2"); // expires at 150
+    now = 90;
+    expect(cache.get("a")).toBe("1"); // a is now the most recent, b the oldest
+    now = 120; // a has expired, b has not
+    cache.set("c", "3");
+    expect(cache.get("b")).toBe("2");
+    expect(cache.get("c")).toBe("3");
+    expect(cache.size).toBe(2);
+  });
+
   it("replaces a key without double-counting its weight", () => {
     const cache = new BoundedCache<string>({ maxWeight: 1 });
     cache.set("a", "1");

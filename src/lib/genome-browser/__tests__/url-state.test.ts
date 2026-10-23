@@ -14,6 +14,19 @@ describe("genome browser URL state", () => {
     });
   });
 
+  it("reads browser.highlight=none as a cleared highlight", () => {
+    expect(
+      parseGenomeBrowserUrlState(new URLSearchParams("browser.highlight=none"))
+        .highlight,
+    ).toBeNull();
+  });
+
+  it("writes a cleared highlight as browser.highlight=none", () => {
+    const params = new URLSearchParams("browser.highlight=A:5..9");
+    applyGenomeBrowserUrlState(params, { tracks: [], highlight: null });
+    expect(params.get("browser.highlight")).toBe("none");
+  });
+
   it("reads location, tracks and highlight", () => {
     expect(
       parseGenomeBrowserUrlState(
@@ -107,6 +120,26 @@ describe("genome browser URL state", () => {
       highlights: [{ refName: "c".repeat(300), start: 4, end: 9 }],
     });
     expect(state).toEqual({ location: "A:1..100", tracks: [] });
+  });
+
+  it("writes a cleared highlight as null only where a default would return", () => {
+    const view = {
+      coarseVisibleLocStrings: "A:1..100",
+      tracks: [],
+      highlights: [],
+    };
+    expect(viewUrlState(view)).toEqual({ location: "A:1..100", tracks: [] });
+    expect(viewUrlState(view, { hasDefaultHighlight: true })).toEqual({
+      location: "A:1..100",
+      tracks: [],
+      highlight: null,
+    });
+    expect(
+      viewUrlState(
+        { ...view, highlights: [{ refName: "A", start: 4, end: 9 }] },
+        { hasDefaultHighlight: true },
+      )?.highlight,
+    ).toBe("A:5..9");
   });
 
   it("has no URL state before the view shows a region", () => {

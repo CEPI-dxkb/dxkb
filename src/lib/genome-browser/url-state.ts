@@ -4,7 +4,9 @@
  * entry, so switching tabs clears it like any tab-owned param. Written with
  * `replaceState` from JBrowse's `observeSession` read-back: panning must not
  * add a history entry per move. Defaults (all three tracks, no highlight) are
- * omitted. JBrowse-free, so the panel and its tests never load JBrowse.
+ * omitted, except that a cleared highlight is written as `browser.highlight=none`
+ * where the browser would otherwise open with one (the Feature View's focus).
+ * JBrowse-free, so the panel and its tests never load JBrowse.
  */
 import { toQueryString } from "@/lib/url";
 import {
@@ -22,13 +24,16 @@ const genomeBrowserUrlParams = {
 
 /** `browser.tracks=none`: the user hid every track. */
 const noTracks = "none";
+/** `browser.highlight=none`: the user cleared the highlight. */
+const noHighlight = "none";
 /** Longest location or highlight the URL carries, read side and write side. */
 const maxLocationLength = 300;
 
 export interface GenomeBrowserUrlState {
   location?: string;
   tracks: readonly GenomeBrowserTrackId[];
-  highlight?: string;
+  /** `null`: the user cleared it, so no default highlight applies either. */
+  highlight?: string | null;
 }
 
 function bounded(value: string | null | undefined): string | undefined {
@@ -48,11 +53,13 @@ export function parseGenomeBrowserUrlState(
   params: Pick<URLSearchParams, "get">,
 ): GenomeBrowserUrlState {
   const location = bounded(params.get(genomeBrowserUrlParams.location));
-  const highlight = bounded(params.get(genomeBrowserUrlParams.highlight));
+  const rawHighlight = params.get(genomeBrowserUrlParams.highlight);
+  const highlight =
+    rawHighlight?.trim() === noHighlight ? null : bounded(rawHighlight);
   return {
     ...(location ? { location } : {}),
     tracks: parseTracks(params.get(genomeBrowserUrlParams.tracks)),
-    ...(highlight ? { highlight } : {}),
+    ...(highlight !== undefined ? { highlight } : {}),
   };
 }
 
@@ -81,7 +88,10 @@ export function applyGenomeBrowserUrlState(
   };
   set(genomeBrowserUrlParams.location, state.location);
   set(genomeBrowserUrlParams.tracks, serializeTracks(state.tracks));
-  set(genomeBrowserUrlParams.highlight, state.highlight);
+  set(
+    genomeBrowserUrlParams.highlight,
+    state.highlight === null ? noHighlight : state.highlight,
+  );
 }
 
 export function writeGenomeBrowserUrlState(state: GenomeBrowserUrlState): void {
@@ -115,10 +125,14 @@ export interface GenomeBrowserViewSource {
  * (`ctg1:9000..10000 ctg2:1..500`) names no sequence on reload, and a
  * zoomed-out view of a many-contig genome would write one entry per contig on
  * every pan. A reopened link opens on that first region. A region or highlight
- * longer than the read side accepts is not written.
+ * longer than the read side accepts is not written. With `hasDefaultHighlight`
+ * (the browser opens on a highlighted feature when the URL names none), a view
+ * without a highlight writes `null`, so the cleared highlight stays cleared on
+ * a remount instead of falling back to the default.
  */
 export function viewUrlState(
   view: GenomeBrowserViewSource,
+  { hasDefaultHighlight = false }: { hasDefaultHighlight?: boolean } = {},
 ): GenomeBrowserUrlState | null {
   const firstRegion = view.coarseVisibleLocStrings.trim().split(/\s+/).at(0);
   if (!firstRegion) return null;
@@ -141,6 +155,10 @@ export function viewUrlState(
     tracks: view.tracks
       .map((track) => track.configuration.trackId)
       .filter(isGenomeBrowserTrackId),
-    ...(highlight ? { highlight } : {}),
+    ...(highlight
+      ? { highlight }
+      : !firstHighlight && hasDefaultHighlight
+        ? { highlight: null }
+        : {}),
   };
 }

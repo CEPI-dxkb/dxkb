@@ -52,6 +52,11 @@ export class BoundedCache<V> {
       expiresAt: this.now() + (this.options.ttlMs ?? Number.POSITIVE_INFINITY),
     });
     this.totalWeight += weight;
+    if (this.totalWeight <= this.options.maxWeight) return;
+    // A read moves an entry to the back without extending its time to live,
+    // so an expired entry can sit behind live ones. Drop every expired entry
+    // before evicting by recency, so dead data never costs a live entry.
+    this.deleteExpired();
     for (const oldest of this.entries.keys()) {
       if (this.totalWeight <= this.options.maxWeight) break;
       this.delete(oldest);
@@ -78,6 +83,13 @@ export class BoundedCache<V> {
   clear(): void {
     this.entries.clear();
     this.totalWeight = 0;
+  }
+
+  private deleteExpired(): void {
+    const now = this.now();
+    for (const [key, entry] of this.entries) {
+      if (entry.expiresAt <= now) this.delete(key);
+    }
   }
 
   private now(): number {

@@ -156,6 +156,17 @@ function GenomeBrowserInstance({
   // built at that moment (a theme or genome remount) at worst builds one
   // again. StrictMode-safe: `useFinalUnmount` skips the dev double mount.
   // Recheck on every beta bump; drop it once JBrowse frees the sessions first.
+  //
+  // The other 5.0.0-beta.17 workaround lives outside this file, in
+  // `patches/@jbrowse__product-core@5.0.0-beta.17.patch`. Editing the
+  // Reference Sequence track's settings (Show... > Translation) ends in
+  // `Tracks.updateTrackConfiguration`, because that track lives in the
+  // assembly and has no `tracks` entry to hold the edit, and it calls
+  // `self.jbrowse.updateTrackConf`, which only the full JBrowse app's root
+  // config defines; the embedded one has none, so the edit threw a TypeError
+  // 400 ms later. The patch makes the call optional (the edit is already on the
+  // track). pnpm fails the install when the patched version is gone, so a bump
+  // forces the recheck; drop the patch once embedded JBrowse defines it.
   useFinalUnmount(() => {
     void keepAdapters(() => false);
   });

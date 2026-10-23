@@ -130,6 +130,28 @@ test.describe("Genome Browser", () => {
     expect(await browser.openTracks()).toEqual(["refseqs", "PATRICGenes"]);
   });
 
+  test("editing the reference sequence track's settings does not throw", async ({
+    page,
+  }) => {
+    const browser = new GenomeBrowserPanelPage(page);
+    await page.goto(
+      "/genome/1282460.2049?tab=genome-browser&browser.tracks=refseqs",
+    );
+    await browser.expectLoaded();
+    const translation = await browser.toggleTrackMenuCheckbox(
+      "refseqs",
+      ["Show..."],
+      "Translation",
+    );
+    await expect(translation).toHaveAttribute("aria-checked", "false");
+    // JBrowse saves a track's edited settings 400 ms after the edit. Unpatched,
+    // beta.17's embedded engine threw `self.jbrowse.updateTrackConf is not a
+    // function` from that save for this track, which has no `tracks` entry
+    // (patches/@jbrowse__product-core@5.0.0-beta.17.patch). The error is the
+    // only sign, so wait past the save before afterEach checks for it.
+    await page.waitForTimeout(1000);
+  });
+
   test("switching tabs drops the browser's URL state", async ({ page }) => {
     await page.goto(
       "/genome/1282460.2049?tab=genome-browser&browser.loc=JX869059:1..5000",

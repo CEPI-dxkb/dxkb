@@ -55,6 +55,28 @@ export class GenomeBrowserPanelPage {
     return this.root().getByText(name, { exact: true });
   }
 
+  /**
+   * Open a track's settings menu, then each submenu in turn, and click the
+   * checkbox item `checkbox`. Returns that item: JBrowse keeps the menu open
+   * after a checkbox click, so its new state can be read.
+   */
+  async toggleTrackMenuCheckbox(
+    trackId: string,
+    submenus: readonly string[],
+    checkbox: string,
+  ): Promise<Locator> {
+    await this.root()
+      .getByTestId(`trackLabel-${trackId}`)
+      .getByRole("button", { name: "Track settings" })
+      .click();
+    for (const submenu of submenus) {
+      await this.page.getByRole("menuitem", { name: submenu }).click();
+    }
+    const item = this.page.getByRole("menuitemcheckbox", { name: checkbox });
+    await item.click();
+    return item;
+  }
+
   async expectLoaded(): Promise<void> {
     await expect(this.readyMarker()).toHaveAttribute(
       "data-app-phase",

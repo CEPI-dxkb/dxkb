@@ -16,6 +16,12 @@ export { OrganismLandingPage } from "./organism-landing-page";
 export { EpitopePage } from "./epitope-page";
 export { ExperimentPage } from "./experiment-page";
 export { GenomeMemberPage } from "./genome-member-page";
+export {
+  GenomeBrowserPanelPage,
+  type GenomeBrowserDataRequests,
+  type ThemeSurfaces,
+} from "./genome-browser-panel";
+export { ThemeSwitcher } from "./theme-switcher";
 export { SerologyPage } from "./serology-page";
 export { StrainPage } from "./strain-page";
 export { SurveillancePage } from "./surveillance-page";

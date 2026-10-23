@@ -5,6 +5,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { signOutAndRedirect } from "@/app/(auth)/redirect-action";
 import { Button } from "@/components/ui/button";
 import { buttonVariants } from "@/components/ui/button-variants";
+import { clearAccountCaches } from "@/lib/account-caches";
 import { cn } from "@/lib/utils";
 import {
   AlertDialog,
@@ -48,6 +49,7 @@ export function SignoutButton({
   const prepareSignOut = () => {
     setIsSigningOut(true);
     queryClient.clear();
+    clearAccountCaches();
   };
 
   const triggerChildren = (

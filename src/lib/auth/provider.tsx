@@ -6,6 +6,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import * as authClient from "@/lib/auth/client";
+import { clearAccountCaches } from "@/lib/account-caches";
 import { formatPrefixedErrorMessage } from "@/lib/utils";
 import type {
   AuthUser,
@@ -121,6 +122,7 @@ export function useAuthActions() {
 
   const clearAccountCache = () => {
     queryClient.clear();
+    clearAccountCaches();
   };
 
   const signIn = async (credentials: SigninCredentials) => {

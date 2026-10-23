@@ -546,9 +546,12 @@ export class ServerDataRepository {
    *
    * `clause` is appended to the query verbatim and does NOT pass through
    * `validateRql`, so every caller must build it from values it has already
-   * validated server-side. Its only caller today is `./taxonomy-tree.ts`,
-   * whose two clauses are built from positive integers that
-   * `/api/taxonomy-tree/[operation]` parsed with a digits-only pattern.
+   * validated server-side. Its callers today are `./taxonomy-tree.ts`, whose
+   * two clauses are built from positive integers that
+   * `/api/taxonomy-tree/[operation]` parsed with a digits-only pattern, and
+   * `src/lib/genome-browser/server.ts`, whose clauses are built from validated
+   * genome ids, integers, an annotation allowlist, and a `refName`
+   * constrained by `refNamePattern` and then passed through `escapeRqlValue`.
    *
    * `start`/`end` go straight into the `Range`/`X-Range` headers, so the
    * caller owns its own window — including the upstream's *exclusive* range

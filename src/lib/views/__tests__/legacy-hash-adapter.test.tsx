@@ -251,3 +251,38 @@ it("does nothing when hash has only unrelated keys", () => {
   render(<LegacyHashAdapter />);
   expect(mockReplace).not.toHaveBeenCalled();
 });
+
+it("promotes a legacy Genome Browser hash into browser.* params", () => {
+  window.history.replaceState(null, "", "/genome/470.36849");
+  window.location.hash =
+    "#view_tab=browser&loc=470.36849.con.0001%3A1..111200&tracks=refseqs%2CPATRICGenes%2CRefSeqGenes&highlight=";
+  render(<LegacyHashAdapter />);
+  // An empty `highlight=` (legacy writes one when nothing is highlighted) adds nothing.
+  expect(mockReplace).toHaveBeenCalledWith(
+    "/genome/470.36849?tab=browser&browser.loc=470.36849.con.0001:1..111200&browser.tracks=refseqs,PATRICGenes,RefSeqGenes",
+  );
+});
+
+it("promotes a legacy Feature View browser highlight", () => {
+  window.history.replaceState(null, "", "/feature/PATRIC.1");
+  window.location.hash =
+    "#view_tab=genomeBrowser&loc=ATGO01000001%3A6609..13706&highlight=ATGO01000001%3A9610..10707";
+  render(<LegacyHashAdapter />);
+  expect(mockReplace).toHaveBeenCalledWith(
+    "/feature/PATRIC.1?tab=genomeBrowser&browser.loc=ATGO01000001:6609..13706&browser.highlight=ATGO01000001:9610..10707",
+  );
+});
+
+it("ignores browser-looking hash params without a browser tab", () => {
+  window.history.replaceState(null, "", "/genome/470.36849");
+  window.location.hash = "#loc=section-2&tracks=a&highlight=b";
+  render(<LegacyHashAdapter />);
+  expect(mockReplace).not.toHaveBeenCalled();
+});
+
+it("drops browser-looking hash params beside another tab", () => {
+  window.history.replaceState(null, "", "/genome/470.36849");
+  window.location.hash = "#view_tab=features&loc=A%3A1..100&highlight=A%3A5..9";
+  render(<LegacyHashAdapter />);
+  expect(mockReplace).toHaveBeenCalledWith("/genome/470.36849?tab=features");
+});

@@ -14,15 +14,89 @@ import { forEachTheme } from "../../a11y/theme";
 import generatedBaseline, { reflowSkip } from "../../a11y/baseline.generated";
 import { isReflowSkipped } from "../../a11y/baseline";
 import { recordScan } from "../../a11y/report";
+import { GenomeBrowserPanelPage } from "../../pages";
 import { scanTargets } from "../../a11y/routes";
 import type { BaselineMap } from "../../a11y/baseline";
 import type { RouteEntry } from "../../a11y/routes";
+import type { Page } from "@playwright/test";
 import type { JsonOverride } from "../../mocks/backends";
 import auspiceDataset from "../../fixtures/overrides/organisms/phylogeny/auspice-tree-map-v2.json" with { type: "json" };
 
 const auspiceDatasetId = "Influenza-A-Virus/H3N2/HA";
 
 const baselineMap: BaselineMap = generatedBaseline;
+
+const genomeBrowserSelector = '[data-testid="genome-browser"]';
+
+/**
+ * Scan a Genome Browser tab in both themes: the host page with the browser
+ * excluded (full ruleset, no disables), then the embedded JBrowse 5 subtree.
+ *
+ * A theme switch remounts JBrowse with the new theme's palette
+ * (`use-applied-theme.ts`), so each theme first waits for the new engine to be
+ * painted with the new tokens and to report ready; axe would otherwise scan the
+ * skeleton, or the previous theme's chrome. `color-contrast` stays enforced on
+ * the subtree, and is asserted to be empty outright rather than left to the
+ * baseline (whose wildcard allowance would mask it): JBrowse's colors are the
+ * theme mapping's (`jbrowse/theme.ts`), so a contrast failure there is ours to
+ * fix.
+ *
+ * Two rules are disabled for the subtree only, for JBrowse 5.0.0-beta.17's own
+ * icon-only controls, which this app cannot name without patching the
+ * dependency. Both are critical-impact, which the baseline mechanism refuses by
+ * design (see canBaseline in e2e/a11y/baseline.ts), so they are disabled here
+ * with their upstream cause named rather than silently suppressed.
+ *
+ * The assertions are callbacks rather than scan-key strings so that each caller
+ * passes its keys to `assertNoBlockingViolations` as string literals, the only
+ * form `extractScannedKeys` (e2e/a11y/scan-keys.ts) counts as scanned.
+ */
+async function scanGenomeBrowserTab(
+  page: Page,
+  path: string,
+  assertHost: (violations: Violation[], theme: string) => void,
+  assertBrowser: (violations: Violation[], theme: string) => void,
+): Promise<void> {
+  await page.goto(path);
+  await awaitSettled(page);
+  const browser = new GenomeBrowserPanelPage(page);
+  await browser.expectLoaded();
+  await forEachTheme(page, async (theme) => {
+    await browser.expectPaintedWithAppliedTheme();
+    await browser.expectLoaded();
+    assertHost(
+      await scanPage(page, { exclude: [genomeBrowserSelector] }),
+      theme,
+    );
+    const browserViolations = await scanPage(page, {
+      include: genomeBrowserSelector,
+      disableRules: [
+        // @jbrowse/plugin-linear-genome-view's header: the view menu's
+        // hamburger (`CascadingMenuButton`, Header.js) and the zoom menu's
+        // kebab (`CascadingMenuButton`, HeaderZoomControls.js) are icon-only
+        // MUI IconButtons with no aria-label.
+        "button-name",
+        // The header's zoom slider (`SingleSlider` from @jbrowse/core/ui,
+        // HeaderZoomControls.js) renders an MUI Slider whose hidden range
+        // input has no accessible name.
+        "label",
+      ],
+    });
+    // Asserted before and apart from the baseline: the wildcard baseline's
+    // `color-contrast` allowance (DXKBCORE-174) is for host pages and would
+    // mask a regression inside JBrowse, whose colors are the theme mapping's.
+    const contrast = browserViolations.filter(
+      (violation) => violation.id === "color-contrast",
+    );
+    expect(
+      contrast,
+      contrast.length === 0
+        ? undefined
+        : formatBlocking(contrast, `the Genome Browser subtree (${theme})`),
+    ).toEqual([]);
+    assertBrowser(browserViolations, theme);
+  });
+}
 
 function assertNoBlockingViolations(
   violations: Violation[],
@@ -342,5 +416,48 @@ test.describe("a11y component surfaces", () => {
         theme,
       );
     });
+  });
+
+  // Genome Browser tab — the embedded JBrowse 5 view
+  // (src/components/genome-browser/).
+  //
+  // Lives here rather than in the routes[] sweep for two reasons: one page.tsx
+  // can be claimed by a single entry (`coverage.meta.spec.ts`), and the Genome
+  // and Feature pages are already accounted for by their own entries; and the
+  // JBrowse subtree needs the scoped scan described at scanGenomeBrowserTab.
+  test("genome browser tab has no blocking a11y violations", async ({
+    page,
+    context,
+  }) => {
+    await context.clearCookies();
+    await applyBackendMocks(page, { overrides: [...a11yBackendOverrides] });
+    await scanGenomeBrowserTab(
+      page,
+      "/genome/1282460.2049?tab=genome-browser",
+      (violations, theme) => {
+        assertNoBlockingViolations(violations, "genome-browser-host", theme);
+      },
+      (violations, theme) => {
+        assertNoBlockingViolations(violations, "genome-browser-view", theme);
+      },
+    );
+  });
+
+  test("feature browser tab has no blocking a11y violations", async ({
+    page,
+    context,
+  }) => {
+    await context.clearCookies();
+    await applyBackendMocks(page, { overrides: [...a11yBackendOverrides] });
+    await scanGenomeBrowserTab(
+      page,
+      "/feature/PATRIC.1282460.2049.JX869059.CDS.1.100.fwd?tab=genome-browser",
+      (violations, theme) => {
+        assertNoBlockingViolations(violations, "feature-browser-host", theme);
+      },
+      (violations, theme) => {
+        assertNoBlockingViolations(violations, "feature-browser-view", theme);
+      },
+    );
   });
 });

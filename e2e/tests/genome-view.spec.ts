@@ -220,7 +220,7 @@ test.describe("Genome view", () => {
     await genome.expectRow(/JX869059/);
     await expect(
       genomePage.getByRole("button", { name: "Genome Browser" }),
-    ).toHaveAttribute("aria-disabled", "true");
+    ).not.toHaveAttribute("aria-disabled", "true");
 
     await genomePage.goBack();
     await expect(genomePage).toHaveURL(/\/genome\/1282460\.2049$/);

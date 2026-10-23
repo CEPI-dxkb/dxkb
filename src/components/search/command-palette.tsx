@@ -16,6 +16,7 @@ import {
 
 import { useAuth } from "@/lib/auth/provider";
 import { signOutAndRedirect } from "@/app/(auth)/redirect-action";
+import { clearAccountCaches } from "@/lib/account-caches";
 import { encodeQueryComponent } from "@/lib/url";
 import { encodeWorkspaceSegment } from "@/lib/services/workspace/path-utils";
 import { workspaceUsername } from "@/lib/services/workspace/path-utils";
@@ -119,6 +120,7 @@ export function CommandPalette() {
   const handleSignOut = () => {
     runCommand(() => {
       queryClient.clear();
+      clearAccountCaches();
       signOutFormRef.current?.requestSubmit();
     });
   };

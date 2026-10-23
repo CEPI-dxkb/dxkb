@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Suspense, use, type ReactNode } from "react";
+import { GenomeBrowserPanel } from "@/components/genome-browser";
 import { viewIcons } from "@/components/views/view-icons";
 import {
   EntityViewShell,
@@ -11,6 +12,7 @@ import {
   buildFeatureTabs,
   featureDisplayName,
   featureFastaTypes,
+  featureGenomeBrowserTarget,
   featureHeaderParts,
   type FeatureTab,
   type FeatureViewRecord,
@@ -132,8 +134,14 @@ export function FeatureMember({
   lineage,
   activeTab,
 }: FeatureMemberProps) {
+  const browserTarget = featureGenomeBrowserTarget(feature);
   const content =
-    activeTab === "interactions" ? (
+    activeTab === "genome-browser" && browserTarget ? (
+      <GenomeBrowserPanel
+        genomeId={browserTarget.genomeId}
+        focus={browserTarget.focus}
+      />
+    ) : activeTab === "interactions" ? (
       <ResourceChildCollection
         urlKey="interactions"
         resource="ppi"

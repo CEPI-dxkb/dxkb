@@ -16,6 +16,7 @@ import {
   surveillanceRecord,
   taxonomyRecord,
 } from "@/lib/e2e-fixtures/records";
+import { genomeBrowserScenarioOverrides } from "./genome-browser";
 import {
   buildBrowserRpcSuccess,
   buildGatewayCollectionEnvelope,
@@ -539,6 +540,7 @@ const namedResourceScenarioOverrides: JsonOverride[] = [
   ...epitopeScenarioOverrides,
   ...genomeFeatureScenarioOverrides,
   ...genomeSequenceScenarioOverrides,
+  ...genomeBrowserScenarioOverrides,
   ...genomeScenarioOverrides,
 ];
 

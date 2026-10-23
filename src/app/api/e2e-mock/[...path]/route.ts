@@ -12,6 +12,7 @@ import {
   findOrganismSummaryRecord,
   findOrganismTaxonomyRecord,
   findTaxonGenomeCount,
+  genomeFeatureRecord,
   genomeRecord,
   proteinStructureRecords,
   serologyRecord,
@@ -339,12 +340,21 @@ function maybeSolrCount(
   const isEpitopeFixtureQuery =
     core === "epitope" &&
     equalsValue(query, "epitope_id") === epitopeRecord.epitope_id;
+  // The Feature member page looks one record up by id (`feature_id`, or
+  // `patric_id` for a `fig|…` link); its collection is served browser-side
+  // (`genomeFeatureScenarioOverrides`).
+  const isFeatureFixtureQuery =
+    core === "genome_feature" &&
+    (equalsValue(query, "feature_id") === genomeFeatureRecord.feature_id ||
+      equalsValue(query, "patric_id") === genomeFeatureRecord.patric_id);
   const docs: unknown[] = includesFixtureRow
     ? isGenomeFixtureQuery
       ? [genomeRecord]
       : isEpitopeFixtureQuery
         ? [epitopeRecord]
-        : []
+        : isFeatureFixtureQuery
+          ? [genomeFeatureRecord]
+          : []
     : [];
   if (request.headers.get("accept") === "application/json") return docs;
   return buildLoopbackSolrEnvelope(docs, { numFound });

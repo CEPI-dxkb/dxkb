@@ -240,6 +240,8 @@ describe("Genome view contracts", () => {
     expect(canonicalGenomeTab("domains", viral)).toBe("domains");
     expect(canonicalGenomeTab("sequences", bacterial)).toBe("sequences");
     expect(canonicalGenomeTab("nonsense", bacterial)).toBe("overview");
+    expect(canonicalGenomeTab("genome-browser", viral)).toBe("genome-browser");
+    expect(canonicalGenomeTab("browser", bacterial)).toBe("genome-browser");
   });
 });
 

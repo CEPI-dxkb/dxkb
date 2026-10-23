@@ -132,6 +132,14 @@ describe("child collection URL state", () => {
     expect(params.toString()).toBe("tab=x&keep=1&keep=2");
   });
 
+  it("clears the Genome Browser's params on a tab switch", () => {
+    const params = new URLSearchParams(
+      "tab=genome-browser&browser.loc=A:1..2&keyword=x",
+    );
+    deleteChildCollectionParams(params);
+    expect(params.toString()).toBe("tab=genome-browser&keyword=x");
+  });
+
   it("leaves a dotted param that no nested table owns", () => {
     expect(isChildCollectionParam("source.id")).toBe(false);
     expect(isChildCollectionParam(".page")).toBe(false);

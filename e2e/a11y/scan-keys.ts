@@ -36,6 +36,10 @@ export const nonRouteScanKeys: readonly string[] = [
   "auspice-picker",
   "auspice-viewer-host",
   "auspice-viewer-iframe",
+  "genome-browser-host",
+  "genome-browser-view",
+  "feature-browser-host",
+  "feature-browser-view",
   // Interaction states scanned by deep-tier.spec.ts.
   "genome-assembly/validation-errors",
   "genome-assembly/file-picker-open",

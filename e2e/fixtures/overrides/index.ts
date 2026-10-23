@@ -45,6 +45,7 @@ export {
   genomeScenarioOverrides,
   taxonGenomesScenarioOverrides,
 } from "./catchall";
+export { genomeBrowserScenarioOverrides } from "./genome-browser";
 export { journeyOverrides } from "./journey";
 export {
   outagePassthroughOverrides,

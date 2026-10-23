@@ -9,39 +9,9 @@
  * a `NEXT_PUBLIC_*` base URL would be inlined at build time and could never be
  * redirected at runtime.
  */
+import { httpFailure } from "./route-failure-client";
+
 export const taxonomyTreeBasePath = "/api/taxonomy-tree";
-
-/**
- * The route's `{error, code}` body carries the specific failure — a malformed
- * facet payload, an upstream message, a rejected parent id. Use it verbatim so
- * a specific diagnosis is never replaced by a generic one, and fall back to the
- * status line only when there is no JSON body to read (an aborted response, a
- * proxy error page).
- */
-async function failureDetail(response: Response): Promise<string> {
-  const payload: unknown = await response.json().catch(() => null);
-  const error =
-    payload && typeof payload === "object"
-      ? (payload as { error?: unknown }).error
-      : undefined;
-  return typeof error === "string" && error.trim() !== ""
-    ? error
-    : `${String(response.status)} ${response.statusText}`;
-}
-
-/**
- * A non-OK answer as an error carrying its HTTP `status`, so the app-wide
- * retry policy skips an immediate retry of an upstream outage (502–504).
- */
-async function httpFailure(
-  response: Response,
-  subject: string,
-): Promise<Error> {
-  return Object.assign(
-    new Error(`${subject}: ${await failureDetail(response)}`),
-    { status: response.status },
-  );
-}
 
 export class TaxonomyTreeRepository {
   constructor(private readonly basePath = taxonomyTreeBasePath) {}

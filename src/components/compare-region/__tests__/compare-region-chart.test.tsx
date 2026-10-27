@@ -238,6 +238,17 @@ describe("CompareRegionChart", () => {
       expect(figureSvg()).toHaveAttribute("width", "616");
     });
 
+    it("fills the card, with the legend at its foot", async () => {
+      await renderChart();
+      // The scroller takes the room the figure leaves, so the legend sits at
+      // the card's bottom edge however few genomes there are.
+      expect(scroller()).toHaveClass("min-h-0", "flex-1");
+      expect(scroller().parentElement).toHaveClass("flex-1");
+      expect(scroller().nextElementSibling).toHaveTextContent(
+        "Shared by most genomes",
+      );
+    });
+
     it("leaves vertical touch scrolling to the page", async () => {
       const { container } = await renderChart();
       expect(tracksSvg(container)).toHaveClass("touch-pan-y");

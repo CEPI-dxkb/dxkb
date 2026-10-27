@@ -343,7 +343,7 @@ export function CompareRegionChart({
   const labelHeader = <LabelHeader spec={spec} labelWidth={labelWidth} />;
 
   return (
-    <div ref={wheelGuardRef} className="relative flex min-h-0 flex-col">
+    <div ref={wheelGuardRef} className="relative flex min-h-0 flex-1 flex-col">
       <PinContext value={selected}>
         <HoverContext value={hovered}>
           <RowHoverContext value={hoveredRow}>
@@ -384,10 +384,11 @@ export function CompareRegionChart({
                     <FollowZoom matrix={matrix} place={placePopups} />
                     {renderBar(controls, exportChart)}
                     {strip}
-                    {/* Focusable so keyboard users can scroll a figure wider or taller than the card. */}
+                    {/* Focusable so keyboard users can scroll a figure wider or taller than the card.
+                        It takes the room the figure leaves, so the legend sits at the card's foot. */}
                     <div
                       ref={scrollerRef}
-                      className="min-h-0 overflow-auto"
+                      className="min-h-0 flex-1 overflow-auto"
                       tabIndex={0}
                       role="group"
                       aria-label="Compared regions (scrollable)"

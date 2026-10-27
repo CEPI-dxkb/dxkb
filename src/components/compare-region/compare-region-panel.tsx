@@ -203,13 +203,15 @@ export function CompareRegionPanel({ patricId }: CompareRegionPanelProps) {
   return (
     // The tab fills the view shell's region, which runs under the page's right
     // padding (`-mr-*`) and does not scroll: the padding gives the card back
-    // that inset, and the card scrolls the figure itself. `min-w-0`: the
+    // that inset, and the card scrolls the figure itself. The card fills the
+    // region down to the page's bottom edge, as the data tables do, so it has
+    // no padding under it and no bottom border or corners. `min-w-0`: the
     // figure's floor must not widen the card (and so its measured width).
-    <div className="flex min-h-0 min-w-0 flex-1 flex-col py-3 pr-2 sm:pr-3 lg:pr-4">
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col pt-3 pr-2 sm:pr-3 lg:pr-4">
       <section
         ref={parentRef}
         aria-label="Compare regions"
-        className="flex min-h-0 min-w-0 flex-col rounded-xl border bg-card text-card-foreground shadow-sm"
+        className="flex min-h-0 min-w-0 flex-1 flex-col rounded-t-xl border border-b-0 bg-card text-card-foreground shadow-sm"
       >
         <CompareRegionBody
           key={queryIdentity}

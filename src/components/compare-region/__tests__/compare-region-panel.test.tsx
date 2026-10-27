@@ -98,7 +98,13 @@ describe("CompareRegionPanel", () => {
 
     await screen.findByRole("img");
     const card = screen.getByRole("region", { name: "Compare regions" });
-    expect(card).toHaveClass("rounded-xl", "border", "bg-card", "shadow-sm");
+    expect(card).toHaveClass("border", "bg-card", "shadow-sm");
+    // It fills the tab down to the page's bottom edge, as the data tables do:
+    // rounded at the top only, open at the bottom, with no padding under it.
+    expect(card).toHaveClass("flex-1", "rounded-t-xl", "border-b-0");
+    expect(card).not.toHaveClass("rounded-xl");
+    expect(card.parentElement).toHaveClass("pt-3");
+    expect(card.parentElement).not.toHaveClass("py-3");
     expect(screen.getByRole("button", { name: "Update" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "Zoom in" })).toBeEnabled();
     expect(screen.getByRole("button", { name: "Export SVG" })).toBeEnabled();

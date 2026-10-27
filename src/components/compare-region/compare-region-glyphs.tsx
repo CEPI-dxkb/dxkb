@@ -118,7 +118,11 @@ function GlyphOutline({
   );
 }
 
-/** A gene's label: dark ink on its fill, or muted text off it; a quiet product in italics. */
+/**
+ * A gene's label: dark ink on its fill, or foreground text off it; a quiet
+ * product in italics. On a fill a quiet label keeps the full ink, since any
+ * lighter falls under 4.5:1 on the darker families.
+ */
 function LabelText({
   label,
   onFill,
@@ -140,7 +144,6 @@ function LabelText({
       <text
         {...shared}
         fill={labelInk}
-        fillOpacity={label.quiet ? 0.6 : 1}
         className={label.quiet ? "font-medium italic" : "font-medium"}
       >
         {label.text}
@@ -152,8 +155,8 @@ function LabelText({
       {...shared}
       className={
         label.quiet
-          ? "fill-foreground/55 font-medium italic"
-          : "fill-foreground/75 font-medium"
+          ? "fill-foreground/85 font-medium italic"
+          : "fill-foreground font-medium"
       }
     >
       {label.text}

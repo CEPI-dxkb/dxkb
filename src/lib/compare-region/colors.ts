@@ -21,6 +21,12 @@ const focusChannels = [
 /** DXKB's orange: the focus gene's family, the focus line and the BLAST ramp. */
 export const focusFamilyColor = `oklch(${focusChannels})`;
 
+/**
+ * The focus row's "focus" text: DXKB's orange 20 points darker, so it reads
+ * as text on a light card (about 5:1, where the orange itself is 2.5:1).
+ */
+export const focusInk = `oklch(${(focusOklch.lightness - 20).toFixed(2)}% ${String(focusOklch.chroma)} ${String(focusHue)})`;
+
 /** `value` modulo `size`, never negative (`%` keeps the dividend's sign). */
 function wrap(value: number, size: number): number {
   const rest = value % size;

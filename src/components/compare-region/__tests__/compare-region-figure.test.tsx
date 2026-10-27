@@ -9,6 +9,7 @@ import {
   type FeatureRef,
 } from "@/lib/compare-region/families";
 import { glyphBox } from "@/lib/compare-region/figure-frame";
+import { capHeight } from "@/lib/compare-region/genome-labels";
 import { glyphPath } from "@/lib/compare-region/glyph-paths";
 import { trackScale, type TrackMatrix } from "@/lib/compare-region/ruler";
 import { estimateTextWidth } from "@/lib/compare-region/text-measure";
@@ -22,7 +23,11 @@ import {
   RowHoverContext,
   TraceVeil,
 } from "../compare-region-highlight";
-import { LabelColumn, LabelHeader } from "../compare-region-label-column";
+import {
+  IdentityInfo,
+  LabelColumn,
+  LabelHeader,
+} from "../compare-region-label-column";
 import { Legend } from "../compare-region-legend";
 import { CompareRegionTooltip } from "../compare-region-tooltip";
 import {
@@ -36,7 +41,9 @@ import {
 
 /** D6: the focus family's fixed DXKB orange, in every theme. */
 const focusOrange = "oklch(71.57% 0.182 37.18)";
-/** A 900 px card: Comfortable's plot beside its 226 px label column. */
+/** The "focus" text: that orange 20 points darker, so it reads as text. */
+const focusTextOrange = "oklch(51.57% 0.182 37.18)";
+/** A 674 px plot: Comfortable's in a 912 px card, beside its 238 px label column. */
 const plotWidth = 674;
 const identity: TrackMatrix = { scaleX: 1, translateX: 0 };
 /** 4×, about the focus line (x 337), so the ruler shows ±250 bp. */
@@ -189,6 +196,43 @@ describe("GlyphLayer", () => {
     );
     expect(screen.getByText("Focus homolog")).toBeInTheDocument();
     expect(screen.queryByText("Upstream protein")).not.toBeInTheDocument();
+  });
+
+  it("inks a quiet label on a fill fully, and one off a fill in the foreground", () => {
+    const [upstream, focusGene, blast] = focusRow.features;
+    const quiet = buildChartModel(
+      [
+        {
+          ...focusRow,
+          features: [
+            upstream,
+            { ...focusGene, product: "hypothetical protein" },
+            blast,
+            testGene("fig|1.1.peg.3", 760, 860, { product: "Orphan" }),
+          ],
+        },
+        mirroredRow,
+      ],
+      densitySpecs.comfortable,
+    );
+    renderInSvg(
+      <GlyphLayer
+        model={quiet}
+        matrix={fourFold}
+        plotWidth={plotWidth}
+        reach={0}
+        pressed={null}
+        measure={measure}
+      />,
+    );
+    // Any lighter ink falls under 4.5:1 on the darker family fills.
+    const onFill = screen.getByText("hypothetical protein");
+    expect(onFill).toHaveAttribute("fill", labelInk);
+    expect(onFill).not.toHaveAttribute("fill-opacity");
+    expect(onFill).toHaveClass("italic");
+    const offFill = screen.getByText("Orphan");
+    expect(offFill).toHaveClass("fill-foreground");
+    expect(offFill).not.toHaveClass("fill-foreground/75");
   });
 
   it("skips glyphs more than its reach off the plot, never the pressed one", () => {
@@ -384,7 +428,7 @@ describe("track layers", () => {
     );
     const paths = container.querySelectorAll("path");
     expect(paths).toHaveLength(1);
-    expect(paths[0]).toHaveAttribute("d", "M87,49.5C87,58 574.2,58 574.2,66.5");
+    expect(paths[0]).toHaveAttribute("d", "M87,51.5C87,62 574.2,62 574.2,72.5");
     expect(paths[0]).toHaveAttribute("stroke", familyColor(3));
     // round(0.5 × 0.35 × 100) / 100
     expect(paths[0]).toHaveAttribute("stroke-opacity", "0.18");
@@ -466,10 +510,16 @@ describe("track layers", () => {
 describe("label column", () => {
   it("names each genome on two lines in Comfortable", () => {
     renderInSvg(
-      <LabelColumn model={comfortable} labelWidth={226} measure={measure} />,
+      <LabelColumn model={comfortable} labelWidth={280} measure={measure} />,
     );
-    expect(screen.getByText("Escherichia coli")).toBeInTheDocument();
-    expect(screen.getByText("str. K-12 substr. MG1655")).toBeInTheDocument();
+    expect(screen.getByText("Escherichia coli")).toHaveAttribute(
+      "font-size",
+      "13",
+    );
+    expect(screen.getByText("str. K-12 substr. MG1655")).toHaveAttribute(
+      "font-size",
+      "11.5",
+    );
     expect(screen.getByText("Salmonella enterica")).toBeInTheDocument();
     expect(screen.getByText("focus")).toBeInTheDocument();
     expect(screen.getByText("80%")).toBeInTheDocument();
@@ -478,20 +528,77 @@ describe("label column", () => {
     ).toBeInTheDocument();
   });
 
-  it("names each genome on one line in Compact", () => {
+  it.each([280, 238, 208])(
+    "gives the identity as a percentage alone, with no dot, in a %i px column",
+    (labelWidth) => {
+      const { container } = renderInSvg(
+        <LabelColumn
+          model={comfortable}
+          labelWidth={labelWidth}
+          measure={measure}
+        />,
+      );
+      expect(screen.getByText("80%")).toBeInTheDocument();
+      expect(container.querySelector("circle")).toBeNull();
+    },
+  );
+
+  it("cuts a long name sooner on the focus row, which keeps room for its wider mark", () => {
+    const genomeName =
+      "Escherichia coli str. K-12 substr. MG1655 from a long-running laboratory lineage";
+    const named = buildChartModel(
+      [
+        { ...focusRow, genomeName },
+        { ...mirroredRow, genomeName },
+      ],
+      densitySpecs.comfortable,
+    );
     renderInSvg(
-      <LabelColumn model={compact} labelWidth={204} measure={measure} />,
+      <LabelColumn model={named} labelWidth={280} measure={measure} />,
+    );
+    const [focusStrain, comparedStrain] = screen
+      .getAllByText(/^str\. K-12/)
+      .map((line) => line.textContent);
+    expect(focusStrain).toMatch(/…$/);
+    expect(comparedStrain).toMatch(/…$/);
+    expect(focusStrain.length).toBeLessThan(comparedStrain.length);
+  });
+
+  it("names each genome on two lines in Compact too, in smaller type", () => {
+    renderInSvg(
+      <LabelColumn model={compact} labelWidth={232} measure={measure} />,
     );
     const species = screen.getByText("Escherichia coli");
-    expect(species.tagName).toBe("tspan");
-    const line = species.parentElement;
-    expect(line?.tagName).toBe("text");
-    expect(line?.querySelectorAll("tspan")).toHaveLength(2);
-    expect(line).toHaveTextContent("Escherichia colistr…");
-    expect(screen.getByText("focus")).toHaveAttribute("fill", focusOrange);
+    const strain = screen.getByText("str. K-12 substr. MG1655");
+    expect(species).toHaveAttribute("font-size", "12");
+    expect(strain).toHaveAttribute("font-size", "10.5");
+    // Under the species, not beside it, so the strain always shows.
+    expect(strain).toHaveAttribute("x", species.getAttribute("x"));
+    expect(Number(strain.getAttribute("y"))).toBeGreaterThan(
+      Number(species.getAttribute("y")),
+    );
+    expect(screen.getByText("focus")).toHaveAttribute("fill", focusTextOrange);
+  });
+
+  it("sets the tag and the identity on the species' line, not the gene's", () => {
+    renderInSvg(
+      <LabelColumn model={comfortable} labelWidth={280} measure={measure} />,
+    );
+    const spec = comfortable.spec;
+    const species = screen.getByText("Salmonella enterica");
+    // The species' cap middle, the tag's middle and the figures' middle agree.
+    const middle =
+      Number(species.getAttribute("y")) - (capHeight * spec.speciesSize) / 2;
+    const tag = screen.getByText("02").previousElementSibling;
     expect(
-      screen.queryByText("str. K-12 substr. MG1655"),
-    ).not.toBeInTheDocument();
+      Number(tag?.getAttribute("y")) + Number(tag?.getAttribute("height")) / 2,
+    ).toBeCloseTo(middle, 6);
+    expect(Number(screen.getByText("80%").getAttribute("y"))).toBeCloseTo(
+      middle + (capHeight * spec.identitySize) / 2,
+      6,
+    );
+    // Centered in the row's slot, below the gene's middle.
+    expect(middle).not.toBe(comfortable.frame.rows[1].center);
   });
 
   it("tags the rows 01 and 02, the focus row's in the focus orange (D6)", () => {
@@ -507,15 +614,16 @@ describe("label column", () => {
     expect(focusTag).toHaveAttribute("fill", labelInk);
     const tag = screen.getByText("02");
     expect(tag).not.toHaveAttribute("fill");
-    expect(tag).toHaveClass("fill-muted-foreground");
+    expect(tag).toHaveClass("fill-foreground/70");
   });
 
-  it("marks the focus row in the focus orange, not the theme's secondary color (D6)", () => {
+  it("marks the focus row in the focus orange, its text a readable shade deeper, not the theme's secondary color (D6)", () => {
     const { container } = renderInSvg(
       <LabelColumn model={comfortable} labelWidth={226} measure={measure} />,
     );
+    // The orange itself is 2.5:1 as text on the light cards.
     const focusText = screen.getByText("focus");
-    expect(focusText).toHaveAttribute("fill", focusOrange);
+    expect(focusText).toHaveAttribute("fill", focusTextOrange);
     // Dark themes set it in the foreground color: the class beats the attribute.
     expect(focusText).toHaveClass("dark:fill-foreground");
     const accent = container.querySelector('rect[width="3"]');
@@ -528,11 +636,75 @@ describe("label column", () => {
     expect(container.querySelector('[class*="secondary"]')).toBeNull();
   });
 
+  it("sets the strains, tags, percentages and header in the foreground at 70%, not muted-foreground", () => {
+    // `muted-foreground` fell to about 4:1 on the light themes' row bands.
+    const { container } = renderInSvg(
+      <>
+        <LabelColumn model={comfortable} labelWidth={280} measure={measure} />
+        <LabelHeader spec={comfortable.spec} labelWidth={280} />
+      </>,
+    );
+    for (const text of ["str. K-12 substr. MG1655", "02", "80%"]) {
+      expect(screen.getByText(text)).toHaveClass("fill-foreground/70");
+    }
+    expect(screen.getByText("Identity").parentElement).toHaveClass(
+      "fill-foreground/70",
+    );
+    const muted = [...container.querySelectorAll("text, tspan, g")].filter(
+      (element) => element.classList.contains("fill-muted-foreground"),
+    );
+    expect(muted).toEqual([]);
+  });
+
   it("heads the column over the ruler", () => {
     renderInSvg(<LabelHeader spec={comfortable.spec} labelWidth={226} />);
     for (const heading of ["#", "Genome", "Identity"]) {
       expect(screen.getByText(heading)).toBeInTheDocument();
     }
+  });
+
+  it("centers the header's words in the band above its rule", () => {
+    const { container } = renderInSvg(
+      <LabelHeader spec={comfortable.spec} labelWidth={280} />,
+    );
+    const rule = Number(container.querySelector("line")?.getAttribute("y1"));
+    expect(rule).toBe(24);
+    for (const heading of ["#", "Genome", "Identity"]) {
+      const y = Number(screen.getByText(heading).getAttribute("y"));
+      // The caps' middle (10 px words) halfway between the band's top and the rule.
+      expect(y - (capHeight * 10) / 2).toBeCloseTo(rule / 2, 6);
+    }
+  });
+
+  it("keeps the info button's hover fill above the header's rule", () => {
+    render(
+      <IdentityInfo
+        spec={comfortable.spec}
+        labelWidth={280}
+        measure={measure}
+      />,
+    );
+    const button = screen.getByRole("button", { name: "About identity" });
+    // 20 px from 2 px down: 2–22, centered on the words' middle (12), clear of the rule (24).
+    expect(button).toHaveClass("size-5");
+    expect(button.parentElement).toHaveClass("top-0.5", "flex");
+  });
+
+  it("explains identity in a popover from the header's info button", async () => {
+    render(
+      <IdentityInfo
+        spec={comfortable.spec}
+        labelWidth={226}
+        measure={measure}
+      />,
+    );
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "About identity" }));
+    const popover = await screen.findByRole("dialog", { name: "Identity" });
+    expect(popover).toHaveTextContent(
+      /How closely the gene each row is aligned on matches the focus gene/,
+    );
+    expect(popover).toHaveTextContent("100% is an exact match");
   });
 });
 
@@ -748,6 +920,30 @@ describe("CompareRegionTooltip", () => {
 });
 
 describe("Legend", () => {
+  it("is a labelled group that takes focus only while it scrolls sideways", () => {
+    const scrollWidth = vi
+      .spyOn(Element.prototype, "scrollWidth", "get")
+      .mockReturnValue(640);
+    const clientWidth = vi
+      .spyOn(Element.prototype, "clientWidth", "get")
+      .mockReturnValue(360);
+    const { unmount } = render(<Legend />);
+    // A phone's one line scrolls: a keyboard must be able to reach it.
+    expect(screen.getByRole("group", { name: "Legend" })).toHaveAttribute(
+      "tabindex",
+      "0",
+    );
+    unmount();
+    scrollWidth.mockReturnValue(360);
+    render(<Legend />);
+    // Wrapped or fitting, it is no tab stop.
+    expect(screen.getByRole("group", { name: "Legend" })).not.toHaveAttribute(
+      "tabindex",
+    );
+    scrollWidth.mockRestore();
+    clientWidth.mockRestore();
+  });
+
   it("keys every kind of glyph", () => {
     render(<Legend />);
     for (const entry of [

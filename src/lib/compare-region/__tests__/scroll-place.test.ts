@@ -7,7 +7,7 @@ import { scrollPlace, scrollTopFor } from "../scroll-place";
 const layout = layoutCompareRegion([focusRow, mirroredRow]);
 // Comfortable slots: row 0 30–84 (center 54), row 1 84–130 (center 106).
 const comfortable = measureFigure(layout, densitySpecs.comfortable);
-// Compact slots: row 0 30–60 (center 43), row 1 60–86 (center 73).
+// Compact slots: row 0 30–64 (center 45), row 1 64–94 (center 79).
 const compact = measureFigure(layout, densitySpecs.compact);
 
 function at(scrollTop: number, scrollLeft = 0) {
@@ -28,14 +28,14 @@ describe("scrollPlace and scrollTopFor, unpinned", () => {
       expect.objectContaining({ rowIndex: 0, pinned: false, left: 12 }),
     );
     expect(place.offset).toBeCloseTo(0.7407, 4);
-    expect(scrollTopFor(place, compact, 200)).toBeCloseTo(22.22, 2);
+    expect(scrollTopFor(place, compact, 200)).toBeCloseTo(25.19, 2);
   });
 
   it("finds the row whose slot is under the ruler's bottom edge", () => {
     const place = scrollPlace(at(80), comfortable, null);
     expect(place.rowIndex).toBe(1);
     expect(place.offset).toBeCloseTo(0.5652, 4);
-    expect(scrollTopFor(place, compact, 200)).toBeCloseTo(44.7, 2);
+    expect(scrollTopFor(place, compact, 200)).toBeCloseTo(50.96, 2);
   });
 
   it("falls back to row 0 when the view's top is past every slot", () => {
@@ -55,17 +55,17 @@ describe("scrollPlace and scrollTopFor, pinned", () => {
   it("keeps the pinned row at the same height on screen", () => {
     const place = scrollPlace(at(40), comfortable, 1);
     expect(place).toEqual({ rowIndex: 1, pinned: true, offset: 66, left: 0 });
-    expect(scrollTopFor(place, compact, 200)).toBe(7);
+    expect(scrollTopFor(place, compact, 200)).toBe(13);
   });
 
   it("puts the slot's top under the ruler when the whole slot cannot fit", () => {
     expect(scrollTopFor(scrollPlace(at(40), comfortable, 1), compact, 20)).toBe(
-      30,
+      34,
     );
   });
 
   it("never scrolls above the top", () => {
-    // Unclamped, these are -11 and -33.
+    // Unclamped, these are -9 and -27.
     expect(scrollTopFor(scrollPlace(at(0), comfortable, 0), compact, 200)).toBe(
       0,
     );

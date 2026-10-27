@@ -27,8 +27,8 @@ describe("density options", () => {
       compact: "Compact",
     });
     expect(compareRegionDensityHints).toEqual({
-      comfortable: "Roomy rows, two-line genome names",
-      compact: "About 30 px a row, for long genome lists",
+      comfortable: "Show bigger rows that are easier to read.",
+      compact: "Shrink the rows to fit more genomes on screen.",
     });
   });
 });
@@ -48,7 +48,8 @@ describe("densitySpecs", () => {
         headLength: 7,
         restingRibbons: "bands",
         rowTint: false,
-        genomeLine: "two-line",
+        speciesSize: 13,
+        strainSize: 11.5,
       }),
     );
     expect(compact).toEqual(
@@ -59,7 +60,8 @@ describe("densitySpecs", () => {
         headLength: 5.5,
         restingRibbons: "connectors",
         rowTint: true,
-        genomeLine: "one-line",
+        speciesSize: 12,
+        strainSize: 10.5,
       }),
     );
   });
@@ -67,10 +69,10 @@ describe("densitySpecs", () => {
 
 describe("labelWidthFor", () => {
   it.each([
-    [699, 196, 176],
-    [700, 226, 204],
-    [1099, 226, 204],
-    [1100, 268, 232],
+    [699, 208, 176],
+    [700, 238, 204],
+    [1099, 238, 204],
+    [1100, 280, 232],
   ])("gives a %i px card a %i / %i px label column", (width, wide, narrow) => {
     expect(labelWidthFor(comfortable, width)).toBe(wide);
     expect(labelWidthFor(compact, width)).toBe(narrow);
@@ -79,9 +81,9 @@ describe("labelWidthFor", () => {
 
 describe("plotWidthFor", () => {
   it("gives the plot the rest of the card", () => {
-    expect(plotWidthFor(comfortable, 900)).toBe(674);
+    expect(plotWidthFor(comfortable, 900)).toBe(662);
     expect(plotWidthFor(compact, 900)).toBe(696);
-    expect(plotWidthFor(comfortable, 1440)).toBe(1172);
+    expect(plotWidthFor(comfortable, 1440)).toBe(1160);
     expect(plotWidthFor(compact, 1440)).toBe(1208);
   });
 
@@ -89,16 +91,16 @@ describe("plotWidthFor", () => {
     expect(plotWidthFor(comfortable, 300)).toBe(420);
     expect(
       labelWidthFor(comfortable, 300) + plotWidthFor(comfortable, 300),
-    ).toBe(616);
+    ).toBe(628);
     expect(labelWidthFor(compact, 300) + plotWidthFor(compact, 300)).toBe(596);
   });
 });
 
 describe("figure heights for real answers", () => {
   it.each([
-    [10, 614, 360, rows10.rows],
-    [20, 1298, 742, rows20.rows],
-    [50, 2942, 1684, rows50.rows],
+    [10, 614, 400, rows10.rows],
+    [20, 1298, 822, rows20.rows],
+    [50, 2942, 1884, rows50.rows],
   ])(
     "draws %i genomes %i px tall in Comfortable and %i px in Compact",
     (count, comfortableHeight, compactHeight, rows) => {

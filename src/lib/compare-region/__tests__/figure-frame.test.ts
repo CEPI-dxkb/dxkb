@@ -73,25 +73,25 @@ describe("measureFigure", () => {
     const frame = measureFigure(layout, compact);
     expect(frame.rows[0]).toEqual(
       expect.objectContaining({
-        laneTops: [37, 50],
-        top: 37,
-        bottom: 53,
-        center: 43,
+        laneTops: [39, 52],
+        top: 39,
+        bottom: 55,
+        center: 45,
         slotTop: 30,
-        slotBottom: 60,
+        slotBottom: 64,
       }),
     );
     expect(frame.rows[1]).toEqual(
       expect.objectContaining({
-        laneTops: [67],
-        bottom: 79,
-        center: 73,
-        slotTop: 60,
-        slotBottom: 86,
+        laneTops: [73],
+        bottom: 85,
+        center: 79,
+        slotTop: 64,
+        slotBottom: 94,
       }),
     );
-    expect(frame.dividers).toEqual([60]);
-    expect(frame.height).toBe(86);
+    expect(frame.dividers).toEqual([64]);
+    expect(frame.height).toBe(94);
   });
 
   it("gives a lane of overlapping genes the overlap height, not a BLAST bar's", () => {
@@ -107,21 +107,21 @@ describe("measureFigure", () => {
     const tight = measureFigure(overlapLayout, compact);
     expect(tight.rows[0]).toEqual(
       expect.objectContaining({
-        laneTops: [37, 51],
-        bottom: 59,
+        laneTops: [39, 53],
+        bottom: 61,
         slotTop: 30,
-        slotBottom: 66,
+        slotBottom: 70,
       }),
     );
   });
 
-  it("steps rows by 52 / 30 px under a BLAST lane and 64 / 36 px under an overlap lane", () => {
+  it("steps rows by 52 / 34 px under a BLAST lane and 64 / 40 px under an overlap lane", () => {
     const pitch = (frame: ReturnType<typeof measureFigure>) =>
       frame.rows[1].top - frame.rows[0].top;
     expect(pitch(measureFigure(layout, comfortable))).toBe(52);
-    expect(pitch(measureFigure(layout, compact))).toBe(30);
+    expect(pitch(measureFigure(layout, compact))).toBe(34);
     expect(pitch(measureFigure(overlapLayout, comfortable))).toBe(64);
-    expect(pitch(measureFigure(overlapLayout, compact))).toBe(36);
+    expect(pitch(measureFigure(overlapLayout, compact))).toBe(40);
   });
 
   it("measures an empty answer as the ruler, its gap and the bottom pad", () => {
@@ -131,7 +131,7 @@ describe("measureFigure", () => {
       dividers: [],
       height: 46,
     });
-    expect(measureFigure(empty, compact).height).toBe(37);
+    expect(measureFigure(empty, compact).height).toBe(39);
   });
 });
 
@@ -148,8 +148,8 @@ describe("glyphBox", () => {
       bottom: 70,
     });
     expect(glyphBox(compact, compactBlastFrame, hit)).toEqual({
-      top: 50,
-      bottom: 53,
+      top: 52,
+      bottom: 55,
     });
   });
 
@@ -163,12 +163,12 @@ describe("glyphBox", () => {
       bottom: 82,
     });
     expect(glyphBox(compact, tight, placed({ family: 2 }, 0))).toEqual({
-      top: 37,
-      bottom: 49,
+      top: 39,
+      bottom: 51,
     });
     expect(glyphBox(compact, tight, placed({ family: 2 }, 1))).toEqual({
-      top: 51,
-      bottom: 59,
+      top: 53,
+      bottom: 61,
     });
   });
 
@@ -181,8 +181,8 @@ describe("glyphBox", () => {
     });
     expect(glyphBox(compact, tight, placed({ type: "pseudogene" }, 1))).toEqual(
       {
-        top: 52,
-        bottom: 58,
+        top: 54,
+        bottom: 60,
       },
     );
   });
@@ -197,8 +197,8 @@ describe("glyphBox", () => {
       top: 70,
       bottom: 78,
     });
-    expect(glyphBox(compact, tight, other(0))).toEqual({ top: 40, bottom: 46 });
-    expect(glyphBox(compact, tight, other(1))).toEqual({ top: 53, bottom: 57 });
+    expect(glyphBox(compact, tight, other(0))).toEqual({ top: 42, bottom: 48 });
+    expect(glyphBox(compact, tight, other(1))).toEqual({ top: 55, bottom: 59 });
   });
 });
 

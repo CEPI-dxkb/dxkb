@@ -3,28 +3,39 @@
 /**
  * The Compare Region Viewer's genome column: each row's number tag, genome
  * name and identity to the focus gene, on an opaque card so the track can
- * scroll under it, and its header over the ruler. Comfortable sets the
- * species over the strain; Compact fits both on one line. It takes only the
- * model, so a hover redraws none of it. The focus row's tag, accent, wash
- * and "focus" text are in the focus genes' orange (a data color, as an
- * attribute), not the theme's secondary color, so they match the genes in
- * every theme; dark themes set the "focus" text in the foreground color (a
- * class, which beats the attribute).
+ * scroll under it, and its header over the ruler. Both densities set the
+ * species over the strain, Compact in smaller type on tighter rows. It
+ * takes only the model, so a hover redraws none of it. The focus row's tag, accent and
+ * wash are in the focus genes' orange (a data color, as an attribute), not
+ * the theme's secondary color, so they match the genes in every theme; its
+ * "focus" text is that orange deepened to read as text (`focusInk`), and dark
+ * themes set it in the foreground color (a class, which beats the
+ * attribute). The strains, tags, percentages and header are in the
+ * foreground at 70%, not `muted-foreground`, which fell to about 4:1 on the
+ * light themes' row bands at these 10–11.5 px sizes.
  */
-import type { ReactNode } from "react";
+import { Info } from "lucide-react";
+import type { CSSProperties, ReactNode } from "react";
+import { Button } from "@/components/ui/button";
+import {
+  Popover,
+  PopoverContent,
+  PopoverDescription,
+  PopoverHeader,
+  PopoverTitle,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import {
   focusFamilyColor,
-  identityColor,
+  focusInk,
   labelInk,
 } from "@/lib/compare-region/colors";
 import { rulerHeight, type DensitySpec } from "@/lib/compare-region/density";
 import type { ChartModel } from "@/lib/compare-region/families";
 import type { RowFrame } from "@/lib/compare-region/figure-frame";
 import {
-  oneLineGenomeName,
-  oneLineSpeciesSize,
-  oneLineStrainGap,
-  oneLineStrainSize,
+  centeredBaseline,
+  genomeLabelLines,
   rowIdentity,
   rowTagText,
   splitGenomeName,
@@ -73,12 +84,12 @@ function RowTag({
       />
       <text
         x={spec.tagX + spec.tagWidth / 2}
-        y={center + spec.tagBaseline}
+        y={centeredBaseline(center, spec.tagFontSize)}
         textAnchor="middle"
         fontSize={spec.tagFontSize}
         fill={focus ? labelInk : undefined}
         className={
-          focus ? "font-mono font-semibold" : "fill-muted-foreground font-mono"
+          focus ? "font-mono font-semibold" : "fill-foreground/70 font-mono"
         }
       >
         {rowTagText(rowIndex)}
@@ -87,19 +98,14 @@ function RowTag({
   );
 }
 
-/** Comfortable's identity column: a dot and "70%" (the dot drops in a column under 230 px). */
-const identityWidth = 46;
-const narrowIdentityWidth = 34;
-/** The identity dot's center, from the column's right edge. */
-const identityDotInset = 44;
-/** Comfortable's species and strain, px; measured and drawn in these sizes. */
-const twoLineSpeciesSize = 12;
-const twoLineStrainSize = 10.5;
-const twoLineSpeciesFont = `italic 500 ${String(twoLineSpeciesSize)}px`;
-const twoLineStrainFont = `${String(twoLineStrainSize)}px`;
-
-/** Comfortable: the species in italics over the strain, then the identity dot and percentage. */
-function TwoLineLabel({
+/**
+ * A genome's label: the species in italics over the strain, then the
+ * identity as a percentage (or the focus row's "FOCUS"), in the density's
+ * sizes (`DensitySpec`), centered in the row's slot with the tag and the
+ * identity on the species' line (`genomeLabelLines`). Each line is cut with
+ * "…" to the room left of the identity; the whole name is the row's title.
+ */
+function RowLabel({
   spec,
   placed,
   rowFrame,
@@ -108,23 +114,25 @@ function TwoLineLabel({
   labelWidth,
   measure,
 }: RowLabelProps) {
-  const center = rowFrame.center;
   const focus = rowIndex === 0;
   const { nameX, endPad } = spec;
   const name = splitGenomeName(placed.row.genomeName);
-  const narrow = labelWidth < 230;
+  const lines = genomeLabelLines(spec, rowFrame, Boolean(name.rest));
   const room =
-    labelWidth - nameX - (narrow ? narrowIdentityWidth : identityWidth) - 4;
-  const binomial = fitText(name.binomial, room, twoLineSpeciesFont, measure);
-  const rest = fitText(name.rest, room, twoLineStrainFont, measure);
+    labelWidth -
+    nameX -
+    (focus ? spec.focusRoom : spec.identityRoom) -
+    endPad;
+  const binomial = fitText(name.binomial, room, speciesFont(spec), measure);
+  const rest = fitText(name.rest, room, strainFont(spec), measure);
   return (
     <g>
       <title>{`${String(rowIndex + 1)}. ${placed.row.genomeName}`}</title>
-      <RowTag spec={spec} center={center} rowIndex={rowIndex} />
+      <RowTag spec={spec} center={lines.middle} rowIndex={rowIndex} />
       <text
         x={nameX}
-        y={name.rest ? center - 1.5 : center + 4}
-        fontSize={twoLineSpeciesSize}
+        y={lines.speciesBaseline}
+        fontSize={spec.speciesSize}
         className="fill-foreground font-medium italic"
       >
         {binomial}
@@ -132,9 +140,9 @@ function TwoLineLabel({
       {name.rest && (
         <text
           x={nameX}
-          y={center + 11}
-          fontSize={twoLineStrainSize}
-          className="fill-muted-foreground"
+          y={lines.strainBaseline}
+          fontSize={spec.strainSize}
+          className="fill-foreground/70"
         >
           {rest}
         </text>
@@ -142,91 +150,10 @@ function TwoLineLabel({
       {focus ? (
         <text
           x={labelWidth - endPad}
-          y={center + 3.5}
+          y={centeredBaseline(lines.middle, spec.focusSize)}
           textAnchor="end"
-          fontSize={9.5}
-          fill={focusFamilyColor}
-          className="font-semibold tracking-wide uppercase dark:fill-foreground"
-        >
-          focus
-        </text>
-      ) : (
-        identity !== null && (
-          <>
-            {!narrow && (
-              <circle
-                cx={labelWidth - identityDotInset}
-                cy={center}
-                r={3.5}
-                fill={identityColor(identity)}
-              />
-            )}
-            <text
-              x={labelWidth - endPad}
-              y={center + 3.5}
-              textAnchor="end"
-              fontSize={10}
-              className="fill-muted-foreground font-mono"
-            >
-              {`${String(Math.round(identity))}%`}
-            </text>
-          </>
-        )
-      )}
-    </g>
-  );
-}
-
-/** Compact's room kept right of the name for "100%" (or the focus row's "FOCUS"), with its gap. */
-const compactIdentityWidth = 28;
-const compactFocusWidth = 36;
-
-/** Compact: species and strain on one line, centered on the gene, and a compact mono "70%". */
-function OneLineLabel({
-  spec,
-  placed,
-  rowFrame,
-  rowIndex,
-  identity,
-  labelWidth,
-  measure,
-}: RowLabelProps) {
-  const center = rowFrame.center;
-  const focus = rowIndex === 0;
-  const { nameX, endPad } = spec;
-  const room =
-    labelWidth -
-    nameX -
-    (focus ? compactFocusWidth : compactIdentityWidth) -
-    endPad;
-  const { binomial, rest } = oneLineGenomeName(
-    placed.row.genomeName,
-    room,
-    measure,
-  );
-  return (
-    <g>
-      <title>{`${String(rowIndex + 1)}. ${placed.row.genomeName}`}</title>
-      <RowTag spec={spec} center={center} rowIndex={rowIndex} />
-      <text x={nameX} y={center + 3.8} fontSize={oneLineSpeciesSize}>
-        <tspan className="fill-foreground font-medium italic">{binomial}</tspan>
-        {rest && (
-          <tspan
-            dx={oneLineStrainGap}
-            fontSize={oneLineStrainSize}
-            className="fill-muted-foreground"
-          >
-            {rest}
-          </tspan>
-        )}
-      </text>
-      {focus ? (
-        <text
-          x={labelWidth - endPad}
-          y={center + 3.2}
-          textAnchor="end"
-          fontSize={8.5}
-          fill={focusFamilyColor}
+          fontSize={spec.focusSize}
+          fill={focusInk}
           className="font-semibold tracking-wide uppercase dark:fill-foreground"
         >
           focus
@@ -235,10 +162,10 @@ function OneLineLabel({
         identity !== null && (
           <text
             x={labelWidth - endPad}
-            y={center + 3.3}
+            y={centeredBaseline(lines.middle, spec.identitySize)}
             textAnchor="end"
-            fontSize={9.5}
-            className="fill-muted-foreground font-mono"
+            fontSize={spec.identitySize}
+            className="fill-foreground/70 font-mono"
           >
             {`${String(Math.round(identity))}%`}
           </text>
@@ -246,6 +173,15 @@ function OneLineLabel({
       )}
     </g>
   );
+}
+
+/** The species' and strain's CSS fonts (without the family), as measured and drawn. */
+function speciesFont(spec: DensitySpec): string {
+  return `italic 500 ${String(spec.speciesSize)}px`;
+}
+
+function strainFont(spec: DensitySpec): string {
+  return `${String(spec.strainSize)}px`;
 }
 
 interface LabelColumnProps {
@@ -265,7 +201,6 @@ export function LabelColumn({
 }: LabelColumnProps) {
   const { frame, layout, spec } = model;
   const focus = frame.rows.at(0);
-  const RowLabel = spec.genomeLine === "one-line" ? OneLineLabel : TwoLineLabel;
   return (
     <g>
       <rect width={labelWidth} height={frame.height} className="fill-card" />
@@ -304,6 +239,16 @@ export function LabelColumn({
   );
 }
 
+/** The header's words, px and CSS font; `tracking-wider` adds 0.05em after each letter. */
+const headerFontSize = 10;
+const headerFont = `500 ${String(headerFontSize)}px`;
+const headerTracking = 0.05 * headerFontSize;
+/** The header's last word, as drawn (`uppercase`). */
+const identityHeading = "IDENTITY";
+/** The header's rule (the ruler's axis), and the middle of the band above it, where the words center. */
+const headerRule = rulerHeight - 6;
+const headerMiddle = headerRule / 2;
+
 /** The label column's header, over the ruler's band (sticky with it), on the density's columns. */
 export function LabelHeader({
   spec,
@@ -312,15 +257,15 @@ export function LabelHeader({
   spec: DensitySpec;
   labelWidth: number;
 }) {
-  const headerY = rulerHeight - 11;
+  const headerY = centeredBaseline(headerMiddle, headerFontSize);
   return (
     <g pointerEvents="none">
       <rect width={labelWidth} height={rulerHeight} className="fill-card" />
       <line
         x1={0}
         x2={labelWidth}
-        y1={rulerHeight - 6}
-        y2={rulerHeight - 6}
+        y1={headerRule}
+        y2={headerRule}
         className="stroke-border"
       />
       <line
@@ -331,8 +276,8 @@ export function LabelHeader({
         className="stroke-border"
       />
       <g
-        fontSize={9}
-        className="fill-muted-foreground font-medium tracking-wider uppercase"
+        fontSize={headerFontSize}
+        className="fill-foreground/70 font-medium tracking-wider uppercase"
       >
         <text x={spec.tagX + spec.tagWidth / 2} y={headerY} textAnchor="middle">
           #
@@ -345,5 +290,66 @@ export function LabelHeader({
         </text>
       </g>
     </g>
+  );
+}
+
+/**
+ * The "i" before the header's "Identity": a popover saying what the column's
+ * percentages are. It is HTML laid over the header's corner, which never
+ * moves (the label column and the ruler are both sticky), so the figure's
+ * SVG, and an export of it, carries none of it. It sits left of the word, so
+ * the word stays aligned with the percentages under it.
+ */
+export function IdentityInfo({
+  spec,
+  labelWidth,
+  measure,
+}: {
+  spec: DensitySpec;
+  labelWidth: number;
+  measure: TextMeasure;
+}) {
+  const wordLeft =
+    labelWidth -
+    spec.endPad -
+    measure(identityHeading, headerFont) -
+    identityHeading.length * headerTracking;
+  // The 20 px button ends 1 px before the word, so its hover fill never
+  // covers it; its centered 12 px glyph ends 5 px before. `top-0.5` centers
+  // it on the words' middle (12 px), so the fill stays above the rule (24 px).
+  const left = wordLeft - 21;
+  return (
+    <div
+      className="absolute top-0.5 left-(--identity-info-x) z-10 flex text-foreground/70"
+      style={{ "--identity-info-x": `${String(left)}px` } as CSSProperties}
+    >
+      <Popover>
+        <PopoverTrigger
+          openOnHover
+          delay={150}
+          render={
+            <Button
+              type="button"
+              variant="ghost-accent"
+              size="icon-2xs"
+              aria-label="About identity"
+            />
+          }
+        >
+          <Info />
+        </PopoverTrigger>
+        <PopoverContent side="bottom" align="start">
+          <PopoverHeader>
+            <PopoverTitle>Identity</PopoverTitle>
+            <PopoverDescription>
+              How closely the gene each row is aligned on matches the focus
+              gene: the share of positions that are identical where BLAST
+              aligns the two. 100% is an exact match, and lower means the gene
+              has diverged further. The focus row holds the focus gene itself.
+            </PopoverDescription>
+          </PopoverHeader>
+        </PopoverContent>
+      </Popover>
+    </div>
   );
 }

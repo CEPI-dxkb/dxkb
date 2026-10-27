@@ -269,7 +269,7 @@ describe("ribbonPath and connectorPath", () => {
       x,
       plotWidth,
     );
-    expect(connector?.d).toBe("M84.3,49.5C84.3,58 556.1,58 556.1,66.5");
+    expect(connector?.d).toBe("M84.3,51.5C84.3,62 556.1,62 556.1,72.5");
     expect(connector && connectorFade(connector.reach)).toBe(0.35);
   });
 

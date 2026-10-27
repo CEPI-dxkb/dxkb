@@ -1,7 +1,8 @@
 /**
  * Every size the Compare Region Viewer's figure draws at, per density.
- * Comfortable has roomy rows and two-line genome names; Compact has about
- * 30 px a row, 12 px glyphs, one-line names and thin connectors at rest.
+ * Comfortable has roomy rows; Compact has about 34 px a row, 12 px glyphs
+ * and thin connectors at rest. Both set a genome's name on two lines, Compact
+ * in smaller type.
  * The geometry modules read their numbers from a `DensitySpec`, so one set of
  * figure layers serves both densities.
  */
@@ -69,17 +70,28 @@ export interface DensitySpec {
   // Label column
   /** Its width at a card ≥1100, ≥700 and below. */
   labelWidths: readonly [number, number, number];
-  /** Species over strain with an identity dot (Comfortable), or one line with a compact "70%" (Compact). */
-  genomeLine: "two-line" | "one-line";
   tagX: number;
   tagWidth: number;
   tagHeight: number;
   tagRadius: number;
   tagFontSize: number;
-  tagBaseline: number;
   nameX: number;
   /** From the column's right edge to the identity (and the header's "Identity"). */
   endPad: number;
+  /**
+   * The genome's name on two lines, px: the species (italic, weight 500)
+   * over the strain, `lineGap` baseline to baseline. Where the lines sit in
+   * the row is `genomeLabelLines`.
+   */
+  speciesSize: number;
+  strainSize: number;
+  lineGap: number;
+  /** The identity ("70%", mono) and the focus row's "FOCUS", px: on the species' line. */
+  identitySize: number;
+  focusSize: number;
+  /** Room kept right of the name, inside `endPad`: for "100%", or the focus row's wider "FOCUS". */
+  identityRoom: number;
+  focusRoom: number;
 }
 
 /** A row with its BLAST bar is 16 + 3 + 5 + 28 = 52 px. */
@@ -112,19 +124,25 @@ const comfortable: DensitySpec = {
   labelBaseline: 3.5,
   restingRibbons: "bands",
   rowTint: false,
-  labelWidths: [268, 226, 196],
-  genomeLine: "two-line",
+  labelWidths: [280, 238, 208],
   tagX: 12,
   tagWidth: 24,
   tagHeight: 16,
   tagRadius: 4,
   tagFontSize: 10,
-  tagBaseline: 3.5,
   nameX: 46,
   endPad: 12,
+  speciesSize: 13,
+  strainSize: 11.5,
+  lineGap: 14,
+  identitySize: 11,
+  focusSize: 9.5,
+  // "100%" is 26.4 px at 11 px mono; "FOCUS" 35 px.
+  identityRoom: 29,
+  focusRoom: 41,
 };
 
-/** A row with its BLAST bar is 12 + 1 + 3 + 14 = 30 px. */
+/** A row with its BLAST bar is 12 + 1 + 3 + 18 = 34 px: room for the name's two lines. */
 const compact: DensitySpec = {
   geneHeight: 12,
   // Too slim for a legible label; the tooltip and pin strip name it.
@@ -132,9 +150,9 @@ const compact: DensitySpec = {
   blastHeight: 3,
   blastGap: 1,
   laneGap: 2,
-  firstRowGap: 7,
-  rowGap: 14,
-  bottomPad: 7,
+  firstRowGap: 9,
+  rowGap: 18,
+  bottomPad: 9,
   otherInset: 3,
   overlapOtherInset: 2,
   contigTick: 4.5,
@@ -156,15 +174,21 @@ const compact: DensitySpec = {
   restingRibbons: "connectors",
   rowTint: true,
   labelWidths: [232, 204, 176],
-  genomeLine: "one-line",
   tagX: 8,
   tagWidth: 20,
   tagHeight: 13,
   tagRadius: 3,
   tagFontSize: 9,
-  tagBaseline: 3.1,
   nameX: 35,
   endPad: 8,
+  speciesSize: 12,
+  strainSize: 10.5,
+  lineGap: 12,
+  identitySize: 10,
+  focusSize: 9,
+  // "100%" is 24 px at 10 px mono; "FOCUS" 33 px.
+  identityRoom: 28,
+  focusRoom: 38,
 };
 
 export const densitySpecs: Record<CompareRegionDensity, DensitySpec> = {

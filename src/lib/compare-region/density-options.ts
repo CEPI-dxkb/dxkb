@@ -13,7 +13,8 @@ export const compareRegionDensityLabels: Record<CompareRegionDensity, string> =
     compact: "Compact",
   };
 
+/** What switching to each density does, in one plain sentence: the density toggle's tooltip. */
 export const compareRegionDensityHints: Record<CompareRegionDensity, string> = {
-  comfortable: "Roomy rows, two-line genome names",
-  compact: "About 30 px a row, for long genome lists",
+  comfortable: "Show bigger rows that are easier to read.",
+  compact: "Shrink the rows to fit more genomes on screen.",
 };

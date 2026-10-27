@@ -1,15 +1,18 @@
 import { focusRow, mirroredRow, testGene } from "@/test-helpers/compare-region";
+import { densitySpecs } from "../density";
+import { measureFigure } from "../figure-frame";
 import {
+  capHeight,
+  centeredBaseline,
   formatBp,
   formatLocation,
+  genomeLabelLines,
   noProduct,
-  oneLineGenomeName,
   rowIdentity,
   rowTagText,
   splitGenomeName,
 } from "../genome-labels";
 import { layoutCompareRegion } from "../layout";
-import { estimateTextWidth } from "../text-measure";
 
 describe("splitGenomeName", () => {
   it.each([
@@ -35,43 +38,53 @@ describe("splitGenomeName", () => {
   });
 });
 
-describe("oneLineGenomeName", () => {
-  // Species: 6.16 px a character; strain: 5.6 px; a 4 px gap between them.
-  const line = (name: string, room: number) =>
-    oneLineGenomeName(name, room, estimateTextWidth);
-  const ecoli = "Escherichia coli str. K-12 substr. MG1655";
+describe("genomeLabelLines", () => {
+  const layout = layoutCompareRegion([focusRow, mirroredRow]);
 
-  it("shows the species and the strain when both fit", () => {
-    expect(line(ecoli, 300)).toEqual({
-      binomial: "Escherichia coli",
-      rest: "str. K-12 substr. MG1655",
-    });
-    expect(line("Salmonella enterica", 300)).toEqual({
-      binomial: "Salmonella enterica",
-      rest: "",
-    });
+  it.each(["comfortable", "compact"] as const)(
+    "centers a two-line label's ink in its row's slot, in %s",
+    (density) => {
+      const spec = densitySpecs[density];
+      for (const row of measureFigure(layout, spec).rows) {
+        const lines = genomeLabelLines(spec, row, true);
+        // The ink: the tag or the species' caps, down to the strain's baseline.
+        const inkTop =
+          lines.middle -
+          Math.max(spec.tagHeight / 2, (capHeight * spec.speciesSize) / 2);
+        expect(inkTop - row.slotTop).toBeCloseTo(
+          row.slotBottom - lines.strainBaseline,
+          6,
+        );
+        expect(lines.strainBaseline - lines.speciesBaseline).toBeCloseTo(
+          spec.lineGap,
+          6,
+        );
+      }
+    },
+  );
+
+  it("centers a species alone on the slot's middle", () => {
+    const spec = densitySpecs.comfortable;
+    const row = measureFigure(layout, spec).rows[1];
+    expect(genomeLabelLines(spec, row, false).middle).toBe(
+      (row.slotTop + row.slotBottom) / 2,
+    );
   });
 
-  it("gives the species the room first, then cuts the strain", () => {
-    expect(line(ecoli, 150)).toEqual({
-      binomial: "Escherichia coli",
-      rest: "str. K-…",
-    });
-  });
-
-  it("leaves an ellipsis for a strain that has no room, when one fits", () => {
-    expect(line(ecoli, 110)).toEqual({
-      binomial: "Escherichia coli",
-      rest: "…",
-    });
-    expect(line(ecoli, 100)).toEqual({
-      binomial: "Escherichia coli",
-      rest: "",
-    });
-  });
-
-  it("drops the strain when the species itself is cut", () => {
-    expect(line(ecoli, 50)).toEqual({ binomial: "Escheri…", rest: "" });
+  it("puts the species' caps, the tag and the identity on one middle", () => {
+    const spec = densitySpecs.compact;
+    const lines = genomeLabelLines(
+      spec,
+      measureFigure(layout, spec).rows[1],
+      true,
+    );
+    expect(lines.speciesBaseline - (capHeight * spec.speciesSize) / 2).toBe(
+      lines.middle,
+    );
+    expect(
+      centeredBaseline(lines.middle, spec.identitySize) -
+        (capHeight * spec.identitySize) / 2,
+    ).toBe(lines.middle);
   });
 });
 

@@ -30,7 +30,7 @@ export interface RowFrame {
   /** Top of lane 0 and bottom of the lowest lane. */
   top: number;
   bottom: number;
-  /** Lane 0's middle: where the label, baseline and row tag sit. */
+  /** Lane 0's middle: where the contig baseline runs (the label centers on the slot instead). */
   center: number;
   /** The row's slot, divider to divider (the ruler above row 1, the figure's end below the last). */
   slotTop: number;

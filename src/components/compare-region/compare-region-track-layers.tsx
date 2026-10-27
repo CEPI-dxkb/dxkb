@@ -262,6 +262,9 @@ export function FocusLine({
   );
 }
 
+/** The ruler's tick labels, px (mono). */
+const rulerLabelSize = 11;
+
 /** The bp ruler, from the focus gene, following the zoom. Labels within 20 px of an edge hide. */
 export function RulerAxis({ model, matrix, plotWidth }: LayerProps) {
   const { major, minor } = rulerTicks(model.layout.domain, matrix, plotWidth);
@@ -300,7 +303,7 @@ export function RulerAxis({ model, matrix, plotWidth }: LayerProps) {
               x={tick.x}
               y={axisY - 9}
               textAnchor="middle"
-              fontSize={10}
+              fontSize={rulerLabelSize}
               className="fill-foreground font-mono font-semibold"
             >
               0
@@ -310,8 +313,8 @@ export function RulerAxis({ model, matrix, plotWidth }: LayerProps) {
               x={tick.x}
               y={axisY - 9}
               textAnchor="middle"
-              fontSize={10}
-              className="fill-muted-foreground font-mono"
+              fontSize={rulerLabelSize}
+              className="fill-foreground/70 font-mono"
             >
               {tick.label}
             </text>

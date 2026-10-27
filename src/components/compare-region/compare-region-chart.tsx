@@ -49,7 +49,11 @@ import {
   PinContext,
   RowHoverContext,
 } from "./compare-region-highlight";
-import { LabelColumn, LabelHeader } from "./compare-region-label-column";
+import {
+  IdentityInfo,
+  LabelColumn,
+  LabelHeader,
+} from "./compare-region-label-column";
 import { Legend } from "./compare-region-legend";
 import { PannedLayers } from "./compare-region-panned-layers";
 import { SelectionStrip } from "./compare-region-selection-strip";
@@ -341,6 +345,13 @@ export function CompareRegionChart({
     </>
   );
   const labelHeader = <LabelHeader spec={spec} labelWidth={labelWidth} />;
+  const identityInfo = (
+    <IdentityInfo
+      spec={spec}
+      labelWidth={labelWidth}
+      measure={canvasTextWidth}
+    />
+  );
 
   return (
     <div ref={wheelGuardRef} className="relative flex min-h-0 flex-1 flex-col">
@@ -384,106 +395,110 @@ export function CompareRegionChart({
                     <FollowZoom matrix={matrix} place={placePopups} />
                     {renderBar(controls, exportChart)}
                     {strip}
-                    {/* Focusable so keyboard users can scroll a figure wider or taller than the card.
-                        It takes the room the figure leaves, so the legend sits at the card's foot. */}
-                    <div
-                      ref={scrollerRef}
-                      className="min-h-0 flex-1 overflow-auto"
-                      tabIndex={0}
-                      role="group"
-                      aria-label="Compared regions (scrollable)"
-                      onScroll={(event) => {
-                        stickLayers(
-                          event.currentTarget,
-                          labelsRef.current,
-                          rulerRef.current,
-                          headerRef.current,
-                        );
-                        placePopups();
-                      }}
-                    >
-                      <svg
-                        ref={svgRef}
-                        width={chartWidth}
-                        height={height}
-                        role="img"
-                        aria-label={`Compared regions of ${String(rows.length)} ${genomes}`}
-                        className="block text-foreground"
-                        fontSize={12}
-                        onPointerMove={
-                          spec.rowTint
-                            ? (event) => {
-                                // The row under the pointer, label column and track alike; none under the sticky ruler.
-                                const svg = event.currentTarget;
-                                const y =
-                                  event.clientY -
-                                  svg.getBoundingClientRect().top;
-                                const scrollTop =
-                                  svg.parentElement?.scrollTop ?? 0;
-                                setHoveredRow(
-                                  y - scrollTop < rulerHeight
-                                    ? null
-                                    : rowAt(frame, y),
-                                );
-                              }
-                            : undefined
-                        }
-                        onPointerLeave={
-                          spec.rowTint
-                            ? () => {
-                                setHoveredRow(null);
-                              }
-                            : undefined
-                        }
+                    {/* The scroller takes the room the figure leaves, so the legend sits at the
+                        card's foot; the identity info button lies over its header corner. */}
+                    <div className="relative flex min-h-0 flex-1 flex-col">
+                      {identityInfo}
+                      {/* Focusable so keyboard users can scroll a figure wider or taller than the card. */}
+                      <div
+                        ref={scrollerRef}
+                        className="min-h-0 flex-1 overflow-auto"
+                        tabIndex={0}
+                        role="group"
+                        aria-label="Compared regions (scrollable)"
+                        onScroll={(event) => {
+                          stickLayers(
+                            event.currentTarget,
+                            labelsRef.current,
+                            rulerRef.current,
+                            headerRef.current,
+                          );
+                          placePopups();
+                        }}
                       >
-                        {/* Zoom's container: its points are measured in this svg, label column excluded. */}
                         <svg
-                          ref={zoom.containerRef}
-                          x={labelWidth}
-                          width={plotWidth}
+                          ref={svgRef}
+                          width={chartWidth}
                           height={height}
-                          // Zoom is horizontal only: a vertical touch pan scrolls the page.
-                          // The track drags (grab); a gene clicks (pointer), except
-                          // while a drag that began on it pans (grabbing throughout).
-                          className={cn(
-                            "touch-pan-y",
-                            zoom.isDragging
-                              ? "cursor-grabbing"
-                              : "cursor-grab **:data-feature:cursor-pointer",
-                          )}
-                          {...handlers}
+                          role="img"
+                          aria-label={`Compared regions of ${String(rows.length)} ${genomes}`}
+                          className="block text-foreground"
+                          fontSize={12}
+                          onPointerMove={
+                            spec.rowTint
+                              ? (event) => {
+                                  // The row under the pointer, label column and track alike; none under the sticky ruler.
+                                  const svg = event.currentTarget;
+                                  const y =
+                                    event.clientY -
+                                    svg.getBoundingClientRect().top;
+                                  const scrollTop =
+                                    svg.parentElement?.scrollTop ?? 0;
+                                  setHoveredRow(
+                                    y - scrollTop < rulerHeight
+                                      ? null
+                                      : rowAt(frame, y),
+                                  );
+                                }
+                              : undefined
+                          }
+                          onPointerLeave={
+                            spec.rowTint
+                              ? () => {
+                                  setHoveredRow(null);
+                                }
+                              : undefined
+                          }
                         >
-                          {/* The click target between glyphs: a click there clears the pin. */}
-                          <rect
+                          {/* Zoom's container: its points are measured in this svg, label column excluded. */}
+                          <svg
+                            ref={zoom.containerRef}
+                            x={labelWidth}
                             width={plotWidth}
                             height={height}
-                            className="fill-transparent"
-                            data-track-background=""
-                          />
-                          {trackBands}
-                          <PannedLayers
-                            model={model}
-                            matrix={matrix}
-                            dragging={zoom.isDragging}
-                            pressed={pressed}
-                            plotWidth={plotWidth}
-                            measure={canvasTextWidth}
-                          />
-                          <g ref={rulerRef} data-sticky="">
-                            <RulerAxis
+                            // Zoom is horizontal only: a vertical touch pan scrolls the page.
+                            // The track drags (grab); a gene clicks (pointer), except
+                            // while a drag that began on it pans (grabbing throughout).
+                            className={cn(
+                              "touch-pan-y",
+                              zoom.isDragging
+                                ? "cursor-grabbing"
+                                : "cursor-grab **:data-feature:cursor-pointer",
+                            )}
+                            {...handlers}
+                          >
+                            {/* The click target between glyphs: a click there clears the pin. */}
+                            <rect
+                              width={plotWidth}
+                              height={height}
+                              className="fill-transparent"
+                              data-track-background=""
+                            />
+                            {trackBands}
+                            <PannedLayers
                               model={model}
                               matrix={matrix}
+                              dragging={zoom.isDragging}
+                              pressed={pressed}
                               plotWidth={plotWidth}
+                              measure={canvasTextWidth}
                             />
+                            <g ref={rulerRef} data-sticky="">
+                              <RulerAxis
+                                model={model}
+                                matrix={matrix}
+                                plotWidth={plotWidth}
+                              />
+                            </g>
+                          </svg>
+                          <g ref={labelsRef} data-sticky="">
+                            {labelColumn}
+                            <g ref={headerRef} data-sticky="">
+                              {labelHeader}
+                            </g>
                           </g>
                         </svg>
-                        <g ref={labelsRef} data-sticky="">
-                          {labelColumn}
-                          <g ref={headerRef} data-sticky="">
-                            {labelHeader}
-                          </g>
-                        </g>
-                      </svg>
+                      </div>
                     </div>
                   </>
                 );

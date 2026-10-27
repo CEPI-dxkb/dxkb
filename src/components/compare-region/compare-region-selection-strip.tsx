@@ -77,23 +77,25 @@ interface DensityToggleProps {
 
 /**
  * One icon button that switches to the other density. Its icon and name
- * say where a press goes ("Switch to Compact density"), and its tooltip adds
- * that density's hint. The tooltip opens below, clear of the bar's zoom
- * controls above it.
+ * say where a press goes ("Switch to Compact density"), and its tooltip says
+ * what that does in one plain sentence. The tooltip opens below, clear of the
+ * bar's zoom controls above it.
  */
 export function DensityToggle({ value, onChange }: DensityToggleProps) {
   const next = nextDensity[value];
   const Icon = densityIcons[next];
   const name = `Switch to ${compareRegionDensityLabels[next]} density`;
   return (
-    <span className="ml-auto flex shrink-0 items-center">
+    // In the foreground, as the bar's Export button is (the rest of the hint
+    // row is muted).
+    <span className="ml-auto flex shrink-0 items-center text-foreground">
       <Tooltip>
         <TooltipTrigger
           render={
             <Button
               type="button"
               variant="ghost"
-              size="icon-sm"
+              size="icon"
               aria-label={name}
               onClick={() => {
                 onChange(next);
@@ -101,11 +103,10 @@ export function DensityToggle({ value, onChange }: DensityToggleProps) {
             />
           }
         >
-          <Icon />
+          <Icon className="size-4.5" />
         </TooltipTrigger>
         <TooltipContent side="bottom">
-          <span className="block font-medium">{name}</span>
-          <span className="block">{compareRegionDensityHints[next]}</span>
+          {compareRegionDensityHints[next]}
         </TooltipContent>
       </Tooltip>
     </span>

@@ -4,6 +4,7 @@ import {
   familyColor,
   featurePaint,
   focusFamilyColor,
+  focusInk,
   identityColor,
   labelInk,
 } from "../colors";
@@ -89,6 +90,12 @@ describe("deepen", () => {
     expect(deepen("oklch(71.57% 0.182 37.18 / 0.41)")).toBe(
       "oklch(71.57% 0.182 37.18 / 0.41)",
     );
+  });
+});
+
+describe("focusInk", () => {
+  it("is the focus orange 20 points darker, which reads as text on a light card", () => {
+    expect(focusInk).toBe("oklch(51.57% 0.182 37.18)");
   });
 });
 

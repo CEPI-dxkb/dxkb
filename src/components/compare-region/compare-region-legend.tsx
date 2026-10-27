@@ -6,7 +6,13 @@
  * are always Comfortable's, whatever the figure's density.
  */
 import { ZoomIn } from "lucide-react";
-import type { ReactNode } from "react";
+import {
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ReactNode,
+  type RefObject,
+} from "react";
 import {
   deepen,
   familyColor,
@@ -40,10 +46,42 @@ function LegendItem({
   );
 }
 
-/** One compact line: what ribbons mean, the shape key, and that zooming reveals more. */
+/** Whether `ref`'s element is wider than its box, measured again whenever its box changes. */
+function useScrollsSideways(ref: RefObject<HTMLElement | null>): boolean {
+  const [scrolls, setScrolls] = useState(false);
+  useLayoutEffect(() => {
+    const element = ref.current;
+    if (!element) return;
+    const measure = () => {
+      setScrolls(element.scrollWidth > element.clientWidth);
+    };
+    measure();
+    if (typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(measure);
+    observer.observe(element);
+    return () => {
+      observer.disconnect();
+    };
+  }, [ref]);
+  return scrolls;
+}
+
+/**
+ * One compact line: what ribbons mean, the shape key, and that zooming
+ * reveals more. Under `md` the line scrolls sideways, and then the legend
+ * takes focus, so a keyboard can scroll it too; where it wraps (or fits) it
+ * is no tab stop.
+ */
 export function Legend() {
+  const ref = useRef<HTMLDivElement>(null);
+  const scrolls = useScrollsSideways(ref);
   return (
-    <div className="flex shrink-0 items-center gap-x-2.5 gap-y-1.5 overflow-x-auto border-t px-4 py-2 text-2xs whitespace-nowrap text-muted-foreground md:flex-wrap">
+    <div
+      ref={ref}
+      role="group"
+      aria-label="Legend"
+      tabIndex={scrolls ? 0 : undefined}
+      className="flex shrink-0 items-center gap-x-2.5 gap-y-1.5 overflow-x-auto border-t px-4 py-2 text-2xs whitespace-nowrap text-foreground/70 md:flex-wrap">
       <span
         title="Ribbons join the genes of families found in at least half the genomes at 1×, and of rarer families as you zoom in"
         className="flex shrink-0 items-center gap-1.5 text-foreground"

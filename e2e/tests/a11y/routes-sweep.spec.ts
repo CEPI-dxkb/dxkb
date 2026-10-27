@@ -15,6 +15,11 @@ import generatedBaseline, { reflowSkip } from "../../a11y/baseline.generated";
 import { isReflowSkipped } from "../../a11y/baseline";
 import { recordScan } from "../../a11y/report";
 import { CompareRegionPage, GenomeBrowserPanelPage } from "../../pages";
+import {
+  densitySpecs,
+  labelWidthFor,
+  plotWidthFor,
+} from "@/lib/compare-region/density";
 import { scanTargets } from "../../a11y/routes";
 import type { BaselineMap } from "../../a11y/baseline";
 import type { RouteEntry } from "../../a11y/routes";
@@ -530,11 +535,16 @@ test.describe("a11y component surfaces", () => {
     });
 
     // WCAG 1.4.10 reflow, as the routes sweep checks every route. The figure
-    // keeps a minimum width and scrolls inside its own scroller, so the page
-    // must not scroll at 320px once the panel has measured the narrower card.
-    const wideFigure = await compare.figure.getAttribute("width");
+    // keeps a minimum width (Comfortable's narrowest label column beside
+    // `minPlotWidth`) and scrolls inside its own scroller, so the page must
+    // not scroll at 320px once the panel has measured the narrower card. A
+    // phone's figure is at that minimum already, so wait for the width, not a
+    // change of it.
+    const narrowFigure =
+      plotWidthFor(densitySpecs.comfortable, 320) +
+      labelWidthFor(densitySpecs.comfortable, 320);
     await page.setViewportSize({ width: 320, height: 568 });
-    await expect(compare.figure).not.toHaveAttribute("width", wideFigure ?? "");
+    await expect(compare.figure).toHaveAttribute("width", String(narrowFigure));
     expect(
       await hasHorizontalScroll(page),
       "feature-compare-region: horizontal scroll at 320px viewport — WCAG 1.4.10 reflow failure",

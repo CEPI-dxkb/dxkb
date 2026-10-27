@@ -1,11 +1,11 @@
 /**
  * The words the Compare Region Viewer shows about genomes and features: a
- * genome's name split into its binomial and the rest (and fitted onto one
- * line in Compact), a row's identity to the focus gene and number tag, and
- * a feature's location.
+ * genome's name split into its binomial and the rest, a row's identity to
+ * the focus gene and number tag, and a feature's location.
  */
 import type { CompareRegionFeature } from "./contract";
-import { fitText, type TextMeasure } from "./labels";
+import type { DensitySpec } from "./density";
+import type { RowFrame } from "./figure-frame";
 import type { CompareRegionLayout } from "./layout";
 
 export interface GenomeLabel {
@@ -27,38 +27,45 @@ export function splitGenomeName(name: string): GenomeLabel {
   };
 }
 
-/**
- * Compact's one-line name, px: the species (italic, weight 500), then the
- * strain, this far apart. `OneLineLabel` draws with these sizes and
- * `oneLineGenomeName` measures with them.
- */
-export const oneLineSpeciesSize = 11;
-export const oneLineStrainSize = 10;
-export const oneLineStrainGap = 4;
-const speciesFont = `italic 500 ${String(oneLineSpeciesSize)}px`;
-const strainFont = `${String(oneLineStrainSize)}px`;
+/** Cap and figure height as a share of the font size, in the app's sans and mono fonts alike. */
+export const capHeight = 0.72;
+
+export interface GenomeLabelLines {
+  /** The species line's middle (half its cap height up): the tag, the identity and "FOCUS" center on it. */
+  middle: number;
+  speciesBaseline: number;
+  strainBaseline: number;
+}
 
 /**
- * Compact's genome label in `room` px: the species, then the strain, each
- * cut with "…" to fit (names are not data labels; the full name goes in the
- * row's title). The species gets the room first; the strain shows only when
- * the whole species does, as a bare "…" when none of it fits.
+ * Where a row's label sits, svg px: its ink (the tag and the species' caps,
+ * down to the strain's baseline) centered in the row's slot, so it has as
+ * much room above as below whatever lanes the row holds, with the tag, the
+ * identity and "FOCUS" on the species' line.
  */
-export function oneLineGenomeName(
-  genomeName: string,
-  room: number,
-  measure: TextMeasure,
-): GenomeLabel {
-  const name = splitGenomeName(genomeName);
-  const binomial = fitText(name.binomial, room, speciesFont, measure);
-  if (!name.rest || binomial !== name.binomial) return { binomial, rest: "" };
-  const restRoom = room - measure(binomial, speciesFont) - oneLineStrainGap;
-  const rest = fitText(name.rest, restRoom, strainFont, measure);
-  if (rest) return { binomial, rest };
+export function genomeLabelLines(
+  spec: DensitySpec,
+  rowFrame: RowFrame,
+  hasStrain: boolean,
+): GenomeLabelLines {
+  const halfCap = (capHeight * spec.speciesSize) / 2;
+  const halfTag = spec.tagHeight / 2;
+  // The ink's reach above and below the species line's middle.
+  const above = Math.max(halfTag, halfCap);
+  const below = hasStrain ? Math.max(halfTag, halfCap + spec.lineGap) : above;
+  const slotMiddle = (rowFrame.slotTop + rowFrame.slotBottom) / 2;
+  const middle = slotMiddle - (below - above) / 2;
+  const speciesBaseline = middle + halfCap;
   return {
-    binomial,
-    rest: restRoom >= measure("…", strainFont) ? "…" : "",
+    middle,
+    speciesBaseline,
+    strainBaseline: speciesBaseline + spec.lineGap,
   };
+}
+
+/** The baseline that centers `size` px caps or figures on `middle`. */
+export function centeredBaseline(middle: number, size: number): number {
+  return middle + (capHeight * size) / 2;
 }
 
 /** The pinned gene's identity to the focus gene (its BLAST hit's, failing that). */

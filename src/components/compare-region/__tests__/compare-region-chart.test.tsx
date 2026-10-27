@@ -63,7 +63,7 @@ beforeEach(() => {
 
 interface ChartProps {
   rows?: readonly CompareRegionRow[];
-  /** A 900 px card: Comfortable's plot is 674 px, Compact's 696 px. */
+  /** A 900 px card: Comfortable's plot is 662 px, Compact's 696 px. */
   width?: number;
   density?: CompareRegionDensity;
   onDensityChange?: (density: CompareRegionDensity) => void;
@@ -235,7 +235,7 @@ describe("CompareRegionChart", () => {
       expect(scroller()).toHaveAttribute("tabindex", "0");
       expect(scroller()).toHaveClass("overflow-auto");
       // The narrow label column and the plot's 420 px floor: wider than the card.
-      expect(figureSvg()).toHaveAttribute("width", "616");
+      expect(figureSvg()).toHaveAttribute("width", "628");
     });
 
     it("fills the card, with the legend at its foot", async () => {
@@ -243,10 +243,22 @@ describe("CompareRegionChart", () => {
       // The scroller takes the room the figure leaves, so the legend sits at
       // the card's bottom edge however few genomes there are.
       expect(scroller()).toHaveClass("min-h-0", "flex-1");
-      expect(scroller().parentElement).toHaveClass("flex-1");
-      expect(scroller().nextElementSibling).toHaveTextContent(
+      const frame = scroller().parentElement;
+      expect(frame).toHaveClass("min-h-0", "flex-1");
+      expect(frame?.parentElement).toHaveClass("flex-1");
+      expect(frame?.nextElementSibling).toHaveTextContent(
         "Shared by most genomes",
       );
+    });
+
+    it("lays the identity info button over the header corner, outside the figure", async () => {
+      await renderChart();
+      const info = screen.getByRole("button", { name: "About identity" });
+      // Outside the scroller (it stays put while the figure scrolls) and the
+      // SVG (an export carries none of it).
+      expect(scroller()).not.toContainElement(info);
+      expect(figureSvg()).not.toContainElement(info);
+      expect(scroller().parentElement).toContainElement(info);
     });
 
     it("leaves vertical touch scrolling to the page", async () => {
@@ -559,15 +571,15 @@ describe("CompareRegionChart", () => {
       scrollerSize.client = 885;
       const { container } = await renderChart();
       expect(figureSvg()).toHaveAttribute("width", "885");
-      // 885 px: the same 226 px label column, a 659 px plot.
-      expect(tracksSvg(container)).toHaveAttribute("width", "659");
+      // 885 px: the same 238 px label column, a 647 px plot.
+      expect(tracksSvg(container)).toHaveAttribute("width", "647");
     });
 
     it("keeps the zoom when a scrollbar appears later (D5)", async () => {
       const { container } = await renderChart();
       expect(figureSvg()).toHaveAttribute("width", "900");
       zoomIn(2);
-      expect(focusLineX(container)).toBeCloseTo(337, 6);
+      expect(focusLineX(container)).toBeCloseTo(331, 6);
 
       scrollerSize.client = 885;
       act(() => {
@@ -575,8 +587,8 @@ describe("CompareRegionChart", () => {
       });
       expect(figureSvg()).toHaveAttribute("width", "885");
       expect(zoomLevel()).toHaveTextContent("2.3×");
-      // Still the window's middle: 659 / 2.
-      expect(focusLineX(container)).toBeCloseTo(329.5, 6);
+      // Still the window's middle: 647 / 2.
+      expect(focusLineX(container)).toBeCloseTo(323.5, 6);
     });
   });
 
@@ -608,14 +620,14 @@ describe("CompareRegionChart", () => {
     });
 
     it("zooms about the focus line, which stays put", async () => {
-      // Centered off the window's middle: domain −500…1,500 bp, so the focus line is at 168.5 of 674 px.
+      // Centered off the window's middle: domain −500…1,500 bp, so the focus line is at 165.5 of 662 px.
       const { container } = await renderChart({
         rows: [{ ...focusRow, center: 500 }],
       });
-      expect(focusLineX(container)).toBe(168.5);
+      expect(focusLineX(container)).toBe(165.5);
       zoomIn();
       expect(zoomLevel()).toHaveTextContent("1.5×");
-      expect(focusLineX(container)).toBeCloseTo(168.5, 6);
+      expect(focusLineX(container)).toBeCloseTo(165.5, 6);
     });
 
     it("skips glyphs zoomed out of view, and fits the whole region again", async () => {
@@ -686,7 +698,7 @@ describe("CompareRegionChart", () => {
       it("draws nothing further than a plot's width off the plot", async () => {
         const { container } = await renderChart();
         zoomIn(4);
-        // 5.06×: the upstream gene is 687 px left of the window, past the 674 px reach.
+        // 5.06×: the upstream gene is 674 px left of the window, past the 662 px reach.
         const focusGene = glyph(container, 0, 1);
         drag(focusGene, 400, 390);
         expect(
@@ -737,7 +749,7 @@ describe("CompareRegionChart", () => {
         const placed = vi.mocked(placeGlyph);
         placed.mockClear();
 
-        // 700 px: past the 674 px drawn beyond the edge, so it draws again there.
+        // 700 px: past the 662 px drawn beyond the edge, so it draws again there.
         fireEvent.pointerMove(focusGene, { ...pointer, clientX: -310 });
         expect(placed).toHaveBeenCalled();
         expect(slideOf(focusGene)).toBeNull();
@@ -784,14 +796,14 @@ describe("CompareRegionChart", () => {
       const { container, rerenderChart } = await renderChart();
       zoomIn(2);
       expect(zoomLevel()).toHaveTextContent("2.3×");
-      expect(focusLineX(container)).toBeCloseTo(337, 6);
+      expect(focusLineX(container)).toBeCloseTo(331, 6);
 
-      // 1,000 px: the same 226 px label column, a 774 px plot.
+      // 1,000 px: the same 238 px label column, a 762 px plot.
       rerenderChart({ width: 1000 });
       expect(zoomLevel()).toHaveTextContent("2.3×");
       expect(screen.getByRole("button", { name: "Zoom out" })).toBeEnabled();
       // Still the window's middle.
-      expect(focusLineX(container)).toBeCloseTo(387, 6);
+      expect(focusLineX(container)).toBeCloseTo(381, 6);
     });
   });
 
@@ -844,7 +856,7 @@ describe("CompareRegionChart", () => {
       await user.click(
         screen.getByRole("button", { name: "Switch to Compact density" }),
       );
-      expect(view.scrollTop).toBeCloseTo(22.22, 2);
+      expect(view.scrollTop).toBeCloseTo(25.19, 2);
     });
 
     it("tints the hovered row across the figure in Compact", async () => {
@@ -855,8 +867,8 @@ describe("CompareRegionChart", () => {
       );
       expect(tints).toHaveLength(2);
       for (const tint of tints) {
-        expect(tint).toHaveAttribute("y", "60");
-        expect(tint).toHaveAttribute("height", "26");
+        expect(tint).toHaveAttribute("y", "64");
+        expect(tint).toHaveAttribute("height", "30");
       }
       // The label column's has the 2 px edge.
       expect(

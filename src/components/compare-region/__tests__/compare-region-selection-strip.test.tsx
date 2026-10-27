@@ -94,6 +94,15 @@ describe("SelectionStrip", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("draws the toggle in the foreground, as the bar's Export, and a size up from it", () => {
+    renderStrip();
+    const toggle = densityToggle("Compact");
+    // The hint row around it is muted; the toggle is not.
+    expect(toggle.parentElement).toHaveClass("text-foreground");
+    expect(toggle).toHaveClass("size-8");
+    expect(toggle.querySelector("svg")).toHaveClass("size-4.5");
+  });
+
   it("switches the density, with no pinned row", async () => {
     const user = userEvent.setup();
     const { onDensityChange } = renderStrip();
@@ -101,14 +110,26 @@ describe("SelectionStrip", () => {
     expect(onDensityChange).toHaveBeenCalledExactlyOnceWith("compact", null);
   });
 
-  it("shows the next density's hint in a tooltip", async () => {
-    const user = userEvent.setup();
-    renderStrip();
-    await user.hover(densityToggle("Compact"));
-    expect(
-      await screen.findByText("About 30 px a row, for long genome lists"),
-    ).toBeInTheDocument();
-  });
+  it.each([
+    [
+      "comfortable",
+      "Compact",
+      "Shrink the rows to fit more genomes on screen.",
+    ],
+    ["compact", "Comfortable", "Show bigger rows that are easier to read."],
+  ] as const)(
+    "says in one plain sentence what the switch does, from %s",
+    async (density, next, sentence) => {
+      const user = userEvent.setup();
+      renderStrip({ density });
+      await user.hover(densityToggle(next));
+      const tip = await screen.findByText(sentence);
+      // That sentence alone: no title line, no measurements.
+      expect(tip.closest('[data-slot="tooltip-content"]')?.textContent).toBe(
+        sentence,
+      );
+    },
+  );
 
   it("names the pinned gene, links it and clears it", async () => {
     const user = userEvent.setup();
@@ -200,7 +221,10 @@ describe("SelectionStrip", () => {
   });
 
   it("re-renders when the pin changes, never on a hover", () => {
-    const model = buildChartModel([focusRow, mirroredRow], densitySpecs.comfortable);
+    const model = buildChartModel(
+      [focusRow, mirroredRow],
+      densitySpecs.comfortable,
+    );
     // One element throughout, as the chart's cached one: only a context it reads re-renders it.
     const strip = (
       <SelectionStrip

@@ -11,6 +11,15 @@ import { SectionError } from "./section-error";
  * loaded"). The error is also logged, since nothing else reports a caught
  * one: an `UpstreamError` prints its `host` there, which the user's message
  * leaves out.
+ *
+ * SectionError gets the message, not the error. In development React sends
+ * every server component's props to the browser, and it cannot send an error
+ * whose cause has no stack frame outside Node internals (the `TimeoutError` of
+ * an upstream budget, undici's socket error): it omits that cause's stack, the
+ * browser throws "frame.join is not a function" reviving it, and the route's
+ * error boundary replaces the whole page. React's fix (`objectLimit:
+ * stack.length * 2 + 2` in `serializeDebugErrorValue`) is on its main branch
+ * but not in Next 16.4.3.
  */
 export async function withSectionError(
   section: string,
@@ -20,6 +29,7 @@ export async function withSectionError(
     return await load();
   } catch (error) {
     console.error(`[overview] ${section} could not be loaded:`, error);
-    return <SectionError section={section} error={error} />;
+    const message = error instanceof Error ? error.message : error;
+    return <SectionError section={section} error={message} />;
   }
 }

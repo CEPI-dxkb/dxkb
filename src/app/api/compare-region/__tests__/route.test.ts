@@ -102,6 +102,65 @@ describe("GET /api/compare-region", () => {
     expect(res.headers.get("Cache-Control")).toBe("private, no-store");
   });
 
+  it("refuses a group filter to a caller who is not signed in", async () => {
+    clearTestCookies();
+    let called = false;
+    server.use(
+      http.post(serviceUrl, () => {
+        called = true;
+        return rowsAnswer();
+      }),
+    );
+    const { GET } = await import("../route");
+    const res = await GET(
+      request({ peg: "fig|1.1.peg.1", filter: "genomeGroup", group: "/u@bvbrc/home/Genome Groups/G1" }),
+    );
+    expect(res.status).toBe(401);
+    expect(await json(res)).toEqual({
+      error: "Sign in to compare against a workspace group.",
+      code: "unauthorized",
+    });
+    expect(called).toBe(false);
+    expect(res.headers.get("Cache-Control")).toBe("private, no-store");
+  });
+
+  it("passes a signed-in caller's group to the service", async () => {
+    let options: unknown = null;
+    server.use(
+      http.post(serviceUrl, async ({ request: upstream }) => {
+        options = ((await upstream.json()) as { params: unknown[] }).params.at(5);
+        return rowsAnswer();
+      }),
+    );
+    const { GET } = await import("../route");
+    const res = await GET(
+      request({ peg: "fig|1.1.peg.1", filter: "featureGroup", group: "/u@bvbrc/home/Feature Groups/F1" }),
+    );
+    expect(res.status).toBe(200);
+    expect(options).toEqual({ feature_group: "/u@bvbrc/home/Feature Groups/F1" });
+  });
+
+  it("answers 400 for a group without a group filter", async () => {
+    const { GET } = await import("../route");
+    const res = await GET(request({ peg: "fig|1.1.peg.1", filter: "all", group: "/u@bvbrc/home/x" }));
+    expect(res.status).toBe(400);
+    expect(await json(res)).toEqual({
+      error: "Invalid compare region request.",
+      code: "invalid_request",
+    });
+  });
+
+  it("answers an invalid group as invalid before asking a signed-out caller to sign in", async () => {
+    clearTestCookies();
+    const { GET } = await import("../route");
+    const res = await GET(request({ peg: "fig|1.1.peg.1", filter: "genomeGroup", group: "relative/x" }));
+    expect(res.status).toBe(400);
+    expect(await json(res)).toEqual({
+      error: "Invalid compare region request.",
+      code: "invalid_request",
+    });
+  });
+
   it("passes the service's own error message through", async () => {
     server.use(http.post(serviceUrl, () => rpcFailure("peg not found in Solr")));
     const { GET } = await import("../route");

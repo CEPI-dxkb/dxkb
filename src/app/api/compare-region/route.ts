@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { errorResponse } from "@/lib/auth/server/errors";
 import { readSession } from "@/lib/auth/server/session";
+import { isCompareRegionGroupFilter } from "@/lib/compare-region/contract";
 import {
   CompareRegionBusyError,
   parseCompareRegionQuery,
@@ -22,6 +23,14 @@ async function answer(request: NextRequest): Promise<NextResponse> {
       { status: 400 },
     );
   }
+  const session = await readSession();
+  // The service reads a group from the caller's workspace with their token.
+  if (isCompareRegionGroupFilter(query.filter) && !session?.token) {
+    return NextResponse.json(
+      { error: "Sign in to compare against a workspace group.", code: "unauthorized" },
+      { status: 401 },
+    );
+  }
   // Per client IP per minute: each request holds the service's one slot for
   // seconds to a minute.
   const blocked = rateLimitedResponse(request, {
@@ -34,7 +43,6 @@ async function answer(request: NextRequest): Promise<NextResponse> {
   if (blocked) return blocked;
 
   try {
-    const session = await readSession();
     const rows = await readCompareRegion(query, session?.token, request.signal);
     return NextResponse.json({ rows });
   } catch (error) {

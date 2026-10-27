@@ -2,6 +2,10 @@ import { z } from "zod";
 import { jobsPanelIds } from "@/constants/jobs-panels";
 import { workspacePanelIds } from "@/constants/workspace-panels";
 import { workspaceSortFields } from "@/constants/workspace-sort";
+import {
+  compareRegionDensities,
+  type CompareRegionDensity,
+} from "@/lib/compare-region/density-options";
 import type { WorkspaceSortConfig } from "@/types/workspace-browser";
 
 /**
@@ -31,6 +35,8 @@ export interface UiPreferences {
   workspaceShowHiddenFiles: boolean;
   /** Workspace file list sort; applies in every folder. */
   workspaceSort: WorkspaceSortConfig;
+  /** Compare Region Viewer figure density on the feature page. */
+  compareRegionDensity: CompareRegionDensity;
 }
 
 export type UiPreferenceKey = keyof UiPreferences;
@@ -96,6 +102,11 @@ export const uiPreferenceDefinitions: {
       direction: z.enum(["asc", "desc"]),
     }),
     defaultValue: { field: "name", direction: "asc" },
+  },
+  compareRegionDensity: {
+    cookieName: "dxkb-compare-region-density",
+    schema: z.enum(compareRegionDensities),
+    defaultValue: "comfortable",
   },
 };
 

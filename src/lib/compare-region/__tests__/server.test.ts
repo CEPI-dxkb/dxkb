@@ -93,6 +93,7 @@ const query: CompareRegionQuery = {
   genomes: 10,
   method: "pgfam",
   filter: "reference",
+  group: null,
 };
 
 function rpcAnswer(rows: unknown) {
@@ -153,6 +154,15 @@ describe("parseCompareRegionQuery", () => {
         new URLSearchParams({ peg: `fig|${"1".repeat(300)}` }),
       ),
     ).toBeNull();
+  });
+
+  it("reads the group from the route's query", async () => {
+    const { parseCompareRegionQuery } = await import("../server");
+    const path = "/u@bvbrc/home/Genome Groups/G1";
+    expect(
+      parseCompareRegionQuery(new URLSearchParams({ peg: "fig|1.1.peg.2", filter: "genomeGroup", group: path })),
+    ).toEqual(expect.objectContaining({ filter: "genomeGroup", group: path }));
+    expect(parseCompareRegionQuery(new URLSearchParams({ peg: "fig|1.1.peg.2", filter: "genomeGroup" }))).toBeNull();
   });
 });
 
@@ -287,6 +297,23 @@ describe("readCompareRegion", () => {
       }) as unknown,
       authorization: "un=user@bvbrc|sig=abc",
     });
+  });
+
+  it.each([
+    ["genomeGroup", "genome_group", { genome_group: "/u@bvbrc/home/Genome Groups/G1" }],
+    ["featureGroup", "feature_group", { feature_group: "/u@bvbrc/home/Feature Groups/F1" }],
+  ] as const)("sends a %s as SEED's %s with the path in options", async (filter, serviceFilter, options) => {
+    let params: unknown = null;
+    server.use(
+      http.post(serviceUrl, async ({ request }) => {
+        params = ((await request.json()) as { params: unknown }).params;
+        return rpcAnswer([rawFocusRow]);
+      }),
+    );
+    const { readCompareRegion } = await import("../server");
+    const group = Object.values(options)[0];
+    await readCompareRegion({ ...query, filter, group }, "token");
+    expect(params).toEqual([query.peg, query.size, query.genomes, query.method, serviceFilter, options]);
   });
 
   it("sends one request at a time and refuses a fifth in line", async () => {

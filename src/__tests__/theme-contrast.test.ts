@@ -124,12 +124,27 @@ function relativeLuminance([red, green, blue]: [number, number, number]) {
   return 0.2126 * linear(red) + 0.7152 * linear(green) + 0.0722 * linear(blue);
 }
 
-/** The contrast of two custom properties as `scope` resolves them. */
-function contrast(scope: Scope, foreground: string, background: string): number {
-  const [lighter, darker] = [foreground, background]
-    .map((name) => relativeLuminance(oklabToSrgb(resolveVariable(name, scope))))
+type Srgb = [number, number, number];
+
+/** `top` painted at `share` opacity over `bottom`, as a browser composites it (in sRGB). */
+function paintOver(top: Srgb, share: number, bottom: Srgb): Srgb {
+  return top.map(
+    (channel, index) => channel * share + bottom[index] * (1 - share),
+  ) as Srgb;
+}
+
+/** The WCAG contrast ratio of two sRGB colors. */
+function srgbContrast(first: Srgb, second: Srgb): number {
+  const [lighter, darker] = [first, second]
+    .map(relativeLuminance)
     .sort((x, y) => y - x);
   return (lighter + 0.05) / (darker + 0.05);
+}
+
+/** The contrast of two custom properties as `scope` resolves them. */
+function contrast(scope: Scope, foreground: string, background: string): number {
+  const srgb = (name: string) => oklabToSrgb(resolveVariable(name, scope));
+  return srgbContrast(srgb(foreground), srgb(background));
 }
 
 const allBlocks = themeFiles.flatMap(readBlocks);
@@ -233,6 +248,52 @@ describe("theme contrast: dark-theme text", () => {
           ).toBeGreaterThanOrEqual(minimumContrast);
         }
       }
+    },
+  );
+});
+
+/**
+ * The Compare Region Viewer's segmented toggles and pin strip. Each toggle
+ * (Method, Density) sets its unpressed option in `text-foreground/70` on a
+ * `bg-muted` pill, and the density label and the pinned gene's genome use it
+ * on the card or on the pin strip's muted wash over the card, where the
+ * strip's links (`text-link`) sit too. `muted-foreground` on `muted` is 3.7:1
+ * in the light themes and the Tabs recipe (`foreground/60`) 3.8:1 in
+ * bvbrc-light, so the viewer uses 70%. The strip's unit tests pin both
+ * classes to these shares.
+ */
+const toggleTextShare = 0.7;
+// `bg-muted/30`: at 40% bvbrc-light's links on the wash were 4.47:1.
+const pinWashShare = 0.3;
+
+describe("theme contrast: the Compare Region Viewer's toggles and pin strip", () => {
+  it.each(themeBlocks.map((block) => [themeOf(block), block] as const))(
+    "%s keeps foreground/70 and links readable on muted, the card and the pin wash",
+    (theme, block) => {
+      const scope = themeScope(block);
+      const srgb = (name: string) => oklabToSrgb(resolveVariable(name, scope));
+      // Small dim text: AA in the light themes, the dark themes' 7:1 (above).
+      const dimTextContrast = theme?.endsWith("-dark")
+        ? darkMutedContrast
+        : minimumContrast;
+      const foreground = srgb("--foreground");
+      const muted = srgb("--muted");
+      const card = srgb("--card");
+      const wash = paintOver(muted, pinWashShare, card);
+      for (const [surface, fill] of [
+        ["muted", muted],
+        ["the card", card],
+        ["the pin wash", wash],
+      ] as const) {
+        expect(
+          srgbContrast(paintOver(foreground, toggleTextShare, fill), fill),
+          `foreground/70 on ${surface}`,
+        ).toBeGreaterThanOrEqual(dimTextContrast);
+      }
+      expect(
+        srgbContrast(srgb("--link"), wash),
+        "links on the pin wash",
+      ).toBeGreaterThanOrEqual(minimumContrast);
     },
   );
 });

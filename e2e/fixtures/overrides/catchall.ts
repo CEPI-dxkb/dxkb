@@ -16,6 +16,7 @@ import {
   surveillanceRecord,
   taxonomyRecord,
 } from "@/lib/e2e-fixtures/records";
+import { compareRegionScenarioOverrides } from "./compare-region";
 import { genomeBrowserScenarioOverrides } from "./genome-browser";
 import {
   buildBrowserRpcSuccess,
@@ -541,6 +542,7 @@ const namedResourceScenarioOverrides: JsonOverride[] = [
   ...genomeFeatureScenarioOverrides,
   ...genomeSequenceScenarioOverrides,
   ...genomeBrowserScenarioOverrides,
+  ...compareRegionScenarioOverrides,
   ...genomeScenarioOverrides,
 ];
 

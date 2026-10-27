@@ -39,7 +39,20 @@ export function parseCompareRegionQuery(
 const serviceFilters: Record<CompareRegionFilter, string> = {
   reference: "representative+reference",
   all: "all",
+  genomeGroup: "genome_group",
+  featureGroup: "feature_group",
 };
+
+/**
+ * The service's options argument: a group filter names its group's workspace
+ * path there, as legacy BV-BRC sends it (`{genome_group: path}`).
+ */
+function serviceOptions(query: CompareRegionQuery): Record<string, string> {
+  if (query.group === null) return {};
+  if (query.filter === "genomeGroup") return { genome_group: query.group };
+  if (query.filter === "featureGroup") return { feature_group: query.group };
+  return {};
+}
 
 export class CompareRegionBusyError extends Error {
   constructor() {
@@ -200,7 +213,9 @@ export function normalizeCompareRegionRows(
 /**
  * The focus gene's neighborhood in `query.genomes` other genomes. `token` is
  * the caller's session token (private genomes); anonymous callers see public
- * data. Throws `CompareRegionBusyError` when too many requests are in line,
+ * data. A group filter needs the token too: the service reads the group from
+ * the caller's workspace with it, so the route refuses one without a session.
+ * Throws `CompareRegionBusyError` when too many requests are in line,
  * and `UpstreamError`/`JsonRpcError` when the service fails, is not
  * configured, or sends an answer this module cannot read.
  */
@@ -221,7 +236,7 @@ export async function readCompareRegion(
         query.genomes,
         query.method,
         serviceFilters[query.filter],
-        {},
+        serviceOptions(query),
       ]),
     signal,
   );

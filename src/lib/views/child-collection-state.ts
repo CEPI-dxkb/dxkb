@@ -19,7 +19,7 @@ import type { SearchParamsRecord } from "./rql";
  * tab-owned state the same cleanup must drop: `browser`, the Genome Browser's
  * (`browser.loc`, `browser.tracks`, `browser.highlight`), and `compare`, the
  * Compare Region Viewer's settings (`compare.size`, `compare.genomes`,
- * `compare.method`, `compare.filter`).
+ * `compare.method`, `compare.filter`, `compare.group`).
  */
 export const childCollectionUrlKeys = [
   "amr",

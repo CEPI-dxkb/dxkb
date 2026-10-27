@@ -1,70 +1,79 @@
 /**
- * Compare Region Viewer fills. These are data colors (a feature's homology
- * family, its identity to the focus gene), so they are inline `fill` values,
- * not theme tokens.
+ * The Compare Region Viewer's data colors: a feature's protein family, its
+ * BLAST identity to the focus gene, the pinned gene's edge and the ink for
+ * labels on a fill. They are OKLCH values for SVG `fill`/`stroke` attributes,
+ * not theme tokens, and the same in every theme, so a family keeps its color
+ * everywhere. The focus family is DXKB's orange in every theme too; the focus
+ * line and the focus row's accents use the same constant.
  */
-import { interpolateRgb } from "@visx/vendor/d3-interpolate";
 import type { CompareRegionFeature } from "./contract";
 
-/**
- * `SEED.get_palette("compare_region")`, read 2026-10-23. The palette is fixed,
- * so it ships with the code instead of costing a request on a service that
- * answers one request at a time.
- */
-export const compareRegionPalette: readonly string[] = [
-  "rgb(255, 0, 0)", "rgb(60, 60, 190)", "rgb(50, 255, 50)", "rgb(224, 133, 15)",
-  "rgb(0, 0, 155)", "rgb(255, 221, 0)", "rgb(0, 155, 155)", "rgb(200, 100, 200)",
-  "rgb(27, 133, 52)", "rgb(135, 65, 65)", "rgb(0, 90, 255)", "rgb(95, 100, 100)",
-  "rgb(80, 210, 150)", "rgb(225, 250, 160)", "rgb(170, 30, 145)", "rgb(255, 215, 125)",
-  "rgb(140, 165, 210)", "rgb(160, 15, 250)", "rgb(45, 155, 185)", "rgb(170, 205, 120)",
-  "rgb(30, 60, 190)", "rgb(115, 175, 160)", "rgb(194, 133, 15)", "rgb(0, 0, 125)",
-  "rgb(225, 221, 0)", "rgb(235, 5, 40)", "rgb(0, 255, 0)", "rgb(0, 0, 255)",
-  "rgb(255, 255, 0)", "rgb(0, 255, 255)", "rgb(255, 0, 255)", "rgb(255, 127, 0)",
-  "rgb(255, 0, 127)", "rgb(0, 255, 127)", "rgb(127, 0, 255)", "rgb(127, 255, 0)",
-  "rgb(0, 127, 255)", "rgb(255, 127, 127)", "rgb(127, 255, 127)", "rgb(127, 127, 255)",
-  "rgb(0, 0, 127)", "rgb(127, 0, 0)", "rgb(0, 127, 0)", "rgb(127, 127, 0)",
-  "rgb(127, 0, 127)", "rgb(0, 127, 127)", "rgb(255, 127, 255)", "rgb(255, 255, 127)",
-  "rgb(127, 255, 255)",
-];
+/** DXKB's orange in OKLCH (lightness in percent): the one source of the focus colors below. */
+const focusOklch = { lightness: 71.57, chroma: 0.182, hue: 37.18 } as const;
+const focusHue = focusOklch.hue;
+/** "71.57% 0.182 37.18": the color's channels, for an opaque color or one with alpha. */
+const focusChannels = [
+  `${String(focusOklch.lightness)}%`,
+  String(focusOklch.chroma),
+  String(focusOklch.hue),
+].join(" ");
 
-/** Legacy's "gray": a feature in no homology set. */
-export const noFamilyFill = "rgb(128, 128, 128)";
+/** DXKB's orange: the focus gene's family, the focus line and the BLAST ramp. */
+export const focusFamilyColor = `oklch(${focusChannels})`;
 
-/**
- * Each wrap past the palette's end, mixed toward white (positive) or black
- * (negative) by this much. Legacy used white-to-color gradients for the same job.
- */
-const wrapShades = [0, 0.45, -0.35, 0.7, -0.6];
-
-/**
- * A homology set's fill. Set 1 (the focus gene's family) takes the first
- * color, as in legacy; set 49 also wraps onto it, one shade lighter.
- */
-export function familyFill(family: number): string {
-  const index = family === 1 ? 0 : family;
-  const size = compareRegionPalette.length;
-  const base = compareRegionPalette.at(index % size) ?? noFamilyFill;
-  const shade = wrapShades[Math.min(Math.floor(index / size), wrapShades.length - 1)];
-  if (shade === 0) return base;
-  return interpolateRgb(base, shade > 0 ? "#fff" : "#000")(Math.abs(shade));
+/** `value` modulo `size`, never negative (`%` keeps the dividend's sign). */
+function wrap(value: number, size: number): number {
+  const rest = value % size;
+  return rest < 0 ? rest + size : rest;
 }
 
-/** BLAST identity to the focus gene as red at that saturation: 100% red, 0% white. */
-export function identityFill(identity: number): string {
-  const saturation = Math.min(100, Math.max(0, Math.trunc(identity))) / 100;
-  const other = String(Math.round(255 * (1 - saturation)));
-  return `rgb(255, ${other}, ${other})`;
+/** Degrees between two hues, the short way round. */
+function hueDistance(a: number, b: number): number {
+  const d = Math.abs(a - b) % 360;
+  return d > 180 ? 360 - d : d;
 }
 
-export function featureFill(
-  feature: CompareRegionFeature,
-  pinnedFid: string,
-): string {
-  if (
-    feature.type === "blast" ||
-    (feature.fid === pinnedFid && feature.identity !== null)
-  ) {
-    return identityFill(feature.identity ?? 0);
-  }
-  return feature.family === null ? noFamilyFill : familyFill(feature.family);
+/**
+ * A protein family's fill. Family 1 (the focus gene's) is the brand orange;
+ * the rest step round the hue circle by the golden angle (the service numbers
+ * families along the focus region, so neighbors get far-apart hues), skip the
+ * orange/red wedge so the focus family stays unique, and cycle three
+ * lightness tiers so two families of similar hue still differ.
+ */
+export function familyColor(family: number): string {
+  if (family === 1) return focusFamilyColor;
+  const n = family - 2;
+  let hue = wrap(212 + n * 137.508, 360);
+  if (hueDistance(hue, focusHue) < 32) hue = wrap(hue + 66, 360);
+  const tier = wrap(n, 3);
+  const lightness = [0.73, 0.645, 0.8][tier];
+  const chroma = [0.12, 0.11, 0.095][tier];
+  return `oklch(${String(lightness)} ${String(chroma)} ${hue.toFixed(1)})`;
+}
+
+/** BLAST identity to the focus gene: the brand orange, more opaque the closer. */
+export function identityColor(identity: number): string {
+  const share = Math.min(100, Math.max(0, identity)) / 100;
+  return `oklch(${focusChannels} / ${(0.16 + 0.84 * share).toFixed(2)})`;
+}
+
+/** An opaque OKLCH color 0.2 lightness darker (the pinned gene's edge); any other color as it is. */
+export function deepen(color: string): string {
+  const match = /oklch\(([\d.]+)(%?) ([\d.]+) ([\d.]+)\)/.exec(color);
+  if (!match) return color;
+  const lightness = Number(match[1]) / (match[2] ? 100 : 1);
+  return `oklch(${(lightness - 0.2).toFixed(3)} ${match[3]} ${match[4]})`;
+}
+
+/** Ink for labels on a family fill (every fill is light or mid, in either theme). */
+export const labelInk = "oklch(0.25 0.03 265)";
+
+/**
+ * A feature's fill: a BLAST hit by its identity, a gene by its family (the
+ * pinned gene included), and nothing for a feature in no family, which the
+ * figure draws hatched.
+ */
+export function featurePaint(feature: CompareRegionFeature): string | undefined {
+  if (feature.type === "blast") return identityColor(feature.identity ?? 0);
+  return feature.family === null ? undefined : familyColor(feature.family);
 }

@@ -40,6 +40,8 @@ export const nonRouteScanKeys: readonly string[] = [
   "genome-browser-view",
   "feature-browser-host",
   "feature-browser-view",
+  "feature-compare-region",
+  "feature-compare-region/pinned",
   // Interaction states scanned by deep-tier.spec.ts.
   "genome-assembly/validation-errors",
   "genome-assembly/file-picker-open",

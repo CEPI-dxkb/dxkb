@@ -13,15 +13,44 @@ export const compareRegionSizes = [
 export const compareRegionGenomeCounts = [5, 10, 15, 20, 50] as const;
 export const compareRegionMethods = ["pgfam", "plfam"] as const;
 /**
- * URL and route tokens. `server.ts` maps `reference` to the service's
- * `representative+reference`, whose `+` would read as a space in a query.
+ * URL and route tokens, legacy's four "Genomes" sources. `server.ts` maps them
+ * to the service's names: `reference` to `representative+reference` (whose
+ * `+` would read as a space in a query), and the group filters to
+ * `genome_group` / `feature_group`, which take the group's workspace path.
  */
-export const compareRegionFilters = ["reference", "all"] as const;
+export const compareRegionFilters = [
+  "reference",
+  "all",
+  "genomeGroup",
+  "featureGroup",
+] as const;
 
 export type CompareRegionSize = (typeof compareRegionSizes)[number];
 export type CompareRegionGenomeCount = (typeof compareRegionGenomeCounts)[number];
 export type CompareRegionMethod = (typeof compareRegionMethods)[number];
 export type CompareRegionFilter = (typeof compareRegionFilters)[number];
+/** The filters that compare against a workspace group, named by `group`. */
+export type CompareRegionGroupFilter = "genomeGroup" | "featureGroup";
+
+export function isCompareRegionGroupFilter(
+  filter: CompareRegionFilter,
+): filter is CompareRegionGroupFilter {
+  return filter === "genomeGroup" || filter === "featureGroup";
+}
+
+export const maxCompareRegionGroupLength = 1024;
+
+/**
+ * Whether `value` can be a group's workspace path: absolute, at most
+ * `maxCompareRegionGroupLength` characters, and free of control characters.
+ */
+export function isCompareRegionGroupPath(value: string): boolean {
+  return (
+    value.startsWith("/") &&
+    value.length <= maxCompareRegionGroupLength &&
+    !/\p{Cc}/u.test(value)
+  );
+}
 
 export interface CompareRegionSettings {
   /** Width of the window around the focus gene, bp. */
@@ -32,6 +61,8 @@ export interface CompareRegionSettings {
   method: CompareRegionMethod;
   /** Which genomes are candidates. */
   filter: CompareRegionFilter;
+  /** Workspace path of the genome or feature group; null unless `filter` is a group filter. */
+  group: string | null;
 }
 
 export const defaultCompareRegionSettings: CompareRegionSettings = {
@@ -39,6 +70,7 @@ export const defaultCompareRegionSettings: CompareRegionSettings = {
   genomes: 10,
   method: "pgfam",
   filter: "reference",
+  group: null,
 };
 
 export const compareRegionMethodLabels: Record<CompareRegionMethod, string> = {
@@ -46,9 +78,25 @@ export const compareRegionMethodLabels: Record<CompareRegionMethod, string> = {
   plfam: "Genus-specific families (PLfams)",
 };
 
+/** The command bar's toggle labels, with `compareRegionMethodLabels` as their tooltips. */
+export const compareRegionMethodShortLabels: Record<CompareRegionMethod, string> = {
+  pgfam: "PGfam",
+  plfam: "PLfam",
+};
+
 export const compareRegionFilterLabels: Record<CompareRegionFilter, string> = {
   reference: "Reference & representative",
+  // Legacy BV-BRC's wording: signed in, the service may also compare the
+  // caller's private genomes, so "public" would be wrong.
   all: "All genomes",
+  genomeGroup: "Selected genome group",
+  featureGroup: "Selected feature group",
+};
+
+/** Labels of the workspace picker each group filter shows. */
+export const compareRegionGroupLabels: Record<CompareRegionGroupFilter, string> = {
+  genomeGroup: "Genome group",
+  featureGroup: "Feature group",
 };
 
 export interface CompareRegionQuery extends CompareRegionSettings {
@@ -112,7 +160,8 @@ export function pickOption<T extends string | number>(
 
 /**
  * Settings read through `read` (a missing one takes its default), or null
- * when any value is not an offered option.
+ * when any value is not an offered option. A group filter needs a `group`
+ * that is a workspace path, and any other filter must not carry one.
  */
 export function parseCompareRegionSettings(
   read: (name: keyof CompareRegionSettings) => string | null,
@@ -129,7 +178,13 @@ export function parseCompareRegionSettings(
   if (size === null || genomes === null || method === null || filter === null) {
     return null;
   }
-  return { size, genomes, method, filter };
+  const group = read("group");
+  if (isCompareRegionGroupFilter(filter)) {
+    if (group === null || !isCompareRegionGroupPath(group)) return null;
+    return { size, genomes, method, filter, group };
+  }
+  if (group !== null && group !== "") return null;
+  return { size, genomes, method, filter, group: null };
 }
 
 /**
@@ -139,4 +194,9 @@ export function parseCompareRegionSettings(
  */
 export function isCompareRegionLinkable(fid: string): boolean {
   return /^fig\|.+\.(peg|rna)\.\d+$/.test(fid);
+}
+
+/** Only a CDS has the Compare Region tab, so only a `.peg.` gets a comparison link. */
+export function hasCompareRegionTab(fid: string): boolean {
+  return /^fig\|.+\.peg\.\d+$/.test(fid);
 }

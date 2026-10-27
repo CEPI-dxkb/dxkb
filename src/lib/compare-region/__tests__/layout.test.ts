@@ -1,11 +1,5 @@
 import { focusRow, mirroredRow, testGene } from "@/test-helpers/compare-region";
-import {
-  constrainToTrack,
-  glyphPath,
-  glyphShape,
-  layoutCompareRegion,
-  maxZoom,
-} from "../layout";
+import { constrainToTrack, layoutCompareRegion, maxZoom } from "../layout";
 
 const identity = {
   scaleX: 1,
@@ -120,50 +114,6 @@ describe("layoutCompareRegion", () => {
       domain: [0, 1],
       laneCount: 0,
     });
-  });
-});
-
-describe("glyphs", () => {
-  it("shapes features as legacy BV-BRC did", () => {
-    expect(glyphShape("peg")).toBe("arrow");
-    expect(glyphShape("domain_hit")).toBe("arrow");
-    expect(glyphShape("blast")).toBe("pill");
-    expect(glyphShape("pseudogene")).toBe("bar");
-    expect(glyphShape("tRNA")).toBe("box");
-  });
-
-  it("draws an arrow with a 15 px head pointing at the 3′ end", () => {
-    expect(glyphPath("arrow", 0, 100)).toBe(
-      "M 0 -7 L 85 -7 L 85 -10 L 100 0 L 85 10 L 85 7 L 0 7 Z",
-    );
-    expect(glyphPath("arrow", 100, 0)).toBe(
-      "M 100 -7 L 15 -7 L 15 -10 L 0 0 L 15 10 L 15 7 L 100 7 Z",
-    );
-  });
-
-  it("draws a feature no longer than the head as a triangle", () => {
-    expect(glyphPath("arrow", 0, 10)).toBe("M 0 -10 L 10 0 L 0 10 Z");
-  });
-
-  it("draws boxes, bars and pills whichever way the feature runs", () => {
-    expect(glyphPath("box", 30, 10)).toBe("M 10 -10 h 20 v 20 h -20 Z");
-    expect(glyphPath("bar", 10, 30)).toBe("M 10 -5 h 20 v 10 h -20 Z");
-    expect(glyphPath("pill", 0, 40)).toBe(
-      "M 5 -5 h 30 a 5 5 0 0 1 0 10 h -30 a 5 5 0 0 1 0 -10 Z",
-    );
-  });
-
-  it("keeps a pill narrower than its height within its width", () => {
-    // Elliptical caps: a circular arc would be scaled up to a 10 px circle.
-    expect(glyphPath("pill", 0, 4)).toBe(
-      "M 2 -5 h 0 a 2 5 0 0 1 0 10 h 0 a 2 5 0 0 1 0 -10 Z",
-    );
-  });
-
-  it("rounds coordinates to a tenth of a pixel", () => {
-    expect(glyphPath("box", 0.123, 10.456)).toBe(
-      "M 0.1 -10 h 10.3 v 20 h -10.3 Z",
-    );
   });
 });
 

@@ -1,478 +1,430 @@
 "use client";
 
-import { Group } from "@visx/group";
-import { scaleLinear } from "@visx/scale";
-import { Bar, Line } from "@visx/shape";
-import { TooltipWithBounds, useTooltip } from "@visx/tooltip";
-import { Zoom, type TransformMatrix } from "@visx/zoom";
-import { Minus, Plus, RotateCcw, X } from "lucide-react";
-import Link from "next/link";
-import {
-  useEffect,
-  useRef,
-  useState,
-  type MouseEvent as ReactMouseEvent,
-  type PointerEvent as ReactPointerEvent,
-  type Ref,
-} from "react";
-import { Button } from "@/components/ui/button";
-import { featureFill } from "@/lib/compare-region/colors";
-import {
-  isCompareRegionLinkable,
-  type CompareRegionFeature,
-  type CompareRegionRow,
+/**
+ * The Compare Region Viewer's figure: one row per genome, aligned on its
+ * pinned gene, under a bp ruler, beside a label column, in Comfortable or
+ * Compact density. A calm 1× overview whose gene names and ribbons appear as
+ * zooming makes room for them.
+ *
+ * The chart owns the zoom (horizontal only), the hover and pin, the sticky
+ * label column and ruler, and keeping the reader's place across a density
+ * switch. The panel owns the density preference and the command bar, which
+ * the chart renders through `renderBar` so the bar can reach the zoom.
+ *
+ * Hovering redraws no glyph: the layers under the overlays take only the
+ * model and the zoom, and the hover reaches the trace, the rings and
+ * Compact's row tint through context.
+ */
+import { Zoom, type ProvidedZoom, type ZoomState } from "@visx/zoom";
+import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import type {
+  CompareRegionRow,
+  CompareRegionSettings,
 } from "@/lib/compare-region/contract";
 import {
-  constrainToTrack,
-  glyphPath,
-  glyphShape,
-  laneHeight,
-  layoutCompareRegion,
-  topMargin,
-  type CompareRegionLayout,
-  type PlacedRow,
-} from "@/lib/compare-region/layout";
+  densitySpecs,
+  labelWidthFor,
+  plotWidthFor,
+  rulerHeight,
+} from "@/lib/compare-region/density";
+import type { CompareRegionDensity } from "@/lib/compare-region/density-options";
+import { buildChartModel } from "@/lib/compare-region/families";
+import { rowAt } from "@/lib/compare-region/figure-frame";
+import { constrainToTrack } from "@/lib/compare-region/layout";
+import { focusLineX } from "@/lib/compare-region/ruler";
+import {
+  scrollPlace,
+  scrollTopFor,
+  type ScrollPlace,
+} from "@/lib/compare-region/scroll-place";
+import { canvasTextWidth } from "@/lib/compare-region/text-measure";
+import { carryMatrix, wheelDelta, zoomLimits } from "@/lib/compare-region/zoom";
 import { cn } from "@/lib/utils";
-import { featureHref } from "@/lib/views/hrefs";
+import { GlyphLayer } from "./compare-region-glyphs";
+import {
+  HighlightLayer,
+  HoverContext,
+  LabelHighlight,
+  PinContext,
+  RowHoverContext,
+} from "./compare-region-highlight";
+import { LabelColumn, LabelHeader } from "./compare-region-label-column";
+import { Legend } from "./compare-region-legend";
+import { SelectionStrip } from "./compare-region-selection-strip";
+import { CompareRegionTooltip } from "./compare-region-tooltip";
+import {
+  Baselines,
+  FocusLine,
+  RibbonLayer,
+  RowTint,
+  RulerAxis,
+  TrackBands,
+} from "./compare-region-track-layers";
+import type { ZoomControls } from "./compare-region-zoom-controls";
+import { useChartPointer } from "./use-chart-pointer";
 
-/** Width of the genome-name column, px (legacy's). */
-const labelWidth = 250;
-const tooltipOffset = 12;
-/** A pointer that moved further than this between press and release dragged, not clicked. */
-const clickSlop = 4;
-/** What the tooltip and the selection bar say for a feature with no annotated function. */
-const noProduct = "No product";
-const bp = new Intl.NumberFormat("en-US");
-
-/** A feature, by its row's and its own index in the layout. */
-interface FeatureRef {
-  rowIndex: number;
-  featureIndex: number;
-}
-
-interface ResolvedFeature {
-  row: CompareRegionRow;
-  feature: CompareRegionFeature;
-}
-
-/**
- * ⌘ + wheel zooms 20% a notch, horizontally only. Ctrl + wheel and a trackpad
- * pinch never get here: use-gesture hands them to Zoom as a pinch, which steps
- * by Zoom's default `pinchDelta` (10% an event; `constrainToTrack` keeps it
- * horizontal). A pinch sends many small events, so 20% there would be too fast.
- * Its anchor at the pointer needs `patches/@visx__zoom@4.0.0.patch`.
- */
-function wheelDelta(event: Pick<WheelEvent, "deltaY">) {
-  return { scaleX: event.deltaY < 0 ? 1.2 : 1 / 1.2, scaleY: 1 };
-}
-
-function resolve(layout: CompareRegionLayout, ref: FeatureRef): ResolvedFeature | null {
-  const placed = layout.rows.at(ref.rowIndex);
-  const item = placed?.features.at(ref.featureIndex);
-  return placed && item ? { row: placed.row, feature: item.feature } : null;
-}
-
-/** Only a CDS has the Compare Region tab, so only a `.peg.` gets a comparison link. */
-function hasCompareRegionTab(fid: string): boolean {
-  return /^fig\|.+\.peg\.\d+$/.test(fid);
-}
-
-/** The feature a pointer event landed on, from the glyph's data attributes. */
-function featureAt(target: EventTarget): FeatureRef | null {
-  if (!(target instanceof Element)) return null;
-  const glyph = target.closest("[data-feature]");
-  if (!glyph) return null;
-  return {
-    rowIndex: Number(glyph.getAttribute("data-row")),
-    featureIndex: Number(glyph.getAttribute("data-feature")),
-  };
-}
-
-function formatLocation(feature: CompareRegionFeature): string {
-  const size = bp.format(Math.abs(feature.end - feature.start) + 1);
-  const strand = feature.strand ? `, ${feature.strand}` : "";
-  return `${bp.format(feature.start)}…${bp.format(feature.end)} (${size} bp${strand})`;
-}
-
-function FeatureSummary({ row, feature }: ResolvedFeature) {
-  return (
-    <dl className="grid grid-cols-[auto_1fr] gap-x-2 gap-y-0.5">
-      <dt className="font-medium">ID</dt>
-      <dd>{feature.fid}</dd>
-      <dt className="font-medium">Product</dt>
-      <dd>{feature.product || noProduct}</dd>
-      <dt className="font-medium">Location</dt>
-      <dd>{formatLocation(feature)}</dd>
-      {feature.familyId && (
-        <>
-          <dt className="font-medium">Family</dt>
-          <dd>{feature.familyId}</dd>
-        </>
-      )}
-      {feature.identity !== null && (
-        <>
-          <dt className="font-medium">Identity</dt>
-          <dd>{`${String(feature.identity)}% to the focus gene`}</dd>
-        </>
-      )}
-      <dt className="font-medium">Genome</dt>
-      <dd>{row.genomeName}</dd>
-    </dl>
-  );
-}
-
-/**
- * Genome names: the first three words, then the rest on a second line (legacy).
- * The fragment matters: the React Compiler only treats a function as a
- * component, and caches it, when it makes JSX outside a callback.
- */
-function RowLabels({ layout }: { layout: CompareRegionLayout }) {
-  return (
-    <>
-      {layout.rows.map(({ row, firstLane }, index) => {
-        const y = topMargin + firstLane * laneHeight;
-        const words = row.genomeName.split(" ");
-        return (
-          <text key={`${row.genomeId}:${String(index)}`} x={5} y={y + 5} fill="currentColor">
-            <title>{row.genomeName}</title>
-            <tspan>{words.slice(0, 3).join(" ")}</tspan>
-            {words.length > 3 && (
-              <tspan x={15} dy={15}>
-                {words.slice(3).join(" ")}
-              </tspan>
-            )}
-          </text>
-        );
-      })}
-    </>
-  );
-}
-
-interface TrackRowProps {
-  placed: PlacedRow;
-  rowIndex: number;
-  x: (offset: number) => number;
-  plotWidth: number;
-  selectedFeature: number | null;
-  /** Skip glyphs off screen. */
-  cull: boolean;
-}
-
-function TrackRow({ placed, rowIndex, x, plotWidth, selectedFeature, cull }: TrackRowProps) {
-  const { row } = placed;
-  const baselineFrom = x(placed.baselineFrom);
-  const baselineTo = x(placed.baselineTo);
-  return (
-    <Group top={topMargin + placed.firstLane * laneHeight}>
-      <Line from={{ x: baselineFrom, y: 0 }} to={{ x: baselineTo, y: 0 }} stroke="currentColor" />
-      {placed.contigStartShown && (
-        <Line from={{ x: baselineFrom, y: -5 }} to={{ x: baselineFrom, y: 5 }} stroke="currentColor" />
-      )}
-      {placed.contigEndShown && (
-        <Line from={{ x: baselineTo, y: -5 }} to={{ x: baselineTo, y: 5 }} stroke="currentColor" />
-      )}
-      {placed.features.map((item, featureIndex) => {
-        const x1 = x(item.from);
-        const x2 = x(item.to);
-        // Zoomed in, most glyphs are off screen: skip them.
-        if (cull && (Math.max(x1, x2) < 0 || Math.min(x1, x2) > plotWidth)) return null;
-        const pinned = item.feature.fid === row.pinnedFid;
-        return (
-          <Group key={`${item.feature.fid}:${String(featureIndex)}`} top={item.lane * laneHeight}>
-            <path
-              d={glyphPath(glyphShape(item.feature.type), x1, x2)}
-              fill={featureFill(item.feature, row.pinnedFid)}
-              stroke="currentColor"
-              strokeWidth={featureIndex === selectedFeature ? 3 : pinned ? 2 : 1}
-              data-row={rowIndex}
-              data-feature={featureIndex}
-            />
-            {item.feature.family !== null && (
-              <text
-                x={(x1 + x2) / 2}
-                y={-12}
-                textAnchor="middle"
-                fontSize={9}
-                fill="currentColor"
-                pointerEvents="none"
-              >
-                {item.feature.family}
-              </text>
-            )}
-          </Group>
-        );
-      })}
-    </Group>
-  );
-}
-
-interface TracksProps {
-  layout: CompareRegionLayout;
-  matrix: TransformMatrix;
-  plotWidth: number;
-  selected: FeatureRef | null;
-  /**
-   * A drag is panning. It draws every glyph then: use-gesture captures the
-   * pointer on the pressed glyph, and removing that glyph once it is panned
-   * out of view would lose the capture, and with it the drag's end.
-   */
-  dragging: boolean;
-}
-
-/**
- * Every row's baseline and glyphs. It is its own component, returning a
- * fragment, so the React Compiler caches it by these props. Hovering changes
- * only the chart's tooltip state, which none of them carries, so it redraws
- * no glyph; a zoom or pan changes `matrix`, which rescales x without
- * recomputing the layout (the chart computes that once per answer).
- */
-function Tracks({ layout, matrix, plotWidth, selected, dragging }: TracksProps) {
-  const x = scaleLinear<number>({
-    domain: layout.domain,
-    range: [matrix.translateX, matrix.translateX + plotWidth * matrix.scaleX],
-  });
-  return (
-    <>
-      {layout.rows.map((placed, rowIndex) => (
-        <TrackRow
-          key={`${placed.row.genomeId}:${String(rowIndex)}`}
-          placed={placed}
-          rowIndex={rowIndex}
-          x={x}
-          plotWidth={plotWidth}
-          selectedFeature={selected?.rowIndex === rowIndex ? selected.featureIndex : null}
-          cull={!dragging}
-        />
-      ))}
-    </>
-  );
-}
-
-interface FeatureTooltipProps {
-  layout: CompareRegionLayout;
-  /** The hovered glyph, or nothing when the tooltip is closed. */
-  at: FeatureRef | undefined;
-  left: number | undefined;
-  top: number | undefined;
-}
-
-/** The hovered feature's details, beside the pointer. */
-function FeatureTooltip({ layout, at, left, top }: FeatureTooltipProps) {
-  const hovered = at ? resolve(layout, at) : null;
-  if (!hovered) return null;
-  return (
-    <TooltipWithBounds
-      left={left}
-      top={top}
-      unstyled
-      className="pointer-events-none absolute z-10 max-w-sm rounded-md border bg-popover p-2 text-xs text-popover-foreground shadow-md"
-    >
-      <FeatureSummary row={hovered.row} feature={hovered.feature} />
-    </TooltipWithBounds>
-  );
-}
-
-interface ToolbarProps {
-  layout: CompareRegionLayout;
-  selected: FeatureRef | null;
-  onClear: () => void;
-  onZoom: (factor: number) => void;
-  onReset: () => void;
-}
-
-function Toolbar({ layout, selected, onClear, onZoom, onReset }: ToolbarProps) {
-  const chosen = selected ? resolve(layout, selected) : null;
-  return (
-    <div className="flex min-h-10 flex-wrap items-center gap-x-4 gap-y-1 border-b px-3 py-1.5 text-sm">
-      {chosen ? (
-        <>
-          <span className="font-medium">{chosen.feature.fid}</span>
-          <span className="text-muted-foreground">{chosen.feature.product || noProduct}</span>
-          {isCompareRegionLinkable(chosen.feature.fid) && (
-            <Link className="text-link hover:underline" href={featureHref(chosen.feature.fid)}>
-              Open feature
-            </Link>
-          )}
-          {hasCompareRegionTab(chosen.feature.fid) && (
-            <Link
-              className="text-link hover:underline"
-              href={`${featureHref(chosen.feature.fid)}?tab=compare-region`}
-            >
-              Compare regions around this gene
-            </Link>
-          )}
-          <Button type="button" variant="ghost" size="icon-sm" aria-label="Clear selection" onClick={onClear}>
-            <X />
-          </Button>
-        </>
-      ) : (
-        <span className="text-xs text-muted-foreground">
-          Click a gene for its links. Drag to pan; Ctrl/⌘ + scroll or the buttons zoom.
-        </span>
-      )}
-      <div className="ml-auto flex gap-1">
-        <Button type="button" variant="outline" size="icon-sm" aria-label="Zoom in" onClick={() => { onZoom(1.5); }}>
-          <Plus />
-        </Button>
-        <Button type="button" variant="outline" size="icon-sm" aria-label="Zoom out" onClick={() => { onZoom(1 / 1.5); }}>
-          <Minus />
-        </Button>
-        <Button type="button" variant="outline" size="icon-sm" aria-label="Reset zoom" onClick={onReset}>
-          <RotateCcw />
-        </Button>
-      </div>
-    </div>
-  );
-}
+type ChartZoom = ProvidedZoom<SVGSVGElement> & ZoomState;
 
 export interface CompareRegionChartProps {
   /** The route's rows, the focus gene's first. Not empty. */
   rows: readonly CompareRegionRow[];
-  /** The width the chart fills, px (the panel measures it). */
+  /** The width the figure fills, px (the panel measures its card). */
   width: number;
-  /** Receives the outer <svg>, for Export. */
-  svgRef?: Ref<SVGSVGElement>;
+  /** The settings the rows were compared with (the strip's "Compare regions" link carries them). */
+  settings: CompareRegionSettings;
+  density: CompareRegionDensity;
+  onDensityChange: (density: CompareRegionDensity) => void;
+  /** The command bar, given the zoom controls and the export action. */
+  renderBar: (
+    zoom: ZoomControls | null,
+    onExport: (() => void) | null,
+  ) => ReactNode;
+  /** Receives the figure's <svg> for Export. */
+  onExport: (svg: SVGSVGElement) => void;
 }
 
-export function CompareRegionChart({ rows, width, svgRef }: CompareRegionChartProps) {
-  // The React Compiler computes this once per answer only while nothing in
-  // this body could mutate it: features are resolved from it in the
-  // components that show one (`Toolbar`, `FeatureTooltip`), not here.
-  const layout = layoutCompareRegion(rows);
-  const plotWidth = Math.max(width - labelWidth, 200);
-  // Wider than `width` when the tracks hit their floor; the chart then scrolls sideways.
-  const chartWidth = labelWidth + plotWidth;
-  const height = topMargin + layout.laneCount * laneHeight;
-  const wheelGuardRef = useRef<HTMLDivElement>(null);
-  const pressedAt = useRef<number | null>(null);
-  const [selected, setSelected] = useState<FeatureRef | null>(null);
-  const { tooltipOpen, tooltipData, tooltipLeft, tooltipTop, showTooltip, hideTooltip } =
-    useTooltip<FeatureRef>();
+/**
+ * Sticky in SVG (CSS `position: sticky` does not apply to SVG children): the
+ * label column stays left and the ruler and the label header on top while the
+ * tracks scroll under them. Each is marked `data-sticky`, so the export can
+ * put it back in place.
+ */
+function stickLayers(
+  scroller: HTMLElement,
+  labels: SVGGElement | null,
+  ruler: SVGGElement | null,
+  header: SVGGElement | null,
+) {
+  const { scrollLeft, scrollTop } = scroller;
+  labels?.setAttribute("transform", `translate(${String(scrollLeft)} 0)`);
+  ruler?.setAttribute("transform", `translate(0 ${String(scrollTop)})`);
+  header?.setAttribute("transform", `translate(0 ${String(scrollTop)})`);
+}
 
-  // A plain wheel scrolls the page past the chart; Ctrl/⌘ + wheel (and a
-  // trackpad pinch, which browsers send as one) zooms. Stopping a plain wheel
-  // here, in the capture phase, keeps it from Zoom's non-passive listener,
-  // which would cancel the scroll. Same rule as `choropleth-svg.tsx`. It
-  // never cancels a wheel itself, so it is passive. The guard is the element
-  // around `<Zoom key={plotWidth}>`, not one inside it: a width change
-  // remounts everything inside, and would leave this listener on a detached
-  // node. It is also the box the tooltip is placed in.
-  useEffect(() => {
-    const node = wheelGuardRef.current;
-    if (!node) return;
-    const passPlainWheelToPage = (event: WheelEvent) => {
-      if (!event.ctrlKey && !event.metaKey) event.stopPropagation();
+/**
+ * Carries the zoom to a new plot width (a density switch changes the label
+ * column, and so the plot; so does a resize): the same zoom level and the same
+ * visible bp range, its pixel translation scaled to the new width. Zoom itself
+ * is not remounted, so the bar, the strip and focus are untouched.
+ */
+function CarryZoom({
+  zoom,
+  plotWidth,
+}: {
+  zoom: ChartZoom;
+  plotWidth: number;
+}) {
+  const previousWidth = useRef(plotWidth);
+  useLayoutEffect(() => {
+    const from = previousWidth.current;
+    if (from === plotWidth) return;
+    previousWidth.current = plotWidth;
+    zoom.setTransformMatrix(carryMatrix(zoom.transformMatrix, from, plotWidth));
+  }, [zoom, plotWidth]);
+  return null;
+}
+
+export function CompareRegionChart({
+  rows,
+  width,
+  settings,
+  density,
+  onDensityChange,
+  renderBar,
+  onExport,
+}: CompareRegionChartProps) {
+  const {
+    wheelGuardRef,
+    handlers,
+    hovered,
+    selected,
+    setSelected,
+    tooltipLeft,
+    tooltipTop,
+  } = useChartPointer();
+  const [hoveredRow, setHoveredRow] = useState<number | null>(null);
+  const svgRef = useRef<SVGSVGElement>(null);
+  const scrollerRef = useRef<HTMLDivElement>(null);
+  const labelsRef = useRef<SVGGElement>(null);
+  const rulerRef = useRef<SVGGElement>(null);
+  const headerRef = useRef<SVGGElement>(null);
+  /** A density switch in flight: where the scroller stood, applied once the new density has rendered. */
+  const pendingPlace = useRef<ScrollPlace | null>(null);
+  /**
+   * The scroller's vertical scrollbar, px: 0 with overlay scrollbars, about
+   * 15 with classic ones once the figure is taller than the card. The figure
+   * fits beside it, or it would scroll sideways by that much.
+   */
+  const [scrollbarWidth, setScrollbarWidth] = useState(0);
+
+  // Once per answer and density (the React Compiler caches it): while
+  // rendering, nothing below hands these to a function that could change
+  // them, only to JSX (the handlers and effects read them later).
+  const spec = densitySpecs[density];
+  const model = buildChartModel(rows, spec);
+  const { frame } = model;
+  const height = frame.height;
+  // The width inside the scroller: `width` is the card's, scrollbar included.
+  const figureWidth = Math.max(0, width - scrollbarWidth);
+  const labelWidth = labelWidthFor(spec, figureWidth);
+  const plotWidth = plotWidthFor(spec, figureWidth);
+  const chartWidth = labelWidth + plotWidth;
+  const genomes = rows.length === 1 ? "genome" : "genomes";
+
+  // Measured whenever the scroller's content box changes, which a scrollbar
+  // appearing or going does; a new plot width carries the zoom (`CarryZoom`).
+  useLayoutEffect(() => {
+    const scroller = scrollerRef.current;
+    if (!scroller) return;
+    const measure = () => {
+      setScrollbarWidth(scroller.offsetWidth - scroller.clientWidth);
     };
-    node.addEventListener("wheel", passPlainWheelToPage, {
-      capture: true,
-      passive: true,
-    });
+    measure();
+    if (typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(measure);
+    observer.observe(scroller);
     return () => {
-      node.removeEventListener("wheel", passPlainWheelToPage, { capture: true });
+      observer.disconnect();
     };
   }, []);
 
-  // One handler for every glyph (event delegation), on entering one, not on every move.
-  const handlePointerOver = (event: ReactPointerEvent<SVGSVGElement>) => {
-    const ref = featureAt(event.target);
-    const box = wheelGuardRef.current?.getBoundingClientRect();
-    // `buttons`: no tooltip while a drag is panning.
-    if (!ref || !box || event.buttons !== 0) {
-      hideTooltip();
-      return;
-    }
-    showTooltip({
-      tooltipData: ref,
-      tooltipLeft: event.clientX - box.left + tooltipOffset,
-      tooltipTop: event.clientY - box.top + tooltipOffset,
-    });
+  // After a switch: the same rows back in view, in the new density's rows.
+  useLayoutEffect(() => {
+    const place = pendingPlace.current;
+    const scroller = scrollerRef.current;
+    if (!place || !scroller) return;
+    pendingPlace.current = null;
+    scroller.scrollTop = scrollTopFor(place, frame, scroller.clientHeight);
+    scroller.scrollLeft = place.left;
+    stickLayers(
+      scroller,
+      labelsRef.current,
+      rulerRef.current,
+      headerRef.current,
+    );
+  }, [frame]);
+
+  const switchDensity = (
+    next: CompareRegionDensity,
+    pinnedRow: number | null,
+  ) => {
+    if (next === density) return;
+    pendingPlace.current = scrollPlace(scrollerRef.current, frame, pinnedRow);
+    setHoveredRow(null);
+    onDensityChange(next);
   };
 
-  const handleClick = (event: ReactMouseEvent<SVGSVGElement>) => {
-    const pressed = pressedAt.current;
-    pressedAt.current = null;
-    if (pressed !== null && Math.abs(event.clientX - pressed) > clickSlop) return;
-    setSelected(featureAt(event.target));
+  const exportChart = () => {
+    if (svgRef.current) onExport(svgRef.current);
   };
 
-  const handlePointerDown = (event: ReactPointerEvent<SVGSVGElement>) => {
-    pressedAt.current = event.clientX;
-    // A drag pans the glyphs away from an open tooltip.
-    hideTooltip();
-  };
+  // The layers a zoom or a pan does not change, made here rather than in
+  // Zoom's render prop: every zoom then hands React these same elements, so
+  // it re-renders none of them (with 50 genomes, the label column alone is
+  // hundreds of nodes). Their hover and row-tint overlays still update through
+  // context.
+  const strip = (
+    <SelectionStrip
+      model={model}
+      settings={settings}
+      onClear={() => {
+        setSelected(null);
+      }}
+      density={density}
+      onDensityChange={switchDensity}
+    />
+  );
+  const trackBands = (
+    <>
+      <TrackBands frame={frame} plotWidth={plotWidth} />
+      {spec.rowTint && <RowTint frame={frame} x={0} width={plotWidth} />}
+    </>
+  );
+  const labelColumn = (
+    <>
+      <LabelColumn
+        model={model}
+        labelWidth={labelWidth}
+        measure={canvasTextWidth}
+      >
+        {spec.rowTint && (
+          <RowTint frame={frame} x={0} width={labelWidth - 1} edge />
+        )}
+      </LabelColumn>
+      <LabelHighlight model={model} labelWidth={labelWidth} />
+    </>
+  );
+  const labelHeader = <LabelHeader spec={spec} labelWidth={labelWidth} />;
 
   return (
-    <div ref={wheelGuardRef} className="relative flex flex-col">
-      {/* A new width restarts the zoom: the old translation is in old pixels. */}
-      <Zoom<SVGSVGElement>
-        key={plotWidth}
-        width={plotWidth}
-        height={height}
-        wheelDelta={wheelDelta}
-        constrain={(next, prev) => constrainToTrack(next, prev, plotWidth)}
-      >
-        {/* Nothing in here depends on the tooltip, so a hover re-renders none of it. */}
-        {(zoom) => (
-          <>
-            <Toolbar
-              layout={layout}
-              selected={selected}
-              onClear={() => { setSelected(null); }}
-              onZoom={(factor) => { zoom.scale({ scaleX: factor, scaleY: 1 }); }}
-              onReset={() => { zoom.reset(); }}
-            />
-            {/* Focusable so keyboard users can scroll a chart wider than the
-                panel (axe scrollable-region-focusable). */}
-            <div
-              className="overflow-x-auto"
-              tabIndex={0}
-              role="group"
-              aria-label="Compared regions (scrollable)"
+    <div ref={wheelGuardRef} className="relative flex min-h-0 flex-col">
+      <PinContext value={selected}>
+        <HoverContext value={hovered}>
+          <RowHoverContext value={hoveredRow}>
+            <Zoom<SVGSVGElement>
+              width={plotWidth}
+              height={height}
+              wheelDelta={wheelDelta}
+              constrain={(next, prev) =>
+                constrainToTrack(next, prev, plotWidth)
+              }
             >
-              <svg
-                ref={svgRef}
-                width={chartWidth}
-                height={height}
-                role="img"
-                aria-label={`Compared regions of ${String(rows.length)} ${rows.length === 1 ? "genome" : "genomes"}`}
-                className="block text-foreground"
-                fontSize={12}
-              >
-                {/* Nested svgs clip: long names, and glyphs outside the window. */}
-                <svg width={labelWidth} height={height}>
-                  <RowLabels layout={layout} />
-                </svg>
-                {/* Zoom's container: its points are measured in this svg, label column excluded. */}
-                <svg
-                  ref={zoom.containerRef}
-                  x={labelWidth}
-                  width={plotWidth}
-                  height={height}
-                  // Zoom is horizontal only: a vertical touch pan scrolls the page.
-                  className={cn("touch-pan-y", zoom.isDragging ? "cursor-grabbing" : "cursor-grab")}
-                  onPointerDown={handlePointerDown}
-                  onPointerOver={handlePointerOver}
-                  onPointerLeave={hideTooltip}
-                  onClick={handleClick}
-                >
-                  <Bar width={plotWidth} height={height} fill="transparent" data-track-background="" />
-                  <Tracks
-                    layout={layout}
-                    matrix={zoom.transformMatrix}
-                    plotWidth={plotWidth}
-                    selected={selected}
-                    dragging={zoom.isDragging}
-                  />
-                </svg>
-              </svg>
-            </div>
-          </>
-        )}
-      </Zoom>
+              {/* Nothing in here reads the hover: it reaches the trace and tint layers through context. */}
+              {(zoom) => {
+                const matrix = zoom.transformMatrix;
+                const limits = zoomLimits(matrix);
+                const controls: ZoomControls = {
+                  ...limits,
+                  zoomBy: (factor) => {
+                    // About the focus line while it is in view, else the middle.
+                    const focusX = focusLineX(
+                      model.layout.domain,
+                      matrix,
+                      plotWidth,
+                    );
+                    const point =
+                      focusX >= 0 && focusX <= plotWidth
+                        ? { x: focusX, y: height / 2 }
+                        : undefined;
+                    zoom.scale({ scaleX: factor, scaleY: 1, point });
+                  },
+                  fit: () => {
+                    zoom.clear();
+                  },
+                };
+                return (
+                  <>
+                    <CarryZoom zoom={zoom} plotWidth={plotWidth} />
+                    {renderBar(controls, exportChart)}
+                    {strip}
+                    {/* Focusable so keyboard users can scroll a figure wider or taller than the card. */}
+                    <div
+                      ref={scrollerRef}
+                      className="min-h-0 overflow-auto"
+                      tabIndex={0}
+                      role="group"
+                      aria-label="Compared regions (scrollable)"
+                      onScroll={(event) => {
+                        stickLayers(
+                          event.currentTarget,
+                          labelsRef.current,
+                          rulerRef.current,
+                          headerRef.current,
+                        );
+                      }}
+                    >
+                      <svg
+                        ref={svgRef}
+                        width={chartWidth}
+                        height={height}
+                        role="img"
+                        aria-label={`Compared regions of ${String(rows.length)} ${genomes}`}
+                        className="block text-foreground"
+                        fontSize={12}
+                        onPointerMove={
+                          spec.rowTint
+                            ? (event) => {
+                                // The row under the pointer, label column and track alike; none under the sticky ruler.
+                                const svg = event.currentTarget;
+                                const y =
+                                  event.clientY -
+                                  svg.getBoundingClientRect().top;
+                                const scrollTop =
+                                  svg.parentElement?.scrollTop ?? 0;
+                                setHoveredRow(
+                                  y - scrollTop < rulerHeight
+                                    ? null
+                                    : rowAt(frame, y),
+                                );
+                              }
+                            : undefined
+                        }
+                        onPointerLeave={
+                          spec.rowTint
+                            ? () => {
+                                setHoveredRow(null);
+                              }
+                            : undefined
+                        }
+                      >
+                        {/* Zoom's container: its points are measured in this svg, label column excluded. */}
+                        <svg
+                          ref={zoom.containerRef}
+                          x={labelWidth}
+                          width={plotWidth}
+                          height={height}
+                          // Zoom is horizontal only: a vertical touch pan scrolls the page.
+                          className={cn(
+                            "touch-pan-y",
+                            zoom.isDragging ? "cursor-grabbing" : "cursor-grab",
+                          )}
+                          {...handlers}
+                        >
+                          {/* The click target between glyphs: a click there clears the pin. */}
+                          <rect
+                            width={plotWidth}
+                            height={height}
+                            className="fill-transparent"
+                            data-track-background=""
+                          />
+                          {trackBands}
+                          <Baselines
+                            model={model}
+                            matrix={matrix}
+                            plotWidth={plotWidth}
+                          />
+                          <RibbonLayer
+                            model={model}
+                            matrix={matrix}
+                            plotWidth={plotWidth}
+                          />
+                          <FocusLine
+                            model={model}
+                            matrix={matrix}
+                            plotWidth={plotWidth}
+                          />
+                          <GlyphLayer
+                            model={model}
+                            matrix={matrix}
+                            plotWidth={plotWidth}
+                            // A drag holds the pointer on the pressed glyph: cull none while it pans.
+                            cull={!zoom.isDragging}
+                            measure={canvasTextWidth}
+                          />
+                          <HighlightLayer
+                            model={model}
+                            matrix={matrix}
+                            plotWidth={plotWidth}
+                            measure={canvasTextWidth}
+                          />
+                          <g ref={rulerRef} data-sticky="">
+                            <RulerAxis
+                              model={model}
+                              matrix={matrix}
+                              plotWidth={plotWidth}
+                            />
+                          </g>
+                        </svg>
+                        <g ref={labelsRef} data-sticky="">
+                          {labelColumn}
+                          <g ref={headerRef} data-sticky="">
+                            {labelHeader}
+                          </g>
+                        </g>
+                      </svg>
+                    </div>
+                  </>
+                );
+              }}
+            </Zoom>
+            <Legend />
+          </RowHoverContext>
+        </HoverContext>
+      </PinContext>
       {/* Outside the scroller, so its overflow does not clip the tooltip. */}
-      <FeatureTooltip
-        layout={layout}
-        at={tooltipOpen ? tooltipData : undefined}
+      <CompareRegionTooltip
+        model={model}
+        at={hovered}
         left={tooltipLeft}
         top={tooltipTop}
       />

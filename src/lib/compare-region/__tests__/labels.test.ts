@@ -176,6 +176,18 @@ describe("glyphLabel", () => {
     );
   });
 
+  it("labels a body wholly off the plot in all of it", () => {
+    // Drawn ahead of a drag: centered in its whole body, to slide into view.
+    expect(label(-300, -200)).toEqual(
+      expect.objectContaining({ text: "SecY", x: -253.5 }),
+    );
+    expect(label(900, 1000)).toEqual(
+      expect.objectContaining({ text: "SecY", x: 946.5 }),
+    );
+    // Partly on it: still only the part in view.
+    expect(label(-50, 60)?.x).toBe(26.5);
+  });
+
   it("never labels a BLAST hit, an other feature or a gene with no product", () => {
     expect(label(0, 300, "blast")).toBeNull();
     expect(label(0, 300, "other")).toBeNull();

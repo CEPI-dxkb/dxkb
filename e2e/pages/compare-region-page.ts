@@ -6,7 +6,8 @@ import { expect, type Locator, type Page } from "@playwright/test";
  * the selection strip with the Comfortable/Compact density toggle (one icon
  * button named for the density it switches to), and the
  * figure, an `<svg role="img">` with one row per genome. The figure's glyphs
- * carry `data-row` and `data-feature`, the hover overlays `data-overlay`;
+ * carry `data-row` and `data-feature`, the hover overlays `data-overlay`, and
+ * the layers a drag slides `data-pan` (with a `transform` only mid-drag);
  * the tooltip is `[data-feature-tooltip]`, which hangs just below and right
  * of its glyph (left of it, or above it, where that side lacks room). A
  * click on a glyph pins it and pins its tooltip as the feature card, a
@@ -33,6 +34,8 @@ export class CompareRegionPage {
   readonly clearSelection: Locator;
   /** The pinned gene's card: its tooltip, pinned and expanded. */
   readonly featureCard: Locator;
+  /** The figure's layers a drag slides by a `transform` while it pans. */
+  readonly panLayers: Locator;
 
   constructor(page: Page) {
     this.page = page;
@@ -56,6 +59,7 @@ export class CompareRegionPage {
     this.featureCard = this.card.getByRole("dialog", {
       name: "Feature details",
     });
+    this.panLayers = this.figure.locator("[data-pan]");
   }
 
   /** Closes the feature card with its button, which clears the pin. */
@@ -108,11 +112,11 @@ export class CompareRegionPage {
   }
 
   /**
-   * The veil the trace lays over the tracks while a family is traced (the
-   * first `data-overlay` layer's backdrop): transparent at rest.
+   * The veil the trace lays over the tracks while a family is traced
+   * (`data-trace-veil`, one of the `data-overlay` layers): transparent at rest.
    */
   traceVeil(): Locator {
-    return this.figure.locator("[data-overlay] > rect").first();
+    return this.figure.locator("[data-trace-veil]");
   }
 
   /** The trace's two slots: the current family's, and the last one's while it fades out. */

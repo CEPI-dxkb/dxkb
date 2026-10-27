@@ -160,7 +160,8 @@ export interface GlyphLabel {
 
 /**
  * A gene's label: the longest short form of its product that fits whole in
- * the part of the gene's body on screen, centered there. Null when none fits
+ * the part of the gene's body on screen (all of it, for a body off the plot),
+ * centered there. Null when none fits
  * (most genes at 1×), so a label is never cut. Zoom widens every body, so
  * more and longer labels fit without any rule of their own. Compact's slim
  * overlap-lane genes (under `labelMinHeight`) never get one.
@@ -183,8 +184,12 @@ export function glyphLabel(
   const head = Math.min(spec.headLength, Math.abs(x2 - x1));
   const bodyLeft = forward ? x1 : x2 + head;
   const bodyRight = forward ? x2 - head : x1;
-  const left = Math.max(bodyLeft, 0) + spec.labelPad;
-  const right = Math.min(bodyRight, plotWidth) - spec.labelPad;
+  // A body wholly off the plot (drawn ahead of a drag, which slides it into
+  // view without drawing it again) is labelled in all of it.
+  const onPlot = bodyRight > 0 && bodyLeft < plotWidth;
+  const left = (onPlot ? Math.max(bodyLeft, 0) : bodyLeft) + spec.labelPad;
+  const right =
+    (onPlot ? Math.min(bodyRight, plotWidth) : bodyRight) - spec.labelPad;
   const room = right - left;
   if (room < spec.labelMinRoom) return null;
   const { forms, quiet } = labelForms(item.feature.product);

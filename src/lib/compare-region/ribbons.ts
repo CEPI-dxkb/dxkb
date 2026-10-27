@@ -83,7 +83,10 @@ interface RibbonEnds {
   bottom: number;
 }
 
-/** Both genes' ends on screen and the gap between them; null when the whole ribbon is off screen. */
+/**
+ * Both genes' ends on screen and the gap between them; null when the whole
+ * ribbon lies more than `reach` px off the plot (see `placeGlyph`).
+ */
 function ribbonEnds(
   spec: DensitySpec,
   layout: CompareRegionLayout,
@@ -91,6 +94,7 @@ function ribbonEnds(
   ribbon: Ribbon,
   x: (offset: number) => number,
   plotWidth: number,
+  reach: number,
 ): RibbonEnds | null {
   const a =
     layout.rows[ribbon.upper.rowIndex].features[ribbon.upper.featureIndex];
@@ -101,8 +105,8 @@ function ribbonEnds(
   const b1 = x(b.from);
   const b2 = x(b.to);
   if (
-    Math.max(a1, a2, b1, b2) < -2 ||
-    Math.min(a1, a2, b1, b2) > plotWidth + 2
+    Math.max(a1, a2, b1, b2) < -2 - reach ||
+    Math.min(a1, a2, b1, b2) > plotWidth + 2 + reach
   ) {
     return null;
   }
@@ -123,8 +127,9 @@ export function ribbonPath(
   ribbon: Ribbon,
   x: (offset: number) => number,
   plotWidth: number,
+  reach = 0,
 ): string | null {
-  const ends = ribbonEnds(spec, layout, frame, ribbon, x, plotWidth);
+  const ends = ribbonEnds(spec, layout, frame, ribbon, x, plotWidth, reach);
   if (!ends) return null;
   const { a1, a2, b1, b2, top, bottom } = ends;
   const middle = (top + bottom) / 2;
@@ -172,8 +177,9 @@ export function connectorPath(
   ribbon: Ribbon,
   x: (offset: number) => number,
   plotWidth: number,
+  reach = 0,
 ): { d: string; reach: number } | null {
-  const ends = ribbonEnds(spec, layout, frame, ribbon, x, plotWidth);
+  const ends = ribbonEnds(spec, layout, frame, ribbon, x, plotWidth, reach);
   if (!ends) return null;
   const { a1, a2, b1, b2, top, bottom } = ends;
   const from = (a1 + a2) / 2;

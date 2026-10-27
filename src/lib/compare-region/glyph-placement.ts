@@ -40,9 +40,10 @@ export interface GlyphPlacement {
 }
 
 /**
- * `item`'s glyph in its row, under the zoom's bp-to-px scale `x`. Null when
- * `cull` is on and the glyph is off the plot (zoomed in, most are); a drag
- * turns `cull` off, since removing the pressed glyph would lose the pointer.
+ * `item`'s glyph in its row, under the zoom's bp-to-px scale `x`. Null when it
+ * lies more than `reach` px off the plot (zoomed in, most do): 0 at rest, a
+ * plot's width while a drag pans (`panReach`), and `Infinity` for the glyph a
+ * drag pressed, since removing it would lose the pointer.
  */
 export function placeGlyph(
   spec: DensitySpec,
@@ -51,11 +52,11 @@ export function placeGlyph(
   x: (offset: number) => number,
   plotWidth: number,
   measure: TextMeasure,
-  cull = true,
+  reach = 0,
 ): GlyphPlacement | null {
   const x1 = x(item.from);
   const x2 = x(item.to);
-  if (cull && isOffPlot(x1, x2, plotWidth)) return null;
+  if (isOffPlot(x1, x2, plotWidth, 1 + reach)) return null;
   const kind = glyphKind(item.feature);
   const box = glyphBox(spec, rowFrame, item);
   return {

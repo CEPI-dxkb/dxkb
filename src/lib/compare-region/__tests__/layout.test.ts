@@ -162,6 +162,24 @@ describe("constrainToTrack", () => {
     expect(contentAt(capped, 400)).toBe(contentAt(nearCap, 400));
   });
 
+  it("hands back the matrix it was given when nothing moves", () => {
+    // A drag at 1× (the whole window in view) and one against the window's end.
+    expect(
+      constrainToTrack({ ...identity, translateX: 40 }, identity, 800),
+    ).toBe(identity);
+    const atEnd = { ...identity, scaleX: 2, translateX: -800 };
+    expect(
+      constrainToTrack({ ...atEnd, translateX: -900 }, atEnd, 800),
+    ).toBe(atEnd);
+    // A zoom past the cap, about the point already under it.
+    const atCap = { ...identity, scaleX: maxZoom, translateX: -4000 };
+    expect(constrainToTrack({ ...atCap, scaleX: 30 }, atCap, 800)).toBe(atCap);
+    // A pan that moves is a new matrix.
+    const moved = constrainToTrack({ ...atEnd, translateX: -700 }, atEnd, 800);
+    expect(moved).not.toBe(atEnd);
+    expect(moved).toMatchObject({ scaleX: 2, translateX: -700 });
+  });
+
   it("ignores vertical scale and pan", () => {
     expect(
       constrainToTrack(

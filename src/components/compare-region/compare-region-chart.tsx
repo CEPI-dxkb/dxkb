@@ -13,7 +13,9 @@
  *
  * Hovering redraws no glyph: the layers under the overlays take only the
  * model and the zoom, and the hover reaches the trace, the rings and
- * Compact's row tint through context.
+ * Compact's row tint through context. Panning redraws none either: while a
+ * drag pans, the layers that move with the zoom slide by one transform
+ * (`PannedLayers`).
  */
 import { Zoom, type ProvidedZoom, type ZoomState } from "@visx/zoom";
 import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
@@ -41,9 +43,7 @@ import { canvasTextWidth } from "@/lib/compare-region/text-measure";
 import { carryMatrix, wheelDelta, zoomLimits } from "@/lib/compare-region/zoom";
 import { cn } from "@/lib/utils";
 import { FeatureCard } from "./compare-region-feature-card";
-import { GlyphLayer } from "./compare-region-glyphs";
 import {
-  HighlightLayer,
   HoverContext,
   LabelHighlight,
   PinContext,
@@ -51,12 +51,10 @@ import {
 } from "./compare-region-highlight";
 import { LabelColumn, LabelHeader } from "./compare-region-label-column";
 import { Legend } from "./compare-region-legend";
+import { PannedLayers } from "./compare-region-panned-layers";
 import { SelectionStrip } from "./compare-region-selection-strip";
 import { CompareRegionTooltip } from "./compare-region-tooltip";
 import {
-  Baselines,
-  FocusLine,
-  RibbonLayer,
   RowTint,
   RulerAxis,
   TrackBands,
@@ -158,7 +156,7 @@ export function CompareRegionChart({
    * it and opens its card, expanded; closing the card clears the pin.
    */
   const [cardExpanded, setCardExpanded] = useState(true);
-  const { wheelGuardRef, handlers, hovered, selected, setSelected } =
+  const { wheelGuardRef, handlers, hovered, pressed, selected, setSelected } =
     useChartPointer(() => {
       setCardExpanded(true);
     });
@@ -462,32 +460,11 @@ export function CompareRegionChart({
                             data-track-background=""
                           />
                           {trackBands}
-                          <Baselines
+                          <PannedLayers
                             model={model}
                             matrix={matrix}
-                            plotWidth={plotWidth}
-                          />
-                          <RibbonLayer
-                            model={model}
-                            matrix={matrix}
-                            plotWidth={plotWidth}
-                          />
-                          <FocusLine
-                            model={model}
-                            matrix={matrix}
-                            plotWidth={plotWidth}
-                          />
-                          <GlyphLayer
-                            model={model}
-                            matrix={matrix}
-                            plotWidth={plotWidth}
-                            // A drag holds the pointer on the pressed glyph: cull none while it pans.
-                            cull={!zoom.isDragging}
-                            measure={canvasTextWidth}
-                          />
-                          <HighlightLayer
-                            model={model}
-                            matrix={matrix}
+                            dragging={zoom.isDragging}
+                            pressed={pressed}
                             plotWidth={plotWidth}
                             measure={canvasTextWidth}
                           />

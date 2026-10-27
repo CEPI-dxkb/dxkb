@@ -59,6 +59,7 @@ export function useChartPointer(onPick?: (ref: FeatureRef) => void) {
   const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [selected, setSelected] = useState<FeatureRef | null>(null);
   const [hovered, setHovered] = useState<FeatureRef | undefined>(undefined);
+  const [pressed, setPressed] = useState<FeatureRef | null>(null);
   const hideTooltip = () => {
     setHovered(undefined);
   };
@@ -126,6 +127,8 @@ export function useChartPointer(onPick?: (ref: FeatureRef) => void) {
     },
     onPointerDown: (event: ReactPointerEvent<SVGSVGElement>) => {
       pressedAt.current = event.clientX;
+      const ref = featureAt(event.target);
+      setPressed((previous) => (isSameFeature(previous, ref) ? previous : ref));
       // A drag pans the glyphs away from an open tooltip.
       hideNow();
     },
@@ -148,6 +151,11 @@ export function useChartPointer(onPick?: (ref: FeatureRef) => void) {
     setSelected,
     /** The hovered glyph, or undefined when the tooltip is closed. */
     hovered,
+    /**
+     * The glyph the last press landed on (null on the empty track): a drag
+     * from it must keep it drawn, since it holds the pointer's capture.
+     */
+    pressed,
     handlers,
   };
 }

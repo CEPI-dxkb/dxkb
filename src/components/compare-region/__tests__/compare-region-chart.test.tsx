@@ -14,6 +14,8 @@ import {
 } from "@/lib/compare-region/contract";
 import type { CompareRegionDensity } from "@/lib/compare-region/density-options";
 import { rowIdentity } from "@/lib/compare-region/genome-labels";
+import { placeGlyph } from "@/lib/compare-region/glyph-placement";
+import { rulerTicks } from "@/lib/compare-region/ruler";
 import { featureHref } from "@/lib/views/hrefs";
 import { focusRow, mirroredRow } from "@/test-helpers/compare-region";
 import { server } from "@/test-helpers/msw-server";
@@ -27,6 +29,20 @@ vi.mock("@/lib/compare-region/genome-labels", async (importOriginal) => {
   const actual =
     await importOriginal<typeof import("@/lib/compare-region/genome-labels")>();
   return { ...actual, rowIdentity: vi.fn(actual.rowIdentity) };
+});
+// Spied, to count glyph placements: a pan slides what is drawn, placing none.
+vi.mock("@/lib/compare-region/glyph-placement", async (importOriginal) => {
+  const actual =
+    await importOriginal<
+      typeof import("@/lib/compare-region/glyph-placement")
+    >();
+  return { ...actual, placeGlyph: vi.fn(actual.placeGlyph) };
+});
+// Spied, to count the ruler's renders: it follows every zoom render.
+vi.mock("@/lib/compare-region/ruler", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("@/lib/compare-region/ruler")>();
+  return { ...actual, rulerTicks: vi.fn(actual.rulerTicks) };
 });
 // jsdom has no canvas: the figure measures its labels with the estimate (D9).
 vi.mock("@/lib/compare-region/text-measure", async (importOriginal) => {
@@ -606,39 +622,139 @@ describe("CompareRegionChart", () => {
       expect(glyph(container, 0, 0)).toBeInTheDocument();
     });
 
-    it("skips no glyph while a drag pans, so the pressed one is never removed", async () => {
-      // use-gesture captures the pointer on the pressed glyph; removing that
-      // glyph would lose the capture, and with it the drag's end.
+    describe("a drag", () => {
+      // use-gesture captures the pointer on the pressed glyph, which jsdom
+      // cannot do: removing that glyph would lose the capture, and with it
+      // the drag's end.
       const pointerCapture = {
         setPointerCapture: vi.fn(),
         releasePointerCapture: vi.fn(),
         hasPointerCapture: () => true,
       };
-      Object.assign(Element.prototype, pointerCapture);
-      try {
-        const { container } = await renderChart();
-        zoomIn(2);
-        const offScreen = '[data-row="0"][data-feature="0"]';
-        expect(container.querySelector(offScreen)).toBeNull();
-
-        const focusGene = glyph(container, 0, 1);
-        const pointer = { pointerId: 1, buttons: 1, clientY: 30 };
-        fireEvent.pointerDown(focusGene, { ...pointer, clientX: 400 });
-        fireEvent.pointerMove(focusGene, { ...pointer, clientX: 390 });
-        expect(pointerCapture.setPointerCapture).toHaveBeenCalled();
-        expect(container.querySelector(offScreen)).toBeInTheDocument();
-
-        fireEvent.pointerUp(focusGene, {
-          ...pointer,
-          buttons: 0,
-          clientX: 390,
-        });
-        expect(container.querySelector(offScreen)).toBeNull();
-      } finally {
+      beforeEach(() => {
+        Object.assign(Element.prototype, pointerCapture);
+      });
+      afterEach(() => {
         for (const name of Object.keys(pointerCapture)) {
           Reflect.deleteProperty(Element.prototype, name);
         }
+      });
+
+      const pointer = { pointerId: 1, buttons: 1, clientY: 30 };
+      /** Press `element` at `from`, then move to each x in turn: the first move starts the drag. */
+      function drag(element: Element, from: number, ...moves: number[]) {
+        fireEvent.pointerDown(element, { ...pointer, clientX: from });
+        for (const clientX of moves) {
+          fireEvent.pointerMove(element, { ...pointer, clientX });
+        }
       }
+      function release(element: Element, at: number) {
+        fireEvent.pointerUp(element, { ...pointer, buttons: 0, clientX: at });
+      }
+      /** The transform sliding `element`'s layer, or null when it is drawn where it stands. */
+      function slideOf(element: Element): string | null {
+        return element.closest("[data-pan]")?.getAttribute("transform") ?? null;
+      }
+
+      it("draws a plot's width past either edge while it pans, then only what is in view", async () => {
+        const { container } = await renderChart();
+        zoomIn(2);
+        // 2.25×: the upstream gene is 118 px left of the window.
+        const upstream = '[data-row="0"][data-feature="0"]';
+        expect(container.querySelector(upstream)).toBeNull();
+
+        const focusGene = glyph(container, 0, 1);
+        drag(focusGene, 400, 390);
+        expect(pointerCapture.setPointerCapture).toHaveBeenCalled();
+        expect(container.querySelector(upstream)).toBeInTheDocument();
+
+        release(focusGene, 390);
+        expect(container.querySelector(upstream)).toBeNull();
+      });
+
+      it("draws nothing further than a plot's width off the plot", async () => {
+        const { container } = await renderChart();
+        zoomIn(4);
+        // 5.06×: the upstream gene is 687 px left of the window, past the 674 px reach.
+        const focusGene = glyph(container, 0, 1);
+        drag(focusGene, 400, 390);
+        expect(
+          container.querySelector('[data-row="0"][data-feature="0"]'),
+        ).toBeNull();
+        release(focusGene, 390);
+      });
+
+      it("slides what is drawn by one transform as it pans, placing no glyph again", async () => {
+        const { container } = await renderChart();
+        zoomIn(2);
+        const focusGene = glyph(container, 0, 1);
+        // Pinned: its ring and its family's trace slide with the glyphs.
+        clickAt(focusGene, 400);
+        const outline = focusGene.getAttribute("d");
+        const focusLine = container.querySelector(
+          'line[stroke-dasharray="4 3"]',
+        );
+        const ring = container.querySelector("[data-overlay] path.stroke-primary");
+        const placed = vi.mocked(placeGlyph);
+
+        drag(focusGene, 400, 390);
+        placed.mockClear();
+        fireEvent.pointerMove(focusGene, { ...pointer, clientX: 370 });
+        fireEvent.pointerMove(focusGene, { ...pointer, clientX: 350 });
+        expect(placed).not.toHaveBeenCalled();
+        expect(focusGene).toHaveAttribute("d", outline);
+        expect(slideOf(focusGene)).toBe("translate(-40 0)");
+        expect(focusLine && slideOf(focusLine)).toBe("translate(-40 0)");
+        expect(ring && slideOf(ring)).toBe("translate(-40 0)");
+        // The veil under the trace covers the plot: it does not slide.
+        expect(
+          slideOf(container.querySelector("[data-trace-veil]") ?? focusGene),
+        ).toBeNull();
+
+        // At rest the layers are drawn where they stand, with nothing left to slide.
+        release(focusGene, 350);
+        expect(placed).toHaveBeenCalled();
+        expect(slideOf(glyph(container, 0, 1))).toBeNull();
+        expect(glyph(container, 0, 1).getAttribute("d")).not.toBe(outline);
+      });
+
+      it("draws again once it pans past what was drawn, keeping the pressed glyph", async () => {
+        const { container } = await renderChart();
+        zoomIn(4);
+        const focusGene = glyph(container, 0, 1);
+        drag(focusGene, 400, 390);
+        const placed = vi.mocked(placeGlyph);
+        placed.mockClear();
+
+        // 700 px: past the 674 px drawn beyond the edge, so it draws again there.
+        fireEvent.pointerMove(focusGene, { ...pointer, clientX: -310 });
+        expect(placed).toHaveBeenCalled();
+        expect(slideOf(focusGene)).toBeNull();
+        placed.mockClear();
+        fireEvent.pointerMove(focusGene, { ...pointer, clientX: -320 });
+        expect(placed).not.toHaveBeenCalled();
+        expect(slideOf(focusGene)).toBe("translate(-10 0)");
+
+        // A pan to the track's end leaves the pressed gene far off the plot: still drawn.
+        fireEvent.pointerMove(focusGene, { ...pointer, clientX: -2000 });
+        expect(focusGene.isConnected).toBe(true);
+        expect(glyph(container, 0, 1)).toBe(focusGene);
+        release(focusGene, -2000);
+        expect(focusGene.isConnected).toBe(false);
+      });
+
+      it("re-renders nothing for a drag the track holds still", async () => {
+        const { container } = await renderChart();
+        // At 1× the whole window is in view: a drag cannot pan.
+        const focusGene = glyph(container, 0, 1);
+        drag(focusGene, 400, 390);
+        const ruler = vi.mocked(rulerTicks);
+        ruler.mockClear();
+        fireEvent.pointerMove(focusGene, { ...pointer, clientX: 370 });
+        fireEvent.pointerMove(focusGene, { ...pointer, clientX: 420 });
+        expect(ruler).not.toHaveBeenCalled();
+        release(focusGene, 420);
+      });
     });
 
     it("redraws no zoom-independent layer on a zoom (M10)", async () => {

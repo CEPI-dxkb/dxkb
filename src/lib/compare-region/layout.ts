@@ -155,6 +155,7 @@ export function layoutCompareRegion(
  * moves `translateX` in proportion to `scaleX`. So when the scale is clamped,
  * the step from `prev` to `next` is cut short by the same fraction, which
  * keeps the content under that point still instead of sliding the view.
+ * When that leaves the matrix as it was, `prev` itself comes back.
  */
 export function constrainToTrack(
   next: TransformMatrix,
@@ -172,5 +173,17 @@ export function constrainToTrack(
     0,
     Math.max(plotWidth * (1 - scaleX), anchoredX),
   );
+  // Nothing moves (a drag at 1× or against an end, a zoom at its limit): the
+  // same object back, so Zoom's state is unchanged and nothing re-renders.
+  if (
+    prev.scaleX === scaleX &&
+    prev.translateX === translateX &&
+    prev.scaleY === 1 &&
+    prev.translateY === 0 &&
+    prev.skewX === 0 &&
+    prev.skewY === 0
+  ) {
+    return prev;
+  }
   return { scaleX, scaleY: 1, translateX, translateY: 0, skewX: 0, skewY: 0 };
 }

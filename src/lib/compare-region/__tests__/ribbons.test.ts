@@ -307,6 +307,42 @@ describe("ribbonPath and connectorPath", () => {
       ).toBeNull();
     },
   );
+
+  it("draws a ribbon off the plot within the reach a drag draws past it", () => {
+    // 600 px left: the focus genes span −297 to −196, inside a 674 px reach.
+    const away = trackScale(
+      model.layout.domain,
+      { scaleX: 1, translateX: -600 },
+      plotWidth,
+    );
+    const ribbon = familyRibbon(model, 1);
+    const path = (reach?: number) =>
+      ribbonPath(
+        comfortable,
+        model.layout,
+        model.frame,
+        ribbon,
+        away,
+        plotWidth,
+        reach,
+      );
+    expect(path()).toBeNull();
+    expect(path(150)).toBeNull();
+    expect(path(plotWidth)).toBe(
+      "M-296.7,62.5C-296.7,80 -296.7,80 -296.7,97.5L-195.6,97.5C-195.6,80 -195.6,80 -195.6,62.5Z",
+    );
+    expect(
+      connectorPath(
+        comfortable,
+        model.layout,
+        model.frame,
+        ribbon,
+        away,
+        plotWidth,
+        plotWidth,
+      ),
+    ).not.toBeNull();
+  });
 });
 
 describe("ribbonKey", () => {

@@ -70,8 +70,8 @@ describe("placeGlyph", () => {
     });
   });
 
-  it("skips a glyph off the plot, unless asked to keep every glyph", () => {
-    // 2.25× about the focus line leaves the upstream gene left of the window.
+  it("skips a glyph further off the plot than its reach", () => {
+    // 2.25× about the focus line leaves the upstream gene 118 px left of the window.
     const x = trackScale(
       model.layout.domain,
       { scaleX: 2.25, translateX: -421.25 },
@@ -79,14 +79,14 @@ describe("placeGlyph", () => {
     );
     const rowFrame = model.frame.rows[0];
     const [upstream, focusGene] = model.layout.rows[0].features;
-    expect(placeGlyph(spec, rowFrame, upstream, x, plotWidth, measure)).toBe(
-      null,
+    const place = (item: typeof upstream, reach?: number) =>
+      placeGlyph(spec, rowFrame, item, x, plotWidth, measure, reach);
+    expect(place(upstream)).toBeNull();
+    expect(place(upstream, 100)).toBeNull();
+    expect(place(upstream, 117)).toEqual(
+      expect.objectContaining({ kind: "gene" }),
     );
-    expect(
-      placeGlyph(spec, rowFrame, upstream, x, plotWidth, measure, false),
-    ).toEqual(expect.objectContaining({ kind: "gene" }));
-    expect(
-      placeGlyph(spec, rowFrame, focusGene, x, plotWidth, measure),
-    ).not.toBeNull();
+    expect(place(upstream, Infinity)).not.toBeNull();
+    expect(place(focusGene)).not.toBeNull();
   });
 });

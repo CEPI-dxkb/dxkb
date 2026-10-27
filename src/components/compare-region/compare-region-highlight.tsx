@@ -134,14 +134,15 @@ function useTraceSlots(model: ChartModel, focus: FeatureRef | undefined) {
 
 /**
  * One family-colored band per ribbon, under the zoom's scale `x` (none for a
- * ribbon with nothing on screen): the trace's bridges and ribbons, and
- * Comfortable's resting ribbons.
+ * ribbon more than `reach` px off the plot): the trace's bridges and ribbons,
+ * and Comfortable's resting ribbons.
  */
 export function ribbonPaths(
   model: ChartModel,
   ribbons: readonly Ribbon[],
   x: (offset: number) => number,
   plotWidth: number,
+  reach: number,
 ): ReactNode[] {
   return ribbons.map((ribbon) => {
     const d = ribbonPath(
@@ -151,6 +152,7 @@ export function ribbonPaths(
       ribbon,
       x,
       plotWidth,
+      reach,
     );
     return d ? (
       <path key={ribbonKey(ribbon)} d={d} fill={familyColor(ribbon.family)} />
@@ -199,6 +201,7 @@ interface TraceProps {
   at: FeatureRef;
   x: (offset: number) => number;
   plotWidth: number;
+  reach: number;
   measure: TextMeasure;
 }
 
@@ -206,7 +209,7 @@ interface TraceProps {
  * One family's trace: every ribbon of the family (plus bridges over the
  * genomes without it), and its glyphs on top.
  */
-function Trace({ model, at, x, plotWidth, measure }: TraceProps) {
+function Trace({ model, at, x, plotWidth, reach, measure }: TraceProps) {
   const members = focusMembers(model, at);
   const family =
     members.length > 0
@@ -221,12 +224,12 @@ function Trace({ model, at, x, plotWidth, measure }: TraceProps) {
     <>
       {bridges.length > 0 && (
         <g className="opacity-25">
-          {ribbonPaths(model, bridges, x, plotWidth)}
+          {ribbonPaths(model, bridges, x, plotWidth, reach)}
         </g>
       )}
       {family !== null && (
         <g className="opacity-55 dark:opacity-50">
-          {ribbonPaths(model, ribbons, x, plotWidth)}
+          {ribbonPaths(model, ribbons, x, plotWidth, reach)}
         </g>
       )}
       {members.map((ref) => {
@@ -234,7 +237,15 @@ function Trace({ model, at, x, plotWidth, measure }: TraceProps) {
         const item = placed?.features.at(ref.featureIndex);
         const rowFrame = frame.rows.at(ref.rowIndex);
         if (!placed || !item || !rowFrame) return null;
-        const glyph = placeGlyph(spec, rowFrame, item, x, plotWidth, measure);
+        const glyph = placeGlyph(
+          spec,
+          rowFrame,
+          item,
+          x,
+          plotWidth,
+          measure,
+          reach,
+        );
         if (!glyph) return null;
         return (
           <GlyphMark
@@ -253,43 +264,62 @@ function Trace({ model, at, x, plotWidth, measure }: TraceProps) {
   );
 }
 
+/**
+ * The card-colored veil over the track while a family is traced, which the
+ * trace is drawn over. It covers the plot, so it stays put while a drag
+ * slides the trace (`PannedLayers`).
+ */
+export function TraceVeil({
+  model,
+  plotWidth,
+}: {
+  model: ChartModel;
+  plotWidth: number;
+}) {
+  const { focus } = useTraceFocus();
+  const traced = focusMembers(model, focus).length > 0;
+  return (
+    <rect
+      x={0}
+      y={rulerHeight}
+      width={plotWidth}
+      height={model.frame.height - rulerHeight}
+      pointerEvents="none"
+      data-overlay=""
+      data-trace-veil=""
+      className={cn("fill-card", traceFade, traced ? "opacity-80" : "opacity-0")}
+    />
+  );
+}
+
 interface HighlightLayerProps {
   model: ChartModel;
   matrix: TrackMatrix;
   plotWidth: number;
+  /** How far past the plot's edges the trace is drawn, px: 0 at rest, `panReach` while a drag pans. */
+  reach: number;
   measure: TextMeasure;
 }
 
 /**
- * The family trace over the track: a card-colored veil, then the family's
- * trace in one of two slots (the last family's fading out in the other), and
- * the pin and hover rings. Never a pointer target, so hovering still reaches
- * the glyphs below.
+ * The family trace over the veil (`TraceVeil`): the family's trace in one of
+ * two slots (the last family's fading out in the other), and the pin and
+ * hover rings. Never a pointer target, so hovering still reaches the glyphs
+ * below.
  */
 export function HighlightLayer({
   model,
   matrix,
   plotWidth,
+  reach,
   measure,
 }: HighlightLayerProps) {
   const { hovered, selected, focus } = useTraceFocus();
   const { drawn, current, onLeft } = useTraceSlots(model, focus);
-  const traced = focusMembers(model, focus).length > 0;
   const x = trackScale(model.layout.domain, matrix, plotWidth);
-  const { frame, spec } = model;
+  const { spec } = model;
   return (
     <g pointerEvents="none" data-overlay="">
-      <rect
-        x={0}
-        y={rulerHeight}
-        width={plotWidth}
-        height={frame.height - rulerHeight}
-        className={cn(
-          "fill-card",
-          traceFade,
-          traced ? "opacity-80" : "opacity-0",
-        )}
-      />
       {drawn.map((at, slot) => (
         <g
           // The slot stays put while its trace changes, so its opacity fades.
@@ -307,6 +337,7 @@ export function HighlightLayer({
               at={at}
               x={x}
               plotWidth={plotWidth}
+              reach={reach}
               measure={measure}
             />
           )}

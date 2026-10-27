@@ -15,6 +15,7 @@ import {
   isLoner,
   type ChartModel,
   type FamilyIndex,
+  type FeatureRef,
 } from "@/lib/compare-region/families";
 import {
   glyphKind,
@@ -188,7 +189,9 @@ interface GlyphRowProps {
   rowIndex: number;
   x: (offset: number) => number;
   plotWidth: number;
-  cull: boolean;
+  reach: number;
+  /** The pressed glyph's index, when it is in this row. */
+  pressedFeature: number | null;
   families: FamilyIndex;
   measure: TextMeasure;
 }
@@ -200,7 +203,8 @@ function GlyphRow({
   rowIndex,
   x,
   plotWidth,
-  cull,
+  reach,
+  pressedFeature,
   families,
   measure,
 }: GlyphRowProps) {
@@ -208,8 +212,8 @@ function GlyphRow({
   return (
     <g>
       {placed.features.map((item, featureIndex) => {
-        // Zoomed in, most glyphs are off screen: skip them (not while dragging,
-        // which would drop the pointer capture with the pressed glyph).
+        // Zoomed in, most glyphs are off screen: skip them, but never the one
+        // a drag pressed, which holds the pointer's capture.
         const glyph = placeGlyph(
           spec,
           rowFrame,
@@ -217,7 +221,7 @@ function GlyphRow({
           x,
           plotWidth,
           measure,
-          cull,
+          featureIndex === pressedFeature ? Infinity : reach,
         );
         if (!glyph) return null;
         return (
@@ -243,8 +247,13 @@ interface GlyphLayerProps {
   model: ChartModel;
   matrix: TrackMatrix;
   plotWidth: number;
-  /** Skip glyphs off the plot; false while a drag holds the pointer. */
-  cull: boolean;
+  /** How far past the plot's edges glyphs are drawn, px: 0 at rest, `panReach` while a drag pans. */
+  reach: number;
+  /**
+   * The glyph a drag pressed, drawn however far off the plot the drag takes
+   * it: removing it would lose the pointer's capture, and with it the drag.
+   */
+  pressed: FeatureRef | null;
   measure: TextMeasure;
 }
 
@@ -253,7 +262,8 @@ export function GlyphLayer({
   model,
   matrix,
   plotWidth,
-  cull,
+  reach,
+  pressed,
   measure,
 }: GlyphLayerProps) {
   const x = trackScale(model.layout.domain, matrix, plotWidth);
@@ -268,7 +278,10 @@ export function GlyphLayer({
           rowIndex={rowIndex}
           x={x}
           plotWidth={plotWidth}
-          cull={cull}
+          reach={reach}
+          pressedFeature={
+            pressed?.rowIndex === rowIndex ? pressed.featureIndex : null
+          }
           families={model.families}
           measure={measure}
         />

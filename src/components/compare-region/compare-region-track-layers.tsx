@@ -35,13 +35,23 @@ interface LayerProps {
   plotWidth: number;
 }
 
+interface ReachingLayerProps extends LayerProps {
+  /** How far past the plot's edges to draw, px: 0 at rest, `panReach` while a drag pans. */
+  reach: number;
+}
+
 /**
  * Resting ribbons for the neighbor families most genomes share, reaching
  * rarer families and firming up a little as the zoom grows. Comfortable draws
  * faint bands; Compact draws one 1.25 px center line per pair (faded when it
  * runs far sideways), so dense rows stay line work, not a wash of color.
  */
-export function RibbonLayer({ model, matrix, plotWidth }: LayerProps) {
+export function RibbonLayer({
+  model,
+  matrix,
+  plotWidth,
+  reach,
+}: ReachingLayerProps) {
   const { spec } = model;
   const x = trackScale(model.layout.domain, matrix, plotWidth);
   // The focus family needs none: its genes already stack on the focus line.
@@ -63,6 +73,7 @@ export function RibbonLayer({ model, matrix, plotWidth }: LayerProps) {
             ribbon,
             x,
             plotWidth,
+            reach,
           );
           if (!connector) return null;
           return (
@@ -81,7 +92,7 @@ export function RibbonLayer({ model, matrix, plotWidth }: LayerProps) {
   }
   return (
     <g pointerEvents="none" fillOpacity={ribbonAlpha(matrix.scaleX)}>
-      {ribbonPaths(model, shown, x, plotWidth)}
+      {ribbonPaths(model, shown, x, plotWidth, reach)}
     </g>
   );
 }
@@ -229,9 +240,14 @@ export function RowTint({
  * focus family's own orange (a data color), so it always matches the focus
  * genes, whatever the theme.
  */
-export function FocusLine({ model, matrix, plotWidth }: LayerProps) {
+export function FocusLine({
+  model,
+  matrix,
+  plotWidth,
+  reach,
+}: ReachingLayerProps) {
   const x0 = focusLineX(model.layout.domain, matrix, plotWidth);
-  if (isOffPlot(x0, x0, plotWidth, 2)) return null;
+  if (isOffPlot(x0, x0, plotWidth, 2 + reach)) return null;
   return (
     <line
       x1={x0}

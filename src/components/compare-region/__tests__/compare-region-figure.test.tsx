@@ -20,6 +20,7 @@ import {
   LabelHighlight,
   PinContext,
   RowHoverContext,
+  TraceVeil,
 } from "../compare-region-highlight";
 import { LabelColumn, LabelHeader } from "../compare-region-label-column";
 import { Legend } from "../compare-region-legend";
@@ -134,7 +135,8 @@ describe("GlyphLayer", () => {
         model={comfortable}
         matrix={identity}
         plotWidth={plotWidth}
-        cull
+        reach={0}
+        pressed={null}
         measure={measure}
       />,
     );
@@ -158,7 +160,8 @@ describe("GlyphLayer", () => {
         model={comfortable}
         matrix={identity}
         plotWidth={plotWidth}
-        cull
+        reach={0}
+        pressed={null}
         measure={measure}
       />,
     );
@@ -175,7 +178,8 @@ describe("GlyphLayer", () => {
         model={comfortable}
         matrix={identity}
         plotWidth={plotWidth}
-        cull
+        reach={0}
+        pressed={null}
         measure={measure}
       />,
     );
@@ -187,30 +191,38 @@ describe("GlyphLayer", () => {
     expect(screen.queryByText("Upstream protein")).not.toBeInTheDocument();
   });
 
-  it("skips glyphs off the plot, except while a drag holds the pointer", () => {
-    const culled = renderInSvg(
+  it("skips glyphs more than its reach off the plot, never the pressed one", () => {
+    const layer = (reach: number, pressed: FeatureRef | null = null) => (
       <GlyphLayer
         model={comfortable}
         matrix={fourFold}
         plotWidth={plotWidth}
-        cull
+        reach={reach}
+        pressed={pressed}
         measure={measure}
-      />,
+      />
     );
-    expect(glyphAt(culled.container, 0, 0)).toBeNull();
-    expect(glyphAt(culled.container, 0, 1)).not.toBeNull();
-    culled.unmount();
+    // 4×: the upstream gene lies 472 px left of the plot.
+    const atRest = renderInSvg(layer(0));
+    expect(glyphAt(atRest.container, 0, 0)).toBeNull();
+    expect(glyphAt(atRest.container, 0, 1)).not.toBeNull();
+    atRest.unmount();
 
-    const dragging = renderInSvg(
-      <GlyphLayer
-        model={comfortable}
-        matrix={fourFold}
-        plotWidth={plotWidth}
-        cull={false}
-        measure={measure}
-      />,
-    );
-    expect(glyphAt(dragging.container, 0, 0)).not.toBeNull();
+    const nearer = renderInSvg(layer(400));
+    expect(glyphAt(nearer.container, 0, 0)).toBeNull();
+    nearer.unmount();
+
+    // While a drag pans, a plot's width past the edge: drawn, and labelled in
+    // its whole body, so it slides into view with its name.
+    const panning = renderInSvg(layer(plotWidth));
+    expect(glyphAt(panning.container, 0, 0)).not.toBeNull();
+    expect(
+      Number(screen.getByText("Upstream protein").getAttribute("x")),
+    ).toBeLessThan(0);
+    panning.unmount();
+
+    const pressed = renderInSvg(layer(0, { rowIndex: 0, featureIndex: 0 }));
+    expect(glyphAt(pressed.container, 0, 0)).not.toBeNull();
   });
 
   it("draws orphans, pseudogenes, other features and lone families each in their style", () => {
@@ -219,7 +231,8 @@ describe("GlyphLayer", () => {
         model={mixed}
         matrix={identity}
         plotWidth={plotWidth}
-        cull
+        reach={0}
+        pressed={null}
         measure={measure}
       />,
     );
@@ -266,7 +279,8 @@ describe("GlyphLayer", () => {
         )}
         matrix={identity}
         plotWidth={696}
-        cull
+        reach={0}
+        pressed={null}
         measure={measure}
       />,
     );
@@ -280,7 +294,12 @@ describe("GlyphLayer", () => {
 describe("track layers", () => {
   it("draws the focus line in the focus orange at offset 0 (D6)", () => {
     const { container } = renderInSvg(
-      <FocusLine model={comfortable} matrix={identity} plotWidth={plotWidth} />,
+      <FocusLine
+        model={comfortable}
+        matrix={identity}
+        plotWidth={plotWidth}
+        reach={0}
+      />,
     );
     const line = container.querySelector("line");
     expect(line).toHaveAttribute("stroke", focusOrange);
@@ -289,15 +308,19 @@ describe("track layers", () => {
     expect(line).not.toHaveAttribute("class");
   });
 
-  it("draws no focus line once offset 0 is off the plot", () => {
-    const { container } = renderInSvg(
-      <FocusLine
-        model={comfortable}
-        matrix={{ scaleX: 4, translateX: -2000 }}
-        plotWidth={plotWidth}
-      />,
-    );
-    expect(container.querySelector("line")).toBeNull();
+  it("draws no focus line once offset 0 is further off the plot than its reach", () => {
+    // 4×: offset 0 at x −652.
+    const line = (reach: number) =>
+      renderInSvg(
+        <FocusLine
+          model={comfortable}
+          matrix={{ scaleX: 4, translateX: -2000 }}
+          plotWidth={plotWidth}
+          reach={reach}
+        />,
+      ).container.querySelector("line");
+    expect(line(0)).toBeNull();
+    expect(line(plotWidth)).toHaveAttribute("x1", "-652");
   });
 
   it("labels the ruler from the focus gene, hiding majors at the edges", () => {
@@ -327,6 +350,7 @@ describe("track layers", () => {
         model={comfortable}
         matrix={identity}
         plotWidth={plotWidth}
+        reach={0}
       />,
     );
     expect(container.querySelectorAll("path")).toHaveLength(0);
@@ -335,7 +359,12 @@ describe("track layers", () => {
   it("draws a faint resting band in Comfortable", () => {
     const moved = buildChartModel(movedRows, densitySpecs.comfortable);
     const { container } = renderInSvg(
-      <RibbonLayer model={moved} matrix={identity} plotWidth={plotWidth} />,
+      <RibbonLayer
+        model={moved}
+        matrix={identity}
+        plotWidth={plotWidth}
+        reach={0}
+      />,
     );
     const paths = container.querySelectorAll("path");
     expect(paths).toHaveLength(1);
@@ -346,7 +375,12 @@ describe("track layers", () => {
   it("draws Compact's connector, faded by its sideways reach", () => {
     const moved = buildChartModel(movedRows, densitySpecs.compact);
     const { container } = renderInSvg(
-      <RibbonLayer model={moved} matrix={identity} plotWidth={696} />,
+      <RibbonLayer
+        model={moved}
+        matrix={identity}
+        plotWidth={696}
+        reach={0}
+      />,
     );
     const paths = container.querySelectorAll("path");
     expect(paths).toHaveLength(1);
@@ -510,18 +544,24 @@ describe("family trace", () => {
     const { container } = traced(
       focusGene,
       null,
-      <HighlightLayer
-        model={comfortable}
-        matrix={identity}
-        plotWidth={plotWidth}
-        measure={measure}
-      />,
+      <>
+        <TraceVeil model={comfortable} plotWidth={plotWidth} />
+        <HighlightLayer
+          model={comfortable}
+          matrix={identity}
+          plotWidth={plotWidth}
+          reach={0}
+          measure={measure}
+        />
+      </>,
     );
-    const overlay = container.querySelector("[data-overlay]");
-    expect(overlay).not.toBeNull();
-    const veil = overlay?.querySelector("rect");
-    expect(veil).toHaveClass("opacity-80");
+    const veil = container.querySelector("[data-trace-veil]");
+    expect(veil).toHaveAttribute("data-overlay");
+    expect(veil).toHaveClass("fill-card", "opacity-80");
     expect(veil).toHaveAttribute("y", "30");
+    expect(veil).toHaveAttribute("width", String(plotWidth));
+    const overlay = container.querySelector("g[data-overlay]");
+    expect(overlay).not.toBeNull();
     // The family's ribbon, then its two genes on top.
     expect(overlay?.querySelector("g.opacity-55 path")).toHaveAttribute(
       "fill",
@@ -543,6 +583,7 @@ describe("family trace", () => {
         model={comfortable}
         matrix={identity}
         plotWidth={plotWidth}
+        reach={0}
         measure={measure}
       />,
     );
@@ -554,17 +595,19 @@ describe("family trace", () => {
       undefined,
       null,
       <>
+        <TraceVeil model={comfortable} plotWidth={plotWidth} />
         <HighlightLayer
           model={comfortable}
           matrix={identity}
           plotWidth={plotWidth}
+          reach={0}
           measure={measure}
         />
         <LabelHighlight model={comfortable} labelWidth={226} />
       </>,
     );
-    const [track, labels] = container.querySelectorAll("[data-overlay]");
-    expect(track.querySelector("rect")).toHaveClass("opacity-0");
+    const [veil, track, labels] = container.querySelectorAll("[data-overlay]");
+    expect(veil).toHaveClass("opacity-0");
     expect(track.querySelectorAll("path")).toHaveLength(0);
     // The label column's marks stay drawn, transparent, to fade in.
     const marks = labels.querySelectorAll("rect");
@@ -578,6 +621,7 @@ describe("family trace", () => {
         model={comfortable}
         matrix={identity}
         plotWidth={plotWidth}
+        reach={0}
         measure={measure}
       />
     );
@@ -609,6 +653,7 @@ describe("family trace", () => {
         model={comfortable}
         matrix={identity}
         plotWidth={plotWidth}
+        reach={0}
         measure={measure}
       />
     );

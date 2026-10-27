@@ -98,6 +98,42 @@ test.describe("Compare Region Viewer", () => {
     expect(await compare.figureHeight()).toBe(compact);
   });
 
+  test("a drag slides the figure, and draws it where it stands on release", async ({
+    page,
+  }) => {
+    const compare = new CompareRegionPage(page);
+    await compare.goto(featureId);
+    await compare.expectFigure(10);
+    await compare.zoomInBy(2);
+    const gene = compare.glyph(0, 0);
+    const box = async () => {
+      const found = await gene.boundingBox();
+      if (!found) throw new Error("the focus gene is not drawn");
+      return found;
+    };
+    const start = await box();
+    const x = start.x + start.width / 2;
+    const y = start.y + start.height / 2;
+
+    // Pressed on a gene, which holds the pointer's capture while the drag pans.
+    await page.mouse.move(x, y);
+    await page.mouse.down();
+    await page.mouse.move(x - 10, y);
+    await page.mouse.move(x - 110, y);
+    const slide = /^translate\(-(\d+(\.\d+)?) 0\)$/;
+    await expect(compare.panLayers).toHaveCount(2);
+    await expect(compare.panLayers.first()).toHaveAttribute("transform", slide);
+    await expect.poll(async () => (await box()).x).toBeCloseTo(start.x - 100, 0);
+    await page.mouse.move(x - 210, y);
+    await expect.poll(async () => (await box()).x).toBeCloseTo(start.x - 200, 0);
+
+    // Released: drawn where the drag left it, with nothing left to slide, and not pinned.
+    await page.mouse.up();
+    await expect(compare.panLayers.first()).not.toHaveAttribute("transform");
+    expect((await box()).x).toBeCloseTo(start.x - 200, 0);
+    await expect(compare.featureCard).toHaveCount(0);
+  });
+
   test("hovering a gene opens its tooltip and traces its family", async ({
     page,
   }) => {

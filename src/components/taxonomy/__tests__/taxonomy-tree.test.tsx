@@ -134,7 +134,7 @@ describe("TaxonomyTree", () => {
       ],
     });
 
-    render(<TaxonomyTree rootTaxa={[rootTaxon]} />, {
+    render(<TaxonomyTree rootTaxa={[rootTaxon]} phylogenyTaxonIds={[]} />, {
       wrapper: createQueryClientWrapper(),
     });
 
@@ -152,7 +152,7 @@ describe("TaxonomyTree", () => {
   it("renders multiple roots and their children in one table", async () => {
     mockChildren(twoRootChildren);
 
-    render(<TaxonomyTree rootTaxa={[rootTaxon, virusesRoot]} />, {
+    render(<TaxonomyTree rootTaxa={[rootTaxon, virusesRoot]} phylogenyTaxonIds={[]} />, {
       wrapper: createQueryClientWrapper(),
     });
 
@@ -167,6 +167,32 @@ describe("TaxonomyTree", () => {
       ).toBeInTheDocument();
     });
     expect(screen.getAllByRole("table")).toHaveLength(1);
+  });
+
+  it("links a root with a phylogeny to its Phylogeny tab and disables the rest", async () => {
+    mockChildren(twoRootChildren);
+
+    render(
+      <TaxonomyTree
+        rootTaxa={[rootTaxon, virusesRoot]}
+        phylogenyTaxonIds={[rootTaxon.taxonId]}
+      />,
+      { wrapper: createQueryClientWrapper() },
+    );
+
+    expect(
+      screen.getByRole("link", {
+        name: "View phylogenetic tree for Brucella",
+      }),
+    ).toHaveAttribute("href", "/taxonomy/234?tab=phylogeny");
+    expect(
+      screen.getByRole("button", { name: "No phylogenetic tree available" }),
+    ).toBeDisabled();
+    // Only roots carry the Trees icon; children never do.
+    await screen.findByRole("link", { name: "Brucella abortus" });
+    expect(
+      screen.getAllByRole("link", { name: /View phylogenetic tree/ }),
+    ).toHaveLength(1);
   });
 
   it("keeps a successful root usable when another root fails", async () => {
@@ -186,7 +212,7 @@ describe("TaxonomyTree", () => {
       }),
     );
 
-    render(<TaxonomyTree rootTaxa={[rootTaxon, virusesRoot]} />, {
+    render(<TaxonomyTree rootTaxa={[rootTaxon, virusesRoot]} phylogenyTaxonIds={[]} />, {
       wrapper: createQueryClientWrapper(),
     });
 
@@ -205,11 +231,154 @@ describe("TaxonomyTree", () => {
     expect(screen.getAllByRole("table")).toHaveLength(1);
   });
 
+  it("announces a failed branch with Retry, and retrying loads it", async () => {
+    let childrenCalls = 0;
+    server.use(
+      http.get(childCountsPath, () => HttpResponse.json({ counts: {} })),
+      http.get(childrenPath, () => {
+        childrenCalls += 1;
+        if (childrenCalls === 1) {
+          return HttpResponse.json(
+            {
+              error: "Could not reach the BV-BRC data service: connection refused.",
+              code: "service_unavailable",
+            },
+            { status: 502 },
+          );
+        }
+        return HttpResponse.json({
+          rows: [child(235, "Brucella abortus", "species", 581)],
+        });
+      }),
+    );
+
+    render(<TaxonomyTree rootTaxa={[rootTaxon]} phylogenyTaxonIds={[]} />, {
+      wrapper: createQueryClientWrapper(),
+    });
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("Could not load sub-taxa");
+    expect(alert).toHaveTextContent(
+      "Brucella: taxonomy children 234: Could not reach the BV-BRC data service: connection refused.",
+    );
+
+    fireEvent.click(within(alert).getByRole("button", { name: "Retry" }));
+
+    expect(
+      await screen.findByRole("link", { name: "Brucella abortus" }),
+    ).toBeInTheDocument();
+    expect(childrenCalls).toBe(2);
+    await waitFor(() => {
+      expect(screen.queryByRole("alert")).toBeNull();
+    });
+  });
+
+  it("keeps the expand toggle on a failed node after collapse, so expanding again retries", async () => {
+    let childrenCalls = 0;
+    server.use(
+      // The outage fails the count the collapsed node asks for too.
+      http.get(childCountsPath, () =>
+        HttpResponse.json(
+          { error: "The BV-BRC data service did not respond.", code: "upstream_timeout" },
+          { status: 504 },
+        ),
+      ),
+      http.get(childrenPath, () => {
+        childrenCalls += 1;
+        if (childrenCalls === 1) {
+          return HttpResponse.json(
+            { error: "The BV-BRC data service did not respond.", code: "upstream_timeout" },
+            { status: 504 },
+          );
+        }
+        return HttpResponse.json({
+          rows: [child(235, "Brucella abortus", "species", 581)],
+        });
+      }),
+    );
+
+    render(<TaxonomyTree rootTaxa={[rootTaxon]} phylogenyTaxonIds={[]} />, {
+      wrapper: createQueryClientWrapper(),
+    });
+
+    expect(
+      await screen.findByText(/taxonomy children 234: The BV-BRC data service did not respond\./, {
+        selector: "td span",
+      }),
+    ).toBeInTheDocument();
+    const rootRow = screen
+      .getByRole("link", { name: "Brucella" })
+      .closest("tr") as HTMLElement;
+
+    fireEvent.click(within(rootRow).getByRole("button", { name: "Collapse" }));
+
+    // Its count failed as well: unknown, not zero, so it does not become a leaf.
+    expect(
+      await screen.findByText(/Sub-taxa counts: .*did not respond/),
+    ).toBeInTheDocument();
+    const expand = within(rootRow).getByRole("button", { name: "Expand" });
+
+    fireEvent.click(expand);
+
+    expect(
+      await screen.findByRole("link", { name: "Brucella abortus" }),
+    ).toBeInTheDocument();
+    expect(childrenCalls).toBe(2);
+  });
+
+  it("keeps the expand toggle on a child whose count could not be loaded", async () => {
+    let countCalls = 0;
+    server.use(
+      http.get(childCountsPath, ({ request }) => {
+        countCalls += 1;
+        if (countCalls === 1) {
+          return HttpResponse.json(
+            { error: "The BV-BRC data service did not respond.", code: "upstream_timeout" },
+            { status: 504 },
+          );
+        }
+        const ids = new URL(request.url).searchParams.getAll("parentId");
+        return HttpResponse.json({
+          counts: Object.fromEntries(ids.map((id) => [id, 0])),
+        });
+      }),
+      http.get(childrenPath, () =>
+        HttpResponse.json({
+          rows: [child(235, "Brucella abortus", "species", 581)],
+        }),
+      ),
+    );
+
+    render(<TaxonomyTree rootTaxa={[rootTaxon]} phylogenyTaxonIds={[]} />, {
+      wrapper: createQueryClientWrapper(),
+    });
+
+    const speciesRow = (
+      await screen.findByRole("link", { name: "Brucella abortus" })
+    ).closest("tr") as HTMLElement;
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent(
+      "Sub-taxa counts: taxonomy child counts: The BV-BRC data service did not respond.",
+    );
+    expect(
+      within(speciesRow).getByRole("button", { name: "Expand" }),
+    ).toBeInTheDocument();
+
+    // Once the count loads and says none, the toggle goes as it should.
+    fireEvent.click(within(alert).getByRole("button", { name: "Retry" }));
+    await waitFor(() => {
+      expect(
+        within(speciesRow).queryByRole("button", { name: "Expand" }),
+      ).toBeNull();
+    });
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
   it("resets stale roots, selection, and filtering when the root set changes", async () => {
     mockChildren(twoRootChildren);
     const onSelect = vi.fn();
     const { rerender } = render(
-      <TaxonomyTree rootTaxa={[rootTaxon]} onSelect={onSelect} />,
+      <TaxonomyTree rootTaxa={[rootTaxon]} phylogenyTaxonIds={[]} onSelect={onSelect} />,
       {
         wrapper: createQueryClientWrapper(),
       },
@@ -223,7 +392,7 @@ describe("TaxonomyTree", () => {
       target: { value: "Brucella" },
     });
 
-    rerender(<TaxonomyTree rootTaxa={[virusesRoot]} onSelect={onSelect} />);
+    rerender(<TaxonomyTree rootTaxa={[virusesRoot]} phylogenyTaxonIds={[]} onSelect={onSelect} />);
 
     expect(
       await screen.findByRole("link", { name: "Orthomyxoviridae" }),
@@ -248,7 +417,7 @@ describe("TaxonomyTree", () => {
           screen.getAllByRole("link").map((link) => link.textContent),
         );
       }, [root]);
-      return <TaxonomyTree rootTaxa={[root]} />;
+      return <TaxonomyTree rootTaxa={[root]} phylogenyTaxonIds={[]} />;
     }
 
     const { rerender } = render(<TreeWithCommitProbe root={rootTaxon} />, {
@@ -267,7 +436,7 @@ describe("TaxonomyTree", () => {
     mockChildren({ 234: [child(235, "Brucella abortus", "species", 581)] });
     const onSelect = vi.fn();
     const { rerender } = render(
-      <TaxonomyTree rootTaxa={[rootTaxon]} onSelect={onSelect} />,
+      <TaxonomyTree rootTaxa={[rootTaxon]} phylogenyTaxonIds={[]} onSelect={onSelect} />,
       {
         wrapper: createQueryClientWrapper(),
       },
@@ -286,7 +455,7 @@ describe("TaxonomyTree", () => {
       ...rootTaxon,
       lineageNames: ["cellular organisms", "Bacteria"],
     };
-    rerender(<TaxonomyTree rootTaxa={[relineaged]} onSelect={onSelect} />);
+    rerender(<TaxonomyTree rootTaxa={[relineaged]} phylogenyTaxonIds={[]} onSelect={onSelect} />);
 
     const refreshedRoot = await screen.findByRole("link", { name: "Brucella" });
     fireEvent.click(refreshedRoot.closest("tr") as HTMLElement);
@@ -306,7 +475,7 @@ describe("TaxonomyTree", () => {
       235: [child(999, "Brucella abortus 544", "strain", 2)],
     });
 
-    render(<TaxonomyTree rootTaxa={[rootTaxon]} />, {
+    render(<TaxonomyTree rootTaxa={[rootTaxon]} phylogenyTaxonIds={[]} />, {
       wrapper: createQueryClientWrapper(),
     });
 
@@ -335,7 +504,7 @@ describe("TaxonomyTree", () => {
       235: [child(999, "Brucella abortus 544", "strain", 2)],
     });
 
-    render(<TaxonomyTree rootTaxa={[rootTaxon]} />, {
+    render(<TaxonomyTree rootTaxa={[rootTaxon]} phylogenyTaxonIds={[]} />, {
       wrapper: createQueryClientWrapper(),
     });
 
@@ -380,7 +549,7 @@ describe("TaxonomyTree", () => {
       234: [child(235, "Brucella abortus", "species", 581)],
     });
 
-    render(<TaxonomyTree rootTaxa={[rootTaxon]} />, {
+    render(<TaxonomyTree rootTaxa={[rootTaxon]} phylogenyTaxonIds={[]} />, {
       wrapper: createQueryClientWrapper(),
     });
 
@@ -401,7 +570,7 @@ describe("TaxonomyTree", () => {
       235: [child(999, "Brucella abortus 544", "strain", 2)],
     });
 
-    render(<TaxonomyTree rootTaxa={[rootTaxon]} />, {
+    render(<TaxonomyTree rootTaxa={[rootTaxon]} phylogenyTaxonIds={[]} />, {
       wrapper: createQueryClientWrapper(),
     });
 
@@ -430,7 +599,7 @@ describe("TaxonomyTree", () => {
     mockChildren({ 234: [child(235, "Brucella abortus", "species", 581)] });
     const onSelect = vi.fn();
 
-    render(<TaxonomyTree rootTaxa={[rootTaxon]} onSelect={onSelect} />, {
+    render(<TaxonomyTree rootTaxa={[rootTaxon]} phylogenyTaxonIds={[]} onSelect={onSelect} />, {
       wrapper: createQueryClientWrapper(),
     });
 
@@ -452,7 +621,7 @@ describe("TaxonomyTree", () => {
     mockChildren({ 234: [child(235, "Brucella abortus", "species", 581)] });
     const onSelect = vi.fn();
 
-    render(<TaxonomyTree rootTaxa={[rootTaxon]} onSelect={onSelect} />, {
+    render(<TaxonomyTree rootTaxa={[rootTaxon]} phylogenyTaxonIds={[]} onSelect={onSelect} />, {
       wrapper: createQueryClientWrapper(),
     });
 
@@ -478,7 +647,7 @@ describe("TaxonomyTree", () => {
   it("keeps select-all checked and indeterminate states mutually exclusive", () => {
     mockChildren(twoRootChildren);
 
-    render(<TaxonomyTree rootTaxa={[rootTaxon, virusesRoot]} />, {
+    render(<TaxonomyTree rootTaxa={[rootTaxon, virusesRoot]} phylogenyTaxonIds={[]} />, {
       wrapper: createQueryClientWrapper(),
     });
 
@@ -514,7 +683,7 @@ describe("TaxonomyTree", () => {
     });
     const onSelect = vi.fn();
 
-    render(<TaxonomyTree rootTaxa={[rootTaxon]} onSelect={onSelect} />, {
+    render(<TaxonomyTree rootTaxa={[rootTaxon]} phylogenyTaxonIds={[]} onSelect={onSelect} />, {
       wrapper: createQueryClientWrapper(),
     });
 
@@ -587,7 +756,7 @@ describe("TaxonomyTree", () => {
     });
     const onSelect = vi.fn();
 
-    render(<TaxonomyTree rootTaxa={[rootTaxon]} onSelect={onSelect} />, {
+    render(<TaxonomyTree rootTaxa={[rootTaxon]} phylogenyTaxonIds={[]} onSelect={onSelect} />, {
       wrapper: createQueryClientWrapper(),
     });
 
@@ -649,7 +818,7 @@ describe("TaxonomyTree", () => {
     });
     const onSelect = vi.fn();
 
-    render(<TaxonomyTree rootTaxa={[rootTaxon]} onSelect={onSelect} />, {
+    render(<TaxonomyTree rootTaxa={[rootTaxon]} phylogenyTaxonIds={[]} onSelect={onSelect} />, {
       wrapper: createQueryClientWrapper(),
     });
 
@@ -695,7 +864,7 @@ describe("TaxonomyTree", () => {
     });
     const onSelect = vi.fn();
 
-    render(<TaxonomyTree rootTaxa={[rootTaxon]} onSelect={onSelect} />, {
+    render(<TaxonomyTree rootTaxa={[rootTaxon]} phylogenyTaxonIds={[]} onSelect={onSelect} />, {
       wrapper: createQueryClientWrapper(),
     });
 
@@ -736,7 +905,7 @@ describe("TaxonomyTree", () => {
     });
     const onSelect = vi.fn();
 
-    render(<TaxonomyTree rootTaxa={[rootTaxon]} onSelect={onSelect} />, {
+    render(<TaxonomyTree rootTaxa={[rootTaxon]} phylogenyTaxonIds={[]} onSelect={onSelect} />, {
       wrapper: createQueryClientWrapper(),
     });
 
@@ -765,7 +934,7 @@ describe("TaxonomyTree", () => {
     });
     const onSelect = vi.fn();
 
-    render(<TaxonomyTree rootTaxa={[rootTaxon]} onSelect={onSelect} />, {
+    render(<TaxonomyTree rootTaxa={[rootTaxon]} phylogenyTaxonIds={[]} onSelect={onSelect} />, {
       wrapper: createQueryClientWrapper(),
     });
 
@@ -830,7 +999,7 @@ describe("TaxonomyTree", () => {
     });
     const onSelect = vi.fn();
 
-    render(<TaxonomyTree rootTaxa={[rootTaxon]} onSelect={onSelect} />, {
+    render(<TaxonomyTree rootTaxa={[rootTaxon]} phylogenyTaxonIds={[]} onSelect={onSelect} />, {
       wrapper: createQueryClientWrapper(),
     });
 
@@ -870,7 +1039,7 @@ describe("TaxonomyTree", () => {
     });
     const onSelect = vi.fn();
 
-    render(<TaxonomyTree rootTaxa={[rootTaxon]} onSelect={onSelect} />, {
+    render(<TaxonomyTree rootTaxa={[rootTaxon]} phylogenyTaxonIds={[]} onSelect={onSelect} />, {
       wrapper: createQueryClientWrapper(),
     });
 
@@ -914,7 +1083,7 @@ describe("TaxonomyTree", () => {
     });
     const onSelect = vi.fn();
 
-    render(<TaxonomyTree rootTaxa={[rootTaxon]} onSelect={onSelect} />, {
+    render(<TaxonomyTree rootTaxa={[rootTaxon]} phylogenyTaxonIds={[]} onSelect={onSelect} />, {
       wrapper: createQueryClientWrapper(),
     });
 
@@ -954,7 +1123,7 @@ describe("TaxonomyTree", () => {
     });
     const onSelect = vi.fn();
 
-    render(<TaxonomyTree rootTaxa={[rootTaxon]} onSelect={onSelect} />, {
+    render(<TaxonomyTree rootTaxa={[rootTaxon]} phylogenyTaxonIds={[]} onSelect={onSelect} />, {
       wrapper: createQueryClientWrapper(),
     });
 
@@ -982,7 +1151,7 @@ describe("TaxonomyTree", () => {
     });
     const onSelect = vi.fn();
 
-    render(<TaxonomyTree rootTaxa={[rootTaxon]} onSelect={onSelect} />, {
+    render(<TaxonomyTree rootTaxa={[rootTaxon]} phylogenyTaxonIds={[]} onSelect={onSelect} />, {
       wrapper: createQueryClientWrapper(),
     });
 
@@ -1023,7 +1192,7 @@ describe("TaxonomyTree", () => {
       ],
     });
 
-    render(<TaxonomyTree rootTaxa={[rootTaxon]} />, {
+    render(<TaxonomyTree rootTaxa={[rootTaxon]} phylogenyTaxonIds={[]} />, {
       wrapper: createQueryClientWrapper(),
     });
 

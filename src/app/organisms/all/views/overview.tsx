@@ -11,11 +11,13 @@ import { withSectionError } from "@/components/organisms/shared/with-section-err
 import { allOrganismsLandingConfig as config } from "../_config";
 
 async function DataSummaryBoundary() {
-  return withSectionError(() => DataSummary({ taxonId: config.taxonId }));
+  return withSectionError("Data summary", () =>
+    DataSummary({ taxonId: config.taxonId }),
+  );
 }
 
 async function MetadataDistributionsBoundary() {
-  return withSectionError(() =>
+  return withSectionError("Metadata distributions", () =>
     MetadataDistributions({
       taxonId: config.taxonId,
       fields: config.metadataFields,

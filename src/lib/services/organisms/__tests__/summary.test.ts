@@ -47,7 +47,11 @@ describe("fetchOrganismSummary", () => {
       ),
     );
 
-    await expect(fetchOrganismSummary(2)).rejects.toThrow("BV-BRC overloaded");
+    await expect(fetchOrganismSummary(2)).rejects.toMatchObject({
+      message:
+        "The BV-BRC data service is unavailable (HTTP 503 Service Unavailable: BV-BRC overloaded).",
+      source: "summary_by_taxon",
+    });
   });
 
   it("throws on malformed numeric fields", async () => {

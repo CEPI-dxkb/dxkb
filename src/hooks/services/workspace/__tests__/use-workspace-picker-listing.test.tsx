@@ -230,6 +230,64 @@ describe("useWorkspacePickerListing", () => {
     expect(listedPaths(repository)).toEqual([]);
   });
 
+  it("does not fail recent folders on reads they do not use", async () => {
+    // Another observer (the navbar's favorites, the Shared column's `/`)
+    // owns the failed reads this listing shares cache keys with.
+    server.use(
+      http.post("*/api/services/workspace", () =>
+        HttpResponse.json(
+          { error: "Workspace service unavailable" },
+          { status: 503 },
+        ),
+      ),
+    );
+    localStorage.setItem(
+      recentWorkspaceFoldersStorageKey,
+      JSON.stringify([{ path: `${home}/Alpha`, visitedAt: 1 }]),
+    );
+    const repository = makeRepository({
+      listDirectory: new Error("Workspace is offline"),
+    });
+    const wrapper = makeWrapper(repository);
+    const favorites = renderHook(
+      () =>
+        useWorkspacePickerListing({
+          location: { kind: "list", view: "favorites" },
+          username,
+        }),
+      { wrapper },
+    );
+    const sharedRoot = renderHook(
+      () =>
+        useWorkspacePickerListing({
+          location: { kind: "list", view: "shared" },
+          username,
+        }),
+      { wrapper },
+    );
+    await waitFor(() => {
+      expect(favorites.result.current.error).not.toBeNull();
+      expect(sharedRoot.result.current.error?.message).toBe(
+        "Workspace is offline",
+      );
+    });
+
+    const recent = renderHook(
+      () =>
+        useWorkspacePickerListing({
+          location: { kind: "list", view: "recent" },
+          username,
+        }),
+      { wrapper },
+    );
+
+    expect(recent.result.current).toEqual({
+      items: [expect.objectContaining({ name: "Alpha", path: `${home}/Alpha` })],
+      isLoading: false,
+      error: null,
+    });
+  });
+
   it("lists nothing while signed out", () => {
     const { result, repository } = renderListing(
       { kind: "path", path: home },

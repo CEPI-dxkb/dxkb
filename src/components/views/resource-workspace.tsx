@@ -12,9 +12,19 @@ import { useUiPreference } from "@/lib/ui-preferences/provider";
 
 interface ResourceWorkspaceProps {
   children: ReactNode;
+  /**
+   * A row above `children` in the content column, so it spans the table and
+   * not the action strip beside it (the collection's filter toolbar).
+   */
+  toolbar?: ReactNode;
   sidePanel: ReactNode;
   actionBar?: ReactNode;
   hasSidePanel?: boolean;
+  /**
+   * The action rail beside the content, with its Hide/Show button. A failed
+   * collection read turns it off: there is nothing to act on.
+   */
+  hasActionRail?: boolean;
 }
 
 /**
@@ -83,13 +93,17 @@ const detailPanelSizes = {
  *
  * Hiding the detail panel — either because the consumer withdrew it (`hasSidePanel`)
  * or because the user pressed Hide — still unmounts that slot. That is the panel's
- * intended lifecycle, not the responsive defect.
+ * intended lifecycle, not the responsive defect. Withdrawing the action rail
+ * (`hasActionRail`) likewise unmounts the rail and nothing else: the toolbar and
+ * `children` keep their place in the tree.
  */
 export function ResourceWorkspace({
   children,
+  toolbar,
   sidePanel,
   actionBar,
   hasSidePanel = true,
+  hasActionRail = true,
 }: ResourceWorkspaceProps) {
   // Namespaces the detail panel's id. The library writes a panel's id straight into
   // the DOM `id` attribute, so two workspaces mounted at once would otherwise collide
@@ -155,35 +169,40 @@ export function ResourceWorkspace({
           className="flex min-h-0 min-w-0 overflow-hidden max-md:flex-col"
         >
           <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+            {toolbar}
             {children}
           </div>
-          <aside className="shrink-0 max-md:max-h-20 max-md:min-w-0">
-            <div className="flex h-full min-h-0 w-20 shrink-0 flex-col rounded-l-lg border-l bg-muted max-md:h-20 max-md:w-full max-md:flex-row max-md:rounded-l-none max-md:border-t max-md:border-l-0">
-              <div className="border-b p-2 max-md:border-r max-md:border-b-0">
-                <Button
-                  variant="ghost"
-                  size="rail"
-                  onClick={() => {
-                    setPanelExpanded((current) => !current);
-                  }}
-                  title={panelExpanded ? "Hide panel" : "Show panel"}
-                  className="flex w-full flex-col items-center max-md:w-16"
-                >
-                  {panelExpanded ? (
-                    <PanelRightClose className="size-4" />
-                  ) : (
-                    <PanelRightOpen className="size-4" />
-                  )}
-                  <span className="text-xs">
-                    {panelExpanded ? "Hide" : "Show"}
-                  </span>
-                </Button>
+          {/* A sibling after the content, so dropping it moves neither the
+              toolbar nor `children`. */}
+          {hasActionRail && (
+            <aside className="shrink-0 max-md:max-h-20 max-md:min-w-0">
+              <div className="flex h-full min-h-0 w-20 shrink-0 flex-col rounded-l-lg border-l bg-muted max-md:h-20 max-md:w-full max-md:flex-row max-md:rounded-l-none max-md:border-t max-md:border-l-0">
+                <div className="border-b p-2 max-md:border-r max-md:border-b-0">
+                  <Button
+                    variant="ghost"
+                    size="rail"
+                    onClick={() => {
+                      setPanelExpanded((current) => !current);
+                    }}
+                    title={panelExpanded ? "Hide panel" : "Show panel"}
+                    className="flex w-full flex-col items-center max-md:w-16"
+                  >
+                    {panelExpanded ? (
+                      <PanelRightClose className="size-4" />
+                    ) : (
+                      <PanelRightOpen className="size-4" />
+                    )}
+                    <span className="text-xs">
+                      {panelExpanded ? "Hide" : "Show"}
+                    </span>
+                  </Button>
+                </div>
+                <div className="scrollbar-themed min-h-0 flex-1 overflow-y-auto px-1.5 py-2 max-md:min-w-0 max-md:overflow-x-auto max-md:overflow-y-hidden">
+                  {actionBar}
+                </div>
               </div>
-              <div className="scrollbar-themed min-h-0 flex-1 overflow-y-auto px-1.5 py-2 max-md:min-w-0 max-md:overflow-x-auto max-md:overflow-y-hidden">
-                {actionBar}
-              </div>
-            </div>
-          </aside>
+            </aside>
+          )}
         </ResizablePanel>
         {hasSidePanel && panelExpanded && (
           <>

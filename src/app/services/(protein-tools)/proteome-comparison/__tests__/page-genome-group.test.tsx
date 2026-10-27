@@ -1,4 +1,5 @@
 import { act, render, screen, waitFor } from "@testing-library/react";
+import { createQueryClientWrapper } from "@/test-helpers/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import { toast } from "sonner";
@@ -123,7 +124,7 @@ describe("ProteomeComparisonPage genome group add", () => {
   it("returns the add button to its plus after a group over the limit is rejected", async () => {
     serveGroup(10);
     const user = userEvent.setup();
-    render(<ProteomeComparisonPage />);
+    render(<ProteomeComparisonPage />, { wrapper: createQueryClientWrapper() });
 
     await pickGroupAndAdd(user);
 
@@ -148,7 +149,7 @@ describe("ProteomeComparisonPage genome group add", () => {
   it("returns the add button to its plus after an empty group is rejected", async () => {
     serveGroup(0);
     const user = userEvent.setup();
-    render(<ProteomeComparisonPage />);
+    render(<ProteomeComparisonPage />, { wrapper: createQueryClientWrapper() });
 
     await pickGroupAndAdd(user);
 
@@ -172,7 +173,7 @@ describe("ProteomeComparisonPage genome group add", () => {
     });
     serveGroup(1, gate);
     const user = userEvent.setup();
-    render(<ProteomeComparisonPage />);
+    render(<ProteomeComparisonPage />, { wrapper: createQueryClientWrapper() });
 
     await pickGroupAndAdd(user);
     expect(await screen.findByRole("status", { name: "Loading" })).toBeVisible();
@@ -191,7 +192,7 @@ describe("ProteomeComparisonPage genome group add", () => {
       { count: 1, gate: afterReset.promise },
     ]);
     const user = userEvent.setup();
-    render(<ProteomeComparisonPage />);
+    render(<ProteomeComparisonPage />, { wrapper: createQueryClientWrapper() });
 
     await pickGroupAndAdd(user);
     await user.click(screen.getByRole("button", { name: "Reset" }));
@@ -248,7 +249,7 @@ describe("ProteomeComparisonPage genome group add", () => {
     );
     serveGroup(9);
     const user = userEvent.setup();
-    render(<ProteomeComparisonPage />);
+    render(<ProteomeComparisonPage />, { wrapper: createQueryClientWrapper() });
 
     await user.click(screen.getByRole("button", { name: "Pick Select genome" }));
     await user.click(screen.getByRole("button", { name: "Add genome" }));
@@ -275,5 +276,52 @@ describe("ProteomeComparisonPage genome group add", () => {
     });
     expect(screen.queryByText("Late genome")).toBeNull();
     expect(screen.queryByRole("status", { name: "Loading" })).toBeNull();
+  });
+});
+
+describe("ProteomeComparisonPage genome add by ID", () => {
+  it("adds the genome by ID and says why its name is missing when the lookup fails", async () => {
+    server.use(
+      http.post("*/api/services/genome/by-ids", () =>
+        HttpResponse.json(
+          {
+            error:
+              "The BV-BRC data service did not respond (timed out after 20 s).",
+            code: "upstream",
+          },
+          { status: 504 },
+        ),
+      ),
+    );
+    const user = userEvent.setup();
+    render(<ProteomeComparisonPage />, { wrapper: createQueryClientWrapper() });
+
+    await user.click(screen.getByRole("button", { name: "Pick Select genome" }));
+    await user.click(screen.getByRole("button", { name: "Add genome" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      `Added ${genomeId} by ID: its name could not be loaded (The BV-BRC data service did not respond (timed out after 20 s).).`,
+    );
+    expect(screen.getAllByText(genomeId).length).toBeGreaterThan(0);
+  });
+
+  it("adds no note when the name loads", async () => {
+    server.use(
+      http.post("*/api/services/genome/by-ids", () =>
+        HttpResponse.json({
+          results: [{ genome_id: genomeId, genome_name: "Mycobacterium tuberculosis H37Rv" }],
+        }),
+      ),
+    );
+    const user = userEvent.setup();
+    render(<ProteomeComparisonPage />, { wrapper: createQueryClientWrapper() });
+
+    await user.click(screen.getByRole("button", { name: "Pick Select genome" }));
+    await user.click(screen.getByRole("button", { name: "Add genome" }));
+
+    expect(
+      await screen.findByText("Mycobacterium tuberculosis H37Rv"),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 });

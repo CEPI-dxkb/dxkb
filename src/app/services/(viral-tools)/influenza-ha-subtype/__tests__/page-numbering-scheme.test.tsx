@@ -1,4 +1,5 @@
 import { render, screen } from "@testing-library/react";
+import { createQueryClientWrapper } from "@/test-helpers/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 
@@ -41,7 +42,7 @@ function schemeBox() {
 
 describe("HA Subtype Numbering Scheme", () => {
   it("chooses no scheme by default, as legacy does", () => {
-    render(<InfluenzaHaSubtypePage />);
+    render(<InfluenzaHaSubtypePage />, { wrapper: createQueryClientWrapper() });
 
     expect(screen.getAllByRole("checkbox")).not.toHaveLength(0);
     for (const checkbox of screen.getAllByRole("checkbox")) {
@@ -51,7 +52,7 @@ describe("HA Subtype Numbering Scheme", () => {
 
   it("draws the box in the error state until a scheme is chosen", async () => {
     const user = userEvent.setup();
-    render(<InfluenzaHaSubtypePage />);
+    render(<InfluenzaHaSubtypePage />, { wrapper: createQueryClientWrapper() });
 
     await user.click(screen.getByRole("button", { name: "Submit" }));
 

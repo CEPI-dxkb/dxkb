@@ -1,5 +1,7 @@
 import { cache } from "react";
 import type {
+  AuthError,
+  AuthErrorCode,
   AuthSessionMutation,
   AuthUser,
   Result,
@@ -255,11 +257,77 @@ export async function changePassword(
   return result;
 }
 
+// The current-user lookup runs in the root layout before any byte of every page
+// is sent, so a hung profile service must not hold navigation for the 15 s an
+// interactive sign-in is allowed.
+const currentUserLookupTimeoutMs = 5_000;
+
+// The profile service could not answer, as opposed to answering that the session
+// is not valid (401/403, or no such user).
+const transientProfileFailures: readonly AuthErrorCode[] = [
+  "service_unavailable",
+  "network",
+  "rate_limited",
+];
+
+// A 408 (Request Timeout) is a transient answer too, but the shared
+// `codeForStatus` files it under `validation` with the other 4xx answers.
+function isTransientProfileFailure(error: AuthError): boolean {
+  return transientProfileFailures.includes(error.code) || error.status === 408;
+}
+
+function describeProfileFailure(error: AuthError): string {
+  if (error.code === "network") {
+    return "The account service could not be reached.";
+  }
+  if (error.status === 504 || error.status === 408) {
+    return "The account service did not respond in time.";
+  }
+  return error.status
+    ? `The account service is unavailable (HTTP ${String(error.status)}).`
+    : "The account service is unavailable.";
+}
+
+function buildUnverifiedUser(
+  session: SessionIdentity,
+  error: AuthError,
+  backup?: SessionIdentity | null,
+): AuthUser {
+  return {
+    id: session.userId,
+    username: session.userId,
+    email: "",
+    realm: session.realm,
+    roles: [],
+    sessionUnverified: true,
+    sessionUnverifiedReason: describeProfileFailure(error),
+    ...(backup
+      ? { isImpersonating: true, originalUsername: backup.userId }
+      : {}),
+  };
+}
+
+/**
+ * The signed-in user, or null when signed out. Only a definitive answer from the
+ * profile service (401/403, or no such user) signs the user out; when it cannot
+ * answer, the user stays signed in from the session cookies alone with
+ * `sessionUnverified` set. Cookies are never cleared here, as with the rule in
+ * `respondWithUpstreamFailure`.
+ */
 async function readCurrentUser(): Promise<AuthUser | null> {
   const current = await readSession();
   if (!current) return null;
-  const profile = await getProfile(current.userId, current.token);
-  if (profile.error) return null;
+  const profile = await getProfile(current.userId, current.token, {
+    timeoutMs: currentUserLookupTimeoutMs,
+  });
+  if (profile.error) {
+    if (!isTransientProfileFailure(profile.error)) return null;
+    return buildUnverifiedUser(
+      current,
+      profile.error,
+      await readImpersonationBackup(),
+    );
+  }
   return buildUser(profile.data, current, await readImpersonationBackup());
 }
 

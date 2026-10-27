@@ -48,6 +48,7 @@ import { ServiceLabel } from "@/components/services/form-ui/service-label";
 import { ServiceRadioGroup } from "@/components/services/form-ui/service-radio-group";
 import { ServiceSelectTrigger } from "@/components/services/form-ui/service-select";
 import { ServiceAutocompleteInput } from "@/components/services/form-ui/service-autocomplete";
+import { ServiceSubmitError } from "@/components/services/form-ui/service-submit-error";
 import {
   Autocomplete,
   AutocompleteContent,
@@ -939,6 +940,7 @@ function useMetaCATSPage() {
         </Card>
 
         {/* Form Controls */}
+        <ServiceSubmitError form={form} />
         <div className="service-form-controls">
           <Button type="button" variant="outline" onClick={handleReset}>
             Reset

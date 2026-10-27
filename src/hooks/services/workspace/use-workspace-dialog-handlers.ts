@@ -21,6 +21,7 @@ import { isFolder } from "@/lib/services/workspace/utils";
 import { workspaceQueryKeys } from "@/lib/services/workspace/workspace-query-keys";
 import { sanitizePathSegment } from "@/lib/services/workspace/path-utils";
 import { useWorkspaceDialog } from "@/contexts/workspace-dialog-context";
+import { workspaceErrorMessage } from "@/lib/services/workspace/workspace-errors";
 
 export interface UseWorkspaceDialogHandlersOptions {
   currentDirectoryPath: string;
@@ -156,10 +157,12 @@ export function useWorkspaceDialogHandlers(options: UseWorkspaceDialogHandlersOp
       invalidateWorkspaceQueries(queryClient);
       toast.success(namedObjectConfirmation("Created", "Folder", safeName));
     },
-    onError: (err) => {
-      const message =
-        err instanceof Error ? err.message : "Failed to create folder.";
-      toast.error(message);
+    onError: (err, safeName) => {
+      // The dialog also shows this inline; the toast covers a dialog the
+      // user closed while it was pending.
+      toast.error("Couldn't create folder", {
+        description: `${safeName}: ${workspaceErrorMessage(err, "The workspace service returned an error.")}`,
+      });
     },
   });
 
@@ -177,10 +180,10 @@ export function useWorkspaceDialogHandlers(options: UseWorkspaceDialogHandlersOp
         namedObjectConfirmation("Created", "Workspace", safeName),
       );
     },
-    onError: (err) => {
-      const message =
-        err instanceof Error ? err.message : "Failed to create workspace.";
-      toast.error(message);
+    onError: (err, safeName) => {
+      toast.error("Couldn't create workspace", {
+        description: `${safeName}: ${workspaceErrorMessage(err, "The workspace service returned an error.")}`,
+      });
     },
   });
 
@@ -284,22 +287,22 @@ export function useWorkspaceDialogHandlers(options: UseWorkspaceDialogHandlersOp
     copyMutation.mutate({ objects, isMove, firstDestName, destinationPath });
   };
 
-  const handleCreateFolder = (folderName: string): Promise<void> => {
+  // Both resolve when the folder exists and reject with the failure, so the
+  // dialog stays open (pending, then with the error inline) until it is done.
+  const handleCreateFolder = async (folderName: string): Promise<void> => {
     const name = folderName.trim();
-    if (!name) return Promise.resolve();
+    if (!name) return;
     const safeName = sanitizePathSegment(name);
-    if (!safeName) return Promise.resolve();
-    createFolderMutation.mutate(safeName);
-    return Promise.resolve();
+    if (!safeName) return;
+    await createFolderMutation.mutateAsync(safeName);
   };
 
-  const handleCreateWorkspace = (workspaceName: string): Promise<void> => {
+  const handleCreateWorkspace = async (workspaceName: string): Promise<void> => {
     const name = workspaceName.trim();
-    if (!name) return Promise.resolve();
+    if (!name) return;
     const safeName = sanitizePathSegment(name);
-    if (!safeName) return Promise.resolve();
-    createWorkspaceMutation.mutate(safeName);
-    return Promise.resolve();
+    if (!safeName) return;
+    await createWorkspaceMutation.mutateAsync(safeName);
   };
 
   const handleEditTypeConfirm = (newType: string): Promise<void> => {

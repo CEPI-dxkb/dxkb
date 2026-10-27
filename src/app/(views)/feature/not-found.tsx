@@ -7,7 +7,7 @@ export default function FeatureNotFound() {
       <p className="my-2 text-sm text-muted-foreground">
         The feature identifier is invalid, missing, ambiguous, or inaccessible.
       </p>
-      <Link className="text-primary underline underline-offset-2" href="/feature">
+      <Link className="text-primary underline underline-offset-2 dark:text-link" href="/feature">
         Browse features
       </Link>
     </div>

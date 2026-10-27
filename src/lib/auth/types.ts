@@ -10,6 +10,15 @@ export interface AuthUser {
   roles?: string[];
   isImpersonating?: boolean;
   originalUsername?: string;
+  /**
+   * The session cookies are present but the profile service could not answer
+   * (outage, timeout, unreachable), so the user is built from the session alone:
+   * `id` and `username` are the session user id, `email` is empty and `roles` is
+   * empty. The user stays signed in until the service rejects the token.
+   */
+  sessionUnverified?: boolean;
+  /** Why the profile lookup failed, for the outage banner. Never upstream HTML. */
+  sessionUnverifiedReason?: string;
 }
 
 export interface ProfileSettings {

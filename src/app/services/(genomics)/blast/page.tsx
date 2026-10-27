@@ -24,6 +24,7 @@ import {
   useFastaValidation,
 } from "@/lib/forms/(genomics)/blast/blast-form-utils";
 import type { WorkspaceSelectorPreset } from "@/components/workspace/workspace-selector-presets";
+import { ServiceSubmitError } from "@/components/services/form-ui/service-submit-error";
 import {
   BlastParameters,
   InputSourceCard,
@@ -218,6 +219,7 @@ export default function BlastServicePage() {
           onDatabaseChange={changeDatabase}
           onOutputValidationChange={setIsOutputNameValid}
         />
+        <ServiceSubmitError form={form} />
         <div className="service-form-controls">
           <div className="flex items-center gap-2">
             <Button

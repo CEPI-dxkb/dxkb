@@ -26,6 +26,7 @@ import {
   servicesOnlySelectionActionIds,
   strainSelectionActionIds,
 } from "../collection-selection-action-ids";
+import { noServicesReason } from "@/components/search/search-action-policy";
 import { ResourceCollection } from "../resource-collection";
 import { createResourceCollectionResult } from "./fixtures/resource-collection-result";
 
@@ -688,7 +689,7 @@ describe("ResourceCollection selection actions", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("enables COPY ROWS, Download and an empty SERVICES chooser for Sequence Features", async () => {
+  it("enables COPY ROWS and Download and disables SERVICES for Sequence Features", async () => {
     const user = userEvent.setup();
     const sequenceFeatureRow = {
       id: "sfvt-row-1",
@@ -727,19 +728,19 @@ describe("ResourceCollection selection actions", () => {
     expect(actionBarProps).toMatchObject({
       searchType: "sequence_feature",
       enabledActions: ["copyRows", "services"],
-      disabledActions: undefined,
+      disabledActions: { services: "No services available for this Sequence Feature" },
     });
 
-    // Legacy runs no service from this tab, so SERVICES resolves nothing.
-    await user.click(screen.getByRole("button", { name: "services" }));
-    expect(await screen.findByText("No selectable services")).toBeVisible();
+    // No service accepts this selection, so SERVICES is disabled with a reason
+    // instead of opening an empty chooser.
+    expect(screen.getByRole("button", { name: "services" })).toBeDisabled();
     expect(selected).not.toHaveBeenCalled();
 
     await downloadFromTile(user);
     expectSelectionDownload("sequence_feature", [sequenceFeatureRow.id]);
   });
 
-  it("enables COPY, Download and an empty SERVICES chooser for Epitopes", async () => {
+  it("enables COPY and Download and disables SERVICES for Epitopes", async () => {
     const user = userEvent.setup();
     const open = vi.fn(() => ({ opener: window }));
     vi.stubGlobal("open", open);
@@ -778,13 +779,12 @@ describe("ResourceCollection selection actions", () => {
     expect(actionBarProps).toMatchObject({
       searchType: "epitope",
       enabledActions: ["copyRows", "services"],
-      disabledActions: undefined,
+      disabledActions: { services: "No services available for this Epitope" },
     });
 
-    // Legacy errors with "Missing or invalid type for Services" on this tab, so
-    // SERVICES opens the chooser without resolving anything.
-    await user.click(screen.getByRole("button", { name: "services" }));
-    expect(await screen.findByText("No selectable services")).toBeVisible();
+    // No service accepts this selection, so SERVICES is disabled with a reason
+    // instead of opening an empty chooser.
+    expect(screen.getByRole("button", { name: "services" })).toBeDisabled();
     expect(selected).not.toHaveBeenCalled();
 
     await user.click(screen.getByRole("button", { name: "Epitope action" }));
@@ -843,7 +843,7 @@ describe("ResourceCollection selection actions", () => {
     );
   });
 
-  it("enables COPY ROWS and an empty SERVICES chooser for Domains and Motifs", async () => {
+  it("enables COPY ROWS and disables SERVICES for Domains and Motifs", async () => {
     const user = userEvent.setup();
     const featureRow = {
       id: "97bffc25",
@@ -872,18 +872,19 @@ describe("ResourceCollection selection actions", () => {
     expect(actionBarProps).toMatchObject({
       searchType: "protein_feature",
       enabledActions: ["copyRows", "services"],
-      disabledActions: undefined,
+      disabledActions: { services: "No services available for this Domain or Motif" },
     });
 
-    await user.click(screen.getByRole("button", { name: "services" }));
-    expect(await screen.findByText("No selectable services")).toBeVisible();
+    // No service accepts this selection, so SERVICES is disabled with a reason
+    // instead of opening an empty chooser.
+    expect(screen.getByRole("button", { name: "services" })).toBeDisabled();
     expect(selected).not.toHaveBeenCalled();
 
     await downloadFromTile(user);
     expectSelectionDownload("protein_feature", ["97bffc25"]);
   });
 
-  it("enables COPY ROWS and an empty SERVICES chooser for Protein Structures", async () => {
+  it("enables COPY ROWS and disables SERVICES for Protein Structures", async () => {
     const user = userEvent.setup();
     const structureRow = {
       pdb_id: "AF-A0A502BNJ0-F1",
@@ -917,12 +918,13 @@ describe("ResourceCollection selection actions", () => {
         genome: undefined,
         feature: undefined,
         structure: undefined,
+        services: "No services available for this Protein Structure",
       },
     });
 
-    // No service accepts structures, so SERVICES reports it without resolving rows.
-    await user.click(screen.getByRole("button", { name: "services" }));
-    expect(await screen.findByText("No selectable services")).toBeVisible();
+    // No service accepts this selection, so SERVICES is disabled with a reason
+    // instead of opening an empty chooser.
+    expect(screen.getByRole("button", { name: "services" })).toBeDisabled();
     expect(selected).not.toHaveBeenCalled();
 
     await user.click(screen.getByRole("button", { name: "Structure action" }));
@@ -1047,7 +1049,7 @@ describe("ResourceCollection selection actions", () => {
     expect(screen.getByRole("button", { name: "services" })).toBeDisabled();
   });
 
-  it("enables Download and an empty SERVICES chooser for Experiments", async () => {
+  it("enables Download and disables SERVICES for Experiments", async () => {
     const user = userEvent.setup();
     const experimentRow = { exp_id: "00042", exp_title: "Fixture experiment" };
     const selected = vi.fn(() => Promise.resolve({ rows: [experimentRow] }));
@@ -1074,18 +1076,19 @@ describe("ResourceCollection selection actions", () => {
     expect(actionBarProps).toMatchObject({
       searchType: "experiment",
       enabledActions: ["services"],
-      disabledActions: undefined,
+      disabledActions: { services: "No services available for this Experiment" },
     });
 
-    await user.click(screen.getByRole("button", { name: "services" }));
-    expect(await screen.findByText("No selectable services")).toBeVisible();
+    // No service accepts this selection, so SERVICES is disabled with a reason
+    // instead of opening an empty chooser.
+    expect(screen.getByRole("button", { name: "services" })).toBeDisabled();
     expect(selected).not.toHaveBeenCalled();
 
     await downloadFromTile(user);
     expectSelectionDownload("experiment", [experimentRow.exp_id]);
   });
 
-  it("enables COPY, Download and an empty SERVICES chooser for Surveillance", async () => {
+  it("enables COPY and Download and disables SERVICES for Surveillance", async () => {
     const user = userEvent.setup();
     const surveillanceRow = {
       id: "surveillance-backend-901",
@@ -1113,21 +1116,20 @@ describe("ResourceCollection selection actions", () => {
     expect(actionBarProps).toMatchObject({
       searchType: "surveillance",
       enabledActions: ["copyRows", "services"],
-      disabledActions: undefined,
+      disabledActions: { services: "No services available for this Surveillance" },
       guideUrl: surveillanceCollectionProfile.guideUrl,
     });
 
-    // Legacy errors with "Missing or invalid type for Services" on this tab, so
-    // SERVICES opens the chooser without resolving anything.
-    await user.click(screen.getByRole("button", { name: "services" }));
-    expect(await screen.findByText("No selectable services")).toBeVisible();
+    // No service accepts this selection, so SERVICES is disabled with a reason
+    // instead of opening an empty chooser.
+    expect(screen.getByRole("button", { name: "services" })).toBeDisabled();
     expect(selected).not.toHaveBeenCalled();
 
     await downloadFromTile(user);
     expectSelectionDownload("surveillance", [surveillanceRow.id]);
   });
 
-  it("enables COPY, Download and an empty SERVICES chooser for Serology", async () => {
+  it("enables COPY and Download and disables SERVICES for Serology", async () => {
     const user = userEvent.setup();
     const serologyRow = {
       id: "serology-backend-77",
@@ -1155,14 +1157,13 @@ describe("ResourceCollection selection actions", () => {
     expect(actionBarProps).toMatchObject({
       searchType: "serology",
       enabledActions: ["copyRows", "services"],
-      disabledActions: undefined,
+      disabledActions: { services: "No services available for this Serology" },
       guideUrl: serologyCollectionProfile.guideUrl,
     });
 
-    // Legacy errors with "Missing or invalid type for Services" on this tab, so
-    // SERVICES opens the chooser without resolving anything.
-    await user.click(screen.getByRole("button", { name: "services" }));
-    expect(await screen.findByText("No selectable services")).toBeVisible();
+    // No service accepts this selection, so SERVICES is disabled with a reason
+    // instead of opening an empty chooser.
+    expect(screen.getByRole("button", { name: "services" })).toBeDisabled();
     expect(selected).not.toHaveBeenCalled();
 
     await downloadFromTile(user);
@@ -1188,6 +1189,8 @@ const actionMatrixFixtures: {
   rows: Record<string, unknown>[];
   enabledActions: string[];
   disabledActions?: Record<string, string | undefined>;
+  /** The singular SERVICES names in its reason, for a resource no service accepts. */
+  noServices?: string;
 }[] = [
   {
     resource: "taxonomy",
@@ -1242,6 +1245,7 @@ const actionMatrixFixtures: {
       { id: "pf-2", genome_id: "83332.13" },
     ],
     enabledActions: [...copyAndServicesSelectionActionIds],
+    noServices: "Domain or Motif",
   },
   {
     resource: "protein_structure",
@@ -1252,6 +1256,7 @@ const actionMatrixFixtures: {
       { pdb_id: "2ABC", genome_id: "83332.13", feature_id: "PATRIC.2" },
     ],
     enabledActions: [...copyAndServicesSelectionActionIds],
+    noServices: "Protein Structure",
     // Present with no reason: the structure's members are all reachable, but the
     // policy still reports on all three entries it owns.
     disabledActions: {
@@ -1266,6 +1271,7 @@ const actionMatrixFixtures: {
     idField: "id",
     rows: [{ id: "sfvt-1" }, { id: "sfvt-2" }],
     enabledActions: [...copyAndServicesSelectionActionIds],
+    noServices: "Sequence Feature",
   },
   {
     resource: "epitope",
@@ -1273,6 +1279,7 @@ const actionMatrixFixtures: {
     idField: "epitope_id",
     rows: [{ epitope_id: "EPI-1" }, { epitope_id: "EPI-2" }],
     enabledActions: [...copyAndServicesSelectionActionIds],
+    noServices: "Epitope",
   },
   {
     resource: "serology",
@@ -1280,6 +1287,7 @@ const actionMatrixFixtures: {
     idField: "id",
     rows: [{ id: "sero-1" }, { id: "sero-2" }],
     enabledActions: [...copyAndServicesSelectionActionIds],
+    noServices: "Serology",
   },
   {
     resource: "surveillance",
@@ -1287,6 +1295,7 @@ const actionMatrixFixtures: {
     idField: "id",
     rows: [{ id: "surv-1" }, { id: "surv-2" }],
     enabledActions: [...copyAndServicesSelectionActionIds],
+    noServices: "Surveillance",
   },
   {
     resource: "ppi",
@@ -1297,6 +1306,7 @@ const actionMatrixFixtures: {
       { id: "ppi-2", feature_id_a: "A2", feature_id_b: "B2" },
     ],
     enabledActions: [...interactionSelectionActionIds],
+    noServices: "Interaction",
   },
   {
     resource: "experiment",
@@ -1304,6 +1314,7 @@ const actionMatrixFixtures: {
     idField: "exp_id",
     rows: [{ exp_id: "00042" }, { exp_id: "00051" }],
     enabledActions: [...servicesOnlySelectionActionIds],
+    noServices: "Experiment",
   },
   {
     resource: "bioset",
@@ -1314,6 +1325,7 @@ const actionMatrixFixtures: {
       { bioset_id: "bioset-2", exp_id: "00051" },
     ],
     enabledActions: ["services", "biosets"],
+    noServices: "Bioset",
   },
 ];
 
@@ -1329,6 +1341,7 @@ describe.each(actionMatrixFixtures)(
     rows,
     enabledActions,
     disabledActions,
+    noServices,
   }) => {
     const ids = rows.map((row) => String(row[idField]));
     const selectionStates = [
@@ -1399,7 +1412,14 @@ describe.each(actionMatrixFixtures)(
         });
         // Strict: the protein-structure policy reports keys with no reason, and
         // `toEqual` would treat that object as equal to `undefined`.
-        expect(actionBarProps.disabledActions).toStrictEqual(disabledActions);
+        expect(actionBarProps.disabledActions).toStrictEqual(
+          noServices
+            ? {
+                ...disabledActions,
+                services: noServicesReason(noServices, label, count),
+              }
+            : disabledActions,
+        );
 
         // Every resource heads its rail with the Download tile, at every selection
         // size, and it hands the shell's mutation a request instead of reading

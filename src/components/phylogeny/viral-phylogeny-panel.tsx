@@ -1,11 +1,12 @@
 "use client";
 
 import { ArrowLeft, Network } from "lucide-react";
-import { useState } from "react";
+import { useState, type ComponentProps } from "react";
 
 import { SectionError } from "@/components/organisms/shared/section-error";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useRetryKeepingError } from "@/components/views/use-retry-keeping-error";
 import { viewerUrl } from "@/lib/phylogeny/nextstrain-dataset";
 import { choiceKey, type ViralTreeChoice } from "@/lib/phylogeny/viral-facets";
 import { resolvePhylogenyUrl } from "@/lib/services/organisms/phylogeny";
@@ -26,6 +27,9 @@ export function ViralPhylogenyPanel({
   taxonName: string;
 }) {
   const family = useViralFamily(taxonId);
+  // A Retry keeps the failure up ("Retrying…") instead of going back to the
+  // loading skeleton until it answers; the tree viewer does the same.
+  const familyRetry = useRetryKeepingError(family, String(taxonId));
   const advertisedDatasetIds =
     family.data?.groups.flatMap((group) =>
       (group.nextstrain ?? []).map((ref) => ref.path),
@@ -41,16 +45,20 @@ export function ViralPhylogenyPanel({
   const auspiceUrl = isNextstrain ? viewerUrl(choice.ref.path) : null;
   const tree = useViralTreeXml(xmlUrl);
 
-  if (family.isPending) return <Skeleton className="m-4 h-[calc(100%-2rem)]" />;
-  if (family.isError) {
+  if (familyRetry.error) {
     return (
       <div className="p-4">
         <SectionError
-          title="Viral trees unavailable"
-          message={family.error.message}
+          section="Viral trees"
+          error={familyRetry.error}
+          onRetry={familyRetry.retry}
+          isRetrying={familyRetry.retrying}
         />
       </div>
     );
+  }
+  if (family.data === undefined) {
+    return <Skeleton className="m-4 h-[calc(100%-2rem)]" />;
   }
   if (family.data.groups.length === 0) {
     return (
@@ -123,10 +131,14 @@ function TreeViewer({
   xmlUrl: string | null;
   tree: ReturnType<typeof useViralTreeXml>;
 }) {
+  const treeRetry = useRetryKeepingError(tree, xmlUrl ?? "");
   if (choice.viewer === "nextstrain") {
     if (auspiceUrl === null) {
       return (
-        <TreeError message="The tree reference contains an invalid dataset identifier." />
+        <TreeError
+          error="The tree reference contains an invalid dataset identifier."
+          onRetry={false}
+        />
       );
     }
     return (
@@ -141,10 +153,25 @@ function TreeViewer({
     );
   }
   if (xmlUrl === null) {
-    return <TreeError message="The tree reference contains an invalid URL." />;
+    return (
+      <TreeError
+        error="The tree reference contains an invalid URL."
+        onRetry={false}
+      />
+    );
   }
-  if (tree.isPending) return <Skeleton className="m-4 h-[calc(100%-2rem)]" />;
-  if (tree.isError) return <TreeError message={tree.error.message} />;
+  if (treeRetry.error) {
+    return (
+      <TreeError
+        error={treeRetry.error}
+        onRetry={treeRetry.retry}
+        isRetrying={treeRetry.retrying}
+      />
+    );
+  }
+  if (tree.data === undefined) {
+    return <Skeleton className="m-4 h-[calc(100%-2rem)]" />;
+  }
   return (
     <ArchaeopteryxPhylogeny
       key={xmlUrl}
@@ -154,10 +181,12 @@ function TreeViewer({
   );
 }
 
-function TreeError({ message }: { message: string }) {
+function TreeError(
+  props: Omit<ComponentProps<typeof SectionError>, "section">,
+) {
   return (
     <div className="p-4">
-      <SectionError title="Tree unavailable" message={message} />
+      <SectionError section="This tree" {...props} />
     </div>
   );
 }

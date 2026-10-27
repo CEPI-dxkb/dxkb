@@ -138,7 +138,7 @@ describe("POST /api/workspace/public", () => {
     expect(response.status).toBe(502);
   });
 
-  it("returns 500 on network error", async () => {
+  it("returns 502 naming the workspace service on network error", async () => {
     server.use(
       http.post(workspaceApiUrl, () => HttpResponse.error()),
     );
@@ -151,7 +151,7 @@ describe("POST /api/workspace/public", () => {
     const response = await POST(request);
     const data = (await response.json()) as { error?: string };
 
-    expect(response.status).toBe(500);
-    expect(data.error).toBe("Internal server error");
+    expect(response.status).toBe(502);
+    expect(data.error).toMatch(/^Could not reach the BV-BRC workspace service/);
   });
 });

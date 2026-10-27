@@ -1,5 +1,8 @@
 "use client";
 
+import { CircleAlert, Info } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { DataTable } from "@/components/shared/data-table";
 import {
@@ -25,7 +28,14 @@ export function ResultsSection({
 }: {
   controller: SimilarGenomeFinderController;
 }) {
-  const { results, isSubmitting } = controller;
+  const {
+    results,
+    isSubmitting,
+    hasSearched,
+    searchError,
+    genomeDetailsError,
+    retrySearch,
+  } = controller;
   return (
     <div className="mt-8">
       <Card>
@@ -33,14 +43,44 @@ export function ResultsSection({
           <ServiceCardTitle>Results</ServiceCardTitle>
         </ServiceCardHeader>
         <ServiceCardContent>
-          <DataTable
-            id="similar-genome-finder-results"
-            data={results as unknown as Record<string, unknown>[]}
-            columns={[...columns]}
-            totalItems={results.length}
-            resource="similar-genome-finder-results"
-            isLoading={isSubmitting}
-          />
+          {searchError ? (
+            // A failed search is not "no similar genomes": say why, and
+            // offer the same search again.
+            <Alert variant="destructive">
+              <CircleAlert aria-hidden="true" />
+              <AlertTitle>Search failed</AlertTitle>
+              <AlertDescription>
+                <p>{searchError}</p>
+                <Button variant="outline" size="sm" onClick={retrySearch}>
+                  Retry
+                </Button>
+              </AlertDescription>
+            </Alert>
+          ) : !hasSearched ? (
+            <p className="text-sm text-muted-foreground">
+              Run a search to see similar genomes.
+            </p>
+          ) : (
+            <>
+              {genomeDetailsError ? (
+                <Alert className="mb-4">
+                  <Info aria-hidden="true" />
+                  <AlertTitle>Genome names could not be loaded</AlertTitle>
+                  <AlertDescription>
+                    <p>{genomeDetailsError}</p>
+                  </AlertDescription>
+                </Alert>
+              ) : null}
+              <DataTable
+                id="similar-genome-finder-results"
+                data={results as unknown as Record<string, unknown>[]}
+                columns={[...columns]}
+                totalItems={results.length}
+                resource="similar-genome-finder-results"
+                isLoading={isSubmitting}
+              />
+            </>
+          )}
         </ServiceCardContent>
       </Card>
     </div>

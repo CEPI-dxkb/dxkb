@@ -45,7 +45,7 @@ import {
   isFolder,
   normalizeWorkspaceObjectType,
 } from "@/lib/services/workspace/utils";
-import { cn } from "@/lib/utils";
+import { cn, formatUserFacingErrorMessage } from "@/lib/utils";
 import { folderTarget, placeIcons } from "./folder-picker-utils";
 
 const placeHints: Record<PickerView, string> = {
@@ -80,7 +80,13 @@ interface FolderPickerInfoProps {
   homePath: string;
   /** The selected folder's row, when its column has loaded. */
   item: WorkspaceItem | null;
-  contents: { items: WorkspaceItem[]; isLoading: boolean };
+  /** The selected folder's own listing; `error` when it failed. */
+  contents: { items: WorkspaceItem[]; isLoading: boolean; error?: Error | null };
+  /**
+   * A listing the pane relies on failed (the folder's own, or the one holding
+   * its row): the pane says so in place of claiming write access.
+   */
+  listingError?: Error | null;
   commit: { canCommit: boolean; reason: string | null };
   canChange: boolean;
   onNewFolder: () => void;
@@ -94,6 +100,7 @@ export function FolderPickerInfo({
   homePath,
   item,
   contents,
+  listingError = null,
   commit,
   canChange,
   onNewFolder,
@@ -178,16 +185,31 @@ export function FolderPickerInfo({
             value={
               contents.isLoading
                 ? "…"
-                : children.length === 0
-                  ? "Nothing yet"
-                  : `${plural(folders, "folder")}, ${plural(files, "file")}`
+                : contents.error
+                  ? "Couldn't check"
+                  : children.length === 0
+                    ? "Nothing yet"
+                    : `${plural(folders, "folder")}, ${plural(files, "file")}`
             }
           />
         </dl>
 
-        {/* Picking files, a folder is never the choice, so its reason
-            ("Pick a file: Contigs.") is guidance rather than an error. */}
-        {isPickingFiles ? (
+        {/* A failed read leaves both contents and write access unknown, so
+            the pane claims neither. Picking files, a folder is never the
+            choice, so its reason ("Pick a file: Contigs.") is guidance rather
+            than an error. */}
+        {listingError ? (
+          <CommitNote
+            commit={{
+              canCommit: false,
+              reason: `Couldn't check this folder's contents or write access: ${formatUserFacingErrorMessage(
+                listingError,
+                "the workspace service gave no reason.",
+              )}`,
+            }}
+            okText=""
+          />
+        ) : isPickingFiles ? (
           <p className="text-xs text-muted-foreground">{commit.reason}</p>
         ) : (
           <CommitNote

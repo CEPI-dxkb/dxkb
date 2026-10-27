@@ -39,7 +39,10 @@ async function renderServer(node: Promise<React.ReactElement>) {
 
 describe("DBStatistics", () => {
   it("renders all 8 cards with thousands-separated numbers when every count succeeds", async () => {
-    mockedFetch.mockResolvedValueOnce(allNumeric());
+    mockedFetch.mockResolvedValueOnce({
+      counts: allNumeric(),
+      unavailableReason: null,
+    });
 
     const { findByText } = await renderServer(DBStatistics());
 
@@ -59,9 +62,8 @@ describe("DBStatistics", () => {
 
   it("renders an em dash for any metric whose count is null", async () => {
     mockedFetch.mockResolvedValueOnce({
-      ...allNumeric(),
-      proteinStructures: null,
-      epitopes: null,
+      counts: { ...allNumeric(), proteinStructures: null, epitopes: null },
+      unavailableReason: null,
     });
 
     const { findAllByText, findByText } = await renderServer(DBStatistics());
@@ -69,5 +71,41 @@ describe("DBStatistics", () => {
     const dashes = await findAllByText("—");
     expect(dashes).toHaveLength(2);
     expect(await findByText("42,891")).toBeInTheDocument();
+  });
+
+  it("says once that the statistics are unavailable, with the reason, when every count failed", async () => {
+    const reason =
+      "The BV-BRC data service is unavailable (HTTP 503 Service Unavailable: Site Maintenance).";
+    mockedFetch.mockResolvedValueOnce({
+      counts: Object.fromEntries(
+        Object.keys(allNumeric()).map((key) => [key, null]),
+      ) as StatisticCounts,
+      unavailableReason: reason,
+    });
+
+    const { findByRole, queryAllByText, queryByText } = await renderServer(
+      DBStatistics(),
+    );
+
+    expect(await findByRole("alert")).toHaveTextContent(
+      `Statistics temporarily unavailable: ${reason}`,
+    );
+    expect(queryAllByText("—")).toHaveLength(0);
+    expect(queryByText("Viral Genomes")).not.toBeInTheDocument();
+  });
+
+  it("says so without a reason when the failure carried no message", async () => {
+    mockedFetch.mockResolvedValueOnce({
+      counts: Object.fromEntries(
+        Object.keys(allNumeric()).map((key) => [key, null]),
+      ) as StatisticCounts,
+      unavailableReason: "",
+    });
+
+    const { findByRole } = await renderServer(DBStatistics());
+
+    expect(await findByRole("alert")).toHaveTextContent(
+      /^Statistics temporarily unavailable\.$/,
+    );
   });
 });

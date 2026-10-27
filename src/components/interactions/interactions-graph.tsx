@@ -4,7 +4,8 @@ import { useRef, useState } from "react";
 import dynamic from "next/dynamic";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
+import { QueryRetryButton } from "@/components/views/query-retry-button";
+import { useRetryKeepingError } from "@/components/views/use-retry-keeping-error";
 import {
   interactionsGraphRowLimit,
   useInteractions,
@@ -68,9 +69,13 @@ export function InteractionsGraph({
   keywordValue,
   onKeywordChange,
 }: InteractionsGraphProps) {
-  const { data, isPending, isError, error, refetch } = useInteractions(
-    rql,
-    keywordValue,
+  const interactions = useInteractions(rql, keywordValue);
+  const { data } = interactions;
+  // A Retry keeps the failure up ("Retrying…") instead of going back to the
+  // loading skeleton until it answers.
+  const loadRetry = useRetryKeepingError(
+    interactions,
+    JSON.stringify([rql, keywordValue]),
   );
   const [layout, setLayout] = useState<LayoutName>(defaultLayout);
   const [selection, setSelection] = useState<GraphSelection>(emptySelection);
@@ -108,19 +113,7 @@ export function InteractionsGraph({
   // Toolbar (and its keyword box) renders in every state — including
   // loading/error/empty — so a keyword filter that matches nothing doesn't
   // strand the user without a way to see or clear it.
-  if (isPending) {
-    return (
-      <div className="flex h-full min-h-0 flex-col">
-        {toolbar}
-        <InteractionsGraphSkeleton
-          layout={layout}
-          onLayoutChange={handleLayoutChange}
-        />
-      </div>
-    );
-  }
-
-  if (isError) {
+  if (loadRetry.error) {
     return (
       <div className="flex h-full min-h-0 flex-col">
         {toolbar}
@@ -133,21 +126,29 @@ export function InteractionsGraph({
           <AlertDescription>
             <p>
               {formatUserFacingErrorMessage(
-                error,
+                loadRetry.error,
                 "Failed to load interactions.",
               )}
             </p>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                void refetch();
-              }}
-            >
-              Retry
-            </Button>
+            <QueryRetryButton
+              retrying={loadRetry.retrying}
+              onRetry={loadRetry.retry}
+            />
           </AlertDescription>
         </Alert>
+      </div>
+    );
+  }
+
+  // No rows yet, and no failure (that is above): still loading.
+  if (data === undefined) {
+    return (
+      <div className="flex h-full min-h-0 flex-col">
+        {toolbar}
+        <InteractionsGraphSkeleton
+          layout={layout}
+          onLayoutChange={handleLayoutChange}
+        />
       </div>
     );
   }

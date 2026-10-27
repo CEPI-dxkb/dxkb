@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
+import { recordUnavailableMessage } from "@/components/errors/record-load-failure";
+import { RecordUnavailable } from "@/components/errors/record-unavailable";
 import { DataApiError } from "@/lib/data-api/repository";
 import { isExperimentId, parseExperimentTab } from "@/lib/experiment-view";
 import { getExperiment } from "@/lib/experiment-view/server";
@@ -33,22 +35,29 @@ async function loadExperiment(
   // `readRouteParam`.
   const experimentId = readRouteParam(rawExperimentId, source);
   if (!isExperimentId(experimentId)) notFound();
+  let experiment: Awaited<ReturnType<typeof getExperiment>>;
   try {
-    const experiment = await getExperiment(experimentId);
-    if (!experiment) notFound();
-    return experiment;
+    experiment = await getExperiment(experimentId);
   } catch (error) {
     if (error instanceof DataApiError && [401, 403, 404].includes(error.status))
       notFound();
-    throw error;
+    // An outage is rendered, not thrown: production would redact its message.
+    const unavailable = recordUnavailableMessage(error);
+    if (unavailable === null) throw error;
+    if (source === "page") console.error(`experiment/${experimentId}:`, error);
+    return { experimentId, unavailable } as const;
   }
+  if (!experiment) notFound();
+  return { experimentId, experiment } as const;
 }
 
 export async function generateMetadata({
   params,
 }: ExperimentMetadataProps): Promise<Metadata> {
   const { experimentId } = await params;
-  const experiment = await loadExperiment(experimentId, "metadata");
+  const loaded = await loadExperiment(experimentId, "metadata");
+  if (loaded.unavailable !== undefined) return { title: `${loaded.experimentId} | Experiment` };
+  const { experiment } = loaded;
   return {
     title: `${experiment.exp_title ?? experiment.exp_name ?? experiment.exp_id} | Experiment`,
     description:
@@ -61,7 +70,20 @@ export default async function ExperimentPage({
   searchParams,
 }: ExperimentPageProps) {
   const [{ experimentId }, query] = await Promise.all([params, searchParams]);
-  const experiment = await loadExperiment(experimentId, "page");
+  const loaded = await loadExperiment(experimentId, "page");
+  if (loaded.unavailable !== undefined) {
+    return (
+      <RecordUnavailable
+        viewLabel="Experiment View"
+        recordLabel="Experiment"
+        recordId={loaded.experimentId}
+        message={loaded.unavailable}
+        collectionHref="/experiment"
+        collectionLabel="Experiments"
+      />
+    );
+  }
+  const { experiment } = loaded;
   const activeTab = parseExperimentTab(query.tab);
   const canonicalQuery = canonicalizeMemberTabQuery(query, activeTab);
   if (canonicalQuery !== null) {

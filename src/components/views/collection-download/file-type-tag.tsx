@@ -17,7 +17,7 @@ export function FileTypeTag({ format }: { format: DownloadFormatId }) {
           ? "text-chart-3"
           : format === "xlsx"
             ? "text-success"
-            : "text-primary",
+            : "text-primary dark:text-link",
       )}
     >
       {tag}

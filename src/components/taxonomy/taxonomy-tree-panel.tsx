@@ -9,7 +9,7 @@ import {
   SearchActionBar,
   type SearchActionId,
 } from "@/components/search/search-action-bar";
-import { TaxonomyServiceChooser } from "@/components/views/taxonomy-service-chooser";
+import { noServicesReason } from "@/components/search/search-action-policy";
 import type { OrganismTaxonomy } from "@/lib/services/organisms/types";
 import { taxonomyGenomesHref } from "@/lib/taxonomy-view";
 
@@ -21,6 +21,8 @@ const taxonomyGuideUrl =
 
 interface TaxonomyTreePanelProps {
   readonly taxa: readonly OrganismTaxonomy[];
+  /** Root taxa whose taxonomy page has an enabled Phylogeny tab. */
+  readonly phylogenyTaxonIds: readonly number[];
 }
 
 /**
@@ -30,10 +32,12 @@ interface TaxonomyTreePanelProps {
  * ResourceWorkspace's resizable panels (which need ResizeObserver) live outside the
  * tree's jsdom unit tests.
  */
-export function TaxonomyTreePanel({ taxa }: TaxonomyTreePanelProps) {
+export function TaxonomyTreePanel({
+  taxa,
+  phylogenyTaxonIds,
+}: TaxonomyTreePanelProps) {
   const router = useRouter();
   const [selectedRows, setSelectedRows] = useState<TaxonRecord[]>([]);
-  const [isServiceChooserOpen, setIsServiceChooserOpen] = useState(false);
   const singleRow = selectedRows.length === 1 ? selectedRows[0] : null;
   const selectedTaxonIds = selectedRows.map((row) => String(row.taxon_id));
 
@@ -48,8 +52,6 @@ export function TaxonomyTreePanel({ taxa }: TaxonomyTreePanelProps) {
       );
     } else if (actionId === "features" && singleRow) {
       router.push(`/taxonomy/${String(singleRow.taxon_id)}?tab=features`);
-    } else if (actionId === "services") {
-      setIsServiceChooserOpen(true);
     }
   }
 
@@ -65,7 +67,11 @@ export function TaxonomyTreePanel({ taxa }: TaxonomyTreePanelProps) {
           selectedCount={selectedRows.length}
           searchType="taxonomy"
           guideUrl={taxonomyGuideUrl}
-          enabledActions={["services", "genomes", "features"]}
+          enabledActions={["genomes", "features"]}
+          // Legacy's Taxa Tree runs no service, unlike the Taxa list's BLAST.
+          disabledActions={{
+            services: noServicesReason("Taxon", "Taxa", selectedRows.length),
+          }}
           onAction={handleAction}
         />
       }
@@ -78,12 +84,10 @@ export function TaxonomyTreePanel({ taxa }: TaxonomyTreePanelProps) {
         />
       }
     >
-      <TaxonomyTree rootTaxa={taxa} onSelect={setSelectedRows} />
-      <TaxonomyServiceChooser
-        open={isServiceChooserOpen}
-        onOpenChange={setIsServiceChooserOpen}
-        taxonIds={selectedTaxonIds}
-        hasSelectableServices={false}
+      <TaxonomyTree
+        rootTaxa={taxa}
+        phylogenyTaxonIds={phylogenyTaxonIds}
+        onSelect={setSelectedRows}
       />
     </ResourceWorkspace>
   );

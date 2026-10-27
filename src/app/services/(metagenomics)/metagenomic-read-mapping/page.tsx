@@ -10,6 +10,7 @@ import { ServiceHeader } from "@/components/services/service-header";
 import { JobParamsDialog } from "@/components/services/job-params-dialog";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
+import { ServiceSubmitError } from "@/components/services/form-ui/service-submit-error";
 import { metagenomicReadMappingInfo } from "@/lib/services/info/metagenomic-read-mapping";
 
 export default function MetagenomicReadMappingPage() {
@@ -35,6 +36,7 @@ export default function MetagenomicReadMappingPage() {
         <SelectedLibrariesCard controller={controller} />
         <ReadMappingParametersCard controller={controller} />
         <div className="md:col-span-12">
+          <ServiceSubmitError form={controller.form} />
           <div className="service-form-controls">
             <Button
               type="button"

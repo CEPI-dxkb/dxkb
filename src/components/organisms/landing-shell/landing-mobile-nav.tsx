@@ -111,7 +111,7 @@ export function LandingMobileNav<Key extends string>({
                   className={cn(
                     "flex aspect-square flex-col items-center justify-center gap-1.5 rounded-lg border p-1 text-center transition-colors",
                     isActive
-                      ? "border-primary bg-primary/10 text-primary"
+                      ? "border-primary bg-primary/10 text-primary dark:text-foreground"
                       : "bg-card text-foreground hover:bg-muted/50",
                     isDisabled && "cursor-not-allowed opacity-40 hover:bg-card",
                   )}

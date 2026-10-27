@@ -130,6 +130,7 @@ function createSlotProbes() {
     Table: probe("Table"),
     Actions: probe("Actions"),
     Details: probe("Details"),
+    Toolbar: probe("Toolbar"),
   };
 }
 
@@ -403,6 +404,46 @@ describe("ResourceWorkspace slot mounting", () => {
       expect(duplicateIds(container)).toStrictEqual([]);
     },
   );
+
+  it("drops the action rail without remounting the toolbar", () => {
+    mockViewport(false);
+    const probes = createSlotProbes();
+    const workspace = (hasActionRail: boolean) => (
+      <ResourceWorkspace
+        toolbar={<probes.Toolbar />}
+        hasActionRail={hasActionRail}
+        hasSidePanel={hasActionRail}
+        actionBar={<span>Rail actions</span>}
+        sidePanel={<probes.Details />}
+      >
+        <probes.Table />
+      </ResourceWorkspace>
+    );
+    const { rerender } = render(workspace(true));
+    fireEvent.change(screen.getByLabelText("Toolbar local state"), {
+      target: { value: "keyword draft" },
+    });
+
+    // A failed read: no rail (nor its Hide/Show) and no detail panel.
+    rerender(workspace(false));
+    expect(document.querySelector("aside")).not.toBeInTheDocument();
+    expect(screen.queryByText("Rail actions")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /^(Hide|Show)$/ }),
+    ).not.toBeInTheDocument();
+    expect(panelShares()).toHaveLength(1);
+
+    rerender(workspace(true));
+    expect(screen.getByText("Rail actions")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Hide" })).toBeInTheDocument();
+    // The toolbar and the content kept their place, and their state, throughout.
+    expect(screen.getByLabelText("Toolbar local state")).toHaveValue(
+      "keyword draft",
+    );
+    expect(
+      probes.log.filter((entry) => !entry.endsWith(":Details")),
+    ).toStrictEqual(["mount:Toolbar", "mount:Table"]);
+  });
 
   it("keeps the detail panel's id unique when two workspaces are mounted at once", () => {
     mockViewport(false);

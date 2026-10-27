@@ -1,3 +1,4 @@
+import { UpstreamError } from "@/lib/api/upstream-failure";
 import {
   ensureUserWorkspace,
   expectedHomeSubfolders,
@@ -16,14 +17,14 @@ interface FakeRpcOptions {
    */
   lsResult?: unknown;
   /**
-   * Throw on the ls call with this message instead of returning lsResult.
+   * Throw on the ls call with this message (or error) instead of returning lsResult.
    */
-  lsThrow?: string;
+  lsThrow?: string | Error;
   /**
    * Map of method+sequence-index → error to throw. Sequence index is per-method.
    * e.g. { "Workspace.create:0": "boom" } throws on the first create call.
    */
-  createErrors?: Record<number, string>;
+  createErrors?: Record<number, string | Error>;
 }
 
 function createFakeRpc(options: FakeRpcOptions = {}): {
@@ -37,13 +38,17 @@ function createFakeRpc(options: FakeRpcOptions = {}): {
       try {
         calls.push({ method, params });
         if (method === "Workspace.ls") {
-          if (options.lsThrow) throw new Error(options.lsThrow);
+          if (options.lsThrow) {
+            throw options.lsThrow instanceof Error
+              ? options.lsThrow
+              : new Error(options.lsThrow);
+          }
           return Promise.resolve((options.lsResult ?? [{}]) as T);
         }
         if (method === "Workspace.create") {
           const error = options.createErrors?.[createIndex];
           createIndex += 1;
-          if (error) throw new Error(error);
+          if (error) throw error instanceof Error ? error : new Error(error);
           return Promise.resolve([[]] as T);
         }
         throw new Error(`Unexpected method ${method}`);
@@ -203,7 +208,7 @@ describe("ensureUserWorkspace", () => {
 
   it("uses the provided realm in every path it constructs", async () => {
     const { port, calls } = createFakeRpc({
-      lsThrow: "_ERROR_User lacls permission",
+      lsThrow: "_ERROR_User lacks permission",
     });
 
     await ensureUserWorkspace({ rpc: port, userId: "bob", realm: "dxkb" });
@@ -224,5 +229,44 @@ describe("ensureUserWorkspace", () => {
     for (const path of allPaths) {
       expect(path.startsWith("/bob@dxkb/")).toBe(true);
     }
+  });
+
+  describe("when ls fails for a reason other than a missing home", () => {
+    const outage = new UpstreamError({
+      status: 504,
+      code: "upstream_timeout",
+      message:
+        "The BV-BRC workspace service did not respond (connection timed out after 10 s).",
+    });
+
+    it.each([
+      ["an outage", outage],
+      ["a maintenance page", new Error("Workspace API HTTP 503 Service Unavailable")],
+      ["an unrelated JSON-RPC error", new Error("_ERROR_Internal failure_ERROR_")],
+    ])("rethrows %s and creates nothing", async (_label, lsError) => {
+      const { port, calls } = createFakeRpc({ lsThrow: lsError });
+
+      await expect(
+        ensureUserWorkspace({ rpc: port, userId, realm }),
+      ).rejects.toBe(lsError);
+      expect(calls.map((call) => call.method)).toEqual(["Workspace.ls"]);
+    });
+  });
+
+  it("stops writing when the service stops answering mid-run", async () => {
+    const outage = new UpstreamError({
+      status: 504,
+      code: "upstream_timeout",
+      message: "The BV-BRC workspace service did not respond (timed out after 30 s).",
+    });
+    const { port, calls } = createFakeRpc({
+      lsThrow: "_ERROR_User lacks permission",
+      createErrors: { 0: outage },
+    });
+
+    await expect(
+      ensureUserWorkspace({ rpc: port, userId, realm }),
+    ).rejects.toBe(outage);
+    expect(calls.filter((c) => c.method === "Workspace.create")).toHaveLength(1);
   });
 });

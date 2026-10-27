@@ -1,4 +1,8 @@
 import { workspaceApi } from "./client";
+import {
+  isWorkspaceObjectMissing,
+  workspaceErrorMessage,
+} from "./workspace-errors";
 
 const favoritesFile = "favorites.json";
 const preferencesDir = ".preferences";
@@ -32,30 +36,47 @@ function parseGetFileContent(result: unknown): string | null {
   return typeof content === "string" ? content : null;
 }
 
-/**
- * Load favorite folder paths from the user's favorites.json. Returns [] if file is missing or invalid.
- */
-export async function loadFavorites(userId: string): Promise<string[]> {
-  if (!userId) return [];
-  const filePath = getFavoritesFilePath(userId);
+function parseFavoriteFolders(content: string): string[] {
   try {
-    const result = await workspaceApi.makeRequest(
-      "Workspace.get",
-      [{ objects: [filePath] }],
-      { silent: true },
-    );
-    const content = parseGetFileContent(result);
-    if (!content) return [];
-    const data = JSON.parse(content) as { folders?: string[] };
-    return Array.isArray(data.folders) ? data.folders : [];
+    const data = JSON.parse(content) as { folders?: unknown };
+    return Array.isArray(data.folders)
+      ? data.folders.filter((path): path is string => typeof path === "string")
+      : [];
   } catch {
+    // An unreadable file holds nothing the app can show or keep.
     return [];
   }
 }
 
 /**
- * Ensure the .preferences directory exists. If it does not exist (get returns empty or fails), create the folder.
- * Failures from the existence check are not surfaced so the client can create the path on first use.
+ * Load favorite folder paths from the user's favorites.json. Returns [] when
+ * the file does not exist yet (or holds no folder list). Any other failure is
+ * thrown: a failed read is not "no favorites", and `toggleFavorite` writes
+ * the whole file back from what this returns.
+ */
+export async function loadFavorites(userId: string): Promise<string[]> {
+  if (!userId) return [];
+  const filePath = getFavoritesFilePath(userId);
+  let result: unknown;
+  try {
+    result = await workspaceApi.makeRequest(
+      "Workspace.get",
+      [{ objects: [filePath] }],
+      { silent: true },
+    );
+  } catch (error) {
+    if (isWorkspaceObjectMissing(error)) return [];
+    throw error;
+  }
+  const content = parseGetFileContent(result);
+  if (!content) return [];
+  return parseFavoriteFolders(content);
+}
+
+/**
+ * Ensure the .preferences directory exists. If the Workspace says it does not
+ * exist (get returns empty or a "not found" error), create the folder; any
+ * other failure of the check is thrown rather than answered with a write.
  */
 async function ensurePreferencesDir(userId: string): Promise<void> {
   const dirPath = getPreferencesDirPath(userId);
@@ -69,8 +90,8 @@ async function ensurePreferencesDir(userId: string): Promise<void> {
       result.length > 0 &&
       Array.isArray(result[0]) &&
       result[0].length > 0;
-  } catch {
-    // Directory missing or API error — fall through to create.
+  } catch (error) {
+    if (!isWorkspaceObjectMissing(error)) throw error;
   }
   if (exists) return;
   await workspaceApi.makeRequest("Workspace.create", [
@@ -80,6 +101,10 @@ async function ensurePreferencesDir(userId: string): Promise<void> {
 
 /**
  * Toggle a folder in favorites. Returns the new state: true = favorited, false = removed.
+ *
+ * The whole file is rewritten from the list just read, so a failed read
+ * aborts before any write: writing then would replace every saved favorite
+ * with the one folder being toggled.
  */
 export async function toggleFavorite(
   userId: string,
@@ -88,7 +113,15 @@ export async function toggleFavorite(
   if (!userId || !folderPath) {
     throw new Error("User and folder path are required.");
   }
-  const folders = await loadFavorites(userId);
+  let folders: string[];
+  try {
+    folders = await loadFavorites(userId);
+  } catch (cause) {
+    throw new Error(
+      `Couldn't update favorites, nothing was changed: ${workspaceErrorMessage(cause, "your saved favorites could not be read.")}`,
+      { cause },
+    );
+  }
   const idx = folders.indexOf(folderPath);
   const isAdding = idx === -1;
   const newFolders = isAdding

@@ -16,15 +16,24 @@ export { OrganismLandingPage } from "./organism-landing-page";
 export { EpitopePage } from "./epitope-page";
 export { ExperimentPage } from "./experiment-page";
 export { GenomeMemberPage } from "./genome-member-page";
+export {
+  GenomeBrowserPanelPage,
+  type GenomeBrowserDataRequests,
+  type ThemeSurfaces,
+} from "./genome-browser-panel";
+export { ThemeSwitcher } from "./theme-switcher";
 export { SerologyPage } from "./serology-page";
 export { StrainPage } from "./strain-page";
 export { SurveillancePage } from "./surveillance-page";
 export { ResourceCollectionPage } from "./resource-collection-page";
+export { CollectionToolbar } from "./collection-toolbar";
 export { DomainsAndMotifsPage } from "./domains-and-motifs-page";
 export { ProteinStructurePage } from "./protein-structure-page";
 export { TaxonomyCollectionPage } from "./taxonomy-collection-page";
 export { ArchaeopteryxPage } from "./archaeopteryx-page";
 export { PanelSplit } from "./panel-split";
+export { ErrorAlert } from "./error-alert";
+export { SearchResultsPage } from "./search-results-page";
 export { ViewNavRail } from "./view-nav-rail";
 export {
   FolderPickerDialog,

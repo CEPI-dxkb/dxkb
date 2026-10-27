@@ -8,6 +8,7 @@ import {
   TooltipContent,
   TooltipProvider,
 } from "@/components/ui/tooltip";
+import { RetryButton } from "@/components/errors/retry-button";
 import { WorkspaceObjectSelector } from "@/components/workspace/workspace-object-selector";
 import { useOutputNameValidation } from "@/hooks/services/use-output-name-validation";
 import { ServiceInput } from "@/components/services/form-ui/service-input";
@@ -19,8 +20,13 @@ import { HelpCircle } from "lucide-react";
 
 const nameTakenMessage =
   "An object with this name already exists in the selected folder.";
-const validationErrorMessage =
-  "Unable to validate this name. Please try again.";
+/** "Unable to validate this name: <reason>.", shown beside a Retry. */
+function validationErrorMessage(reason: string | null): string {
+  const detail = reason?.trim().replace(/\.$/, "");
+  return detail
+    ? `Unable to validate this name: ${detail}.`
+    : "Unable to validate this name.";
+}
 const validatingMessage = "Checking name availability...";
 
 interface OutputFolderProps {
@@ -136,14 +142,20 @@ const OutputFolder = ({
             {validatingMessage}
           </p>
         )}
-        {variant === "name" &&
-          (validation.status === "taken" || validation.status === "error") && (
+        {variant === "name" && validation.status === "taken" && (
+          <p className="text-sm text-destructive" role="alert">
+            {nameTakenMessage}
+          </p>
+        )}
+        {variant === "name" && validation.status === "error" && (
+          <div className="flex flex-col items-start gap-2">
             <p className="text-sm text-destructive" role="alert">
-              {validation.status === "error"
-                ? validationErrorMessage
-                : nameTakenMessage}
+              {validationErrorMessage(validation.errorMessage)}
             </p>
-          )}
+            {/* Without it, a failed check blocks Submit until the name is edited. */}
+            <RetryButton retry={validation.retry} label="Retry name check" />
+          </div>
+        )}
       </div>
     </div>
   );

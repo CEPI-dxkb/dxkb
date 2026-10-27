@@ -1,25 +1,33 @@
 import { render, screen } from "@testing-library/react";
-import type { ReactElement } from "react";
 import { describe, expect, it, vi } from "vitest";
 
-vi.mock("../genome-collection", () => ({
-  GenomeCollection: ({
-    initialState,
-    overview,
-  }: {
-    initialState: {
-      page: number;
-      sort: string;
-      filters: Record<string, string[]>;
-    };
-    overview?: React.ReactNode;
-  }) => (
-    <div>
-      <div data-testid="state">{JSON.stringify(initialState)}</div>
-      {overview}
-    </div>
-  ),
-}));
+vi.mock("../genome-collection", async () => {
+  const { useState } = await import("react");
+  return {
+    // The first props it mounted with live in state, so a remount shows.
+    GenomeCollection: ({
+      initialState,
+      overview,
+    }: {
+      initialState: {
+        page: number;
+        sort: string;
+        filters: Record<string, string[]>;
+      };
+      overview?: React.ReactNode;
+    }) => {
+      const [mountedWith] = useState(() => JSON.stringify(initialState));
+      return (
+        <div>
+          <div data-testid="state" data-mounted-with={mountedWith}>
+            {JSON.stringify(initialState)}
+          </div>
+          {overview}
+        </div>
+      );
+    },
+  };
+});
 vi.mock("../genome-list-overview", () => ({
   GenomeListOverview: ({ genomeQuery }: { genomeQuery: unknown }) => (
     <div data-testid="overview">{JSON.stringify(genomeQuery)}</div>
@@ -83,25 +91,23 @@ describe("Genome collection route", () => {
     expect(screen.queryByTestId("overview")).not.toBeInTheDocument();
   });
 
-  it("remounts for a new query but not for pagination or sorting", async () => {
-    const collectionKey = async (params: Record<string, string>) => {
-      const page = (await GenomeCollectionPage({
-        searchParams: Promise.resolve(params),
-      })) as ReactElement<{ children: ReactElement }>;
-      return page.props.children.key;
-    };
-
-    const initialKey = await collectionKey({ taxon_id: "561" });
-
-    expect(await collectionKey({ taxon_id: "561", page: "2" })).toBe(
-      initialKey,
-    );
-    expect(
-      await collectionKey({
-        taxon_id: "561",
-        sort: "genome_length:desc",
+  it("keeps the collection mounted across queries, so its open menus survive a pick", async () => {
+    const { rerender } = render(
+      await GenomeCollectionPage({
+        searchParams: Promise.resolve({ taxon_id: "561" }),
       }),
-    ).toBe(initialKey);
-    expect(await collectionKey({ taxon_id: "562" })).not.toBe(initialKey);
+    );
+    const collection = screen.getByTestId("state");
+
+    rerender(
+      await GenomeCollectionPage({
+        searchParams: Promise.resolve({ taxon_id: "562", page: "2" }),
+      }),
+    );
+
+    expect(screen.getByTestId("state")).toBe(collection);
+    expect(collection).toHaveTextContent('"taxon_id":["562"]');
+    expect(collection).toHaveTextContent('"page":2');
+    expect(collection.dataset.mountedWith).toContain('"taxon_id":["561"]');
   });
 });

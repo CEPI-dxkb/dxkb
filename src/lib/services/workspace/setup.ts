@@ -9,7 +9,15 @@
  * The transport layer is injected via `WorkspaceRpcPort` so the same logic
  * runs server-side (sign-up flow, direct fetch to `WORKSPACE_API_URL`) and
  * client-side (workspace browser, through the existing proxy).
+ *
+ * Folders are created only when `Workspace.ls` says the home is missing. Any
+ * other `ls` failure (an outage, a maintenance page) is rethrown: it says
+ * nothing about whether the home exists, and writes driven by it were
+ * reported as success during the 2026-10-19 outage.
  */
+
+import { UpstreamError } from "@/lib/api/upstream-failure";
+import { isWorkspaceHomeMissing } from "./workspace-errors";
 
 export const expectedHomeSubfolders = [
   "Genome Groups",
@@ -31,7 +39,7 @@ export interface EnsureUserWorkspaceInput {
 export interface EnsureUserWorkspaceResult {
   /** Paths actually created during this call (excludes already-existing folders). */
   created: string[];
-  /** Per-path error messages for batches that failed. Best-effort: callers may inspect and log. */
+  /** Per-path error messages for batches the Workspace rejected. Non-empty means setup is incomplete. */
   failures: Record<string, string>;
 }
 
@@ -70,10 +78,10 @@ export async function ensureUserWorkspace(
     ]);
     homeExists = true;
     existingSubfolders = parseExistingFolderNames(lsResult, homePath);
-  } catch {
-    // Most commonly: "_ERROR_User lacks permission" — /home/ does not exist.
-    // Treat any ls failure as "missing"; Workspace.create is idempotent so
-    // re-creating an existing folder is harmless.
+  } catch (error) {
+    // "_ERROR_User lacks permission" is how the Workspace says /home/ does
+    // not exist yet. Anything else is not evidence of a missing home.
+    if (!isWorkspaceHomeMissing(error)) throw error;
     homeExists = false;
   }
 
@@ -87,6 +95,8 @@ export async function ensureUserWorkspace(
       ]);
       created.push(homePath);
     } catch (cause) {
+      // The service stopped answering mid-run: stop writing.
+      if (cause instanceof UpstreamError) throw cause;
       failures[homePath] =
         cause instanceof Error ? cause.message : String(cause);
     }
@@ -106,6 +116,7 @@ export async function ensureUserWorkspace(
     ]);
     created.push(...subfolderPaths);
   } catch (cause) {
+    if (cause instanceof UpstreamError) throw cause;
     const message = cause instanceof Error ? cause.message : String(cause);
     for (const path of subfolderPaths) failures[path] = message;
   }

@@ -17,10 +17,18 @@ function buildItems(taxon: OrganismTaxonomy) {
 }
 
 describe("buildTaxonomyNavItems", () => {
-  it("returns all 15 tabs", () => {
+  it("returns all 16 tabs", () => {
     const taxon = tax({ lineageNames: ["Bacteria"] });
     const items = buildItems(taxon);
-    expect(items).toHaveLength(15);
+    expect(items).toHaveLength(16);
+  });
+
+  it("gives a bacterial taxon a real AMR Phenotypes table, not a placeholder", () => {
+    const taxon = tax({ taxonId: 1386, lineageNames: ["Bacteria", "Bacillota"], lineageIds: [2, 1386] });
+    const amr = buildItems(taxon).find((i) => i.key === "amr-phenotypes");
+    expect(amr).toEqual(expect.objectContaining({ label: "AMR Phenotypes", layout: "fill" }));
+    expect(amr?.enabled).toBe(true);
+    expect(amr?.Component.name).toBe("AmrPhenotypesView");
   });
 
   it("enables interactions for a bacterial taxon", () => {
@@ -28,6 +36,7 @@ describe("buildTaxonomyNavItems", () => {
     const items = buildItems(taxon);
     const byKey = Object.fromEntries(items.map((i) => [i.key, i.enabled !== false]));
     expect(byKey["interactions"]).toBe(true);
+    expect(byKey["amr-phenotypes"]).toBe(true);
     expect(byKey["strains"]).toBe(false);
   });
 

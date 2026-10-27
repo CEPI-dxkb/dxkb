@@ -10,6 +10,7 @@ import {
   SearchActionBar,
   type SearchActionId,
 } from "@/components/search/search-action-bar";
+import { noServicesReason } from "@/components/search/search-action-policy";
 import { SelectionToGroupDialog } from "@/components/workspace/selection-to-group-dialog";
 import type { DataTableColumn } from "@/components/shared/data-table";
 import { useAuth } from "@/lib/auth/provider";
@@ -74,6 +75,7 @@ interface CollectionSelectionActionsProps {
     | "genome"
     | "genome_feature"
     | "genome_sequence"
+    | "genome_amr"
     | "protein_feature"
     | "protein_structure"
     | "sequence_feature"
@@ -109,7 +111,7 @@ interface CollectionSelectionActionsProps {
   disabledActions?: Partial<Record<SearchActionId, string>>;
   /** Actions currently resolving in the owning collection. */
   externalLoadingActionIds?: readonly SearchActionId[];
-  /** False when no service accepts this collection's selection; SERVICES says so. */
+  /** False when no service accepts this collection's selection; SERVICES is disabled with a reason. */
   hasSelectableServices?: boolean;
   columns: readonly DataTableColumn[];
   columnVisibility: Record<string, boolean>;
@@ -214,11 +216,6 @@ export function CollectionSelectionActions({
     onError(null);
     if (actionId === "copyRows") {
       setIsCopyOpen(true);
-      return;
-    }
-    // Nothing to prefill, so skip resolving the selection's IDs and just report it.
-    if (actionId === "services" && !hasSelectableServices) {
-      setIsServiceOpen(true);
       return;
     }
     // `selectionIds` is one shared slot, so a second resolution would overwrite the
@@ -351,6 +348,9 @@ export function CollectionSelectionActions({
           group: noGenomesReason,
         }
       : {}),
+    ...(hasSelectableServices
+      ? {}
+      : { services: noServicesReason(singularLabel, label, selectedCount) }),
   };
   // Stay `undefined` rather than `{}` when nothing is disabled: the bar's prop is
   // optional and consumers assert on its absence.
@@ -405,7 +405,6 @@ export function CollectionSelectionActions({
         open={isServiceOpen}
         onOpenChange={setIsServiceOpen}
         label={label}
-        hasSelectableServices={hasSelectableServices}
         ids={selectionIds}
         kind={idKind}
         workspaceUsername={user ? workspaceUsername(user) : undefined}

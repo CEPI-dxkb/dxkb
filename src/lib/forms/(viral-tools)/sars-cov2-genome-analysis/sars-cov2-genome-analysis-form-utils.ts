@@ -102,6 +102,8 @@ export function transformSarsCov2GenomeAnalysisParams(
     input_type: data.input_type,
     scientific_name: outputName,
     taxonomy_id: data.taxonomy_id.trim(),
+    // Sent as legacy does, so a rerun restores the label without a lookup.
+    my_label: data.my_label.trim(),
     output_path: data.output_path.trim(),
     output_file: outputName,
     skip_indexing: true,

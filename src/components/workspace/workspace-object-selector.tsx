@@ -40,8 +40,10 @@ interface WorkspaceObjectSelectorProps {
   /**
    * Waits to run the workspace search (a recursive listing of the whole
    * `path` tree) until the user focuses, types in, or opens the field, rather
-   * than on mount. For a field that usually keeps its default value or is
-   * filled through Browse, where the eager listing would be wasted.
+   * than on mount. Defaults to true: a service form has several of these
+   * fields, most keep their default value or are filled through Browse, and
+   * listing on mount sent one hanging `Workspace.ls` per field during an
+   * outage. Pass false only where the list must be ready before any input.
    */
   searchOnInteraction?: boolean;
 }
@@ -62,7 +64,7 @@ function useWorkspaceObjectSelector({
   browse = true,
   browseTitle,
   disabled = false,
-  searchOnInteraction = false,
+  searchOnInteraction = true,
 }: WorkspaceObjectSelectorProps) {
   const { user } = useAuth();
   const [showDropdown, setShowDropdown] = React.useState(false);

@@ -45,7 +45,9 @@ describe("fetchAmrPhenotypeDistribution", () => {
 
     expect(capturedUrl).toBe(`${baseUrl}/genome_amr/`);
     expect(capturedBody).toContain("eq(genome_id,*)");
-    expect(capturedBody).toContain("genome(eq(taxon_lineage_ids,197))");
+    expect(capturedBody).toContain(
+      "genome(and(eq(taxon_lineage_ids,197),ne(genome_status,Deprecated)))",
+    );
     expect(capturedBody).toContain(
       "in(resistant_phenotype,(Resistant,Susceptible,Intermediate))",
     );
@@ -166,7 +168,7 @@ describe("fetchAmrPhenotypeDistribution", () => {
     );
 
     await expect(fetchAmrPhenotypeDistribution(197)).rejects.toThrow(
-      "amr phenotype distribution: upstream timeout",
+      "Antimicrobial Resistance Profile: The BV-BRC data service is unavailable (HTTP 504 Gateway Timeout: upstream timeout).",
     );
   });
 

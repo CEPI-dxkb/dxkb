@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { GenomeBrowserPanel } from "@/components/genome-browser";
 import { viewIcons } from "@/components/views/view-icons";
 import {
   EntityViewShell,
@@ -96,6 +97,8 @@ export function GenomeMember({
         rql={genomeSequenceRql(genome.genome_id)}
       />
     );
+  } else if (activeTab === "genome-browser") {
+    content = <GenomeBrowserPanel genomeId={genome.genome_id} />;
   } else if (activeTab === "interactions") {
     content = (
       <ResourceChildCollection

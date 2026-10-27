@@ -1,11 +1,19 @@
-import type { ReactElement } from "react";
 import { render, screen } from "@testing-library/react";
 
-vi.mock("../taxonomy-collection", () => ({
-  TaxonomyCollection: ({ initialState }: { initialState: unknown }) => (
-    <div data-testid="state">{JSON.stringify(initialState)}</div>
-  ),
-}));
+vi.mock("../taxonomy-collection", async () => {
+  const { useState } = await import("react");
+  return {
+    // The first props it mounted with live in state, so a remount shows.
+    TaxonomyCollection: ({ initialState }: { initialState: unknown }) => {
+      const [mountedWith] = useState(() => JSON.stringify(initialState));
+      return (
+        <div data-testid="state" data-mounted-with={mountedWith}>
+          {JSON.stringify(initialState)}
+        </div>
+      );
+    },
+  };
+});
 
 import TaxonomyCollectionPage from "../page";
 
@@ -28,18 +36,23 @@ describe("Taxonomy collection route", () => {
     expect(screen.getByTestId("state")).toHaveTextContent('"page":2');
   });
 
-  it("remounts for query changes but not pagination or sorting", async () => {
-    const collectionKey = async (params: Record<string, string>) => {
-      const page = (await TaxonomyCollectionPage({
-        searchParams: Promise.resolve(params),
-      })) as ReactElement<{ children: ReactElement }>;
-      return page.props.children.key;
-    };
-    const initialKey = await collectionKey({ taxon_id: "10239" });
-    expect(await collectionKey({ taxon_id: "10239", page: "2" })).toBe(initialKey);
-    expect(
-      await collectionKey({ taxon_id: "10239", sort: "taxon_name:asc" }),
-    ).toBe(initialKey);
-    expect(await collectionKey({ taxon_id: "11520" })).not.toBe(initialKey);
+  it("keeps the collection mounted across queries, so its open menus survive a pick", async () => {
+    const { rerender } = render(
+      await TaxonomyCollectionPage({
+        searchParams: Promise.resolve({ taxon_id: "10239" }),
+      }),
+    );
+    const collection = screen.getByTestId("state");
+
+    rerender(
+      await TaxonomyCollectionPage({
+        searchParams: Promise.resolve({ taxon_id: "11520", page: "2" }),
+      }),
+    );
+
+    expect(screen.getByTestId("state")).toBe(collection);
+    expect(collection).toHaveTextContent('"taxon_id":["11520"]');
+    expect(collection).toHaveTextContent('"page":2');
+    expect(collection.dataset.mountedWith).toContain('"taxon_id":["10239"]');
   });
 });

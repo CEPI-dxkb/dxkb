@@ -1,7 +1,12 @@
 import { expect, type Page } from "@playwright/test";
+import { CollectionToolbar } from "./collection-toolbar";
 
 export class TaxonomyCollectionPage {
-  constructor(readonly page: Page) {}
+  readonly toolbar: CollectionToolbar;
+
+  constructor(readonly page: Page) {
+    this.toolbar = new CollectionToolbar(page);
+  }
 
   async searchFromWelcome(query: string): Promise<void> {
     await this.page.goto("/");
@@ -28,9 +33,7 @@ export class TaxonomyCollectionPage {
     await expect(
       this.page.getByRole("banner").getByRole("textbox"),
     ).toHaveValue(query);
-    await expect(this.page.getByPlaceholder("Search keywords...")).toHaveValue(
-      "",
-    );
+    await expect(this.toolbar.keyword()).toHaveValue("");
   }
 
   async expectTaxonVisible(taxonId: string): Promise<void> {
@@ -55,7 +58,7 @@ export class TaxonomyCollectionPage {
 
   /** Narrow the collection with its own keyword box (the `refine` query). */
   async filterCollection(query: string): Promise<void> {
-    await this.page.getByPlaceholder("Search keywords...").fill(query);
+    await this.toolbar.fillKeyword(query);
   }
 
   /** Select the page with the header checkbox, then every matching result. */

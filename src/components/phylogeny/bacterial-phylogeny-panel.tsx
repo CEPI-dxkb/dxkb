@@ -4,6 +4,7 @@ import { Network } from "lucide-react";
 import { useState } from "react";
 
 import { ResourceWorkspace } from "@/components/views/resource-workspace";
+import { useRetryKeepingError } from "@/components/views/use-retry-keeping-error";
 import { SectionError } from "@/components/organisms/shared/section-error";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { ArchaeopteryxNode } from "@/lib/phylogeny/archaeopteryx";
@@ -19,22 +20,29 @@ export function BacterialPhylogenyPanel({
   taxonName: string;
 }) {
   const tree = useBacterialTreeXml(taxonId);
+  // A Retry keeps the failure up ("Retrying…") instead of going back to the
+  // loading skeleton until it answers.
+  const treeRetry = useRetryKeepingError(tree, String(taxonId));
   const [selection, setSelection] = useState<{
     taxonId: number;
     node: ArchaeopteryxNode;
   } | null>(null);
   const selected = selection?.taxonId === taxonId ? selection.node : null;
 
-  if (tree.isPending) return <Skeleton className="m-4 h-[calc(100%-2rem)]" />;
-  if (tree.isError) {
+  if (treeRetry.error) {
     return (
       <div className="p-4">
         <SectionError
-          title="Phylogeny unavailable"
-          message={tree.error.message}
+          section="Phylogeny"
+          error={treeRetry.error}
+          onRetry={treeRetry.retry}
+          isRetrying={treeRetry.retrying}
         />
       </div>
     );
+  }
+  if (tree.data === undefined) {
+    return <Skeleton className="m-4 h-[calc(100%-2rem)]" />;
   }
   if (tree.data === null) {
     return (

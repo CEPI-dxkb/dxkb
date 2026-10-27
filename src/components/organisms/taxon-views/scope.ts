@@ -1,3 +1,4 @@
+import { nonDeprecatedGenomeClause } from "@/lib/services/organisms/genome-scope";
 import type { OrganismTaxonomy } from "@/lib/services/organisms/types";
 
 export type TaxonViewScope =
@@ -19,6 +20,11 @@ export function taxonLineageClause(scope: TaxonViewScope): string {
   }
 
   return `or(${roots.map(lineageClause).join(",")})`;
+}
+
+/** The scope's genomes as its Genomes tab lists them: none Deprecated. */
+export function taxonGenomesClause(scope: TaxonViewScope): string {
+  return `and(${taxonLineageClause(scope)},${nonDeprecatedGenomeClause})`;
 }
 
 export function scopeRoots(scope: TaxonViewScope): readonly OrganismTaxonomy[] {

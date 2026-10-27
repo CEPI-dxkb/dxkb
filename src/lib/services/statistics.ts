@@ -1,4 +1,11 @@
+import {
+  fetchUpstream,
+  upstreamResponseError,
+  upstreamServices,
+  upstreamTimeoutMs,
+} from "@/lib/api/upstream-failure";
 import { getRequiredEnv } from "@/lib/env";
+import { formatUserFacingErrorMessage } from "@/lib/utils";
 
 export type StatisticKey =
   | "viralGenomes"
@@ -30,6 +37,17 @@ export const dbStatisticsDefinitions: readonly StatisticDefinition[] = Object.fr
 
 export type StatisticCounts = Record<StatisticKey, number | null>;
 
+export interface DbStatistics {
+  /** Each count, or `null` where its request failed. */
+  counts: StatisticCounts;
+  /**
+   * Why no count could be loaded: the first failure, condensed (an HTML
+   * maintenance page reduced to its title). `null` while any count loaded;
+   * empty when the failure carried no message.
+   */
+  unavailableReason: string | null;
+}
+
 interface FetchOptions {
   signal?: AbortSignal;
 }
@@ -39,7 +57,6 @@ interface SolrCountResponse {
 }
 
 const oneHourSeconds = 3600;
-const requestTimeoutMs = 10_000;
 
 function buildCountUrl(baseUrl: string, definition: StatisticDefinition): string {
   const trimmedBase = baseUrl.replace(/\/+$/, "");
@@ -53,19 +70,24 @@ async function fetchCount(
   signal: AbortSignal | undefined,
 ): Promise<number> {
   const url = buildCountUrl(baseUrl, definition);
-  const response = await fetch(url, {
-    method: "GET",
-    headers: { Accept: "application/solr+json" },
-    signal: signal
-      ? AbortSignal.any([signal, AbortSignal.timeout(requestTimeoutMs)])
-      : AbortSignal.timeout(requestTimeoutMs),
-    next: { revalidate: oneHourSeconds },
-  });
+  // A spent budget or a refused connection throws an `UpstreamError` naming
+  // the service and host; a non-OK answer is described from its status and
+  // the readable part of its body, never the maintenance page's markup. The
+  // shared Data API budget applies: the CDS count over `genome_feature`
+  // routinely takes 7–8 s.
+  const response = await fetchUpstream(
+    url,
+    {
+      method: "GET",
+      headers: { Accept: "application/solr+json" },
+      signal,
+      next: { revalidate: oneHourSeconds },
+    },
+    { service: upstreamServices.dataApi, timeoutMs: upstreamTimeoutMs.dataApi },
+  );
 
   if (!response.ok) {
-    const body = await response.text().catch(() => "");
-    const detail = body.trim() || `${String(response.status)} ${response.statusText}`;
-    throw new Error(detail);
+    throw await upstreamResponseError(response, upstreamServices.dataApi);
   }
 
   const payload = (await response.json()) as SolrCountResponse;
@@ -78,7 +100,7 @@ async function fetchCount(
 
 export async function fetchDbStatistics(
   options: FetchOptions = {},
-): Promise<StatisticCounts> {
+): Promise<DbStatistics> {
   const baseUrl = getRequiredEnv("NEXT_PUBLIC_DATA_API");
   const settled = await Promise.allSettled(
     dbStatisticsDefinitions.map((definition) =>
@@ -87,6 +109,7 @@ export async function fetchDbStatistics(
   );
 
   const counts = {} as StatisticCounts;
+  const failures: unknown[] = [];
   settled.forEach((result, index) => {
     const definition = dbStatisticsDefinitions[index];
     if (result.status === "fulfilled") {
@@ -95,8 +118,15 @@ export async function fetchDbStatistics(
     }
     const reason = result.reason instanceof Error ? result.reason.message : String(result.reason);
     console.error(`BV-BRC count failed for ${definition.core}: ${reason}`);
+    failures.push(result.reason);
     counts[definition.key] = null;
   });
 
-  return counts;
+  return {
+    counts,
+    unavailableReason:
+      failures.length === settled.length
+        ? formatUserFacingErrorMessage(failures[0], "")
+        : null,
+  };
 }

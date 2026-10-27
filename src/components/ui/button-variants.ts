@@ -63,13 +63,13 @@ export const buttonVariants = cva(
         field:
           "border-input bg-background font-normal hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50",
         "field-active":
-          "border-primary bg-primary/5 font-normal text-primary hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50",
+          "border-primary bg-primary/5 font-normal text-primary hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:border-input dark:text-foreground dark:bg-input/30 dark:hover:bg-input/50",
         // Round ghost info triggers with an accent hover (service info
         // popups); ghost-accent-primary is the header one.
         "ghost-accent":
           "rounded-full hover:bg-accent hover:text-accent-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:hover:bg-muted/50 dark:hover:text-foreground",
         "ghost-accent-primary":
-          "rounded-full text-primary hover:bg-accent hover:text-accent-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:hover:bg-muted/50 dark:hover:text-foreground",
+          "rounded-full text-primary hover:bg-accent hover:text-accent-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:text-link dark:hover:bg-muted/50 dark:hover:text-foreground",
         // Remove buttons on the rows of a selected-items list: a near-
         // foreground glyph (muted-foreground read as faint on the muted row)
         // that takes the brand secondary (orange) wash on hover, while the

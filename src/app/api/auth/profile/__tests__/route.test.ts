@@ -325,7 +325,8 @@ describe("POST /api/auth/profile", () => {
     );
     expect(response.status).toBe(503);
     await expect(response.json()).resolves.toStrictEqual({
-      error: "Profile lookup failed",
+      error:
+        "The BV-BRC profile service is unavailable (HTTP 503 Service Unavailable: down).",
       code: "upstream",
     });
     expect(upstreamPost).not.toHaveBeenCalled();

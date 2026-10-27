@@ -23,6 +23,8 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { QueryRetryButton } from "@/components/views/query-retry-button";
+import { useRetryKeepingError } from "@/components/views/use-retry-keeping-error";
 import { useViewNavCollapsed } from "@/hooks/use-view-nav-collapsed";
 import {
   allTypesSearchQueryOptions,
@@ -30,7 +32,11 @@ import {
   formatCount,
   toAllTypesResults,
 } from "@/lib/search/all-types-search";
-import { cn } from "@/lib/utils";
+import { cn, formatUserFacingErrorMessage } from "@/lib/utils";
+
+/** `formatUserFacingErrorMessage` fallback for a search error with no message. */
+const genericSearchErrorMessage =
+  "The search could not be completed. Please try again.";
 
 /**
  * A concave corner in the page's color, under one bottom corner of the pinned
@@ -79,9 +85,14 @@ export function SearchResults({
 }: SearchResultsProps) {
   // The text as the links write it (`searchHref`), legacy's normalization.
   const keyword = normalizeLegacyKeyword(query);
-  const { data, isLoading, error } = useQuery(
-    allTypesSearchQueryOptions(keyword),
-  );
+  const search = useQuery(allTypesSearchQueryOptions(keyword));
+  const { data, isFetching } = search;
+  // A Retry keeps the failure on screen, marked "Retrying…", until it answers.
+  const { error, retrying, retry } = useRetryKeepingError(search, keyword);
+  // Any read in flight while an error shows (a Retry, or a re-submitted
+  // search) is a retry of it: the error stays, the button says so.
+  const busy = retrying || (Boolean(error) && isFetching);
+  const isLoading = search.isLoading && !error;
   const { types, total, bestMatch } = toAllTypesResults(data, keyword);
   const found = types.filter((type) => type.count > 0);
   const ready = !isLoading && !error;
@@ -167,7 +178,9 @@ export function SearchResults({
         isLoading
           ? "Searching every DXKB data type…"
           : error
-            ? "Search unavailable"
+            ? busy
+              ? "Retrying the search…"
+              : "Search unavailable"
             : found.length === 0
               ? "No records in any DXKB data type"
               : `${formatCount(total)} records across ${String(found.length)} data type${found.length === 1 ? "" : "s"}`
@@ -199,9 +212,12 @@ export function SearchResults({
       <Skeleton key={index} className="h-64 w-full rounded-lg" />
     ))
   ) : error ? (
-    <Alert variant="destructive">
+    <Alert variant="destructive" aria-busy={busy || undefined}>
       <AlertTitle>Search results could not be loaded</AlertTitle>
-      <AlertDescription>{error.message}</AlertDescription>
+      <AlertDescription>
+        <p>{formatUserFacingErrorMessage(error, genericSearchErrorMessage)}</p>
+        <QueryRetryButton retrying={busy} onRetry={retry} />
+      </AlertDescription>
     </Alert>
   ) : found.length === 0 ? (
     <Card variant="raised" className="px-6 py-12">

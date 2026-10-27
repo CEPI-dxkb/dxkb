@@ -1,11 +1,13 @@
 import Link from "next/link";
+import type { ReactNode } from "react";
 
 import type { OrganismTaxonomy } from "@/lib/services/organisms/types";
-import { numberFormatter } from "@/lib/services/organisms/utils";
 
 interface TaxonBreadcrumbProps {
   taxon: OrganismTaxonomy | null;
   displayName: string;
+  /** Shown after the heading: the page's streamed `TaxonGenomeCount`. */
+  genomeCount?: ReactNode;
 }
 
 interface LineageEntry {
@@ -23,7 +25,11 @@ function buildLineage(names: string[], ids: number[]): LineageEntry[] {
   return lineage;
 }
 
-export function TaxonBreadcrumb({ taxon, displayName }: TaxonBreadcrumbProps) {
+export function TaxonBreadcrumb({
+  taxon,
+  displayName,
+  genomeCount,
+}: TaxonBreadcrumbProps) {
   if (!taxon) {
     return (
       <div>
@@ -64,11 +70,7 @@ export function TaxonBreadcrumb({ taxon, displayName }: TaxonBreadcrumbProps) {
         <h1 className="m-0 inline text-sm leading-none font-bold text-secondary">
           {currentName}
         </h1>
-        {taxon.genomes !== null && taxon.genomes > 0 && (
-          <span className="text-xs text-muted-foreground">
-            ({numberFormatter.format(taxon.genomes)} Genomes)
-          </span>
-        )}
+        {genomeCount}
       </div>
     </div>
   );

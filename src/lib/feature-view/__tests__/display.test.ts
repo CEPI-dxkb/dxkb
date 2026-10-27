@@ -1,4 +1,9 @@
-import { featureDisplayName, featureFastaTypes } from "../display";
+import {
+  featureDisplayName,
+  featureFastaTypes,
+  featureHeaderParts,
+  featureLineageCrumbs,
+} from "../display";
 
 const featureId = "PATRIC.644340.17.JAEUGC010000001.CDS.12314.12580.rev";
 
@@ -75,6 +80,85 @@ describe("featureFastaTypes", () => {
   it("offers nothing for a record with no sequence", () => {
     expect(
       featureFastaTypes({ feature_id: featureId, na_length: 0, aa_length: "" }),
+    ).toEqual([]);
+  });
+});
+
+describe("featureHeaderParts", () => {
+  it("lists BV-BRC's identifiers in its order", () => {
+    expect(
+      featureHeaderParts({
+        feature_id: featureId,
+        patric_id: "fig|511145.12.peg.1",
+        refseq_locus_tag: "b0002",
+        gene: "thrA",
+        product: "Aspartokinase",
+      }),
+    ).toEqual({
+      name: "fig|511145.12.peg.1",
+      details: ["b0002", "thrA", "Aspartokinase"],
+    });
+  });
+
+  it("does not repeat a locus tag that stands in for the BRC ID", () => {
+    expect(
+      featureHeaderParts({
+        feature_id: featureId,
+        refseq_locus_tag: "BME_RS00080",
+        gene: " ",
+        product: "hypothetical protein",
+      }),
+    ).toEqual({ name: "BME_RS00080", details: ["hypothetical protein"] });
+  });
+});
+
+describe("featureLineageCrumbs", () => {
+  it("keeps only the ranks BV-BRC's Feature View shows", () => {
+    expect(
+      featureLineageCrumbs({
+        lineage_ids: [10239, 2559587, 2497569, 2497571, 2497577, 11308, 11320],
+        lineage_names: [
+          "Viruses",
+          "Riboviria",
+          "Negarnaviricota",
+          "Polyploviricotina",
+          "Insthoviricetes",
+          "Orthomyxoviridae",
+          "Influenza A virus",
+        ],
+        lineage_ranks: [
+          "acellular root",
+          "realm",
+          "phylum",
+          "subphylum",
+          "class",
+          "family",
+          "no rank",
+        ],
+      }),
+    ).toEqual([
+      { taxonId: "2497569", name: "Negarnaviricota" },
+      { taxonId: "2497577", name: "Insthoviricetes" },
+      { taxonId: "11308", name: "Orthomyxoviridae" },
+    ]);
+  });
+
+  it("skips a taxon without a usable id or name", () => {
+    expect(
+      featureLineageCrumbs({
+        lineage_ids: ["", "561", "562"],
+        lineage_names: ["Enterobacteriaceae", "Escherichia", " "],
+        lineage_ranks: ["family", "genus", "species"],
+      }),
+    ).toEqual([{ taxonId: "561", name: "Escherichia" }]);
+  });
+
+  it("shows no lineage for a record without ranks", () => {
+    expect(
+      featureLineageCrumbs({
+        lineage_ids: ["561"],
+        lineage_names: ["Escherichia"],
+      }),
     ).toEqual([]);
   });
 });

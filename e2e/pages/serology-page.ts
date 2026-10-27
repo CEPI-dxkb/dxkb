@@ -1,13 +1,16 @@
 import { expect, type Locator, type Page } from "@playwright/test";
+import { CollectionToolbar } from "./collection-toolbar";
 import { encodePathSegment, encodeQueryComponent } from "@/lib/url";
 
 export class SerologyPage {
   readonly page: Page;
+  readonly toolbar: CollectionToolbar;
   readonly collectionKeyword: Locator;
 
   constructor(page: Page) {
     this.page = page;
-    this.collectionKeyword = page.getByPlaceholder("Search keywords...");
+    this.toolbar = new CollectionToolbar(page);
+    this.collectionKeyword = this.toolbar.keyword();
   }
 
   async searchFromWelcome(query: string): Promise<void> {

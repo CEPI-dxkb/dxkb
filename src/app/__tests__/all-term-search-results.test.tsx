@@ -14,13 +14,18 @@ vi.mock("@/components/footers/footer", () => ({
 }));
 
 import { SearchResults } from "../all-term-search-results";
+import { allTypesSearchQueries } from "@/lib/search/all-types-query";
+import { allTypesSearchPath } from "@/lib/search/all-types-search";
 import { server } from "@/test-helpers/msw-server";
 import {
   createQueryClientWrapper,
   createUiPreferencesWrapper,
 } from "@/test-helpers/react";
 
-const dataApi = "https://p3.theseed.org/services/data_api";
+// The page asks the same-origin search route with the keyword alone; the route
+// builds each type's query (`allTypesSearchQueries`), so these tests read the
+// queries it would send for the keyword the page sent.
+const searchRoute = `*${allTypesSearchPath}`;
 
 type Doc = Record<string, unknown>;
 type Payload = Partial<Record<string, { dataType: string; query: string }>>;
@@ -77,8 +82,9 @@ function respondWith(
   onRequest?: (payload: Payload) => void,
 ) {
   server.use(
-    http.post(`${dataApi}/query/`, async ({ request }) => {
-      onRequest?.((await request.json()) as Payload);
+    http.post(searchRoute, async ({ request }) => {
+      const { keyword } = (await request.json()) as { keyword: string };
+      onRequest?.(allTypesSearchQueries(keyword));
       return HttpResponse.json(body);
     }),
   );
@@ -296,9 +302,7 @@ describe("SearchResults", () => {
 
   it("shows the request's own error when the search fails", async () => {
     server.use(
-      http.post(`${dataApi}/query/`, () =>
-        HttpResponse.json({}, { status: 502 }),
-      ),
+      http.post(searchRoute, () => HttpResponse.json({}, { status: 502 })),
     );
 
     renderResults("influenza");
@@ -309,6 +313,77 @@ describe("SearchResults", () => {
     expect(
       screen.queryByRole("navigation", { name: "Data types" }),
     ).not.toBeInTheDocument();
+  });
+
+  it("shows the route's reason for an outage, and retries it with the error kept on screen", async () => {
+    const user = userEvent.setup();
+    const outage =
+      "The BV-BRC data service did not respond (connection timed out after 10 s).";
+    let release: () => void = () => undefined;
+    let calls = 0;
+    server.use(
+      http.post(searchRoute, async () => {
+        calls += 1;
+        if (calls === 1) {
+          return HttpResponse.json(
+            { error: outage, code: "upstream_timeout" },
+            { status: 504 },
+          );
+        }
+        await new Promise<void>((resolve) => {
+          release = resolve;
+        });
+        return HttpResponse.json(influenzaMatches);
+      }),
+    );
+
+    renderResults("influenza");
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("Search results could not be loaded");
+    expect(alert).toHaveTextContent(outage);
+    expect(header().getByText("Search unavailable")).toBeInTheDocument();
+
+    await user.click(within(alert).getByRole("button", { name: "Retry" }));
+
+    // In flight: the same error stays, with a disabled "Retrying…", no skeletons.
+    const retrying = await within(alert).findByRole("button", {
+      name: "Retrying…",
+    });
+    expect(retrying).toBeDisabled();
+    expect(screen.getByRole("alert")).toHaveTextContent(outage);
+    expect(header().getByText("Retrying the search…")).toBeInTheDocument();
+    expect(calls).toBe(2);
+
+    release();
+
+    expect(
+      await screen.findByRole("heading", { name: "Experiments" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("replaces the kept error with the retry's own failure", async () => {
+    const user = userEvent.setup();
+    let calls = 0;
+    server.use(
+      http.post(searchRoute, () => {
+        calls += 1;
+        return HttpResponse.json(
+          { error: `Attempt ${String(calls)} failed.`, code: "upstream_error" },
+          { status: 502 },
+        );
+      }),
+    );
+
+    renderResults("influenza");
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("Attempt 1 failed.");
+    await user.click(within(alert).getByRole("button", { name: "Retry" }));
+
+    expect(await screen.findByText("Attempt 2 failed.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Retry" })).toBeEnabled();
   });
 
   // The top results can share a genome ("kinase" returns two of genome

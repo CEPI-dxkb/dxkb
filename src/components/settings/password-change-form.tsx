@@ -16,6 +16,7 @@ import { RequiredFormLabel } from "@/components/forms/required-form-components";
 import { PasswordInput } from "@/components/settings/password-input";
 
 import { useAuthActions } from "@/lib/auth/provider";
+import { formatPrefixedErrorMessage } from "@/lib/utils";
 import {
   passwordFormSchema,
   type PasswordFormData,
@@ -35,8 +36,10 @@ export function PasswordChangeForm() {
         await changePassword(value.currentPassword, value.newPassword);
         toast.success("Password changed successfully.");
         form.reset();
-      } catch {
-        toast.error("Failed to change password.");
+      } catch (error) {
+        toast.error(
+          formatPrefixedErrorMessage("Failed to change password", error),
+        );
       }
     },
     validators: {

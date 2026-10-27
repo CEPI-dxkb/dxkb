@@ -8,10 +8,19 @@ vi.mock("@/lib/phylogeny/bacterial-tree-index", () => ({
 }));
 
 import {
+  describeUpstreamResponse,
+  UpstreamError,
+} from "@/lib/api/upstream-failure";
+import {
   json,
   makeRouteContext,
   mockNextRequest,
 } from "@/test-helpers/api-route-helpers";
+import {
+  connectTimeout,
+  maintenancePageHtml,
+  maintenanceSummary,
+} from "@/test-helpers/upstream-failures";
 
 import { GET } from "../route";
 
@@ -58,7 +67,7 @@ describe("GET /api/phylogeny/bacterial-trees/[taxonId]", () => {
     },
   );
 
-  it("answers an upstream failure with a fixed 502 and logs the detail", async () => {
+  it("answers a failure that is not an upstream outage with a fixed 502 and logs the detail", async () => {
     const logged = vi.spyOn(console, "error").mockImplementation(() => undefined);
     const failure = new Error("tree dictionary: 503 Service Unavailable");
     bacterialTreeFilename.mockRejectedValue(failure);
@@ -74,6 +83,48 @@ describe("GET /api/phylogeny/bacterial-trees/[taxonId]", () => {
       "phylogeny tree dictionary unavailable",
       failure,
     );
+    logged.mockRestore();
+  });
+
+  it("keeps an upstream outage's status and cause instead of a fixed message", async () => {
+    const logged = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    bacterialTreeFilename.mockRejectedValue(
+      new UpstreamError(
+        describeUpstreamResponse(
+          {
+            status: 503,
+            statusText: "Service Unavailable",
+            headers: new Headers({ "Content-Type": "text/html" }),
+          },
+          maintenancePageHtml,
+          "the BV-BRC phylogeny tree dictionary",
+          { host: "www.bv-brc.org" },
+        ),
+      ),
+    );
+
+    const response = await GET(request("562"), makeRouteContext({ taxonId: "562" }));
+
+    expect(response.status).toBe(503);
+    await expect(json(response)).resolves.toEqual({
+      error: `The BV-BRC phylogeny tree dictionary is unavailable (HTTP 503 Service Unavailable: ${maintenanceSummary}).`,
+      code: "service_unavailable",
+    });
+    logged.mockRestore();
+  });
+
+  it("says the dictionary did not respond when undici's connect times out", async () => {
+    const logged = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    bacterialTreeFilename.mockRejectedValue(connectTimeout());
+
+    const response = await GET(request("562"), makeRouteContext({ taxonId: "562" }));
+
+    expect(response.status).toBe(504);
+    await expect(json(response)).resolves.toEqual({
+      error:
+        "The BV-BRC phylogeny tree dictionary did not respond (connection timed out after 10 s).",
+      code: "upstream_timeout",
+    });
     logged.mockRestore();
   });
 

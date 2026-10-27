@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { upstreamServices } from "@/lib/api/upstream-failure";
+import { upstreamFailureResponse } from "@/lib/api/upstream-route";
 import {
   contentDisposition,
   resolveWorkspaceDownload,
@@ -126,9 +128,7 @@ export async function GET(
     return new NextResponse(finalBytes, { status: 200, headers });
   } catch (error) {
     console.error("Workspace preview API error:", error);
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 },
-    );
+    // Workspace and Shock failures arrive described; a raw one is the file read.
+    return upstreamFailureResponse(error, upstreamServices.fileStorage);
   }
 }

@@ -3,6 +3,7 @@ import {
   canonicalFeatureTab,
   featureCollectionOptions,
   featureCollectionProfile,
+  featureGenomeBrowserTarget,
   featureListCollectionOptions,
   featureListOptionsFor,
   featureStructuralRql,
@@ -93,8 +94,48 @@ describe("Feature view contracts", () => {
     ).not.toBe(false);
     expect(canonicalFeatureTab("interactions", feature)).toBe("interactions");
     expect(canonicalFeatureTab("domains", feature)).toBe("domains");
+    // No sequence location: nothing for the browser to open on.
     expect(canonicalFeatureTab("genome-browser", feature)).toBe("overview");
+    const located = featureViewRecordSchema.parse({
+      feature_id: "PATRIC.1",
+      genome_id: "1328357.3",
+      accession: "ATGO01000001",
+      start: 9610,
+      end: 10707,
+    });
+    expect(canonicalFeatureTab("genome-browser", located)).toBe("genome-browser");
+    expect(canonicalFeatureTab("genomeBrowser", located)).toBe("genome-browser");
     expect(canonicalFeatureTab("unknown", feature)).toBe("overview");
+  });
+
+  it("opens the Genome Browser exactly when its tab is enabled", () => {
+    const location = { accession: "ATGO01000001", start: 9610, end: 10707 };
+    const cases = [
+      { feature_id: "PATRIC.1", genome_id: "1328357.3", ...location },
+      // A genome but no sequence location: the panel used to render anyway.
+      { feature_id: "PATRIC.1", genome_id: "1328357.3" },
+      { feature_id: "PATRIC.1", genome_id: "1328357.3", ...location, end: 5 },
+      // A location but no genome.
+      { feature_id: "PATRIC.1", ...location },
+    ].map((record) => featureViewRecordSchema.parse(record));
+    const [located, ...unlocated] = cases;
+
+    expect(featureGenomeBrowserTarget(located)).toEqual({
+      genomeId: "1328357.3",
+      focus: {
+        location: "ATGO01000001:6610..13707",
+        highlight: "ATGO01000001:9610..10707",
+      },
+    });
+    for (const record of unlocated) {
+      expect(featureGenomeBrowserTarget(record)).toBeNull();
+    }
+    for (const record of cases) {
+      expect(
+        buildFeatureTabs(record).find((tab) => tab.key === "genome-browser")
+          ?.enabled,
+      ).toBe(featureGenomeBrowserTarget(record) !== null);
+    }
   });
 });
 

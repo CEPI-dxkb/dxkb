@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { JobParamsDialog } from "@/components/services/job-params-dialog";
 import { ServiceHeader } from "@/components/services/service-header";
+import { ServiceSubmitError } from "@/components/services/form-ui/service-submit-error";
 import { variationAnalysisInfo } from "@/lib/services/info/variation-analysis";
 import { LibraryInputSection } from "./library-input-section";
 import { ParametersSection } from "./parameters-section";
@@ -40,6 +41,7 @@ export default function VariationAnalysisPage() {
           controller={controller}
           className="hidden md:col-span-5 md:block"
         />
+        <ServiceSubmitError form={form} />
         <div className="service-form-controls md:col-span-12">
           <div className="flex items-center gap-2">
             <Button

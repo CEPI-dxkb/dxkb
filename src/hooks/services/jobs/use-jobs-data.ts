@@ -2,6 +2,7 @@ import { keepPreviousData } from "@tanstack/react-query";
 import { z } from "zod";
 import { useApiQuery } from "@/lib/api/hooks";
 import { apiCall } from "@/lib/api/client";
+import { errorBackoffPollInterval } from "@/lib/api/poll-backoff";
 import type { JobListItem } from "@/types/workspace";
 
 const jobIdSchema = z.union([
@@ -96,7 +97,8 @@ interface UseJobsDataParams {
   app?: string;
   startTime?: string;
   endTime?: string;
-  refetchInterval?: number;
+  /** Healthy polling interval in ms, or `false` to fetch only on demand. */
+  refetchInterval?: number | false;
   enabled?: boolean;
 }
 
@@ -121,7 +123,13 @@ export function useJobsData(params: UseJobsDataParams) {
     ],
     enabled,
     placeholderData: keepPreviousData,
-    refetchInterval,
+    refetchInterval: (query) => {
+      // Called first even when not polling, so the back-off keeps its
+      // record of the last success for when polling resumes.
+      const backoff = errorBackoffPollInterval(query);
+      if (refetchInterval === false) return false;
+      return backoff ?? refetchInterval;
+    },
     refetchIntervalInBackground: false,
     queryFn: async () => {
       const data = await apiCall<unknown>(

@@ -535,6 +535,17 @@ Genome Phase 1 replaces both scaffold handlers with explicit routes:
   by a current component and exact `genome_id` query contract; unavailable dependency-phase
   tabs are capability-gated rather than rendered as placeholders. The default Overview tab
   is omitted from the URL.
+- The Genome Browser tab (Genome and Feature members) is `?tab=genome-browser` with three
+  params JBrowse writes back as the view moves: `browser.loc` (JBrowse's location, 1-based
+  `ref:start..end`, the first visible region only), `browser.tracks` (a comma list of
+  `refseqs`, `PATRICGenes`, `RefSeqGenes`, or `none`; omitted means all three, and it stays
+  omitted until the view has shown a track) and `browser.highlight` (`ref:start..end`). A
+  location or highlight that names no sequence of the genome, or has malformed coordinates,
+  is ignored. The Feature member defaults to the feature framed by 3 kb either side
+  (`browser.loc=ref:max(1,start-3000)..end+3000`) with the feature highlighted; the Genome
+  member defaults to the first 100 kb of its longest sequence. The `browser.` params are
+  tab-owned, so a tab switch clears them. Legacy `#view_tab=browser` (Genome) and
+  `#view_tab=genomeBrowser` (Feature) with `loc`, `tracks` and `highlight` map onto them.
 
 Protein Structures Phase 8 replaces its historical scaffold body with explicit dual-mode
 composition:

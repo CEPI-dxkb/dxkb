@@ -17,6 +17,9 @@ import {
 import { normalizePath } from "@/lib/workspace/table-selection";
 import { isFolderType } from "@/lib/services/workspace/utils";
 import { useTableKeyboardNavigation } from "@/hooks/use-table-keyboard-navigation";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { QueryRetryButton } from "@/components/views/query-retry-button";
+import { TableCell, TableRow } from "@/components/ui/table";
 import { useWorkspaceColumns } from "./workspace-table-columns";
 import {
   LeadingRow,
@@ -57,9 +60,51 @@ interface WorkspaceDataTableProps {
   ) => void;
   onItemDoubleClick?: (item: WorkspaceItem) => void;
   onClearSelection?: () => void;
+  /**
+   * Why the listing failed when nothing loaded. The body shows it, with
+   * Retry, in place of "This folder is empty".
+   */
+  loadError?: WorkspaceTableLoadError | null;
+}
+
+export interface WorkspaceTableLoadError {
+  /** What failed, e.g. "Couldn't load this folder". */
+  title: string;
+  /** The condensed reason. */
+  message: string;
+  /** The Retry is in flight; the error stays until it answers. */
+  retrying: boolean;
+  onRetry: () => void;
 }
 
 export type WorkspaceDataTableHandle = DataTableHandle;
+
+function ErrorRow({
+  colSpan,
+  loadError,
+}: {
+  colSpan: number;
+  loadError: WorkspaceTableLoadError;
+}) {
+  return (
+    <TableRow>
+      <TableCell colSpan={colSpan} className="px-4 py-6">
+        <div className="whitespace-normal">
+          <Alert variant="destructive">
+            <AlertTitle>{loadError.title}</AlertTitle>
+            <AlertDescription>
+              <p>{loadError.message}</p>
+              <QueryRetryButton
+                retrying={loadError.retrying}
+                onRetry={loadError.onRetry}
+              />
+            </AlertDescription>
+          </Alert>
+        </div>
+      </TableCell>
+    </TableRow>
+  );
+}
 
 interface WorkspaceTableBodyProps {
   showLeadingRow: boolean;
@@ -73,6 +118,7 @@ interface WorkspaceTableBodyProps {
   onSelect?: WorkspaceDataTableProps["onSelect"];
   onItemClick: (item: WorkspaceItem) => void;
   onItemDoubleClick?: (item: WorkspaceItem) => void;
+  loadError?: WorkspaceTableLoadError | null;
 }
 
 function WorkspaceTableBody({
@@ -87,6 +133,7 @@ function WorkspaceTableBody({
   onSelect,
   onItemClick,
   onItemDoubleClick,
+  loadError,
 }: WorkspaceTableBodyProps) {
   const { rows, columnOrder, colSpan } = useDataTableBody<WorkspaceItem>();
 
@@ -111,7 +158,11 @@ function WorkspaceTableBody({
         />
       )}
       {rows.length === 0 ? (
-        <EmptyRow colSpan={colSpan} />
+        loadError ? (
+          <ErrorRow colSpan={colSpan} loadError={loadError} />
+        ) : (
+          <EmptyRow colSpan={colSpan} />
+        )
       ) : (
         rows.map((row) => (
           <DataRow
@@ -148,6 +199,7 @@ export const WorkspaceDataTable = forwardRef<
     onSelect,
     onItemDoubleClick,
     onClearSelection,
+    loadError,
   },
   ref,
 ) {
@@ -266,6 +318,7 @@ export const WorkspaceDataTable = forwardRef<
         onSelect={onSelect}
         onItemClick={handleItemClick}
         onItemDoubleClick={onItemDoubleClick}
+        loadError={loadError}
       />
     </DataTable>
   );

@@ -3,6 +3,7 @@ vi.mock("../genome-alignment-form-schema", () => ({}));
 import {
   transformGenomeAlignmentParams,
   createGenomeAlignmentFormValues,
+  idOnlyGenome,
 } from "../genome-alignment-form-utils";
 
 const baseFormData = {
@@ -72,6 +73,15 @@ describe("createGenomeAlignmentFormValues", () => {
       ...baseFormData,
       output_file: "new_output",
       genome_ids: ["genome3"],
+    });
+  });
+});
+
+describe("idOnlyGenome", () => {
+  it("names a genome by its ID when its record did not load", () => {
+    expect(idOnlyGenome("83332.12")).toEqual({
+      genome_id: "83332.12",
+      genome_name: "83332.12",
     });
   });
 });

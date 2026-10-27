@@ -34,12 +34,12 @@ const baseline: OrganismViewKey[] = [
 ];
 
 describe("resolveTabs — structure", () => {
-  it("always returns all 15 tabs in fixed order", () => {
+  it("always returns all 16 tabs in fixed order", () => {
     const tabs = resolveTabs(buildTabContext(null, null, getCuratedLists()));
-    expect(tabs).toHaveLength(15);
+    expect(tabs).toHaveLength(16);
     expect(tabs.map((t) => t.key)).toEqual([
       "overview", "phylogeny", "taxa-tree", "strains", "genomes",
-      "sequences", "features", "protein-structures",
+      "amr-phenotypes", "sequences", "features", "protein-structures",
       "domains-and-motifs", "sfvt", "epitopes", "experiments",
       "surveillance", "serology", "interactions",
     ]);
@@ -67,7 +67,7 @@ describe("resolveTabs — structure", () => {
 
 describe("resolveTabs — doc §5 truth table (conditional tabs only)", () => {
   const cond: OrganismViewKey[] = [
-    "phylogeny", "strains", "surveillance", "serology", "sfvt",
+    "phylogeny", "amr-phenotypes", "strains", "surveillance", "serology", "sfvt",
     "interactions",
   ];
   function condEnabled(taxon: OrganismTaxonomy, manifest?: PhyloManifest | null) {
@@ -110,12 +110,20 @@ describe("resolveTabs — doc §5 truth table (conditional tabs only)", () => {
 
   it("E. coli (562) — bacteria cluster + phylogeny, no viral-only tabs", () => {
     const result = condEnabled(tax({ taxonId: 562, lineageNames: ["Bacteria", "Pseudomonadota"], lineageIds: [2, 562] }));
-    expect(result).toEqual(["phylogeny", "interactions"]);
+    expect(result).toEqual(["phylogeny", "amr-phenotypes", "interactions"]);
   });
 
   it("Mycobacterium genus (1763) — same bacterial set as a species (rank-independent)", () => {
     const result = condEnabled(tax({ taxonId: 1763, taxonRank: "genus", lineageNames: ["Bacteria", "Actinomycetota"], lineageIds: [2, 1763] }));
-    expect(result).toEqual(["phylogeny", "interactions"]);
+    expect(result).toEqual(["phylogeny", "amr-phenotypes", "interactions"]);
+  });
+
+  it("cellular organisms (131567) — bacterial cluster without phylogeny", () => {
+    // The root's scope holds bacteria, but its own lineage has no "Bacteria",
+    // so the Phylogeny view would open the viral viewer on a tree that does
+    // not exist.
+    const result = condEnabled(tax({ taxonId: 131567, taxonRank: "no rank", lineageNames: ["cellular organisms"], lineageIds: [131567] }));
+    expect(result).toEqual(["amr-phenotypes", "interactions"]);
   });
 
   it("Fungi (4751) — baseline only (doc §7.5)", () => {

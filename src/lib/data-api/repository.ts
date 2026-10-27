@@ -1,5 +1,14 @@
 import { z } from "zod";
 import {
+  describeUpstreamFailure,
+  describeUpstreamResponse,
+  fetchUpstream,
+  isHtmlBody,
+  summarizeUpstreamBody,
+  upstreamServices,
+  upstreamTimeoutMs,
+} from "@/lib/api/upstream-failure";
+import {
   downloadFormats,
   downloadUnavailableReason,
   emptyDownloadMessage,
@@ -51,10 +60,59 @@ export class DataApiError extends Error {
     message: string,
     readonly status = 502,
     readonly code = "upstream_error",
+    options?: ErrorOptions,
   ) {
-    super(message);
+    super(message, options);
     this.name = "DataApiError";
   }
+}
+
+const dataService = upstreamServices.dataApi;
+
+/** One search of `ServerDataRepository.multiQuery`. */
+export interface DataApiMultiQuery {
+  dataType: string;
+  accept: string;
+  query: string;
+}
+
+/**
+ * A network failure or spent budget as the `DataApiError` the routes answer
+ * with: 504 `upstream_timeout` or 502 `service_unavailable`, naming the
+ * cause in the shared wording every backend uses. The `UpstreamError` stays
+ * as `cause`, so the route's log still shows its host. Anything else (a
+ * caller's `AbortError` included) is returned as is.
+ */
+function dataApiFailure(
+  error: unknown,
+  timeoutMs: number = upstreamTimeoutMs.dataApi,
+): unknown {
+  const failure = describeUpstreamFailure(error, dataService, { timeoutMs });
+  if (!failure) return error;
+  return new DataApiError(failure.message, failure.status, failure.code, {
+    cause: error,
+  });
+}
+
+/** Resources whose reads outlast the shared `upstreamTimeoutMs.dataApi` budget. */
+const resourceTimeoutMs: Partial<Record<DataResource, number>> = {
+  genome_amr: upstreamTimeoutMs.dataApiGenomeAmr,
+};
+
+/** Where one upstream request goes, and how long it may take to answer. */
+interface Endpoint {
+  url: URL;
+  timeoutMs: number;
+}
+
+/**
+ * The HTML error page a JSON error message quotes ("Unable to parse the query
+ * response. <html>…<h1>503 Service Unavailable</h1>…"), or "" when it quotes
+ * none.
+ */
+function quotedHtmlPage(message: string): string {
+  const start = message.search(/<(html|head|body|title|h1)\b/i);
+  return start === -1 ? "" : message.slice(start);
 }
 
 function appendQuery(url: URL, clause: string): void {
@@ -275,7 +333,51 @@ export class ServerDataRepository {
     return this.export(resource, request, signal);
   }
 
+  /**
+   * One collection read. Several facets are counted in parallel, one upstream
+   * read each, and merged: the upstream counts the fields of one request one
+   * after another (Genome's 14 default facets took ~3.2 s combined and ~1.2 s
+   * apart). The rows ride with the first facet; the others read one id each.
+   * A facet named twice is counted once. Any failed part fails the whole read.
+   */
   async collection(
+    resource: DataResource,
+    request: CollectionRequest,
+    signal?: AbortSignal,
+  ): Promise<CollectionResult<Record<string, unknown>>> {
+    const facetFields = [...new Set(request.facets ?? [])];
+    const [first, ...rest] = facetFields;
+    if (rest.length === 0)
+      return this.collectionRead(
+        resource,
+        { ...request, facets: facetFields },
+        signal,
+      );
+    const { idField } = getResourceDefinition(resource);
+    const [main, ...counts] = await Promise.all([
+      this.collectionRead(resource, { ...request, facets: [first] }, signal),
+      ...rest.map((field) =>
+        this.collectionRead(
+          resource,
+          {
+            operation: "collection",
+            rql: request.rql,
+            keyword: request.keyword,
+            keywordMode: request.keywordMode,
+            pageSize: 1,
+            fields: [idField],
+            facets: [field],
+          },
+          signal,
+        ),
+      ),
+    ]);
+    const facets = { ...main.facets };
+    for (const count of counts) Object.assign(facets, count.facets);
+    return { ...main, facets };
+  }
+
+  private async collectionRead(
     resource: DataResource,
     request: CollectionRequest,
     signal?: AbortSignal,
@@ -284,7 +386,8 @@ export class ServerDataRepository {
     const size = request.pageSize ?? defaultPageSize;
     const page = request.page ?? 1;
     const start = (page - 1) * size;
-    const url = this.url(resource);
+    const endpoint = this.endpoint(resource);
+    const { url } = endpoint;
     addPredicate(url, request);
     const projectLocally = addFields(url, request.fields, definition.idField);
     addSort(url, request.sort, definition.idField);
@@ -294,7 +397,7 @@ export class ServerDataRepository {
         `facet(${request.facets.join(",")},(mincount,1),(limit,100))`,
       );
     const payload = await this.request(
-      url,
+      endpoint,
       start,
       start + size,
       signal,
@@ -345,10 +448,17 @@ export class ServerDataRepository {
       throw new DataApiValidationError(
         `Field ${idField} cannot identify ${resource}.`,
       );
-    const url = this.url(resource);
+    const endpoint = this.endpoint(resource);
+    const { url } = endpoint;
     appendQuery(url, eq(resource, idField, request.id));
     const projectLocally = addFields(url, request.fields, definition.idField);
-    const payload = await this.request(url, 0, 2, signal, "application/json");
+    const payload = await this.request(
+      endpoint,
+      0,
+      2,
+      signal,
+      "application/json",
+    );
     const parsedRows = this.parseRows(resource, normalizeRows(payload));
     const rows = projectRows(
       parsedRows,
@@ -371,13 +481,14 @@ export class ServerDataRepository {
     signal?: AbortSignal,
   ): Promise<RowsResult<Record<string, unknown>>> {
     const definition = getResourceDefinition(resource);
-    const url = this.url(resource);
+    const endpoint = this.endpoint(resource);
+    const { url } = endpoint;
     addPredicate(url, request);
     const projectLocally = addFields(url, request.fields, definition.idField);
     addSort(url, request.sort, definition.idField);
     const offset = request.offset ?? 0;
     const payload = await this.request(
-      url,
+      endpoint,
       offset,
       offset + request.limit,
       signal,
@@ -403,7 +514,8 @@ export class ServerDataRepository {
     signal?: AbortSignal,
   ): Promise<RowsResult<Record<string, unknown>>> {
     const definition = getResourceDefinition(resource);
-    const url = this.url(resource);
+    const endpoint = this.endpoint(resource);
+    const { url } = endpoint;
     const predicate = serializeRql(resource, {
       operator: "in",
       field: definition.idField,
@@ -412,7 +524,7 @@ export class ServerDataRepository {
     const projectLocally = addFields(url, fields, definition.idField);
     addSort(url, sort, definition.idField);
     const payload = await this.request(
-      url,
+      endpoint,
       0,
       limit,
       signal,
@@ -434,9 +546,12 @@ export class ServerDataRepository {
    *
    * `clause` is appended to the query verbatim and does NOT pass through
    * `validateRql`, so every caller must build it from values it has already
-   * validated server-side. Its only caller today is `./taxonomy-tree.ts`,
-   * whose two clauses are built from positive integers that
-   * `/api/taxonomy-tree/[operation]` parsed with a digits-only pattern.
+   * validated server-side. Its callers today are `./taxonomy-tree.ts`, whose
+   * two clauses are built from positive integers that
+   * `/api/taxonomy-tree/[operation]` parsed with a digits-only pattern, and
+   * `src/lib/genome-browser/server.ts`, whose clauses are built from validated
+   * genome ids, integers, an annotation allowlist, and a `refName`
+   * constrained by `refNamePattern` and then passed through `escapeRqlValue`.
    *
    * `start`/`end` go straight into the `Range`/`X-Range` headers, so the
    * caller owns its own window — including the upstream's *exclusive* range
@@ -452,10 +567,11 @@ export class ServerDataRepository {
     end: number,
     signal?: AbortSignal,
   ): Promise<{ rows: Record<string, unknown>[]; headers: Headers }> {
-    const url = this.url(resource);
+    const endpoint = this.endpoint(resource);
+    const { url } = endpoint;
     appendQuery(url, clause);
     const { payload, headers } = await this.requestWithHeaders(
-      url,
+      endpoint,
       start,
       end,
       signal,
@@ -481,10 +597,11 @@ export class ServerDataRepository {
     end: number,
     signal?: AbortSignal,
   ): Promise<Headers> {
-    const url = this.url(resource);
+    const endpoint = this.endpoint(resource);
+    const { url } = endpoint;
     appendQuery(url, clause);
     const { headers } = await this.requestWithHeaders(
-      url,
+      endpoint,
       start,
       end,
       signal,
@@ -519,13 +636,14 @@ export class ServerDataRepository {
       values: request.ids,
     });
     const response = await this.send(
-      this.url(resource),
+      this.endpoint(resource),
       0,
       request.ids.length,
       signal,
       fastaAcceptTypes[request.type],
       "POST",
       predicate,
+      true,
     );
     return response.body;
   }
@@ -657,13 +775,14 @@ export class ServerDataRepository {
     }
     clauses.push(`limit(${String(limit)})`);
     const response = await this.send(
-      this.url(target),
+      this.endpoint(target),
       0,
       limit,
       signal,
       format.accept,
       "POST",
       clauses.join("&"),
+      true,
     );
     const body = await nonEmptyBody(response.body);
     if (!body)
@@ -718,13 +837,58 @@ export class ServerDataRepository {
       );
   }
 
-  private url(resource: DataResource): URL {
+  /**
+   * The Data API's multi-query endpoint (`POST {base}/query/`): several
+   * `{dataType, accept, query}` searches in one round trip, answered keyed as
+   * sent. It reads a JSON body and ignores Range. Same HTTPS-with-token guard,
+   * budget and error mapping as every other read; the all-data-types search
+   * route (`/api/data/search`) is its caller.
+   */
+  async multiQuery(
+    queries: Readonly<Record<string, DataApiMultiQuery>>,
+    signal?: AbortSignal,
+  ): Promise<Record<string, unknown>> {
     const base = this.options.baseUrl.replace(/\/$/, "");
-    return new URL(`${base}/${resource}/`);
+    const response = await this.send(
+      {
+        url: new URL(`${base}/query/`),
+        timeoutMs: upstreamTimeoutMs.dataApi,
+      },
+      0,
+      0,
+      signal,
+      "application/json",
+      "POST",
+      JSON.stringify(queries),
+      false,
+      "application/json",
+    );
+    const payload: unknown = await response.json().catch((error: unknown) => {
+      const failure = dataApiFailure(error);
+      if (failure instanceof DataApiError) throw failure;
+      if (error instanceof Error && error.name === "AbortError") throw error;
+      return null;
+    });
+    if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+      throw new DataApiError(
+        "Malformed search response: expected an object keyed by data type.",
+        502,
+        "malformed_response",
+      );
+    }
+    return payload as Record<string, unknown>;
+  }
+
+  private endpoint(resource: DataResource): Endpoint {
+    const base = this.options.baseUrl.replace(/\/$/, "");
+    return {
+      url: new URL(`${base}/${resource}/`),
+      timeoutMs: resourceTimeoutMs[resource] ?? upstreamTimeoutMs.dataApi,
+    };
   }
 
   private async request(
-    url: URL,
+    endpoint: Endpoint,
     start: number,
     end: number,
     signal: AbortSignal | undefined,
@@ -733,7 +897,7 @@ export class ServerDataRepository {
     body?: string,
   ): Promise<unknown> {
     const { payload } = await this.requestWithHeaders(
-      url,
+      endpoint,
       start,
       end,
       signal,
@@ -745,7 +909,7 @@ export class ServerDataRepository {
   }
 
   private async requestWithHeaders(
-    url: URL,
+    endpoint: Endpoint,
     start: number,
     end: number,
     signal: AbortSignal | undefined,
@@ -754,7 +918,7 @@ export class ServerDataRepository {
     body?: string,
   ): Promise<{ payload: unknown; headers: Headers }> {
     const response = await this.send(
-      url,
+      endpoint,
       start,
       end,
       signal,
@@ -762,7 +926,13 @@ export class ServerDataRepository {
       method,
       body,
     );
-    const payload: unknown = await response.json().catch(() => null);
+    // A body that stalls past the budget is a timeout, not malformed JSON.
+    const payload: unknown = await response.json().catch((error: unknown) => {
+      const failure = dataApiFailure(error, endpoint.timeoutMs);
+      if (failure instanceof DataApiError) throw failure;
+      if (error instanceof Error && error.name === "AbortError") throw error;
+      return null;
+    });
     return { payload, headers: response.headers };
   }
 
@@ -773,13 +943,16 @@ export class ServerDataRepository {
    * every rule up to the point where they consume the body differently.
    */
   private async send(
-    url: URL,
+    { url, timeoutMs }: Endpoint,
     start: number,
     end: number,
     signal: AbortSignal | undefined,
     accept: string,
     method = "GET",
     body?: string,
+    streamBody = false,
+    // Every resource endpoint reads an RQL body; `multiQuery` sends JSON.
+    contentType = "application/rqlquery+x-www-form-urlencoded",
   ): Promise<Response> {
     if (this.options.token && url.protocol !== "https:") {
       throw new DataApiError(
@@ -794,27 +967,58 @@ export class ServerDataRepository {
       "X-Range": `items=${String(start)}-${String(end)}`,
     });
     if (this.options.token) headers.set("Authorization", this.options.token);
-    if (body)
-      headers.set("Content-Type", "application/rqlquery+x-www-form-urlencoded");
-    const response = await this.fetcher(url, {
-      method,
-      headers,
-      body,
-      signal,
-      ...(this.options.token ? { redirect: "error" as const } : {}),
-      cache: this.options.cache,
-      next: this.options.revalidate
-        ? { revalidate: this.options.revalidate }
-        : undefined,
-    });
+    if (body) headers.set("Content-Type", contentType);
+    let response: Response;
+    try {
+      response = await fetchUpstream(
+        url,
+        {
+          method,
+          headers,
+          body,
+          signal,
+          ...(this.options.token ? { redirect: "error" as const } : {}),
+          cache: this.options.cache,
+          next: this.options.revalidate
+            ? { revalidate: this.options.revalidate }
+            : undefined,
+        },
+        {
+          service: dataService,
+          timeoutMs,
+          // FASTA and table downloads stream through unread and may run far
+          // past any budget; JSON reads are bounded through the body.
+          streamBody,
+          fetcher: this.fetcher,
+        },
+      );
+    } catch (error) {
+      throw dataApiFailure(error, timeoutMs);
+    }
     if (!response.ok) {
-      const payload: unknown = await response.json().catch(() => null);
-      const message = upstreamMessage(payload, response.status);
+      const text = await response.text().catch(() => "");
+      let payload: unknown = null;
+      try {
+        payload = text ? JSON.parse(text) : null;
+      } catch {
+        // An HTML error page; summarized below, never forwarded.
+      }
+      // Only an HTML page's title and heading; a plain-text body stays
+      // unread as before, since it can carry upstream internals.
+      const contentType = response.headers.get("content-type");
+      const detail =
+        payload === null && isHtmlBody(text, contentType)
+          ? summarizeUpstreamBody(text, contentType)
+          : "";
+      const upstreamText =
+        payload === null && detail
+          ? `Data service request failed with status ${String(response.status)}: ${detail}.`
+          : upstreamMessage(payload, response.status);
       const serviceUnavailable =
         response.status === 503 ||
         (response.status >= 500 &&
           /503 service unavailable|no server is available to handle this request/i.test(
-            message,
+            upstreamText,
           ));
       const safeStatus = serviceUnavailable
         ? 503
@@ -833,10 +1037,22 @@ export class ServerDataRepository {
                 : safeStatus === 503
                   ? "service_unavailable"
                   : "upstream_error";
+      // An outage reads as every backend's does ("The BV-BRC data service is
+      // unavailable (HTTP 503 Service Unavailable: Site Maintenance)."): its
+      // status, then only the title and heading of an HTML page behind it,
+      // or of one a JSON error quotes. A 5xx with a JSON error of the
+      // service's own ("Invalid query near …") keeps that message.
+      const isOutage =
+        serviceUnavailable || (payload === null && response.status >= 500);
+      const message = isOutage
+        ? describeUpstreamResponse(
+            response,
+            payload === null ? (detail ? text : "") : quotedHtmlPage(upstreamText),
+            dataService,
+          ).message
+        : upstreamText;
       throw new DataApiError(
-        serviceUnavailable
-          ? "The data service is temporarily unavailable. Please try again."
-          : message,
+        message,
         safeStatus,
         code,
       );

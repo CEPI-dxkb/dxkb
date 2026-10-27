@@ -5,8 +5,7 @@
 import { queryOptions } from "@tanstack/react-query";
 
 import { allTermSearchTypes, searchHref } from "@/constants/search-info";
-import { keywordClauses } from "@/lib/data-api";
-import { keywordQuery } from "@/lib/data-api/keyword-terms";
+import { DataRepositoryError } from "@/lib/data-api/client";
 import { isTaxonId } from "@/lib/taxonomy-view";
 import {
   epitopeHref,
@@ -26,17 +25,20 @@ import {
   surveillanceIdFromRow,
   taxonomyHref,
 } from "@/lib/views/hrefs";
-import { rqlAnd } from "@/lib/views/rql";
+import { isSearchableKeyword } from "./all-types-query";
 
-const dataApiQueryUrl = "https://p3.theseed.org/services/data_api/query/";
+export {
+  expandedRowCount,
+  previewRowCount,
+  typeSearchQuery,
+} from "./all-types-query";
 
 /**
- * Rows each type shows at first, and after "Show more". All of them are
- * fetched up front, so a table sizes its columns for every row it can show and
- * "Show more" moves none of them.
+ * The same-origin route that runs the search (`src/app/api/data/search`), so
+ * it gets the server's upstream budget, failure mapping and the user's token
+ * rather than a browser connection straight to the Data API.
  */
-export const previewRowCount = 5;
-export const expandedRowCount = 10;
+export const allTypesSearchPath = "/api/data/search";
 
 export type SearchDoc = Record<string, unknown>;
 
@@ -51,59 +53,56 @@ interface SolrResponse {
 /** The Data API's answer, keyed by type. A type it could not search is absent. */
 export type TypeMatches = Partial<Record<string, SolrResponse>>;
 
-/**
- * One type's query: the keyword clauses the type's own list builds for its
- * `?keyword=` (`keywordClauses`), so a count is the total the list it links to
- * shows.
- */
-export function typeSearchQuery(
-  id: string,
-  keyword: string,
-  limit: number,
-): string {
-  let query = rqlAnd(...keywordClauses(keyword, "exact"));
-  if (id === "genome_feature")
-    query += "&ne(annotation,brc1)&ne(feature_type,source)";
-  if (id === "taxonomy") query += "&gt(genomes,1)";
-  // Taxa by genome count, not score: score puts "Swine influenza virus" (166
-  // genomes) above "Influenza A virus" (1.9M) for `influenza`.
-  const sort =
-    id === "genome_feature"
-      ? "+annotation,-score"
-      : id === "taxonomy"
-        ? "-genomes"
-        : "-score";
-  return `${query}&limit(${String(limit)})&sort(${sort})`;
+/** The route's `{error, code}` answer as a `DataRepositoryError`, its message kept. */
+async function searchResponseError(
+  response: Response,
+): Promise<DataRepositoryError> {
+  const payload: unknown = await response.json().catch(() => null);
+  const body =
+    payload && typeof payload === "object"
+      ? (payload as { error?: unknown; code?: unknown })
+      : {};
+  return new DataRepositoryError(
+    typeof body.error === "string" && body.error.trim()
+      ? body.error
+      : `Search request failed with status ${String(response.status)}.`,
+    response.status,
+    typeof body.code === "string" ? body.code : "request_failed",
+  );
 }
 
-/** The top `limit` matches of each of `ids`, in one request. */
+/**
+ * Every DXKB type's top matches for `keyword`, in one request through the
+ * search route. A failure keeps the route's own message (which names the
+ * upstream cause: "The BV-BRC data service … did not respond …"); a request
+ * that never reached the route says so rather than a bare "Failed to fetch".
+ */
 export async function fetchTypeMatches(
-  ids: readonly string[],
   keyword: string,
-  limit: number,
   signal?: AbortSignal,
 ): Promise<TypeMatches> {
-  const payload = Object.fromEntries(
-    ids.map((id) => [
-      id,
-      {
-        dataType: id,
-        accept: "application/solr+json",
-        query: typeSearchQuery(id, keyword, limit),
+  let response: Response;
+  try {
+    response = await fetch(allTypesSearchPath, {
+      method: "POST",
+      credentials: "include",
+      headers: {
+        accept: "application/json",
+        "Content-Type": "application/json",
       },
-    ]),
-  );
-  const response = await fetch(dataApiQueryUrl, {
-    method: "POST",
-    headers: { accept: "application/json", "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-    cache: "no-store",
-    signal,
-  });
-  if (!response.ok)
+      body: JSON.stringify({ keyword }),
+      cache: "no-store",
+      signal,
+    });
+  } catch (error) {
+    if (error instanceof Error && error.name === "AbortError") throw error;
+    const reason = error instanceof Error ? error.message : String(error);
     throw new Error(
-      `Search request failed with status ${String(response.status)}`,
+      `Could not reach the DXKB search service${reason ? ` (${reason})` : ""}. Check your connection and try again.`,
+      { cause: error },
     );
+  }
+  if (!response.ok) throw await searchResponseError(response);
   return (await response.json()) as TypeMatches;
 }
 
@@ -512,16 +511,10 @@ const allTypesSearchKeys = {
 export function allTypesSearchQueryOptions(keyword: string) {
   return queryOptions({
     queryKey: allTypesSearchKeys.overview(keyword),
-    queryFn: ({ signal }) =>
-      fetchTypeMatches(
-        allTermSearchTypes.map((type) => type.id),
-        keyword,
-        expandedRowCount,
-        signal,
-      ),
+    queryFn: ({ signal }) => fetchTypeMatches(keyword, signal),
     // Text without terms (blank, `""`, a lone `OR`, only syntax) is no search:
     // it would build an empty and(), which the Data API rejects.
-    enabled: keywordQuery(keyword).length > 0,
+    enabled: isSearchableKeyword(keyword),
     retry: false,
   });
 }

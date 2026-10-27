@@ -18,10 +18,10 @@ import {
 } from "./predicates";
 import type { TabContext } from "./tab-context";
 
-// Four taxon-view-only tabs not present on the shared category-page descriptor
-// list. Kept here so the shared list (and the /organisms/* pages) stay at 16.
+// Taxon-view-only tabs not present on the shared category-page descriptor list.
 const extraViewDescriptors: readonly DefaultViewDescriptor[] = [
   { key: "strains", label: "Strains", icon: viewIcons.strains },
+  { key: "amr-phenotypes", label: "AMR Phenotypes", icon: viewIcons.amrPhenotypes },
   { key: "surveillance", label: "Surveillance", icon: viewIcons.surveillance },
   { key: "serology", label: "Serology", icon: viewIcons.serology },
   { key: "sfvt", label: "SFVT", icon: viewIcons.sfvt },
@@ -31,10 +31,10 @@ const descriptorByKey = new Map<OrganismViewKey, DefaultViewDescriptor>(
   [...defaultViewDescriptors, ...extraViewDescriptors].map((d) => [d.key, d]),
 );
 
-// Display order for the 15-tab taxon strip (biological grouping).
+// Display order for the 16-tab taxon strip (biological grouping).
 const taxonTabOrder: readonly OrganismViewKey[] = [
   "overview", "phylogeny", "taxa-tree", "strains", "genomes",
-  "sequences", "features", "protein-structures",
+  "amr-phenotypes", "sequences", "features", "protein-structures",
   "domains-and-motifs", "sfvt", "epitopes", "experiments",
   "surveillance", "serology", "interactions",
 ];
@@ -48,6 +48,7 @@ interface Gate {
 // (always enabled). Phylogeny is one label over two gates (bacterial OR viral).
 const gatesByKey: Partial<Record<OrganismViewKey, Gate>> = {
   phylogeny: { enabled: hasBacterialOrViralPhylogeny, disabledReason: "No phylogenetic tree available for this taxon." },
+  "amr-phenotypes": { enabled: isBacteria, disabledReason: "AMR phenotypes apply to bacterial taxa." },
   interactions: { enabled: isBacteria, disabledReason: "Interaction data applies to bacterial taxa." },
   strains: { enabled: hasStrains, disabledReason: "Strains apply to segmented-genome viruses." },
   surveillance: { enabled: hasSurveillance, disabledReason: "No surveillance data for this pathogen." },
@@ -72,7 +73,7 @@ function resolveComponent(
 }
 
 /**
- * Evaluate the full tab policy against a TabContext. Returns all 15 tabs in
+ * Evaluate the full tab policy against a TabContext. Returns all 16 tabs in
  * fixed order; each conditional tab whose gate fails is marked `enabled: false`
  * with a `disabledReason`. Baseline tabs are always enabled. Override semantics
  * mirror buildOrganismNavItems (swap Component, or rewrite placeholder copy).

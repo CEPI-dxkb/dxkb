@@ -266,7 +266,11 @@
      text is 2.6:1 and dark text 6.6:1. */
   --secondary-foreground: oklch(0.205 0 0);
   --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
+  /* Lifted from shadcn's 0.708 (6.9:1 on the card), at which the small
+     uppercase field labels and breadcrumbs read dim; 0.78 is 9.0:1 and still
+     sits well below the foreground. src/__tests__/theme-contrast.test.ts
+     holds every dark theme's muted text to 7:1. */
+  --muted-foreground: oklch(0.78 0 0);
   --accent: oklch(84.57% 0.167 84.87);
   /* Dark text: the dark theme keeps the pale light-theme accent fill. */
   --accent-foreground: oklch(0.205 0 0);
@@ -433,6 +437,19 @@
   pre,
   code {
     font-family: var(--font-mono);
+  }
+
+  /* JBrowse 5's embedded Genome Browser (src/components/genome-browser/).
+     MUI's ScopedCssBaseline wrapper sits between the component root and its
+     bounded grid without a height, so `height: "100%"` would let the view
+     spill its box; and preflight's `a { color: inherit }` leaves the feature
+     dialog's "Open Feature View" link looking like plain text. */
+  [data-slot="genome-browser"] .MuiScopedCssBaseline-root {
+    height: 100%;
+  }
+  [data-slot="genome-browser"] a {
+    color: var(--link);
+    text-decoration: underline;
   }
 }
 
@@ -1069,46 +1086,95 @@
    one of the theme's categorical chart-* colors and keeps foreground text, so
    the label holds its contrast whatever the chart color's lightness. The
    slots are picked so a rank's hue sits well apart from the ranks above and
-   below it in every theme's chart palette. Ranks without a rule (including
-   "no rank") use the neutral default, which must stay first. */
+   below it in every theme's chart palette; a sub-, super- or infra- rank
+   shares its parent's hue. Only "no rank" is neutral gray. A rank with no rule
+   of its own (BV-BRC's `clade`, or one added later) takes chart-5, which no
+   named rank uses; that default must stay first.
+   src/__tests__/rank-badge-colors.test.ts keeps gray to "no rank". */
 [data-slot="badge"][data-rank] {
+  @apply border-chart-5/50 bg-chart-5/15 text-foreground;
+}
+
+[data-slot="badge"][data-rank="no rank"] {
   @apply border-border bg-muted text-foreground;
 }
 
+[data-slot="badge"][data-rank="acellular root"],
+[data-slot="badge"][data-rank="cellular root"],
+[data-slot="badge"][data-rank="realm"],
+[data-slot="badge"][data-rank="domain"],
 [data-slot="badge"][data-rank="superkingdom"],
-[data-slot="badge"][data-rank="kingdom"] {
+[data-slot="badge"][data-rank="kingdom"],
+[data-slot="badge"][data-rank="subkingdom"] {
   @apply border-chart-2/50 bg-chart-2/15 text-foreground;
 }
 
-[data-slot="badge"][data-rank="phylum"] {
+[data-slot="badge"][data-rank="superphylum"],
+[data-slot="badge"][data-rank="phylum"],
+[data-slot="badge"][data-rank="subphylum"] {
   @apply border-chart-1/50 bg-chart-1/15 text-foreground;
 }
 
-[data-slot="badge"][data-rank="class"] {
+[data-slot="badge"][data-rank="superclass"],
+[data-slot="badge"][data-rank="class"],
+[data-slot="badge"][data-rank="subclass"],
+[data-slot="badge"][data-rank="infraclass"],
+[data-slot="badge"][data-rank="cohort"],
+[data-slot="badge"][data-rank="subcohort"] {
   @apply border-chart-10/50 bg-chart-10/15 text-foreground;
 }
 
-[data-slot="badge"][data-rank="order"] {
+[data-slot="badge"][data-rank="superorder"],
+[data-slot="badge"][data-rank="order"],
+[data-slot="badge"][data-rank="suborder"],
+[data-slot="badge"][data-rank="infraorder"],
+[data-slot="badge"][data-rank="parvorder"] {
   @apply border-chart-4/50 bg-chart-4/15 text-foreground;
 }
 
-[data-slot="badge"][data-rank="family"] {
+[data-slot="badge"][data-rank="superfamily"],
+[data-slot="badge"][data-rank="family"],
+[data-slot="badge"][data-rank="subfamily"],
+[data-slot="badge"][data-rank="tribe"],
+[data-slot="badge"][data-rank="subtribe"] {
   @apply border-chart-6/50 bg-chart-6/15 text-foreground;
 }
 
-[data-slot="badge"][data-rank="genus"] {
+[data-slot="badge"][data-rank="genus"],
+[data-slot="badge"][data-rank="subgenus"],
+[data-slot="badge"][data-rank="section"],
+[data-slot="badge"][data-rank="subsection"],
+[data-slot="badge"][data-rank="series"] {
   @apply border-chart-7/50 bg-chart-7/15 text-foreground;
 }
 
-[data-slot="badge"][data-rank="species"] {
+/* Species groups sit between genus and species in the tree, so they take a
+   hue apart from both; it repeats order's, three levels up. */
+[data-slot="badge"][data-rank="species group"],
+[data-slot="badge"][data-rank="species subgroup"] {
+  @apply border-chart-4/50 bg-chart-4/15 text-foreground;
+}
+
+[data-slot="badge"][data-rank="species"],
+[data-slot="badge"][data-rank="subspecies"] {
   @apply border-chart-8/50 bg-chart-8/15 text-foreground;
 }
 
+[data-slot="badge"][data-rank="varietas"],
+[data-slot="badge"][data-rank="subvariety"],
+[data-slot="badge"][data-rank="forma"],
+[data-slot="badge"][data-rank="forma specialis"],
+[data-slot="badge"][data-rank="morph"],
+[data-slot="badge"][data-rank="biotype"],
+[data-slot="badge"][data-rank="genotype"],
+[data-slot="badge"][data-rank="pathogroup"],
+[data-slot="badge"][data-rank="serogroup"],
 [data-slot="badge"][data-rank="serotype"],
 [data-slot="badge"][data-rank="subtype"] {
   @apply border-chart-3/50 bg-chart-3/15 text-foreground;
 }
 
-[data-slot="badge"][data-rank="strain"] {
+[data-slot="badge"][data-rank="strain"],
+[data-slot="badge"][data-rank="isolate"] {
   @apply border-chart-9/50 bg-chart-9/15 text-foreground;
 }

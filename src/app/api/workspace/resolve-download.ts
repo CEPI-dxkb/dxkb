@@ -1,5 +1,16 @@
 import { NextResponse } from "next/server";
 import { readAuthSession } from "@/lib/auth/server/route";
+import {
+  describeUpstreamFailure,
+  describeUpstreamResponse,
+  fetchUpstream,
+  hostOf,
+  UpstreamError,
+  upstreamServices,
+  upstreamTimeoutMs,
+} from "@/lib/api/upstream-failure";
+import { statusToErrorCode } from "@/lib/api/types";
+import { isWorkspaceObjectMissing } from "@/lib/services/workspace/workspace-errors";
 import { getRequiredEnv } from "@/lib/env";
 import { getMimeType } from "@/components/workspace/file-viewer/file-viewer-registry";
 
@@ -52,6 +63,19 @@ export function buildWorkspacePath(segments: string[]): string {
  * Returns either a `ResolvedDownload` on success, or a `NextResponse` error
  * that the caller should return directly.
  */
+/** The `error.message` of a JSON-RPC envelope, or null for any other body. */
+function jsonRpcErrorMessage(body: string): string | null {
+  try {
+    const parsed = JSON.parse(body) as { error?: { message?: unknown } };
+    const message = parsed.error?.message;
+    return typeof message === "string" && message.trim()
+      ? message.replace(/^_ERROR_|_ERROR_$|(?<=!)_$/g, "").trim()
+      : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function resolveWorkspaceDownload(
   segments: string[],
 ): Promise<ResolvedDownload | NextResponse> {
@@ -65,37 +89,73 @@ export async function resolveWorkspaceDownload(
 
   const workspacePath = buildWorkspacePath(segments);
 
-  const wsResponse = await fetch(getRequiredEnv("WORKSPACE_API_URL"), {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/jsonrpc+json",
-      Authorization: session.token,
+  const wsResponse = await fetchUpstream(
+    getRequiredEnv("WORKSPACE_API_URL"),
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/jsonrpc+json",
+        Authorization: session.token,
+      },
+      body: JSON.stringify({
+        id: 1,
+        method: "Workspace.get_download_url",
+        params: [{ objects: [workspacePath] }],
+        jsonrpc: "2.0",
+      }),
     },
-    body: JSON.stringify({
-      id: 1,
-      method: "Workspace.get_download_url",
-      params: [{ objects: [workspacePath] }],
-      jsonrpc: "2.0",
-    }),
-  });
+    {
+      service: upstreamServices.workspace,
+      timeoutMs: upstreamTimeoutMs.workspace,
+    },
+  );
+
+  // The budget also bounds the Workspace's body. A budget spent (or a socket
+  // dropped) mid-body is the Workspace's failure, described here: the routes'
+  // catch-alls would otherwise blame file storage for it.
+  const bodyFailure = (error: unknown): never => {
+    const failure = describeUpstreamFailure(error, upstreamServices.workspace, {
+      timeoutMs: upstreamTimeoutMs.workspace,
+      host: hostOf(wsResponse.url),
+    });
+    throw failure ? new UpstreamError(failure, { cause: error }) : error;
+  };
 
   if (!wsResponse.ok) {
-    const responseText = await wsResponse.text();
+    const responseText = await wsResponse.text().catch(bodyFailure);
     console.error(
-      "BV-BRC API error:",
+      `BV-BRC API error from ${hostOf(wsResponse.url) ?? "the workspace"}:`,
       wsResponse.status,
       wsResponse.statusText,
       responseText,
     );
+    // The Workspace reports its own errors ("_ERROR_Object not found!_") as a
+    // JSON-RPC error inside an HTTP 500: pass that message on, as a 404 when
+    // the object is missing, so the viewer can say what went wrong.
+    const rpcMessage = jsonRpcErrorMessage(responseText);
+    if (rpcMessage) {
+      const status = isWorkspaceObjectMissing(new Error(rpcMessage))
+        ? 404
+        : wsResponse.status;
+      return NextResponse.json(
+        { error: rpcMessage, code: statusToErrorCode(status) },
+        { status },
+      );
+    }
+    const failure = describeUpstreamResponse(
+      wsResponse,
+      responseText,
+      upstreamServices.workspace,
+    );
     return NextResponse.json(
-      {
-        error: `BV-BRC API error: ${String(wsResponse.status)} ${wsResponse.statusText}`,
-      },
-      { status: wsResponse.status },
+      { error: failure.message, code: statusToErrorCode(failure.status) },
+      { status: failure.status },
     );
   }
 
-  const data = (await wsResponse.json()) as { result?: [[string]] } | null;
+  const data = (await wsResponse.json().catch(bodyFailure)) as {
+    result?: [[string]];
+  } | null;
   const downloadUrl = data?.result?.[0]?.[0];
 
   if (!downloadUrl) {
@@ -105,7 +165,17 @@ export async function resolveWorkspaceDownload(
     );
   }
 
-  const shockResponse = await fetch(downloadUrl);
+  // Only the wait for Shock to start answering is bounded: the file itself
+  // streams through to the browser and may take as long as it takes.
+  const shockResponse = await fetchUpstream(
+    downloadUrl,
+    {},
+    {
+      service: upstreamServices.fileStorage,
+      timeoutMs: upstreamTimeoutMs.fileStorage,
+      streamBody: true,
+    },
+  );
 
   if (!shockResponse.ok) {
     console.error(

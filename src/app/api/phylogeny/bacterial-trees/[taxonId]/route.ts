@@ -1,8 +1,12 @@
 import { type NextRequest, NextResponse } from "next/server";
 
+import { describeUpstreamFailure } from "@/lib/api/upstream-failure";
 import { bacterialTreeFilename } from "@/lib/phylogeny/bacterial-tree-index";
 
 export const runtime = "nodejs";
+
+/** How failure messages name the upstream this route reads. */
+const dictionaryService = "the BV-BRC phylogeny tree dictionary";
 
 export async function GET(
   _request: NextRequest,
@@ -23,6 +27,18 @@ export async function GET(
     );
   } catch (error) {
     console.error("phylogeny tree dictionary unavailable", error);
+    // An upstream failure (`UpstreamError`, or undici's network error) keeps
+    // its cause and status: "… is unavailable (HTTP 503 Service Unavailable:
+    // Site Maintenance)", "… did not respond (timed out after 30 s)". Any
+    // other error's message is internal (parser detail, addresses) and stays
+    // in the log.
+    const failure = describeUpstreamFailure(error, dictionaryService);
+    if (failure) {
+      return NextResponse.json(
+        { error: failure.message, code: failure.code },
+        { status: failure.status },
+      );
+    }
     return NextResponse.json(
       {
         error: "Phylogeny tree dictionary is unavailable.",

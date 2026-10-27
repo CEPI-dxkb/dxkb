@@ -5,6 +5,7 @@ import { makeSerologyView } from "@/components/organisms/taxon-views/serology";
 import { makeSurveillanceView } from "@/components/organisms/taxon-views/surveillance";
 import { makeGenomesView } from "@/components/organisms/taxon-views/genomes";
 import { makeSequencesView } from "@/components/organisms/taxon-views/sequences";
+import { makeAmrPhenotypesView } from "@/components/organisms/taxon-views/amr-phenotypes";
 import { makeProteinStructuresView } from "@/components/organisms/taxon-views/protein-structures";
 import { makeDomainsAndMotifsView } from "@/components/organisms/taxon-views/domains-and-motifs";
 import { makeFeaturesView } from "@/components/organisms/taxon-views/features";
@@ -239,11 +240,14 @@ describe("makeSerologyView", () => {
 });
 
 describe("makeGenomesView", () => {
-  it("renders the shared Genome collection with taxon scope", () => {
+  it("renders the shared Genome collection with taxon scope, less Deprecated genomes", () => {
     const GenomesView = makeGenomesView({ scope });
     const { getByTestId } = render(<GenomesView />);
     const collection = getByTestId("genome-resource-collection");
-    expect(collection).toHaveAttribute("data-q", "eq(taxon_lineage_ids,1234)");
+    expect(collection).toHaveAttribute(
+      "data-q",
+      "and(eq(taxon_lineage_ids,1234),ne(genome_status,Deprecated))",
+    );
     expect(collection).toHaveAttribute("data-row-links", "false");
     expect(collection).toHaveAttribute("data-keyword-mode", "loaded");
   });
@@ -272,6 +276,21 @@ describe("makeSequencesView", () => {
     expect(
       getByTestId("taxon-data-panel").getAttribute("data-guide"),
     ).toContain("sequences.html");
+  });
+});
+
+describe("makeAmrPhenotypesView", () => {
+  it("scopes genome_amr through the genome join, as legacy's taxon AMR tab does", () => {
+    // genome_amr has a row taxon_id but no taxon_lineage_ids, so a lineage
+    // filter applied directly would miss every descendant taxon's phenotypes.
+    const AmrPhenotypesView = makeAmrPhenotypesView({ scope });
+    const { getByTestId } = render(<AmrPhenotypesView />);
+    const panel = getByTestId("taxon-data-panel");
+    expect(panel).toHaveAttribute("data-resource", "genome_amr");
+    expect(panel).toHaveAttribute(
+      "data-q",
+      "and(eq(genome_id,*),genome(eq(taxon_lineage_ids,1234)))",
+    );
   });
 });
 
@@ -373,11 +392,20 @@ describe("makeExperimentsView", () => {
 
 describe("composite scope queries", () => {
   it.each([
-    ["genome", makeGenomesView, compositeClause],
+    [
+      "genome",
+      makeGenomesView,
+      `and(${compositeClause},ne(genome_status,Deprecated))`,
+    ],
     [
       "genome_sequence",
       makeSequencesView,
       `and(eq(genome_id,*),genome(and(${compositeClause},ne(genome_status,Deprecated))))`,
+    ],
+    [
+      "genome_amr",
+      makeAmrPhenotypesView,
+      `and(eq(genome_id,*),genome(${compositeClause}))`,
     ],
     [
       "protein_structure",

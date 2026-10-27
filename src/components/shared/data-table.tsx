@@ -331,7 +331,7 @@ function createColumnDefs(columns: DataTableColumn[]) {
                   <TableValueLink
                     key={itemValue}
                     href={itemHref}
-                    className="shrink-0 text-primary underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2"
+                    className="shrink-0 text-primary underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 dark:text-link"
                   >
                     {itemValue}
                   </TableValueLink>
@@ -355,7 +355,7 @@ function createColumnDefs(columns: DataTableColumn[]) {
         return cellHref && classifyHref(cellHref) !== "unsafe" ? (
           <TableValueLink
             href={cellHref}
-            className="truncate text-primary underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2"
+            className="truncate text-primary underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 dark:text-link"
           >
             {value as React.ReactNode}
           </TableValueLink>
@@ -456,6 +456,11 @@ export interface DataTableProps {
     visibleColumns: string[] | null,
   ) => void | Promise<void>;
   showExportControls?: boolean;
+  /**
+   * The owner draws its own Columns control (`ResourceCollection`'s toolbar),
+   * so the table's row of controls is left out.
+   */
+  hideColumnControls?: boolean;
   scrollRegionLabel?: string;
   // Loading indicator: parent can set this while data is being fetched
   isLoading?: boolean;
@@ -502,6 +507,7 @@ function useDataTableContent(
     onDownloadAll,
     onDownloadSelected,
     showExportControls = true,
+    hideColumnControls = false,
     scrollRegionLabel,
     isLoading = false,
     isRefreshing = false,
@@ -914,15 +920,17 @@ function useDataTableContent(
           </div>
         </div>
       )}
-      <DataTableControls
-        table={table}
-        resource={resource}
-        selectedIds={selectedIds}
-        isAllPagesSelected={isAllPagesSelected}
-        onDownloadAll={onDownloadAll}
-        onDownloadSelected={onDownloadSelected}
-        showExportControls={showExportControls}
-      />
+      {!hideColumnControls && (
+        <DataTableControls
+          table={table}
+          resource={resource}
+          selectedIds={selectedIds}
+          isAllPagesSelected={isAllPagesSelected}
+          onDownloadAll={onDownloadAll}
+          onDownloadSelected={onDownloadSelected}
+          showExportControls={showExportControls}
+        />
+      )}
       <div className="relative flex min-h-0 w-full flex-1 flex-col overflow-hidden rounded border border-border">
         {isRefreshing && !isLoading && (
           // Not a live region: the owner announces the refresh (see
@@ -943,6 +951,9 @@ function useDataTableContent(
           ref={tableContainerRef}
           role="region"
           aria-label={scrollRegionLabel ?? `${resource} results`}
+          // The skeleton rows are not results: assistive tech waits for the
+          // read. (A refresh marks the body busy instead, which dims it.)
+          aria-busy={isLoading || undefined}
           tabIndex={0}
         >
           <div className="relative min-w-max">

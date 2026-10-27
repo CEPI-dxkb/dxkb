@@ -7,10 +7,11 @@ import {
   DialogFooter,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
-import { toast } from "sonner";
+import { workspaceErrorMessage } from "@/lib/services/workspace/workspace-errors";
 
 export interface CreateWorkspaceDialogProps {
   open: boolean;
@@ -33,20 +34,21 @@ function CreateWorkspaceForm({
   isCreating: boolean;
 }) {
   const [workspaceName, setWorkspaceName] = React.useState("");
+  const [createError, setCreateError] = React.useState<string | null>(null);
 
   const handleCreate = async () => {
     const name = workspaceName.trim();
     if (!name || isCreating) return;
+    setCreateError(null);
     try {
       await onCreateWorkspace(name);
       onOpenChange(false);
     } catch (err) {
-      if (process.env.NODE_ENV === "development") {
-        console.error("Create workspace failed:", err);
-      }
-      const message =
-        err instanceof Error ? err.message : "Failed to create workspace.";
-      toast.error(message);
+      // Stay open with the typed name; the handler's toast covers a dialog
+      // closed while pending, so this one only shows the reason inline.
+      setCreateError(
+        `Couldn't create workspace "${name}": ${workspaceErrorMessage(err, "the workspace service returned an error.")}`,
+      );
     }
   };
 
@@ -67,6 +69,7 @@ function CreateWorkspaceForm({
           value={workspaceName}
           onChange={(e) => {
             setWorkspaceName(e.target.value);
+            setCreateError(null);
           }}
           placeholder="My Workspace"
           disabled={isCreating}
@@ -77,6 +80,11 @@ function CreateWorkspaceForm({
             }
           }}
         />
+        {createError && (
+          <Alert variant="destructive" size="sm">
+            <AlertDescription>{createError}</AlertDescription>
+          </Alert>
+        )}
       </div>
       <DialogFooter showCloseButton={false}>
         <Button

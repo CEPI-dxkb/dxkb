@@ -1,5 +1,11 @@
 import { http, HttpResponse } from "msw";
 import { server } from "@/test-helpers/msw-server";
+import {
+  connectTimeout,
+  maintenancePage,
+  maintenanceSummary,
+  neverRespond,
+} from "@/test-helpers/upstream-failures";
 import type { ProfilePatch, SignupCredentials } from "@/lib/auth/types";
 import {
   authenticate,
@@ -392,7 +398,8 @@ describe("named BV-BRC identity operations", () => {
     expect((await pending).error).toMatchObject({
       code: "service_unavailable",
       status: 504,
-      message: "Authentication service unavailable timed out",
+      message:
+        "The BV-BRC authentication service did not respond (timed out after 15 s).",
     });
 
     vi.useRealTimers();
@@ -402,9 +409,80 @@ describe("named BV-BRC identity operations", () => {
     ).toEqual({
       code: "network",
       status: 502,
-      message: "Authentication service unavailable",
+      message:
+        "Could not reach the BV-BRC authentication service: connection refused.",
     });
     fetchSpy.mockRestore();
+  });
+
+  describe("outage wording", () => {
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it("says a 503 maintenance page is an outage, never a wrong password", async () => {
+      server.use(http.post("https://auth.test/auth/", () => maintenancePage()));
+
+      const { error } = await authenticate({ username: "u", password: "p" });
+      expect(error).toEqual({
+        code: "service_unavailable",
+        status: 503,
+        message: `The BV-BRC authentication service is unavailable (HTTP 503 Service Unavailable: ${maintenanceSummary}).`,
+      });
+      expect(error?.message).not.toContain("<");
+    });
+
+    it("names the profile service for a 503 profile lookup", async () => {
+      server.use(http.get("https://user.test/user/alice", () => maintenancePage()));
+
+      expect((await getProfile("alice", "t")).error).toMatchObject({
+        code: "service_unavailable",
+        status: 503,
+        message: `The BV-BRC profile service is unavailable (HTTP 503 Service Unavailable: ${maintenanceSummary}).`,
+      });
+    });
+
+    it("keeps the specific wording for a 4xx", async () => {
+      server.use(
+        http.post("https://auth.test/register", () =>
+          HttpResponse.json({ message: "taken" }, { status: 400 }),
+        ),
+      );
+
+      expect((await registerUser(signupInput)).error).toMatchObject({
+        status: 400,
+        message: "Registration failed",
+      });
+    });
+
+    it("reports undici's connect timeout as a timeout naming the host", async () => {
+      server.use(
+        http.post("https://auth.test/register", () => {
+          throw connectTimeout();
+        }),
+      );
+
+      expect((await registerUser(signupInput)).error).toEqual({
+        code: "service_unavailable",
+        status: 504,
+        message:
+          "The BV-BRC registration service did not respond (connection timed out after 10 s).",
+      });
+    });
+
+    it("gives up after 15 s when the service accepts but never answers", async () => {
+      vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+      server.use(http.post("https://auth.test/reset", neverRespond));
+
+      const pending = requestPasswordReset("u@x");
+      await vi.advanceTimersByTimeAsync(15_000);
+      expect((await pending).error).toEqual({
+        code: "service_unavailable",
+        status: 504,
+        message:
+          "The BV-BRC password reset service did not respond (timed out after 15 s).",
+      });
+    });
   });
 
   it.each([

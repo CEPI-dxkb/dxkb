@@ -4,11 +4,11 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { http, HttpResponse } from "msw";
 import { server } from "@/test-helpers/msw-server";
 import { ApiCallError } from "@/lib/api/types";
+import { nextRefetchInterval } from "@/test-helpers/react";
 
-function createWrapper() {
-  const queryClient = new QueryClient({
-    defaultOptions: { queries: { retry: false } },
-  });
+function createWrapper(queryClient = new QueryClient({
+  defaultOptions: { queries: { retry: false } },
+})) {
   function Wrapper({ children }: { children: React.ReactNode }) {
     return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
   }
@@ -96,5 +96,67 @@ describe("useJobsSummary", () => {
 
     expect(result.current.error).toBeInstanceOf(ApiCallError);
     expect(result.current.error?.status).toBe(502);
+  });
+
+  it("backs off instead of polling a failing summary at the 5 s no-data rate", async () => {
+    server.use(
+      http.post("/api/services/app-service/jobs/summary", () =>
+        HttpResponse.json({ error: "JSON-RPC call failed: fetch failed" }, { status: 500 }),
+      ),
+    );
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+
+    const { result } = renderHook(() => useJobsSummary(false), {
+      wrapper: createWrapper(queryClient),
+    });
+
+    await waitFor(() => { expect(result.current.isError).toBe(true); });
+
+    expect(nextRefetchInterval(queryClient, ["jobs-summary", false])).toBe(30_000);
+  });
+
+  it("polls active jobs at the fast rate once the summary succeeds", async () => {
+    server.use(
+      http.post("/api/services/app-service/jobs/summary", () =>
+        HttpResponse.json({ taskSummary: { running: 1 }, appSummary: {} }),
+      ),
+    );
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+
+    const { result } = renderHook(() => useJobsSummary(false), {
+      wrapper: createWrapper(queryClient),
+    });
+
+    await waitFor(() => { expect(result.current.isSuccess).toBe(true); });
+
+    expect(nextRefetchInterval(queryClient, ["jobs-summary", false])).toBe(3_000);
+  });
+
+  it("fetches once and does not poll when poll is false", async () => {
+    let calls = 0;
+    server.use(
+      http.post("/api/services/app-service/jobs/summary", () => {
+        calls += 1;
+        return HttpResponse.json({ taskSummary: { running: 1 }, appSummary: {} });
+      }),
+    );
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+
+    const { result } = renderHook(
+      () => useJobsSummary(false, { poll: false }),
+      { wrapper: createWrapper(queryClient) },
+    );
+
+    await waitFor(() => { expect(result.current.isSuccess).toBe(true); });
+
+    expect(calls).toBe(1);
+    // Running jobs would otherwise poll every 3 s.
+    expect(nextRefetchInterval(queryClient, ["jobs-summary", false])).toBe(false);
   });
 });

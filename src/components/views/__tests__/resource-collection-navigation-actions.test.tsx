@@ -349,7 +349,7 @@ describe("ResourceCollection resource-navigation actions", () => {
     expect(actionBarProps).toMatchObject({
       searchType: "ppi",
       enabledActions: ["copyRows", "services", "ppiFeatures", "group"],
-      disabledActions: undefined,
+      disabledActions: { services: "No services available for these Interactions" },
     });
 
     await user.click(
@@ -366,9 +366,9 @@ describe("ResourceCollection resource-navigation actions", () => {
       "/feature?rql=in(feature_id,(feature-a1,feature-b1,feature-a2))",
     );
 
-    // Legacy errors with "Missing or invalid type for Services" on this tab.
-    await user.click(screen.getByRole("button", { name: "services" }));
-    expect(await screen.findByText("No selectable services")).toBeVisible();
+    // Legacy errors with "Missing or invalid type for Services" on this tab, so
+    // SERVICES is disabled with a reason.
+    expect(screen.getByRole("button", { name: "services" })).toBeDisabled();
   });
 
   it("opens the selected Surveillance member with its test type", async () => {

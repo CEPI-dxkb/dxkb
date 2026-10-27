@@ -97,24 +97,6 @@ describe("SelectionServiceChooser", () => {
 
   afterEach(() => vi.unstubAllGlobals());
 
-  it("reports that no service accepts the selection", () => {
-    renderChooser(vi.fn(), {
-      label: "Protein Structures",
-      ids: [],
-      hasSelectableServices: false,
-    });
-
-    expect(screen.getByText("No selectable services")).toBeVisible();
-    expect(
-      screen.getByText(
-        "Services that accept Protein Structures are not available yet.",
-      ),
-    ).toBeVisible();
-    for (const name of ["BLAST", "Viral Genome Tree", "Viral MSA"]) {
-      expect(screen.queryByRole("button", { name })).not.toBeInTheDocument();
-    }
-  });
-
   it("keeps the selected genomes for direct BLAST when signed out", async () => {
     const onOpenChange = vi.fn();
     renderChooser(onOpenChange, {

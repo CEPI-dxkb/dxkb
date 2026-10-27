@@ -49,10 +49,11 @@ export function useWorkspacePickerListing({
     enabled: directoryPath !== null && !!username,
     staleTime: 60 * 1000,
   });
+  const readsFavorites = source.kind === "favorites" && !!username;
   const favoritesQuery = useQuery({
     queryKey: workspaceQueryKeys.favorites(username),
     queryFn: () => loadFavorites(username),
-    enabled: source.kind === "favorites" && !!username,
+    enabled: readsFavorites,
     staleTime: 2 * 60 * 1000,
   });
   const recentFolders = useRecentWorkspaceFolders(username || undefined);
@@ -62,12 +63,20 @@ export function useWorkspacePickerListing({
       : source.kind === "recent"
         ? recentFolders.map((folder) => folder.path)
         : [];
+  const readsWorkspaces =
+    !!username && stubsNeedWorkspaces(stubPaths, username);
   const workspacesQuery = useQuery({
     queryKey: workspaceQueryKeys.miniBrowser("/"),
     queryFn: () => repository.listDirectory({ path: "/" }),
-    enabled: !!username && stubsNeedWorkspaces(stubPaths, username),
+    enabled: readsWorkspaces,
     staleTime: 60 * 1000,
   });
+  // A disabled query still reports its cache entry, which other observers
+  // share (the navbar's favorites, the Shared and Public `/` column), so only
+  // the reads this listing depends on may make it load or fail: a favorites
+  // outage must not fail Recently Used, which comes from browser storage.
+  const favorites = readsFavorites ? favoritesQuery : null;
+  const workspaces = readsWorkspaces ? workspacesQuery : null;
 
   switch (source.kind) {
     case "favorites":
@@ -75,8 +84,8 @@ export function useWorkspacePickerListing({
       return {
         items: folderStubItems(stubPaths, workspacesQuery.data),
         // Rows wait for their permissions rather than flash as read-only.
-        isLoading: favoritesQuery.isLoading || workspacesQuery.isLoading,
-        error: favoritesQuery.error ?? workspacesQuery.error,
+        isLoading: !!favorites?.isLoading || !!workspaces?.isLoading,
+        error: favorites?.error ?? workspaces?.error ?? null,
       };
     default:
       return {

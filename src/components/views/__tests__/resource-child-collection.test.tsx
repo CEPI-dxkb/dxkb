@@ -617,7 +617,7 @@ describe("ResourceChildCollection scope changes", () => {
       patric_id: "fig|feature-1",
     } as FeatureViewRecord;
     const { rerender } = render(
-      <FeatureMember feature={feature} activeTab="domains" />,
+      <FeatureMember feature={feature} lineage={Promise.resolve([])} activeTab="domains" />,
     );
     changeCollectionState({
       filters: { feature_type: ["domain"] },
@@ -625,7 +625,9 @@ describe("ResourceChildCollection scope changes", () => {
       sort: "id:desc",
     });
 
-    rerender(<FeatureMember feature={feature} activeTab="interactions" />);
+    rerender(
+      <FeatureMember feature={feature} lineage={Promise.resolve([])} activeTab="interactions" />,
+    );
 
     expect(shownCollectionState()).toStrictEqual({
       filters: {},

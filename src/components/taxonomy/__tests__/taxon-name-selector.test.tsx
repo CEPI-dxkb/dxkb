@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import { useState } from "react";
@@ -107,5 +107,123 @@ describe("TaxonNameSelector external value changes", () => {
     await user.type(input, "x");
 
     expect(input).toHaveValue("Bacillus anthracisx");
+  });
+});
+
+describe("TaxonNameSelector failed search", () => {
+  const outage = "BV-BRC Taxonomy API error: 503 Service Unavailable";
+  const shownOutage = `Taxonomy search unavailable: ${outage}`;
+
+  /** The proxy's 503 until `recover()`, then one Mycobacterium match. */
+  function failUntilRecovered() {
+    let down = true;
+    server.use(
+      http.get("*/api/services/taxonomy", () =>
+        down
+          ? HttpResponse.json(
+              { error: outage, code: "upstream" },
+              { status: 503 },
+            )
+          : HttpResponse.json([
+              {
+                taxon_id: 1763,
+                taxon_name: "Mycobacterium",
+                taxon_rank: "genus",
+              },
+            ]),
+      ),
+    );
+    return {
+      recover: () => {
+        down = false;
+      },
+    };
+  }
+
+  it("announces the proxy's reason with a Retry that searches again", async () => {
+    const { recover } = failUntilRecovered();
+    const user = userEvent.setup();
+    render(<TaxonNameSelector value={null} />, {
+      wrapper: createQueryClientWrapper(),
+    });
+
+    await user.type(screen.getByRole("textbox"), "Mycobacterium");
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(shownOutage);
+    expect(screen.queryByText(/HTTP error/)).not.toBeInTheDocument();
+
+    recover();
+    await user.click(screen.getByRole("button", { name: "Retry" }));
+
+    expect(
+      await screen.findByText("[genus] Mycobacterium"),
+    ).toBeVisible();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("shows the failure, not the required message, once the list closes, and retries from there", async () => {
+    const { recover } = failUntilRecovered();
+    const user = userEvent.setup();
+    render(<TaxonNameSelector value={null} required />, {
+      wrapper: createQueryClientWrapper(),
+    });
+
+    await user.type(screen.getByRole("textbox"), "Mycobacterium");
+    await screen.findByRole("alert");
+    await user.tab();
+
+    expect(
+      await screen.findByRole("button", { name: "Show suggestions" }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("alert")).toHaveTextContent(shownOutage);
+    expect(screen.queryByText("Taxonomy Name must be provided.")).toBeNull();
+
+    recover();
+    await user.click(screen.getByRole("button", { name: "Retry" }));
+
+    // The retry refocuses the field, which reopens the list with the answer.
+    expect(
+      await screen.findByText("[genus] Mycobacterium"),
+    ).toBeVisible();
+    expect(screen.getByRole("textbox")).toHaveFocus();
+  });
+
+  it("shows the form's field error under the input, replaced by a failed search", async () => {
+    failUntilRecovered();
+    const user = userEvent.setup();
+    render(
+      <TaxonNameSelector value={null} fieldError="Taxonomy Name is required" />,
+      { wrapper: createQueryClientWrapper() },
+    );
+
+    expect(screen.getByText("Taxonomy Name is required")).toBeVisible();
+    expect(screen.getByRole("textbox")).toHaveClass("border-destructive");
+
+    await user.type(screen.getByRole("textbox"), "Mycobacterium");
+    await screen.findByRole("alert");
+
+    expect(screen.queryByText("Taxonomy Name is required")).toBeNull();
+  });
+
+  it("keeps a picked value's field clear of a failed search", async () => {
+    failUntilRecovered();
+    const user = userEvent.setup();
+    render(
+      <TaxonNameSelector
+        value={{ taxon_id: 1763, taxon_name: "Mycobacterium" }}
+      />,
+      { wrapper: createQueryClientWrapper() },
+    );
+
+    // The prefilled name searches on mount. Its failure shows in the list,
+    // which is where the user searches...
+    await user.click(screen.getByRole("button", { name: "Show suggestions" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(shownOutage);
+
+    // ...but not under a field that already holds its value.
+    await user.click(screen.getByRole("button", { name: "Hide suggestions" }));
+    await waitFor(() => {
+      expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    });
   });
 });

@@ -58,7 +58,11 @@ describe("fetchTaxonomicDistribution", () => {
       }),
     );
 
-    await expect(fetchTaxonomicDistribution(234)).rejects.toThrow("genus error");
+    await expect(fetchTaxonomicDistribution(234)).rejects.toMatchObject({
+      message:
+        "Taxonomic Distribution: The BV-BRC data service is unavailable (HTTP 503 Service Unavailable: genus error).",
+      source: "taxonomic distribution genus",
+    });
   });
 
   it("throws when the species fetch fails", async () => {
@@ -72,6 +76,10 @@ describe("fetchTaxonomicDistribution", () => {
       }),
     );
 
-    await expect(fetchTaxonomicDistribution(234)).rejects.toThrow("species error");
+    await expect(fetchTaxonomicDistribution(234)).rejects.toMatchObject({
+      message:
+        "Taxonomic Distribution: The BV-BRC data service is unavailable (HTTP 503 Service Unavailable: species error).",
+      source: "taxonomic distribution species",
+    });
   });
 });

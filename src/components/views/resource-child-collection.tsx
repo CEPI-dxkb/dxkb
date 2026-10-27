@@ -11,6 +11,7 @@ import {
 import type { CollectionDownloadSpec } from "@/lib/data-api/downloads";
 import { epitopeCollectionProfile } from "@/lib/epitope-view";
 import { featureCollectionProfile } from "@/lib/feature-view";
+import { genomeAmrCollectionProfile } from "@/lib/genome-amr-view";
 import { biosetCollectionProfile } from "@/lib/experiment-view/profile";
 import { proteinFeatureCollectionProfile } from "@/lib/protein-feature-view";
 import { proteinStructureCollectionProfile } from "@/lib/protein-structure-view";
@@ -83,6 +84,8 @@ const canonicalProfiles: Partial<
 > = {
   bioset: (label, rql) => scopedProfile(biosetCollectionProfile, label, rql),
   epitope: (label, rql) => scopedProfile(epitopeCollectionProfile, label, rql),
+  genome_amr: (label, rql) =>
+    scopedProfile(genomeAmrCollectionProfile, label, rql),
   genome_feature: (label, rql) =>
     scopedProfile(featureCollectionProfile, label, rql),
   protein_feature: (label, rql) =>

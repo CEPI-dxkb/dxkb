@@ -5,6 +5,7 @@ import type { ProfilePatch } from "@/lib/auth/types";
 
 import * as authClient from "@/lib/auth/client";
 import { AuthBoundary, useAuth, useAuthActions } from "@/lib/auth/provider";
+import * as accountCaches from "@/lib/account-caches";
 
 const { refreshMock } = vi.hoisted(() => ({
   refreshMock: vi.fn(),
@@ -119,6 +120,7 @@ describe("AuthBoundary", () => {
       const queryClient = new QueryClient();
       queryClient.setQueryData(["private"], { secret: true });
       const clearSpy = vi.spyOn(queryClient, "clear");
+      const accountCachesSpy = vi.spyOn(accountCaches, "clearAccountCaches");
       const { result } = renderHook(() => useAuthActions(), {
         wrapper: ({ children }) => (
           <Wrapper queryClient={queryClient}>{children}</Wrapper>
@@ -128,6 +130,8 @@ describe("AuthBoundary", () => {
       await invoke(result.current);
 
       expect(clearSpy).toHaveBeenCalledOnce();
+      // Module-level caches (the Genome Browser's) outlive queryClient.clear().
+      expect(accountCachesSpy).toHaveBeenCalledOnce();
       expect(queryClient.getQueryData(["private"])).toBeUndefined();
       expect(refreshMock).toHaveBeenCalledTimes(refreshes ? 1 : 0);
     },
@@ -141,6 +145,7 @@ describe("AuthBoundary", () => {
     const queryClient = new QueryClient();
     const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
     const clearSpy = vi.spyOn(queryClient, "clear");
+    const accountCachesSpy = vi.spyOn(accountCaches, "clearAccountCaches");
     const { result } = renderHook(() => useAuthActions(), {
       wrapper: ({ children }) => (
         <Wrapper queryClient={queryClient}>{children}</Wrapper>
@@ -151,6 +156,7 @@ describe("AuthBoundary", () => {
     expect(authClient.updateProfile).toHaveBeenCalledWith(patches);
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["user-profile"] });
     expect(clearSpy).not.toHaveBeenCalled();
+    expect(accountCachesSpy).not.toHaveBeenCalled();
     expect(refreshMock).toHaveBeenCalledOnce();
   });
 

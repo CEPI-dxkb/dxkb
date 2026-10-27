@@ -13,8 +13,9 @@ describe("POST /api/services/minhash", () => {
     setTestSession();
   });
 
-  it("returns 500 when MINHASH_SERVICE_URL is not set", async () => {
+  it("returns 500 when MINHASH_SERVICE_URL is not set, naming it only in the server log", async () => {
     vi.stubEnv("MINHASH_SERVICE_URL", "");
+    const logged = vi.spyOn(console, "error").mockImplementation(() => undefined);
 
     const { POST } = await import("../route");
     const req = new NextRequest("http://localhost:3019/api/services/minhash", {
@@ -25,11 +26,17 @@ describe("POST /api/services/minhash", () => {
     const res = await POST(req, {});
 
     expect(res.status).toBe(500);
-    expect(await json(res)).toEqual(
-      expect.objectContaining({
-        error: expect.stringContaining("MINHASH_SERVICE_URL") as unknown,
-      }),
+    const body = await json(res);
+    expect(body).toEqual({
+      error:
+        "Similar Genome Finder is unavailable right now: the search service is not configured on this server.",
+      code: "unknown",
+    });
+    expect(JSON.stringify(body)).not.toContain("MINHASH_SERVICE_URL");
+    expect(logged).toHaveBeenCalledWith(
+      expect.stringContaining("MINHASH_SERVICE_URL"),
     );
+    logged.mockRestore();
   });
 
   it("returns 400 on malformed JSON body", async () => {

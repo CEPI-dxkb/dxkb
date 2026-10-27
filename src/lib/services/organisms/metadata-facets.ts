@@ -1,4 +1,5 @@
 import type { GenomeScope } from "./genome-scope";
+import { metadataFieldLabel } from "./metadata-field-labels";
 import type { OrganismFetchOptions, OrganismMetadataFacets } from "./types";
 import {
   buildGenomeFacetUrl,
@@ -14,9 +15,11 @@ async function fetchMetadataFacet(
   limit: number | undefined,
   signal: AbortSignal | undefined,
 ) {
+  // The chart's title prefixes a failure ("Isolation Country: The BV-BRC data
+  // service is unavailable (…)."); the field name stays in the server log.
   const payload = await fetchOrganismSolrJson(
     buildGenomeFacetUrl(baseUrl, scope, field, limit),
-    `genome ${field} facet`,
+    { source: `genome ${field} facet`, label: metadataFieldLabel(field) },
     signal,
   );
   return parseSolrFacetList(payload, field);

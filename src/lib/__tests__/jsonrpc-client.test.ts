@@ -109,7 +109,7 @@ describe("JsonRpcClient", () => {
       });
     });
 
-    it("throws Error on HTTP error (non-ok response)", async () => {
+    it("describes an HTTP error with no JSON-RPC body by its status", async () => {
       server.use(
         http.post("https://api.example.com/rpc", () => {
           return new HttpResponse(null, { status: 500 });
@@ -118,9 +118,12 @@ describe("JsonRpcClient", () => {
 
       const client = new JsonRpcClient("https://api.example.com/rpc");
 
-      await expect(client.call("TestMethod")).rejects.toThrow(
-        "JSON-RPC call failed: HTTP error! status: 500",
-      );
+      await expect(client.call("TestMethod")).rejects.toMatchObject({
+        name: "UpstreamError",
+        status: 502,
+        message:
+          "The JSON-RPC service is unavailable (HTTP 500 Internal Server Error).",
+      });
     });
 
     it("throws Error when response has no result or error", async () => {
@@ -158,6 +161,33 @@ describe("JsonRpcClient", () => {
       await client.call("TestMethod");
 
       expect((capturedBody as Record<string, unknown>).params).toEqual([]);
+    });
+
+    it("does not log the Authorization token or the params", async () => {
+      server.use(
+        http.post("https://api.example.com/rpc", () =>
+          HttpResponse.json({ id: 1, jsonrpc: "2.0", result: "ok" }),
+        ),
+      );
+      const consoleSpies = (["log", "info", "debug", "warn", "error"] as const).map(
+        (level) => vi.spyOn(console, level).mockImplementation(() => undefined),
+      );
+
+      try {
+        const client = new JsonRpcClient(
+          "https://api.example.com/rpc",
+          "un=user@bvbrc|tokenid=secret|sig=abc",
+        );
+        await client.call("AppService.start_app2", [{ password: "job-input" }]);
+
+        const logged = JSON.stringify(consoleSpies.flatMap((spy) => spy.mock.calls));
+        expect(logged).not.toContain("tokenid=secret");
+        expect(logged).not.toContain("job-input");
+      } finally {
+        consoleSpies.forEach((spy) => {
+          spy.mockRestore();
+        });
+      }
     });
   });
 
@@ -221,7 +251,7 @@ describe("JsonRpcClient", () => {
       ).rejects.toThrow(JsonRpcError);
     });
 
-    it("throws Error on HTTP error", async () => {
+    it("describes an HTTP error by its status", async () => {
       server.use(
         http.post("https://api.example.com/rpc", () => {
           return new HttpResponse(null, { status: 502 });
@@ -232,7 +262,32 @@ describe("JsonRpcClient", () => {
 
       await expect(
         client.batch([{ method: "Method1", params: [] }]),
-      ).rejects.toThrow("JSON-RPC batch call failed: HTTP error! status: 502");
+      ).rejects.toMatchObject({
+        status: 502,
+        message:
+          "The JSON-RPC service is unavailable (HTTP 502 Bad Gateway).",
+      });
+    });
+
+    it("throws the server's JSON-RPC error from an HTTP 500 batch reply", async () => {
+      server.use(
+        http.post("https://api.example.com/rpc", () =>
+          HttpResponse.json(
+            [{ id: 1, jsonrpc: "2.0", error: { code: -32603, message: "_ERROR_Object not found!_" } }],
+            { status: 500 },
+          ),
+        ),
+      );
+
+      const client = new JsonRpcClient("https://api.example.com/rpc");
+
+      await expect(
+        client.batch([{ method: "Method1", params: [] }]),
+      ).rejects.toMatchObject({
+        name: "JsonRpcError",
+        code: -32603,
+        message: "_ERROR_Object not found!_",
+      });
     });
   });
 

@@ -19,6 +19,7 @@ import { WorkspaceObjectSelector } from "@/components/workspace/workspace-object
 import { useAuthActions } from "@/lib/auth/provider";
 import type { UserProfile } from "@/lib/auth/types";
 import { isSelectableOutputFolder } from "@/lib/services/workspace/picker-views";
+import { formatPrefixedErrorMessage } from "@/lib/utils";
 
 interface PreferencesFormProps {
   profile: UserProfile;
@@ -51,9 +52,7 @@ export function PreferencesForm({ profile }: PreferencesFormProps) {
       })
       .catch((error: unknown) => {
         toast.error(
-          error instanceof Error && error.message
-            ? `Failed to update preferences: ${error.message}`
-            : "Failed to update preferences.",
+          formatPrefixedErrorMessage("Failed to update preferences", error),
         );
       })
       .finally(() => {

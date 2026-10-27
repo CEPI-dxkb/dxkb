@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { createQueryClientWrapper } from "@/test-helpers/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import type { ReactNode } from "react";
@@ -237,7 +238,7 @@ describe("MSA & SNP page error states", () => {
       ),
     );
     const user = userEvent.setup();
-    const { container } = render(<MSAandSNPAnalysisPage />);
+    const { container } = render(<MSAandSNPAnalysisPage />, { wrapper: createQueryClientWrapper() });
     await fillOutput(user);
     await user.click(radio("Viral Genome Group"));
 
@@ -274,7 +275,7 @@ describe("MSA & SNP page error states", () => {
         }),
     );
     const user = userEvent.setup();
-    const { container } = render(<MSAandSNPAnalysisPage />);
+    const { container } = render(<MSAandSNPAnalysisPage />, { wrapper: createQueryClientWrapper() });
     await fillOutput(user);
     await user.click(radio("Viral Genome Group"));
     await user.click(radio("Genome ID"));
@@ -308,7 +309,7 @@ describe("MSA & SNP page error states", () => {
   it("shows a failed validation request on the genome group field", async () => {
     mocks.validateGenomeGroup.mockRejectedValue(new Error("Network down"));
     const user = userEvent.setup();
-    render(<MSAandSNPAnalysisPage />);
+    render(<MSAandSNPAnalysisPage />, { wrapper: createQueryClientWrapper() });
     await user.click(radio("Viral Genome Group"));
 
     await user.click(pickButton("genomeGroup", "A"));
@@ -325,7 +326,7 @@ describe("MSA & SNP page error states", () => {
       genomeCount: 2,
     });
     const user = userEvent.setup();
-    const { container } = render(<MSAandSNPAnalysisPage />);
+    const { container } = render(<MSAandSNPAnalysisPage />, { wrapper: createQueryClientWrapper() });
     await fillOutput(user);
     await user.click(radio("Viral Genome Group"));
     await user.click(pickButton("genomeGroup", "A"));
@@ -346,7 +347,7 @@ describe("MSA & SNP page error states", () => {
 
   it("keeps Genome ID disabled until a genome group passes", async () => {
     const user = userEvent.setup();
-    render(<MSAandSNPAnalysisPage />);
+    render(<MSAandSNPAnalysisPage />, { wrapper: createQueryClientWrapper() });
     await user.click(radio("Viral Genome Group"));
     await user.click(radio("Genome ID"));
 
@@ -361,7 +362,7 @@ describe("MSA & SNP page error states", () => {
     mocks.featureOptionsError = "Service unavailable";
     const toastError = vi.spyOn(toast, "error");
     const user = userEvent.setup();
-    render(<MSAandSNPAnalysisPage />);
+    render(<MSAandSNPAnalysisPage />, { wrapper: createQueryClientWrapper() });
     await user.click(pickButton("featureGroup", "A"));
     await user.click(radio("Feature ID"));
 
@@ -384,7 +385,7 @@ describe("MSA & SNP page error states", () => {
 
   it("shows the picked FASTA file again after an input type round trip", async () => {
     const user = userEvent.setup();
-    render(<MSAandSNPAnalysisPage />);
+    render(<MSAandSNPAnalysisPage />, { wrapper: createQueryClientWrapper() });
     await user.click(radio("DNA or Protein FASTA File"));
     await user.click(pickButton("featureFasta", "A"));
 
@@ -396,7 +397,7 @@ describe("MSA & SNP page error states", () => {
 
   it("does not submit an unaligned FASTA file from the aligned selector", async () => {
     const user = userEvent.setup();
-    const { container } = render(<MSAandSNPAnalysisPage />);
+    const { container } = render(<MSAandSNPAnalysisPage />, { wrapper: createQueryClientWrapper() });
     await fillOutput(user);
     await user.click(radio("DNA or Protein FASTA File"));
     await user.click(pickButton("featureFasta", "A"));
@@ -414,7 +415,7 @@ describe("MSA & SNP page error states", () => {
 
   it("draws each required field in its error state on a submit attempt", async () => {
     const user = userEvent.setup();
-    const { container } = render(<MSAandSNPAnalysisPage />);
+    const { container } = render(<MSAandSNPAnalysisPage />, { wrapper: createQueryClientWrapper() });
     submit(container);
 
     expect(await screen.findByText("Output folder is required")).toBeVisible();
@@ -456,7 +457,7 @@ describe("MSA & SNP page FASTA file checks", () => {
   it("submits a file that passes, typed by its workspace type", async () => {
     // "B" is a protein file whatever its path says.
     const user = userEvent.setup();
-    const { container } = render(<MSAandSNPAnalysisPage />);
+    const { container } = render(<MSAandSNPAnalysisPage />, { wrapper: createQueryClientWrapper() });
     await fillOutput(user);
     await pickFastaFile(user, "B");
     await waitFor(() => {
@@ -479,7 +480,7 @@ describe("MSA & SNP page FASTA file checks", () => {
   it("keeps a file with too few sequences on screen in its error state", async () => {
     fastaFiles["/groups/featureFasta/A"] = ">only\nACGT\n";
     const user = userEvent.setup();
-    const { container } = render(<MSAandSNPAnalysisPage />);
+    const { container } = render(<MSAandSNPAnalysisPage />, { wrapper: createQueryClientWrapper() });
     await fillOutput(user);
     await pickFastaFile(user, "A");
 
@@ -498,7 +499,7 @@ describe("MSA & SNP page FASTA file checks", () => {
   it("checks a DNA file's letters as nucleotides", async () => {
     fastaFiles["/groups/featureFasta/A"] = ">a\nACGT\n>b\nMKVLQ\n";
     const user = userEvent.setup();
-    render(<MSAandSNPAnalysisPage />);
+    render(<MSAandSNPAnalysisPage />, { wrapper: createQueryClientWrapper() });
     await pickFastaFile(user, "A");
 
     expect(await errorDetails(user, "Invalid FASTA file")).toBe(
@@ -509,7 +510,7 @@ describe("MSA & SNP page FASTA file checks", () => {
   it("shows why a file could not be read", async () => {
     delete fastaFiles["/groups/featureFasta/A"];
     const user = userEvent.setup();
-    render(<MSAandSNPAnalysisPage />);
+    render(<MSAandSNPAnalysisPage />, { wrapper: createQueryClientWrapper() });
     await pickFastaFile(user, "A");
 
     expect(await errorDetails(user, "Could not read the FASTA file")).toBe(
@@ -530,7 +531,7 @@ describe("MSA & SNP page FASTA file checks", () => {
       }),
     );
     const user = userEvent.setup();
-    render(<MSAandSNPAnalysisPage />);
+    render(<MSAandSNPAnalysisPage />, { wrapper: createQueryClientWrapper() });
     await fillOutput(user);
     await pickFastaFile(user, "A");
 
@@ -546,7 +547,7 @@ describe("MSA & SNP page FASTA file checks", () => {
   it("does not carry a rejected file over to the aligned selector", async () => {
     fastaFiles["/groups/featureFasta/A"] = ">only\nACGT\n";
     const user = userEvent.setup();
-    const { container } = render(<MSAandSNPAnalysisPage />);
+    const { container } = render(<MSAandSNPAnalysisPage />, { wrapper: createQueryClientWrapper() });
     await fillOutput(user);
     await pickFastaFile(user, "A");
     await screen.findByText("Invalid FASTA file");
@@ -574,7 +575,7 @@ describe("MSA & SNP page FASTA file checks", () => {
 
   it("does not check an aligned file's contents, as legacy does not", async () => {
     const user = userEvent.setup();
-    const { container } = render(<MSAandSNPAnalysisPage />);
+    const { container } = render(<MSAandSNPAnalysisPage />, { wrapper: createQueryClientWrapper() });
     await fillOutput(user);
     await user.click(radio("Aligned Sequences"));
     await user.click(pickButton("alignedFasta", "B"));
@@ -596,7 +597,7 @@ describe("MSA & SNP page FASTA file checks", () => {
 describe("MSA & SNP page aligner", () => {
   it("hides the aligner for an aligned file, as legacy does", async () => {
     const user = userEvent.setup();
-    render(<MSAandSNPAnalysisPage />);
+    render(<MSAandSNPAnalysisPage />, { wrapper: createQueryClientWrapper() });
     const aligner = () =>
       screen.queryByRole("combobox", { name: "Select aligner" });
     expect(aligner()).toBeInTheDocument();

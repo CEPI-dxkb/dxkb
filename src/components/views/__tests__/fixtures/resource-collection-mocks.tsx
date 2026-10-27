@@ -77,30 +77,23 @@ export function collectionCopyDialogMock() {
 
 /**
  * Surfaces everything a suite has needed to assert: that it opened, the ID kind that
- * picked its service set, whether it has anything to offer, and the resolved IDs. The
- * label and the IDs are separate elements so `getByText("Selectable services")` still
- * matches a whole element.
+ * picked its service set, and the resolved IDs. The label and the IDs are separate
+ * elements so `getByText("Selectable services")` still matches a whole element.
  */
 export function selectionServiceChooserMock() {
   return {
     SelectionServiceChooser: ({
       open,
       kind = "genome",
-      hasSelectableServices = true,
       ids = [],
     }: {
       open: boolean;
       kind?: "genome" | "feature";
-      hasSelectableServices?: boolean;
       ids?: readonly string[];
     }) =>
       open ? (
         <div data-testid="selection-services" data-kind={kind}>
-          <span>
-            {hasSelectableServices
-              ? "Selectable services"
-              : "No selectable services"}
-          </span>
+          <span>Selectable services</span>
           <span data-testid="selection-service-ids">{ids.join(",")}</span>
         </div>
       ) : null,
@@ -190,25 +183,34 @@ export function taxonomyServiceChooserMock() {
 }
 
 /**
- * A flat stand-in for `ResourceWorkspace`: all three slots, one parent, no responsive
+ * A flat stand-in for `ResourceWorkspace`: all four slots, one parent, no responsive
  * behaviour. Suites that care *where* the slots mount use the real component instead
- * — see `resource-collection-actions.test.tsx`.
+ * — see `resource-collection-actions.test.tsx`. Like the real one it drops the action
+ * bar without `hasActionRail` and the side panel without `hasSidePanel` (a failed
+ * read turns both off), each in its own slot, so the toolbar keeps its place.
  */
 export function flatResourceWorkspaceMock() {
   return {
     ResourceWorkspace: ({
       children,
+      toolbar,
       actionBar,
       sidePanel,
+      hasActionRail = true,
+      hasSidePanel = true,
     }: {
       children: ReactNode;
+      toolbar?: ReactNode;
       actionBar: ReactNode;
       sidePanel: ReactNode;
+      hasActionRail?: boolean;
+      hasSidePanel?: boolean;
     }) => (
       <div>
-        {actionBar}
+        {hasActionRail && actionBar}
+        {toolbar}
         {children}
-        {sidePanel}
+        {hasSidePanel && sidePanel}
       </div>
     ),
   };

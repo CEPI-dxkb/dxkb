@@ -122,6 +122,11 @@ export class PickerTestRepository extends InMemoryWorkspaceRepository {
     this.listingFailures.set(path, error);
   }
 
+  /** Listings of `path` succeed again, as after an outage. */
+  restoreListing(path: string) {
+    this.listingFailures.delete(path);
+  }
+
   /** The next folder creation waits until the gate is released. */
   holdCreateFolder(): Gate {
     this.createFolderGate = createGate();

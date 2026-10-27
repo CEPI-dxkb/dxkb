@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { JobParamsDialog } from "@/components/services/job-params-dialog";
 import { ServiceHeader } from "@/components/services/service-header";
+import { ServiceSubmitError } from "@/components/services/form-ui/service-submit-error";
 import { primerDesignInfo } from "@/lib/services/info/primer-design";
 import { PrimerAdvancedSection } from "./primer-advanced-section";
 import { PrimerInputSection } from "./primer-input-section";
@@ -33,6 +34,7 @@ export default function PrimerDesignServicePage() {
           <PrimerAdvancedSection controller={controller} />
         </PrimerInputSection>
         <PrimerOutputSection controller={controller} />
+        <ServiceSubmitError form={form} />
         <div className="service-form-controls">
           <Button type="button" variant="outline" onClick={handleReset}>
             Reset

@@ -15,6 +15,7 @@ export const genomeAmrFields = {
         field: 'genome_id', 
         hidden: true,
         group: 'Summary',
+        link: '/genome/{value}',
         facet: true, 
         facet_hidden: true, 
         search: true  
@@ -24,6 +25,7 @@ export const genomeAmrFields = {
         field: 'genome_name', 
         hidden: false,
         group: 'Summary',
+        link: '/genome/{genome_id}',
         facet: true, 
         facet_hidden: true, 
         search: true  
@@ -60,8 +62,8 @@ export const genomeAmrFields = {
         field: 'resistant_phenotype', 
         hidden: false,
         group: 'Summary',
-        facet: false, 
-        facet_hidden: true, 
+        facet: true, 
+        facet_hidden: false, 
         search: true  
         },
     m_sign: { 

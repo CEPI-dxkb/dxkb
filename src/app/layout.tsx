@@ -4,6 +4,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { TailwindIndicator } from "@/components/ui/tailwind-indicator";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "sonner";
+import { ErrorToastDefaults } from "@/components/error-toast-defaults";
 import { Providers } from "./providers";
 import { AuthBoundary } from "@/lib/auth/provider";
 import { getCurrentUser } from "@/lib/auth/server/actions";
@@ -66,6 +67,7 @@ export default async function RootLayout({
               // errors, the protected-folder list), not a space.
               toastOptions={{ classNames: { description: "whitespace-pre-line" } }}
             />
+            <ErrorToastDefaults />
           </ThemeProvider>
           <TailwindIndicator />
         </Providers>

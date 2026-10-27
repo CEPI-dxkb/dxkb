@@ -8,6 +8,7 @@ import GenomeAssemblyPage from "@/app/services/(genomics)/genome-assembly/page";
 import { ServiceDebuggingProvider } from "@/contexts/service-debugging-context";
 import { AuthBoundary } from "@/lib/auth/provider";
 import { server } from "@/test-helpers/msw-server";
+import { workspaceObjectNotFound } from "@/test-helpers/workspace-responses";
 import { testAuthUser } from "@/test-helpers/react";
 
 function Providers({ children }: { children: React.ReactNode }) {
@@ -33,14 +34,13 @@ describe("GenomeAssembly page — rerun + submit flow", () => {
       ),
       // Workspace calls used by this page:
       //   - Workspace.ls  → WorkspaceObjectSelector listing (return [])
-      //   - Workspace.get → OutputFolder name-availability check;
-      //     checkWorkspaceObjectExists treats 200 as "name taken" and 500
-      //     as "name available", so we must return non-OK here or the
-      //     Assemble button gets disabled by the debounced check mid-test.
+      //   - Workspace.get → OutputFolder name-availability check; answer
+      //     "Object not found" so the name is available, or the Assemble
+      //     button gets disabled by the debounced check mid-test.
       http.post("*/api/services/workspace", async ({ request }) => {
         const body = (await request.json()) as { method?: string };
         if (body.method === "Workspace.get") {
-          return new HttpResponse(null, { status: 500 });
+          return workspaceObjectNotFound();
         }
         return HttpResponse.json([]);
       }),

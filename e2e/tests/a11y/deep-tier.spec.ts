@@ -477,7 +477,7 @@ test.describe("a11y deep tier: search", () => {
   );
 
   const dataApiOverride = {
-    url: /theseed\.org\/services\/data_api\/query/,
+    url: /\/api\/data\/search$/,
     method: "POST",
     body: emptyDataApiResponse,
   } as const;

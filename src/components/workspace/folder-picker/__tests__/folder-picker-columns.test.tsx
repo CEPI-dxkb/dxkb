@@ -88,6 +88,34 @@ describe("WorkspaceFolderPickerDialog column states", () => {
     expect(headerCount("Experiments")).toBeNull();
   });
 
+  it("announces a failed listing with a Retry that loads it", async () => {
+    const repository = makePickerRepository();
+    repository.failListing(home, new Error("Internal server error"));
+    const { user } = renderPicker({}, repository);
+
+    const alert = await within(column("Home")).findByRole("alert");
+    expect(alert).toHaveTextContent("Couldn't load this folder.");
+    expect(alert).toHaveTextContent("Internal server error");
+
+    repository.restoreListing(home);
+    const gate = repository.holdListing(home);
+    await user.click(within(alert).getByRole("button", { name: "Retry" }));
+
+    // The failure stays up while the retry is in flight.
+    expect(
+      await within(column("Home")).findByRole("button", { name: "Retrying…" }),
+    ).toBeDisabled();
+    expect(within(column("Home")).getByRole("alert")).toHaveTextContent(
+      "Internal server error",
+    );
+
+    gate.release();
+
+    expect(await findOption("Home", "Alpha")).toBeInTheDocument();
+    expect(within(column("Home")).queryByRole("alert")).toBeNull();
+    expect(headerCount("Home")).toBe("2");
+  });
+
   it("explains an empty folder", async () => {
     const { user } = renderPicker();
 

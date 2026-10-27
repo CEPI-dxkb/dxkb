@@ -1,4 +1,8 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import {
+  QueryClient,
+  QueryClientProvider,
+  type QueryKey,
+} from "@tanstack/react-query";
 import { createElement, type ReactNode } from "react";
 import type { AuthUser } from "@/lib/auth/types";
 import {
@@ -29,6 +33,22 @@ export function createQueryClientWrapper() {
       children,
     );
   };
+}
+
+/**
+ * The interval the first observer of the first query whose key starts with
+ * `queryKey` would wait before its next poll, evaluating a `refetchInterval`
+ * function against the query's current state.
+ */
+export function nextRefetchInterval(
+  queryClient: QueryClient,
+  queryKey: QueryKey,
+) {
+  const query = queryClient.getQueryCache().find({ queryKey, exact: false });
+  const refetchInterval = query?.observers[0]?.options.refetchInterval;
+  return typeof refetchInterval === "function" && query
+    ? refetchInterval(query)
+    : refetchInterval;
 }
 
 export function createUiPreferencesWrapper(

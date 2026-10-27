@@ -1,16 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth/server/route";
-
-const minhashServiceUrl = process.env.MINHASH_SERVICE_URL;
+import {
+  callMinhashService,
+  MinhashConfigurationError,
+} from "@/lib/services/minhash";
 
 export const POST = withAuth(async (request: NextRequest, { token }) => {
-  if (!minhashServiceUrl) {
-    return NextResponse.json(
-      { error: "Minhash service URL is not configured (MINHASH_SERVICE_URL)" },
-      { status: 500 },
-    );
-  }
-
   let body: unknown;
   try {
     body = await request.json();
@@ -25,22 +20,21 @@ export const POST = withAuth(async (request: NextRequest, { token }) => {
     );
   }
 
-  const response = await fetch(minhashServiceUrl, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: token },
-    body: JSON.stringify(body),
-  });
-
-  if (!response.ok) {
-    const data = (await response.json().catch(() => ({}))) as {
-      error?: string;
-    } & Record<string, unknown>;
-    return NextResponse.json(
-      { error: data.error ?? "Minhash service error", ...data },
-      { status: response.status },
-    );
+  try {
+    const answer = await callMinhashService(body, token);
+    return answer.ok
+      ? NextResponse.json(answer.body)
+      : NextResponse.json(answer.body, { status: answer.status });
+  } catch (error) {
+    // The variable's name is for the server log; the client gets the
+    // user-facing reason.
+    if (error instanceof MinhashConfigurationError) {
+      console.error(error.message);
+      return NextResponse.json(
+        { error: error.userMessage, code: "unknown" },
+        { status: 500 },
+      );
+    }
+    throw error;
   }
-
-  const data = (await response.json()) as Record<string, unknown>;
-  return NextResponse.json(data);
 });

@@ -22,6 +22,12 @@ deliberately avoids legacy code so the rules stand on their own.
 > it is fetched on every taxon page load, not skipped. The Lassa-vs-RVFV
 > class/order distinction from §5 is pinned by a regression test in
 > `predicates.test.ts`.
+>
+> Of the bacterial cluster, only **AMR Phenotypes** and **Interactions** are
+> implemented as tabs today; Specialty Genes, Pathways and Subsystems were removed
+> from the strip until they have real views. AMR Phenotypes lists `genome_amr`
+> rows scoped through the genome join, `and(eq(genome_id,*),genome(<lineage>))`,
+> because `genome_amr` carries no `taxon_lineage_ids` (legacy sends the same query).
 
 ---
 

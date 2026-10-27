@@ -2,9 +2,10 @@
 
 import { useState } from "react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
 import { InfoPanel } from "@/components/detail-panel/info-panel";
+import { QueryRetryButton } from "./query-retry-button";
 import { ResourceFilterBar } from "./resource-filter-bar";
+import { useRetryKeepingError } from "./use-retry-keeping-error";
 import { ResourceWorkspace } from "./resource-workspace";
 import { useResourceCollectionActions } from "./resource-collection-actions";
 import { useResourceCollectionRowResolution } from "./use-resource-collection-row-resolution";
@@ -16,13 +17,14 @@ import {
 import { useResourceCollection } from "@/hooks/views/use-resource-collection";
 import { useTableLayout } from "@/hooks/use-table-layout";
 import { useIsMounted } from "@/hooks/use-is-mounted";
-import { useUiPreference } from "@/lib/ui-preferences/provider";
 import { dataSort, type CollectionState } from "@/lib/views/collection-state";
 import { rqlKeyword } from "@/lib/views/rql";
 import {
   applyBooleanOverrides,
+  applyColumnOrder,
   diffBooleanOverrides,
   resolveFacetVisibility,
+  sameOrder,
 } from "@/lib/table-layout";
 import { formatUserFacingErrorMessage } from "@/lib/utils";
 import { resourceCollectionPageSize } from "@/hooks/views/collection-state";
@@ -189,7 +191,14 @@ export function ResourceCollection<Row extends DataTableRow>({
       visibility: diffBooleanOverrides(defaultColumnVisibility, next),
     });
   };
-  const [facetPanelOpen] = useUiPreference("facetPanelOpen");
+  // No counts are read until the user reaches for the filters (a menu or a
+  // pill opens, `onFacetsWanted`); hovering Filters prefetches them. Once
+  // wanted, they follow the scope for the rest of the page's life.
+  const [facetsWanted, setFacetsWanted] = useState(false);
+  // Facets outside the pinned set, counted because the user opened one.
+  const [peekedFacetFields, setPeekedFacetFields] = useState<
+    ReadonlySet<string>
+  >(() => new Set());
   // The saved facet set reads as empty until the render after hydration, and
   // useIsMounted flips in that same render, so counts wait for the set shown.
   const facetsSettled = useIsMounted();
@@ -197,30 +206,47 @@ export function ResourceCollection<Row extends DataTableRow>({
     profile.facets ?? [],
     tableLayout.facets,
   );
-  // Counts are requested for exactly the columns `ResourceFilterBar` shows: none
-  // while its panel is closed (the default), and never a collapsed facet. Both
-  // read `facetPanelOpen` from the one provider the root layout mounts.
+  const pinnedFacetFields = (profile.facets ?? [])
+    .map((facet) => facet.field)
+    .filter((field) => facetVisibility[field]);
+  const countedFacetFields = [
+    ...pinnedFacetFields,
+    ...[...peekedFacetFields].filter(
+      (field) => !pinnedFacetFields.includes(field),
+    ),
+  ];
   const shownFacetFields =
-    facetPanelOpen && facetsSettled
-      ? (profile.facets ?? [])
-          .map((facet) => facet.field)
-          .filter((field) => facetVisibility[field])
-      : [];
+    facetsWanted && facetsSettled ? countedFacetFields : [];
+  // Columns in the saved order; the header drags and the Columns menu write it.
+  const defaultColumnOrder = profile.columns.map((column) => column.id);
+  const orderedColumnIds = applyColumnOrder(
+    defaultColumnOrder,
+    tableLayout.order,
+  );
+  const columnById = new Map(
+    profile.columns.map((column) => [column.id, column]),
+  );
   const structuralRql = combinePredicates(
     baseRql,
     profile.buildStructuralRql?.(state) ?? profile.basePredicate,
     refinementRql,
   );
   const effectiveRql = combinePredicates(structuralRql, state.rql);
-  const facetScope = facetState
-    ? {
-        structuralRql: combinePredicates(
-          baseRql,
-          profile.buildStructuralRql?.(facetState) ?? profile.basePredicate,
-          refinementRql,
-        ),
-      }
-    : undefined;
+  // A field's counts leave its own filter out, so a facet lists every value a
+  // pick could add ("any of"), not only the ones already picked. Legacy's
+  // counts include it, which makes a second value in one field unpickable.
+  const countState = facetState ?? state;
+  const facetStructuralRql = (field: string) => {
+    const filters = Object.fromEntries(
+      Object.entries(countState.filters).filter(([name]) => name !== field),
+    );
+    return combinePredicates(
+      baseRql,
+      profile.buildStructuralRql?.({ ...countState, filters }) ??
+        profile.basePredicate,
+      refinementRql,
+    );
+  };
   const requestState =
     keywordMode === "loaded" ? { ...state, keyword: undefined } : state;
   const collection = useResourceCollection({
@@ -232,7 +258,7 @@ export function ResourceCollection<Row extends DataTableRow>({
     facetFields: shownFacetFields,
     prefetchNextPage,
     structuralRql,
-    facetScope,
+    facetStructuralRql,
     serverKeywordMode: profile.serverKeywordMode,
     unsortedOrder: profile.unsortedOrder,
     state: requestState,
@@ -243,6 +269,49 @@ export function ResourceCollection<Row extends DataTableRow>({
           }
         : onStateChange,
   });
+  // A Retry keeps its failure on screen, marked "Retrying…", until it answers,
+  // rather than swapping it for skeletons for the whole wait. The rows' Retry
+  // also reloads failed counts, whose own error is not shown beside theirs.
+  const rowsRetry = useRetryKeepingError(
+    {
+      error: collection.error,
+      isFetching: collection.isInitialLoading || collection.isRefreshing,
+      refetch: () => {
+        if (collection.facetsError) void collection.refetchFacets();
+        return collection.refetch();
+      },
+    },
+    JSON.stringify([
+      effectiveRql,
+      state.filters,
+      requestState.keyword,
+      state.page,
+      state.sort,
+    ]),
+  );
+  const facetsRetry = useRetryKeepingError(
+    {
+      error: collection.facetsError,
+      isFetching: collection.isFacetsLoading || collection.isFacetsRefreshing,
+      refetch: collection.refetchFacets,
+    },
+    JSON.stringify([
+      facetState?.filters,
+      effectiveRql,
+      (facetState ?? state).filters,
+      requestState.keyword,
+      shownFacetFields,
+    ]),
+  );
+  const collectionError = rowsRetry.error;
+  // A read in flight while the error shows (a Retry, or a background refetch)
+  // is a retry of it.
+  const rowsRetrying =
+    rowsRetry.retrying || (Boolean(collection.error) && collection.isRefreshing);
+  // The total on screen is not this query's yet: a previous query's, or none
+  // while the first read is in flight. Counts wait instead of reading 0.
+  const isTotalPending =
+    collection.isPlaceholderData || collection.isInitialLoading;
   const rowLinkFields = new Set(
     profile.rowLinkFields ?? [profile.rowLinkField ?? profile.idField],
   );
@@ -301,7 +370,7 @@ export function ResourceCollection<Row extends DataTableRow>({
     selectedActionCount,
     isAllPagesSelected: collection.isAllPagesSelected,
     hasLoadedKeyword,
-    isPlaceholderData: collection.isPlaceholderData,
+    isPlaceholderData: isTotalPending,
     currentTotal: collection.currentTotal,
     rql: effectiveRql,
     keyword: requestState.keyword,
@@ -340,11 +409,11 @@ export function ResourceCollection<Row extends DataTableRow>({
 
   /**
    * Everything resource-specific about the action bar. A hook rather than a
-   * component so its state lives in this instance: a collection error replaces the
-   * whole workspace, action bar included, with the alert below, and `actionDialogs` is
-   * rendered at section level as a sibling of the workspace, so an in-flight launch
-   * survives that. (Crossing the `md` breakpoint does not remount the slot — the
-   * workspace renders one stable subtree at every width.)
+   * component so its state lives in this instance: a collection error drops the
+   * action rail, action bar included, and puts the alert below in the table's place,
+   * and `actionDialogs` is rendered at section level as a sibling of the workspace,
+   * so an in-flight launch survives that. (Crossing the `md` breakpoint does not
+   * remount the slot — the workspace renders one stable subtree at every width.)
    */
   const { actionBar, actionDialogs } = useResourceCollectionActions({
     profile,
@@ -354,7 +423,7 @@ export function ResourceCollection<Row extends DataTableRow>({
       displayedIds: displayedSelectedIds,
       isAllPagesSelected: collection.isAllPagesSelected,
       total: collection.total,
-      isPlaceholderData: collection.isPlaceholderData,
+      isPlaceholderData: isTotalPending,
       currentTotal: collection.currentTotal,
       rowById: selectedRowById,
     },
@@ -405,78 +474,122 @@ export function ResourceCollection<Row extends DataTableRow>({
     </div>
   );
 
+  // One row above the table, inside its column (the action rail sits beside
+  // it): keyword, Filters, active filter pills, Clear all and Columns.
+  const toolbar = (
+    <ResourceFilterBar
+      layoutKey={`collection:${profile.resource}`}
+      keyword={
+        keywordMode === "server"
+          ? state.keyword
+          : keywordMode === "refine"
+            ? state.refine
+            : loadedKeyword
+      }
+      filters={state.filters}
+      facets={collection.facets}
+      facetStatuses={collection.facetStatuses}
+      // One failure, one alert: while the rows have failed, the panel does
+      // not repeat it (VWA-7: `/strain` showed two red errors).
+      facetsError={
+        facetsRetry.error && !collectionError
+          ? formatUserFacingErrorMessage(
+              facetsRetry.error,
+              genericFacetErrorMessage,
+            )
+          : undefined
+      }
+      facetsUnavailable={Boolean(facetsRetry.error && collectionError)}
+      facetsRetrying={facetsRetry.retrying}
+      onRetryFacets={facetsRetry.retry}
+      peekedFields={peekedFacetFields}
+      onPeekedFieldsChange={setPeekedFacetFields}
+      onFacetsWanted={() => {
+        setFacetsWanted(true);
+      }}
+      onPrefetchFacets={() => {
+        if (facetsSettled) collection.prefetchFacets(countedFacetFields);
+      }}
+      columns={orderedColumnIds.map((id) => ({
+        id,
+        label: columnById.get(id)?.label ?? id,
+        visible: columnVisibility[id] ?? false,
+        defaultVisible: defaultColumnVisibility[id] ?? false,
+        defaultIndex: defaultColumnOrder.indexOf(id),
+      }))}
+      setColumns={({ visibility, order }) => {
+        updateTableLayout({
+          ...(visibility && {
+            visibility: diffBooleanOverrides(defaultColumnVisibility, {
+              ...columnVisibility,
+              ...visibility,
+            }),
+          }),
+          ...(order && {
+            order: sameOrder(order, defaultColumnOrder) ? undefined : order,
+          }),
+        });
+      }}
+      resetColumns={() => {
+        updateTableLayout({ visibility: undefined, order: undefined });
+      }}
+      definitions={profile.facets ?? []}
+      hasExplicitRql={Boolean(state.rql)}
+      filtersBesideRql={filtersBesideRql}
+      keywordPlaceholder={keywordPlaceholder}
+      onChange={({ keyword, filters, clearRql, clearAll }) => {
+        if (keywordMode === "loaded") {
+          const nextLoadedKeyword = keyword ?? "";
+          if (nextLoadedKeyword !== loadedKeyword) {
+            collection.setSelection({});
+            collection.setIsAllPagesSelected(false);
+          }
+          setInternalLoadedKeyword(nextLoadedKeyword);
+          onLoadedKeywordChange?.(nextLoadedKeyword);
+          if (filters === state.filters && !clearRql) return;
+        }
+        const next = {
+          ...state,
+          keyword: keywordMode === "server" ? keyword : state.keyword,
+          refine: keywordMode === "refine" ? keyword : state.refine,
+          filters:
+            state.rql && !clearRql
+              ? Object.fromEntries([
+                  ...Object.entries(state.filters).filter(
+                    ([name]) => !filtersBesideRql.includes(name),
+                  ),
+                  ...Object.entries(filters).filter(([name]) =>
+                    filtersBesideRql.includes(name),
+                  ),
+                ])
+              : filters,
+          rql: clearRql ? undefined : state.rql,
+          page: 1,
+        };
+        if (clearAll) onStateChange(next, { clearAll });
+        else onStateChange(next);
+      }}
+    />
+  );
+
   return (
     <section
       aria-label={profile.label}
       className="flex min-h-0 flex-1 flex-col overflow-hidden"
     >
-      <ResourceFilterBar
-        layoutKey={`collection:${profile.resource}`}
-        keyword={
-          keywordMode === "server"
-            ? state.keyword
-            : keywordMode === "refine"
-              ? state.refine
-              : loadedKeyword
-        }
-        filters={state.filters}
-        facets={collection.facets}
-        // Until the saved facet set settles no counts are requested at all, so
-        // an open panel shows placeholders rather than "No values".
-        facetsLoading={!facetsSettled || collection.isFacetsLoading}
-        facetsRefreshing={collection.isFacetsRefreshing}
-        facetsError={
-          collection.facetsError
-            ? formatUserFacingErrorMessage(
-                collection.facetsError,
-                genericFacetErrorMessage,
-              )
-            : undefined
-        }
-        onRetryFacets={() => {
-          void collection.refetchFacets();
-        }}
-        definitions={profile.facets ?? []}
-        hasExplicitRql={Boolean(state.rql)}
-        filtersBesideRql={filtersBesideRql}
-        keywordPlaceholder={keywordPlaceholder}
-        onChange={({ keyword, filters, clearRql, clearAll }) => {
-          if (keywordMode === "loaded") {
-            const nextLoadedKeyword = keyword ?? "";
-            if (nextLoadedKeyword !== loadedKeyword) {
-              collection.setSelection({});
-              collection.setIsAllPagesSelected(false);
-            }
-            setInternalLoadedKeyword(nextLoadedKeyword);
-            onLoadedKeywordChange?.(nextLoadedKeyword);
-            if (filters === state.filters && !clearRql) return;
-          }
-          const next = {
-            ...state,
-            keyword: keywordMode === "server" ? keyword : state.keyword,
-            refine: keywordMode === "refine" ? keyword : state.refine,
-            filters:
-              state.rql && !clearRql
-                ? Object.fromEntries([
-                    ...Object.entries(state.filters).filter(
-                      ([name]) => !filtersBesideRql.includes(name),
-                    ),
-                    ...Object.entries(filters).filter(([name]) =>
-                      filtersBesideRql.includes(name),
-                    ),
-                  ])
-                : filters,
-            rql: clearRql ? undefined : state.rql,
-            page: 1,
-          };
-          if (clearAll) onStateChange(next, { clearAll });
-          else onStateChange(next);
-        }}
-      />
+      {/* Never a count the query has not answered: the first read's wait is
+          "Loading results…", and a failure is announced by its own
+          role="alert" below, so this says nothing then but a retry. */}
       <span className="sr-only" aria-live="polite">
-        {collection.isRefreshing
-          ? "Refreshing results..."
-          : `${String(displayedTotal)} results`}
+        {collectionError
+          ? rowsRetrying
+            ? "Retrying…"
+            : ""
+          : collection.isInitialLoading
+            ? "Loading results…"
+            : collection.isRefreshing
+              ? "Refreshing results..."
+              : `${String(displayedTotal)} results`}
       </span>
 
       {actionError && (
@@ -486,38 +599,43 @@ export function ResourceCollection<Row extends DataTableRow>({
         </Alert>
       )}
 
-      {collection.error ? (
-        <Alert variant="destructive">
-          <AlertTitle>Could not load {profile.label.toLowerCase()}</AlertTitle>
-          <AlertDescription>
-            <p>
-              {formatUserFacingErrorMessage(
-                collection.error,
-                genericCollectionErrorMessage,
-              )}
-            </p>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                void collection.refetch();
-              }}
-            >
-              Retry
-            </Button>
-          </AlertDescription>
-        </Alert>
-      ) : (
-        <ResourceWorkspace
-          hasSidePanel={
-            hasLoadedKeyword
-              ? displayedSelectedIds.length > 0
-              : collection.isAllPagesSelected ||
-                collection.selectedIds.length > 0
-          }
-          actionBar={actionBar}
-          sidePanel={detailContent}
-        >
+      {/* One workspace whether or not the rows failed, so the toolbar (keyword
+          draft and focus, a pending pick, an open Filters menu) is never
+          remounted by a failure or by the Retry that ends it. A failure drops
+          the action rail and the detail panel; the alert takes the table's
+          place. */}
+      <ResourceWorkspace
+        toolbar={toolbar}
+        hasActionRail={!collectionError}
+        hasSidePanel={
+          !collectionError &&
+          (hasLoadedKeyword
+            ? displayedSelectedIds.length > 0
+            : collection.isAllPagesSelected ||
+              collection.selectedIds.length > 0)
+        }
+        actionBar={actionBar}
+        sidePanel={detailContent}
+      >
+        {collectionError ? (
+          <Alert variant="destructive" aria-busy={rowsRetrying || undefined}>
+            <AlertTitle>
+              Could not load {profile.label.toLowerCase()}
+            </AlertTitle>
+            <AlertDescription>
+              <p>
+                {formatUserFacingErrorMessage(
+                  collectionError,
+                  genericCollectionErrorMessage,
+                )}
+              </p>
+              <QueryRetryButton
+                retrying={rowsRetrying}
+                onRetry={rowsRetry.retry}
+              />
+            </AlertDescription>
+          </Alert>
+        ) : (
           <DataTable
             id={`${profile.resource}-collection`}
             resource={profile.resource}
@@ -560,12 +678,22 @@ export function ResourceCollection<Row extends DataTableRow>({
             }}
             // Downloads live in the action rail's Download tile.
             showExportControls={false}
+            // The toolbar's Columns menu replaces the table's own.
+            hideColumnControls
+            // The selection column stays first; a header drag reorders the rest.
+            columnOrder={["__select__", ...orderedColumnIds]}
+            onColumnOrderChange={(order) => {
+              const ids = order.filter((id) => id !== "__select__");
+              updateTableLayout({
+                order: sameOrder(ids, defaultColumnOrder) ? undefined : ids,
+              });
+            }}
             scrollRegionLabel={`${profile.label} results table`}
             isLoading={collection.isInitialLoading || collection.isPageLoading}
             isRefreshing={collection.isPlaceholderData}
           />
-        </ResourceWorkspace>
-      )}
+        )}
+      </ResourceWorkspace>
       {actionDialogs}
     </section>
   );

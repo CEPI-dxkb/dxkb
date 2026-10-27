@@ -62,4 +62,33 @@ describe("fetchOrganismMetadataFacets", () => {
       fetchOrganismMetadataFacets(2, ["genus", "host_name"]),
     ).rejects.toThrow("host facet failed");
   });
+
+  it("names a failed facet by its chart's title, never its field name", async () => {
+    server.use(
+      http.get(
+        `${baseUrl}/genome/`,
+        () =>
+          new HttpResponse(
+            "<html><title>Site Maintenance</title></html>",
+            {
+              status: 503,
+              statusText: "Service Unavailable",
+              headers: { "Content-Type": "text/html" },
+            },
+          ),
+      ),
+    );
+
+    const error = await fetchOrganismMetadataFacets(2, [
+      "isolation_country",
+    ]).catch((caught: unknown) => caught);
+
+    expect(error).toMatchObject({
+      message:
+        "Isolation Country: The BV-BRC data service is unavailable (HTTP 503 Service Unavailable: Site Maintenance).",
+      // The field name is for the server log only.
+      source: "genome isolation_country facet",
+    });
+    expect((error as Error).message).not.toContain("isolation_country");
+  });
 });

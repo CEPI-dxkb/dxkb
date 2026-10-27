@@ -19,6 +19,7 @@ import { Label } from "@/components/ui/label";
 
 import { useAuthActions } from "@/lib/auth/provider";
 import type { UserProfile } from "@/lib/auth/types";
+import { formatPrefixedErrorMessage } from "@/lib/utils";
 import {
   profileFormSchema,
   buildProfilePatches,
@@ -53,8 +54,8 @@ export function ProfileForm({ profile }: ProfileFormProps) {
       try {
         await updateProfile(patches);
         toast.success("Profile updated successfully.");
-      } catch {
-        toast.error("Failed to update profile.");
+      } catch (error) {
+        toast.error(formatPrefixedErrorMessage("Failed to update profile", error));
       }
     },
     validators: {

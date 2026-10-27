@@ -72,6 +72,21 @@ export interface SearchActionConfig {
 
 export const notReady = "Coming soon, still under construction";
 
+/**
+ * The SERVICES tooltip where no service accepts the selection, so the button is
+ * disabled rather than opening a chooser with nothing in it: "…for this Taxon"
+ * for one selected row, "…for these Taxa" for several.
+ */
+export function noServicesReason(
+  singularLabel: string,
+  pluralLabel: string,
+  selectedCount: number,
+): string {
+  return selectedCount === 1
+    ? `No services available for this ${singularLabel}`
+    : `No services available for these ${pluralLabel}`;
+}
+
 /** Rendered top to bottom in this order, which follows the legacy action bar. */
 export const searchActionConfig: SearchActionConfig[] = [
   {
@@ -110,6 +125,7 @@ export const searchActionConfig: SearchActionConfig[] = [
       "genome",
       "strain",
       "genome_feature",
+      "genome_amr",
       "protein_feature",
       "epitope",
       "protein_structure",
@@ -157,6 +173,7 @@ export const searchActionConfig: SearchActionConfig[] = [
       "genome",
       "genome_sequence",
       "genome_feature",
+      "genome_amr",
       "protein_feature",
       "protein_structure",
     ],

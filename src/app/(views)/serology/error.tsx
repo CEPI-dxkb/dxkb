@@ -1,25 +1,17 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
+import {
+  type RouteErrorProps,
+  ViewErrorBoundary,
+} from "@/components/errors/view-error-boundary";
 
-interface SerologyErrorProps {
-  error: Error & { digest?: string };
-  reset: () => void;
-}
-
-export default function SerologyError({ error, reset }: SerologyErrorProps) {
+export default function SerologyError(props: RouteErrorProps) {
   return (
-    <div
-      className="m-4 rounded-lg border border-destructive/40 bg-destructive/5 p-6"
-      role="alert"
-    >
-      <h1 className="text-lg font-semibold">
-        Serology view could not be loaded
-      </h1>
-      <p className="my-2 text-sm text-muted-foreground">{error.message}</p>
-      <Button variant="outline" onClick={reset}>
-        Try again
-      </Button>
-    </div>
+    <ViewErrorBoundary
+      {...props}
+      title="Serology view could not be loaded"
+      backHref="/serology"
+      backLabel="Browse serology records"
+    />
   );
 }

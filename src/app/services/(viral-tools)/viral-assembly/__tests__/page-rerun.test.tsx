@@ -8,6 +8,7 @@ import ViralAssemblyPage from "@/app/services/(viral-tools)/viral-assembly/page"
 import { ServiceDebuggingProvider } from "@/contexts/service-debugging-context";
 import { AuthBoundary } from "@/lib/auth/provider";
 import { server } from "@/test-helpers/msw-server";
+import { workspaceObjectNotFound } from "@/test-helpers/workspace-responses";
 import { testAuthUser } from "@/test-helpers/react";
 
 function Providers({ children }: { children: React.ReactNode }) {
@@ -57,11 +58,11 @@ describe("Viral Assembly rerun", () => {
       http.get("*/api/auth/profile", () =>
         HttpResponse.json({ settings: { default_job_folder: "" } }),
       ),
-      // Workspace.get is the output name check: 500 means "name available".
+      // Workspace.get is the output name check: "Object not found" means "name available".
       http.post("*/api/services/workspace", async ({ request }) => {
         const body = (await request.json()) as { method?: string };
         if (body.method === "Workspace.get")
-          return new HttpResponse(null, { status: 500 });
+          return workspaceObjectNotFound();
         return HttpResponse.json([[]]);
       }),
       http.get("*/api/services/sra-validation", () =>

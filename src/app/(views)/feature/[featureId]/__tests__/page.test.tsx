@@ -1,9 +1,10 @@
-import { render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import { DataApiError } from "@/lib/data-api/repository";
 import { createQueryClientWrapper } from "@/test-helpers/react";
 
 const mocks = vi.hoisted(() => ({
   getFeature: vi.fn(),
+  getTaxonomy: vi.fn(),
   notFound: vi.fn(() => {
     throw new Error("NEXT_NOT_FOUND");
   }),
@@ -23,6 +24,9 @@ vi.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams(),
 }));
 vi.mock("@/lib/feature-view/server", () => ({ getFeature: mocks.getFeature }));
+vi.mock("@/lib/taxonomy-view/server", () => ({
+  getTaxonomy: mocks.getTaxonomy,
+}));
 
 interface ResourceChildCollectionProps {
   resource: string;
@@ -78,6 +82,111 @@ describe("Feature member route", () => {
     mocks.permanentRedirect.mockClear();
     mocks.redirect.mockClear();
     mocks.getFeature.mockResolvedValue({ feature, usedAlternateId: false });
+    mocks.getTaxonomy.mockReset();
+    mocks.getTaxonomy.mockResolvedValue(null);
+  });
+
+  it("leads with BV-BRC's lineage breadcrumb and identifier line", async () => {
+    mocks.getFeature.mockResolvedValue({
+      feature: { ...feature, refseq_locus_tag: "MERS_RS00005", gene: "orf1ab" },
+      usedAlternateId: false,
+    });
+    mocks.getTaxonomy.mockResolvedValue({
+      taxon_id: "1335626",
+      lineage_ids: [10239, 2559587, 2732408, 11118, 694002, 1335626],
+      lineage_names: [
+        "Viruses",
+        "Riboviria",
+        "Pisuviricota",
+        "Coronaviridae",
+        "Betacoronavirus",
+        "MERS-related coronavirus",
+      ],
+      lineage_ranks: [
+        "acellular root",
+        "realm",
+        "phylum",
+        "family",
+        "genus",
+        "species",
+      ],
+    });
+    const page = await FeaturePage({
+      params: Promise.resolve({ featureId: feature.feature_id }),
+      searchParams: Promise.resolve({}),
+    });
+    // The lineage streams in behind a Suspense boundary; let it land.
+    await act(async () => {
+      render(page);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    expect(mocks.getTaxonomy).toHaveBeenCalledWith("1335626");
+    const heading = screen.getByRole("heading", {
+      level: 1,
+      name: feature.patric_id,
+    });
+    const breadcrumb = heading.parentElement?.previousElementSibling;
+    expect(
+      [...(breadcrumb?.querySelectorAll("a") ?? [])].map((link) => [
+        link.textContent,
+        link.getAttribute("href"),
+      ]),
+    ).toEqual([
+      ["Pisuviricota", "/taxonomy/2732408"],
+      ["Coronaviridae", "/taxonomy/11118"],
+      ["Betacoronavirus", "/taxonomy/694002"],
+      ["MERS-related coronavirus", "/taxonomy/1335626"],
+      ["MERS-CoV", "/genome/1282460.2049"],
+    ]);
+    expect(heading.parentElement).toHaveTextContent(
+      `${feature.patric_id}|MERS_RS00005|orf1ab|replicase polyprotein`,
+    );
+    expect(screen.queryByRole("link", { name: "Features" })).toBeNull();
+  });
+
+  it("keeps the genome breadcrumb when the taxonomy lookup fails", async () => {
+    const consoleError = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
+    mocks.getTaxonomy.mockRejectedValue(new Error("Taxonomy unavailable"));
+    const page = await FeaturePage({
+      params: Promise.resolve({ featureId: feature.feature_id }),
+      searchParams: Promise.resolve({}),
+    });
+    await act(async () => {
+      render(page);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    expect(
+      screen.getByRole("heading", { level: 1, name: feature.patric_id }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getAllByRole("link", { name: "MERS-CoV" })[0],
+    ).toHaveAttribute("href", "/genome/1282460.2049");
+    expect(consoleError).toHaveBeenCalledWith(
+      `feature/${feature.feature_id}: taxonomy/1335626 lookup failed`,
+      expect.objectContaining({ message: "Taxonomy unavailable" }),
+    );
+    consoleError.mockRestore();
+  });
+
+  it("shows the feature without waiting for its lineage", async () => {
+    // A stalled taxonomy lookup runs to the Data API's 20 s budget; the
+    // record has loaded by then, so only the breadcrumb's taxa wait for it.
+    mocks.getTaxonomy.mockReturnValue(new Promise(() => undefined));
+    render(
+      await FeaturePage({
+        params: Promise.resolve({ featureId: feature.feature_id }),
+        searchParams: Promise.resolve({}),
+      }),
+    );
+    expect(
+      screen.getByRole("heading", { level: 1, name: feature.patric_id }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Genome and source")).toBeInTheDocument();
+    expect(
+      screen.getAllByRole("link", { name: "MERS-CoV" })[0],
+    ).toHaveAttribute("href", "/genome/1282460.2049");
   });
 
   it("renders the grouped overview and metadata", async () => {

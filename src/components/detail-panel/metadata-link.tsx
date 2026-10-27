@@ -20,7 +20,7 @@ import { classifyHref } from "./metadata-link-policy";
  * path also bypasses.
  */
 export const metadataLinkClassName =
-  "text-primary underline hover:text-primary/80";
+  "text-primary underline hover:text-primary/80 dark:text-link dark:hover:text-foreground";
 
 export interface MetadataLinkProps {
   href: string;

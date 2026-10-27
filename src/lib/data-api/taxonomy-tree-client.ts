@@ -9,25 +9,9 @@
  * a `NEXT_PUBLIC_*` base URL would be inlined at build time and could never be
  * redirected at runtime.
  */
-export const taxonomyTreeBasePath = "/api/taxonomy-tree";
+import { httpFailure } from "./route-failure-client";
 
-/**
- * The route's `{error, code}` body carries the specific failure — a malformed
- * facet payload, an upstream message, a rejected parent id. Use it verbatim so
- * a specific diagnosis is never replaced by a generic one, and fall back to the
- * status line only when there is no JSON body to read (an aborted response, a
- * proxy error page).
- */
-async function failureDetail(response: Response): Promise<string> {
-  const payload: unknown = await response.json().catch(() => null);
-  const error =
-    payload && typeof payload === "object"
-      ? (payload as { error?: unknown }).error
-      : undefined;
-  return typeof error === "string" && error.trim() !== ""
-    ? error
-    : `${String(response.status)} ${response.statusText}`;
-}
+export const taxonomyTreeBasePath = "/api/taxonomy-tree";
 
 export class TaxonomyTreeRepository {
   constructor(private readonly basePath = taxonomyTreeBasePath) {}
@@ -42,9 +26,7 @@ export class TaxonomyTreeRepository {
       { credentials: "include", signal },
     );
     if (!response.ok) {
-      throw new Error(
-        `taxonomy children ${String(parentId)}: ${await failureDetail(response)}`,
-      );
+      throw await httpFailure(response, `taxonomy children ${String(parentId)}`);
     }
     const payload: unknown = await response.json();
     const rows =
@@ -79,7 +61,7 @@ export class TaxonomyTreeRepository {
       { credentials: "include", signal },
     );
     if (!response.ok) {
-      throw new Error(`taxonomy child counts: ${await failureDetail(response)}`);
+      throw await httpFailure(response, "taxonomy child counts");
     }
     const payload: unknown = await response.json();
     const raw =

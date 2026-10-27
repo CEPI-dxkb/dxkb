@@ -43,7 +43,7 @@ async function MetadataDistributionsBoundary({
   GenomeOverviewSectionsProps,
   "scope" | "metadataFields" | "showAmr" | "hideEmptyAmr" | "genomeList"
 >) {
-  return withSectionError(() =>
+  return withSectionError("Metadata distributions", () =>
     MetadataDistributions({
       ...scope,
       fields: metadataFields,
@@ -58,13 +58,15 @@ async function GeoDistributionBoundary({
   scope,
   accent,
 }: Pick<GenomeOverviewSectionsProps, "scope" | "accent">) {
-  return withSectionError(() => GeoDistribution({ ...scope, accent }));
+  return withSectionError("Geographic distribution", () =>
+    GeoDistribution({ ...scope, accent }),
+  );
 }
 
 async function ReferenceGenomesBoundary({
   scope,
 }: Pick<GenomeOverviewSectionsProps, "scope">) {
-  return withSectionError(() => ReferenceGenomes(scope));
+  return withSectionError("Reference genomes", () => ReferenceGenomes(scope));
 }
 
 /**
@@ -115,7 +117,9 @@ export function GenomeOverviewSections({
 
 export function makeOverviewView({ config, taxon, showAmr }: OverviewViewProps) {
   async function TaxonomySummaryBoundary() {
-    return withSectionError(() => TaxonomySummary({ taxonId: config.taxonId, taxon }));
+    return withSectionError("Taxonomy summary", () =>
+      TaxonomySummary({ taxonId: config.taxonId, taxon }),
+    );
   }
 
   function OverviewView() {

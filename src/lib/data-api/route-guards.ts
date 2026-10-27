@@ -4,9 +4,10 @@ import { clientIp, rateLimit } from "@/lib/rate-limit";
 
 /**
  * Admission checks shared by the Data API routes (`/api/data/[resource]`,
- * `/api/data/[resource]/fasta`, `/api/taxonomy-tree/[operation]`), so a
- * rate-limited or oversized request is answered in one shape whichever of
- * them it hit.
+ * `/api/data/search`, `/api/data/[resource]/fasta`,
+ * `/api/data/[resource]/download`, `/api/taxonomy-tree/[operation]` and
+ * `/api/genome-browser/[operation]`), so a rate-limited or oversized request
+ * is answered in one shape whichever of them it hit.
  */
 
 interface RateLimitPolicy {

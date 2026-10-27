@@ -194,3 +194,30 @@ describe("GenomeNameSelector overlapping searches", () => {
     ).not.toBeInTheDocument();
   });
 });
+
+describe("GenomeNameSelector failed search", () => {
+  it("offers a Retry that runs the search again", async () => {
+    let attempts = 0;
+    server.use(
+      http.get("*/api/services/genome/search", () => {
+        attempts += 1;
+        return attempts === 1
+          ? HttpResponse.json(
+              { error: "Genome search unavailable: BV-BRC genome search failed: 503" },
+              { status: 503 },
+            )
+          : HttpResponse.json({ results: genomes });
+      }),
+    );
+    const user = userEvent.setup();
+    render(<GenomeNameSelector onSelect={vi.fn()} />);
+
+    await user.click(screen.getByRole("button", { name: "Show suggestions" }));
+    await user.click(await screen.findByRole("button", { name: "Retry" }));
+
+    expect(
+      await screen.findByRole("button", { name: /Mycobacterium tuberculosis/ }),
+    ).toBeInTheDocument();
+    expect(attempts).toBe(2);
+  });
+});

@@ -218,6 +218,11 @@ describe("CollectionDownloadAction", () => {
     expect(screen.getByRole("button", { name: /^Text/ })).toHaveTextContent(
       "Counting matching rows…",
     );
+    // No count it does not have yet: not "All 2.1M" from a previous query,
+    // nor "All 0" on the first read.
+    expect(
+      screen.getByRole("radio", { name: /^All/ }).closest("label"),
+    ).toHaveTextContent(/^All…$/);
   });
 
   it("offers Protein FASTA alone for a Proteins view", async () => {

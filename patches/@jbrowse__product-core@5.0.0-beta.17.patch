@@ -1,0 +1,18 @@
+diff --git a/esm/Session/Tracks.js b/esm/Session/Tracks.js
+index 68a48e3164e70f7f8800d74dbef9f92e365737ee..de32dc113c40f74a5bf96d60ac9a575b75819ea5 100644
+--- a/esm/Session/Tracks.js
++++ b/esm/Session/Tracks.js
+@@ -229,7 +229,12 @@ export function TracksManagerSessionMixin(pluginManager) {
+                     self.updateConnectionTrackConfig(trackConf);
+                 }
+                 else {
+-                    self.jbrowse.updateTrackConf(trackConf);
++                    // DXKB patch: the embedded products' config model
++                    // (createConfigModel) has no updateTrackConf, so an edit to a
++                    // track with no base config (an assembly's sequence track)
++                    // threw here. The edit already lives on the track's working
++                    // copy; an embedded config has nowhere to persist it.
++                    self.jbrowse.updateTrackConf?.(trackConf);
+                 }
+             },
+             /**

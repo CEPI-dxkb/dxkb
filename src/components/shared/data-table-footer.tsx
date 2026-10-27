@@ -67,6 +67,10 @@ export function DataTableFooter({
     ? totalItems
     : (totalSelectedCount ?? Object.keys(table.state.rowSelection).length);
   const uniquePages = getVisiblePages(pageIndex, table.getPageCount());
+  // Loading with nothing counted yet is the first read, not an empty result:
+  // "Showing 0-0 of 0 results" under the skeleton read as no matches. A page
+  // change keeps the known total, so its range still shows.
+  const isCounting = isLoading && totalItems === 0;
 
   return (
     <div className="z-10 w-full border-t border-border bg-muted py-1 shadow-sm">
@@ -74,7 +78,9 @@ export function DataTableFooter({
         <div className="shrink-0 text-xs">
           <div className="flex flex-col">
             <span>
-              Showing {start}-{end} of {totalItems} results
+              {isCounting
+                ? "Loading results…"
+                : `Showing ${String(start)}-${String(end)} of ${String(totalItems)} results`}
             </span>
             {selectedCount > 0 && (
               <span className="font-semibold text-info">

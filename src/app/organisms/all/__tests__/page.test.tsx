@@ -7,8 +7,10 @@ const { fetchTaxonomy, buildViews } = vi.hoisted(() => ({
   buildViews: vi.fn(),
 }));
 
+// The static fallback itself is covered with MSW in
+// src/app/organisms/__tests__/landing-outage.test.tsx.
 vi.mock("@/lib/services/organisms/taxonomy", () => ({
-  fetchOrganismTaxonomy: (taxonId: number) => fetchTaxonomy(taxonId) as unknown,
+  fetchLandingRootTaxonomy: (taxonId: number) => fetchTaxonomy(taxonId) as unknown,
 }));
 vi.mock("next/navigation", () => ({
   redirect: vi.fn((path: string) => { throw new Error(`REDIRECT:${path}`); }),
@@ -44,7 +46,7 @@ describe("AllOrganismsPage", () => {
     expect(screen.getByText("Composite genomes")).toBeInTheDocument();
   });
 
-  it("fails when either root taxonomy fails", async () => {
+  it("still fails on an error the root lookup does not absorb", async () => {
     fetchTaxonomy.mockImplementation((taxonId: number) =>
       taxonId === 10239
         ? Promise.reject(new Error("virus root unavailable"))

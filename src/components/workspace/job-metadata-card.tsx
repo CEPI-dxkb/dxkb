@@ -23,7 +23,8 @@ import {
 import { cn } from "@/lib/utils";
 import type { ResolvedPathObject } from "@/lib/services/workspace/types";
 import { genomeHref } from "@/lib/views/hrefs";
-import { findReportPath, REPORT_APP_IDS } from "./workspace-job-action-bar";
+import { getProxyUrl } from "./file-viewer/file-viewer-registry";
+import { findReportPath, reportAppIds } from "./workspace-job-action-bar";
 
 interface JobMetadataCardProps {
   resolvedJobMeta: ResolvedPathObject;
@@ -41,12 +42,12 @@ export function JobMetadataCard({
 
   const meta = resolvedJobMeta.jobSysMeta;
   const isReportJob =
-    (!!meta?.app?.id && REPORT_APP_IDS.has(meta.app.id)) ||
+    (!!meta?.app?.id && reportAppIds.has(meta.app.id)) ||
     (meta?.output_files ?? []).some(
       (entry) => typeof entry[0] === "string" && entry[0].endsWith(".html"),
     );
   const reportPath = isReportJob ? findReportPath(resolvedJobMeta) : null;
-  const reportUrl = reportPath ? `/api/workspace/view/${reportPath}` : null;
+  const reportUrl = reportPath ? getProxyUrl(reportPath) : null;
   const taskData = resolvedJobMeta.taskData;
   const jobId = meta?.id ?? taskData?.task_id ?? "—";
   const startTime = meta?.start_time ?? taskData?.start_time;

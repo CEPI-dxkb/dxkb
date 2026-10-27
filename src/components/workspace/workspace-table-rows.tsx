@@ -137,8 +137,15 @@ export function DataRow({
         onItemClick(item);
       }
     } else if (useSelectionMode) {
-      onSelect?.(item, { ctrlOrMeta: false, shift: false });
+      onSelect?.(item, { ctrlOrMeta: e.ctrlKey || e.metaKey, shift: e.shiftKey });
     }
+  }
+
+  function handleIconDoubleClick(e: React.MouseEvent) {
+    const target = e.target as HTMLElement;
+    if (!target.closest("[data-icon-action]")) return;
+    // Suppress the row dblclick — the first click already navigated.
+    e.stopPropagation();
   }
 
   return (
@@ -165,6 +172,7 @@ export function DataRow({
             key={cell.id}
             className={className}
             onClick={cell.column.id === "name" ? handleIconClick : undefined}
+            onDoubleClick={cell.column.id === "name" ? handleIconDoubleClick : undefined}
           >
             <FlexRender cell={cell} />
           </TableCell>

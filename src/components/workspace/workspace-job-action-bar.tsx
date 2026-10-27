@@ -2,7 +2,7 @@ import type { WorkspaceItem } from "@/lib/services/workspace/domain";
 import type { ResolvedPathObject } from "@/lib/services/workspace/types";
 
 /** App IDs whose job results include an HTML report button. */
-export const REPORT_APP_IDS = new Set([
+export const reportAppIds = new Set([
   "ComprehensiveGenomeAnalysis",
   "GenomeAssembly",
   "GenomeAssembly2",
@@ -42,10 +42,8 @@ const reportFileMatchers: Partial<Record<string, (filename: string) => boolean>>
  */
 export function findReportPath(meta: ResolvedPathObject): string | null {
   const appId = meta.jobSysMeta?.app?.id;
-  if (!appId || !REPORT_APP_IDS.has(appId)) return null;
-
   const outputFiles = meta.jobSysMeta?.output_files ?? [];
-  const matcher = reportFileMatchers[appId];
+  const matcher = appId ? reportFileMatchers[appId] : undefined;
 
   if (matcher) {
     for (const entry of outputFiles) {

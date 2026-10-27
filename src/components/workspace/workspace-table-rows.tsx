@@ -47,7 +47,6 @@ function SpecialRow({
       {cells.map((cell) => {
         const className = clsx(
           cell.id === "name" ? "pl-6" : "pl-2",
-          // eslint-disable-next-line shadcn/require-static-classes -- column classes come from columnClassMap in workspace-table-columns.tsx, authored as static strings
           cell.metaClassName,
         );
         return (
@@ -126,6 +125,22 @@ export function DataRow({
     }
   }
 
+  function handleIconClick(e: React.MouseEvent) {
+    // Only fire when the click target is the icon itself (data-icon-action).
+    const target = e.target as HTMLElement;
+    if (!target.closest("[data-icon-action]")) return;
+    e.stopPropagation();
+    if (isNavigable) {
+      if (useSelectionMode) {
+        onItemDoubleClick?.(item);
+      } else {
+        onItemClick(item);
+      }
+    } else if (useSelectionMode) {
+      onSelect?.(item, { ctrlOrMeta: false, shift: false });
+    }
+  }
+
   return (
     <TableRow
       key={row.id}
@@ -146,7 +161,11 @@ export function DataRow({
           metaCls ?? "",
         );
         return (
-          <TableCell key={cell.id} className={className}>
+          <TableCell
+            key={cell.id}
+            className={className}
+            onClick={cell.column.id === "name" ? handleIconClick : undefined}
+          >
             <FlexRender cell={cell} />
           </TableCell>
         );

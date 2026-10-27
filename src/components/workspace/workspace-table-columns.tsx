@@ -76,11 +76,9 @@ export function useWorkspaceColumns(
           }
           return (
             <div className="flex min-w-0 items-center gap-2 overflow-hidden">
-              <WorkspaceItemIcon
-                type={item.type}
-                variant={variant}
-                className="shrink-0"
-              />
+              <span data-icon-action className="shrink-0 cursor-pointer">
+                <WorkspaceItemIcon type={item.type} variant={variant} />
+              </span>
               <span
                 className={`truncate ${isNavigable ? "font-medium hover:underline" : ""}`}
                 title={item.name}

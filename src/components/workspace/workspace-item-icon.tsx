@@ -7,7 +7,7 @@ import {
   Dna,
   FlaskConical,
   Layers,
-  BriefcaseMedical,
+  FlagTriangleRight,
   FileArchive,
   FileSpreadsheet,
   Globe,
@@ -21,7 +21,7 @@ import { isFolderType, normalizeWorkspaceObjectType } from "@/lib/services/works
 const typeIconMap: Partial<Record<string, LucideIcon>> = {
   folder: Folder,
   directory: Folder,
-  job_result: BriefcaseMedical,
+  job_result: FlagTriangleRight,
   contigs: Dna,
   reads: Dna,
   feature_group: FlaskConical,
@@ -70,7 +70,8 @@ const folderVariantIcon: Record<FolderIconVariant, LucideIcon> = {
 export function WorkspaceItemIcon({ type, className, variant = "default" }: WorkspaceItemIconProps) {
   const key = normalizeWorkspaceObjectType(type);
   const isFolderLike = isFolderType(type);
-  const Icon = isFolderLike
+  const hasOwnIcon = Object.prototype.hasOwnProperty.call(typeIconMap, key);
+  const Icon = isFolderLike && !hasOwnIcon
     ? folderVariantIcon[variant]
     : (typeIconMap[key] ?? typeIconMap[type] ?? File);
 
@@ -78,7 +79,7 @@ export function WorkspaceItemIcon({ type, className, variant = "default" }: Work
     <Icon
       className={cn(
         "size-4 shrink-0",
-        isFolderLike ? "text-highlight" : "text-muted-foreground",
+        isFolderLike && !hasOwnIcon ? "text-highlight" : "text-muted-foreground",
         className,
       )}
     />

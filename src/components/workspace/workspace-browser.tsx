@@ -34,6 +34,7 @@ import {
   WorkspaceActionBar,
   type WorkspaceActionId,
 } from "./workspace-action-bar";
+import { extractAnnotationGenomeId } from "./workspace-job-action-bar";
 import { WorkspaceDialogs } from "./workspace-dialogs";
 import { WorkspaceNotFoundDialog } from "./workspace-not-found-dialog";
 import { loadFavorites } from "@/lib/services/workspace/favorites";
@@ -455,6 +456,9 @@ function useWorkspaceBrowser({
               kind: "jobResult",
               source: isHome ? "home" : "shared",
               resolvedJobMeta: resolveQuery.data ?? null,
+              annotationGenomeId: resolveQuery.data
+                ? extractAnnotationGenomeId(resolveQuery.data, processedItems)
+                : null,
             }
           : isPublic
             ? { kind: "public" }

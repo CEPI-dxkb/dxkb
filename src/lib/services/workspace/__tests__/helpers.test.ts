@@ -185,6 +185,48 @@ describe("sortItems", () => {
     expect(sorted[0].name).toBe("alpha.txt");  // 500
     expect(sorted[1].name).toBe("beta.txt");  // 100
   });
+
+  it("sorts text-starting names before digit-starting names", () => {
+    const textGroup = makeItem({ name: "Bacillus anthracis", type: "genome_group", size: 0, timestamp: 0 });
+    const digitGroup = makeItem({ name: "1386.5504", type: "genome_group", size: 0, timestamp: 0 });
+    const sorted = sortItems([digitGroup, textGroup], { field: "name", direction: "asc" });
+    expect(sorted[0].name).toBe("Bacillus anthracis");
+    expect(sorted[1].name).toBe("1386.5504");
+  });
+
+  it("reverses text-before-digit order when direction is desc", () => {
+    const textGroup = makeItem({ name: "Bacillus anthracis", type: "genome_group", size: 0, timestamp: 0 });
+    const digitGroup = makeItem({ name: "1386.5504", type: "genome_group", size: 0, timestamp: 0 });
+    const sorted = sortItems([textGroup, digitGroup], { field: "name", direction: "desc" });
+    expect(sorted[0].name).toBe("1386.5504");
+    expect(sorted[1].name).toBe("Bacillus anthracis");
+  });
+
+  it("uses natural numeric order within digit-starting names", () => {
+    const g2 = makeItem({ name: "2 genomes", type: "genome_group", size: 0, timestamp: 0 });
+    const g10 = makeItem({ name: "10 genomes", type: "genome_group", size: 0, timestamp: 0 });
+    const sorted = sortItems([g10, g2], { field: "name", direction: "asc" });
+    expect(sorted[0].name).toBe("2 genomes");
+    expect(sorted[1].name).toBe("10 genomes");
+  });
+
+  it("is case-insensitive: groups items with same base letters together", () => {
+    const upper = makeItem({ name: "Bacillus", type: "genome_group", size: 0, timestamp: 0 });
+    const lower = makeItem({ name: "bacillus anthracis", type: "genome_group", size: 0, timestamp: 0 });
+    const other = makeItem({ name: "Zymobiomics", type: "genome_group", size: 0, timestamp: 0 });
+    const sorted = sortItems([other, lower, upper], { field: "name", direction: "asc" });
+    expect(sorted[0].name).toBe("Bacillus");
+    expect(sorted[1].name).toBe("bacillus anthracis");
+    expect(sorted[2].name).toBe("Zymobiomics");
+  });
+
+  it("sorts uppercase before lowercase as a tiebreaker for same-base-letter names", () => {
+    const upper = makeItem({ name: "Alpha group", type: "genome_group", size: 0, timestamp: 0 });
+    const lower = makeItem({ name: "alpha group", type: "genome_group", size: 0, timestamp: 0 });
+    const sorted = sortItems([lower, upper], { field: "name", direction: "asc" });
+    expect(sorted[0].name).toBe("Alpha group");
+    expect(sorted[1].name).toBe("alpha group");
+  });
 });
 
 describe("dedupeKeepOrder", () => {

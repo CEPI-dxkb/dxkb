@@ -85,6 +85,7 @@ interface WorkspaceBrowserPresentationProps {
         kind: "jobResult";
         source: "home" | "shared";
         resolvedJobMeta: ResolvedPathObject | null;
+        annotationGenomeId: string | null;
       };
   tableRef: RefObject<WorkspaceDataTableHandle | null>;
   items: WorkspaceItem[];
@@ -206,6 +207,7 @@ export function WorkspaceBrowserPresentation({
             {view.resolvedJobMeta && (
               <JobMetadataCard
                 resolvedJobMeta={view.resolvedJobMeta}
+                annotationGenomeId={view.annotationGenomeId}
                 className="px-4"
               />
             )}

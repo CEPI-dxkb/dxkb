@@ -1,10 +1,11 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { familyColor, labelInk } from "@/lib/compare-region/colors";
 import type { CompareRegionRow } from "@/lib/compare-region/contract";
 import { densitySpecs } from "@/lib/compare-region/density";
 import {
   buildChartModel,
+  focusMembers,
   type FeatureRef,
 } from "@/lib/compare-region/families";
 import { glyphBox } from "@/lib/compare-region/figure-frame";
@@ -94,16 +95,26 @@ function renderInSvg(children: ReactNode) {
   return render(<svg>{children}</svg>);
 }
 
+function tracedTree(
+  hovered: FeatureRef | undefined,
+  selected: FeatureRef | null,
+  children: ReactNode,
+) {
+  return (
+    <svg>
+      <PinContext value={selected}>
+        <HoverContext value={hovered}>{children}</HoverContext>
+      </PinContext>
+    </svg>
+  );
+}
+
 function traced(
   hovered: FeatureRef | undefined,
   selected: FeatureRef | null,
   children: ReactNode,
 ) {
-  return renderInSvg(
-    <PinContext value={selected}>
-      <HoverContext value={hovered}>{children}</HoverContext>
-    </PinContext>,
-  );
+  return render(tracedTree(hovered, selected, children));
 }
 
 function glyphAt(
@@ -516,11 +527,9 @@ describe("family trace", () => {
       "fill",
       focusOrange,
     );
-    const members = [...(overlay?.children ?? [])].filter(
-      (node) =>
-        node.tagName === "path" && node.getAttribute("fill") === focusOrange,
-    );
-    expect(members).toHaveLength(2);
+    expect(
+      overlay?.querySelectorAll(`[data-trace-slot] > path[fill="${focusOrange}"]`),
+    ).toHaveLength(2);
     // The trace is never a pointer target.
     expect(overlay?.querySelector("[data-feature]")).toBeNull();
     expect(overlay?.querySelector(".stroke-foreground\\/70")).not.toBeNull();
@@ -554,10 +563,65 @@ describe("family trace", () => {
         <LabelHighlight model={comfortable} labelWidth={226} />
       </>,
     );
-    const overlays = container.querySelectorAll("[data-overlay]");
-    expect(overlays).toHaveLength(1);
-    expect(overlays[0].querySelector("rect")).toHaveClass("opacity-0");
-    expect(overlays[0].querySelectorAll("path")).toHaveLength(0);
+    const [track, labels] = container.querySelectorAll("[data-overlay]");
+    expect(track.querySelector("rect")).toHaveClass("opacity-0");
+    expect(track.querySelectorAll("path")).toHaveLength(0);
+    // The label column's marks stay drawn, transparent, to fade in.
+    const marks = labels.querySelectorAll("rect");
+    expect(marks).toHaveLength(4);
+    for (const mark of marks) expect(mark).toHaveClass("opacity-0");
+  });
+
+  it("crossfades from one family's trace to the next", () => {
+    const layer = (
+      <HighlightLayer
+        model={comfortable}
+        matrix={identity}
+        plotWidth={plotWidth}
+        measure={measure}
+      />
+    );
+    const { container, rerender } = traced(focusGene, null, layer);
+    const [first, second] = container.querySelectorAll("[data-trace-slot]");
+    expect(first).toHaveClass("opacity-100");
+    expect(first.querySelector(`path[fill="${focusOrange}"]`)).not.toBeNull();
+    expect(second).toHaveClass("opacity-0");
+    expect(second.childElementCount).toBe(0);
+
+    // The new family fades in in the other slot as the last one fades out.
+    rerender(tracedTree(upstreamGene, null, layer));
+    expect(second).toHaveClass("opacity-100");
+    expect(
+      second.querySelector(`path[fill="${familyColor(3)}"]`),
+    ).not.toBeNull();
+    expect(first).toHaveClass("opacity-0");
+    expect(first.querySelector(`path[fill="${focusOrange}"]`)).not.toBeNull();
+
+    // Its fade over, the last family's trace goes.
+    fireEvent.transitionEnd(first);
+    expect(first.childElementCount).toBe(0);
+    expect(second.childElementCount).toBeGreaterThan(0);
+  });
+
+  it("keeps the trace steady between genes of one family", () => {
+    const layer = (
+      <HighlightLayer
+        model={comfortable}
+        matrix={identity}
+        plotWidth={plotWidth}
+        measure={measure}
+      />
+    );
+    const homolog = focusMembers(comfortable, focusGene).find(
+      (ref) => ref.rowIndex === 1,
+    );
+    if (!homolog) throw new Error("no homolog below the focus gene");
+    const { container, rerender } = traced(focusGene, null, layer);
+    rerender(tracedTree(homolog, null, layer));
+    const [first, second] = container.querySelectorAll("[data-trace-slot]");
+    expect(first).toHaveClass("opacity-100");
+    expect(second).toHaveClass("opacity-0");
+    expect(second.childElementCount).toBe(0);
   });
 
   it("edges the label column's rows that hold the family", () => {
@@ -566,11 +630,15 @@ describe("family trace", () => {
       null,
       <LabelHighlight model={comfortable} labelWidth={226} />,
     );
-    const rects = container.querySelectorAll("[data-overlay] rect");
-    expect(rects).toHaveLength(2);
-    for (const rect of rects) {
-      expect(rect).toHaveAttribute("fill", focusOrange);
-      expect(rect).toHaveAttribute("width", "3");
+    const edges = container.querySelectorAll("[data-label-edge]");
+    expect(edges).toHaveLength(2);
+    for (const edge of edges) {
+      expect(edge).toHaveAttribute("fill", focusOrange);
+      expect(edge).toHaveAttribute("width", "3");
+      expect(edge).toHaveClass("opacity-100");
+    }
+    for (const fade of container.querySelectorAll("[data-label-fade]")) {
+      expect(fade).toHaveClass("opacity-0");
     }
   });
 
@@ -580,9 +648,13 @@ describe("family trace", () => {
       null,
       <LabelHighlight model={comfortable} labelWidth={226} />,
     );
-    const [edge, fade] = container.querySelectorAll("[data-overlay] rect");
+    const [edge, otherEdge] = container.querySelectorAll("[data-label-edge]");
+    const [ownFade, fade] = container.querySelectorAll("[data-label-fade]");
     expect(edge).toHaveAttribute("fill", familyColor(3));
     expect(edge).toHaveAttribute("y", "30");
+    expect(edge).toHaveClass("opacity-100");
+    expect(otherEdge).toHaveClass("opacity-0");
+    expect(ownFade).toHaveClass("opacity-0");
     expect(fade).toHaveClass("fill-card", "opacity-70");
     expect(fade).toHaveAttribute("y", "84");
     expect(fade).toHaveAttribute("width", "225");
@@ -593,10 +665,9 @@ describe("CompareRegionTooltip", () => {
   it("describes the hovered gene", () => {
     render(
       <CompareRegionTooltip
+        ref={null}
         model={comfortable}
         at={{ rowIndex: 0, featureIndex: 1 }}
-        left={10}
-        top={20}
       />,
     );
     expect(screen.getByText("fig|1.1.peg.2")).toBeInTheDocument();
@@ -612,14 +683,22 @@ describe("CompareRegionTooltip", () => {
 
   it("shows nothing with no gene hovered", () => {
     const { container } = render(
-      <CompareRegionTooltip
-        model={comfortable}
-        at={undefined}
-        left={undefined}
-        top={undefined}
-      />,
+      <CompareRegionTooltip ref={null} model={comfortable} at={undefined} />,
     );
     expect(container).toBeEmptyDOMElement();
+  });
+
+  it("stays hidden until the chart places it beside its gene", () => {
+    const { container } = render(
+      <CompareRegionTooltip
+        ref={null}
+        model={comfortable}
+        at={{ rowIndex: 0, featureIndex: 1 }}
+      />,
+    );
+    expect(container.querySelector("[data-feature-tooltip]")).toHaveAttribute(
+      "data-offscreen",
+    );
   });
 });
 

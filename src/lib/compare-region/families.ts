@@ -209,6 +209,16 @@ export function buildChartModel(
   };
 }
 
+/** Whether `a` and `b` are the same gene (neither missing). */
+export function isSameFeature(
+  a: FeatureRef | null | undefined,
+  b: FeatureRef | null | undefined,
+): boolean {
+  return (
+    !!a && !!b && a.rowIndex === b.rowIndex && a.featureIndex === b.featureIndex
+  );
+}
+
 /** The members of the focus gene's family (the hovered, else the pinned, gene); just the gene when it has none. */
 export function focusMembers(
   model: ChartModel,

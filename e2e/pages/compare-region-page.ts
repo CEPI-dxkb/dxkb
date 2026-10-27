@@ -3,10 +3,16 @@ import { expect, type Locator, type Page } from "@playwright/test";
 /**
  * The Feature View's Compare Region tab (`/feature/<id>?tab=compare-region`):
  * one card (`<section aria-label="Compare regions">`) holding the command bar,
- * the selection strip with the Comfortable/Compact density toggle, and the
+ * the selection strip with the Comfortable/Compact density toggle (one icon
+ * button named for the density it switches to), and the
  * figure, an `<svg role="img">` with one row per genome. The figure's glyphs
  * carry `data-row` and `data-feature`, the hover overlays `data-overlay`;
- * the tooltip is visx's `.visx-tooltip`.
+ * the tooltip is `[data-feature-tooltip]`, which hangs just below and right
+ * of its glyph (left of it, or above it, where that side lacks room). A
+ * click on a glyph pins it and pins its tooltip as the feature card, a
+ * non-modal "Feature details" dialog in the card, expanded with the gene's
+ * record; closing it clears the pin. The selection strip
+ * (`[data-selection-strip]`) carries the pinned gene's own links.
  */
 export class CompareRegionPage {
   readonly page: Page;
@@ -20,9 +26,13 @@ export class CompareRegionPage {
   /** The "Genomes" source menu's trigger, named for the chosen source. */
   readonly genomesMenu: Locator;
   readonly tooltip: Locator;
-  /** The pinned gene's link, in the selection strip. */
+  /** The selection strip while a gene is pinned. */
+  readonly selectionStrip: Locator;
+  /** The pinned gene's link, in the selection strip (the card has its own). */
   readonly openFeature: Locator;
   readonly clearSelection: Locator;
+  /** The pinned gene's card: its tooltip, pinned and expanded. */
+  readonly featureCard: Locator;
 
   constructor(page: Page) {
     this.page = page;
@@ -35,11 +45,25 @@ export class CompareRegionPage {
     this.fit = this.card.getByRole("button", { name: "Fit the whole region" });
     this.zoomLevel = this.card.locator("output");
     this.genomesMenu = this.card.getByRole("button", { name: /^Genomes: / });
-    this.tooltip = this.card.locator(".visx-tooltip");
-    this.openFeature = this.card.getByRole("link", { name: "Open feature" });
-    this.clearSelection = this.card.getByRole("button", {
+    this.tooltip = this.card.locator("[data-feature-tooltip]");
+    this.selectionStrip = this.card.locator("[data-selection-strip]");
+    this.openFeature = this.selectionStrip.getByRole("link", {
+      name: "Open feature",
+    });
+    this.clearSelection = this.selectionStrip.getByRole("button", {
       name: "Clear selection",
     });
+    this.featureCard = this.card.getByRole("dialog", {
+      name: "Feature details",
+    });
+  }
+
+  /** Closes the feature card with its button, which clears the pin. */
+  async closeFeatureCard(): Promise<void> {
+    await this.featureCard
+      .getByRole("button", { name: "Close details" })
+      .click();
+    await expect(this.featureCard).toHaveCount(0);
   }
 
   async goto(featureId: string): Promise<void> {
@@ -78,6 +102,11 @@ export class CompareRegionPage {
     );
   }
 
+  /** The empty track between glyphs: a drag there pans, a click clears the pin. */
+  trackBackground(): Locator {
+    return this.figure.locator("[data-track-background]");
+  }
+
   /**
    * The veil the trace lays over the tracks while a family is traced (the
    * first `data-overlay` layer's backdrop): transparent at rest.
@@ -86,19 +115,27 @@ export class CompareRegionPage {
     return this.figure.locator("[data-overlay] > rect").first();
   }
 
-  /** One of the density toggle's options ("Comfortable", "Compact"). */
-  densityOption(name: "Comfortable" | "Compact"): Locator {
-    return this.card
-      .getByRole("group", { name: "Density" })
-      .getByRole("button", { name, exact: true });
+  /** The trace's two slots: the current family's, and the last one's while it fades out. */
+  traceSlots(): Locator {
+    return this.figure.locator("[data-trace-slot]");
+  }
+
+  /**
+   * The density toggle while it offers `next`: "Switch to Compact density"
+   * shows in Comfortable, and "Switch to Comfortable density" in Compact.
+   */
+  densityToggle(next: "Comfortable" | "Compact"): Locator {
+    return this.card.getByRole("button", {
+      name: `Switch to ${next} density`,
+      exact: true,
+    });
   }
 
   async chooseDensity(name: "Comfortable" | "Compact"): Promise<void> {
-    await this.densityOption(name).click();
-    await expect(this.densityOption(name)).toHaveAttribute(
-      "aria-pressed",
-      "true",
-    );
+    await this.densityToggle(name).click();
+    await expect(
+      this.densityToggle(name === "Compact" ? "Comfortable" : "Compact"),
+    ).toBeVisible();
   }
 
   /** Press Zoom in, waiting for the level to change each time; returns the level text. */

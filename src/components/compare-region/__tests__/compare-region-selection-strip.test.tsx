@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {
   defaultCompareRegionSettings,
@@ -60,8 +60,8 @@ function renderStrip({
   return { onDensityChange, onClear };
 }
 
-function densityGroup() {
-  return screen.getByRole("group", { name: "Density" });
+function densityToggle(next: "Comfortable" | "Compact") {
+  return screen.getByRole("button", { name: `Switch to ${next} density` });
 }
 
 describe("SelectionStrip", () => {
@@ -70,44 +70,44 @@ describe("SelectionStrip", () => {
     expect(
       screen.getByText("Hover a gene to trace its family"),
     ).toBeInTheDocument();
-    expect(screen.getByText("Click to pin it")).toBeInTheDocument();
+    expect(screen.getByText("Click for details")).toBeInTheDocument();
     expect(screen.getByText("Drag to pan")).toBeInTheDocument();
     expect(screen.getByText("Ctrl").parentElement).toHaveTextContent(
       "⌘/Ctrl+ scroll to zoom",
     );
-    const group = densityGroup();
-    expect(
-      within(group).getByRole("button", { name: "Comfortable" }),
-    ).toHaveAttribute("aria-pressed", "true");
-    expect(
-      within(group).getByRole("button", { name: "Compact" }),
-    ).toHaveAttribute("aria-pressed", "false");
-    // Named beside its icon when the strip has room.
-    expect(within(group).getByText("Compact")).toHaveClass(
-      "sr-only",
-      "@4xl:not-sr-only",
+    // One icon button, named for the density it switches to, with no label beside it.
+    expect(densityToggle("Compact").textContent).toBe("");
+    expect(densityToggle("Compact").querySelector("svg")).toHaveClass(
+      "lucide-list-chevrons-down-up",
     );
-    // `muted-foreground` on the `muted` pill is 3.7:1 in the light themes;
-    // `foreground/70` clears 4.5:1 in all six (theme-contrast.test.ts).
-    const unpressed = within(group).getByRole("button", { name: "Compact" });
-    expect(unpressed).toHaveClass("text-foreground/70", "hover:text-foreground");
-    expect(unpressed).not.toHaveClass("text-muted-foreground");
+    expect(screen.queryByText("Density")).not.toBeInTheDocument();
+    expect(screen.queryByRole("group")).not.toBeInTheDocument();
   });
 
-  it("presses the current density", () => {
+  it("offers Comfortable from Compact", () => {
     renderStrip({ density: "compact" });
+    expect(densityToggle("Comfortable").querySelector("svg")).toHaveClass(
+      "lucide-list-chevrons-up-down",
+    );
     expect(
-      within(densityGroup()).getByRole("button", { name: "Compact" }),
-    ).toHaveAttribute("aria-pressed", "true");
+      screen.queryByRole("button", { name: "Switch to Compact density" }),
+    ).not.toBeInTheDocument();
   });
 
   it("switches the density, with no pinned row", async () => {
     const user = userEvent.setup();
     const { onDensityChange } = renderStrip();
-    await user.click(
-      within(densityGroup()).getByRole("button", { name: "Compact" }),
-    );
+    await user.click(densityToggle("Compact"));
     expect(onDensityChange).toHaveBeenCalledExactlyOnceWith("compact", null);
+  });
+
+  it("shows the next density's hint in a tooltip", async () => {
+    const user = userEvent.setup();
+    renderStrip();
+    await user.hover(densityToggle("Compact"));
+    expect(
+      await screen.findByText("About 30 px a row, for long genome lists"),
+    ).toBeInTheDocument();
   });
 
   it("names the pinned gene, links it and clears it", async () => {
@@ -144,28 +144,14 @@ describe("SelectionStrip", () => {
     expect(onClear).toHaveBeenCalledOnce();
   });
 
-  it("keeps the density toggle beside a pinned gene, icons only", async () => {
+  it("keeps the density toggle beside a pinned gene", async () => {
     const user = userEvent.setup();
     const { onDensityChange } = renderStrip({
       selected: { rowIndex: 1, featureIndex: 0 },
+      density: "compact",
     });
-    const group = densityGroup();
-    const compact = within(group).getByRole("button", { name: "Compact" });
-    expect(
-      within(group).getByRole("button", { name: "Comfortable" }),
-    ).toHaveAttribute("aria-pressed", "true");
-    // The name stays in the DOM for assistive technology.
-    expect(within(group).getByText("Compact")).toHaveClass("sr-only");
-    expect(within(group).getByText("Compact")).not.toHaveClass(
-      "@4xl:not-sr-only",
-    );
-    // Its label sits on the pin strip's muted wash, as the genome does.
-    expect(screen.getByText("Density")).toHaveClass("text-foreground/70");
-    expect(screen.getByText("Density")).not.toHaveClass(
-      "text-muted-foreground",
-    );
-    await user.click(compact);
-    expect(onDensityChange).toHaveBeenCalledExactlyOnceWith("compact", 1);
+    await user.click(densityToggle("Comfortable"));
+    expect(onDensityChange).toHaveBeenCalledExactlyOnceWith("comfortable", 1);
   });
 
   it("offers Compare regions for a protein-coding gene only", () => {

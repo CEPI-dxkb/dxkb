@@ -3,10 +3,13 @@
 /**
  * The Compare Region Viewer's hover tooltip: the hovered feature's ID,
  * product, location, family (and how many genomes share it), identity to the
- * focus gene and genome. Place it outside the figure's scroller, so the
- * scroller's overflow does not clip it.
+ * focus gene and genome. It hangs just below and right of the gene, not from
+ * the pointer (`placeFeaturePopupElement`). Place it outside the figure's
+ * scroller, so the scroller's overflow does not clip it. A click pins it as
+ * the feature card (`compare-region-feature-card.tsx`), which opens with the
+ * same lines in the same place.
  */
-import { TooltipWithBounds } from "@visx/tooltip";
+import type { ReactNode, Ref } from "react";
 import {
   familyReach,
   isLoner,
@@ -19,34 +22,28 @@ import {
   noProduct,
   rowTagText,
 } from "@/lib/compare-region/genome-labels";
+import { cn } from "@/lib/utils";
 import { FeatureSwatch } from "./compare-region-glyphs";
 
-interface CompareRegionTooltipProps {
+/** The tooltip's popover look, which the pinned card shares. */
+export const featureTooltipSurface =
+  "rounded-lg border bg-popover p-3 text-xs text-popover-foreground shadow-lg";
+
+interface FeatureLinesProps {
   model: ChartModel;
-  /** The hovered feature; nothing shows while it is undefined. */
-  at: FeatureRef | undefined;
-  /** In the chart root's coordinates (`useChartPointer`'s `tooltipLeft`/`tooltipTop`). */
-  left: number | undefined;
-  top: number | undefined;
+  at: FeatureRef;
+  /** Buttons at the end of the ID line (the pinned card's Collapse/Expand and Close). */
+  actions?: ReactNode;
 }
 
-export function CompareRegionTooltip({
-  model,
-  at,
-  left,
-  top,
-}: CompareRegionTooltipProps) {
-  const hovered = resolveFeature(model.layout, at);
-  if (!hovered || !at) return null;
-  const { row, feature } = hovered;
+/** The tooltip's lines for `at`: ID, product, location, family, identity and genome. */
+export function FeatureLines({ model, at, actions }: FeatureLinesProps) {
+  const resolved = resolveFeature(model.layout, at);
+  if (!resolved) return null;
+  const { row, feature } = resolved;
   const reach = familyReach(model.families, feature, model.layout.rows.length);
   return (
-    <TooltipWithBounds
-      left={left}
-      top={top}
-      unstyled
-      className="pointer-events-none absolute z-20 w-80 rounded-lg border bg-popover p-3 text-xs text-popover-foreground shadow-lg"
-    >
+    <>
       <div className="flex items-center gap-2">
         <FeatureSwatch
           spec={model.spec}
@@ -56,6 +53,7 @@ export function CompareRegionTooltip({
         <span className="truncate font-mono text-2xs text-muted-foreground">
           {feature.fid}
         </span>
+        {actions}
       </div>
       <p className="mt-1.5 text-sm leading-snug font-medium">
         {feature.product || noProduct}
@@ -90,6 +88,38 @@ export function CompareRegionTooltip({
           {row.genomeName}
         </dd>
       </dl>
-    </TooltipWithBounds>
+    </>
+  );
+}
+
+interface CompareRegionTooltipProps {
+  model: ChartModel;
+  /** The hovered feature; nothing shows while it is undefined. */
+  at: FeatureRef | undefined;
+  /** The chart's, to place the tooltip: it starts hidden (`data-offscreen`) until placed. */
+  ref: Ref<HTMLDivElement>;
+}
+
+export function CompareRegionTooltip({
+  model,
+  at,
+  ref,
+}: CompareRegionTooltipProps) {
+  if (!at || !resolveFeature(model.layout, at)) return null;
+  return (
+    <div
+      // Each gene's tooltip is its own, which fades in where it opens
+      // (`starting:`) rather than jumping there from the last gene's.
+      key={`${String(at.rowIndex)}:${String(at.featureIndex)}`}
+      ref={ref}
+      data-feature-tooltip=""
+      data-offscreen=""
+      className={cn(
+        "pointer-events-none absolute top-0 left-0 z-20 w-80 translate-x-(--popup-x) translate-y-(--popup-y) transition-opacity duration-100 ease-out data-offscreen:invisible starting:opacity-0",
+        featureTooltipSurface,
+      )}
+    >
+      <FeatureLines model={model} at={at} />
+    </div>
   );
 }

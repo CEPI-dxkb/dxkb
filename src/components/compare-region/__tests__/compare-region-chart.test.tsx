@@ -1,5 +1,12 @@
-import { act, fireEvent, render, screen, within } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  within,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { http } from "msw";
 import { useState } from "react";
 import {
   defaultCompareRegionSettings,
@@ -9,8 +16,11 @@ import type { CompareRegionDensity } from "@/lib/compare-region/density-options"
 import { rowIdentity } from "@/lib/compare-region/genome-labels";
 import { featureHref } from "@/lib/views/hrefs";
 import { focusRow, mirroredRow } from "@/test-helpers/compare-region";
+import { server } from "@/test-helpers/msw-server";
+import { createQueryClientWrapper } from "@/test-helpers/react";
 import { CompareRegionChart } from "../compare-region-chart";
 import { ZoomCluster } from "../compare-region-zoom-controls";
+import { hoverGrace } from "../use-chart-pointer";
 
 // Spied, to count the label column's renders: it reads every row's identity.
 vi.mock("@/lib/compare-region/genome-labels", async (importOriginal) => {
@@ -26,6 +36,14 @@ vi.mock("@/lib/compare-region/text-measure", async (importOriginal) => {
 });
 
 const twoRows = [focusRow, mirroredRow];
+
+// A click on a gene opens its summary, which reads the gene's record; these
+// tests are about the figure, so the read never answers.
+beforeEach(() => {
+  server.use(
+    http.get("*/api/data/genome_feature", () => new Promise(() => undefined)),
+  );
+});
 
 interface ChartProps {
   rows?: readonly CompareRegionRow[];
@@ -78,7 +96,9 @@ function SwitchableChart(
 
 /** Renders, then lets Base UI's slider thumb measure itself (a microtask after mount) inside act. */
 async function renderChart(props: ChartProps = {}) {
-  const result = render(<Chart {...props} />);
+  const result = render(<Chart {...props} />, {
+    wrapper: createQueryClientWrapper(),
+  });
   await act(() => Promise.resolve());
   return {
     ...result,
@@ -91,7 +111,9 @@ async function renderChart(props: ChartProps = {}) {
 async function renderSwitchable(
   props: Omit<ChartProps, "density" | "onDensityChange"> = {},
 ) {
-  const result = render(<SwitchableChart {...props} />);
+  const result = render(<SwitchableChart {...props} />, {
+    wrapper: createQueryClientWrapper(),
+  });
   await act(() => Promise.resolve());
   return result;
 }
@@ -119,6 +141,18 @@ function clickAt(element: Element, from: number, to = from) {
   fireEvent.click(element, { clientX: to });
 }
 
+/** The pinned gene's card, or null while it is put away. */
+function featureCard(): HTMLElement | null {
+  return screen.queryByRole("dialog", { name: "Feature details" });
+}
+
+/** The selection strip while a gene is pinned (the card repeats its lines and links). */
+function strip(): HTMLElement {
+  const found = document.querySelector<HTMLElement>("[data-selection-strip]");
+  if (!found) throw new Error("no gene pinned in the strip");
+  return found;
+}
+
 /** Whether a wheel over a glyph reaches the tracks svg, where Zoom listens. */
 function wheelReachesTracks(
   container: HTMLElement,
@@ -137,7 +171,7 @@ function wheelReachesTracks(
 
 /** The hover tooltip, or null while it is closed. */
 function tooltip(): HTMLElement | null {
-  return document.querySelector<HTMLElement>(".visx-tooltip");
+  return document.querySelector<HTMLElement>("[data-feature-tooltip]");
 }
 
 /** The dashed focus line's x, px from the plot's left edge. */
@@ -235,15 +269,95 @@ describe("CompareRegionChart", () => {
       ).toBeInTheDocument();
     });
 
+    it("pins a gene's tooltip as its card on click, expanded", async () => {
+      const { container } = await renderChart();
+      clickAt(glyph(container, 0, 1), 10);
+      const card = featureCard();
+      if (!card) throw new Error("no feature card");
+      // Its first line, and its record's BRC ID.
+      expect(within(card).getAllByText("fig|1.1.peg.2")).toHaveLength(2);
+      expect(
+        within(card).getByText("900…1,200 (301 bp, +)"),
+      ).toBeInTheDocument();
+      expect(
+        within(card).getByRole("button", { name: "Collapse details" }),
+      ).toHaveAttribute("aria-expanded", "true");
+      expect(
+        within(card).getByText("Loading the feature record…"),
+      ).toBeInTheDocument();
+    });
+
+    it("keeps the card's gene out of the hover tooltip, but not the others", async () => {
+      const { container } = await renderChart();
+      clickAt(glyph(container, 0, 1), 10);
+      fireEvent.pointerOver(glyph(container, 0, 1), {
+        clientX: 40,
+        clientY: 40,
+      });
+      expect(tooltip()).toBeNull();
+      fireEvent.pointerOver(glyph(container, 0, 0), {
+        clientX: 40,
+        clientY: 40,
+      });
+      expect(tooltip()).toHaveTextContent("fig|1.1.peg.1");
+    });
+
+    it("moves the card to the next gene clicked", async () => {
+      const { container } = await renderChart();
+      clickAt(glyph(container, 0, 1), 10);
+      clickAt(glyph(container, 0, 0), 10);
+      const card = featureCard();
+      if (!card) throw new Error("no feature card");
+      // Its first line, and its record's BRC ID.
+      expect(within(card).getAllByText("fig|1.1.peg.1")).toHaveLength(2);
+      expect(screen.getAllByRole("dialog")).toHaveLength(1);
+    });
+
+    it("puts the card away with the pin on a click in the empty track", async () => {
+      const { container } = await renderChart();
+      clickAt(glyph(container, 0, 1), 10);
+      const background = container.querySelector("[data-track-background]");
+      if (!background) throw new Error("no track background");
+      clickAt(background, 10);
+      expect(featureCard()).toBeNull();
+      expect(screen.getByText("Click for details")).toBeInTheDocument();
+    });
+
+    it("clears the pin when the card is closed, by its button or Escape", async () => {
+      const user = userEvent.setup();
+      const { container } = await renderChart();
+      clickAt(glyph(container, 0, 1), 10);
+      const card = featureCard();
+      if (!card) throw new Error("no feature card");
+      await user.click(
+        within(card).getByRole("button", { name: "Close details" }),
+      );
+      expect(featureCard()).toBeNull();
+      expect(screen.queryByRole("link", { name: "Open feature" })).toBeNull();
+      expect(screen.getByText("Click for details")).toBeInTheDocument();
+
+      clickAt(glyph(container, 0, 0), 10);
+      const next = featureCard();
+      if (!next) throw new Error("no feature card");
+      // Focus in the card (its Collapse button), then Escape.
+      await user.click(
+        within(next).getByRole("button", { name: "Collapse details" }),
+      );
+      await user.keyboard("{Escape}");
+      expect(featureCard()).toBeNull();
+      expect(screen.getByText("Click for details")).toBeInTheDocument();
+    });
+
     it("pins a gene on click and links to it", async () => {
       const { container } = await renderChart();
       clickAt(glyph(container, 0, 1), 10);
-      expect(screen.getByText("fig|1.1.peg.2")).toBeInTheDocument();
+      const pinned = within(strip());
+      expect(pinned.getByText("fig|1.1.peg.2")).toBeInTheDocument();
       expect(
-        screen.getByRole("link", { name: "Open feature" }),
+        pinned.getByRole("link", { name: "Open feature" }),
       ).toHaveAttribute("href", featureHref("fig|1.1.peg.2"));
       expect(
-        screen.getByRole("link", { name: "Compare regions" }),
+        pinned.getByRole("link", { name: "Compare regions" }),
       ).toHaveAttribute(
         "href",
         `${featureHref("fig|1.1.peg.2")}?tab=compare-region`,
@@ -254,15 +368,16 @@ describe("CompareRegionChart", () => {
       const { container } = await renderChart();
       clickAt(glyph(container, 0, 1), 10, 14);
       expect(
-        screen.getByRole("link", { name: "Open feature" }),
+        within(strip()).getByRole("link", { name: "Open feature" }),
       ).toBeInTheDocument();
     });
 
     it("ignores the click that ends a drag", async () => {
       const { container } = await renderChart();
       clickAt(glyph(container, 0, 1), 10, 15);
+      expect(featureCard()).toBeNull();
       expect(screen.queryByRole("link", { name: "Open feature" })).toBeNull();
-      expect(screen.getByText("Click to pin it")).toBeInTheDocument();
+      expect(screen.getByText("Click for details")).toBeInTheDocument();
     });
 
     it("clears the pin on a click in the empty track", async () => {
@@ -271,14 +386,16 @@ describe("CompareRegionChart", () => {
       const background = container.querySelector("[data-track-background]");
       if (!background) throw new Error("no track background");
       clickAt(background, 10);
+      expect(featureCard()).toBeNull();
       expect(screen.queryByRole("link", { name: "Open feature" })).toBeNull();
-      expect(screen.getByText("Click to pin it")).toBeInTheDocument();
+      expect(screen.getByText("Click for details")).toBeInTheDocument();
     });
 
     it("clears the pin with its button", async () => {
       const { container } = await renderChart();
       clickAt(glyph(container, 0, 1), 10);
       fireEvent.click(screen.getByRole("button", { name: "Clear selection" }));
+      expect(featureCard()).toBeNull();
       expect(screen.queryByRole("link", { name: "Open feature" })).toBeNull();
     });
 
@@ -301,11 +418,47 @@ describe("CompareRegionChart", () => {
       // The press hides the tooltip; the click pins the gene.
       clickAt(glyph(container, 0, 0), 10);
       expect(tooltip()).toBeNull();
-      expect(screen.getByText("fig|1.1.peg.1")).toBeInTheDocument();
-      expect(screen.getByText("No product")).toHaveAttribute(
+      const pinned = within(strip());
+      expect(pinned.getByText("fig|1.1.peg.1")).toBeInTheDocument();
+      expect(pinned.getByText("No product")).toHaveAttribute(
         "title",
         "No product",
       );
+    });
+
+    it("keeps the hover while the pointer crosses the empty track to the next gene", async () => {
+      const { container } = await renderChart();
+      const background = container.querySelector("[data-track-background]");
+      if (!background) throw new Error("no track background");
+      vi.useFakeTimers();
+      try {
+        fireEvent.pointerOver(glyph(container, 0, 1), {
+          clientX: 40,
+          clientY: 40,
+        });
+        fireEvent.pointerOver(background, { clientX: 60, clientY: 40 });
+        act(() => {
+          vi.advanceTimersByTime(hoverGrace - 1);
+        });
+        expect(tooltip()).toHaveTextContent("fig|1.1.peg.2");
+        fireEvent.pointerOver(glyph(container, 0, 0), {
+          clientX: 80,
+          clientY: 40,
+        });
+        act(() => {
+          vi.advanceTimersByTime(hoverGrace);
+        });
+        expect(tooltip()).toHaveTextContent("fig|1.1.peg.1");
+
+        // Left on the empty track, it lets go.
+        fireEvent.pointerOver(background, { clientX: 60, clientY: 40 });
+        act(() => {
+          vi.advanceTimersByTime(hoverGrace);
+        });
+        expect(tooltip()).toBeNull();
+      } finally {
+        vi.useRealTimers();
+      }
     });
 
     it("hides the tooltip when a drag starts", async () => {
@@ -533,22 +686,25 @@ describe("CompareRegionChart", () => {
       const user = userEvent.setup();
       const { container } = await renderSwitchable();
       clickAt(glyph(container, 0, 1), 10);
-      await user.click(screen.getByRole("button", { name: "Compact" }));
-      expect(screen.getByRole("button", { name: "Compact" })).toHaveAttribute(
-        "aria-pressed",
-        "true",
+      await user.click(
+        screen.getByRole("button", { name: "Switch to Compact density" }),
       );
-      expect(screen.getByText("fig|1.1.peg.2")).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: "Switch to Comfortable density" }),
+      ).toBeInTheDocument();
+      expect(within(strip()).getByText("fig|1.1.peg.2")).toBeInTheDocument();
     });
 
-    it("keeps focus on the pressed option, remounting nothing (D5)", async () => {
+    it("keeps focus on the toggle, remounting nothing (D5)", async () => {
       const user = userEvent.setup();
       const { container } = await renderSwitchable();
       const tracks = tracksSvg(container);
-      const compact = screen.getByRole("button", { name: "Compact" });
-      await user.click(compact);
-      expect(compact).toHaveAttribute("aria-pressed", "true");
-      expect(compact).toHaveFocus();
+      const toggle = screen.getByRole("button", {
+        name: "Switch to Compact density",
+      });
+      await user.click(toggle);
+      expect(toggle).toHaveAccessibleName("Switch to Comfortable density");
+      expect(toggle).toHaveFocus();
       expect(tracksSvg(container)).toBe(tracks);
     });
 
@@ -558,7 +714,9 @@ describe("CompareRegionChart", () => {
       const view = scroller();
       view.scrollTop = 40;
       fireEvent.scroll(view);
-      await user.click(screen.getByRole("button", { name: "Compact" }));
+      await user.click(
+        screen.getByRole("button", { name: "Switch to Compact density" }),
+      );
       expect(view.scrollTop).toBeCloseTo(22.22, 2);
     });
 

@@ -28,7 +28,7 @@ import {
   rulerHeight,
 } from "@/lib/compare-region/density";
 import type { CompareRegionDensity } from "@/lib/compare-region/density-options";
-import { buildChartModel } from "@/lib/compare-region/families";
+import { buildChartModel, isSameFeature } from "@/lib/compare-region/families";
 import { rowAt } from "@/lib/compare-region/figure-frame";
 import { constrainToTrack } from "@/lib/compare-region/layout";
 import { focusLineX } from "@/lib/compare-region/ruler";
@@ -40,6 +40,7 @@ import {
 import { canvasTextWidth } from "@/lib/compare-region/text-measure";
 import { carryMatrix, wheelDelta, zoomLimits } from "@/lib/compare-region/zoom";
 import { cn } from "@/lib/utils";
+import { FeatureCard } from "./compare-region-feature-card";
 import { GlyphLayer } from "./compare-region-glyphs";
 import {
   HighlightLayer,
@@ -61,6 +62,7 @@ import {
   TrackBands,
 } from "./compare-region-track-layers";
 import type { ZoomControls } from "./compare-region-zoom-controls";
+import { placeFeaturePopupElement } from "./place-feature-popup";
 import { useChartPointer } from "./use-chart-pointer";
 
 type ChartZoom = ProvidedZoom<SVGSVGElement> & ZoomState;
@@ -124,6 +126,24 @@ function CarryZoom({
   return null;
 }
 
+/**
+ * Re-places the hover tooltip and the pinned gene's card after every zoom
+ * render, when the glyphs have their new paths. Inside Zoom's render prop, so
+ * a zoom renders only this, not the popups.
+ */
+function FollowZoom({
+  matrix,
+  place,
+}: {
+  matrix: ChartZoom["transformMatrix"];
+  place: () => void;
+}) {
+  useLayoutEffect(() => {
+    place();
+  }, [matrix, place]);
+  return null;
+}
+
 export function CompareRegionChart({
   rows,
   width,
@@ -133,18 +153,20 @@ export function CompareRegionChart({
   renderBar,
   onExport,
 }: CompareRegionChartProps) {
-  const {
-    wheelGuardRef,
-    handlers,
-    hovered,
-    selected,
-    setSelected,
-    tooltipLeft,
-    tooltipTop,
-  } = useChartPointer();
+  /**
+   * Whether the pinned gene's card shows its details: a click on a gene pins
+   * it and opens its card, expanded; closing the card clears the pin.
+   */
+  const [cardExpanded, setCardExpanded] = useState(true);
+  const { wheelGuardRef, handlers, hovered, selected, setSelected } =
+    useChartPointer(() => {
+      setCardExpanded(true);
+    });
   const [hoveredRow, setHoveredRow] = useState<number | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const scrollerRef = useRef<HTMLDivElement>(null);
+  const cardRef = useRef<HTMLDivElement | null>(null);
+  const tooltipRef = useRef<HTMLDivElement | null>(null);
   const labelsRef = useRef<SVGGElement>(null);
   const rulerRef = useRef<SVGGElement>(null);
   const headerRef = useRef<SVGGElement>(null);
@@ -217,6 +239,72 @@ export function CompareRegionChart({
   const exportChart = () => {
     if (svgRef.current) onExport(svgRef.current);
   };
+
+  // The pinned gene's card already shows its tooltip's lines.
+  const tooltipAt = isSameFeature(hovered, selected) ? undefined : hovered;
+  // The tooltip and the card hang beside their gene and follow it: placed when
+  // they open, on every zoom render (`FollowZoom`), on scroll and as the card
+  // resizes, straight on the element.
+  const placeTooltip = () => {
+    placeFeaturePopupElement({
+      popup: tooltipRef.current,
+      root: wheelGuardRef.current,
+      scroller: scrollerRef.current,
+      at: tooltipAt,
+      labelWidth,
+    });
+  };
+  const placeCard = () => {
+    placeFeaturePopupElement({
+      popup: cardRef.current,
+      root: wheelGuardRef.current,
+      scroller: scrollerRef.current,
+      at: selected,
+      labelWidth,
+    });
+  };
+  const placePopups = () => {
+    placeTooltip();
+    placeCard();
+  };
+  // Each gene's tooltip is a new element (keyed by the gene): placed as it mounts.
+  const attachTooltip = (node: HTMLDivElement | null) => {
+    tooltipRef.current = node;
+    if (node) placeTooltip();
+    return () => {
+      tooltipRef.current = null;
+    };
+  };
+  const attachCard = (node: HTMLDivElement | null) => {
+    cardRef.current = node;
+    if (!node || typeof ResizeObserver === "undefined") return;
+    // Next frame, not in the observer's callback: placing sets the card's
+    // height (`--popup-max-h`), which inside it would loop the observer.
+    let frame = 0;
+    const observer = new ResizeObserver(() => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(placeCard);
+    });
+    observer.observe(node);
+    return () => {
+      cancelAnimationFrame(frame);
+      observer.disconnect();
+      cardRef.current = null;
+    };
+  };
+  const card =
+    selected ? (
+      <FeatureCard
+        ref={attachCard}
+        model={model}
+        at={selected}
+        expanded={cardExpanded}
+        onExpandedChange={setCardExpanded}
+        onClose={() => {
+          setSelected(null);
+        }}
+      />
+    ) : null;
 
   // The layers a zoom or a pan does not change, made here rather than in
   // Zoom's render prop: every zoom then hands React these same elements, so
@@ -295,6 +383,7 @@ export function CompareRegionChart({
                 return (
                   <>
                     <CarryZoom zoom={zoom} plotWidth={plotWidth} />
+                    <FollowZoom matrix={matrix} place={placePopups} />
                     {renderBar(controls, exportChart)}
                     {strip}
                     {/* Focusable so keyboard users can scroll a figure wider or taller than the card. */}
@@ -311,6 +400,7 @@ export function CompareRegionChart({
                           rulerRef.current,
                           headerRef.current,
                         );
+                        placePopups();
                       }}
                     >
                       <svg
@@ -354,9 +444,13 @@ export function CompareRegionChart({
                           width={plotWidth}
                           height={height}
                           // Zoom is horizontal only: a vertical touch pan scrolls the page.
+                          // The track drags (grab); a gene clicks (pointer), except
+                          // while a drag that began on it pans (grabbing throughout).
                           className={cn(
                             "touch-pan-y",
-                            zoom.isDragging ? "cursor-grabbing" : "cursor-grab",
+                            zoom.isDragging
+                              ? "cursor-grabbing"
+                              : "cursor-grab **:data-feature:cursor-pointer",
                           )}
                           {...handlers}
                         >
@@ -422,12 +516,8 @@ export function CompareRegionChart({
         </HoverContext>
       </PinContext>
       {/* Outside the scroller, so its overflow does not clip the tooltip. */}
-      <CompareRegionTooltip
-        model={model}
-        at={hovered}
-        left={tooltipLeft}
-        top={tooltipTop}
-      />
+      <CompareRegionTooltip ref={attachTooltip} model={model} at={tooltipAt} />
+      {card}
     </div>
   );
 }

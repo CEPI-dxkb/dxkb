@@ -7,10 +7,18 @@
  * overlays through `HoverContext` and the pinned one through `PinContext`,
  * and Compact's hovered row reaches its tint through `RowHoverContext`, so
  * the layers under them never re-render on a hover (and what reads only the
- * pin, such as the selection strip, does not either). Every overlay is marked
- * `data-overlay`, which the export drops.
+ * pin, such as the selection strip, does not either). A new family's trace
+ * fades in as the last one fades out (`traceFade`), and the veil and the
+ * label column's marks fade with it, so moving from gene to gene never
+ * flashes. Every overlay is marked `data-overlay`, which the export drops.
  */
-import { createContext, use, type ReactNode } from "react";
+import {
+  createContext,
+  use,
+  useState,
+  type ReactNode,
+  type TransitionEvent,
+} from "react";
 import { familyColor, featurePaint } from "@/lib/compare-region/colors";
 import { rulerHeight } from "@/lib/compare-region/density";
 import {
@@ -27,6 +35,7 @@ import { placeGlyph } from "@/lib/compare-region/glyph-placement";
 import type { TextMeasure } from "@/lib/compare-region/labels";
 import { ribbonKey, ribbonPath } from "@/lib/compare-region/ribbons";
 import { trackScale, type TrackMatrix } from "@/lib/compare-region/ruler";
+import { cn } from "@/lib/utils";
 import { GlyphMark } from "./compare-region-glyphs";
 
 /** The gene under the pointer; undefined while the tooltip is closed. */
@@ -47,6 +56,80 @@ function useTraceFocus(): {
   const hovered = use(HoverContext);
   const selected = use(PinContext);
   return { hovered, selected, focus: hovered ?? selected ?? undefined };
+}
+
+/**
+ * How the trace's parts fade in and out: quick enough to keep up with the
+ * pointer, long enough that a new family does not flash in.
+ */
+const traceFade = "transition-opacity duration-150 ease-out";
+
+/**
+ * A trace's identity: the family it follows, or a gene of no family. Every
+ * gene of a family draws the same trace, so moving between them changes
+ * nothing. Null while nothing is traced.
+ */
+function traceKey(
+  model: ChartModel,
+  focus: FeatureRef | undefined,
+): string | null {
+  const target = resolveFeature(model.layout, focus);
+  if (!target || !focus) return null;
+  const { family } = target.feature;
+  return family === null
+    ? `gene ${String(focus.rowIndex)}:${String(focus.featureIndex)}`
+    : `family ${String(family)}`;
+}
+
+interface TraceSlots {
+  key: string | null;
+  /** A gene of the trace `key` names (the one traced when it came). */
+  focus: FeatureRef | undefined;
+  /** The trace before it, fading out until its fade ends. */
+  leaving: FeatureRef | undefined;
+  /** Which of the two slots draws the current trace; the other fades out. */
+  current: 0 | 1;
+}
+
+/**
+ * The two slots the trace crossfades between: on a new trace, the slot that
+ * was fading out takes it and fades in, and the current one fades out with
+ * the trace it holds. The current slot always draws the live focus.
+ */
+function useTraceSlots(model: ChartModel, focus: FeatureRef | undefined) {
+  const key = traceKey(model, focus);
+  const [slots, setSlots] = useState<TraceSlots>({
+    key,
+    focus,
+    leaving: undefined,
+    current: 0,
+  });
+  let now = slots;
+  // Set while rendering (React re-renders at once, before committing).
+  if (slots.key !== key) {
+    now = {
+      key,
+      focus,
+      leaving: slots.focus,
+      current: slots.current === 0 ? 1 : 0,
+    };
+    setSlots(now);
+  }
+  const drawn: [FeatureRef | undefined, FeatureRef | undefined] =
+    now.current === 0 ? [focus, now.leaving] : [now.leaving, focus];
+  return {
+    drawn,
+    current: now.current,
+    /** The leaving slot's fade ended: it draws nothing until the next trace. */
+    onLeft: (event: TransitionEvent<SVGGElement>) => {
+      if (event.target !== event.currentTarget) return;
+      setSlots((previous) =>
+        previous.leaving === undefined
+          ? previous
+          : { ...previous, leaving: undefined },
+      );
+    },
+  };
 }
 
 /**
@@ -110,31 +193,24 @@ function Ring({ model, at, x, strokeWidth, className }: RingProps) {
   );
 }
 
-interface HighlightLayerProps {
+interface TraceProps {
   model: ChartModel;
-  matrix: TrackMatrix;
+  /** A gene of the traced family. */
+  at: FeatureRef;
+  x: (offset: number) => number;
   plotWidth: number;
   measure: TextMeasure;
 }
 
 /**
- * The family trace over the track: a card-colored veil, then every ribbon
- * of the family (plus bridges over the genomes without it) and its glyphs on
- * top, and the pin and hover rings. Never a pointer target, so hovering
- * still reaches the glyphs below.
+ * One family's trace: every ribbon of the family (plus bridges over the
+ * genomes without it), and its glyphs on top.
  */
-export function HighlightLayer({
-  model,
-  matrix,
-  plotWidth,
-  measure,
-}: HighlightLayerProps) {
-  const { hovered, selected, focus } = useTraceFocus();
-  const members = focusMembers(model, focus);
-  const x = trackScale(model.layout.domain, matrix, plotWidth);
+function Trace({ model, at, x, plotWidth, measure }: TraceProps) {
+  const members = focusMembers(model, at);
   const family =
     members.length > 0
-      ? (resolveFeature(model.layout, focus)?.feature.family ?? null)
+      ? (resolveFeature(model.layout, at)?.feature.family ?? null)
       : null;
   const ribbons =
     family === null ? [] : (model.families.ribbonsByFamily.get(family) ?? []);
@@ -142,18 +218,7 @@ export function HighlightLayer({
     family === null ? [] : bridgeRibbons(model.layout, model.families, family);
   const { frame, spec } = model;
   return (
-    <g pointerEvents="none" data-overlay="">
-      <rect
-        x={0}
-        y={rulerHeight}
-        width={plotWidth}
-        height={frame.height - rulerHeight}
-        className={
-          members.length > 0
-            ? "fill-card opacity-80 transition-opacity duration-150"
-            : "fill-card opacity-0 transition-opacity duration-150"
-        }
-      />
+    <>
       {bridges.length > 0 && (
         <g className="opacity-25">
           {ribbonPaths(model, bridges, x, plotWidth)}
@@ -184,6 +249,69 @@ export function HighlightLayer({
           />
         );
       })}
+    </>
+  );
+}
+
+interface HighlightLayerProps {
+  model: ChartModel;
+  matrix: TrackMatrix;
+  plotWidth: number;
+  measure: TextMeasure;
+}
+
+/**
+ * The family trace over the track: a card-colored veil, then the family's
+ * trace in one of two slots (the last family's fading out in the other), and
+ * the pin and hover rings. Never a pointer target, so hovering still reaches
+ * the glyphs below.
+ */
+export function HighlightLayer({
+  model,
+  matrix,
+  plotWidth,
+  measure,
+}: HighlightLayerProps) {
+  const { hovered, selected, focus } = useTraceFocus();
+  const { drawn, current, onLeft } = useTraceSlots(model, focus);
+  const traced = focusMembers(model, focus).length > 0;
+  const x = trackScale(model.layout.domain, matrix, plotWidth);
+  const { frame, spec } = model;
+  return (
+    <g pointerEvents="none" data-overlay="">
+      <rect
+        x={0}
+        y={rulerHeight}
+        width={plotWidth}
+        height={frame.height - rulerHeight}
+        className={cn(
+          "fill-card",
+          traceFade,
+          traced ? "opacity-80" : "opacity-0",
+        )}
+      />
+      {drawn.map((at, slot) => (
+        <g
+          // The slot stays put while its trace changes, so its opacity fades.
+          key={slot}
+          data-trace-slot=""
+          className={cn(
+            traceFade,
+            slot === current ? "opacity-100" : "opacity-0",
+          )}
+          onTransitionEnd={slot === current ? undefined : onLeft}
+        >
+          {at && (
+            <Trace
+              model={model}
+              at={at}
+              x={x}
+              plotWidth={plotWidth}
+              measure={measure}
+            />
+          )}
+        </g>
+      ))}
       {selected && (
         <Ring
           model={model}
@@ -195,11 +323,13 @@ export function HighlightLayer({
       )}
       {hovered && (
         <Ring
+          // A new gene's ring fades in rather than jumping there.
+          key={`${String(hovered.rowIndex)}:${String(hovered.featureIndex)}`}
           model={model}
           at={hovered}
           x={x}
           strokeWidth={1.25}
-          className="stroke-foreground/70"
+          className={cn("stroke-foreground/70 starting:opacity-0", traceFade)}
         />
       )}
     </g>
@@ -208,7 +338,8 @@ export function HighlightLayer({
 
 /**
  * While a family is traced (the hovered gene's, else the pinned one's): rows
- * without it fade, rows with it get a family-colored edge.
+ * without it fade, rows with it get a family-colored edge. Both marks stay
+ * drawn on every row, transparent while unused, so they fade in and out.
  */
 export function LabelHighlight({
   model,
@@ -219,34 +350,45 @@ export function LabelHighlight({
 }) {
   const { focus } = useTraceFocus();
   const members = focusMembers(model, focus);
-  if (members.length === 0) return null;
-  const target = resolveFeature(model.layout, focus);
+  const traced = members.length > 0;
+  const target = traced ? resolveFeature(model.layout, focus) : undefined;
   const color = target ? featurePaint(target.feature) : undefined;
   const rowsWith = new Set(members.map((ref) => ref.rowIndex));
   return (
     <g pointerEvents="none" data-overlay="">
-      {model.frame.rows.map((rowFrame, rowIndex) =>
-        rowsWith.has(rowIndex) ? (
-          <rect
-            key={rowIndex}
-            x={0}
-            y={rowFrame.slotTop}
-            width={3}
-            height={rowFrame.slotBottom - rowFrame.slotTop}
-            fill={color}
-            className={color ? undefined : "fill-muted-foreground"}
-          />
-        ) : (
-          <rect
-            key={rowIndex}
-            x={0}
-            y={rowFrame.slotTop}
-            width={labelWidth - 1}
-            height={rowFrame.slotBottom - rowFrame.slotTop}
-            className="fill-card opacity-70"
-          />
-        ),
-      )}
+      {model.frame.rows.map((rowFrame, rowIndex) => {
+        const holds = rowsWith.has(rowIndex);
+        const height = rowFrame.slotBottom - rowFrame.slotTop;
+        return (
+          <g key={rowIndex}>
+            <rect
+              x={0}
+              y={rowFrame.slotTop}
+              width={3}
+              height={height}
+              fill={color}
+              data-label-edge=""
+              className={cn(
+                traceFade,
+                color ? undefined : "fill-muted-foreground",
+                holds ? "opacity-100" : "opacity-0",
+              )}
+            />
+            <rect
+              x={0}
+              y={rowFrame.slotTop}
+              width={labelWidth - 1}
+              height={height}
+              data-label-fade=""
+              className={cn(
+                "fill-card",
+                traceFade,
+                traced && !holds ? "opacity-70" : "opacity-0",
+              )}
+            />
+          </g>
+        );
+      })}
     </g>
   );
 }

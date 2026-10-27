@@ -102,7 +102,9 @@ describe("CompareRegionPanel", () => {
     expect(screen.getByRole("button", { name: "Update" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "Zoom in" })).toBeEnabled();
     expect(screen.getByRole("button", { name: "Export SVG" })).toBeEnabled();
-    expect(screen.getByRole("group", { name: "Density" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Switch to Compact density" }),
+    ).toBeInTheDocument();
   });
 
   it("re-joins the request in flight when the tab comes back", async () => {
@@ -331,11 +333,12 @@ describe("CompareRegionPanel", () => {
     const figure = await screen.findByRole("img");
     const comfortableHeight = Number(figure.getAttribute("height"));
 
-    await user.click(screen.getByRole("button", { name: "Compact" }));
-    expect(screen.getByRole("button", { name: "Compact" })).toHaveAttribute(
-      "aria-pressed",
-      "true",
+    await user.click(
+      screen.getByRole("button", { name: "Switch to Compact density" }),
     );
+    expect(
+      screen.getByRole("button", { name: "Switch to Comfortable density" }),
+    ).toBeInTheDocument();
     expect(Number(figure.getAttribute("height"))).toBeLessThan(
       comfortableHeight,
     );
@@ -355,7 +358,9 @@ describe("CompareRegionPanel", () => {
     });
     await screen.findByRole("img");
 
-    await user.click(screen.getByRole("button", { name: "Compact" }));
+    await user.click(
+      screen.getByRole("button", { name: "Switch to Compact density" }),
+    );
     // Preference cookies hold JSON.
     expect(decodeURIComponent(document.cookie)).toContain(
       `${densityCookie}="compact"`,

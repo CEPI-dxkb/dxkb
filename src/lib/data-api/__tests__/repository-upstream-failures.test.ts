@@ -95,6 +95,31 @@ describe("ServerDataRepository upstream failures", () => {
     expect(timeoutSpy).not.toHaveBeenCalledWith(20_000);
   });
 
+  it("gives feature reads their longer budget", async () => {
+    // A large taxon's Features tab joins every genome through genome(...):
+    // Influenza A's 1.6M genomes took 109–125 s upstream.
+    const timeoutSpy = vi.spyOn(AbortSignal, "timeout");
+    shortenTimeouts();
+    server.use(http.get("https://data.test/genome_feature/", neverRespond));
+
+    await expect(
+      new ServerDataRepository({ baseUrl: "https://data.test" }).collection(
+        "genome_feature",
+        {
+          operation: "collection",
+          rql: "and(eq(genome_id,*),genome(eq(taxon_lineage_ids,2955291)))",
+        },
+      ),
+    ).rejects.toMatchObject({
+      status: 504,
+      code: "upstream_timeout",
+      message:
+        "The BV-BRC data service did not respond (timed out after 150 s).",
+    });
+    expect(timeoutSpy).toHaveBeenCalledWith(150_000);
+    expect(timeoutSpy).not.toHaveBeenCalledWith(20_000);
+  });
+
   it("summarizes a fast 503 maintenance page instead of forwarding its HTML", async () => {
     server.use(http.get(genomeUrl, () => maintenancePage()));
 

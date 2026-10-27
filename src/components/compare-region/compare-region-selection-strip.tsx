@@ -3,21 +3,22 @@
 /**
  * The strip between the command bar and the figure: at rest, how to use the
  * figure; with a gene pinned, its ID, product, family and links. The
- * Comfortable/Compact density toggle sits at its right end in both.
+ * Comfortable/Compact density toggle, one icon button, sits at its right end
+ * in both.
  */
 import {
   ArrowUpRight,
   GitCompareArrows,
   Hand,
+  ListChevronsDownUp,
+  ListChevronsUpDown,
   MousePointer2,
   MousePointerClick,
-  Rows2,
-  Rows4,
   X,
   type LucideIcon,
 } from "lucide-react";
 import Link from "next/link";
-import { use, useId } from "react";
+import { use } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
@@ -30,7 +31,6 @@ import {
   type CompareRegionSettings,
 } from "@/lib/compare-region/contract";
 import {
-  compareRegionDensities,
   compareRegionDensityHints,
   compareRegionDensityLabels,
   type CompareRegionDensity,
@@ -46,7 +46,6 @@ import {
   splitGenomeName,
 } from "@/lib/compare-region/genome-labels";
 import { compareRegionHref } from "@/lib/compare-region/url-state";
-import { cn } from "@/lib/utils";
 import { featureHref } from "@/lib/views/hrefs";
 import { FeatureSwatch } from "./compare-region-glyphs";
 import { PinContext } from "./compare-region-highlight";
@@ -59,80 +58,56 @@ function Kbd({ children }: { children: string }) {
   );
 }
 
+/** The other density, which the toggle switches to. */
+const nextDensity: Record<CompareRegionDensity, CompareRegionDensity> = {
+  comfortable: "compact",
+  compact: "comfortable",
+};
+
+/** Each button shows what it does: chevrons closing in for Compact, opening out for Comfortable. */
 const densityIcons: Record<CompareRegionDensity, LucideIcon> = {
-  comfortable: Rows2,
-  compact: Rows4,
+  comfortable: ListChevronsUpDown,
+  compact: ListChevronsDownUp,
 };
 
 interface DensityToggleProps {
   value: CompareRegionDensity;
   onChange: (next: CompareRegionDensity) => void;
-  /** Show each option's name beside its icon when the strip has room (the hint row); else icons only. */
-  named: boolean;
 }
 
 /**
- * Comfortable / Compact, styled as the command bar's PGfam / PLfam toggle
- * (`aria-pressed` buttons in a `bg-muted` pill), under a "Density" label in
- * the bar's label type. Each option's name stays in the DOM (sr-only when
- * the toggle shows icons only). Its hint opens below, clear of the bar's
- * zoom controls above it. The label and the unpressed option are 70%
- * foreground, not `muted-foreground`, which falls under 4.5:1 on the pill
- * and on the pin strip's muted wash in the light themes.
+ * One icon button that switches to the other density. Its icon and name
+ * say where a press goes ("Switch to Compact density"), and its tooltip adds
+ * that density's hint. The tooltip opens below, clear of the bar's zoom
+ * controls above it.
  */
-export function DensityToggle({ value, onChange, named }: DensityToggleProps) {
-  const labelId = useId();
+export function DensityToggle({ value, onChange }: DensityToggleProps) {
+  const next = nextDensity[value];
+  const Icon = densityIcons[next];
+  const name = `Switch to ${compareRegionDensityLabels[next]} density`;
   return (
-    <span className="ml-auto flex shrink-0 items-center gap-2">
-      <span
-        id={labelId}
-        className="text-3xs font-medium tracking-wide text-foreground/70 uppercase"
-      >
-        Density
-      </span>
-      <div
-        role="group"
-        aria-labelledby={labelId}
-        className="flex h-7 items-center gap-0.5 rounded-lg bg-muted p-0.5"
-      >
-        {compareRegionDensities.map((option) => {
-          const Icon = densityIcons[option];
-          return (
-            <Tooltip key={option}>
-              <TooltipTrigger
-                render={
-                  <button
-                    type="button"
-                    aria-pressed={value === option}
-                    onClick={() => {
-                      onChange(option);
-                    }}
-                    className={cn(
-                      "flex h-6 items-center gap-1.5 rounded-md px-1.5 text-xs font-medium transition-colors",
-                      named && "@4xl:px-2.5",
-                      value === option
-                        ? "bg-background text-foreground shadow-sm"
-                        : // As the bar's Method toggle: `muted-foreground` is
-                          // 3.7:1 on `muted` in the light themes.
-                          "text-foreground/70 hover:text-foreground",
-                    )}
-                  />
-                }
-              >
-                <Icon className="size-3.5" />
-                <span
-                  className={named ? "sr-only @4xl:not-sr-only" : "sr-only"}
-                >
-                  {compareRegionDensityLabels[option]}
-                </span>
-              </TooltipTrigger>
-              <TooltipContent side="bottom">
-                {compareRegionDensityHints[option]}
-              </TooltipContent>
-            </Tooltip>
-          );
-        })}
-      </div>
+    <span className="ml-auto flex shrink-0 items-center">
+      <Tooltip>
+        <TooltipTrigger
+          render={
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              aria-label={name}
+              onClick={() => {
+                onChange(next);
+              }}
+            />
+          }
+        >
+          <Icon />
+        </TooltipTrigger>
+        <TooltipContent side="bottom">
+          <span className="block font-medium">{name}</span>
+          <span className="block">{compareRegionDensityHints[next]}</span>
+        </TooltipContent>
+      </Tooltip>
     </span>
   );
 }
@@ -152,12 +127,10 @@ interface SelectionStripProps {
 
 /**
  * The pinned gene (from `PinContext`, so a hover re-renders none of it) with
- * its family and links, or at rest how to use the figure. The density
- * toggle is named in the hint row
- * when there is room, and icons only beside a pinned gene, whose product
- * keeps the room. The container query (`@container` on the wrapper) reads
- * the card's width, not the window's. Both rows are 40 px tall on one line:
- * the 28 px toggle fits their 4 px padding.
+ * its family and links, or at rest how to use the figure. The container query
+ * (`@container` on the wrapper) reads the card's width, not the window's.
+ * Both rows are 40 px tall on one line: the 28 px toggle fits their 4 px
+ * padding.
  */
 export function SelectionStrip({
   model,
@@ -169,10 +142,9 @@ export function SelectionStrip({
   const selected = use(PinContext);
   const chosen = resolveFeature(model.layout, selected);
   const pinnedRow = chosen && selected ? selected.rowIndex : null;
-  const toggle = (named: boolean) => (
+  const toggle = (
     <DensityToggle
       value={density}
-      named={named}
       onChange={(next) => {
         onDensityChange(next, pinnedRow);
       }}
@@ -188,7 +160,7 @@ export function SelectionStrip({
           </span>
           <span className="flex items-center gap-1.5">
             <MousePointerClick className="size-3.5" />
-            Click to pin it
+            Click for details
           </span>
           <span className="flex items-center gap-1.5">
             <Hand className="size-3.5" />
@@ -197,7 +169,7 @@ export function SelectionStrip({
           <span className="hidden items-center gap-1 sm:flex">
             <Kbd>{"⌘"}</Kbd>/<Kbd>Ctrl</Kbd>+ scroll to zoom
           </span>
-          {toggle(true)}
+          {toggle}
         </div>
       </div>
     );
@@ -205,7 +177,7 @@ export function SelectionStrip({
   const { feature, row } = chosen;
   const reach = familyReach(model.families, feature, model.layout.rows.length);
   return (
-    <div className="@container shrink-0">
+    <div data-selection-strip="" className="@container shrink-0">
       {/* One line once the card has room for the product beside the toggle; it wraps below that. */}
       <div className="flex min-h-10 shrink-0 flex-wrap items-center gap-x-3 gap-y-1 border-b bg-muted/30 px-3 py-1 text-xs @5xl:flex-nowrap">
         <FeatureSwatch spec={model.spec} feature={feature} faded={false} />
@@ -266,7 +238,7 @@ export function SelectionStrip({
             <X />
           </Button>
           <span aria-hidden className="h-4 w-px bg-border" />
-          {toggle(false)}
+          {toggle}
         </span>
       </div>
     </div>

@@ -78,19 +78,14 @@ test.describe("Compare Region Viewer", () => {
     const compare = new CompareRegionPage(page);
     await compare.goto(featureId);
     await compare.expectFigure(10);
-    await expect(compare.densityOption("Comfortable")).toHaveAttribute(
-      "aria-pressed",
-      "true",
-    );
+    // Comfortable at first: the toggle offers Compact.
+    await expect(compare.densityToggle("Compact")).toBeVisible();
     const level = await compare.zoomInBy(2);
     expect(level).toBe("2.3×");
     const comfortable = await compare.figureHeight();
 
     await compare.chooseDensity("Compact");
-    await expect(compare.densityOption("Comfortable")).toHaveAttribute(
-      "aria-pressed",
-      "false",
-    );
+    await expect(compare.densityToggle("Compact")).toHaveCount(0);
     await expect.poll(() => compare.figureHeight()).toBeLessThan(comfortable);
     await expect(compare.zoomLevel).toHaveText(level);
     await compare.expectFigure(10);
@@ -99,10 +94,7 @@ test.describe("Compare Region Viewer", () => {
     // A device preference the server renders: a reload opens in Compact.
     await page.reload();
     await compare.expectFigure(10);
-    await expect(compare.densityOption("Compact")).toHaveAttribute(
-      "aria-pressed",
-      "true",
-    );
+    await expect(compare.densityToggle("Comfortable")).toBeVisible();
     expect(await compare.figureHeight()).toBe(compact);
   });
 
@@ -121,27 +113,152 @@ test.describe("Compare Region Viewer", () => {
     await expect(compare.tooltip).toContainText("SSU ribosomal protein S4p");
     await expect(compare.traceVeil()).toHaveCSS("opacity", "0.8");
 
+    // Another family's gene: its trace fades in as the last one fades out,
+    // and the last one goes once its fade ends.
+    await compare.glyph(0, 3).hover();
+    await expect(compare.tooltip).toContainText("RNA binding S1 domain protein");
+    await expect(compare.traceVeil()).toHaveCSS("opacity", "0.8");
+    await expect(compare.traceSlots().filter({ has: page.locator("*") })).toHaveCount(1);
+
     // Off the figure, the tooltip and the trace go.
     await page.mouse.move(0, 0);
     await expect(compare.tooltip).toHaveCount(0);
     await expect(compare.traceVeil()).toHaveCSS("opacity", "0");
   });
 
-  test("clicking a gene pins it in the selection strip", async ({ page }) => {
+  test("the tooltip hangs below and right of its gene, or left and above it near the edges", async ({
+    page,
+  }) => {
+    // Tall enough for all ten genomes: in a short card, a mid-figure gene has
+    // room for the tooltip on neither side and it takes the roomier one.
+    await page.setViewportSize({ width: 1440, height: 900 });
+    const compare = new CompareRegionPage(page);
+    await compare.goto(featureId);
+    await compare.expectFigure(10);
+    /** The gene's and the tooltip's boxes once it hovers the gene. */
+    const hover = async (row: number, feature: number) => {
+      const gene = compare.glyph(row, feature);
+      await gene.hover();
+      await expect(compare.tooltip).toBeVisible();
+      const geneBox = await gene.boundingBox();
+      const tipBox = await compare.tooltip.boundingBox();
+      if (!geneBox || !tipBox) throw new Error("no gene or tooltip box");
+      return {
+        gene: {
+          left: geneBox.x,
+          right: geneBox.x + geneBox.width,
+          top: geneBox.y,
+          bottom: geneBox.y + geneBox.height,
+        },
+        tip: {
+          left: tipBox.x,
+          right: tipBox.x + tipBox.width,
+          top: tipBox.y,
+          bottom: tipBox.y + tipBox.height,
+        },
+      };
+    };
+    /** `value` is a few px past `edge`, on its `way` side (1 after it, -1 before it). */
+    const justPast = (value: number, edge: number, way: 1 | -1) => {
+      const past = (value - edge) * way;
+      expect(past).toBeGreaterThanOrEqual(0);
+      expect(past).toBeLessThanOrEqual(10);
+    };
+
+    // ThiD, left of the focus line: just below and right of it.
+    const roomy = await hover(2, 1);
+    justPast(roomy.tip.left, roomy.gene.right, 1);
+    justPast(roomy.tip.top, roomy.gene.bottom, 1);
+
+    // DNA polymerase III runs off the plot's right edge: the tooltip goes left.
+    const atRight = await hover(0, 6);
+    justPast(atRight.tip.right, atRight.gene.left, -1);
+    justPast(atRight.tip.top, atRight.gene.bottom, 1);
+
+    // The last genome's S4p, at the figure's bottom: the tooltip goes above.
+    const atBottom = await hover(9, 4);
+    justPast(atBottom.tip.bottom, atBottom.gene.top, -1);
+  });
+
+  test("clicking a gene pins its tooltip as a card, expanded with its record", async ({
+    page,
+  }) => {
     const compare = new CompareRegionPage(page);
     await compare.goto(featureId);
     await compare.expectFigure(10);
     await expect(compare.openFeature).toHaveCount(0);
 
-    await compare.glyph(0, 0).click();
-    await expect(compare.openFeature).toBeVisible();
+    const gene = compare.glyph(0, 0);
+    await gene.hover();
+    await expect(compare.tooltip).toContainText(focusGene);
+    await gene.click();
+    const card = compare.featureCard;
+    await expect(card).toBeVisible();
+    // The tooltip's lines stay; the gene's own tooltip gives way to them.
+    await expect(card).toContainText(focusGene);
+    await expect(compare.tooltip).toHaveCount(0);
+    // A field only the gene's record has, read through /api/data.
+    const recordField = card.getByText("AFFC01000001", { exact: true });
+    await expect(recordField).toBeVisible();
+    await expect(
+      card.getByRole("link", { name: "Open feature" }),
+    ).toHaveAttribute("href", "/feature/fig%7C1004954.3.peg.1");
+
+    await card.getByRole("button", { name: "Collapse details" }).click();
+    await expect(recordField).toHaveCount(0);
+    await expect(card).toContainText(focusGene);
+    await card.getByRole("button", { name: "Expand details" }).click();
+    await expect(recordField).toBeVisible();
+
+    // The card follows its gene through a zoom: still beside it.
+    await compare.zoomInBy(2);
+    await expect(card).toBeVisible();
+    const geneBox = await gene.boundingBox();
+    const cardBox = await card.boundingBox();
+    if (!geneBox || !cardBox) throw new Error("no gene or card box");
+    const cardLeft = cardBox.x;
+    const cardRight = cardBox.x + cardBox.width;
+    const nearGene = (x: number) =>
+      x >= geneBox.x - 20 && x <= geneBox.x + geneBox.width + 20;
+    expect(nearGene(cardLeft) || nearGene(cardRight)).toBe(true);
+
+    // The strip links the pinned gene too.
     await expect(compare.openFeature).toHaveAttribute(
       "href",
       "/feature/fig%7C1004954.3.peg.1",
     );
 
+    // Closing the card clears the pin; so does the strip's Clear.
+    await compare.closeFeatureCard();
+    await expect(compare.selectionStrip).toHaveCount(0);
+    await gene.click();
+    await expect(card).toBeVisible();
     await compare.clearSelection.click();
-    await expect(compare.openFeature).toHaveCount(0);
+    await expect(card).toHaveCount(0);
+    await expect(compare.selectionStrip).toHaveCount(0);
+  });
+
+  test("a gene shows the pointer cursor, the track the grab hand, a drag the grabbing hand", async ({
+    page,
+  }) => {
+    const compare = new CompareRegionPage(page);
+    await compare.goto(featureId);
+    await compare.expectFigure(10);
+    const gene = compare.glyph(0, 0);
+    await expect(gene).toHaveCSS("cursor", "pointer");
+    await expect(compare.trackBackground()).toHaveCSS("cursor", "grab");
+
+    // A drag that starts on a gene pans: the gene shows the grabbing hand too.
+    const box = await gene.boundingBox();
+    if (!box) throw new Error("the gene has no box");
+    const x = box.x + box.width / 2;
+    const y = box.y + box.height / 2;
+    await page.mouse.move(x, y);
+    await page.mouse.down();
+    await page.mouse.move(x + 40, y, { steps: 4 });
+    await expect(gene).toHaveCSS("cursor", "grabbing");
+    await page.mouse.up();
+    await expect(gene).toHaveCSS("cursor", "pointer");
   });
 
   test("signed out, the workspace group sources are disabled, with a sign-in hint", async ({

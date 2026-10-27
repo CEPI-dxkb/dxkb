@@ -45,6 +45,15 @@ export type InfoPanelProps =
       isLoading?: boolean;
       isAllPagesSelected?: boolean;
       totalItems?: number;
+      /**
+       * Leave out a section none of whose fields has a value, instead of
+       * showing it as "None available". For a partial row standing in for a
+       * record still loading (or one with no record), where an empty section
+       * says nothing about the record.
+       */
+      hideEmptySections?: boolean;
+      /** Leave out the title line, for a host that already names the record. */
+      hideHeader?: boolean;
     };
 
 function WorkspaceItemDetailContent({
@@ -135,6 +144,11 @@ export function InfoPanel(props: InfoPanelProps) {
   }
 
   return renderSearchInfoPanel(props);
+}
+
+/** Whether a field shows a value, by `DetailKeyValueTable`'s rule. */
+function hasDetailValue({ value }: DetailField): boolean {
+  return value !== undefined && value !== null && value !== "";
 }
 
 function renderSearchInfoPanel(
@@ -822,9 +836,13 @@ function renderSearchInfoPanel(
     <DetailPanel>
       {selectedIds.length === 1 ? (
         <>
-          <DetailPanel.Header
-            title={(selectedRow?.[panelTitleField] as string | undefined) ?? ""}
-          />
+          {!props.hideHeader && (
+            <DetailPanel.Header
+              title={
+                (selectedRow?.[panelTitleField] as string | undefined) ?? ""
+              }
+            />
+          )}
           {order.map((group) => {
             const items = (grouped[group] || []).filter((item) =>
               allowedFieldIds.has(item.id),
@@ -905,6 +923,10 @@ function renderSearchInfoPanel(
                 render: () => renderMetadataLink(href, String(rawValue)),
               };
             });
+
+            if (props.hideEmptySections && !fields.some(hasDetailValue)) {
+              return null;
+            }
 
             return (
               <DetailPanel.CollapsibleSection

@@ -213,6 +213,70 @@ describe("InfoPanel — search variant", () => {
   });
 });
 
+describe("InfoPanel — empty sections", () => {
+  const partialFeature = {
+    patric_id: "fig|1.1.peg.2",
+    genome_id: "1.1",
+    product: "Focus protein",
+  };
+
+  it("shows a section with no values as None available", () => {
+    render(
+      <InfoPanel
+        selectedIds={["fig|1.1.peg.2"]}
+        activeTab="genome_feature"
+        selectedRow={partialFeature}
+      />,
+    );
+    expect(screen.getByRole("button", { name: "Location" })).toBeInTheDocument();
+    expect(screen.getAllByText("None available").length).toBeGreaterThan(0);
+  });
+
+  it("leaves such sections out with hideEmptySections", () => {
+    render(
+      <InfoPanel
+        selectedIds={["fig|1.1.peg.2"]}
+        activeTab="genome_feature"
+        selectedRow={partialFeature}
+        hideEmptySections
+      />,
+    );
+    for (const kept of ["Genome", "Identifiers", "Annotation"]) {
+      expect(screen.getByRole("button", { name: kept })).toBeInTheDocument();
+    }
+    expect(
+      screen.queryByRole("button", { name: "Location" }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText("None available")).not.toBeInTheDocument();
+  });
+});
+
+describe("InfoPanel — header", () => {
+  it("titles the record, unless its host already names it", () => {
+    const row = { patric_id: "fig|1.1.peg.2", genome_id: "1.1" };
+    const { rerender } = render(
+      <InfoPanel
+        selectedIds={["fig|1.1.peg.2"]}
+        activeTab="genome_feature"
+        selectedRow={row}
+      />,
+    );
+    expect(
+      screen.getByRole("heading", { name: "fig|1.1.peg.2" }),
+    ).toBeInTheDocument();
+    rerender(
+      <InfoPanel
+        selectedIds={["fig|1.1.peg.2"]}
+        activeTab="genome_feature"
+        selectedRow={row}
+        hideHeader
+      />,
+    );
+    expect(screen.queryByRole("heading")).not.toBeInTheDocument();
+    expect(screen.getByText("fig|1.1.peg.2")).toBeInTheDocument();
+  });
+});
+
 describe("InfoPanel — metadata link classification", () => {
   it("keeps Genome ID an internal relative link, not rebased onto a production origin", () => {
     render(

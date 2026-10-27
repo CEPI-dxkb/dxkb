@@ -97,6 +97,7 @@ function dataApiFailure(
 /** Resources whose reads outlast the shared `upstreamTimeoutMs.dataApi` budget. */
 const resourceTimeoutMs: Partial<Record<DataResource, number>> = {
   genome_amr: upstreamTimeoutMs.dataApiGenomeAmr,
+  genome_feature: upstreamTimeoutMs.dataApiGenomeFeature,
 };
 
 /** Where one upstream request goes, and how long it may take to answer. */

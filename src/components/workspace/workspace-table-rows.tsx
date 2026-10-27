@@ -47,6 +47,7 @@ function SpecialRow({
       {cells.map((cell) => {
         const className = clsx(
           cell.id === "name" ? "pl-6" : "pl-2",
+          // eslint-disable-next-line shadcn/require-static-classes -- column classes come from columnClassMap in workspace-table-columns.tsx, authored as static strings
           cell.metaClassName,
         );
         return (

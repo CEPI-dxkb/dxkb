@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { ChevronRight, Globe, Home } from "lucide-react";
+import { ChevronRight, Globe, Home, Star } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
   buildWorkspaceBreadcrumbs,
@@ -17,6 +18,9 @@ interface WorkspaceBreadcrumbsProps {
   currentUsername?: string;
   /** When viewMode is "shared", first breadcrumb links here (current user's workspace root) */
   workspaceRootUsername?: string;
+  /** When provided, renders a star button before the breadcrumbs to favorite/unfavorite the current folder */
+  isFavorite?: boolean;
+  onToggleFavorite?: () => void;
 }
 
 export function WorkspaceBreadcrumbs({
@@ -26,6 +30,8 @@ export function WorkspaceBreadcrumbs({
   viewMode = "home",
   currentUsername,
   workspaceRootUsername,
+  isFavorite,
+  onToggleFavorite,
 }: WorkspaceBreadcrumbsProps) {
   const breadcrumbs = buildWorkspaceBreadcrumbs({
     mode: viewMode,
@@ -40,6 +46,22 @@ export function WorkspaceBreadcrumbs({
       aria-label="Workspace path"
       className="flex flex-wrap items-center gap-1 text-sm"
     >
+      {onToggleFavorite && (
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          onClick={onToggleFavorite}
+          aria-label={isFavorite ? "Remove from favorites" : "Add to favorites"}
+          className="mr-1 shrink-0"
+        >
+          <Star
+            className={cn(
+              "size-4",
+              isFavorite ? "fill-highlight text-highlight" : "text-muted-foreground",
+            )}
+          />
+        </Button>
+      )}
       {breadcrumbs.map((breadcrumb, index) => {
         const content = (
           <>

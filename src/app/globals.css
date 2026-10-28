@@ -479,7 +479,7 @@
 }
 
 .about-section {
-  @apply mx-8 my-16 grid w-[calc(100%-4rem)] max-w-300 grid-cols-1 items-center gap-8 lg:mx-auto lg:w-[90%] lg:grid-cols-2 lg:gap-16;
+  @apply mx-auto my-16 flex w-[90%] max-w-3xl flex-col items-center;
 }
 
 .funding-section {

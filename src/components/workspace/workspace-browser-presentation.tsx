@@ -118,6 +118,8 @@ interface WorkspaceBrowserPresentationProps {
   sharedRootUsername?: string;
   memberCountByPath?: Record<string, number>;
   favoritePaths?: string[];
+  isCurrentFolderFavorite?: boolean;
+  onToggleCurrentFolderFavorite?: () => void;
   selectedPaths: string[];
   onSelect: (
     item: WorkspaceItem,
@@ -151,6 +153,8 @@ export function WorkspaceBrowserPresentation({
   sharedRootUsername,
   memberCountByPath,
   favoritePaths,
+  isCurrentFolderFavorite,
+  onToggleCurrentFolderFavorite,
   selectedPaths,
   onSelect,
   onItemDoubleClick,
@@ -209,6 +213,8 @@ export function WorkspaceBrowserPresentation({
           viewMode={breadcrumbMode}
           currentUsername={currentUsername}
           workspaceRootUsername={workspaceRootUsername}
+          isFavorite={isCurrentFolderFavorite}
+          onToggleFavorite={onToggleCurrentFolderFavorite}
         />
         <WorkspaceToolbar
           searchQuery={toolbar.searchQuery}

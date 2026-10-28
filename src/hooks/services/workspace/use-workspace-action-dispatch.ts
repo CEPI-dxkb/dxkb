@@ -175,6 +175,7 @@ export function useWorkspaceActionDispatch({
 
   return {
     handleAction,
+    favoriteMutate: favoriteMutation.mutate,
     isDownloading: downloadMutation.isPending,
     isFavoriting: favoriteMutation.isPending,
   };

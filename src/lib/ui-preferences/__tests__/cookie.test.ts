@@ -3,7 +3,7 @@ import {
   parseUiPreferences,
   serializeUiPreferenceCookie,
 } from "../cookie";
-import { defaultUiPreferences } from "../definitions";
+import { defaultUiPreferences, uiPreferenceDefinitions } from "../definitions";
 
 describe("parseUiPreference", () => {
   it("returns the default when the cookie is absent", () => {
@@ -59,6 +59,24 @@ describe("workspaceSort", () => {
       });
     },
   );
+});
+
+describe("compareRegionDensity", () => {
+  const { cookieName, schema, defaultValue } =
+    uiPreferenceDefinitions.compareRegionDensity;
+
+  it("is its own cookie, Comfortable unless chosen", () => {
+    expect(cookieName).toBe("dxkb-compare-region-density");
+    expect(defaultValue).toBe("comfortable");
+    expect(parseUiPreference("compareRegionDensity", undefined)).toBe("comfortable");
+  });
+
+  it("accepts the two densities and rejects anything else", () => {
+    expect(schema.safeParse("compact").success).toBe(true);
+    expect(schema.safeParse("dense").success).toBe(false);
+    expect(parseUiPreference("compareRegionDensity", '"compact"')).toBe("compact");
+    expect(parseUiPreference("compareRegionDensity", '"dense"')).toBe("comfortable");
+  });
 });
 
 describe("parseUiPreferences", () => {

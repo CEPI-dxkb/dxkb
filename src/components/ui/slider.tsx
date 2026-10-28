@@ -14,15 +14,19 @@ import { cn } from "@/lib/utils";
 // look follows the form controls: a `bg-muted-foreground/40` track, and a
 // `size-4 border-muted-foreground bg-background` thumb whose ring clears the
 // 3:1 non-text contrast WCAG 1.4.11 asks of a control's boundary (upstream's
-// `bg-muted` track is 1.16:1 against the service card).
+// `bg-muted` track is 1.16:1 against the service card). `getAriaValueText`
+// goes to each thumb, where Base UI reads it, so a slider whose position is
+// not its value (the Compare Region zoom's log scale) can say what it means.
 function Slider({
   className,
   defaultValue,
   value,
   min = 0,
   max = 100,
+  getAriaValueText,
   ...props
-}: SliderPrimitive.Root.Props) {
+}: SliderPrimitive.Root.Props &
+  Pick<SliderPrimitive.Thumb.Props, "getAriaValueText">) {
   const _values = Array.isArray(value)
     ? value
     : Array.isArray(defaultValue)
@@ -57,6 +61,7 @@ function Slider({
           <SliderPrimitive.Thumb
             data-slot="slider-thumb"
             key={index}
+            getAriaValueText={getAriaValueText}
             className="relative block size-4 shrink-0 rounded-full border border-muted-foreground bg-background ring-ring/50 transition-[color,box-shadow] select-none after:absolute after:-inset-2 hover:ring-3 focus-visible:ring-3 focus-visible:outline-hidden active:ring-3 disabled:opacity-50"
           />
         ))}

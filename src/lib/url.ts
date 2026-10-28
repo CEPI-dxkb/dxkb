@@ -93,3 +93,22 @@ export function toQueryString(params: URLSearchParams): string {
     )
     .join("&");
 }
+
+/**
+ * Rewrite the current URL's query in place with `replaceState`, for state a
+ * page mirrors into its URL without adding a history entry. `apply` edits a
+ * copy of the current params; the pathname and hash are kept, the query is
+ * serialized with `toQueryString`, and history is left alone when nothing
+ * changed. Browser only.
+ */
+export function replaceQuery(apply: (params: URLSearchParams) => void): void {
+  const { pathname, search, hash } = window.location;
+  // A separate URLSearchParams: mutating url.searchParams re-escapes the query.
+  const params = new URLSearchParams(search);
+  apply(params);
+  const query = toQueryString(params);
+  const next = `${pathname}${query ? `?${query}` : ""}${hash}`;
+  if (next !== `${pathname}${search}${hash}`) {
+    window.history.replaceState(null, "", next);
+  }
+}

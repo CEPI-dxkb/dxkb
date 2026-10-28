@@ -14,6 +14,7 @@ import {
 import { getFeature, type FeatureLookup } from "@/lib/feature-view/server";
 import { isTaxonId } from "@/lib/taxonomy-view";
 import { getTaxonomy } from "@/lib/taxonomy-view/server";
+import { toQueryString } from "@/lib/url";
 import { featureHref } from "@/lib/views/hrefs";
 import type { SearchParamsRecord } from "@/lib/views/rql";
 import {
@@ -28,7 +29,24 @@ interface FeaturePageProps {
   searchParams: Promise<SearchParamsRecord>;
 }
 
-async function loadFeature(rawFeatureId: string, source: RouteParamSource) {
+/** `?…` for the query the request carried, or "" for none. */
+function querySuffix(query: SearchParamsRecord): string {
+  const params = new URLSearchParams();
+  for (const [name, value] of Object.entries(query)) {
+    if (value === undefined) continue;
+    for (const item of Array.isArray(value) ? value : [value]) {
+      params.append(name, item);
+    }
+  }
+  const search = toQueryString(params);
+  return search ? `?${search}` : "";
+}
+
+async function loadFeature(
+  rawFeatureId: string,
+  source: RouteParamSource,
+  query: SearchParamsRecord,
+) {
   // The two entry points receive this segment in different encodings, so
   // each declares which it is. Decoding unconditionally made
   // `generateMetadata` resolve a different record than the body for any id
@@ -52,7 +70,11 @@ async function loadFeature(rawFeatureId: string, source: RouteParamSource) {
   }
   if (!result.feature) notFound();
   if (result.usedAlternateId && result.feature.feature_id !== featureId) {
-    permanentRedirect(featureHref(result.feature.feature_id));
+    // Keep the query: a BRC-ID link into a tab (the Compare Region Viewer's
+    // "Compare regions around this gene") must land on that tab.
+    permanentRedirect(
+      `${featureHref(result.feature.feature_id)}${querySuffix(query)}`,
+    );
   }
   return { featureId, feature: result.feature } as const;
 }
@@ -84,9 +106,10 @@ async function loadLineage(
 
 export async function generateMetadata({
   params,
+  searchParams,
 }: FeaturePageProps): Promise<Metadata> {
-  const { featureId } = await params;
-  const loaded = await loadFeature(featureId, "metadata");
+  const [{ featureId }, query] = await Promise.all([params, searchParams]);
+  const loaded = await loadFeature(featureId, "metadata", query);
   if (loaded.unavailable !== undefined) return { title: `${loaded.featureId} | Feature` };
   const { feature } = loaded;
   return {
@@ -100,7 +123,7 @@ export default async function FeaturePage({
   searchParams,
 }: FeaturePageProps) {
   const [{ featureId }, query] = await Promise.all([params, searchParams]);
-  const loaded = await loadFeature(featureId, "page");
+  const loaded = await loadFeature(featureId, "page", query);
   if (loaded.unavailable !== undefined) {
     return (
       <RecordUnavailable

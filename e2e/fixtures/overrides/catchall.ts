@@ -16,6 +16,7 @@ import {
   surveillanceRecord,
   taxonomyRecord,
 } from "@/lib/e2e-fixtures/records";
+import { compareRegionScenarioOverrides } from "./compare-region";
 import { genomeBrowserScenarioOverrides } from "./genome-browser";
 import {
   buildBrowserRpcSuccess,
@@ -538,6 +539,10 @@ const namedResourceScenarioOverrides: JsonOverride[] = [
   ...surveillanceScenarioOverrides,
   ...epitopeAssayScenarioOverrides,
   ...epitopeScenarioOverrides,
+  // Ahead of the genome-feature bundle, whose `/api/data/genome_feature` GET
+  // would otherwise answer the Compare Region card's member read (first match
+  // wins) with a list, so the card would show "No BV-BRC feature record".
+  ...compareRegionScenarioOverrides,
   ...genomeFeatureScenarioOverrides,
   ...genomeSequenceScenarioOverrides,
   ...genomeBrowserScenarioOverrides,

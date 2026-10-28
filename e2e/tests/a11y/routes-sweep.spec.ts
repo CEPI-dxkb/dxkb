@@ -14,7 +14,12 @@ import { forEachTheme } from "../../a11y/theme";
 import generatedBaseline, { reflowSkip } from "../../a11y/baseline.generated";
 import { isReflowSkipped } from "../../a11y/baseline";
 import { recordScan } from "../../a11y/report";
-import { GenomeBrowserPanelPage } from "../../pages";
+import { CompareRegionPage, GenomeBrowserPanelPage } from "../../pages";
+import {
+  densitySpecs,
+  labelWidthFor,
+  plotWidthFor,
+} from "@/lib/compare-region/density";
 import { scanTargets } from "../../a11y/routes";
 import type { BaselineMap } from "../../a11y/baseline";
 import type { RouteEntry } from "../../a11y/routes";
@@ -27,6 +32,31 @@ const auspiceDatasetId = "Influenza-A-Virus/H3N2/HA";
 const baselineMap: BaselineMap = generatedBaseline;
 
 const genomeBrowserSelector = '[data-testid="genome-browser"]';
+
+/** The Compare Region tab's card: its command bar, selection strip and figure. */
+const compareRegionCardSelector = 'section[aria-label="Compare regions"]';
+
+/**
+ * No `color-contrast` violation inside the Compare Region card, asserted
+ * outright rather than left to the baseline: the wildcard baseline's
+ * `color-contrast` allowance (DXKBCORE-174) is for host pages and once masked
+ * the card's unpressed toggle options at 3.7:1. The page around the card (its
+ * feature title among it) stays with the baseline.
+ */
+async function expectCompareRegionContrast(
+  page: Page,
+  context: string,
+): Promise<void> {
+  const contrast = (
+    await scanPage(page, { include: compareRegionCardSelector })
+  ).filter((violation) => violation.id === "color-contrast");
+  expect(
+    contrast,
+    contrast.length === 0
+      ? undefined
+      : formatBlocking(contrast, `the Compare Region card (${context})`),
+  ).toEqual([]);
+}
 
 /**
  * Scan a Genome Browser tab in both themes: the host page with the browser
@@ -133,6 +163,15 @@ function assertNoBlockingViolations(
   ).toEqual([]);
 }
 
+/** WCAG 1.4.10 reflow: whether the document scrolls sideways at the current viewport. */
+async function hasHorizontalScroll(page: Page): Promise<boolean> {
+  return page.evaluate(
+    () =>
+      document.documentElement.scrollWidth >
+      document.documentElement.clientWidth,
+  );
+}
+
 function buildOverrides(route: RouteEntry): JsonOverride[] {
   if (route.unauthenticated) {
     return [...a11yBackendOverrides];
@@ -181,13 +220,9 @@ test.describe("a11y route sweep", () => {
 
       // WCAG 1.4.10 reflow: no horizontal scroll at 320px viewport width.
       await page.setViewportSize({ width: 320, height: 568 });
-      const hasHorizontalScroll = await page.evaluate(
-        () =>
-          document.documentElement.scrollWidth >
-          document.documentElement.clientWidth,
-      );
+      const scrolls = await hasHorizontalScroll(page);
       if (isReflowSkipped(reflowSkip, target.name)) {
-        if (hasHorizontalScroll) {
+        if (scrolls) {
           const ticket = reflowSkip[target.name]?.ticket ?? "unknown";
           console.warn(
             `[a11y/reflow-skip] ${target.name}: horizontal scroll suppressed (${ticket})`,
@@ -195,7 +230,7 @@ test.describe("a11y route sweep", () => {
         }
       } else {
         expect(
-          hasHorizontalScroll,
+          scrolls,
           `${target.name}: horizontal scroll at 320px viewport — WCAG 1.4.10 reflow failure`,
         ).toBe(false);
       }
@@ -459,5 +494,64 @@ test.describe("a11y component surfaces", () => {
         assertNoBlockingViolations(violations, "feature-browser-view", theme);
       },
     );
+  });
+
+  // Compare Region tab — the Compare Region Viewer
+  // (src/components/compare-region/), drawn from the ten-genome fixture that
+  // a11yBackendOverrides answers `/api/compare-region` with. It lives here for
+  // the Genome Browser tabs' first reason: the Feature page's page.tsx is
+  // claimed by the "feature" entry. The whole page is scanned, full ruleset:
+  // the figure is the app's own SVG, so nothing in it is disabled.
+  test("feature compare region tab has no blocking a11y violations", async ({
+    page,
+    context,
+  }) => {
+    await context.clearCookies();
+    await applyBackendMocks(page, { overrides: [...a11yBackendOverrides] });
+    await page.goto(
+      "/feature/PATRIC.1282460.2049.JX869059.CDS.1.100.fwd?tab=compare-region",
+    );
+    await awaitSettled(page);
+    const compare = new CompareRegionPage(page);
+    await compare.expectFigure(10);
+    await forEachTheme(page, async (theme) => {
+      const violations = await scanPage(page);
+      assertNoBlockingViolations(violations, "feature-compare-region", theme);
+      await expectCompareRegionContrast(page, theme);
+    });
+
+    // A pinned gene turns the hint row into the pin strip (its own text and
+    // links on a muted wash), so that state is scanned too.
+    await compare.glyph(0, 0).click();
+    await expect(compare.openFeature).toBeVisible();
+    // The card with the gene's record, not its "no record" notice.
+    await expect(
+      compare.featureCard.getByText("AFFC01000001", { exact: true }),
+    ).toBeVisible();
+    await forEachTheme(page, async (theme) => {
+      const violations = await scanPage(page);
+      assertNoBlockingViolations(
+        violations,
+        "feature-compare-region/pinned",
+        theme,
+      );
+      await expectCompareRegionContrast(page, `pinned, ${theme}`);
+    });
+
+    // WCAG 1.4.10 reflow, as the routes sweep checks every route. The figure
+    // keeps a minimum width (Comfortable's narrowest label column beside
+    // `minPlotWidth`) and scrolls inside its own scroller, so the page must
+    // not scroll at 320px once the panel has measured the narrower card. A
+    // phone's figure is at that minimum already, so wait for the width, not a
+    // change of it.
+    const narrowFigure =
+      plotWidthFor(densitySpecs.comfortable, 320) +
+      labelWidthFor(densitySpecs.comfortable, 320);
+    await page.setViewportSize({ width: 320, height: 568 });
+    await expect(compare.figure).toHaveAttribute("width", String(narrowFigure));
+    expect(
+      await hasHorizontalScroll(page),
+      "feature-compare-region: horizontal scroll at 320px viewport — WCAG 1.4.10 reflow failure",
+    ).toBe(false);
   });
 });

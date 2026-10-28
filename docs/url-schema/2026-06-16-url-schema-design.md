@@ -546,6 +546,19 @@ Genome Phase 1 replaces both scaffold handlers with explicit routes:
   member defaults to the first 100 kb of its longest sequence. The `browser.` params are
   tab-owned, so a tab switch clears them. Legacy `#view_tab=browser` (Genome) and
   `#view_tab=genomeBrowser` (Feature) with `loc`, `tracks` and `highlight` map onto them.
+- The Compare Region Viewer tab (Feature member, a CDS with a BRC ID) is
+  `?tab=compare-region` with five settings params: `compare.size` (the window, bp: `5000`,
+  `10000`, `15000`, `20000`, `50000`, `75000` or `100000`), `compare.genomes` (`5`, `10`,
+  `15`, `20` or `50`), `compare.method` (`pgfam` or `plfam`), `compare.filter`
+  (`reference`, legacy's "representative+reference", whose `+` would read as a space,
+  `all`, `genomeGroup` or `featureGroup`) and `compare.group` (the workspace path of the
+  genome or feature group, present with and only with a group filter). Defaults (`10000`,
+  `10`, `pgfam`, `reference`, no group) are omitted, and a URL with any value not offered,
+  a group filter without a workspace path, or a group on another filter opens on all the
+  defaults. They are written with `replaceState` when
+  the user presses Update, not per change, so a new setting adds no history entry. The
+  `compare.` params are tab-owned, so a tab switch clears them. Legacy
+  `#view_tab=compareRegionViewer` maps onto `?tab=compare-region`.
 
 Protein Structures Phase 8 replaces its historical scaffold body with explicit dual-mode
 composition:

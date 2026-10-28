@@ -4,7 +4,7 @@ import {
   type GenomeBrowserFocus,
 } from "@/lib/genome-browser/contract";
 import { featureProteinStructureRql } from "@/lib/protein-structure-view/scope";
-import type { FeatureViewRecord } from "./schema";
+import { isPatricFeatureId, type FeatureViewRecord } from "./schema";
 
 export const featureTabKeys = [
   "overview",
@@ -20,6 +20,7 @@ export type FeatureTab = (typeof featureTabKeys)[number];
 /** Legacy BV-BRC tab names (`#view_tab=genomeBrowser`) the server redirects. */
 const legacyFeatureTabs: Partial<Record<string, FeatureTab>> = {
   genomeBrowser: "genome-browser",
+  compareRegionViewer: "compare-region",
 };
 
 export function parseFeatureTab(
@@ -48,11 +49,25 @@ export function featureGenomeBrowserTarget(
     : null;
 }
 
+/**
+ * The gene the Compare Region Viewer centers on, or null when the tab is
+ * unavailable. Legacy BV-BRC offered it only for CDS features, and the
+ * compare_regions service takes the BRC ID (`patric_id`). It is the one
+ * predicate for both the tab's `enabled` and the panel the member renders.
+ */
+export function featureCompareRegionPeg(feature: FeatureViewRecord): string | null {
+  const peg = feature.patric_id;
+  return feature.feature_type === "CDS" && peg && isPatricFeatureId(peg)
+    ? peg
+    : null;
+}
+
 export function buildFeatureTabs(
   feature: FeatureViewRecord,
 ): readonly EntityViewTab<FeatureTab>[] {
   const hasInteractionId = Boolean(feature.feature_id);
   const browsable = featureGenomeBrowserTarget(feature) !== null;
+  const comparable = featureCompareRegionPeg(feature) !== null;
   return [
     { key: "overview", label: "Overview" },
     {
@@ -66,9 +81,10 @@ export function buildFeatureTabs(
     {
       key: "compare-region",
       label: "Compare Region Viewer",
-      enabled: false,
-      disabledReason:
-        "A supported compare-region data contract is not yet available.",
+      enabled: comparable,
+      disabledReason: comparable
+        ? undefined
+        : "Compare Region Viewer is only available for CDS features with a BRC ID.",
     },
     {
       key: "transcriptomics",

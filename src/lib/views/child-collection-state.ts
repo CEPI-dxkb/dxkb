@@ -15,15 +15,18 @@ import type { SearchParamsRecord } from "./rql";
  * so cleanup recognizes child state by a known prefix rather than by any dot: an
  * unrelated dotted param (`source.id=123`) survives a tab switch or a parent
  * collection write like every other param those navigations do not own. A new
- * nested table adds its key to this list. `browser` is the Genome Browser's
- * (`browser.loc`, `browser.tracks`, `browser.highlight`): not a table, but
- * tab-owned state the same cleanup must drop.
+ * nested table adds its key to this list. Two keys are not tables, but
+ * tab-owned state the same cleanup must drop: `browser`, the Genome Browser's
+ * (`browser.loc`, `browser.tracks`, `browser.highlight`), and `compare`, the
+ * Compare Region Viewer's settings (`compare.size`, `compare.genomes`,
+ * `compare.method`, `compare.filter`, `compare.group`).
  */
 export const childCollectionUrlKeys = [
   "amr",
   "assays",
   "biosets",
   "browser",
+  "compare",
   "domains",
   "epitopes",
   "features",

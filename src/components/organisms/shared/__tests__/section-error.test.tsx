@@ -154,4 +154,40 @@ describe("withSectionError", () => {
     );
     expect(outage.host).toBe("www.bv-brc.org");
   });
+
+  // In development React sends every server component's props to the browser,
+  // and it cannot revive an error whose cause has no stack frame outside Node
+  // internals (a budget's TimeoutError, undici's socket error): the browser
+  // throws "frame.join is not a function" and the route's error boundary
+  // replaces the whole page.
+  it("hands SectionError the message, never the error and its causes", async () => {
+    const outage = new UpstreamError(
+      {
+        status: 504,
+        code: "upstream_timeout",
+        message: "The BV-BRC data service did not respond (timed out after 30 s).",
+      },
+      { cause: new DOMException("The operation was aborted due to timeout", "TimeoutError") },
+    );
+
+    const element = await withSectionError("Data summary", () => Promise.reject(outage));
+
+    expect(element.props).toEqual(
+      expect.objectContaining({
+        error: "The BV-BRC data service did not respond (timed out after 30 s).",
+      }),
+    );
+    render(element);
+    expect(screen.getByTestId("section-error-message")).toHaveTextContent(
+      "The BV-BRC data service did not respond (timed out after 30 s).",
+    );
+  });
+
+  it("keeps the fallback copy for a failure that says nothing", async () => {
+    render(await withSectionError("Top genera", () => Promise.reject(new Error(""))));
+
+    expect(screen.getByTestId("section-error-message")).toHaveTextContent(
+      "This section could not be loaded. Please try again.",
+    );
+  });
 });

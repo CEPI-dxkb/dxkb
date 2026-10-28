@@ -70,6 +70,7 @@ export const upstreamServices = {
   jobService: "the BV-BRC job service",
   fileStorage: "the BV-BRC file storage service",
   minhash: "the BV-BRC minhash service",
+  compareRegion: "the BV-BRC compare region service",
 } as const;
 
 /**
@@ -92,6 +93,15 @@ export const upstreamTimeoutMs = {
    * ~11 s), then answers in 2–3 s once warm.
    */
   dataApiGenomeAmr: 60_000,
+  /**
+   * Data API reads of features (`genome_feature`), the same kind of override.
+   * A taxon's Features tab joins through `genome(...)`, which Solr runs as a
+   * cross-collection join that is not cached: for Influenza A (taxon 2955291,
+   * 1.6M genomes) the first 200 rows took 109–125 s, as they do on legacy
+   * BV-BRC, which sends the same join and waits for it. Kept under undici's
+   * 300 s headers timeout.
+   */
+  dataApiGenomeFeature: 150_000,
   /** Workspace JSON-RPC (a recursive `Workspace.ls` of a large home is the slow case). */
   workspace: 30_000,
   /** App service JSON-RPC, including `start_app2`, and job stdout/stderr. */
@@ -100,6 +110,12 @@ export const upstreamTimeoutMs = {
   fileStorage: 30_000,
   /** Similar Genome Finder computes distances before it answers. */
   minhash: 60_000,
+  /**
+   * The SEED compare_regions service pins homologs in every compared genome
+   * before it answers: 7–20 s for 5–10 genomes, 72 s for 50 genomes over all
+   * genomes (measured 2026-10-23).
+   */
+  compareRegion: 120_000,
 } as const;
 
 const timeoutCodes = new Set([

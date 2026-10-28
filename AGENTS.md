@@ -53,7 +53,7 @@ Requires **Node v24** (`nvm use 24`, pinned in `.nvmrc`). `pnpm start` = prod se
 
 ### URLs
 
-- Browser-visible URLs are built with `encodeQueryComponent`, `encodePathSegment`, and `toQueryString` from `src/lib/url.ts`, never `encodeURIComponent` or `URLSearchParams#toString()`, so RQL and paths stay readable (`/genome?rql=eq(genus,Escherichia)`). Backend request URLs, external links, iframe sources, and RQL value escaping (`escapeRqlValue`) are exempt. Mutating `url.searchParams` re-escapes the whole query; build a separate `URLSearchParams` and serialize it with `toQueryString`.
+- Browser-visible URLs are built with `encodeQueryComponent`, `encodePathSegment`, and `toQueryString` (and rewritten in place with `replaceQuery`) from `src/lib/url.ts`, never `encodeURIComponent` or `URLSearchParams#toString()`, so RQL and paths stay readable (`/genome?rql=eq(genus,Escherichia)`). Backend request URLs, external links, iframe sources, and RQL value escaping (`escapeRqlValue`) are exempt. Mutating `url.searchParams` re-escapes the whole query; build a separate `URLSearchParams` and serialize it with `toQueryString`.
 - `encodePathSegment` leaves `:` literal, so use it only after a literal `/` (`/genome/${…}`). Template substitution that can put a value first (`resolveLink` in `metadata-link-policy.ts`) keeps `encodeURIComponent`, or a row value like `javascript:…` would survive as a scheme.
 
 ### Design-system lint (`@shadcn/lint`)

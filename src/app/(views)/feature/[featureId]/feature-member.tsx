@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Suspense, use, type ReactNode } from "react";
+import { CompareRegionPanel } from "@/components/compare-region";
 import { GenomeBrowserPanel } from "@/components/genome-browser";
 import { viewIcons } from "@/components/views/view-icons";
 import {
@@ -10,6 +11,7 @@ import {
 } from "@/components/views";
 import {
   buildFeatureTabs,
+  featureCompareRegionPeg,
   featureDisplayName,
   featureFastaTypes,
   featureGenomeBrowserTarget,
@@ -135,12 +137,15 @@ export function FeatureMember({
   activeTab,
 }: FeatureMemberProps) {
   const browserTarget = featureGenomeBrowserTarget(feature);
+  const comparePeg = featureCompareRegionPeg(feature);
   const content =
     activeTab === "genome-browser" && browserTarget ? (
       <GenomeBrowserPanel
         genomeId={browserTarget.genomeId}
         focus={browserTarget.focus}
       />
+    ) : activeTab === "compare-region" && comparePeg ? (
+      <CompareRegionPanel patricId={comparePeg} />
     ) : activeTab === "interactions" ? (
       <ResourceChildCollection
         urlKey="interactions"

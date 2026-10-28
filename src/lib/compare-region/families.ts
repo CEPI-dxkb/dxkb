@@ -58,8 +58,8 @@ function centerOf(item: PlacedFeature): number {
 
 /**
  * Ribbons join every same-family pair across each gap. A family with many
- * copies in a row (transposases) links each copy to its nearest one instead,
- * so a gap never holds more ribbons than genes.
+ * copies (transposases) in either row of a gap links each upper copy to its
+ * nearest lower one instead, so a gap never holds more ribbons than genes.
  */
 export function indexFamilies(layout: CompareRegionLayout): FamilyIndex {
   const members = new Map<number, FeatureRef[]>();
@@ -84,6 +84,13 @@ export function indexFamilies(layout: CompareRegionLayout): FamilyIndex {
   for (let rowIndex = 0; rowIndex + 1 < layout.rows.length; rowIndex += 1) {
     const upper = layout.rows[rowIndex];
     const lower = layout.rows[rowIndex + 1];
+    const upperCopies = new Map<number, number>();
+    for (const item of upper.features) {
+      const family = item.feature.family;
+      if (family !== null) {
+        upperCopies.set(family, (upperCopies.get(family) ?? 0) + 1);
+      }
+    }
     const lowerByFamily = new Map<number, number[]>();
     lower.features.forEach((item, featureIndex) => {
       const family = item.feature.family;
@@ -99,7 +106,7 @@ export function indexFamilies(layout: CompareRegionLayout): FamilyIndex {
       const matches = lowerByFamily.get(family);
       if (!matches) return;
       let targets = matches;
-      if (matches.length > 2) {
+      if (matches.length > 2 || (upperCopies.get(family) ?? 0) > 2) {
         const nearest = matches.reduce((best, candidate) =>
           Math.abs(centerOf(lower.features[candidate]) - centerOf(item)) <
           Math.abs(centerOf(lower.features[best]) - centerOf(item))

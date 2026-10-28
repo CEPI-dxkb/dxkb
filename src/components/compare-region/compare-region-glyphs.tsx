@@ -5,8 +5,9 @@
  * hit and a bar per other feature, each with its label when one fits whole,
  * and the small swatch the tooltip and the selection strip show. The glyph
  * layer takes only the model and the zoom, so a hover redraws none of it.
- * Its glyphs are the pointer targets: each carries `data-row` and
- * `data-feature` for `useChartPointer`.
+ * Its glyphs are the pointer targets, and buttons for the keyboard: each
+ * carries `data-row` and `data-feature` for `useChartPointer`, and its name
+ * (`featureName`), in a group named for its row (`rowName`).
  */
 import { deepen, featurePaint, labelInk } from "@/lib/compare-region/colors";
 import type { CompareRegionFeature } from "@/lib/compare-region/contract";
@@ -24,9 +25,11 @@ import {
 } from "@/lib/compare-region/figure-frame";
 import { glyphPath } from "@/lib/compare-region/glyph-paths";
 import { placeGlyph } from "@/lib/compare-region/glyph-placement";
+import { featureName, rowName } from "@/lib/compare-region/keyboard";
 import type { GlyphLabel, TextMeasure } from "@/lib/compare-region/labels";
 import type { PlacedRow } from "@/lib/compare-region/layout";
 import { trackScale, type TrackMatrix } from "@/lib/compare-region/ruler";
+import { cn } from "@/lib/utils";
 
 interface GlyphOutlineProps {
   spec: DensitySpec;
@@ -35,9 +38,13 @@ interface GlyphOutlineProps {
   fill: string | undefined;
   pinned: boolean;
   faded: boolean;
-  /** Only the glyph layer's glyphs carry these (the pointer targets). */
+  /** Only the glyph layer's glyphs carry these (the pointer targets and buttons). */
   rowIndex?: number;
   featureIndex?: number;
+  /** The button's accessible name. */
+  name?: string;
+  /** Whether it is the figure's tab stop (`tabIndex` 0; every other button's is -1). */
+  tabStop?: boolean;
 }
 
 /** One glyph's outline, drawn for its kind: filled by family or identity, or quiet and neutral. */
@@ -50,25 +57,45 @@ function GlyphOutline({
   faded,
   rowIndex,
   featureIndex,
+  name,
+  tabStop = false,
 }: GlyphOutlineProps) {
   const data =
     rowIndex === undefined
       ? {}
-      : { "data-row": rowIndex, "data-feature": featureIndex };
-  if (kind === "blast") return <path d={d} fill={fill} {...data} />;
+      : {
+          "data-row": rowIndex,
+          "data-feature": featureIndex,
+          role: "button",
+          "aria-label": name,
+          tabIndex: tabStop ? 0 : -1,
+        };
+  // A focused gene shows its ring, tooltip and trace (as a hovered one
+  // does): the trace's veil would cover the browser's outline.
+  const target = rowIndex === undefined ? undefined : "outline-none";
+  if (kind === "blast") {
+    return <path d={d} fill={fill} className={target} {...data} />;
+  }
   if (kind === "other") {
-    return <path d={d} className="fill-muted-foreground/40" {...data} />;
+    return (
+      <path
+        d={d}
+        className={cn("fill-muted-foreground/40", target)}
+        {...data}
+      />
+    );
   }
   if (kind === "orphan") {
     // No family: a quiet neutral arrow, no texture.
     return (
       <path
         d={d}
-        className={
+        className={cn(
           pinned
             ? "fill-muted-foreground/30 stroke-foreground/60"
-            : "fill-muted-foreground/20 stroke-card dark:fill-muted-foreground/25"
-        }
+            : "fill-muted-foreground/20 stroke-card dark:fill-muted-foreground/25",
+          target,
+        )}
         strokeWidth={pinned ? 1.25 : 1}
         {...data}
       />
@@ -80,14 +107,14 @@ function GlyphOutline({
         d={d}
         fill={fill}
         fillOpacity={0.25}
-        className="stroke-foreground/55"
+        className={cn("stroke-foreground/55", target)}
         strokeDasharray={spec.pseudoDash}
         {...data}
       />
     ) : (
       <path
         d={d}
-        className="fill-muted-foreground/10 stroke-foreground/55"
+        className={cn("fill-muted-foreground/10 stroke-foreground/55", target)}
         strokeDasharray={spec.pseudoDash}
         {...data}
       />
@@ -101,6 +128,7 @@ function GlyphOutline({
         fill={fill}
         stroke={fill ? deepen(fill) : undefined}
         strokeWidth={spec.pinnedStroke}
+        className={target}
         {...data}
       />
     );
@@ -109,9 +137,10 @@ function GlyphOutline({
     <path
       d={d}
       fill={fill}
-      className={
-        faded ? "stroke-card opacity-45 dark:opacity-35" : "stroke-card"
-      }
+      className={cn(
+        faded ? "stroke-card opacity-45 dark:opacity-35" : "stroke-card",
+        target,
+      )}
       strokeWidth={1}
       {...data}
     />
@@ -138,6 +167,8 @@ function LabelText({
     fontSize: size,
     textAnchor: "middle" as const,
     pointerEvents: "none" as const,
+    // The glyph's own name says it.
+    "aria-hidden": true,
   };
   if (onFill) {
     return (
@@ -168,7 +199,7 @@ interface GlyphMarkProps extends GlyphOutlineProps {
   label?: GlyphLabel | null;
 }
 
-/** A glyph, and its label when one fits whole (the label is never a pointer target). */
+/** A glyph, and its label when one fits whole (the label is never a pointer target, nor named). */
 export function GlyphMark(props: GlyphMarkProps) {
   const { spec, kind, faded, label } = props;
   return (
@@ -195,6 +226,8 @@ interface GlyphRowProps {
   reach: number;
   /** The pressed glyph's index, when it is in this row. */
   pressedFeature: number | null;
+  /** The tab stop's index, when it is in this row. */
+  stopFeature: number | null;
   families: FamilyIndex;
   measure: TextMeasure;
 }
@@ -208,15 +241,19 @@ function GlyphRow({
   plotWidth,
   reach,
   pressedFeature,
+  stopFeature,
   families,
   measure,
 }: GlyphRowProps) {
   const pinnedFid = placed.row.pinnedFid;
   return (
-    <g>
+    <g role="group" aria-label={rowName(rowIndex, placed.row.genomeName)}>
       {placed.features.map((item, featureIndex) => {
         // Zoomed in, most glyphs are off screen: skip them, but never the one
-        // a drag pressed, which holds the pointer's capture.
+        // a drag pressed, which holds the pointer's capture, nor the tab
+        // stop, which keyboard focus must be able to reach.
+        const kept =
+          featureIndex === pressedFeature || featureIndex === stopFeature;
         const glyph = placeGlyph(
           spec,
           rowFrame,
@@ -224,7 +261,7 @@ function GlyphRow({
           x,
           plotWidth,
           measure,
-          featureIndex === pressedFeature ? Infinity : reach,
+          kept ? Infinity : reach,
         );
         if (!glyph) return null;
         return (
@@ -239,6 +276,8 @@ function GlyphRow({
             label={glyph.label}
             rowIndex={rowIndex}
             featureIndex={featureIndex}
+            name={featureName(item.feature)}
+            tabStop={featureIndex === stopFeature}
           />
         );
       })}
@@ -257,6 +296,8 @@ interface GlyphLayerProps {
    * it: removing it would lose the pointer's capture, and with it the drag.
    */
   pressed: FeatureRef | null;
+  /** The figure's tab stop (`useChartPointer`), drawn however far off the plot it is; none by default. */
+  tabStop?: FeatureRef | null;
   measure: TextMeasure;
 }
 
@@ -267,6 +308,7 @@ export function GlyphLayer({
   plotWidth,
   reach,
   pressed,
+  tabStop = null,
   measure,
 }: GlyphLayerProps) {
   const x = trackScale(model.layout.domain, matrix, plotWidth);
@@ -284,6 +326,9 @@ export function GlyphLayer({
           reach={reach}
           pressedFeature={
             pressed?.rowIndex === rowIndex ? pressed.featureIndex : null
+          }
+          stopFeature={
+            tabStop?.rowIndex === rowIndex ? tabStop.featureIndex : null
           }
           families={model.families}
           measure={measure}

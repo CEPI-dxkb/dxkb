@@ -54,6 +54,8 @@ export function ZoomCluster({ zoom }: { zoom: ZoomControls | null }) {
           step={1}
           disabled={!zoom}
           value={[zoomSliderValue(level, max)]}
+          // Its position is a log scale: it reads out as the zoom, "2.0×".
+          getAriaValueText={() => formatZoomLevel(level)}
           onValueChange={(value: number | readonly number[]) => {
             const next = typeof value === "number" ? value : value.at(0);
             if (!zoom || next === undefined) return;

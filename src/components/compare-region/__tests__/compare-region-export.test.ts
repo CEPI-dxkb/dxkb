@@ -44,16 +44,19 @@ function exportCompareRegionFigure(svg: SVGSVGElement, fileName: string) {
 }
 
 /**
- * A small figure shaped like the chart's: a classed root, a trace overlay,
- * the sticky ruler and label column (scrolled), and labels, one in capitals.
+ * A small figure shaped like the chart's: a classed root (a named group), a
+ * row of gene buttons, a trace overlay, the sticky ruler and label column
+ * (scrolled), and labels, one in capitals.
  */
 function figure(): SVGSVGElement {
   const host = document.createElement("div");
   host.innerHTML = `
-    <svg class="block text-foreground" width="900" height="200">
+    <svg class="block text-foreground" width="900" height="200" role="group" aria-label="Compared regions of 1 genome">
       <svg x="226" width="674" height="200" class="touch-pan-y cursor-grab">
         <rect class="fill-transparent" data-track-background="" width="674" height="200"></rect>
-        <path d="M0 0 L10 10" fill="oklch(0.73 0.12 212)" class="stroke-card"></path>
+        <g role="group" aria-label="Genome 01: Escherichia coli">
+          <path d="M0 0 L10 10" fill="oklch(0.73 0.12 212)" class="stroke-card" data-row="0" data-feature="0" role="button" aria-label="Focus protein, fig|1.1.peg.2" tabindex="0"></path>
+        </g>
         <g data-overlay=""><rect class="fill-card opacity-80" width="674" height="170"></rect></g>
         <g data-sticky="" transform="translate(0 40)"><text class="fill-foreground">0</text></g>
       </svg>
@@ -93,6 +96,19 @@ describe("exportCompareRegionFigure", () => {
     expect(markup).toContain(`xmlns="${svgNamespace}"`);
     expect(root.namespaceURI).toBe(svgNamespace);
     expect(root.querySelectorAll("path")).toHaveLength(1);
+  });
+
+  it("exports a picture: the figure an image, its genes no longer buttons", async () => {
+    exportCompareRegionFigure(figure(), "figure.svg");
+
+    const { root } = await downloaded();
+    expect(root.getAttribute("role")).toBe("img");
+    expect(root.getAttribute("aria-label")).toBe("Compared regions of 1 genome");
+    expect(root.querySelectorAll("[role], [tabindex], [aria-label]")).toHaveLength(
+      0,
+    );
+    // The glyph itself stays.
+    expect(root.querySelector('path[data-feature="0"]')).not.toBeNull();
   });
 
   it("drops the hover overlays: the trace, the row tint and the rings", async () => {
@@ -261,7 +277,7 @@ describe("exportCompareRegionFigure", () => {
 
     const { markup, root } = await downloaded();
     expect(markup).not.toMatch(/oklch\(|lab\(|lch\(|color-mix\(/);
-    const [path] = root.querySelectorAll("g > path[stroke]");
+    const [path] = root.querySelectorAll('path[d="M0 0"]');
     expect(path.getAttribute("fill")).toBe("rgb(140, 160, 100)");
     expect(path.getAttribute("fill-opacity")).toBe("0.4");
     expect(path.getAttribute("stroke")).toBe("rgb(130, 116, 40)");

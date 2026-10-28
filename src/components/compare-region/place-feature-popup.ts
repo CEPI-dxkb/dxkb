@@ -2,14 +2,15 @@
  * Places a gene's popup (the hover tooltip or the pinned card) beside its
  * glyph as it is drawn now, after a hover, a zoom, a pan, a scroll or a
  * density switch, or hides it while the gene is out of view. Written to the
- * element (custom properties `--popup-x`, `--popup-y` and `--popup-max-h`,
- * and `data-offscreen`), not through React, so following the gene re-renders
- * nothing. The rules are `feature-popup.ts`'s.
+ * element (custom properties `--popup-x`, `--popup-y`, `--popup-max-h` and
+ * `--popup-max-w`, and `data-offscreen`), not through React, so following
+ * the gene re-renders nothing. The rules are `feature-popup.ts`'s.
  */
 import { rulerHeight } from "@/lib/compare-region/density";
 import type { FeatureRef } from "@/lib/compare-region/families";
 import {
   featureCardMinRoom,
+  featurePopupMaxWidth,
   featurePopupSide,
   glyphInView,
   placeFeaturePopup,
@@ -53,6 +54,11 @@ export function placeFeaturePopupElement({
     `[data-row="${String(at.rowIndex)}"][data-feature="${String(at.featureIndex)}"]`,
   );
   const rootBox = root.getBoundingClientRect();
+  // The width first: it sets the popup's height, and its size is measured below.
+  popup.style.setProperty(
+    "--popup-max-w",
+    `${String(featurePopupMaxWidth(rootBox.width))}px`,
+  );
   const scrollerBox = scroller.getBoundingClientRect();
   const left = scrollerBox.left - rootBox.left;
   const top = scrollerBox.top - rootBox.top;

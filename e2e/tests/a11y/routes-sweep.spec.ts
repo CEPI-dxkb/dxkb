@@ -524,6 +524,10 @@ test.describe("a11y component surfaces", () => {
     // links on a muted wash), so that state is scanned too.
     await compare.glyph(0, 0).click();
     await expect(compare.openFeature).toBeVisible();
+    // The card with the gene's record, not its "no record" notice.
+    await expect(
+      compare.featureCard.getByText("AFFC01000001", { exact: true }),
+    ).toBeVisible();
     await forEachTheme(page, async (theme) => {
       const violations = await scanPage(page);
       assertNoBlockingViolations(

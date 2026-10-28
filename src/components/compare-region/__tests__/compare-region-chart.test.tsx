@@ -211,7 +211,7 @@ function scroller(): HTMLElement {
 }
 
 function figureSvg(): HTMLElement {
-  return screen.getByRole("img", { name: /^Compared regions of/ });
+  return screen.getByRole("group", { name: /^Compared regions of/ });
 }
 
 describe("CompareRegionChart", () => {
@@ -219,14 +219,14 @@ describe("CompareRegionChart", () => {
     it("names the figure by its genome count", async () => {
       await renderChart();
       expect(
-        screen.getByRole("img", { name: "Compared regions of 2 genomes" }),
+        screen.getByRole("group", { name: "Compared regions of 2 genomes" }),
       ).toBeInTheDocument();
     });
 
     it("names a single genome in the singular", async () => {
       await renderChart({ rows: [focusRow] });
       expect(
-        screen.getByRole("img", { name: "Compared regions of 1 genome" }),
+        screen.getByRole("group", { name: "Compared regions of 1 genome" }),
       ).toBeInTheDocument();
     });
 
@@ -387,6 +387,44 @@ describe("CompareRegionChart", () => {
       expect(screen.getByText("Click for details")).toBeInTheDocument();
     });
 
+    it("clears the pin with Escape straight after a click, on the gene it focuses", async () => {
+      const user = userEvent.setup();
+      const { container } = await renderChart();
+      const gene = glyph(container, 0, 1);
+      clickAt(gene, 10);
+      // A browser's click focuses the glyph (tabIndex −1); jsdom's does not.
+      if (gene instanceof SVGElement) gene.focus();
+      expect(gene).toHaveFocus();
+      await user.keyboard("{Escape}");
+      expect(featureCard()).toBeNull();
+    });
+
+    it("clears the pin with Escape while focus is on the body", async () => {
+      const user = userEvent.setup();
+      const { container } = await renderChart();
+      // As after a press on the card's text, where nothing takes focus.
+      clickAt(glyph(container, 0, 1), 10);
+      expect(featureCard()).not.toBeNull();
+      expect(document.body).toHaveFocus();
+      await user.keyboard("{Escape}");
+      expect(featureCard()).toBeNull();
+    });
+
+    it("leaves the pin to an Escape that focus elsewhere hears", async () => {
+      const user = userEvent.setup();
+      const { container } = await renderChart();
+      clickAt(glyph(container, 0, 1), 10);
+      const field = document.createElement("input");
+      document.body.append(field);
+      try {
+        field.focus();
+        await user.keyboard("{Escape}");
+        expect(featureCard()).not.toBeNull();
+      } finally {
+        field.remove();
+      }
+    });
+
     it("pins a gene on click and links to it", async () => {
       const { container } = await renderChart();
       clickAt(glyph(container, 0, 1), 10);
@@ -518,6 +556,197 @@ describe("CompareRegionChart", () => {
         relatedTarget: screen.getByText("Salmonella enterica"),
       });
       expect(tooltip()).toBeNull();
+    });
+  });
+
+  describe("the keyboard", () => {
+    const focusGeneName = "Focus protein, fig|1.1.peg.2";
+
+    function gene(name: string): HTMLElement {
+      return screen.getByRole("button", { name });
+    }
+
+    /** Focuses the focus gene from the scroller, as Tab does. */
+    async function tabToFigure(user: ReturnType<typeof userEvent.setup>) {
+      act(() => {
+        scroller().focus();
+      });
+      await user.tab();
+    }
+
+    it("names every gene, in a group named for its row", async () => {
+      await renderChart();
+      const focusGenome = screen.getByRole("group", {
+        name: "Genome 01: Escherichia coli str. K-12 substr. MG1655",
+      });
+      expect(
+        within(focusGenome).getByRole("button", { name: focusGeneName }),
+      ).toBeInTheDocument();
+      expect(
+        within(focusGenome).getByRole("button", {
+          name: "BLAST hit: blast hit for pin, fig|1.1.peg.2.BLAST",
+        }),
+      ).toBeInTheDocument();
+      const homolog = screen.getByRole("group", {
+        name: "Genome 02: Salmonella enterica",
+      });
+      expect(
+        within(homolog).getByRole("button", {
+          name: "Focus homolog, fig|2.1.peg.7",
+        }),
+      ).toBeInTheDocument();
+    });
+
+    it("makes the figure one tab stop, on the focus gene", async () => {
+      const user = userEvent.setup();
+      const { container } = await renderChart();
+      const stops = [...container.querySelectorAll('[data-feature][tabindex="0"]')];
+      expect(stops).toEqual([gene(focusGeneName)]);
+      await tabToFigure(user);
+      expect(gene(focusGeneName)).toHaveFocus();
+      await user.tab();
+      expect(container.querySelector("[data-feature]:focus")).toBeNull();
+    });
+
+    it("shows the focused gene as a hovered one", async () => {
+      const user = userEvent.setup();
+      await renderChart();
+      await tabToFigure(user);
+      expect(tooltip()).toHaveTextContent("Focus protein");
+      await user.tab();
+      expect(tooltip()).toBeNull();
+    });
+
+    it("moves along a row with ← and →, and to its ends with Home and End", async () => {
+      const user = userEvent.setup();
+      const { container } = await renderChart();
+      await tabToFigure(user);
+      await user.keyboard("{ArrowLeft}");
+      expect(glyph(container, 0, 0)).toHaveFocus();
+      expect(tooltip()).toHaveTextContent("Upstream protein");
+      await user.keyboard("{End}");
+      expect(glyph(container, 0, 2)).toHaveFocus();
+      await user.keyboard("{Home}");
+      expect(glyph(container, 0, 0)).toHaveFocus();
+      await user.keyboard("{ArrowRight}");
+      expect(gene(focusGeneName)).toHaveFocus();
+      // The tab stop moves with the focus.
+      expect(gene(focusGeneName)).toHaveAttribute("tabindex", "0");
+      expect(glyph(container, 0, 0)).toHaveAttribute("tabindex", "-1");
+    });
+
+    it("moves to the nearest gene in the row above or below with ↑ and ↓", async () => {
+      const user = userEvent.setup();
+      const { container } = await renderChart();
+      await tabToFigure(user);
+      await user.keyboard("{ArrowDown}");
+      expect(glyph(container, 1, 0)).toHaveFocus();
+      expect(tooltip()).toHaveTextContent("Focus homolog");
+      await user.keyboard("{ArrowUp}");
+      expect(gene(focusGeneName)).toHaveFocus();
+    });
+
+    it("keeps the arrow keys from scrolling at a row's end, but leaves shortcuts alone", async () => {
+      const { container } = await renderChart();
+      const upstream = glyph(container, 0, 0);
+      act(() => {
+        (upstream as SVGElement).focus();
+      });
+      expect(fireEvent.keyDown(upstream, { key: "ArrowLeft" })).toBe(false);
+      expect(upstream).toHaveFocus();
+      expect(
+        fireEvent.keyDown(upstream, { key: "ArrowRight", metaKey: true }),
+      ).toBe(true);
+      expect(upstream).toHaveFocus();
+    });
+
+    it("pins the focused gene with Enter or Space, and clears the pin with Escape", async () => {
+      const user = userEvent.setup();
+      await renderChart();
+      await tabToFigure(user);
+      await user.keyboard("{Enter}");
+      expect(featureCard()).not.toBeNull();
+      expect(within(strip()).getByText("fig|1.1.peg.2")).toBeInTheDocument();
+      // Focus stays on the gene, so the arrows still move on.
+      expect(gene(focusGeneName)).toHaveFocus();
+      await user.keyboard("{Escape}");
+      expect(featureCard()).toBeNull();
+      expect(screen.getByText("Click for details")).toBeInTheDocument();
+
+      await user.keyboard("{ArrowLeft}");
+      await user.keyboard(" ");
+      expect(within(strip()).getByText("fig|1.1.peg.1")).toBeInTheDocument();
+    });
+
+    it("reaches the card's actions with Tab, and hands focus back to the gene as it closes", async () => {
+      const user = userEvent.setup();
+      await renderChart();
+      await tabToFigure(user);
+      await user.keyboard("{Enter}");
+      const card = featureCard();
+      if (!card) throw new Error("no feature card");
+      await user.tab();
+      expect(
+        within(card).getByRole("button", { name: "Collapse details" }),
+      ).toHaveFocus();
+      await user.tab();
+      expect(
+        within(card).getByRole("button", { name: "Close details" }),
+      ).toHaveFocus();
+      await user.keyboard("{Enter}");
+      expect(featureCard()).toBeNull();
+      expect(gene(focusGeneName)).toHaveFocus();
+      expect(tooltip()).toHaveTextContent("Focus protein");
+    });
+
+    it("hands focus back to the gene from the strip's Clear button", async () => {
+      const user = userEvent.setup();
+      await renderChart();
+      await tabToFigure(user);
+      await user.keyboard("{Enter}");
+      act(() => {
+        screen.getByRole("button", { name: "Clear selection" }).focus();
+      });
+      await user.keyboard("{Enter}");
+      expect(screen.getByText("Click for details")).toBeInTheDocument();
+      expect(gene(focusGeneName)).toHaveFocus();
+    });
+
+    it("shows nothing more for a gene a press focused", async () => {
+      const user = userEvent.setup();
+      await renderChart();
+      await tabToFigure(user);
+      await user.keyboard("{Enter}");
+      const card = featureCard();
+      if (!card) throw new Error("no feature card");
+      // Closed with a click: focus goes back to the gene, but no tooltip opens.
+      await user.click(
+        within(card).getByRole("button", { name: "Close details" }),
+      );
+      expect(gene(focusGeneName)).toHaveFocus();
+      expect(tooltip()).toBeNull();
+    });
+
+    it("brings a gene focused off the plot into view", async () => {
+      const user = userEvent.setup();
+      const { container } = await renderChart();
+      zoomIn(2);
+      // 2.25× about the focus line leaves the upstream gene left of the window.
+      expect(container.querySelector('[data-row="0"][data-feature="0"]')).toBeNull();
+      expect(focusLineX(container)).toBeCloseTo(331, 0);
+      await tabToFigure(user);
+      await user.keyboard("{ArrowLeft}");
+      expect(glyph(container, 0, 0)).toHaveFocus();
+      // Panned right, at the same zoom, until the upstream gene's 5′ end is 8
+      // px inside the plot (where it was last placed).
+      expect(zoomLevel()).toHaveTextContent("2.3×");
+      const [, , item, x] =
+        vi
+          .mocked(placeGlyph)
+          .mock.calls.findLast(
+            ([, , placed]) => placed.feature.fid === "fig|1.1.peg.1",
+          ) ?? [];
+      expect(item && x?.(item.from)).toBeCloseTo(8, 6);
     });
   });
 
@@ -744,26 +973,30 @@ describe("CompareRegionChart", () => {
       it("draws again once it pans past what was drawn, keeping the pressed glyph", async () => {
         const { container } = await renderChart();
         zoomIn(4);
-        const focusGene = glyph(container, 0, 1);
-        drag(focusGene, 400, 390);
+        // The focus gene's BLAST hit: the focus gene itself is the tab stop,
+        // which is drawn wherever it is.
+        const hit = glyph(container, 0, 2);
+        drag(hit, 400, 390);
         const placed = vi.mocked(placeGlyph);
         placed.mockClear();
 
         // 700 px: past the 662 px drawn beyond the edge, so it draws again there.
-        fireEvent.pointerMove(focusGene, { ...pointer, clientX: -310 });
+        fireEvent.pointerMove(hit, { ...pointer, clientX: -310 });
         expect(placed).toHaveBeenCalled();
-        expect(slideOf(focusGene)).toBeNull();
+        expect(slideOf(hit)).toBeNull();
         placed.mockClear();
-        fireEvent.pointerMove(focusGene, { ...pointer, clientX: -320 });
+        fireEvent.pointerMove(hit, { ...pointer, clientX: -320 });
         expect(placed).not.toHaveBeenCalled();
-        expect(slideOf(focusGene)).toBe("translate(-10 0)");
+        expect(slideOf(hit)).toBe("translate(-10 0)");
 
-        // A pan to the track's end leaves the pressed gene far off the plot: still drawn.
-        fireEvent.pointerMove(focusGene, { ...pointer, clientX: -2000 });
-        expect(focusGene.isConnected).toBe(true);
-        expect(glyph(container, 0, 1)).toBe(focusGene);
-        release(focusGene, -2000);
-        expect(focusGene.isConnected).toBe(false);
+        // A pan to the track's end leaves the pressed hit far off the plot: still drawn.
+        fireEvent.pointerMove(hit, { ...pointer, clientX: -2000 });
+        expect(hit.isConnected).toBe(true);
+        expect(glyph(container, 0, 2)).toBe(hit);
+        release(hit, -2000);
+        expect(hit.isConnected).toBe(false);
+        // The tab stop stays, off the plot.
+        expect(glyph(container, 0, 1)).toHaveAttribute("tabindex", "0");
       });
 
       it("re-renders nothing for a drag the track holds still", async () => {

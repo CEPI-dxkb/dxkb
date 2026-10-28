@@ -48,6 +48,8 @@ vi.mock("@/lib/compare-region/text-measure", async (importOriginal) => {
 });
 
 const densityCookie = "dxkb-compare-region-density";
+/** The figure, named for its genome count. */
+const figureName = /^Compared regions of/;
 
 function answer(body: JsonBodyType, status = 200) {
   const seen: URLSearchParams[] = [];
@@ -81,7 +83,7 @@ describe("CompareRegionPanel", () => {
     renderPanel();
 
     expect(
-      await screen.findByRole("img", { name: "Compared regions of 2 genomes" }),
+      await screen.findByRole("group", { name: "Compared regions of 2 genomes" }),
     ).toBeInTheDocument();
     expect(Object.fromEntries(seen.at(0) ?? [])).toEqual({
       peg: "fig|1.1.peg.2",
@@ -96,7 +98,7 @@ describe("CompareRegionPanel", () => {
     answer({ rows: [focusRow, mirroredRow] });
     renderPanel();
 
-    await screen.findByRole("img");
+    await screen.findByRole("group", { name: figureName });
     const card = screen.getByRole("region", { name: "Compare regions" });
     expect(card).toHaveClass("border", "bg-card", "shadow-sm");
     // It fills the tab down to the page's bottom edge, as the data tables do:
@@ -136,7 +138,7 @@ describe("CompareRegionPanel", () => {
     render(panel, { wrapper });
     serviceAnswers.resolve(undefined);
 
-    expect(await screen.findByRole("img")).toBeInTheDocument();
+    expect(await screen.findByRole("group", { name: figureName })).toBeInTheDocument();
     expect(calls).toBe(1);
   });
 
@@ -158,7 +160,7 @@ describe("CompareRegionPanel", () => {
     const seen = answer({ rows: [focusRow] });
     renderPanel();
 
-    await screen.findByRole("img");
+    await screen.findByRole("group", { name: figureName });
     expect(seen.at(0)?.get("genomes")).toBe("20");
     expect(seen.at(0)?.get("method")).toBe("plfam");
   });
@@ -173,7 +175,7 @@ describe("CompareRegionPanel", () => {
     const seen = answer({ rows: [focusRow] });
     renderPanel();
 
-    await screen.findByRole("img");
+    await screen.findByRole("group", { name: figureName });
     expect(seen.at(0)?.get("filter")).toBe("genomeGroup");
     expect(seen.at(0)?.get("group")).toBe(group);
     expect(
@@ -193,7 +195,7 @@ describe("CompareRegionPanel", () => {
     );
     const replace = vi.spyOn(window.history, "replaceState");
     renderPanel();
-    await screen.findByRole("img");
+    await screen.findByRole("group", { name: figureName });
 
     const update = screen.getByRole("button", { name: "Update" });
     expect(update).toBeDisabled();
@@ -216,7 +218,7 @@ describe("CompareRegionPanel", () => {
     const user = userEvent.setup();
     answer({ rows: [focusRow] });
     const { rerender } = renderPanel();
-    await screen.findByRole("img");
+    await screen.findByRole("group", { name: figureName });
     await user.click(
       screen.getByRole("combobox", { name: "Number of genomes" }),
     );
@@ -226,7 +228,7 @@ describe("CompareRegionPanel", () => {
     // Back to an address with other settings, the unapplied draft still open.
     search.value = "tab=compare-region&compare.method=plfam";
     rerender(<CompareRegionPanel patricId="fig|1.1.peg.2" />);
-    await screen.findByRole("img");
+    await screen.findByRole("group", { name: figureName });
 
     expect(
       screen.getByRole("combobox", { name: "Number of genomes" }),
@@ -264,7 +266,7 @@ describe("CompareRegionPanel", () => {
 
     // The status gives way to the figure; the bar's draft stays.
     await user.click(screen.getByRole("button", { name: "Retry" }));
-    await screen.findByRole("img");
+    await screen.findByRole("group", { name: figureName });
     expect(calls).toBe(2);
     expect(
       screen.getByRole("combobox", { name: "Number of genomes" }),
@@ -336,7 +338,7 @@ describe("CompareRegionPanel", () => {
     const user = userEvent.setup();
     answer({ rows: [focusRow, mirroredRow] });
     renderPanel();
-    const figure = await screen.findByRole("img");
+    const figure = await screen.findByRole("group", { name: figureName });
     const comfortableHeight = Number(figure.getAttribute("height"));
 
     await user.click(
@@ -362,7 +364,7 @@ describe("CompareRegionPanel", () => {
         </Queries>
       ),
     });
-    await screen.findByRole("img");
+    await screen.findByRole("group", { name: figureName });
 
     await user.click(
       screen.getByRole("button", { name: "Switch to Compact density" }),
@@ -383,7 +385,7 @@ describe("CompareRegionPanel", () => {
     try {
       answer({ rows: [focusRow, mirroredRow] });
       renderPanel();
-      await screen.findByRole("img");
+      await screen.findByRole("group", { name: figureName });
 
       await user.click(screen.getByRole("button", { name: "Export SVG" }));
 

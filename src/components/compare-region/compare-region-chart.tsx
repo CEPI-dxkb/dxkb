@@ -6,10 +6,11 @@
  * Compact density. A calm 1× overview whose gene names and ribbons appear as
  * zooming makes room for them.
  *
- * The chart owns the zoom (horizontal only), the hover and pin, the sticky
- * label column and ruler, and keeping the reader's place across a density
- * switch. The panel owns the density preference and the command bar, which
- * the chart renders through `renderBar` so the bar can reach the zoom.
+ * The chart owns the zoom (horizontal only), the hover and pin, the keyboard
+ * (genes are buttons, one tab stop for the figure: `useChartPointer`), the
+ * sticky label column and ruler, and keeping the reader's place across a
+ * density switch. The panel owns the density preference and the command bar,
+ * which the chart renders through `renderBar` so the bar can reach the zoom.
  *
  * Hovering redraws no glyph: the layers under the overlays take only the
  * model and the zoom, and the hover reaches the trace, the rings and
@@ -30,10 +31,20 @@ import {
   rulerHeight,
 } from "@/lib/compare-region/density";
 import type { CompareRegionDensity } from "@/lib/compare-region/density-options";
-import { buildChartModel, isSameFeature } from "@/lib/compare-region/families";
-import { rowAt } from "@/lib/compare-region/figure-frame";
+import {
+  buildChartModel,
+  isSameFeature,
+  type ChartModel,
+  type FeatureRef,
+} from "@/lib/compare-region/families";
+import { glyphBox, rowAt } from "@/lib/compare-region/figure-frame";
+import {
+  revealMatrix,
+  revealScroll,
+  type RevealBox,
+} from "@/lib/compare-region/keyboard";
 import { constrainToTrack } from "@/lib/compare-region/layout";
-import { focusLineX } from "@/lib/compare-region/ruler";
+import { focusLineX, trackScale } from "@/lib/compare-region/ruler";
 import {
   scrollPlace,
   scrollTopFor,
@@ -65,7 +76,7 @@ import {
 } from "./compare-region-track-layers";
 import type { ZoomControls } from "./compare-region-zoom-controls";
 import { placeFeaturePopupElement } from "./place-feature-popup";
-import { useChartPointer } from "./use-chart-pointer";
+import { glyphSelector, useChartPointer } from "./use-chart-pointer";
 
 type ChartZoom = ProvidedZoom<SVGSVGElement> & ZoomState;
 
@@ -146,6 +157,50 @@ function FollowZoom({
   return null;
 }
 
+/**
+ * Brings the gene keyboard focus moves to into view: pans the zoom to it when
+ * it lies off the plot, then hands `scrollTo` its box in the figure as it
+ * will be drawn. Inside Zoom's render prop, beside `CarryZoom`. Only a new
+ * focus moves the view, so a zoom or a drag after it stays put.
+ */
+function RevealFocus({
+  zoom,
+  model,
+  at,
+  plotWidth,
+  labelWidth,
+  scrollTo,
+}: {
+  zoom: ChartZoom;
+  model: ChartModel;
+  at: FeatureRef | undefined;
+  plotWidth: number;
+  labelWidth: number;
+  scrollTo: (box: RevealBox) => void;
+}) {
+  const revealed = useRef(at);
+  useLayoutEffect(() => {
+    if (revealed.current === at) return;
+    revealed.current = at;
+    const item =
+      at && model.layout.rows.at(at.rowIndex)?.features.at(at.featureIndex);
+    const rowFrame = at && model.frame.rows.at(at.rowIndex);
+    if (!item || !rowFrame) return;
+    const { domain } = model.layout;
+    const matrix = revealMatrix(domain, zoom.transformMatrix, plotWidth, item);
+    if (matrix !== zoom.transformMatrix) zoom.setTransformMatrix(matrix);
+    const x = trackScale(domain, matrix, plotWidth);
+    const { top, bottom } = glyphBox(model.spec, rowFrame, item);
+    scrollTo({
+      left: labelWidth + Math.min(x(item.from), x(item.to)),
+      right: labelWidth + Math.max(x(item.from), x(item.to)),
+      top,
+      bottom,
+    });
+  }, [zoom, model, at, plotWidth, labelWidth, scrollTo]);
+  return null;
+}
+
 export function CompareRegionChart({
   rows,
   width,
@@ -160,10 +215,25 @@ export function CompareRegionChart({
    * it and opens its card, expanded; closing the card clears the pin.
    */
   const [cardExpanded, setCardExpanded] = useState(true);
-  const { wheelGuardRef, handlers, hovered, pressed, selected, setSelected } =
-    useChartPointer(() => {
-      setCardExpanded(true);
-    });
+  // Once per answer and density (the React Compiler caches it): while
+  // rendering, nothing below hands these to a function that could change
+  // them, only to JSX (the handlers and effects read them later).
+  const spec = densitySpecs[density];
+  const model = buildChartModel(rows, spec);
+  const { frame } = model;
+  const height = frame.height;
+  const {
+    wheelGuardRef,
+    handlers,
+    hovered,
+    focused,
+    tabStop,
+    pressed,
+    selected,
+    setSelected,
+  } = useChartPointer(model.layout, () => {
+    setCardExpanded(true);
+  });
   const [hoveredRow, setHoveredRow] = useState<number | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const scrollerRef = useRef<HTMLDivElement>(null);
@@ -181,13 +251,6 @@ export function CompareRegionChart({
    */
   const [scrollbarWidth, setScrollbarWidth] = useState(0);
 
-  // Once per answer and density (the React Compiler caches it): while
-  // rendering, nothing below hands these to a function that could change
-  // them, only to JSX (the handlers and effects read them later).
-  const spec = densitySpecs[density];
-  const model = buildChartModel(rows, spec);
-  const { frame } = model;
-  const height = frame.height;
   // The width inside the scroller: `width` is the card's, scrollbar included.
   const figureWidth = Math.max(0, width - scrollbarWidth);
   const labelWidth = labelWidthFor(spec, figureWidth);
@@ -240,6 +303,42 @@ export function CompareRegionChart({
 
   const exportChart = () => {
     if (svgRef.current) onExport(svgRef.current);
+  };
+
+  /** Scrolls `box` (px in the figure) into view, clear of the sticky ruler and label column. */
+  const scrollTo = (box: RevealBox) => {
+    const scroller = scrollerRef.current;
+    if (!scroller) return;
+    const place = revealScroll(
+      {
+        left: scroller.scrollLeft,
+        top: scroller.scrollTop,
+        width: scroller.clientWidth,
+        height: scroller.clientHeight,
+      },
+      box,
+      { left: labelWidth, top: rulerHeight },
+    );
+    scroller.scrollLeft = place.left;
+    scroller.scrollTop = place.top;
+  };
+
+  /**
+   * Clears the pin. Focus in what goes with it (the card, the strip's Clear
+   * button) goes back to the gene, so a keyboard user keeps their place.
+   */
+  const clearPin = () => {
+    const active = document.activeElement;
+    const leaving =
+      active instanceof Element &&
+      (cardRef.current?.contains(active) ||
+        active.closest("[data-selection-strip]") !== null);
+    setSelected(null);
+    if (!leaving || !selected) return;
+    const gene = scrollerRef.current?.querySelector<SVGElement>(
+      glyphSelector(selected),
+    );
+    (gene ?? scrollerRef.current)?.focus({ preventScroll: true });
   };
 
   // The pinned gene's card already shows its tooltip's lines.
@@ -302,9 +401,7 @@ export function CompareRegionChart({
         at={selected}
         expanded={cardExpanded}
         onExpandedChange={setCardExpanded}
-        onClose={() => {
-          setSelected(null);
-        }}
+        onClose={clearPin}
       />
     ) : null;
 
@@ -317,9 +414,7 @@ export function CompareRegionChart({
     <SelectionStrip
       model={model}
       settings={settings}
-      onClear={() => {
-        setSelected(null);
-      }}
+      onClear={clearPin}
       density={density}
       onDensityChange={switchDensity}
     />
@@ -392,6 +487,14 @@ export function CompareRegionChart({
                 return (
                   <>
                     <CarryZoom zoom={zoom} plotWidth={plotWidth} />
+                    <RevealFocus
+                      zoom={zoom}
+                      model={model}
+                      at={focused}
+                      plotWidth={plotWidth}
+                      labelWidth={labelWidth}
+                      scrollTo={scrollTo}
+                    />
                     <FollowZoom matrix={matrix} place={placePopups} />
                     {renderBar(controls, exportChart)}
                     {strip}
@@ -420,7 +523,8 @@ export function CompareRegionChart({
                           ref={svgRef}
                           width={chartWidth}
                           height={height}
-                          role="img"
+                          // A group, not an image: its genes are buttons (one row group each).
+                          role="group"
                           aria-label={`Compared regions of ${String(rows.length)} ${genomes}`}
                           className="block text-foreground"
                           fontSize={12}
@@ -480,10 +584,11 @@ export function CompareRegionChart({
                               matrix={matrix}
                               dragging={zoom.isDragging}
                               pressed={pressed}
+                              tabStop={tabStop}
                               plotWidth={plotWidth}
                               measure={canvasTextWidth}
                             />
-                            <g ref={rulerRef} data-sticky="">
+                            <g ref={rulerRef} data-sticky="" aria-hidden>
                               <RulerAxis
                                 model={model}
                                 matrix={matrix}
@@ -491,7 +596,8 @@ export function CompareRegionChart({
                               />
                             </g>
                           </svg>
-                          <g ref={labelsRef} data-sticky="">
+                          {/* Hidden from assistive technology: each row's genes are a group named for it. */}
+                          <g ref={labelsRef} data-sticky="" aria-hidden>
                             {labelColumn}
                             <g ref={headerRef} data-sticky="">
                               {labelHeader}

@@ -264,14 +264,117 @@ test.describe("Compare Region Viewer", () => {
       "/feature/fig%7C1004954.3.peg.1",
     );
 
-    // Closing the card clears the pin; so does the strip's Clear.
+    // Closing the card clears the pin; so do Escape, straight after the
+    // click (which focuses the gene), and the strip's Clear.
     await compare.closeFeatureCard();
+    await expect(compare.selectionStrip).toHaveCount(0);
+    await gene.click();
+    await expect(card).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(card).toHaveCount(0);
     await expect(compare.selectionStrip).toHaveCount(0);
     await gene.click();
     await expect(card).toBeVisible();
     await compare.clearSelection.click();
     await expect(card).toHaveCount(0);
     await expect(compare.selectionStrip).toHaveCount(0);
+  });
+
+  test("on a phone, the expanded card fits the chart, its buttons in view", async ({
+    page,
+  }) => {
+    // A phone's width; tall enough that the figure shows under the command bar.
+    await page.setViewportSize({ width: 320, height: 1000 });
+    const compare = new CompareRegionPage(page);
+    await compare.goto(featureId);
+    await compare.expectFigure(10);
+    // Pinned from the keyboard, which brings the gene into the narrow plot.
+    await compare.scroller.focus();
+    await page.keyboard.press("Tab");
+    await expect(compare.glyph(0, 0)).toBeFocused();
+    await expect(compare.tooltip).toContainText(focusGene);
+    await page.keyboard.press("Enter");
+    const card = compare.featureCard;
+    await expect(card).toBeVisible();
+    await expect(card.getByText("AFFC01000001", { exact: true })).toBeVisible();
+
+    const chartBox = await compare.card.boundingBox();
+    const cardBox = await card.boundingBox();
+    if (!chartBox || !cardBox) throw new Error("no chart or card box");
+    expect(cardBox.x).toBeGreaterThanOrEqual(chartBox.x);
+    expect(cardBox.x + cardBox.width).toBeLessThanOrEqual(
+      Math.min(chartBox.x + chartBox.width, 320),
+    );
+    for (const name of ["Collapse details", "Close details"]) {
+      await expect(card.getByRole("button", { name })).toBeInViewport({
+        ratio: 1,
+      });
+    }
+    await card.getByRole("button", { name: "Close details" }).click();
+    await expect(card).toHaveCount(0);
+  });
+
+  test("the keyboard moves between genes, pins one, and brings one off the plot into view", async ({
+    page,
+  }) => {
+    const compare = new CompareRegionPage(page);
+    await compare.goto(featureId);
+    await compare.expectFigure(10);
+    const focused = compare.figure.locator("[data-feature]:focus");
+
+    // Zoomed in, most of the row lies off the plot.
+    await compare.zoomInBy(4);
+    // The scroller, then the figure's one tab stop: the focus gene.
+    await compare.scroller.focus();
+    await page.keyboard.press("Tab");
+    const gene = compare.glyph(0, 0);
+    await expect(gene).toBeFocused();
+    await expect(compare.tooltip).toContainText(focusGene);
+
+    // → and ← move along the row, the tooltip with them.
+    await page.keyboard.press("ArrowRight");
+    await expect(gene).not.toBeFocused();
+    await expect(focused).toHaveAttribute("data-row", "0");
+    await expect(compare.tooltip).not.toContainText(focusGene);
+    await page.keyboard.press("ArrowLeft");
+    await expect(gene).toBeFocused();
+
+    // End reaches the row's last gene, off the plot: the figure pans to it,
+    // at the same zoom. It is wider than the plot, so it comes to rest at its
+    // start, just inside the plot.
+    await page.keyboard.press("End");
+    await expect(focused).toHaveAttribute("data-row", "0");
+    await expect(focused).not.toHaveAttribute("data-feature", "0");
+    await expect(compare.tooltip).toContainText("fig|1004954.3.peg.6");
+    const scrollerBox = await compare.scroller.boundingBox();
+    const endBox = await focused.boundingBox();
+    if (!scrollerBox || !endBox) throw new Error("no scroller or gene box");
+    expect(endBox.x).toBeGreaterThanOrEqual(scrollerBox.x);
+    expect(endBox.x).toBeLessThan(scrollerBox.x + scrollerBox.width / 2);
+    await expect(compare.zoomLevel).toHaveText("5.1×");
+
+    // ↓ reaches the next genome's row.
+    await page.keyboard.press("Home");
+    await page.keyboard.press("ArrowDown");
+    await expect(focused).toHaveAttribute("data-row", "1");
+
+    // Enter pins it; Tab reaches the card's actions, and closing the card
+    // hands focus back to the gene.
+    await page.keyboard.press("Enter");
+    await expect(compare.featureCard).toBeVisible();
+    await expect(compare.selectionStrip).toBeVisible();
+    await page.keyboard.press("Tab");
+    await expect(
+      compare.featureCard.getByRole("button", { name: "Collapse details" }),
+    ).toBeFocused();
+    await page.keyboard.press("Tab");
+    await expect(
+      compare.featureCard.getByRole("button", { name: "Close details" }),
+    ).toBeFocused();
+    await page.keyboard.press("Enter");
+    await expect(compare.featureCard).toHaveCount(0);
+    await expect(focused).toHaveAttribute("data-row", "1");
+    await expect(compare.tooltip).toBeVisible();
   });
 
   test("a gene shows the pointer cursor, the track the grab hand, a drag the grabbing hand", async ({

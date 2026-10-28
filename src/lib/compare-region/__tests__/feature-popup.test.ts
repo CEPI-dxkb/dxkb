@@ -1,5 +1,6 @@
 import {
   featureCardMinRoom,
+  featurePopupMaxWidth,
   featurePopupSide,
   glyphInView,
   placeFeaturePopup,
@@ -141,5 +142,25 @@ describe("placeFeaturePopup", () => {
         below: true,
       }),
     ).toEqual({ x: 392, y: 322 });
+  });
+});
+
+describe("featurePopupMaxWidth", () => {
+  it("is the root's width less its margins", () => {
+    expect(featurePopupMaxWidth(320)).toBe(304);
+    expect(featurePopupMaxWidth(10)).toBe(0);
+  });
+
+  it("keeps a popup capped to it wholly inside a phone's chart", () => {
+    const narrow: FeaturePopupBounds = { width: 320, top: 100, bottom: 800 };
+    const width = featurePopupMaxWidth(narrow.width);
+    const { x } = placeFeaturePopup({
+      glyph: glyph(200, 260),
+      size: { width, height: 120 },
+      bounds: narrow,
+      below: true,
+    });
+    expect(x).toBe(8);
+    expect(x + width).toBe(312);
   });
 });

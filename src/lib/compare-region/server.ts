@@ -193,9 +193,10 @@ function unreadableAnswer(): UpstreamError {
  * The service's rows as the route answers them. Every row is aligned against
  * the first (the focus gene's), so without it there is nothing to show. An
  * unknown gene comes back as one row with no genome and no pinned gene
- * (measured 2026-10-23), which reads as no rows. A focus row that names both
- * but cannot be read is a failure, not an unknown gene. Any other row that
- * lost its pinned gene is dropped.
+ * (measured 2026-10-23), which reads as no rows. No rows at all, a focus row
+ * that names only one of the two, and one that names both but cannot be read
+ * are failures, so a changed answer is not reported as an unknown gene. Any
+ * other row that lost its pinned gene is dropped.
  */
 export function normalizeCompareRegionRows(
   raw: unknown,
@@ -204,7 +205,8 @@ export function normalizeCompareRegionRows(
   const parsed = z.array(rawRowSchema).safeParse(raw);
   if (!parsed.success) throw unreadableAnswer();
   const focus = parsed.data.at(0);
-  if (!focus?.genome_id || !focus.pinned_peg) return [];
+  if (!focus) throw unreadableAnswer();
+  if (!focus.genome_id && !focus.pinned_peg) return [];
   const rows = parsed.data.map((row) => toRow(row, method));
   if (!rows.at(0)) throw unreadableAnswer();
   return rows.filter((row) => row !== null);

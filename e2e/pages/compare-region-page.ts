@@ -5,8 +5,10 @@ import { expect, type Locator, type Page } from "@playwright/test";
  * one card (`<section aria-label="Compare regions">`) holding the command bar,
  * the selection strip with the Comfortable/Compact density toggle (one icon
  * button named for the density it switches to), and the
- * figure, an `<svg role="img">` with one row per genome. The figure's glyphs
- * carry `data-row` and `data-feature`, the hover overlays `data-overlay`, and
+ * figure, an `<svg role="group">` with one row per genome. The figure's glyphs
+ * are buttons named for their feature (one tab stop for the figure; the arrow
+ * keys move between them) and carry `data-row` and `data-feature`, the hover
+ * overlays `data-overlay`, and
  * the layers a drag slides `data-pan` (with a `transform` only mid-drag);
  * the tooltip is `[data-feature-tooltip]`, which hangs just below and right
  * of its glyph (left of it, or above it, where that side lacks room). A
@@ -19,6 +21,8 @@ export class CompareRegionPage {
   readonly page: Page;
   readonly card: Locator;
   readonly figure: Locator;
+  /** The figure's scroller, a tab stop of its own before the figure's. */
+  readonly scroller: Locator;
   readonly zoomIn: Locator;
   readonly zoomOut: Locator;
   readonly fit: Locator;
@@ -40,8 +44,11 @@ export class CompareRegionPage {
   constructor(page: Page) {
     this.page = page;
     this.card = page.getByRole("region", { name: "Compare regions" });
-    this.figure = this.card.getByRole("img", {
+    this.figure = this.card.getByRole("group", {
       name: /^Compared regions of \d+ genomes?$/,
+    });
+    this.scroller = this.card.getByRole("group", {
+      name: "Compared regions (scrollable)",
     });
     this.zoomIn = this.card.getByRole("button", { name: "Zoom in" });
     this.zoomOut = this.card.getByRole("button", { name: "Zoom out" });

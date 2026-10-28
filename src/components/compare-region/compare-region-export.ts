@@ -179,6 +179,13 @@ export function exportCompareRegionFigure(
   toSrgb: ToSrgb = canvasToSrgb(),
 ): void {
   const copy = svg.cloneNode(true) as SVGSVGElement;
+  // A picture: the genes' buttons and the rows' groups stay in the app.
+  copy.setAttribute("role", "img");
+  for (const node of copy.querySelectorAll("[role], [tabindex]")) {
+    for (const name of ["role", "tabindex", "aria-label"]) {
+      node.removeAttribute(name);
+    }
+  }
   for (const node of copy.querySelectorAll("[data-overlay]")) node.remove();
   for (const node of copy.querySelectorAll("[data-sticky]")) {
     node.removeAttribute("transform");

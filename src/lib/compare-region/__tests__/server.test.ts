@@ -229,6 +229,20 @@ describe("normalizeCompareRegionRows", () => {
     expect(normalizeCompareRegionRows(unknownGeneRows, "pgfam")).toEqual([]);
   });
 
+  it.each([
+    ["no rows", []],
+    ["a focus row with no pinned gene", [{ ...rawFocusRow, pinned_peg: null }]],
+    ["a focus row with no genome", [{ ...rawFocusRow, genome_id: null }]],
+  ])(
+    "fails loudly, not as an unknown gene, on %s",
+    async (_shape, rows) => {
+      const { normalizeCompareRegionRows } = await import("../server");
+      expect(
+        thrownBy(() => normalizeCompareRegionRows(rows, "pgfam")),
+      ).toMatchObject(unreadableAnswer);
+    },
+  );
+
   it.each([{ set_number: "1" }, { reference_point: "69" }, { strand: "." }])(
     "fails loudly, not as an unknown gene, when the focus gene cannot be read (%o)",
     async (unreadable) => {
@@ -406,6 +420,15 @@ describe("readCompareRegion", () => {
     await first;
     await expect(second).rejects.toMatchObject({ name: "AbortError" });
     expect(sent).toEqual(["fig|1004954.3.peg.1"]);
+  });
+
+  it("reads an answer with no rows as unreadable, not as an unknown gene", async () => {
+    server.use(http.post(serviceUrl, () => rpcAnswer([])));
+    const { readCompareRegion } = await import("../server");
+
+    await expect(readCompareRegion(query, undefined)).rejects.toMatchObject(
+      unreadableAnswer,
+    );
   });
 
   it("reads an answer with no result as unreadable, not as a crash", async () => {

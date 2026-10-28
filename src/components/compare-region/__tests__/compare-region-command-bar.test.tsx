@@ -13,32 +13,40 @@ import { useCompareRegionSettings } from "../use-compare-region-settings";
 
 // The real selector reads the session and searches the workspace (MSW is
 // strict). The stub is an input the bar's "Genome group" / "Feature group"
-// label names through `id`, and typing a path picks it.
-vi.mock("@/components/workspace/workspace-object-selector", () => ({
-  WorkspaceObjectSelector: ({
-    id,
-    value,
-    disabled,
-    placeholder,
-    onObjectSelect,
-  }: {
-    id?: string;
-    value?: string;
-    disabled?: boolean;
-    placeholder?: string;
-    onObjectSelect?: (object: { path: string }) => void;
-  }) => (
-    <input
-      id={id}
-      value={value}
-      disabled={disabled}
-      placeholder={placeholder}
-      onChange={(event) => {
-        onObjectSelect?.({ path: event.target.value });
-      }}
-    />
-  ),
-}));
+// label names through `id`, and typing a path picks it. Like the real one,
+// it keeps its own text, which only a fresh mount starts over.
+vi.mock("@/components/workspace/workspace-object-selector", async () => {
+  const { useState } = await vi.importActual<typeof import("react")>("react");
+  return {
+    WorkspaceObjectSelector: function SelectorStub({
+      id,
+      value,
+      disabled,
+      placeholder,
+      onObjectSelect,
+    }: {
+      id?: string;
+      value?: string;
+      disabled?: boolean;
+      placeholder?: string;
+      onObjectSelect?: (object: { path: string }) => void;
+    }) {
+      const [text, setText] = useState(value ?? "");
+      return (
+        <input
+          id={id}
+          value={text}
+          disabled={disabled}
+          placeholder={placeholder}
+          onChange={(event) => {
+            setText(event.target.value);
+            onObjectSelect?.({ path: event.target.value });
+          }}
+        />
+      );
+    },
+  };
+});
 
 const groupPath = "/u@bvbrc/home/Genome Groups/G1";
 
@@ -218,6 +226,7 @@ describe("CommandBar", () => {
       await screen.findByRole("menuitemradio", { name: "Selected feature group" }),
     );
 
+    // A fresh selector: the genome group's text does not carry over.
     const picker = await screen.findByLabelText("Feature group");
     expect(picker).toHaveAttribute("placeholder", "Choose a feature group…");
     expect(picker).toHaveValue("");
@@ -225,6 +234,13 @@ describe("CommandBar", () => {
     expect(genomesTrigger()).toHaveAccessibleName(
       "Genomes: Selected feature group",
     );
+
+    // Back again, the genome group's selector opens on its own pick.
+    await user.click(genomesTrigger());
+    await user.click(
+      await screen.findByRole("menuitemradio", { name: "Selected genome group" }),
+    );
+    expect(await screen.findByLabelText("Genome group")).toHaveValue(groupPath);
   });
 
   it("applies a changed number of genomes on Update", async () => {
@@ -291,6 +307,16 @@ describe("CommandBar", () => {
     expect(zoom.fit).toHaveBeenCalledTimes(1);
     await user.click(screen.getByRole("button", { name: "Export SVG" }));
     expect(onExport).toHaveBeenCalledTimes(1);
+  });
+
+  it("reads the slider out as the zoom, not its position", async () => {
+    const { rerender } = await renderBar({
+      zoom: zoomAt(2, { canZoomOut: true, canZoomIn: true }),
+    });
+    const slider = screen.getByRole("slider", { hidden: true });
+    expect(slider).toHaveAttribute("aria-valuetext", "2.0×");
+    rerender(<Bar zoom={zoomAt(20, { canZoomOut: true, canZoomIn: false })} />);
+    expect(slider).toHaveAttribute("aria-valuetext", "20×");
   });
 
   it("zooms to the slider's position on a log scale", async () => {

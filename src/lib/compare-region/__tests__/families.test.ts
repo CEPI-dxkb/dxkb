@@ -120,6 +120,45 @@ describe("indexFamilies", () => {
     ]);
   });
 
+  it("links each of more than two copies above to its nearest match below, however few", () => {
+    const three = testRow("1.1", [
+      focusGene("1.1"),
+      testGene("fig|1.1.peg.2", 100, 300, { family: 5 }),
+      testGene("fig|1.1.peg.3", 1300, 1500, { family: 5 }),
+      testGene("fig|1.1.peg.4", 1700, 1900, { family: 5 }),
+    ]);
+    const two = testRow("2.1", [
+      focusGene("2.1"),
+      testGene("fig|2.1.peg.2", 120, 320, { family: 5 }),
+      testGene("fig|2.1.peg.3", 1350, 1550, { family: 5 }),
+    ]);
+    const families = indexFamilies(layoutCompareRegion([three, two]));
+    // Three ribbons across a gap of five genes, not all six pairs.
+    expect(
+      families.ribbons
+        .filter((ribbon) => ribbon.family === 5)
+        .map((ribbon) => [ribbon.upper.featureIndex, ribbon.lower.featureIndex]),
+    ).toEqual([
+      [1, 1],
+      [2, 2],
+      [3, 2],
+    ]);
+  });
+
+  it("still joins every pair of a family with two copies on each side", () => {
+    const rows = ["1.1", "2.1"].map((id) =>
+      testRow(id, [
+        focusGene(id),
+        testGene(`fig|${id}.peg.2`, 100, 300, { family: 5 }),
+        testGene(`fig|${id}.peg.3`, 1350, 1550, { family: 5 }),
+      ]),
+    );
+    const families = indexFamilies(layoutCompareRegion(rows));
+    expect(
+      families.ribbons.filter((ribbon) => ribbon.family === 5),
+    ).toHaveLength(4);
+  });
+
   it("sorts the focus family's ribbons last, so they draw on top", () => {
     const rows = ["1.1", "2.1"].map((id) =>
       testRow(id, [

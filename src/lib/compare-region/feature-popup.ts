@@ -25,6 +25,16 @@ const featurePopupMargin = 8;
 export const featureCardMinRoom = 360;
 
 /**
+ * The widest a popup may be in a root `width` px wide: the root less its
+ * margins. A phone's chart is narrower than the card (24rem) or the tooltip
+ * (20rem); capped, they fit inside it, so the clamp in `placeFeaturePopup`
+ * keeps all of them in view, the card's Collapse and Close buttons included.
+ */
+export function featurePopupMaxWidth(width: number): number {
+  return Math.max(0, width - 2 * featurePopupMargin);
+}
+
+/**
  * Where a popup may go: the root's width, and from the top of the figure (so
  * the command bar and the strip stay in reach) to the root's bottom.
  */

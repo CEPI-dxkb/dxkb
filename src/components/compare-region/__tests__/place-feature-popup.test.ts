@@ -123,6 +123,12 @@ describe("placeFeaturePopupElement", () => {
     });
   });
 
+  it("caps the popup's width to the chart's, less its margins", () => {
+    const parts = chart();
+    place(parts);
+    expect(parts.popup.style.getPropertyValue("--popup-max-w")).toBe("984px");
+  });
+
   it("hides the popup while its gene is under the label column", () => {
     const parts = chart({ left: 100, width: 50 });
     parts.popup.removeAttribute("data-offscreen");

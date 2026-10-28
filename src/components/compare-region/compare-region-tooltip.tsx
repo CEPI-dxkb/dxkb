@@ -115,7 +115,7 @@ export function CompareRegionTooltip({
       data-feature-tooltip=""
       data-offscreen=""
       className={cn(
-        "pointer-events-none absolute top-0 left-0 z-20 w-80 translate-x-(--popup-x) translate-y-(--popup-y) transition-opacity duration-100 ease-out data-offscreen:invisible starting:opacity-0",
+        "pointer-events-none absolute top-0 left-0 z-20 w-80 max-w-(--popup-max-w) translate-x-(--popup-x) translate-y-(--popup-y) transition-opacity duration-100 ease-out data-offscreen:invisible starting:opacity-0",
         featureTooltipSurface,
       )}
     >

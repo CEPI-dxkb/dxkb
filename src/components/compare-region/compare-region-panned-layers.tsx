@@ -30,6 +30,8 @@ interface PannedLayersProps {
   dragging: boolean;
   /** The glyph the last press landed on: a drag keeps it drawn wherever it goes. */
   pressed: FeatureRef | null;
+  /** The figure's tab stop, drawn wherever it is. */
+  tabStop: FeatureRef | null;
   plotWidth: number;
   measure: TextMeasure;
 }
@@ -39,6 +41,7 @@ export function PannedLayers({
   matrix,
   dragging,
   pressed,
+  tabStop,
   plotWidth,
   measure,
 }: PannedLayersProps) {
@@ -76,11 +79,12 @@ export function PannedLayers({
           plotWidth={plotWidth}
           reach={reach}
           pressed={kept}
+          tabStop={tabStop}
           measure={measure}
         />
       </>
     ),
-    [model, drawnAt, plotWidth, reach, kept, measure],
+    [model, drawnAt, plotWidth, reach, kept, tabStop, measure],
   );
   const veil = useMemo(
     () => <TraceVeil model={model} plotWidth={plotWidth} />,

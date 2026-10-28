@@ -229,7 +229,7 @@ export function FeatureCard({
         if (event.key === "Escape") onClose();
       }}
       className={cn(
-        "absolute top-0 left-0 z-10 flex max-h-(--popup-max-h) translate-x-(--popup-x) translate-y-(--popup-y) flex-col data-offscreen:invisible",
+        "absolute top-0 left-0 z-10 flex max-h-(--popup-max-h) max-w-(--popup-max-w) translate-x-(--popup-x) translate-y-(--popup-y) flex-col data-offscreen:invisible",
         featureTooltipSurface,
         expanded ? "w-96" : "w-80",
       )}

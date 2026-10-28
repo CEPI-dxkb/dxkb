@@ -126,6 +126,29 @@ export function DataRow({
     }
   }
 
+  function handleIconClick(e: React.MouseEvent) {
+    // Only fire when the click target is the icon itself (data-icon-action).
+    const target = e.target as HTMLElement;
+    if (!target.closest("[data-icon-action]")) return;
+    e.stopPropagation();
+    if (isNavigable) {
+      if (useSelectionMode) {
+        onItemDoubleClick?.(item);
+      } else {
+        onItemClick(item);
+      }
+    } else if (useSelectionMode) {
+      onSelect?.(item, { ctrlOrMeta: e.ctrlKey || e.metaKey, shift: e.shiftKey });
+    }
+  }
+
+  function handleIconDoubleClick(e: React.MouseEvent) {
+    const target = e.target as HTMLElement;
+    if (!target.closest("[data-icon-action]")) return;
+    // Suppress the row dblclick — the first click already navigated.
+    e.stopPropagation();
+  }
+
   return (
     <TableRow
       key={row.id}
@@ -146,7 +169,12 @@ export function DataRow({
           metaCls ?? "",
         );
         return (
-          <TableCell key={cell.id} className={className}>
+          <TableCell
+            key={cell.id}
+            className={className}
+            onClick={cell.column.id === "name" ? handleIconClick : undefined}
+            onDoubleClick={cell.column.id === "name" ? handleIconDoubleClick : undefined}
+          >
             <FlexRender cell={cell} />
           </TableCell>
         );

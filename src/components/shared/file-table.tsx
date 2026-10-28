@@ -69,6 +69,8 @@ export interface DataTableSort {
 
 export interface FileTableColumnMeta {
   className?: string;
+  /** Overrides the default padding applied to the header cell (pl-6 for first, pl-2 for others). */
+  headerClassName?: string;
   sortField?: string;
 }
 
@@ -211,6 +213,7 @@ function DraggableTableHeader<T extends RowData>({
     id: header.column.id,
   });
 
+  const meta = header.column.columnDef.meta;
   const style = {
     "--col-size": columnSizeValue(size),
     // Undefined (no drag offset) drops the property, so transform is none.
@@ -219,10 +222,10 @@ function DraggableTableHeader<T extends RowData>({
     transition,
   } as CSSProperties;
 
-  const meta = header.column.columnDef.meta;
   const isFirst = header.index === 0;
   const className = clsx(
-    isFirst ? "pl-6" : "pl-2",
+    // eslint-disable-next-line shadcn/require-static-classes -- column classes come from TanStack column meta, authored as static strings in the column definitions
+    meta?.headerClassName ?? (isFirst ? "pl-6" : "pl-2"),
     // eslint-disable-next-line shadcn/require-static-classes -- column classes come from TanStack column meta, authored as static strings in the column definitions
     meta?.className ?? "",
     // Last, so these win over the meta classes (as the inline style they

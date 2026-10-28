@@ -138,11 +138,28 @@ export function sortItems(
 
     let comparison = 0;
     switch (sort.field) {
-      case "name":
-        comparison = a.name.localeCompare(b.name, undefined, {
-          sensitivity: "base",
-        });
+      case "name": {
+        // Text-starting names sort before digit-starting names, matching BV-BRC's
+        // default workspace sort (e.g. "Bacillus anthracis" before "1386.5504").
+        const aDigit = /^\d/.test(a.name);
+        const bDigit = /^\d/.test(b.name);
+        if (aDigit !== bDigit) {
+          comparison = aDigit ? 1 : -1;
+        } else {
+          // Primary: case-insensitive alphabetical + natural numeric order.
+          // Tiebreaker: uppercase before lowercase (e.g. "Alpha" before "alpha").
+          comparison =
+            a.name.localeCompare(b.name, undefined, {
+              sensitivity: "base",
+              numeric: true,
+            }) ||
+            a.name.localeCompare(b.name, undefined, {
+              caseFirst: "upper",
+              numeric: true,
+            });
+        }
         break;
+      }
       case "size":
         comparison = a.size - b.size;
         break;

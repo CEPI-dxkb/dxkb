@@ -7,7 +7,7 @@ import {
   Dna,
   FlaskConical,
   Layers,
-  BriefcaseMedical,
+  Flag,
   FileArchive,
   FileSpreadsheet,
   Globe,
@@ -21,7 +21,7 @@ import { isFolderType, normalizeWorkspaceObjectType } from "@/lib/services/works
 const typeIconMap: Partial<Record<string, LucideIcon>> = {
   folder: Folder,
   directory: Folder,
-  job_result: BriefcaseMedical,
+  job_result: Flag,
   contigs: Dna,
   reads: Dna,
   feature_group: FlaskConical,
@@ -70,15 +70,17 @@ const folderVariantIcon: Record<FolderIconVariant, LucideIcon> = {
 export function WorkspaceItemIcon({ type, className, variant = "default" }: WorkspaceItemIconProps) {
   const key = normalizeWorkspaceObjectType(type);
   const isFolderLike = isFolderType(type);
-  const Icon = isFolderLike
-    ? folderVariantIcon[variant]
-    : (typeIconMap[key] ?? typeIconMap[type] ?? File);
+  const ownIcon = typeIconMap[key] ?? typeIconMap[type];
+  // Use the variant-aware folder icon when the type is folder-like and has no
+  // distinct icon of its own (i.e. would just fall back to the generic Folder).
+  const useFolderVariant = isFolderLike && (ownIcon === undefined || ownIcon === Folder);
+  const Icon = useFolderVariant ? folderVariantIcon[variant] : (ownIcon ?? File);
 
   return (
     <Icon
       className={cn(
         "size-4 shrink-0",
-        isFolderLike ? "text-highlight" : "text-muted-foreground",
+        useFolderVariant ? "text-highlight" : "text-muted-foreground",
         className,
       )}
     />

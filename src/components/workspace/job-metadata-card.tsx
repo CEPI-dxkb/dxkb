@@ -83,21 +83,14 @@ export function JobMetadataCard({
                     <Dna className="size-4" />
                     CDS
                   </Button>
-                  <Tooltip>
-                    <TooltipTrigger
-                      render={
-                        <span className="inline-flex cursor-not-allowed">
-                          <Button variant="secondary" size="sm" disabled>
-                            <Globe className="size-4" />
-                            Browser
-                          </Button>
-                        </span>
-                      }
-                    />
-                    <TooltipContent>
-                      <p>Genome browser not yet available</p>
-                    </TooltipContent>
-                  </Tooltip>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => { router.push(`${genomeHref(annotationGenomeId)}?tab=genome-browser`); }}
+                  >
+                    <Globe className="size-4" />
+                    Browser
+                  </Button>
                 </>
               )}
               {isReportJob && (

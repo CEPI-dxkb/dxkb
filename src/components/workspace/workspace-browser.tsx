@@ -546,6 +546,7 @@ function useWorkspaceBrowser({
       memberCountByPath={memberCountByPath}
       favoritePaths={isHome ? favoritePaths : undefined}
       isCurrentFolderFavorite={isCurrentFolderFavorite}
+      isFavoritingCurrentFolder={isFavoriting}
       onToggleCurrentFolderFavorite={handleToggleCurrentFolderFavorite}
       selectedPaths={selectedPaths}
       onSelect={handleSelectItem}

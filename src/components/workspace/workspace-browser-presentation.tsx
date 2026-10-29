@@ -119,6 +119,7 @@ interface WorkspaceBrowserPresentationProps {
   memberCountByPath?: Record<string, number>;
   favoritePaths?: string[];
   isCurrentFolderFavorite?: boolean;
+  isFavoritingCurrentFolder?: boolean;
   onToggleCurrentFolderFavorite?: () => void;
   selectedPaths: string[];
   onSelect: (
@@ -154,6 +155,7 @@ export function WorkspaceBrowserPresentation({
   memberCountByPath,
   favoritePaths,
   isCurrentFolderFavorite,
+  isFavoritingCurrentFolder,
   onToggleCurrentFolderFavorite,
   selectedPaths,
   onSelect,
@@ -214,6 +216,7 @@ export function WorkspaceBrowserPresentation({
           currentUsername={currentUsername}
           workspaceRootUsername={workspaceRootUsername}
           isFavorite={isCurrentFolderFavorite}
+          isFavoritePending={isFavoritingCurrentFolder}
           onToggleFavorite={onToggleCurrentFolderFavorite}
         />
         <WorkspaceToolbar

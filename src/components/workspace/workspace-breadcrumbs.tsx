@@ -20,6 +20,7 @@ interface WorkspaceBreadcrumbsProps {
   workspaceRootUsername?: string;
   /** When provided, renders a star button before the breadcrumbs to favorite/unfavorite the current folder */
   isFavorite?: boolean;
+  isFavoritePending?: boolean;
   onToggleFavorite?: () => void;
 }
 
@@ -31,6 +32,7 @@ export function WorkspaceBreadcrumbs({
   currentUsername,
   workspaceRootUsername,
   isFavorite,
+  isFavoritePending,
   onToggleFavorite,
 }: WorkspaceBreadcrumbsProps) {
   const breadcrumbs = buildWorkspaceBreadcrumbs({
@@ -51,6 +53,7 @@ export function WorkspaceBreadcrumbs({
           variant="ghost"
           size="icon-sm"
           onClick={onToggleFavorite}
+          disabled={isFavoritePending}
           aria-label={isFavorite ? "Remove from favorites" : "Add to favorites"}
           className="mr-1 shrink-0"
         >

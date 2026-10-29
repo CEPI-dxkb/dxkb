@@ -240,7 +240,7 @@ function useWorkspaceBrowser({
     basePath: jobResultBasePath,
   });
 
-  const { handleAction, isDownloading, isFavoriting } =
+  const { handleAction, favoriteMutate, isDownloading, isFavoriting } =
     useWorkspaceActionDispatch({
       currentUser,
       myWorkspaceRoot,
@@ -300,6 +300,15 @@ function useWorkspaceBrowser({
 
   const isCurrentSelectionFavorite =
     primaryItem != null && favoritePaths.includes(primaryItem.path);
+
+  const homeFolderPath = isHome ? buildHomePath(username, path) : "";
+
+  const isCurrentFolderFavorite =
+    isHome && favoritePaths.includes(homeFolderPath);
+
+  const handleToggleCurrentFolderFavorite = isHome
+    ? () => { favoriteMutate(homeFolderPath); }
+    : undefined;
 
   useEffect(() => {
     if (selectedItems.length === 0) return;
@@ -536,6 +545,9 @@ function useWorkspaceBrowser({
       sharedRootUsername={isHome ? undefined : myWorkspaceRoot}
       memberCountByPath={memberCountByPath}
       favoritePaths={isHome ? favoritePaths : undefined}
+      isCurrentFolderFavorite={isCurrentFolderFavorite}
+      isFavoritingCurrentFolder={isFavoriting}
+      onToggleCurrentFolderFavorite={handleToggleCurrentFolderFavorite}
       selectedPaths={selectedPaths}
       onSelect={handleSelectItem}
       onItemDoubleClick={handleItemDoubleClick}

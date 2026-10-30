@@ -1,24 +1,33 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { RadioGroupItem } from "@/components/ui/radio-group";
 import { SearchBar } from "@/components/search/search-bar";
 import ThemeContent from "@/components/ui/theme-content";
-import { Textarea } from "@/components/ui/textarea";
 import { useAuth, useResendVerificationEmail } from "@/lib/auth/provider";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Label } from "@/components/ui/label";
 import {
   CardFieldInput,
   CardFieldLabel,
 } from "@/components/services/form-ui/card-field";
-import { ServiceRadioGroup } from "@/components/services/form-ui/service-radio-group";
+import { searchHref, searchTypes } from "@/constants/search-info";
+
+const everythingType = searchTypes.find((t) => t.id === "everything")!;
+
+const popularSearches = [
+  "SARS-CoV-2",
+  "Influenza A",
+  "HIV-1",
+  "Ebola virus",
+  "Zika virus",
+];
 
 const WelcomeSearch = () => {
   const { isAuthenticated, isVerified } = useAuth();
   const resendVerificationEmail = useResendVerificationEmail();
+  const router = useRouter();
 
   return (
     <section className="grow">
@@ -71,36 +80,18 @@ const WelcomeSearch = () => {
                     <span className="mr-2 text-sm text-muted-foreground">
                       Popular searches:
                     </span>
-                    <Badge
-                      variant="secondary"
-                      className="cursor-pointer"
-                    >
-                      SARS-CoV-2
-                    </Badge>
-                    <Badge
-                      variant="secondary"
-                      className="cursor-pointer"
-                    >
-                      Influenza A
-                    </Badge>
-                    <Badge
-                      variant="secondary"
-                      className="cursor-pointer"
-                    >
-                      HIV-1
-                    </Badge>
-                    <Badge
-                      variant="secondary"
-                      className="cursor-pointer"
-                    >
-                      Ebola virus
-                    </Badge>
-                    <Badge
-                      variant="secondary"
-                      className="cursor-pointer"
-                    >
-                      Zika virus
-                    </Badge>
+                    {popularSearches.map((term) => (
+                      <Badge
+                        key={term}
+                        variant="secondary"
+                        className="cursor-pointer"
+                        onClick={() =>
+                          router.push(searchHref(everythingType, term))
+                        }
+                      >
+                        {term}
+                      </Badge>
+                    ))}
                   </div>
                 </TabsContent>
 
@@ -140,31 +131,18 @@ const WelcomeSearch = () => {
                   </Button>
                 </TabsContent>
 
+                {/* TODO: wire sequence pre-fill once BLAST page supports URL params */}
                 <TabsContent value="sequence">
-                  <div className="mb-4 space-y-4">
-                    <CardFieldLabel>Sequence Type</CardFieldLabel>
-                    <ServiceRadioGroup defaultValue="nucleotide">
-                      <div className="flex items-center gap-3">
-                        <RadioGroupItem id="nucleotide" value="nucleotide" />
-                        <Label htmlFor="nucleotide">Nucleotide</Label>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <RadioGroupItem id="protein" value="protein" />
-                        <Label htmlFor="protein">Protein</Label>
-                      </div>
-                    </ServiceRadioGroup>
-
-                    <div className="gap-4 text-foreground">
-                      <CardFieldLabel>Enter Sequence</CardFieldLabel>
-                      <Textarea
-                        variant="mono"
-                        className="m-2 h-24 w-full"
-                        placeholder="Paste your sequence here (FASTA format supported)"
-                      ></Textarea>
-                    </div>
-                  </div>
-                  <Button variant="cta" className="w-full">
-                    Search by Sequence
+                  <p className="mb-4 text-sm text-muted-foreground">
+                    Use the BLAST service to search by nucleotide or protein
+                    sequence against public or private genomes and databases.
+                  </p>
+                  <Button
+                    variant="cta"
+                    className="w-full"
+                    onClick={() => router.push("/services/blast")}
+                  >
+                    Open BLAST Service
                   </Button>
                 </TabsContent>
               </Tabs>

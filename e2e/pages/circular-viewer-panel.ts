@@ -62,6 +62,8 @@ export class CircularViewerPanelPage {
     const ring = this.ring(trackId);
     const inner = Number(await ring.getAttribute("data-inner-radius"));
     const outer = Number(await ring.getAttribute("data-outer-radius"));
+    // The mouse does not scroll: on a phone the sidebar sits above the figure.
+    await this.figure().scrollIntoViewIfNeeded();
     const box = await this.figure().boundingBox();
     if (!box) throw new Error("The Circular Viewer figure has no layout box.");
     const radius = (inner + outer) / 2;

@@ -69,7 +69,9 @@ async function expectCompareRegionContrast(
  * sidebar and figure), asserted outright for the Compare Region card's reason:
  * the wildcard baseline's `color-contrast` allowance (DXKBCORE-174) is for
  * host pages, and once hid the panel's muted "None found" labels at 4.42:1
- * when the panel sat on the page background instead of a card.
+ * when the panel sat on the page background instead of a card. It covers the
+ * HTML only: axe leaves SVG text `incomplete` (`imgNode`), so the figure's 10 px
+ * position labels are checked through their token in `theme-contrast.test.ts`.
  */
 async function expectCircularViewerContrast(
   page: Page,
@@ -508,8 +510,10 @@ test.describe("a11y component surfaces", () => {
 
   // Circular Viewer tab (src/components/circular-viewer/), here for the Genome
   // Browser's first reason: the Genome page is already claimed by its own entry.
-  // The whole page is scanned, full ruleset: the figure is the app's own SVG;
-  // the panel's contrast is asserted outright (expectCircularViewerContrast).
+  // The whole page is scanned, full ruleset: the figure is the app's own SVG,
+  // whose text axe leaves incomplete; the panel's HTML contrast is asserted
+  // outright (expectCircularViewerContrast) and the position labels' token by
+  // theme-contrast.test.ts.
   test("circular viewer tab has no blocking a11y violations", async ({
     page,
     context,

@@ -257,8 +257,8 @@ describe("theme contrast: dark-theme text", () => {
  * (Method, Density) sets its unpressed option in `text-foreground/70` on a
  * `bg-muted` pill, and the density label and the pinned gene's genome use it
  * on the card or on the pin strip's muted wash over the card, where the
- * strip's links (`text-link`) sit too. `muted-foreground` on `muted` is 3.7:1
- * in the light themes and the Tabs recipe (`foreground/60`) 3.8:1 in
+ * strip's links (`text-link`) sit too. `muted-foreground` on `muted` is under
+ * 4.5:1 in the light themes and the Tabs recipe (`foreground/60`) 3.8:1 in
  * bvbrc-light, so the viewer uses 70%. The strip's unit tests pin both
  * classes to these shares.
  */
@@ -293,6 +293,22 @@ describe("theme contrast: the Compare Region Viewer's toggles and pin strip", ()
       expect(
         srgbContrast(srgb("--link"), wash),
         "links on the pin wash",
+      ).toBeGreaterThanOrEqual(minimumContrast);
+    },
+  );
+});
+
+/**
+ * The Circular Viewer's position labels: 10 px SVG text in `muted-foreground`
+ * (the `--tick-color` fallback) on the card. axe leaves SVG text `incomplete`,
+ * so the e2e sweep never scores it; this holds every theme to AA instead.
+ */
+describe("theme contrast: the Circular Viewer's position labels", () => {
+  it.each(themeBlocks.map((block) => [themeOf(block), block] as const))(
+    "%s keeps muted-foreground at 4.5:1 on the card",
+    (_theme, block) => {
+      expect(
+        contrast(themeScope(block), "--muted-foreground", "--card"),
       ).toBeGreaterThanOrEqual(minimumContrast);
     },
   );

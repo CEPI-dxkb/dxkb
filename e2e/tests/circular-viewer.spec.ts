@@ -59,8 +59,8 @@ test.describe("Circular Viewer", () => {
     await viewer.hoverRing("cds-forward", Math.PI / 2);
     await expect(viewer.tooltip()).toContainText(forwardFeature.patricId);
     await expect(viewer.tooltip()).toContainText(forwardFeature.product);
-    // At 3 o'clock the tooltip opens leftward, toward the middle, so it stays
-    // on the figure instead of running off the page's right edge.
+    // Placed beside the pointer, flipped and clamped to stay on the figure
+    // instead of running off the page's right edge.
     const tip = await viewer.tooltip().boundingBox();
     if (!tip) throw new Error("The Circular Viewer tooltip has no layout box.");
     expect(tip.x + tip.width).toBeLessThanOrEqual(box.x + box.width);
@@ -73,6 +73,36 @@ test.describe("Circular Viewer", () => {
       dialog.getByRole("link", { name: "Open Feature View" }),
     ).toHaveAttribute("href", `/feature/${forwardFeature.featureId}`);
   });
+
+  for (const size of [
+    { width: 375, height: 812 },
+    { width: 1024, height: 768 },
+  ]) {
+    test(`keeps the tooltip inside the figure at ${String(size.width)}x${String(size.height)}`, async ({
+      page,
+    }) => {
+      await page.setViewportSize(size);
+      const viewer = new CircularViewerPanelPage(page);
+      await viewer.goto(genomeId);
+      await viewer.expectTrackReady("cds-forward");
+      // On a phone the sidebar sits above the figure; hovering needs it in view.
+      await viewer.figure().scrollIntoViewIfNeeded();
+      const box = await viewer.figure().boundingBox();
+      if (!box) throw new Error("The Circular Viewer figure has no layout box.");
+
+      // At 3 o'clock, past the figure's middle, where a tooltip's narrowest
+      // width does not fit on either side of the pointer on a phone.
+      await viewer.hoverRing("cds-forward", Math.PI / 2);
+      await expect(viewer.tooltip()).toContainText(forwardFeature.patricId);
+      const tip = await viewer.tooltip().boundingBox();
+      if (!tip) throw new Error("The Circular Viewer tooltip has no layout box.");
+      expect(tip.x).toBeGreaterThanOrEqual(box.x);
+      expect(tip.x + tip.width).toBeLessThanOrEqual(box.x + box.width);
+      expect(tip.y).toBeGreaterThanOrEqual(box.y);
+      expect(tip.y + tip.height).toBeLessThanOrEqual(box.y + box.height);
+      expect(tip.x + tip.width).toBeLessThanOrEqual(size.width);
+    });
+  }
 
   test("fits the screen: the sidebar scrolls, the page does not", async ({
     page,

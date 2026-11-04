@@ -31,26 +31,48 @@ export function parseGenomeTab(
     : "overview";
 }
 
-export function isBacterialGenome(genome: GenomeViewRecord): boolean {
-  return genome.superkingdom?.toLowerCase() === "bacteria";
+/** A lineage field is an array or a comma-joined string; either way, trimmed entries. */
+function lineageList(
+  value: string | number | readonly (string | number)[] | undefined,
+): readonly string[] {
+  if (value === undefined) return [];
+  const list = Array.isArray(value) ? value : String(value).split(",");
+  return list.map((entry) => String(entry).trim());
 }
 
 function lineageNames(genome: GenomeViewRecord): readonly string[] {
-  const names = genome.taxon_lineage_names;
-  if (Array.isArray(names)) return names;
-  return names === undefined ? [] : names.split(",").map((name) => name.trim());
+  return lineageList(genome.taxon_lineage_names);
+}
+
+function lineageIds(genome: GenomeViewRecord): readonly string[] {
+  return lineageList(genome.taxon_lineage_ids);
+}
+
+/**
+ * A genome is bacterial by its `superkingdom` label or by lineage id `2`, which
+ * also covers a label that is missing, the string `"null"`, or wrong.
+ */
+export function isBacterialGenome(genome: GenomeViewRecord): boolean {
+  return (
+    genome.superkingdom?.toLowerCase() === "bacteria" ||
+    lineageIds(genome).includes("2")
+  );
 }
 
 /**
  * Legacy `Genome.js` removed the Circular Viewer tab for viruses
  * (`changeToVirusContext`) and for eukaryotic host genomes (lineage
- * `2759`), so archaea, and any genome without a recorded kingdom, keep it.
+ * `2759`), so archaea, and any genome without lineage data, keep it. The
+ * lineage ids, lineage names, and `superkingdom` each exclude on their own, so
+ * a `"null"` kingdom on a viral record cannot hide the lineage.
  */
 export function supportsCircularViewer(genome: GenomeViewRecord): boolean {
-  const kingdom = genome.superkingdom?.toLowerCase();
-  if (kingdom) return kingdom !== "viruses" && kingdom !== "eukaryota";
+  const ids = lineageIds(genome);
+  if (ids.includes("10239") || ids.includes("2759")) return false;
   const names = lineageNames(genome);
-  return !names.includes("Viruses") && !names.includes("Eukaryota");
+  if (names.includes("Viruses") || names.includes("Eukaryota")) return false;
+  const kingdom = genome.superkingdom?.toLowerCase();
+  return kingdom !== "viruses" && kingdom !== "eukaryota";
 }
 
 export function buildGenomeTabs(

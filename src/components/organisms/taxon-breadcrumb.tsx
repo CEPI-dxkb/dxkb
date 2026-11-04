@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 import type { OrganismTaxonomy } from "@/lib/services/organisms/types";
-import { taxonViewCrumbs } from "@/lib/taxonomy-view";
+import { taxonViewHeader } from "@/lib/taxonomy-view";
 import { taxonomyHref } from "@/lib/views/hrefs";
 
 interface TaxonBreadcrumbProps {
@@ -22,11 +22,11 @@ function Eyebrow() {
 
 /**
  * BV-BRC's Taxon View header (`buildHeaderContent`, `Taxonomy.js`): the
- * ranked ancestors (see `taxonViewCrumbs`), then the taxon itself as the
+ * ranked ancestors (see `taxonViewHeader`), then the taxon itself as the
  * heading. A taxon where neither an ancestor nor the taxon itself has a shown
  * rank (a root, domain, kingdom or realm, or a clade or unranked group above
  * the first phylum) has no crumbs there, so its heading is kept for assistive
- * technology only.
+ * technology only. A record that is merely malformed keeps a visible heading.
  */
 export function TaxonBreadcrumb({
   taxon,
@@ -42,9 +42,7 @@ export function TaxonBreadcrumb({
     );
   }
 
-  const crumbs = taxonViewCrumbs(taxon);
-  const ancestors = crumbs.slice(0, -1);
-  const current = crumbs.at(-1);
+  const { ancestors, headingHidden } = taxonViewHeader(taxon);
 
   return (
     <div>
@@ -66,13 +64,15 @@ export function TaxonBreadcrumb({
             <span className="text-muted-foreground/50 select-none">»</span>
           </span>
         ))}
-        {current ? (
-          <h1 className="m-0 inline text-sm leading-none font-bold text-secondary">
-            {current.name}
-          </h1>
-        ) : (
-          <h1 className="sr-only">{taxon.taxonName}</h1>
-        )}
+        <h1
+          className={
+            headingHidden
+              ? "sr-only"
+              : "m-0 inline text-sm leading-none font-bold text-secondary"
+          }
+        >
+          {taxon.taxonName}
+        </h1>
         {genomeCount}
       </div>
     </div>

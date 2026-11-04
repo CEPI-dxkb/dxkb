@@ -258,6 +258,28 @@ describe("exportSvgFigure", () => {
     }
   });
 
+  it("drops a sweep mask and the references to it, so marks exported mid-sweep are whole", async () => {
+    // Its class sets `mask-type: alpha`, which resolving the classes would not
+    // keep: as a luminance mask, its dark currentColor circle hides the marks.
+    const svg = figure();
+    svg.insertAdjacentHTML(
+      "beforeend",
+      `<mask id="«r1»" data-sweep="" class="mask-type-alpha"><circle class="animate-circular-track-sweep" stroke="currentColor"></circle></mask>
+      <g id="swept" mask="url(#«r1»)"><path d="M1 1"></path></g>
+      <mask id="kept"><rect fill="white"></rect></mask>
+      <g id="masked" mask="url(#kept)"></g>`,
+    );
+    exportSvgFigure(svg, "figure.svg");
+
+    const { root } = await downloaded();
+    expect([...root.querySelectorAll("mask")].map((mask) => mask.id)).toEqual(["kept"]);
+    expect(root.querySelector("#swept")?.hasAttribute("mask")).toBe(false);
+    expect(root.querySelector('#swept path[d="M1 1"]')).not.toBeNull();
+    expect(root.querySelector("#masked")?.getAttribute("mask")).toBe("url(#kept)");
+    // The figure on the page keeps its sweep.
+    expect(svg.querySelector("mask[data-sweep]")).not.toBeNull();
+  });
+
   it("resolves the classes under a light-theme host, then removes it", () => {
     let hostDuringExport: Element | null = null;
     download.blob.mockImplementation(() => {

@@ -11,8 +11,9 @@ import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectVa
 import { Spinner } from "@/components/ui/spinner";
 import {
   isUserPlotType,
-  keepAccessions,
+  keepSequences,
   maxUserFileBytes,
+  maxUserTrackRows,
   parseUserTrack,
   userFileAccept,
   type ParsedUserTrack,
@@ -30,11 +31,11 @@ const plotItems: Record<UserPlotType, string> = {
 /** Legacy `TrackController`'s "Upload your own data" section. */
 export function UserTrackForm({
   onAdd,
-  genomeAccessions,
+  sequenceLengths,
 }: {
   onAdd: (plot: UserPlotType, parsed: ParsedUserTrack, fileName: string, name: string) => void;
-  /** The drawn sequences' (contigs') accessions; undefined until they have loaded. */
-  genomeAccessions: ReadonlySet<string> | undefined;
+  /** The drawn sequences' (contigs') lengths by accession; undefined until they have loaded. */
+  sequenceLengths: ReadonlyMap<string, number> | undefined;
 }) {
   const id = useId();
   const fileInput = useRef<HTMLInputElement>(null);
@@ -44,14 +45,19 @@ export function UserTrackForm({
   const [reading, setReading] = useState(false);
 
   async function add() {
-    if (file === null || genomeAccessions === undefined) return;
+    if (file === null || sequenceLengths === undefined) return;
     if (file.size > maxUserFileBytes) {
       toast.error("User file format error: the file is larger than 20 MB.");
       return;
     }
+    // What this read submits: the success path clears only these. The name can
+    // change while the read runs and is then kept; Choose file is disabled
+    // meanwhile, so the file guard is a safeguard.
+    const submittedFile = file;
+    const submittedName = name;
     setReading(true);
     try {
-      const text = await file.text();
+      const text = await submittedFile.text();
       const read = parseUserTrack(text, plot);
       if (read.items.length === 0) {
         toast.error(
@@ -63,23 +69,32 @@ export function UserTrackForm({
         );
         return;
       }
-      const { parsed, dropped } = keepAccessions(read, genomeAccessions);
+      const { parsed, offSequence, pastEnd } = keepSequences(read, sequenceLengths);
       if (parsed.items.length === 0) {
-        toast.error(`No line of ${file.name} is on a drawn sequence of this genome.`);
+        toast.error(`No line of ${submittedFile.name} starts within a drawn sequence of this genome.`);
         return;
       }
-      onAdd(plot, parsed, file.name, name);
+      if (parsed.items.length > maxUserTrackRows) {
+        toast.error(
+          `${submittedFile.name} has ${parsed.items.length.toLocaleString("en-US")} lines to draw, more than the ${maxUserTrackRows.toLocaleString("en-US")} a track can show. Split the file or keep fewer lines.`,
+        );
+        return;
+      }
+      onAdd(plot, parsed, submittedFile.name, submittedName);
       if (parsed.skipped > 0) {
-        toast.warning(`Skipped ${String(parsed.skipped)} line(s) of ${file.name} that could not be read.`);
+        toast.warning(`Skipped ${String(parsed.skipped)} line(s) of ${submittedFile.name} that could not be read.`);
       }
-      if (dropped > 0) {
-        toast.warning(`Skipped ${String(dropped)} line(s) of ${file.name} that are not on a drawn sequence.`);
+      if (offSequence > 0) {
+        toast.warning(`Skipped ${String(offSequence)} line(s) of ${submittedFile.name} that are not on a drawn sequence.`);
       }
-      setFile(null);
-      setName("");
-      if (fileInput.current) fileInput.current.value = "";
+      if (pastEnd > 0) {
+        toast.warning(`Skipped ${String(pastEnd)} line(s) of ${submittedFile.name} that start past the end of their sequence.`);
+      }
+      setFile((current) => (current === submittedFile ? null : current));
+      setName((current) => (current === submittedName ? "" : current));
+      if (fileInput.current?.files?.[0] === submittedFile) fileInput.current.value = "";
     } catch (error) {
-      toast.error(formatPrefixedErrorMessage(`Could not read ${file.name}`, error));
+      toast.error(formatPrefixedErrorMessage(`Could not read ${submittedFile.name}`, error));
     } finally {
       setReading(false);
     }
@@ -165,6 +180,7 @@ export function UserTrackForm({
             aria-labelledby={`${id}-file-label ${id}-file-action`}
             aria-describedby={`${id}-file-name`}
             className="shrink-0"
+            disabled={reading}
             onClick={() => {
               fileInput.current?.click();
             }}
@@ -194,7 +210,7 @@ export function UserTrackForm({
               setName(event.target.value);
             }}
           />
-          <Button type="submit" variant="soft" size="icon" aria-label="Add user track" disabled={file === null || genomeAccessions === undefined || reading}>
+          <Button type="submit" variant="soft" size="icon" aria-label="Add user track" disabled={file === null || sequenceLengths === undefined || reading}>
             {reading ? <Spinner /> : <Plus />}
           </Button>
         </div>

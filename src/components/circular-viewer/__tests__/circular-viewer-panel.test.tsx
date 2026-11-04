@@ -134,6 +134,28 @@ describe("CircularViewerPanel", () => {
     });
   });
 
+  it("fills both GC tracks when the GC read answers on Retry", async () => {
+    serveGenome();
+    let gcCalls = 0;
+    server.use(
+      http.get("*/api/circular-viewer/gc", () => {
+        gcCalls += 1;
+        if (gcCalls === 1) return HttpResponse.json(unavailable, { status: 503 });
+        return HttpResponse.json({ windowSize: 50, contigs: [{ accession: "NC_1", length: 50_000, gc: [0.5, 0.6], skew: [0, 0.1] }] });
+      }),
+    );
+    render(<CircularViewerPanel genomeId="1.1" />, { wrapper: createQueryClientWrapper() });
+    const figure = await screen.findByRole("img", { name: "Circular view of genome 1.1" });
+    const skew = await screen.findByRole("listitem", { name: "GC Skew" });
+    await userEvent.click(await within(skew).findByRole("button", { name: "Retry" }));
+    await waitFor(() => {
+      expect(figure.querySelector('[data-track="gc-content"]')).toHaveAttribute("data-state", "ready");
+      expect(figure.querySelector('[data-track="gc-skew"]')).toHaveAttribute("data-state", "ready");
+    });
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(gcCalls).toBe(2);
+  });
+
   it("adds a custom track and raises legacy's toast when it matches nothing", async () => {
     serveGenome();
     let customQuery: URLSearchParams | undefined;
@@ -158,6 +180,8 @@ describe("CircularViewerPanel", () => {
       expect(row).toHaveTextContent("None found");
     });
     expect(customQuery?.get("keyword")).toBe("secretion");
+    expect(customQuery?.get("type")).toBe("CDS");
+    expect(customQuery?.get("strand")).toBe("both");
     expect(toast.error).toHaveBeenCalledTimes(1);
     expect(toast.error).toHaveBeenCalledWith("No data found.");
   });

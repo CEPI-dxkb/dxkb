@@ -26,6 +26,12 @@ export interface ParsedUserTrack {
 /** A file this large would stall the tab while it is parsed and drawn. */
 export const maxUserFileBytes = 20 * 1024 * 1024;
 
+/**
+ * Most rows an upload may draw. A 20 MB file can hold 800k rows, which takes
+ * 1.7 s and about 1.2 GB of heap to draw, and every recolor redraws it.
+ */
+export const maxUserTrackRows = 100_000;
+
 /** Legacy took `text/plain` only; a `.tsv` file has its own type. */
 export const userFileAccept = ".txt,.tsv,.tab,text/plain,text/tab-separated-values";
 
@@ -54,10 +60,32 @@ function itemsScale(items: readonly UserTrackItem[]): ScoreScale {
   return userScoreScale(min, max);
 }
 
+const wholeNumber = /^\d+$/;
+const decimalNumber = /^[+-]?(?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?$/i;
+
+/** A cell holding only a position, 1 or more; null for anything else. */
+function readPosition(cell: string): number | null {
+  const text = cell.trim();
+  if (!wholeNumber.test(text)) return null;
+  const position = Number(text);
+  return Number.isSafeInteger(position) && position >= 1 ? position : null;
+}
+
+/** A cell holding only a finite decimal (`0.5`, `-.5`, `2.5e-1`); null for anything else. */
+function readScore(cell: string): number | null {
+  const text = cell.trim();
+  if (!decimalNumber.test(text)) return null;
+  const score = Number(text);
+  return Number.isFinite(score) ? score : null;
+}
+
 /**
  * Tab-separated `accession start end [score]`, as legacy read uploads: a
  * fourth column is a score for every plot type, a three-column row counts
- * only for tiles, and anything else is skipped. Sorted by start, then end.
+ * only for tiles, and anything else is skipped. Each number must fill its
+ * cell (spaces aside), so `1e3` or `0.5junk` skips the row, which the upload
+ * warns of, rather than drawing it at `1` or `0.5`; `start` and `end` are
+ * safe whole numbers from 1. Sorted by start, then end.
  */
 export function parseUserTrack(text: string, plot: UserPlotType): ParsedUserTrack {
   const items: UserTrackItem[] = [];
@@ -67,13 +95,12 @@ export function parseUserTrack(text: string, plot: UserPlotType): ParsedUserTrac
     const cells = line.split("\t");
     const [rawAccession = "", rawStart = "", rawEnd = "", rawScore = ""] = cells;
     const accession = rawAccession.trim();
-    const start = Number.parseInt(rawStart, 10);
-    const end = Number.parseInt(rawEnd, 10);
-    const readable =
-      accession !== "" && Number.isInteger(start) && Number.isInteger(end) && end >= start;
+    const start = readPosition(rawStart);
+    const end = readPosition(rawEnd);
+    const readable = accession !== "" && start !== null && end !== null && end >= start;
     if (readable && cells.length > 3) {
-      const score = Number.parseFloat(rawScore);
-      if (Number.isFinite(score)) {
+      const score = readScore(rawScore);
+      if (score !== null) {
         items.push({ accession, start, end, score });
         continue;
       }
@@ -88,17 +115,32 @@ export function parseUserTrack(text: string, plot: UserPlotType): ParsedUserTrac
 }
 
 /**
- * Drops the rows whose accession is not in `accessions` (the sequences the
- * figure draws; legacy threw on the first) and rescales the scores without
- * them, so the plot range is the drawn one. `skipped` still counts only the
- * unreadable lines.
+ * Drops the rows on an accession that `lengths` (the drawn sequences' lengths;
+ * legacy threw on the first) does not hold, and the rows that start past
+ * their sequence's end, which would draw as a zero-width mark there. A row
+ * that overlaps the end is kept and drawn clamped; its tooltip keeps the
+ * uploaded coordinates. The scores are rescaled without the dropped rows, so
+ * the plot range is the drawn one. `skipped` still counts only the unreadable
+ * lines.
  */
-export function keepAccessions(
+export function keepSequences(
   parsed: ParsedUserTrack,
-  accessions: ReadonlySet<string>,
-): { parsed: ParsedUserTrack; dropped: number } {
-  const items = parsed.items.filter((item) => accessions.has(item.accession));
-  const dropped = parsed.items.length - items.length;
-  if (dropped === 0) return { parsed, dropped };
-  return { parsed: { ...parsed, items, scale: itemsScale(items) }, dropped };
+  lengths: ReadonlyMap<string, number>,
+): { parsed: ParsedUserTrack; offSequence: number; pastEnd: number } {
+  let offSequence = 0;
+  let pastEnd = 0;
+  const items = parsed.items.filter((item) => {
+    const length = lengths.get(item.accession);
+    if (length === undefined) {
+      offSequence += 1;
+      return false;
+    }
+    if (item.start > length) {
+      pastEnd += 1;
+      return false;
+    }
+    return true;
+  });
+  if (offSequence === 0 && pastEnd === 0) return { parsed, offSequence, pastEnd };
+  return { parsed: { ...parsed, items, scale: itemsScale(items) }, offSequence, pastEnd };
 }

@@ -77,7 +77,14 @@ export const circularViewerScenarioOverrides: JsonOverride[] = [
   {
     url: /\/api\/circular-viewer\/custom(?:\?|$)/,
     method: "GET",
-    body: { features: [customFeature], truncated: false },
+    body: ({ requestUrl }) => {
+      const query = new URL(requestUrl).searchParams;
+      const matches =
+        query.get("type") === "CDS" &&
+        query.get("strand") === "both" &&
+        query.get("keyword") === "transposase";
+      return { features: matches ? [customFeature] : [], truncated: false };
+    },
   },
   {
     url: /\/api\/circular-viewer\/gc(?:\?|$)/,

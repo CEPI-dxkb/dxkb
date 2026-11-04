@@ -7,7 +7,7 @@ import userEvent from "@testing-library/user-event";
 import { toast } from "sonner";
 import type { TrackData } from "@/lib/circular-viewer/drawing";
 import { defaultTracks } from "@/lib/circular-viewer/tracks";
-import { maxUserFileBytes } from "@/lib/circular-viewer/user-track";
+import { maxUserFileBytes, maxUserTrackRows } from "@/lib/circular-viewer/user-track";
 import { CircularViewerTrackList, type TrackError } from "../circular-viewer-track-list";
 import { CustomTrackForm } from "../custom-track-form";
 import { TrackColorPicker } from "../track-color-picker";
@@ -199,7 +199,7 @@ describe("CustomTrackForm", () => {
 });
 
 describe("UserTrackForm", () => {
-  const genomeAccessions = new Set(["NC_1"]);
+  const sequenceLengths = new Map([["NC_1", 1000]]);
 
   /** The hidden native input behind the "Choose file" button. */
   function fileInput(): HTMLInputElement {
@@ -209,7 +209,7 @@ describe("UserTrackForm", () => {
   }
 
   it("opens the file picker from a visible button and names the chosen file", async () => {
-    render(<UserTrackForm onAdd={vi.fn()} genomeAccessions={genomeAccessions} />);
+    render(<UserTrackForm onAdd={vi.fn()} sequenceLengths={sequenceLengths} />);
     const button = screen.getByRole("button", { name: "Data file Choose file" });
     expect(button).toHaveAccessibleDescription("No file chosen");
     // The native input is out of the tab order and the accessibility tree: the button stands for it.
@@ -233,7 +233,7 @@ describe("UserTrackForm", () => {
 
   async function addFile(contents: string | File, plot: string | null) {
     const onAdd = vi.fn();
-    render(<UserTrackForm onAdd={onAdd} genomeAccessions={genomeAccessions} />);
+    render(<UserTrackForm onAdd={onAdd} sequenceLengths={sequenceLengths} />);
     if (plot !== null) {
       await userEvent.click(screen.getByRole("combobox", { name: "Plot type" }));
       await userEvent.click(await screen.findByRole("option", { name: plot }));
@@ -260,6 +260,44 @@ describe("UserTrackForm", () => {
     expect(toast.warning).not.toHaveBeenCalled();
   });
 
+  it("disables Choose file and Add while the file is read, adds once, and keeps a name typed meanwhile", async () => {
+    let resolveText: (text: string) => void = () => undefined;
+    const file = new File(["NC_1\t1\t100\n"], "tiles.txt", { type: "text/plain" });
+    const readText = vi.fn(
+      () =>
+        new Promise<string>((resolve) => {
+          resolveText = resolve;
+        }),
+    );
+    file.text = readText;
+    const onAdd = vi.fn();
+    render(<UserTrackForm onAdd={onAdd} sequenceLengths={sequenceLengths} />);
+    await userEvent.upload(fileInput(), file);
+    await userEvent.click(screen.getByRole("button", { name: "Add user track" }));
+
+    expect(screen.getByRole("button", { name: "Data file Choose file" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Add user track" })).toBeDisabled();
+
+    // Enter with the submit button disabled must not start a second read; the name input stays usable.
+    const nameInput = screen.getByRole("textbox", { name: "Track name (optional)" });
+    await userEvent.type(nameInput, "Mine{Enter}");
+    expect(readText).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      resolveText("NC_1\t1\t100\n");
+      await Promise.resolve();
+    });
+    await waitFor(() => {
+      expect(onAdd).toHaveBeenCalledTimes(1);
+    });
+    expect(screen.getByRole("button", { name: "Data file Choose file" })).toBeEnabled();
+    // The name typed during the read was not submitted, so it is kept.
+    expect(nameInput).toHaveValue("Mine");
+    // The submitted file was cleared, from the form and from the native input.
+    expect(screen.getByRole("button", { name: "Data file Choose file" })).toHaveAccessibleDescription("No file chosen");
+    expect(fileInput().value).toBe("");
+  });
+
   it("skips rows whose accession is not in the genome, with a warning, and rescales without them", async () => {
     const onAdd = await addFile("NC_1\t1\t100\t0.5\nNC_9\t1\t100\t40\nNC_9\t5\t9\t2\n", "Histogram");
     await waitFor(() => {
@@ -275,11 +313,56 @@ describe("UserTrackForm", () => {
     );
   });
 
+  it("skips rows that start past the end of their sequence, with a warning of their own", async () => {
+    const onAdd = await addFile("NC_1\t1\t100\nNC_1\t5000\t6000\nNC_9\t1\t5\n", null);
+    await waitFor(() => {
+      expect(onAdd).toHaveBeenCalledWith(
+        "tiles",
+        expect.objectContaining({ items: [{ accession: "NC_1", start: 1, end: 100, score: null }] }),
+        "scores.tsv",
+        "",
+      );
+    });
+    expect(toast.warning).toHaveBeenCalledWith("Skipped 1 line(s) of scores.tsv that are not on a drawn sequence.");
+    expect(toast.warning).toHaveBeenCalledWith("Skipped 1 line(s) of scores.tsv that start past the end of their sequence.");
+  });
+
+  it("says so when every row is past the end", async () => {
+    const onAdd = await addFile("NC_1\t5000\t6000\n", null);
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith(
+        "No line of scores.tsv starts within a drawn sequence of this genome.",
+      );
+    });
+    expect(onAdd).not.toHaveBeenCalled();
+  });
+
+  const rows = (count: number, accession = "NC_1") => `${accession}\t1\t1\n`.repeat(count);
+
+  it("refuses a file with more drawn rows than a track can show", async () => {
+    const onAdd = await addFile(rows(maxUserTrackRows + 1), null);
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith(
+        "scores.tsv has 100,001 lines to draw, more than the 100,000 a track can show. Split the file or keep fewer lines.",
+      );
+    });
+    expect(onAdd).not.toHaveBeenCalled();
+  });
+
+  it("adds a file of exactly the most rows, and does not count rows that are not drawn", async () => {
+    const onAdd = await addFile(rows(maxUserTrackRows) + rows(5, "NC_9"), null);
+    await waitFor(() => {
+      expect(onAdd).toHaveBeenCalledTimes(1);
+    });
+    expect(toast.error).not.toHaveBeenCalled();
+    expect(toast.warning).toHaveBeenCalledWith("Skipped 5 line(s) of scores.tsv that are not on a drawn sequence.");
+  });
+
   it("adds nothing when no row's accession is in the genome", async () => {
     const onAdd = await addFile("NC_9\t1\t100\n", null);
     await waitFor(() => {
       expect(toast.error).toHaveBeenCalledWith(
-        "No line of scores.tsv is on a drawn sequence of this genome.",
+        "No line of scores.tsv starts within a drawn sequence of this genome.",
       );
     });
     expect(onAdd).not.toHaveBeenCalled();
@@ -330,7 +413,7 @@ describe("UserTrackForm", () => {
   });
 
   it("cannot add a file before the genome's sequences are known", async () => {
-    render(<UserTrackForm onAdd={vi.fn()} genomeAccessions={undefined} />);
+    render(<UserTrackForm onAdd={vi.fn()} sequenceLengths={undefined} />);
     const file = new File(["NC_1\t1\t100\n"], "tiles.txt", { type: "text/plain" });
     await userEvent.upload(fileInput(), file);
     expect(screen.getByRole("button", { name: "Add user track" })).toBeDisabled();

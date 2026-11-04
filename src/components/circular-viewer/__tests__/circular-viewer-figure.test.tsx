@@ -4,6 +4,11 @@ vi.mock("@visx/responsive", () => ({
 vi.mock("@visx/event", () => ({
   localPoint: (event: { clientX: number; clientY: number }) => ({ x: event.clientX, y: event.clientY }),
 }));
+const download = vi.hoisted(() => ({ blob: vi.fn<(blob: Blob, fileName: string) => void>() }));
+vi.mock("@/lib/utils", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/utils")>()),
+  downloadBlob: download.blob,
+}));
 
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -11,6 +16,7 @@ import { createRef } from "react";
 import type { TrackData } from "@/lib/circular-viewer/drawing";
 import { buildGenomeLayout } from "@/lib/circular-viewer/layout";
 import { defaultTracks } from "@/lib/circular-viewer/tracks";
+import { exportSvgFigure } from "@/lib/svg-figure-export";
 import { CircularViewerFigure } from "../circular-viewer-figure";
 import { CircularViewerTooltip } from "../circular-viewer-tooltip";
 
@@ -23,12 +29,14 @@ const data = new Map<string, TrackData>([
   }] } }],
 ]);
 
-function hoverRing(trackId: string) {
+/** Moves the pointer onto a ring, `turn` of the way round clockwise from 12 o'clock (a quarter is 3 o'clock, inside the first half of the genome). */
+function hoverRing(trackId: string, turn = 0.25) {
   const svg = screen.getByRole("img", { name: "Circular view of genome 1.1" });
   const ring = svg.querySelector(`[data-track="${trackId}"]`);
   const middle = (Number(ring?.getAttribute("data-inner-radius")) + Number(ring?.getAttribute("data-outer-radius"))) / 2;
-  // The figure's center is (200, 200); 3 o'clock is inside the first half of the genome.
-  fireEvent.pointerMove(svg, { clientX: 200 + middle, clientY: 200 });
+  // The figure's center is (200, 200).
+  const angle = turn * 2 * Math.PI;
+  fireEvent.pointerMove(svg, { clientX: 200 + middle * Math.sin(angle), clientY: 200 - middle * Math.cos(angle) });
   return svg;
 }
 
@@ -39,6 +47,15 @@ describe("CircularViewerFigure", () => {
     expect(ring?.getAttribute("data-state")).toBe("ready");
     expect(ring?.querySelector("path")?.getAttribute("fill")).toBe("#307D32");
     expect(ring?.querySelector("path")).not.toHaveAttribute("class");
+  });
+
+  it("draws the position labels in muted-foreground when their track has no color", () => {
+    const labelTracks = defaultTracks().filter((track) => track.id === "labels");
+    const longLayout = buildGenomeLayout([{ accession: "NC_1", length: 5_000_000 }]);
+    render(<CircularViewerFigure genomeId="1.1" layout={longLayout} tracks={labelTracks} data={new Map()} svgRef={createRef()} />);
+    const group = screen.getByRole("img").querySelector('[data-track="labels"] g[style]');
+    expect(group?.querySelector("text")).not.toBeNull();
+    expect((group as SVGGElement | null)?.style.getPropertyValue("--tick-color")).toBe("var(--muted-foreground)");
   });
 
   it("draws legacy's navy contigs in periwinkle in a dark theme, keeping the navy for light and export", () => {
@@ -92,6 +109,25 @@ describe("CircularViewerFigure", () => {
     expect(ring()?.querySelector('path[fill="#123456"]')).not.toBeNull();
   });
 
+  it("exports a ring caught mid-sweep whole, without its sweep mask", async () => {
+    // Export is enabled once the requests settle, which can be before the sweep ends.
+    const svgRef = createRef<SVGSVGElement>();
+    render(<CircularViewerFigure genomeId="1.1" layout={layout} tracks={tracks} data={data} svgRef={svgRef} />);
+    const svg = svgRef.current;
+    if (!svg) throw new Error("no figure svg");
+    expect(svg.querySelector("mask")).not.toBeNull();
+
+    download.blob.mockReset();
+    exportSvgFigure(svg, "circular-genome-1.1.svg", () => null);
+    const [blob] = download.blob.mock.calls.at(0) ?? [];
+    if (!blob) throw new Error("nothing was downloaded");
+    const root = new DOMParser().parseFromString(await blob.text(), "image/svg+xml").documentElement;
+    const ring = root.querySelector('[data-track="cds-forward"]');
+    expect(ring?.querySelector("mask")).toBeNull();
+    expect(ring?.querySelector("[mask]")).toBeNull();
+    expect(ring?.querySelector('path[fill="#307D32"]')).not.toBeNull();
+  });
+
   it("fades a ring its eye button hides or shows, but not one drawn as it mounts", () => {
     const hidden = tracks.map((track) => ({ ...track, visible: false }));
     const { rerender } = render(
@@ -129,30 +165,63 @@ describe("CircularViewerFigure", () => {
     expect(screen.queryByRole("tooltip")).toBeNull();
   });
 
-  it("puts the tooltip on the side of the pointer toward the figure's middle", () => {
+  it("places the tooltip beside the pointer through custom properties", () => {
     render(<CircularViewerFigure genomeId="1.1" layout={layout} tracks={tracks} data={data} svgRef={createRef()} />);
-    const svg = hoverRing("cds-forward");
-    const ring = svg.querySelector('[data-track="cds-forward"]');
-    const middle = (Number(ring?.getAttribute("data-inner-radius")) + Number(ring?.getAttribute("data-outer-radius"))) / 2;
-    // At 3 o'clock, on the right half: anchored by its right edge at the pointer, so it opens leftward.
+    hoverRing("cds-forward");
     const tooltip = screen.getByRole("tooltip");
-    expect(tooltip).toHaveClass("right-(--tip-x)", "top-(--tip-y)");
-    expect(tooltip.style.getPropertyValue("--tip-x")).toBe(`${String(400 - (200 + middle))}px`);
-    expect(tooltip.style.getPropertyValue("--tip-y")).toBe("200px");
+    expect(tooltip).toHaveClass("max-w-(--tip-max-w)", "translate-x-(--tip-x)", "translate-y-(--tip-y)");
+    expect(tooltip.style.getPropertyValue("--tip-max-w")).toBe("min(20rem, 384px)");
+    expect(tooltip.style.getPropertyValue("--tip-x")).toMatch(/^[\d.]+px$/);
+    expect(tooltip.style.getPropertyValue("--tip-y")).toMatch(/^[\d.]+px$/);
   });
 
-  it("opens the tooltip rightward and downward from a pointer on the upper left", () => {
+  describe("tooltip placement", () => {
     const hit = { trackId: "contigs", path: "", item: { kind: "contig" as const, contig: { accession: "NC_1", sequenceId: "s1", length: 1000 } } };
-    render(<CircularViewerTooltip hit={hit} left={50} top={60} width={400} height={400} />);
-    const tooltip = screen.getByRole("tooltip");
-    expect(tooltip).toHaveClass("left-(--tip-x)", "top-(--tip-y)");
-    expect(tooltip.style.getPropertyValue("--tip-x")).toBe("50px");
-    expect(tooltip.style.getPropertyValue("--tip-y")).toBe("60px");
+    const sizes = { width: 270, height: 80 };
+    const sizeSpies: { mockRestore: () => void }[] = [];
 
-    render(<CircularViewerTooltip hit={hit} left={50} top={300} width={400} height={400} />);
-    const lower = screen.getAllByRole("tooltip")[1];
-    expect(lower).toHaveClass("left-(--tip-x)", "bottom-(--tip-y)");
-    expect(lower.style.getPropertyValue("--tip-y")).toBe("100px");
+    beforeEach(() => {
+      sizeSpies.push(
+        // The cap is written before the box is measured: a box wider than it is drawn at it.
+        vi.spyOn(HTMLElement.prototype, "offsetWidth", "get").mockImplementation(function (this: HTMLElement) {
+          const cap = /(\d+(?:\.\d+)?)px\)$/.exec(this.style.getPropertyValue("--tip-max-w"));
+          return cap ? Math.min(sizes.width, Number(cap[1])) : Number.POSITIVE_INFINITY;
+        }),
+        vi.spyOn(HTMLElement.prototype, "offsetHeight", "get").mockReturnValue(sizes.height),
+      );
+    });
+    afterEach(() => {
+      for (const spy of sizeSpies.splice(0)) spy.mockRestore();
+    });
+
+    it("caps its width to the figure's less the margins and keeps a pointer at the middle of a narrow figure inside it", () => {
+      render(<CircularViewerTooltip hit={hit} left={357 / 2 - 1} top={100} width={357} height={357} />);
+      const tooltip = screen.getByRole("tooltip");
+      expect(tooltip.style.getPropertyValue("--tip-max-w")).toBe("min(20rem, 341px)");
+      const x = Number.parseFloat(tooltip.style.getPropertyValue("--tip-x"));
+      expect(x).toBeGreaterThanOrEqual(8);
+      expect(x).toBeLessThanOrEqual(79);
+    });
+
+    it("opens 12 px right of and below a pointer with room", () => {
+      render(<CircularViewerTooltip hit={hit} left={50} top={60} width={600} height={600} />);
+      const tooltip = screen.getByRole("tooltip");
+      expect(tooltip.style.getPropertyValue("--tip-x")).toBe("62px");
+      expect(tooltip.style.getPropertyValue("--tip-y")).toBe("72px");
+    });
+
+    it("opens left of and above a pointer near the lower right corner", () => {
+      render(<CircularViewerTooltip hit={hit} left={560} top={560} width={600} height={600} />);
+      const tooltip = screen.getByRole("tooltip");
+      expect(tooltip.style.getPropertyValue("--tip-x")).toBe(`${String(560 - 12 - sizes.width)}px`);
+      expect(tooltip.style.getPropertyValue("--tip-y")).toBe(`${String(560 - 12 - sizes.height)}px`);
+    });
+
+    it("places again when the pointer moves, though the hit is the same object", () => {
+      const { rerender } = render(<CircularViewerTooltip hit={hit} left={50} top={60} width={600} height={600} />);
+      rerender(<CircularViewerTooltip hit={hit} left={150} top={60} width={600} height={600} />);
+      expect(screen.getByRole("tooltip").style.getPropertyValue("--tip-x")).toBe("162px");
+    });
   });
 
   it("pins the feature's details with a link to its Feature View", () => {
@@ -306,6 +375,67 @@ describe("CircularViewerFigure from the keyboard", () => {
     expect(announcement.query()).toBeNull();
     await user.keyboard("{ArrowRight}");
     expect(screen.getByRole("tooltip")).toHaveTextContent("fig|1.1.peg.3");
+  });
+
+  describe("one source of truth for the item shown", () => {
+    const svg = () => screen.getByRole("img", { name: "Circular view of genome 1.1" });
+    // fig|1.1.peg.3 (601..700) sits 65% of the way round.
+    const hoverPeg3 = () => hoverRing("cds-forward", 0.65);
+    const ui = (t: typeof strandTracks, d: typeof strandData) => (
+      <CircularViewerFigure genomeId="1.1" layout={layout} tracks={t} data={d} svgRef={createRef()} />
+    );
+
+    it("shows the keyboard's item, and Enter opens it, when focus comes after a hover", async () => {
+      const user = userEvent.setup();
+      renderFigure();
+      hoverPeg3();
+      expect(screen.getByRole("tooltip")).toHaveTextContent("fig|1.1.peg.3");
+      await user.tab();
+      expect(screen.getByRole("tooltip")).toHaveTextContent("fig|1.1.peg.1");
+      await user.keyboard("{Enter}");
+      expect(screen.getByRole("dialog")).toHaveTextContent("NC_1:1..100 (+)");
+    });
+
+    it("lets the pointer take over from the keyboard's item, so Enter opens nothing unseen", async () => {
+      const user = userEvent.setup();
+      renderFigure();
+      await user.tab();
+      hoverPeg3();
+      expect(screen.getByRole("tooltip")).toHaveTextContent("fig|1.1.peg.3");
+      expect(announcement.query()).toBeNull();
+      await user.keyboard("{Enter}");
+      expect(screen.queryByRole("dialog")).toBeNull();
+    });
+
+    it("drops the tooltip and highlight when the hovered track is hidden", () => {
+      const view = renderFigure();
+      hoverPeg3();
+      expect(screen.getByRole("tooltip")).toBeInTheDocument();
+      view.rerender(ui(strandTracks.map((track) => (track.id === "cds-forward" ? { ...track, visible: false } : track)), strandData));
+      expect(svg().querySelector("path[data-overlay]")).toBeNull();
+      expect(screen.queryByRole("tooltip")).toBeNull();
+    });
+
+    it("drops the tooltip when the data is replaced and nothing is under the pointer", () => {
+      const view = renderFigure();
+      hoverPeg3();
+      expect(screen.getByRole("tooltip")).toBeInTheDocument();
+      const elsewhere = new Map(strandData).set("cds-forward", {
+        status: "ready",
+        items: { kind: "features", truncated: false, features: [feature("fig|1.1.peg.9", 1, 100, "+")] },
+      });
+      view.rerender(ui(strandTracks, elsewhere));
+      expect(screen.queryByRole("tooltip")).toBeNull();
+      expect(svg().querySelector("[data-overlay]")).toBeNull();
+    });
+
+    it("keeps the tooltip through a recolor, since the same mark is under the pointer", () => {
+      const view = renderFigure();
+      hoverPeg3();
+      view.rerender(ui(strandTracks.map((track) => ({ ...track, foreground: "#123456" })), strandData));
+      expect(screen.getByRole("tooltip")).toHaveTextContent("fig|1.1.peg.3");
+      expect(svg().querySelector("path[data-overlay]")).not.toBeNull();
+    });
   });
 
   it("shows nothing for a focus a press gave the figure", async () => {

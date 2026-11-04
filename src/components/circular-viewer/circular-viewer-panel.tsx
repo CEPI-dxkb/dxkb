@@ -45,8 +45,8 @@ export function CircularViewerPanel({ genomeId }: CircularViewerPanelProps) {
   const sequences = contigs.data?.contigs;
   const tracks = useCircularTrackData(genomeId, state.tracks, sequences);
   const layout = useMemo(() => buildGenomeLayout(sequences ?? []), [sequences]);
-  const accessions = useMemo(
-    () => (sequences ? new Set(sequences.map((contig) => contig.accession)) : undefined),
+  const sequenceLengths = useMemo(
+    () => (sequences ? new Map(sequences.map((contig) => [contig.accession, contig.length])) : undefined),
     [sequences],
   );
   // State, not a ref: Export SVG is enabled once the figure's svg is mounted.
@@ -119,7 +119,7 @@ export function CircularViewerPanel({ genomeId }: CircularViewerPanelProps) {
             }}
           />
           <UserTrackForm
-            genomeAccessions={accessions}
+            sequenceLengths={sequenceLengths}
             onAdd={(plot, parsed, fileName, name) => {
               dispatch({ type: "addUser", plot, parsed, fileName, name });
             }}

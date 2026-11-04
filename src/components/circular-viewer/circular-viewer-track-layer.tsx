@@ -24,7 +24,9 @@ const sweepPasses = [
  * animation starts). They show through an alpha mask whose circles, as wide as
  * the figure's radius, are drawn along their length (`pathLength` 1, a dash of
  * 1 shifted from 1 to 0). Once the last pass ends the mask goes, so a later
- * redraw (a color, a resize) does not replay it and an export carries none.
+ * redraw (a color, a resize) does not replay it. Export is enabled once the
+ * requests settle, which can be mid-sweep, so the mask is `data-sweep`: an
+ * export drops it and draws the marks whole.
  * Under reduced motion the passes last 0.01 ms with no delay (globals.css), so
  * they end at once.
  */
@@ -43,6 +45,7 @@ function SweepIn({ outerRadius, children }: { outerRadius: number; children: Rea
         width={2 * reach}
         height={2 * reach}
         className="mask-type-alpha"
+        data-sweep=""
       >
         {sweepPasses.map((pass, index) => (
           <circle

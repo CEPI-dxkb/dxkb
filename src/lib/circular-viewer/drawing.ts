@@ -6,7 +6,7 @@
  */
 import type { CircularContig, CircularFeature } from "./contract";
 import { heatmapColor } from "./heatmap";
-import { indexSpans, spanAt, type IndexedSpan, type SpanIndex } from "./hit-test";
+import { indexSpans, spanAt, visibleSegments, type IndexedSpan, type SpanIndex } from "./hit-test";
 import {
   fullTurn,
   layoutRings,
@@ -24,6 +24,7 @@ import {
   scoreRadius,
   sectorsPath,
   type RadialPoint,
+  type RadialSpan,
   type ScoreScale,
 } from "./paths";
 import { positionTicks } from "./ticks";
@@ -41,6 +42,13 @@ export type HoverItem =
   | { kind: "contig"; contig: CircularContig }
   | { kind: "region"; region: UserTrackItem }
   | { kind: "score"; point: ScorePoint };
+
+/**
+ * A histogram bar's radii: `innerRadius` is the baseline and `outerRadius`
+ * the score's radius, below the baseline for a negative score (d3's arc
+ * draws either way round).
+ */
+export type BarRadii = Pick<RadialSpan, "innerRadius" | "outerRadius">;
 
 export interface TickMark {
   x1: number;
@@ -65,6 +73,8 @@ export type TrackBody =
       /** Null for a line: legacy's line tracks had no popup. */
       hits: SpanIndex | null;
       items: readonly HoverItem[];
+      /** A histogram's bars, by item index, so the highlight is the hovered bar rather than the ring. */
+      bars?: readonly BarRadii[];
     }
   | { kind: "pending" }
   | { kind: "failed" };
@@ -93,7 +103,10 @@ export function ringPath(ring: Ring): string {
   );
 }
 
-/** 0-based half-open regions as angle spans; a region off the genome is dropped. */
+/**
+ * 0-based half-open regions as angle spans; a region off the genome, or past
+ * a sequence's end (clamped to a zero-width span there), is dropped.
+ */
 function regionSpans(
   layout: GenomeLayout,
   regions: readonly { accession: string; start: number; end: number }[],
@@ -101,7 +114,7 @@ function regionSpans(
   return regions.flatMap((region, index) => {
     const startAngle = offsetAngle(layout, region.accession, region.start);
     const endAngle = offsetAngle(layout, region.accession, region.end);
-    return startAngle === undefined || endAngle === undefined
+    return startAngle === undefined || endAngle === undefined || startAngle >= endAngle
       ? []
       : [{ startAngle, endAngle, index }];
   });
@@ -191,8 +204,12 @@ function scoreBody(
     // Legacy LineTrack: one line per sequence through each window's start.
     const lines = new Map<string, RadialPoint[]>();
     for (const point of points) {
-      const angle = offsetAngle(layout, point.accession, point.start);
-      if (angle === undefined) continue;
+      const contig = layout.byAccession.get(point.accession);
+      // A 0-based start at or past the sequence's end has no base to stand on
+      // (`offsetAngle` would clamp it to a vertex at the end); the rest are
+      // on the sequence, so their angle needs no clamp.
+      if (contig === undefined || point.start >= contig.length) continue;
+      const angle = contig.startAngle + point.start * layout.radiansPerBase;
       const line = lines.get(point.accession) ?? [];
       line.push({
         angle,
@@ -217,30 +234,29 @@ function scoreBody(
   const hover: HoverItem[] = points.map((point) => ({ kind: "score", point }));
   if (track.plot === "histogram") {
     const baseline = baselineRadius(scale, innerRadius, outerRadius);
+    const bars = points.map((point) => ({
+      innerRadius: baseline,
+      outerRadius: scoreRadius(point.score, scale, innerRadius, outerRadius),
+    }));
     const d = radialSectorsPath(
-      spans.map((span) => ({
-        ...span,
-        innerRadius: baseline,
-        outerRadius: scoreRadius(
-          points[span.index].score,
-          scale,
-          innerRadius,
-          outerRadius,
-        ),
-      })),
+      spans.map((span) => ({ ...span, ...bars[span.index] })),
     );
     return {
       kind: "marks",
       layers: [{ color: track.foreground, darkColor: track.darkForeground, d }],
       hits: indexSpans(spans),
       items: hover,
+      bars,
     };
   }
+  // The hits keep whole spans, one per item, for the keyboard and its count;
+  // only the paint is cut into the pieces that show.
+  const hits = indexSpans(spans);
   const byColor = new Map<string, IndexedSpan[]>();
-  for (const span of spans) {
-    const color = heatmapColor(points[span.index].score, scale.max);
+  for (const segment of visibleSegments(hits)) {
+    const color = heatmapColor(points[segment.index].score, scale.max);
     const group = byColor.get(color) ?? [];
-    group.push(span);
+    group.push(segment);
     byColor.set(color, group);
   }
   return {
@@ -250,7 +266,7 @@ function scoreBody(
       darkColor: null,
       d: sectorsPath(group, innerRadius, outerRadius),
     })),
-    hits: indexSpans(spans),
+    hits,
     items: hover,
   };
 }
@@ -373,17 +389,30 @@ export interface FigureHit {
   path: string;
 }
 
-/** One of a ring's marks as a hit: its item, and its sector for the highlight. */
+/** A bar's far radius for its highlight: at least 1 px from the baseline, so a zero bar still shows. */
+function highlightReach({ innerRadius: baseline, outerRadius: reach }: BarRadii): number {
+  return reach < baseline ? Math.min(reach, baseline - 1) : Math.max(reach, baseline + 1);
+}
+
+/**
+ * One of a ring's marks as a hit: its item, and its sector for the
+ * highlight. A histogram's is its bar, as legacy's red bar, which shows the
+ * score; the hit itself still takes the ring's whole width.
+ */
 export function spanHit(
   drawing: TrackDrawing,
   items: readonly HoverItem[],
   span: IndexedSpan,
 ): FigureHit {
-  const { ring } = drawing;
+  const { ring, body } = drawing;
+  const bar = body.kind === "marks" ? body.bars?.[span.index] : undefined;
   return {
     trackId: drawing.id,
     item: items[span.index],
-    path: sectorsPath([span], ring.innerRadius, ring.outerRadius),
+    path:
+      bar === undefined
+        ? sectorsPath([span], ring.innerRadius, ring.outerRadius)
+        : sectorsPath([span], bar.innerRadius, highlightReach(bar)),
   };
 }
 

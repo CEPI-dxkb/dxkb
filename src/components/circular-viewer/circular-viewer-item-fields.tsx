@@ -89,7 +89,7 @@ export function ItemFieldList({ item, full }: { item: HoverItem; full: boolean }
       {itemFields(item, full).map(([label, value]) => (
         <div key={label} className="contents">
           <dt className="text-muted-foreground">{label}</dt>
-          <dd className="wrap-break-word">{value}</dd>
+          <dd className="wrap-anywhere">{value}</dd>
         </div>
       ))}
     </dl>

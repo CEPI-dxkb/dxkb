@@ -3,6 +3,7 @@ import {
   breadcrumbRanks,
   lineageCrumbs,
   taxonViewCrumbs,
+  taxonViewHeader,
 } from "../lineage-crumbs";
 
 // Live BV-BRC `lineage_ranks` for E. coli K-12 (taxon 83333), 2026-10-28.
@@ -119,6 +120,22 @@ describe("lineageCrumbs", () => {
         lineage_ids: ["561"],
         lineage_names: ["Escherichia"],
       }),
+    ).toEqual([]);
+  });
+});
+
+describe("lineageCrumbs on a malformed record", () => {
+  it("shows nothing when the names or ids are one short", () => {
+    const record = {
+      lineage_ids: ecoliK12.lineageIds,
+      lineage_names: ecoliK12.lineageNames,
+      lineage_ranks: ecoliK12.lineageRanks,
+    };
+    expect(
+      lineageCrumbs({ ...record, lineage_names: record.lineage_names.slice(1) }),
+    ).toEqual([]);
+    expect(
+      lineageCrumbs({ ...record, lineage_ids: record.lineage_ids.slice(1) }),
     ).toEqual([]);
   });
 });
@@ -261,5 +278,76 @@ describe("taxonViewCrumbs (Taxon View)", () => {
         lineageNames: ecoliK12.lineageNames.slice(1),
       }),
     ).toEqual([]);
+  });
+});
+
+describe("taxonViewHeader", () => {
+  it("separates the ancestors from the taxon's own crumb", () => {
+    const header = taxonViewHeader({ taxonId: 83333, ...ecoliK12 });
+    expect(header.headingHidden).toBe(false);
+    expect(header.ancestors.map(({ taxonId }) => taxonId)).toEqual([
+      "1224",
+      "1236",
+      "91347",
+      "543",
+      "561",
+      "562",
+    ]);
+  });
+
+  it("keeps every crumb as an ancestor when the lineage ends at the parent", () => {
+    const header = taxonViewHeader({
+      taxonId: 83333,
+      lineageIds: ecoliK12.lineageIds.slice(0, 9),
+      lineageNames: ecoliK12.lineageNames.slice(0, 9),
+      lineageRanks: ecoliK12.lineageRanks.slice(0, 9),
+    });
+    expect(header.ancestors.at(-1)).toEqual({
+      taxonId: "562",
+      name: "Escherichia coli",
+    });
+    expect(header.headingHidden).toBe(false);
+  });
+
+  it("keeps every crumb as an ancestor when the leaf id is 0", () => {
+    const header = taxonViewHeader({
+      taxonId: 83333,
+      ...ecoliK12,
+      lineageIds: [...ecoliK12.lineageIds.slice(0, 9), 0],
+    });
+    expect(header.ancestors.at(-1)?.taxonId).toBe("562");
+    expect(header.headingHidden).toBe(false);
+  });
+
+  it("keeps every crumb as an ancestor when the leaf name is blank", () => {
+    const header = taxonViewHeader({
+      taxonId: 83333,
+      ...ecoliK12,
+      lineageNames: [...ecoliK12.lineageNames.slice(0, 9), " "],
+    });
+    expect(header.ancestors.at(-1)?.taxonId).toBe("562");
+    expect(header.headingHidden).toBe(false);
+  });
+
+  it("hides the heading only for a ranked lineage with no shown rank", () => {
+    expect(
+      taxonViewHeader({
+        taxonId: 2,
+        lineageIds: [131567, 2],
+        lineageNames: ["cellular organisms", "Bacteria"],
+        lineageRanks: ["cellular root", "domain"],
+      }),
+    ).toEqual({ ancestors: [], headingHidden: true });
+  });
+
+  it("keeps the heading visible without ranks or with misaligned arrays", () => {
+    const base = { taxonId: 561, lineageIds: [561], lineageNames: ["Escherichia"] };
+    expect(taxonViewHeader(base).headingHidden).toBe(false);
+    expect(taxonViewHeader({ ...base, lineageRanks: [] }).headingHidden).toBe(
+      false,
+    );
+    expect(
+      taxonViewHeader({ taxonId: 83333, ...ecoliK12, lineageIds: [1, 2] }),
+    ).toEqual({ ancestors: [], headingHidden: false });
   });
 });

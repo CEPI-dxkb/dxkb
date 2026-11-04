@@ -1,3 +1,4 @@
+import { fullTurn } from "./layout";
 import type { AngleSpan } from "./paths";
 
 export interface IndexedSpan extends AngleSpan {
@@ -12,24 +13,23 @@ export interface SpanIndex {
 }
 
 export function indexSpans(spans: readonly IndexedSpan[]): SpanIndex {
-  const sorted = [...spans].sort((a, b) => a.startAngle - b.startAngle);
+  const sorted = [...spans].sort((a, b) => a.startAngle - b.startAngle || b.endAngle - a.endAngle);
   return {
     spans: sorted,
     widest: sorted.reduce((widest, span) => Math.max(widest, span.endAngle - span.startAngle), 0),
   };
 }
 
+interface Nearest {
+  span: IndexedSpan | undefined;
+  distance: number;
+}
+
 /**
- * The span under `angle`, else the nearest within `tolerance` radians: a
- * 1 kb gene on a 5 Mb genome is a fraction of a pixel wide. Of the spans
- * that contain the angle, the one that starts last (the innermost of nested
- * features). Binary search, then a walk back over spans that could overlap.
+ * The nearest span to `angle` within `tolerance`, scanned on the unwrapped
+ * line. Binary search, then a walk back over spans that could overlap.
  */
-export function spanAt(
-  index: SpanIndex,
-  angle: number,
-  tolerance: number,
-): IndexedSpan | undefined {
+function nearestSpan(index: SpanIndex, angle: number, tolerance: number): Nearest {
   const { spans } = index;
   let low = 0;
   let high = spans.length;
@@ -55,5 +55,67 @@ export function spanAt(
       if (distance === 0) break;
     }
   }
-  return best;
+  return { span: best, distance: bestDistance };
+}
+
+/**
+ * The span under `angle`, else the nearest within `tolerance` radians: a
+ * 1 kb gene on a 5 Mb genome is a fraction of a pixel wide. Of the spans
+ * that contain the angle, the one that starts last (the innermost of nested
+ * features).
+ * Angles start at 0 and the pointer is in [0, 2π), so a pointer within
+ * `tolerance` of 12 o'clock is also tried one turn over, to reach a span on
+ * the other side of the seam.
+ */
+export function spanAt(
+  index: SpanIndex,
+  angle: number,
+  tolerance: number,
+): IndexedSpan | undefined {
+  let best = nearestSpan(index, angle, tolerance);
+  if (best.distance === 0) return best.span;
+  const wrapped: number[] = [];
+  if (angle - tolerance < 0) wrapped.push(angle + fullTurn);
+  if (angle + tolerance >= fullTurn) wrapped.push(angle - fullTurn);
+  for (const shifted of wrapped) {
+    const found = nearestSpan(index, shifted, tolerance);
+    if (found.distance < best.distance) best = found;
+  }
+  return best.span;
+}
+
+/**
+ * The pieces of an index's spans that show when the one `spanAt` names is
+ * on top: of the spans over an angle, the one that starts last (of equal
+ * starts, the shorter, from `indexSpans`'s order). A change to that
+ * precedence must change both. A heatmap paints these, one layer per color,
+ * so the color under the pointer is the hovered window's whatever the
+ * layers' order. The pieces come out clockwise and do not overlap. A sweep
+ * keeps the open spans on a stack, latest start on top, so a span that ends
+ * under a later one is dropped when it surfaces.
+ */
+export function visibleSegments(index: SpanIndex): IndexedSpan[] {
+  const segments: IndexedSpan[] = [];
+  const open: IndexedSpan[] = [];
+  // How far round the pieces so far reach.
+  let drawn = Number.NEGATIVE_INFINITY;
+  /** Shows the top span up to `angle`, closing each span that ends by then. */
+  const showUntil = (angle: number) => {
+    for (let top = open.at(-1); top !== undefined; top = open.at(-1)) {
+      const end = Math.min(top.endAngle, angle);
+      if (end > drawn) {
+        segments.push({ ...top, startAngle: drawn, endAngle: end });
+        drawn = end;
+      }
+      if (top.endAngle > angle) return;
+      open.pop();
+    }
+  };
+  for (const span of index.spans) {
+    showUntil(span.startAngle);
+    drawn = Math.max(drawn, span.startAngle);
+    open.push(span);
+  }
+  showUntil(Number.POSITIVE_INFINITY);
+  return segments;
 }

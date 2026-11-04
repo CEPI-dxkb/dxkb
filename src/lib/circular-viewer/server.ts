@@ -8,7 +8,8 @@ import "server-only";
  *
  * Clauses are appended verbatim (they do not pass `validateRql`): every value
  * in them is a validated genome id, an entry of an allowlist in
- * `./contract.ts`, or keyword text that `keywordClauses` percent-encodes.
+ * `./contract.ts`, keyword text that `keywordClauses` percent-encodes, or a
+ * `patric_id` that `patricIdPattern` accepts, quoted and percent-encoded.
  */
 import { asInteger } from "@/lib/genome-browser/contract";
 import { DataApiError, type ServerDataRepository } from "@/lib/data-api/repository";
@@ -190,8 +191,24 @@ export function contigSequencesClause(genomeId: string): string {
   return `eq(genome_id,${genomeId})&select(sequence_id,accession,sequence)&sort(+accession)`;
 }
 
+/**
+ * Sorted by gene (every live row has a `patric_id`; `+id` breaks any tie), so
+ * the windows `readSpecialtyGenes` pages through are deterministic.
+ */
 export function specialtyGenesClause(genomeId: string, property: SpecialtyProperty): string {
-  return `and(eq(genome_id,${genomeId}),eq(property,${encodeURIComponent(`"${property}"`)}))&select(id,feature_id)`;
+  return `and(eq(genome_id,${genomeId}),eq(property,${encodeURIComponent(`"${property}"`)}))&select(id,feature_id,patric_id)&sort(+patric_id,+id)`;
+}
+
+/** A PATRIC feature's `patric_id`, such as `fig|83332.12.peg.1`: the only shape a clause may name. */
+const patricIdPattern = /^fig\|\d+\.\d+\.[a-z]+\.\d+$/;
+
+/** 100 quoted, percent-encoded `patric_id`s are about 4 KB of URL. */
+const patricIdsPerRead = 100;
+
+/** The features of `patric_id`s that `patricIdPattern` accepted, each quoted and percent-encoded. */
+export function patricIdFeaturesClause(genomeId: string, patricIds: readonly string[]): string {
+  const values = patricIds.map((id) => encodeURIComponent(`"${id}"`)).join(",");
+  return `and(eq(genome_id,${genomeId}),in(patric_id,(${values})))&select(${featureFields.join(",")})`;
 }
 
 function text(value: unknown): string | undefined {
@@ -246,10 +263,11 @@ export function toCircularFeature(row: Record<string, unknown>): CircularFeature
   return feature;
 }
 
-export function toCircularContig(row: Record<string, unknown>): CircularContig | null {
-  const accession = text(row.accession);
-  const length = asInteger(row.length);
-  if (accession === undefined || length === undefined || length <= 0) return null;
+/** The contig for a row `contigRow` validated: its accession and length are the validated pair. */
+export function toCircularContig(
+  row: Record<string, unknown>,
+  { accession, length }: { accession: string; length: number },
+): CircularContig {
   const contig: CircularContig = {
     accession,
     sequenceId: text(row.sequence_id) ?? accession,
@@ -276,6 +294,42 @@ function byPosition(a: CircularFeature, b: CircularFeature): number {
   return a.start - b.start;
 }
 
+function malformedSequence(genomeId: string, row: Record<string, unknown>, problem: string): DataApiError {
+  const sequenceId = text(row.sequence_id) ?? "(no sequence_id)";
+  return new DataApiError(
+    `Malformed genome_sequence response for genome ${genomeId}, sequence_id ${sequenceId}: ${problem}.`,
+    502,
+    "malformed_response",
+  );
+}
+
+/**
+ * The one rule for a `genome_sequence` row's accession and length, used by the
+ * contig list and the GC lengths read: an accession and a whole, non-negative
+ * length, or the answer is a wrong shape (a row dropped here would take its
+ * features off the figure without a word). A length of 0 is skipped, since
+ * nothing can sit on an empty sequence and `buildGenomeLayout` skips it too.
+ * The GC sequence read applies the matching accession check and skips the
+ * empty sequence of a length-0 row (and only that one), so its contigs are the
+ * same set.
+ */
+function contigRow(
+  genomeId: string,
+  row: Record<string, unknown>,
+): { accession: string; length: number } | undefined {
+  const accession = text(row.accession);
+  if (accession === undefined) throw malformedSequence(genomeId, row, "no accession");
+  const length = asInteger(row.length);
+  if (length === undefined || length < 0) {
+    const problem =
+      row.length === undefined || row.length === null
+        ? "length is missing"
+        : `length ${JSON.stringify(row.length)} is not a whole number of 0 or more`;
+    throw malformedSequence(genomeId, row, problem);
+  }
+  return length === 0 ? undefined : { accession, length };
+}
+
 /** `rangedRows` takes an exclusive end, so `maxContigs + 1` asks for one row more than kept. */
 export async function readContigs(
   repository: ServerDataRepository,
@@ -291,8 +345,8 @@ export async function readContigs(
   );
   return {
     contigs: rows.slice(0, maxContigs).flatMap((row) => {
-      const contig = toCircularContig(row);
-      return contig ? [contig] : [];
+      const valid = contigRow(genomeId, row);
+      return valid === undefined ? [] : [toCircularContig(row, valid)];
     }),
     truncated: rows.length > maxContigs,
   };
@@ -317,12 +371,66 @@ export async function readFeatureTrack(
   };
 }
 
+/** A gene as `sp_gene` lists it: CARD and NDARO rows name it by `patric_id` alone. */
+interface SpecialtyGene {
+  patricId: string | undefined;
+  featureId: string | undefined;
+}
+
 /**
- * Legacy `addSpGeneTrack`: the genome's `sp_gene` rows with the property,
- * then their features. `sp_gene` has a row per source that lists a gene
- * (PATRIC_VF and VFDB both name a virulence factor), so ids repeat; each
- * feature is read once, `maxSelectedRows` (the Data API's `in(...)` ceiling)
- * per request.
+ * The first `maxTrackFeatures` genes with the property, keyed by `patric_id`
+ * (`feature_id` for a row without one). `sp_gene` has a row per source that
+ * lists a gene, so its rows are read `maxTrackFeatures` at a time until more
+ * genes than that are known or a window comes back short. A window that adds
+ * no gene ends the read too, so an upstream that ignored the range cannot
+ * keep it paging.
+ */
+async function readSpecialtyGenes(
+  repository: ServerDataRepository,
+  genomeId: string,
+  property: SpecialtyProperty,
+  signal?: AbortSignal,
+): Promise<{ genes: SpecialtyGene[]; truncated: boolean }> {
+  const clause = specialtyGenesClause(genomeId, property);
+  const genes = new Map<string, SpecialtyGene>();
+  for (let start = 0; ; start += maxTrackFeatures) {
+    const known = genes.size;
+    const { rows } = await repository.rangedRows(
+      "sp_gene",
+      clause,
+      start,
+      start + maxTrackFeatures,
+      signal,
+    );
+    for (const row of rows) {
+      const patricId = text(row.patric_id);
+      const featureId = text(row.feature_id);
+      const key = patricId ?? featureId;
+      if (key === undefined) continue;
+      const gene = genes.get(key);
+      if (gene === undefined) genes.set(key, { patricId, featureId });
+      else gene.featureId ??= featureId;
+    }
+    if (
+      genes.size > maxTrackFeatures ||
+      rows.length < maxTrackFeatures ||
+      genes.size === known
+    ) {
+      break;
+    }
+  }
+  return {
+    genes: [...genes.values()].slice(0, maxTrackFeatures),
+    truncated: genes.size > maxTrackFeatures,
+  };
+}
+
+/**
+ * Legacy `addSpGeneTrack`: the genome's `sp_gene` genes with the property,
+ * then their features, each read once. A gene with a `feature_id` is read
+ * through POST, `maxSelectedRows` (the Data API's `in(...)` ceiling) per
+ * request; one listed only by `patric_id` through a ranged GET,
+ * `patricIdsPerRead` per request, skipping an id `patricIdPattern` refuses.
  */
 export async function readSpecialtyTrack(
   repository: ServerDataRepository,
@@ -330,32 +438,29 @@ export async function readSpecialtyTrack(
   property: SpecialtyProperty,
   signal?: AbortSignal,
 ): Promise<CircularTrackResult> {
-  const { rows } = await repository.rangedRows(
-    "sp_gene",
-    specialtyGenesClause(genomeId, property),
-    0,
-    maxTrackFeatures + 1,
-    signal,
-  );
-  const ids = [
-    ...new Set(
-      rows.slice(0, maxTrackFeatures).flatMap((row) => {
-        const id = text(row.feature_id);
-        return id === undefined ? [] : [id];
-      }),
-    ),
+  const { genes, truncated } = await readSpecialtyGenes(repository, genomeId, property, signal);
+  const featureIds = [
+    ...new Set(genes.flatMap(({ featureId }) => (featureId === undefined ? [] : [featureId]))),
   ];
+  const patricIds = genes.flatMap(({ patricId, featureId }) =>
+    featureId === undefined && patricId !== undefined && patricIdPattern.test(patricId)
+      ? [patricId]
+      : [],
+  );
   const features: CircularFeature[] = [];
-  for (let offset = 0; offset < ids.length; offset += maxSelectedRows) {
+  for (let offset = 0; offset < featureIds.length; offset += maxSelectedRows) {
     const result = await repository.execute(
       "genome_feature",
       {
         operation: "selected",
-        ids: ids.slice(offset, offset + maxSelectedRows),
+        ids: featureIds.slice(offset, offset + maxSelectedRows),
         fields: [...featureFields],
       },
       signal,
     );
+    // Narrows `execute`'s union to the rows a `selected` read answers. An
+    // empty `rows` is an empty track; an answer without `rows` is a wrong
+    // shape, so it fails rather than drawing the track empty.
     if (!("rows" in result)) {
       throw new DataApiError(
         "Malformed genome_feature response: expected rows for the specialty genes' features.",
@@ -365,8 +470,24 @@ export async function readSpecialtyTrack(
     }
     features.push(...mapFeatures(result.rows));
   }
-  features.sort(byPosition);
-  return { features, truncated: rows.length > maxTrackFeatures };
+  for (let offset = 0; offset < patricIds.length; offset += patricIdsPerRead) {
+    const ids = patricIds.slice(offset, offset + patricIdsPerRead);
+    // The window is the per-request ceiling, not the ids' count: the API
+    // answers only matching rows, and a `patric_id` that named two features
+    // would keep both.
+    const { rows } = await repository.rangedRows(
+      "genome_feature",
+      patricIdFeaturesClause(genomeId, ids),
+      0,
+      maxSelectedRows,
+      signal,
+    );
+    features.push(...mapFeatures(rows));
+  }
+  // A gene keyed by `feature_id` and one keyed by `patric_id` can be one feature.
+  const unique = [...new Map(features.map((feature) => [feature.featureId, feature])).values()];
+  unique.sort(byPosition);
+  return { features: unique, truncated };
 }
 
 function genomeTooLong(genomeId: string, genomeLength: number, limit: number): DataApiError {
@@ -397,6 +518,15 @@ export function gcResult(
 }
 
 /**
+ * One GC read holds up to about 30 MB of body plus its parsed strings, and
+ * nothing is cached, so at most `maxGcReads` run at once per process (the
+ * module state is per Node process, like Compare Region's line); one past the
+ * cap is refused rather than left to pile up memory.
+ */
+const maxGcReads = 4;
+let gcReadsInFlight = 0;
+
+/**
  * The same first `maxContigs` sequences `readContigs` answers, read whole.
  * Their lengths are read first, so a genome over `limit` (a test seam for
  * `maxGcGenomeLength`) is refused before any of its sequence is downloaded;
@@ -416,25 +546,48 @@ export async function readGc(
     signal,
   );
   const genomeLength = lengths.rows.reduce(
-    (sum, row) => sum + Math.max(0, asInteger(row.length) ?? 0),
+    (sum, row) => sum + (contigRow(genomeId, row)?.length ?? 0),
     0,
   );
   if (genomeLength > limit) throw genomeTooLong(genomeId, genomeLength, limit);
-  const { rows } = await repository.rangedRows(
-    "genome_sequence",
-    contigSequencesClause(genomeId),
-    0,
-    maxContigs,
-    signal,
+  // The accessions `contigRow` skipped for a length of 0, whose sequences are empty.
+  const emptyAccessions = new Set(
+    lengths.rows.flatMap((row) => (asInteger(row.length) === 0 ? [text(row.accession) ?? ""] : [])),
   );
-  return gcResult(
-    genomeId,
-    rows.flatMap((row) => {
-      const accession = text(row.accession);
-      return accession !== undefined && typeof row.sequence === "string"
-        ? [{ accession, sequence: row.sequence }]
-        : [];
-    }),
-    limit,
-  );
+  if (gcReadsInFlight >= maxGcReads) {
+    throw new DataApiError(
+      "The Circular Viewer's GC service is busy reading other genomes. Please try again shortly.",
+      503,
+      "server_busy",
+    );
+  }
+  gcReadsInFlight += 1;
+  try {
+    const { rows } = await repository.rangedRows(
+      "genome_sequence",
+      contigSequencesClause(genomeId),
+      0,
+      maxContigs,
+      signal,
+    );
+    return gcResult(
+      genomeId,
+      rows.flatMap((row) => {
+        const accession = text(row.accession);
+        if (accession === undefined) throw malformedSequence(genomeId, row, "no accession");
+        if (typeof row.sequence !== "string") {
+          throw malformedSequence(genomeId, row, `sequence of type ${row.sequence === null ? "null" : typeof row.sequence}, not a string`);
+        }
+        if (row.sequence === "") {
+          // The empty sequence of a length-0 row, which `contigRow` skips; any other is a wrong shape.
+          if (emptyAccessions.has(accession)) return [];
+          throw malformedSequence(genomeId, row, "an empty sequence for a length above 0");
+        }
+        return [{ accession, sequence: row.sequence }];
+      }),
+      limit,
+    );
+  } finally {
+    gcReadsInFlight -= 1;
+  }
 }

@@ -116,6 +116,70 @@ describe("TaxonBreadcrumb", () => {
     expect(heading).toHaveClass("sr-only");
   });
 
+  it("keeps a visible h1 when the lineage arrays do not line up", () => {
+    render(
+      <TaxonBreadcrumb
+        displayName="E. coli K-12"
+        taxon={{ ...ecoliK12, lineageNames: ecoliK12.lineageNames.slice(1) }}
+      />,
+    );
+    expect(screen.queryAllByRole("link")).toEqual([]);
+    const heading = screen.getByRole("heading", {
+      level: 1,
+      name: "Escherichia coli K-12",
+    });
+    expect(heading).not.toHaveClass("sr-only");
+  });
+
+  it.each([["absent", undefined], ["empty", []]])(
+    "keeps a visible h1 when the ranks are %s",
+    (_label, lineageRanks) => {
+      render(
+        <TaxonBreadcrumb
+          displayName="E. coli K-12"
+          taxon={{ ...ecoliK12, lineageRanks }}
+        />,
+      );
+      expect(
+        screen.getByRole("heading", { level: 1, name: "Escherichia coli K-12" }),
+      ).not.toHaveClass("sr-only");
+    },
+  );
+
+  it("titles the page with the taxon when its leaf name is blank", () => {
+    render(
+      <TaxonBreadcrumb
+        displayName="E. coli K-12"
+        taxon={{
+          ...ecoliK12,
+          lineageNames: [...ecoliK12.lineageNames.slice(0, 9), " "],
+        }}
+      />,
+    );
+    expect(trailLinks().at(-1)).toEqual(["Escherichia coli", "/taxonomy/562"]);
+    expect(
+      screen.getByRole("heading", { level: 1, name: "Escherichia coli K-12" }),
+    ).not.toHaveClass("sr-only");
+  });
+
+  it("titles the page with the taxon when the lineage ends at its parent", () => {
+    render(
+      <TaxonBreadcrumb
+        displayName="E. coli K-12"
+        taxon={{
+          ...ecoliK12,
+          lineageIds: ecoliK12.lineageIds.slice(0, 9),
+          lineageNames: ecoliK12.lineageNames.slice(0, 9),
+          lineageRanks: ecoliK12.lineageRanks?.slice(0, 9),
+        }}
+      />,
+    );
+    expect(trailLinks().at(-1)).toEqual(["Escherichia coli", "/taxonomy/562"]);
+    expect(
+      screen.getByRole("heading", { level: 1, name: "Escherichia coli K-12" }),
+    ).not.toHaveClass("sr-only");
+  });
+
   it("renders a rank BV-BRC repeats without a duplicate-key warning", () => {
     const consoleError = vi
       .spyOn(console, "error")

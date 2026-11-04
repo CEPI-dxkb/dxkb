@@ -215,6 +215,30 @@ describe("TaxonomyPage", () => {
     );
   });
 
+  it.each(["interactions", "no-such-tab"])(
+    "falls back to Overview for the unavailable tab %s on a viral taxon",
+    async (tab) => {
+      fetchOrganismTaxonomyMock.mockResolvedValueOnce(viralTaxon);
+      metadataSpy.mockClear();
+
+      const node = await TaxonomyPage({
+        params: Promise.resolve({ taxonId: "11320" }),
+        searchParams: Promise.resolve({ tab }),
+      });
+      render(node);
+
+      expect(metadataSpy).toHaveBeenCalledTimes(1);
+      expect(metadataSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ showAmr: false }),
+      );
+      const current = document.querySelectorAll('[aria-current="page"]');
+      expect(current.length).toBeGreaterThan(0);
+      current.forEach((element) => {
+        expect(element).toHaveTextContent("Overview");
+      });
+    },
+  );
+
   it("calls notFound when fetchOrganismTaxonomy throws TaxonomyNotFoundError", async () => {
     notFoundSpy.mockClear();
     fetchOrganismTaxonomyMock.mockRejectedValueOnce(

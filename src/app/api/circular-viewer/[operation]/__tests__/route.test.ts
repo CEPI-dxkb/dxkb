@@ -8,12 +8,12 @@ import { GET } from "../route";
 
 let nextIpOctet = 10;
 
-function call(operation: string, query: string) {
+function call(operation: string, query: string, clientIp?: string) {
   nextIpOctet += 1;
   return GET(
     mockNextRequest({
       url: `http://localhost:3019/api/circular-viewer/${operation}?${query}`,
-      headers: { "x-forwarded-for": `203.0.113.${String(nextIpOctet)}` },
+      headers: { "x-forwarded-for": clientIp ?? `203.0.113.${String(nextIpOctet)}` },
     }),
     makeRouteContext({ operation }),
   );
@@ -75,10 +75,48 @@ describe("circular viewer route", () => {
     });
   });
 
+  it("answers a specialty gene listed only by patric_id through a quoted, encoded in(patric_id,…) read", async () => {
+    const featureQueries: string[] = [];
+    server.use(
+      // A CARD row: the gene is named by its patric_id alone.
+      http.get("https://data.test/sp_gene/", () =>
+        HttpResponse.json([{ id: "card", patric_id: "fig|83332.12.peg.7" }]),
+      ),
+      http.get("https://data.test/genome_feature/", ({ request }) => {
+        featureQueries.push(new URL(request.url).search);
+        return HttpResponse.json([
+          { feature_id: "F7", patric_id: "fig|83332.12.peg.7", accession: "NC_000962", start: 70, end: 170, strand: "+", feature_type: "CDS" },
+        ]);
+      }),
+    );
+    const response = await call("track", "genomeId=83332.12&preset=amr");
+    expect(featureQueries).toHaveLength(1);
+    expect(featureQueries[0]).toContain(
+      "?and(eq(genome_id,83332.12),in(patric_id,(%22fig%7C83332.12.peg.7%22)))&select(",
+    );
+    expect(decodeURIComponent(featureQueries[0])).toContain(
+      'and(eq(genome_id,83332.12),in(patric_id,("fig|83332.12.peg.7")))',
+    );
+    expect(await json(response)).toEqual({
+      features: [
+        {
+          featureId: "F7",
+          patricId: "fig|83332.12.peg.7",
+          accession: "NC_000962",
+          start: 70,
+          end: 170,
+          strand: "+",
+          featureType: "CDS",
+        },
+      ],
+      truncated: false,
+    });
+  });
+
   it("answers GC windows computed from the sequences", async () => {
     server.use(
       http.get("https://data.test/genome_sequence/", () =>
-        HttpResponse.json([{ sequence_id: "s1", accession: "A", sequence: "GGCCAATT" }]),
+        HttpResponse.json([{ sequence_id: "s1", accession: "A", length: 8, sequence: "GGCCAATT" }]),
       ),
     );
     const response = await call("gc", "genomeId=1.1");
@@ -110,7 +148,7 @@ describe("circular viewer route", () => {
   it("still answers 422 when the sequences outgrow lengths that fit", async () => {
     server.use(
       http.get("https://data.test/genome_sequence/", () =>
-        HttpResponse.json([{ sequence_id: "s1", accession: "A", sequence: "A".repeat(30_000_001) }]),
+        HttpResponse.json([{ sequence_id: "s1", accession: "A", length: 5, sequence: "A".repeat(30_000_001) }]),
       ),
     );
     const response = await call("gc", "genomeId=1.1");
@@ -136,5 +174,43 @@ describe("circular viewer route", () => {
       error: "Unsupported circular viewer operation: sequence",
       code: "not_found",
     });
+  });
+});
+
+const gcBudget = 20;
+
+describe("circular viewer rate limits", () => {
+  // Validation fails before any upstream call, so each allowed request spends
+  // the bucket without touching the backend.
+  it.each([
+    ["contigs", 60, "198.51.100.7"],
+    ["track", 120, "198.51.100.21"],
+    ["custom", 30, "198.51.100.22"],
+    ["gc", gcBudget, "198.51.100.23"],
+  ])(
+    "allows %s %i requests a minute per client, then answers 429 privately with Retry-After",
+    async (operation, budget, clientIp) => {
+      for (let attempt = 0; attempt < budget; attempt += 1) {
+        const allowed = await call(operation, "genomeId=bad", clientIp);
+        expect(allowed.status).toBe(400);
+      }
+      const response = await call(operation, "genomeId=bad", clientIp);
+      expect(response.status).toBe(429);
+      expectPrivateNoStore(response);
+      expect(Number(response.headers.get("Retry-After"))).toBeGreaterThan(0);
+      expect(await json(response)).toEqual({
+        error: "Too many Circular Viewer requests. Please try again shortly.",
+        code: "rate_limited",
+      });
+    },
+  );
+
+  it("keeps a bucket per operation, so a spent gc budget leaves contigs answering", async () => {
+    const clientIp = "198.51.100.24";
+    for (let attempt = 0; attempt < gcBudget; attempt += 1) {
+      expect((await call("gc", "genomeId=bad", clientIp)).status).toBe(400);
+    }
+    expect((await call("gc", "genomeId=bad", clientIp)).status).toBe(429);
+    expect((await call("contigs", "genomeId=bad", clientIp)).status).toBe(400);
   });
 });

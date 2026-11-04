@@ -62,7 +62,10 @@ export interface CircularViewerFigureProps {
  * keyboard shows the cursor's item as a hover does (highlight and tooltip)
  * and a live region reads it out; focus a press gave shows nothing more. A
  * click moves the cursor to the clicked item, and closing the dialog gives
- * focus back to the wrapper.
+ * focus back to the wrapper. The pointer's item is looked up from its stored
+ * point on every render, so a hidden, removed or redrawn track never leaves a
+ * stale tooltip; a pointer hit takes over from the keyboard cursor until the
+ * next navigation key.
  */
 export function CircularViewerFigure({
   genomeId,
@@ -91,12 +94,11 @@ export function CircularViewerFigure({
   );
   const {
     tooltipOpen,
-    tooltipData,
     tooltipLeft,
     tooltipTop,
     showTooltip,
     hideTooltip,
-  } = useTooltip<FigureHit>();
+  } = useTooltip();
   const [pinned, setPinned] = useState<FigureHit | null>(null);
   /** The keyboard's item, kept across a blur so Tab comes back to it. */
   const [cursor, setCursor] = useState<FigureCursor | null>(null);
@@ -127,10 +129,21 @@ export function CircularViewerFigure({
 
   const keyTarget =
     cursorShown && cursor ? cursorTarget(drawings, cursor) : null;
-  const shown =
-    tooltipOpen && tooltipData
-      ? { hit: tooltipData, left: tooltipLeft ?? 0, top: tooltipTop ?? 0 }
-      : keyTarget
+  // The pointer's item is looked up from its stored point on every render, not
+  // kept from the move: a hidden, removed or reloaded track, a resize or a
+  // narrowed ring then changes what is under the point, and the tooltip and
+  // highlight follow.
+  const pointerLeft = tooltipLeft ?? 0;
+  const pointerTop = tooltipTop ?? 0;
+  const pointerHit = tooltipOpen
+    ? hitTest(
+        drawings,
+        toPolar(pointerLeft - width / 2, pointerTop - height / 2),
+      )
+    : null;
+  const shown = pointerHit
+    ? { hit: pointerHit, left: pointerLeft, top: pointerTop }
+    : keyTarget
         ? {
             hit: keyTarget.hit,
             left: width / 2 + keyTarget.x,
@@ -163,6 +176,7 @@ export function CircularViewerFigure({
         className="absolute inset-0 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
         onFocus={() => {
           if (pressedLast.current) return;
+          hideTooltip();
           setCursorShown(true);
           if (!cursor || !cursorTarget(drawings, cursor)) {
             setCursor(firstCursor(drawings));
@@ -205,11 +219,9 @@ export function CircularViewerFigure({
             onPointerMove={(event) => {
               const at = hitAt(event);
               if (at) {
-                showTooltip({
-                  tooltipData: at.hit,
-                  tooltipLeft: at.x,
-                  tooltipTop: at.y,
-                });
+                // The pointer takes over from the keyboard's item until the next navigation key.
+                setCursorShown(false);
+                showTooltip({ tooltipLeft: at.x, tooltipTop: at.y });
               } else hideTooltip();
             }}
             onPointerLeave={() => {

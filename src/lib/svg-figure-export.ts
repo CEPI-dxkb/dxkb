@@ -136,6 +136,26 @@ function dropLiveOnlyClasses(copy: SVGSVGElement): void {
   }
 }
 
+/**
+ * A mask that only sweeps marks into view (`data-sweep`, the Circular
+ * Viewer's rings while their data arrives) is dropped with every `mask`
+ * reference to it: at rest it uncovers all the marks, so the file draws them
+ * unmasked. Kept, it would lose its class's `mask-type: alpha` and work as a
+ * luminance mask, whose dark `currentColor` circle hides what it masks.
+ */
+function dropSweepMasks(copy: SVGSVGElement): void {
+  const references = new Set<string>();
+  for (const mask of copy.querySelectorAll("mask[data-sweep]")) {
+    references.add(`url(#${mask.id})`);
+    mask.remove();
+  }
+  if (references.size === 0) return;
+  for (const element of copy.querySelectorAll("[mask]")) {
+    const reference = element.getAttribute("mask")?.trim() ?? "";
+    if (references.has(reference)) element.removeAttribute("mask");
+  }
+}
+
 /** Text set in capitals by CSS (`text-transform: uppercase`) is written in capitals. */
 function uppercaseText(copy: SVGSVGElement): void {
   for (const element of copy.querySelectorAll("text, tspan")) {
@@ -178,8 +198,9 @@ function resolveClasses(copy: SVGSVGElement): void {
 
 /**
  * Downloads `svg` (the chart's figure) as `fileName`: the hover overlays
- * (`data-overlay`) dropped, the sticky label column and ruler (`data-sticky`)
- * back in place, every theme class resolved to light-theme colors, and every
+ * (`data-overlay`) and sweep masks (`data-sweep`) dropped, the sticky label
+ * column and ruler (`data-sticky`) back in place, every theme class resolved
+ * to light-theme colors, and every
  * color written as sRGB through `toSrgb` (tests pass one; jsdom has no canvas).
  */
 export function exportSvgFigure(
@@ -199,6 +220,7 @@ export function exportSvgFigure(
   for (const node of copy.querySelectorAll("[data-sticky]")) {
     node.removeAttribute("transform");
   }
+  dropSweepMasks(copy);
   dropLiveOnlyClasses(copy);
   const host = lightThemeHost();
   host.append(copy);

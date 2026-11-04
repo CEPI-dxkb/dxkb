@@ -43,19 +43,62 @@ const genomeBrowserSelector = '[data-testid="genome-browser"]';
 const compareRegionCardSelector = 'section[aria-label="Compare regions"]';
 
 /**
+ * The `color-contrast` violations of a page scan, cut down to the nodes
+ * inside `selector`. The page scan already checks every node in the card, so
+ * the card's contrast is read from it rather than from a second axe pass: on
+ * CI WebKit each pass costs 5–7 s, and a second pass per theme and state took
+ * the test past its 60 s budget.
+ */
+async function contrastInside(
+  page: Page,
+  violations: Violation[],
+  selector: string,
+): Promise<Violation[]> {
+  const inside: Violation[] = [];
+  for (const violation of violations) {
+    if (violation.id !== "color-contrast") continue;
+    const within = await page.evaluate(
+      ({ root, targets }) => {
+        const container = document.querySelector(root);
+        return targets.map((target) => {
+          // A node in the top document has a one-selector target; one in an
+          // iframe or a shadow root has more (or a nested array), and the
+          // card has neither.
+          if (target.length !== 1 || typeof target[0] !== "string") {
+            return false;
+          }
+          const element = document.querySelector(target[0]);
+          return (
+            container !== null && element !== null && container.contains(element)
+          );
+        });
+      },
+      { root: selector, targets: violation.nodes.map((node) => node.target) },
+    );
+    const nodes = violation.nodes.filter((_, index) => within[index]);
+    if (nodes.length > 0) inside.push({ ...violation, nodes });
+  }
+  return inside;
+}
+
+/**
  * No `color-contrast` violation inside the Compare Region card, asserted
  * outright rather than left to the baseline: the wildcard baseline's
  * `color-contrast` allowance (DXKBCORE-174) is for host pages and once masked
  * the card's unpressed toggle options at 3.7:1. The page around the card (its
- * feature title among it) stays with the baseline.
+ * feature title among it) stays with the baseline. It reads the page scan's
+ * own results, so it costs no axe pass of its own.
  */
 async function expectCompareRegionContrast(
   page: Page,
+  violations: Violation[],
   context: string,
 ): Promise<void> {
-  const contrast = (
-    await scanPage(page, { include: compareRegionCardSelector })
-  ).filter((violation) => violation.id === "color-contrast");
+  const contrast = await contrastInside(
+    page,
+    violations,
+    compareRegionCardSelector,
+  );
   expect(
     contrast,
     contrast.length === 0
@@ -573,7 +616,7 @@ test.describe("a11y component surfaces", () => {
     await forEachTheme(page, async (theme) => {
       const violations = await scanPage(page);
       assertNoBlockingViolations(violations, "feature-compare-region", theme);
-      await expectCompareRegionContrast(page, theme);
+      await expectCompareRegionContrast(page, violations, theme);
     });
 
     // A pinned gene turns the hint row into the pin strip (its own text and
@@ -591,7 +634,7 @@ test.describe("a11y component surfaces", () => {
         "feature-compare-region/pinned",
         theme,
       );
-      await expectCompareRegionContrast(page, `pinned, ${theme}`);
+      await expectCompareRegionContrast(page, violations, `pinned, ${theme}`);
     });
 
     // WCAG 1.4.10 reflow, as the routes sweep checks every route. The figure

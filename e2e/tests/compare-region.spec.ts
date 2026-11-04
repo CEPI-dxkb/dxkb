@@ -5,6 +5,7 @@ import {
   genomeFeatureScenarioOverrides,
 } from "../fixtures/overrides";
 import { CompareRegionPage } from "../pages";
+import { attachFocusTrail, recordFocusTrail } from "../support/focus-trail";
 import { failOnRuntimeErrors } from "../support/runtime-errors";
 
 /**
@@ -34,10 +35,12 @@ test.describe("Compare Region Viewer", () => {
 
   test.beforeEach(async ({ page }) => {
     assertNoRuntimeErrors = failOnRuntimeErrors(page);
+    await recordFocusTrail(page);
     await applyBackendMocks(page, { overrides: [...overrides] });
   });
 
-  test.afterEach(() => {
+  test.afterEach(async ({ page }, testInfo) => {
+    await attachFocusTrail(page, testInfo);
     assertNoRuntimeErrors();
   });
 
@@ -363,6 +366,9 @@ test.describe("Compare Region Viewer", () => {
     await page.keyboard.press("Enter");
     await expect(compare.featureCard).toBeVisible();
     await expect(compare.selectionStrip).toBeVisible();
+    // Pinning keeps the keyboard's place on the gene: WebKit would send the
+    // next Tab to the top of the page if it were blurred.
+    await expect(focused).toHaveAttribute("data-row", "1");
     await page.keyboard.press("Tab");
     await expect(
       compare.featureCard.getByRole("button", { name: "Collapse details" }),

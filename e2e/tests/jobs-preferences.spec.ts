@@ -38,12 +38,14 @@ test.describe("jobs preferences survive a refresh (signed in)", () => {
     await jobs.goto();
     await jobs.waitForRows();
     // Service is not the first column, so nothing pins its width.
-    const before = await jobs.columnSize("Service");
+    const before = await jobs.columnWidth("Service");
     await jobs.dragColumnHandle("Service", 120);
-    // The pointer drag lands a render or two after mouse-up; wait for it, then
-    // take the rendered width. (Not `before + 120` of the rendered width: the
-    // table stretches to fill its pane until the columns outgrow it.)
-    await expect.poll(() => jobs.columnSize("Service")).toBe(before + 120);
+    // The rendered edge follows the pointer, even while the table stretches
+    // to fill its pane. The drag lands a render or two after mouse-up; wait
+    // for it (sub-pixel rounding can move it by a pixel).
+    await expect
+      .poll(async () => Math.abs((await jobs.columnWidth("Service")) - before - 120))
+      .toBeLessThanOrEqual(1);
     const dragged = await jobs.columnWidth("Service");
 
     await page.reload();

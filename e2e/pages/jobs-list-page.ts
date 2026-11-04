@@ -188,16 +188,6 @@ export class JobsListPage {
       .filter({ has: this.columnResizeHandle(label) });
   }
 
-  /**
-   * The column's width setting in px, read from its resize handle (`aria-valuenow`).
-   * Unlike the rendered width, it does not include the table stretching to fill its pane.
-   */
-  async columnSize(label: string): Promise<number> {
-    const value =
-      await this.columnResizeHandle(label).getAttribute("aria-valuenow");
-    return Number(value);
-  }
-
   /** Rendered width of a column header in whole pixels. */
   async columnWidth(label: string): Promise<number> {
     const box = await this.columnHeader(label).boundingBox();

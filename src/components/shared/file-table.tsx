@@ -48,6 +48,11 @@ import { cn } from "@/lib/utils";
 import { applyColumnOrder, sameOrder } from "@/lib/table-layout";
 import { useTableLayout } from "@/hooks/use-table-layout";
 import {
+  columnWidthSettings,
+  resizedColumnWidths,
+  type ColumnResizeStart,
+} from "./file-table-resize";
+import {
   Table,
   TableBody,
   TableCell,
@@ -190,15 +195,28 @@ function SortIcon({
 function DraggableTableHeader<T extends RowData>({
   header,
   size,
+  widthSetting,
   isResizing,
+  onResizeStart,
   onSort,
   sort,
 }: {
   header: Header<FileTableFeatures, T>;
   /** The column's width in px (a prop, so the compiled header re-renders with it). */
   size: number | undefined;
+  /**
+   * The column's width setting, which the handle reports as its value. It
+   * differs from `size` while a pointer drag sets rendered widths directly.
+   */
+  widthSetting: number | undefined;
   /** Whether this column is being resized (a prop, for the same reason). */
   isResizing: boolean;
+  /** Starts a pointer resize of this column at the given pointer x. */
+  onResizeStart: (
+    columnId: string,
+    clientX: number,
+    pointer: "mouse" | "touch",
+  ) => void;
   onSort: (field: string) => void;
   sort: DataTableSort;
 }) {
@@ -231,8 +249,13 @@ function DraggableTableHeader<T extends RowData>({
     // Last, so these win over the meta classes (as the inline style they
     // replace did).
     "relative w-(--col-size) max-w-(--col-size) min-w-(--col-size) transform-(--drag-transform) whitespace-nowrap",
-    isDragging ? "z-1 opacity-80" : "z-0",
+    // No z-index at rest: a positioned cell with one is a stacking context,
+    // and the next cell's opaque background would then paint over the half
+    // of this cell's resize handle that straddles the shared edge. A dragged
+    // header rises above every handle.
+    isDragging && "z-20 opacity-80",
   );
+  const isLast = header.index === (header.headerGroup?.headers.length ?? 0) - 1;
 
   const sortField = meta?.sortField;
   const label = header.column.columnDef.header as string;
@@ -277,37 +300,60 @@ function DraggableTableHeader<T extends RowData>({
             <SortIcon field={sortField} currentSort={sort} />
           </button>
         )}
-        {header.column.getCanResize() && (
-          <div
-            role="separator"
-            aria-orientation="vertical"
-            aria-label={`Resize ${label} column`}
-            aria-valuemin={minSize}
-            aria-valuemax={maxSize}
-            aria-valuenow={size}
-            tabIndex={0}
-            onKeyDown={(event) => {
-              if (event.key === "ArrowLeft") {
-                event.preventDefault();
-                resizeWithKeyboard(-10);
-              } else if (event.key === "ArrowRight") {
-                event.preventDefault();
-                resizeWithKeyboard(10);
-              }
-            }}
-            onMouseDown={header.getResizeHandler()}
-            onTouchStart={header.getResizeHandler()}
-            onDoubleClick={() => {
-              header.column.resetSize();
-            }}
+      </div>
+      {header.column.getCanResize() && (
+        // A child of the cell, not of its content box, so it spans the full
+        // header height and sits on the cell's edge. The hit area straddles
+        // the edge (the last column's stays inside, so the table does not
+        // overflow its scroll box); the line inside it is the divider, `info`
+        // while active because the dark themes keep a dark primary.
+        <div
+          role="separator"
+          aria-orientation="vertical"
+          aria-label={`Resize ${label} column`}
+          aria-valuemin={minSize}
+          aria-valuemax={maxSize}
+          aria-valuenow={widthSetting}
+          tabIndex={0}
+          onKeyDown={(event) => {
+            if (event.key === "ArrowLeft") {
+              event.preventDefault();
+              resizeWithKeyboard(-10);
+            } else if (event.key === "ArrowRight") {
+              event.preventDefault();
+              resizeWithKeyboard(10);
+            }
+          }}
+          onMouseDown={(event) => {
+            if (event.button !== 0) return;
+            // No text selection or focus change while dragging.
+            event.preventDefault();
+            onResizeStart(header.column.id, event.clientX, "mouse");
+          }}
+          onTouchStart={(event) => {
+            const touch = event.touches.item(0);
+            onResizeStart(header.column.id, touch.clientX, "touch");
+          }}
+          onDoubleClick={() => {
+            header.column.resetSize();
+          }}
+          className={cn(
+            "group/resize absolute inset-y-0 right-0 z-10 w-2 cursor-col-resize touch-none select-none focus-visible:outline-2 focus-visible:outline-primary",
+            !isLast && "translate-x-1/2",
+          )}
+        >
+          <span
+            aria-hidden
             className={cn(
-              "absolute top-0 right-0 z-10 h-full w-2 translate-x-1/2 cursor-col-resize border-r border-border focus-visible:outline-2 focus-visible:outline-primary",
-              "hover:border-primary/50 hover:bg-primary/15",
-              isResizing && "h-9 border-primary bg-primary/25",
+              "absolute inset-y-2 transition-colors",
+              isLast ? "right-0" : "left-1/2 -translate-x-1/2",
+              isResizing
+                ? "w-0.5 bg-info"
+                : "w-px bg-border group-hover/resize:w-0.5 group-hover/resize:bg-info/50 group-focus-visible/resize:w-0.5 group-focus-visible/resize:bg-info",
             )}
           />
-        )}
-      </div>
+        </div>
+      )}
     </TableHead>
   );
 }
@@ -399,6 +445,13 @@ function DataTableInner<T extends RowData>(
   // which deletes the size) since the layout was last saved. Only ids are kept:
   // the sizing state holds a pointer drag's raw width (0 when dragged far left,
   // unbounded to the right), and only getSize() clamps it to minSize/maxSize.
+  // The pointer drag in progress: its column, and (once the pointer moves) the
+  // rendered width and width setting of every visible column.
+  const [pointerResize, setPointerResize] = useState<{
+    columnId: string;
+    widths?: Record<string, number>;
+    settings?: Record<string, number>;
+  } | null>(null);
   const pendingWidthCommitRef = useRef({
     resized: new Set<string>(),
     reset: new Set<string>(),
@@ -444,7 +497,6 @@ function DataTableInner<T extends RowData>(
       setLiveColumnSizing(next);
     },
     getRowId,
-    columnResizeMode: "onChange",
     enableColumnResizing: true,
   });
 
@@ -464,13 +516,11 @@ function DataTableInner<T extends RowData>(
     useSensor(KeyboardSensor, {}),
   );
 
-  // Save finished resizes: a pointer drag once it is released (TanStack clears
-  // isResizingColumn), a keyboard step or a reset immediately (they never set it).
-  // The width saved is what the column renders at, so it stays inside the
-  // saved-layout schema however far the drag went.
-  const resizingColumnId = table.state.columnResizing.isResizingColumn;
+  // Save keyboard resizes and double-click resets as soon as they happen (a
+  // pointer drag saves itself on release, in startPointerResize). The width
+  // saved is what the column renders at, so it stays inside the saved-layout
+  // schema.
   useEffect(() => {
-    if (resizingColumnId) return;
     const { resized, reset } = pendingWidthCommitRef.current;
     if (resized.size === 0 && reset.size === 0) return;
     const widths: Record<string, number> = { ...tableLayout.widths };
@@ -490,10 +540,8 @@ function DataTableInner<T extends RowData>(
     // refuses is kept in memory), so the widths on screen do not change.
     setLiveColumnSizing({});
     // liveColumnSizing is not read here, but every resize and reset replaces
-    // it, so it is what re-runs this for the ones that never set
-    // isResizingColumn.
+    // it, so it is what re-runs this.
   }, [
-    resizingColumnId,
     liveColumnSizing,
     tableLayout.widths,
     table,
@@ -505,6 +553,72 @@ function DataTableInner<T extends RowData>(
   const columnSizes: FileTableColumnSizes = Object.fromEntries(
     table.getAllFlatColumns().map((col) => [col.id, col.getSize()]),
   );
+
+  // A pointer drag sets every column's rendered width directly so the dragged
+  // edge follows the pointer (see file-table-resize.ts); the settings it would
+  // save are saved once on release.
+  const startPointerResize = (
+    columnId: string,
+    startX: number,
+    pointer: "mouse" | "touch",
+  ) => {
+    const leafColumns = table.getVisibleLeafColumns();
+    const index = leafColumns.findIndex((column) => column.id === columnId);
+    if (index === -1) return;
+    const start: ColumnResizeStart = {
+      columnIds: leafColumns.map((column) => column.id),
+      sizes: leafColumns.map((column) => column.getSize()),
+      minSizes: leafColumns.map((column) => column.columnDef.minSize ?? 40),
+      maxSizes: leafColumns.map((column) => column.columnDef.maxSize ?? 1000),
+      index,
+      containerWidth: tableContainerRef.current?.clientWidth ?? 0,
+    };
+    const savedWidths = tableLayout.widths;
+    let settings: Record<string, number> = {};
+    setPointerResize({ columnId });
+
+    const move = (clientX: number) => {
+      const widths = resizedColumnWidths(start, clientX - startX);
+      settings = columnWidthSettings(start, widths);
+      const sizeSettings = Object.fromEntries(
+        start.columnIds.map((id, i) => [id, settings[id] ?? start.sizes[i]]),
+      );
+      setPointerResize({
+        columnId,
+        widths: Object.fromEntries(
+          start.columnIds.map((id, i) => [id, widths[i]]),
+        ),
+        settings: sizeSettings,
+      });
+    };
+    const onMouseMove = (event: MouseEvent) => {
+      move(event.clientX);
+    };
+    const onTouchMove = (event: TouchEvent) => {
+      const touch = event.touches.item(0);
+      if (touch) move(touch.clientX);
+    };
+    const end = () => {
+      document.removeEventListener("mousemove", onMouseMove);
+      document.removeEventListener("mouseup", end);
+      document.removeEventListener("touchmove", onTouchMove);
+      document.removeEventListener("touchend", end);
+      document.removeEventListener("touchcancel", end);
+      if (Object.keys(settings).length > 0) {
+        // Read back on the same re-render, so nothing moves on release.
+        updateTableLayout({ widths: { ...savedWidths, ...settings } });
+      }
+      setPointerResize(null);
+    };
+    if (pointer === "mouse") {
+      document.addEventListener("mousemove", onMouseMove);
+      document.addEventListener("mouseup", end);
+    } else {
+      document.addEventListener("touchmove", onTouchMove);
+      document.addEventListener("touchend", end);
+      document.addEventListener("touchcancel", end);
+    }
+  };
 
   // Separate values, so the body context below is cached on them and keeps
   // its identity through a resize (`table` changes on every state update, but
@@ -548,7 +662,13 @@ function DataTableInner<T extends RowData>(
       role="region"
       tabIndex={tabIndex}
       aria-label={ariaLabel}
-      className="scrollbar-themed h-full min-h-0 overflow-auto rounded-md border outline-none"
+      className={cn(
+        "scrollbar-themed h-full min-h-0 overflow-auto rounded-md border outline-none",
+        // A drag outruns its handle whenever the column stops at its minimum
+        // or maximum width; keep the resize cursor (not a header's grab or a
+        // row's pointer) and text selection off until it is released.
+        pointerResize && "cursor-col-resize select-none **:cursor-col-resize",
+      )}
       onKeyDown={wrappedKeyDown}
     >
       <DndContext
@@ -576,8 +696,18 @@ function DataTableInner<T extends RowData>(
                       <DraggableTableHeader
                         key={header.id}
                         header={header}
-                        size={columnSizes[header.column.id]}
-                        isResizing={header.column.getIsResizing()}
+                        size={
+                          pointerResize?.widths?.[header.column.id] ??
+                          columnSizes[header.column.id]
+                        }
+                        widthSetting={
+                          pointerResize?.settings?.[header.column.id] ??
+                          columnSizes[header.column.id]
+                        }
+                        isResizing={
+                          pointerResize?.columnId === header.column.id
+                        }
+                        onResizeStart={startPointerResize}
                         onSort={onSort}
                         sort={sort}
                       />

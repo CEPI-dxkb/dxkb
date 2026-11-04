@@ -947,6 +947,10 @@ function useDataTableContent(
             // switch to auto once real rows/virtualizer drive the height.
             isLoading ? "overflow-hidden" : "overflow-auto",
             (shiftHeld || ctrlOrCmdHeld) && "select-none",
+            // A drag outruns its handle whenever the column stops at its
+            // minimum or maximum width; keep the resize cursor until release.
+            resizingColumnId &&
+              "cursor-col-resize select-none **:cursor-col-resize",
           )}
           ref={tableContainerRef}
           role="region"

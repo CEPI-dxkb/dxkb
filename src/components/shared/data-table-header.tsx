@@ -35,6 +35,9 @@ export function DataTableHeader({
   // drag affordance entirely rather than show a grab cursor that discards the
   // drop.
   const canReorder = Boolean(onColumnOrderChange);
+  // While a column is being resized, the pointer crosses other headers; their
+  // hover bars stay hidden so only the dragged edge is drawn.
+  const isResizingAny = Boolean(table.state.columnResizing.isResizingColumn);
 
   const handleDrop = (event: React.DragEvent, targetColumnId: string) => {
     event.preventDefault();
@@ -217,7 +220,9 @@ export function DataTableHeader({
                             "mx-auto h-full w-1 transition-opacity",
                             header.column.getIsResizing()
                               ? "bg-info opacity-100"
-                              : "bg-muted-foreground opacity-0 group-hover:opacity-100",
+                              : isResizingAny
+                                ? "bg-muted-foreground opacity-0"
+                                : "bg-muted-foreground opacity-0 group-hover:opacity-100",
                           )}
                         />
                       </div>

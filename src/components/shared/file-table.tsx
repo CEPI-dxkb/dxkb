@@ -51,7 +51,7 @@ import {
   columnWidthSettings,
   resizedColumnWidths,
   type ColumnResizeStart,
-} from "./file-table-resize";
+} from "./column-resize";
 import {
   Table,
   TableBody,
@@ -331,8 +331,8 @@ function DraggableTableHeader<T extends RowData>({
             onResizeStart(header.column.id, event.clientX, "mouse");
           }}
           onTouchStart={(event) => {
-            const touch = event.touches.item(0);
-            onResizeStart(header.column.id, touch.clientX, "touch");
+            const touch = event.touches[0] as Touch | undefined;
+            if (touch) onResizeStart(header.column.id, touch.clientX, "touch");
           }}
           onDoubleClick={() => {
             header.column.resetSize();
@@ -555,7 +555,7 @@ function DataTableInner<T extends RowData>(
   );
 
   // A pointer drag sets every column's rendered width directly so the dragged
-  // edge follows the pointer (see file-table-resize.ts); the settings it would
+  // edge follows the pointer (see column-resize.ts); the settings it would
   // save are saved once on release.
   const startPointerResize = (
     columnId: string,
@@ -595,7 +595,7 @@ function DataTableInner<T extends RowData>(
       move(event.clientX);
     };
     const onTouchMove = (event: TouchEvent) => {
-      const touch = event.touches.item(0);
+      const touch = event.touches[0] as Touch | undefined;
       if (touch) move(touch.clientX);
     };
     const end = () => {

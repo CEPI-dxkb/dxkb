@@ -2,8 +2,9 @@ import {
   columnScale,
   columnWidthSettings,
   resizedColumnWidths,
+  stretchedColumnWidths,
   type ColumnResizeStart,
-} from "../file-table-resize";
+} from "../column-resize";
 
 /** Three columns with settings 100/50/50 in a box `containerWidth` wide. */
 function start(
@@ -138,5 +139,47 @@ describe("columnWidthSettings", () => {
     expect(columnWidthSettings(s, resizedColumnWidths(s, 3200))).toStrictEqual(
       { name: 1000 },
     );
+  });
+});
+
+// The DataTable's selection column is not resizable: it neither stretches nor
+// absorbs a drag, and gets no saved setting.
+describe("a fixed column", () => {
+  function withSelection(index: number): ColumnResizeStart {
+    return {
+      columnIds: ["select", "name", "size"],
+      sizes: [40, 100, 50],
+      minSizes: [40, 40, 40],
+      maxSizes: [1000, 1000, 1000],
+      fixed: [true, false, false],
+      index,
+      containerWidth: 340,
+    };
+  }
+
+  it("keeps its width when the others stretch", () => {
+    // 300px of room for 150px of resizable settings.
+    expect(stretchedColumnWidths([40, 100, 50], 340, [true, false, false]))
+      .toStrictEqual([40, 200, 100]);
+  });
+
+  it("stays put while a later column is dragged", () => {
+    const widths = resizedColumnWidths(withSelection(1), 10);
+    expect(widths[0]).toBe(40);
+    expect(edge(widths, 1)).toBe(250);
+    expect(widths.reduce((a, b) => a + b, 0)).toBeCloseTo(340);
+  });
+
+  it("does not resize when it is the dragged column", () => {
+    expect(resizedColumnWidths(withSelection(0), 30)).toStrictEqual([
+      40, 200, 100,
+    ]);
+  });
+
+  it("gets no saved setting", () => {
+    const s = withSelection(1);
+    const settings = columnWidthSettings(s, resizedColumnWidths(s, 10));
+    // 210 and 90 rendered at scale 2.
+    expect(settings).toStrictEqual({ name: 105, size: 45 });
   });
 });

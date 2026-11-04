@@ -1310,6 +1310,48 @@ describe("DataTable column drag affordance", () => {
     expect(wrapper).not.toHaveClass("cursor-move");
   });
 
+  // A press that lands just off a resize handle is a resize that missed, not
+  // the start of a reorder.
+  describe("a drag that starts near a header's edge", () => {
+    function renderReorderable() {
+      render(
+        <DataTable
+          id="reorder-guard"
+          data={reorderRows}
+          columns={reorderColumns}
+          totalItems={1}
+          resource="genome"
+          onColumnOrderChange={vi.fn()}
+        />,
+      );
+      const wrapper = dragWrapperFor(/Strain Name/);
+      vi.spyOn(wrapper, "getBoundingClientRect").mockReturnValue(
+        DOMRect.fromRect({ x: 100, y: 0, width: 200, height: 30 }),
+      );
+      return wrapper;
+    }
+
+    function dragFrom(wrapper: HTMLElement, clientX: number) {
+      fireEvent.mouseDown(wrapper, { clientX });
+      return fireEvent.dragStart(wrapper, {
+        clientX,
+        dataTransfer: { effectAllowed: "" },
+      });
+    }
+
+    it("does not start a reorder from beside the right edge", () => {
+      expect(dragFrom(renderReorderable(), 292)).toBe(false);
+    });
+
+    it("does not start a reorder from beside the left edge", () => {
+      expect(dragFrom(renderReorderable(), 105)).toBe(false);
+    });
+
+    it("starts a reorder from the middle of the header", () => {
+      expect(dragFrom(renderReorderable(), 200)).toBe(true);
+    });
+  });
+
   it("ignores a drop on a non-reorderable table instead of reordering", async () => {
     const user = userEvent.setup();
     render(

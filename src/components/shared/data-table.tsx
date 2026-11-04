@@ -43,6 +43,12 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { DataTableControls } from "./data-table-controls";
 import { DataTableFooter } from "./data-table-footer";
 import { DataTableHeader } from "./data-table-header";
+import {
+  columnWidthSettings,
+  resizedColumnWidths,
+  stretchedColumnWidths,
+  type ColumnResizeStart,
+} from "./column-resize";
 import { clsx } from "cn";
 
 export function DataTable(props: DataTableProps) {
@@ -125,6 +131,9 @@ export type DataTableInstance = ReactTable<DataTableFeatures, DataRow>;
 
 /** Resolved pixel width of each column, keyed by column id. */
 export type ColumnWidths = Record<string, number>;
+
+/** How far a header's resize handle reaches past the cell's right edge (px). */
+const handleOverhang = 8;
 
 function getTableMeta(table: TanStackTable<DataTableFeatures, DataRow>) {
   const meta = table.options.meta;
@@ -742,7 +751,6 @@ function useDataTableContent(
     manualPagination: true,
     manualSorting: true,
     pageCount: Math.ceil(totalItems / pagination.pageSize),
-    columnResizeMode: "onChange",
     enableColumnResizing: true,
     onColumnSizingChange: (updater) => {
       setSizingByKey((prev) => {
@@ -768,21 +776,23 @@ function useDataTableContent(
 
   // Resolved pixel width of every column, passed to the header and body cells
   // (which re-render with this component: all three carry "use no memo").
-  // Columns stretch to fill the container: any width the natural sizes leave unused
-  // is distributed proportionally across the resizable columns. When natural sizes
-  // already exceed the container (e.g. a column dragged very wide) the surplus is
-  // negative, so widths fall back to natural and the container scrolls horizontally.
-  // The actively-resizing column is excluded from stretch so its drag tracks the
-  // cursor 1:1 and can push the total past the container edge.
-  const resizingColumnId = table.state.columnResizing.isResizingColumn;
+  // Columns stretch to fill the container: when the width settings leave room,
+  // every resizable column is scaled up by the same factor (column-resize.ts).
+  // When they already exceed the container (e.g. a column dragged very wide)
+  // widths are the settings and the container scrolls horizontally. A pointer
+  // drag sets the rendered widths directly (see startPointerResize) so the
+  // dragged edge stays under the pointer.
+  const [pointerResize, setPointerResize] = useState<{
+    columnId: string;
+    widths?: ColumnWidths;
+    settings?: ColumnWidths;
+  } | null>(null);
+  const resizingColumnId = pointerResize?.columnId;
 
-  // Hand finished resizes to the owner: a pointer drag once it is released (TanStack
-  // clears isResizingColumn), a keyboard step immediately (it never sets it). The
-  // width sent is what the column renders at: a pointer drag stores its raw width in
-  // the sizing state (0 when dragged far left, unbounded to the right) and only
-  // getSize() clamps it to the column's minSize/maxSize.
+  // Hand keyboard resizes to the owner as they happen (a pointer drag commits
+  // itself on release). The width sent is the column's clamped getSize().
   useEffect(() => {
-    if (resizingColumnId || !onColumnWidthsCommit) return;
+    if (!onColumnWidthsCommit) return;
     const pending = pendingWidthCommitRef.current;
     if (pending.size === 0) return;
     pendingWidthCommitRef.current = new Set();
@@ -793,47 +803,102 @@ function useDataTableContent(
     }
     if (Object.keys(widths).length > 0) onColumnWidthsCommit(widths);
   });
-  const columnWidths = (() => {
+
+  // The resize handle (w-4, translateX(50%)) overhangs each cell's right edge
+  // by 8px. Interior overhangs overlap harmlessly, but the last column's would
+  // push a phantom horizontal scrollbar once the table fills exactly — so stop
+  // the stretch short and let that final handle occupy the gap.
+  const stretchWidth = Math.max(0, containerWidth - handleOverhang);
+  const resizeStart = (index: number): ColumnResizeStart => {
     const leafColumns = table.getVisibleLeafColumns();
-    const naturalSizes = leafColumns.map((c) => c.getSize());
-    const naturalTotal = naturalSizes.reduce((a, b) => a + b, 0);
-
-    const finalSizes = new Map<string, number>();
-    leafColumns.forEach((c, i) => {
-      finalSizes.set(c.id, naturalSizes[i]);
-    });
-
-    // The resize handle (w-2, translateX(50%)) overhangs each cell's right edge
-    // by 4px. Interior overhangs overlap harmlessly, but the last column's would
-    // push a 4px phantom horizontal scrollbar once the table fills exactly — so
-    // stop the stretch 4px short and let that final handle occupy the gap.
-    const handleOverhang = 4;
-    const surplus = containerWidth - handleOverhang - naturalTotal;
-    if (surplus > 0) {
-      const eligible = leafColumns.filter(
-        (c) => c.getCanResize() && c.id !== resizingColumnId,
-      );
-      const eligibleTotal = eligible.reduce((a, c) => a + c.getSize(), 0);
-      if (eligibleTotal > 0) {
-        let distributed = 0;
-        eligible.forEach((c, i) => {
-          const add =
-            i === eligible.length - 1
-              ? surplus - distributed // last column absorbs rounding remainder
-              : Math.round(surplus * (c.getSize() / eligibleTotal));
-          distributed += add;
-          finalSizes.set(c.id, c.getSize() + add);
-        });
-      }
-    }
-
+    return {
+      columnIds: leafColumns.map((c) => c.id),
+      sizes: leafColumns.map((c) => c.getSize()),
+      minSizes: leafColumns.map((c) => c.columnDef.minSize ?? 40),
+      maxSizes: leafColumns.map((c) => c.columnDef.maxSize ?? 1000),
+      fixed: leafColumns.map((c) => !c.getCanResize()),
+      index,
+      containerWidth: stretchWidth,
+    };
+  };
+  const columnWidths = (() => {
+    if (pointerResize?.widths) return pointerResize.widths;
+    const start = resizeStart(0);
     const widths: ColumnWidths = {};
     for (const header of table.getFlatHeaders()) {
-      widths[header.column.id] =
-        finalSizes.get(header.column.id) ?? header.column.getSize();
+      widths[header.column.id] = header.column.getSize();
     }
+    const stretched = stretchedColumnWidths(
+      start.sizes,
+      start.containerWidth,
+      start.fixed,
+    );
+    start.columnIds.forEach((id, i) => {
+      widths[id] = stretched[i];
+    });
     return widths;
   })();
+
+  const startPointerResize = (
+    columnId: string,
+    startX: number,
+    pointer: "mouse" | "touch",
+  ) => {
+    const index = table
+      .getVisibleLeafColumns()
+      .findIndex((column) => column.id === columnId);
+    if (index === -1) return;
+    const start = resizeStart(index);
+    const restWidths = columnWidths;
+    let settings: Record<string, number> = {};
+    setPointerResize({ columnId });
+
+    const move = (clientX: number) => {
+      const widths = resizedColumnWidths(start, clientX - startX);
+      settings = columnWidthSettings(start, widths);
+      setPointerResize({
+        columnId,
+        widths: {
+          ...restWidths,
+          ...Object.fromEntries(start.columnIds.map((id, i) => [id, widths[i]])),
+        },
+        settings: Object.fromEntries(
+          start.columnIds.map((id, i) => [id, settings[id] ?? start.sizes[i]]),
+        ),
+      });
+    };
+    const onMouseMove = (event: MouseEvent) => {
+      move(event.clientX);
+    };
+    const onTouchMove = (event: TouchEvent) => {
+      const touch = event.touches[0] as Touch | undefined;
+      if (touch) move(touch.clientX);
+    };
+    const end = () => {
+      document.removeEventListener("mousemove", onMouseMove);
+      document.removeEventListener("mouseup", end);
+      document.removeEventListener("touchmove", onTouchMove);
+      document.removeEventListener("touchend", end);
+      document.removeEventListener("touchcancel", end);
+      if (Object.keys(settings).length > 0) {
+        const committed = settings;
+        setSizingByKey((prev) => ({
+          ...prev,
+          [sizingKey]: { ...(prev[sizingKey] ?? initialColumnSizing), ...committed },
+        }));
+        onColumnWidthsCommit?.(committed);
+      }
+      setPointerResize(null);
+    };
+    if (pointer === "mouse") {
+      document.addEventListener("mousemove", onMouseMove);
+      document.addEventListener("mouseup", end);
+    } else {
+      document.addEventListener("touchmove", onTouchMove);
+      document.addEventListener("touchend", end);
+      document.addEventListener("touchcancel", end);
+    }
+  };
 
   const rows = table.getRowModel().rows;
 
@@ -970,6 +1035,9 @@ function useDataTableContent(
                 table={table}
                 columnWidths={columnWidths}
                 onColumnOrderChange={onColumnOrderChange}
+                resizingColumnId={resizingColumnId}
+                widthSettings={pointerResize?.settings}
+                onResizeStart={startPointerResize}
               />
 
               <DataTableBody

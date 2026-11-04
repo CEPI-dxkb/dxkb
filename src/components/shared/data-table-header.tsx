@@ -12,12 +12,31 @@ interface DataTableHeaderProps {
   table: DataTableInstance;
   columnWidths: ColumnWidths;
   onColumnOrderChange?: DataTableProps["onColumnOrderChange"];
+  /** The column a pointer drag is resizing, if any. */
+  resizingColumnId?: string;
+  /** Width settings during a pointer drag, reported by the handles. */
+  widthSettings?: ColumnWidths;
+  /** Starts a pointer resize of a column at the given pointer x. */
+  onResizeStart: (
+    columnId: string,
+    clientX: number,
+    pointer: "mouse" | "touch",
+  ) => void;
 }
+
+/**
+ * A press this close to a header's left or right edge (px) never starts a
+ * column reorder: it is a resize that missed the handle.
+ */
+const reorderEdgeGuard = 12;
 
 export function DataTableHeader({
   table,
   columnWidths,
   onColumnOrderChange,
+  resizingColumnId,
+  widthSettings,
+  onResizeStart,
 }: DataTableHeaderProps) {
   // Extracted out of useDataTableContent, which carries "use no memo". The
   // compiler otherwise keys the header cells (sort chevrons included) on
@@ -37,7 +56,10 @@ export function DataTableHeader({
   const canReorder = Boolean(onColumnOrderChange);
   // While a column is being resized, the pointer crosses other headers; their
   // hover bars stay hidden so only the dragged edge is drawn.
-  const isResizingAny = Boolean(table.state.columnResizing.isResizingColumn);
+  const isResizingAny = Boolean(resizingColumnId);
+  // Where the last press on a header landed, so a drag that starts from the
+  // edge of a header (a resize that missed its handle) is not a reorder.
+  const pressXRef = useRef<number | null>(null);
 
   const handleDrop = (event: React.DragEvent, targetColumnId: string) => {
     event.preventDefault();
@@ -83,18 +105,33 @@ export function DataTableHeader({
                 [column.id]: size,
               }));
             };
-            // One entry point for both pointer kinds. TanStack's resize handler
-            // branches on `isTouchStartEvent` to decide whether to arm
-            // touchmove/touchend or mousemove/mouseup, so a touchstart must
-            // reach it directly — forwarding a synthetic mousedown would leave
-            // the touch path permanently unarmed.
+            // One entry point for both pointer kinds. The drag itself lives in
+            // data-table.tsx (startPointerResize), which arms touchmove/touchend
+            // or mousemove/mouseup by the kind passed here, so a touchstart
+            // must say so — reporting it as a mouse press would leave the touch
+            // path unarmed.
             const startResize = (
               event: React.MouseEvent | React.TouchEvent,
             ) => {
               event.stopPropagation();
+              let clientX: number;
+              if ("touches" in event) {
+                const touch = event.touches[0] as Touch | undefined;
+                if (!touch) return;
+                clientX = touch.clientX;
+              } else {
+                if (event.button !== 0) return;
+                // No text selection, focus change or native drag from the press.
+                event.preventDefault();
+                clientX = event.clientX;
+              }
               justResizedRef.current = false;
-              header.getResizeHandler()(event);
-              // Mirror TanStack's branch: the "just resized, swallow the next
+              onResizeStart(
+                column.id,
+                clientX,
+                event.type === "touchstart" ? "touch" : "mouse",
+              );
+              // Mirror that branch: the "just resized, swallow the next
               // click" window has to close on whichever gesture actually ends.
               // Listening only for mouseup meant a touch resize-drag left the
               // flag false and fell through to the sort toggle below.
@@ -157,7 +194,22 @@ export function DataTableHeader({
                       )}
                       draggable={canReorder}
                       {...(canReorder && {
+                        onMouseDown: (event: React.MouseEvent) => {
+                          pressXRef.current = event.clientX;
+                        },
                         onDragStart: (event: React.DragEvent) => {
+                          const pressX = pressXRef.current;
+                          const cell = event.currentTarget.getBoundingClientRect();
+                          if (
+                            isResizingAny ||
+                            (pressX !== null &&
+                              cell.width > 0 &&
+                              (pressX - cell.left < reorderEdgeGuard ||
+                                cell.right - pressX < reorderEdgeGuard))
+                          ) {
+                            event.preventDefault();
+                            return;
+                          }
                           setDraggedColumn(column.id);
                           event.dataTransfer.effectAllowed = "move";
                         },
@@ -200,7 +252,9 @@ export function DataTableHeader({
                         aria-label={`Resize ${column.id} column`}
                         aria-valuemin={minSize}
                         aria-valuemax={maxSize}
-                        aria-valuenow={column.getSize()}
+                        aria-valuenow={
+                          widthSettings?.[column.id] ?? column.getSize()
+                        }
                         tabIndex={0}
                         onKeyDown={(event) => {
                           if (event.key === "ArrowLeft") {
@@ -213,12 +267,14 @@ export function DataTableHeader({
                         }}
                         onMouseDown={startResize}
                         onTouchStart={startResize}
-                        className="absolute top-0 right-0 z-30 flex h-full w-2 translate-x-1/2 cursor-col-resize touch-none select-none"
+                        // 16px wide, centred on the edge: a press that lands a
+                        // little off the line still resizes.
+                        className="absolute top-0 right-0 z-30 flex h-full w-4 translate-x-1/2 cursor-col-resize touch-none select-none"
                       >
                         <div
                           className={clsx(
                             "mx-auto h-full w-1 transition-opacity",
-                            header.column.getIsResizing()
+                            resizingColumnId === column.id
                               ? "bg-info opacity-100"
                               : isResizingAny
                                 ? "bg-muted-foreground opacity-0"

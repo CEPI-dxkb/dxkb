@@ -1,4 +1,5 @@
-import { expect, type Locator, type Page } from "@playwright/test";
+import { type Locator, type Page } from "@playwright/test";
+import { expectHydrated } from "./hydration";
 
 /**
  * The collapsible left view rail (`landing-nav.tsx`) shared by organism landing
@@ -29,24 +30,11 @@ export class ViewNavRail {
    * button's `onClick` to be there.
    */
   async waitForHydration(): Promise<void> {
-    await expect
-      .poll(
-        () =>
-          this.buttons.evaluateAll(
-            (buttons) =>
-              buttons.length > 0 &&
-              buttons.every((button) =>
-                Object.entries(button).some(
-                  ([key, props]) =>
-                    key.startsWith("__reactProps$") &&
-                    typeof (props as { onClick?: unknown }).onClick ===
-                      "function",
-                ),
-              ),
-          ),
-        { message: "the view rail's buttons did not hydrate" },
-      )
-      .toBe(true);
+    await expectHydrated(
+      this.buttons,
+      "onClick",
+      "the view rail's buttons did not hydrate",
+    );
   }
 
   /**

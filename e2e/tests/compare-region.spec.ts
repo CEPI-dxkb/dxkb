@@ -131,6 +131,10 @@ test.describe("Compare Region Viewer", () => {
     await page.mouse.move(x, y);
     await page.mouse.down();
     await page.mouse.move(x - 10, y);
+    // The drag starts on this move. Zoom's move handler reads isDragging from
+    // its last render, so the next move pans only once that start is drawn;
+    // a loaded runner can deliver it first, and it would be dropped.
+    await expect(compare.dragging).toHaveCount(1);
     await page.mouse.move(x - 110, y);
     const slide = /^translate\(-(\d+(\.\d+)?) 0\)$/;
     await expect(compare.panLayers).toHaveCount(2);

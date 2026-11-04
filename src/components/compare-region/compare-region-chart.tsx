@@ -560,6 +560,10 @@ export function CompareRegionChart({
                             x={labelWidth}
                             width={plotWidth}
                             height={height}
+                            // Rendered drag start: Zoom's move handler reads
+                            // isDragging from its last render, so a move
+                            // before this render does not pan yet.
+                            data-dragging={zoom.isDragging ? "" : undefined}
                             // Zoom is horizontal only: a vertical touch pan scrolls the page.
                             // The track drags (grab); a gene clicks (pointer), except
                             // while a drag that began on it pans (grabbing throughout).

@@ -319,6 +319,27 @@ describe("CircularViewerFigure from the keyboard", () => {
     expect(await screen.findByRole("tooltip")).toHaveTextContent("fig|1.1.peg.3");
   });
 
+  it("leaves the keys to the open dialog before its focus lands, so Escape does not hide the item", async () => {
+    const user = userEvent.setup();
+    renderFigure();
+    await user.tab();
+    await user.keyboard("{ArrowRight}");
+    // Held directly: the open modal hides the figure from role queries.
+    const target = figure();
+    // Base UI moves focus into the dialog on the next frame; a slow page can
+    // take the next keys on the figure first.
+    fireEvent.keyDown(target, { key: "Enter" });
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(target).toHaveFocus();
+    fireEvent.keyDown(target, { key: "ArrowLeft" });
+    fireEvent.keyDown(target, { key: "Escape" });
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).toBeNull();
+    });
+    expect(target).toHaveFocus();
+    expect(await screen.findByRole("tooltip")).toHaveTextContent("fig|1.1.peg.3");
+  });
+
   it("opens the item's details with Space too", async () => {
     const user = userEvent.setup();
     renderFigure();

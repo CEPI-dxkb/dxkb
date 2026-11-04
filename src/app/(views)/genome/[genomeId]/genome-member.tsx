@@ -42,8 +42,8 @@ interface CrumbTrailProps {
 function CrumbTrail({ genome, lineage }: CrumbTrailProps) {
   return (
     <div className="flex flex-wrap items-baseline gap-x-1 text-sm">
-      {lineage.map(({ taxonId, name }) => (
-        <span key={taxonId} className="contents">
+      {lineage.map(({ taxonId, name }, index) => (
+        <span key={`${String(index)}-${taxonId}`} className="contents">
           <Link
             className="text-muted-foreground transition-colors hover:text-foreground"
             href={taxonomyHref(taxonId)}

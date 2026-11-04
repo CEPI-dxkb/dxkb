@@ -46,8 +46,8 @@ interface CrumbTrailProps {
 
 /** The taxon lineage and the genome as one breadcrumb, root first. */
 function CrumbTrail({ feature, lineage }: CrumbTrailProps) {
-  const crumbs = lineage.map(({ taxonId, name }) => ({
-    key: `taxon-${taxonId}`,
+  const crumbs = lineage.map(({ taxonId, name }, index) => ({
+    key: `taxon-${String(index)}-${taxonId}`,
     href: taxonomyHref(taxonId),
     label: name,
   }));

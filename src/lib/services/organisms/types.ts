@@ -13,6 +13,11 @@ export interface OrganismTaxonomy {
   taxonName: string;
   lineageNames: string[];
   lineageIds: number[];
+  /**
+   * NCBI rank of each lineage entry, index-aligned with `lineageIds` and
+   * `lineageNames`; what the breadcrumb filters on (`taxonViewCrumbs`).
+   */
+  lineageRanks?: string[];
   taxonRank: string;
   genomes: number | null;
 }

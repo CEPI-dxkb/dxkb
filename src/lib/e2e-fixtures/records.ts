@@ -736,6 +736,8 @@ export interface OrganismTaxonomyFixtureRecord {
   taxon_name: string;
   lineage_names: string[];
   lineage_ids: number[];
+  /** NCBI rank per lineage entry, index-aligned (BV-BRC `lineage_ranks`). */
+  lineage_ranks: string[];
   taxon_rank: string;
   genomes: number;
 }
@@ -771,6 +773,7 @@ export const bacteriaOrganismTaxonomyRecord: OrganismTaxonomyFixtureRecord = {
   taxon_name: "Bacteria",
   lineage_names: ["cellular organisms", "Bacteria"],
   lineage_ids: [131567, 2],
+  lineage_ranks: ["cellular root", "domain"],
   taxon_rank: "superkingdom",
   genomes: bacteriaGenomeCount,
 };
@@ -780,6 +783,7 @@ export const virusesOrganismTaxonomyRecord: OrganismTaxonomyFixtureRecord = {
   taxon_name: "Viruses",
   lineage_names: ["Viruses"],
   lineage_ids: [10239],
+  lineage_ranks: ["acellular root"],
   taxon_rank: "superkingdom",
   genomes: virusesGenomeCount,
 };
@@ -789,6 +793,7 @@ export const cellularOrganismsTaxonomyRecord: OrganismTaxonomyFixtureRecord = {
   taxon_name: "cellular organisms",
   lineage_names: ["cellular organisms"],
   lineage_ids: [131567],
+  lineage_ranks: ["cellular root"],
   taxon_rank: "no rank",
   genomes: allOrganismsGenomeCount,
 };
@@ -806,6 +811,15 @@ export const brucellaOrganismTaxonomyRecord: OrganismTaxonomyFixtureRecord = {
     "Brucella",
   ],
   lineage_ids: [131567, 2, 1224, 28211, 356, 118882, 234],
+  lineage_ranks: [
+    "cellular root",
+    "domain",
+    "phylum",
+    "class",
+    "order",
+    "family",
+    "genus",
+  ],
   taxon_rank: "genus",
   genomes: brucellaGenomeCount,
 };
@@ -831,6 +845,16 @@ export const mycobacteriumOrganismTaxonomyRecord: OrganismTaxonomyFixtureRecord 
       "Mycobacterium",
     ],
     lineage_ids: [131567, 2, 1783272, 201174, 1760, 85007, 1762, 1763],
+    lineage_ranks: [
+      "cellular root",
+      "domain",
+      "kingdom",
+      "phylum",
+      "class",
+      "order",
+      "family",
+      "genus",
+    ],
     taxon_rank: "genus",
     genomes: mycobacteriumGenomeCount,
   };
@@ -855,6 +879,16 @@ export const influenzaAOrganismTaxonomyRecord: OrganismTaxonomyFixtureRecord = {
   ],
   lineage_ids: [
     10239, 2497569, 2497570, 2497583, 2499399, 11308, 2499397, 11520,
+  ],
+  lineage_ranks: [
+    "acellular root",
+    "kingdom",
+    "phylum",
+    "class",
+    "order",
+    "family",
+    "genus",
+    "species",
   ],
   taxon_rank: "species",
   genomes: influenzaAGenomeCount,
@@ -885,6 +919,18 @@ export const alphainfluenzavirusInfluenzaeOrganismTaxonomyRecord: OrganismTaxono
       10239, 2559587, 2732396, 2497569, 2497571, 2497577, 2499411, 11308,
       197911, 2955291,
     ],
+    lineage_ranks: [
+      "acellular root",
+      "realm",
+      "kingdom",
+      "phylum",
+      "subphylum",
+      "class",
+      "order",
+      "family",
+      "genus",
+      "species",
+    ],
     taxon_rank: "species",
     genomes: alphainfluenzavirusInfluenzaeGenomeCount,
   };
@@ -904,6 +950,15 @@ export const caliciviridaeOrganismTaxonomyRecord: OrganismTaxonomyFixtureRecord 
       "Caliciviridae",
     ],
     lineage_ids: [10239, 2559587, 2732396, 2732408, 2732506, 464095, 11974],
+    lineage_ranks: [
+      "acellular root",
+      "realm",
+      "kingdom",
+      "phylum",
+      "class",
+      "order",
+      "family",
+    ],
     taxon_rank: "family",
     genomes: caliciviridaeGenomeCount,
   };

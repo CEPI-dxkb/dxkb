@@ -194,6 +194,37 @@ describe("Genome member route", () => {
     ]);
   });
 
+  it("repeats a crumb for a repeated rank, as BV-BRC's indexOf does", async () => {
+    const consoleError = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
+    mocks.getGenome.mockResolvedValue({
+      genome_id: "4.1",
+      genome_name: "Leaf genome",
+      taxon_id: 4,
+    });
+    mocks.getTaxonomy.mockResolvedValue({
+      taxon_id: "4",
+      lineage_ids: [1, 2, 3, 4],
+      lineage_names: ["Phylum A", "Class A", "Class B", "Leaf"],
+      lineage_ranks: ["phylum", "class", "class", "no rank"],
+    });
+    const page = await GenomePage({
+      params: Promise.resolve({ genomeId: "4.1" }),
+      searchParams: Promise.resolve({}),
+    });
+    await act(async () => {
+      render(page);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    const heading = screen.getByRole("heading", { level: 1, name: "Leaf genome" });
+    expect(
+      [...(heading.parentElement?.querySelectorAll("a") ?? [])].map((link) => link.textContent),
+    ).toEqual(["Phylum A", "Class A", "Class A"]);
+    expect(consoleError.mock.calls.flat().join(" ")).not.toContain("same key");
+    consoleError.mockRestore();
+  });
+
   it("keeps the genome's name when the taxonomy lookup fails", async () => {
     const consoleError = vi
       .spyOn(console, "error")

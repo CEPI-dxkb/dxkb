@@ -37,6 +37,16 @@ function parseLineageIds(value: unknown): number[] {
   return ids;
 }
 
+/**
+ * Positional, unlike the names and ids: a rank's index is the index of the
+ * taxon it ranks, so a malformed entry becomes "" (which no breadcrumb rank
+ * matches) instead of shifting every rank after it onto the wrong taxon.
+ */
+function parseLineageRanks(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value.map((entry) => (typeof entry === "string" ? entry : ""));
+}
+
 export class TaxonomyNotFoundError extends Error {
   constructor(public readonly taxonId: number) {
     super(`Taxon ${String(taxonId)} was not found.`);
@@ -83,6 +93,7 @@ export async function fetchOrganismTaxonomy(
     taxonName: requiredString(payload.taxon_name ?? payload.taxonName, "taxon_name"),
     lineageNames: parseLineageNames(payload.lineage_names ?? payload.lineageNames),
     lineageIds: parseLineageIds(payload.lineage_ids ?? payload.lineageIds),
+    lineageRanks: parseLineageRanks(payload.lineage_ranks ?? payload.lineageRanks),
     taxonRank: requiredString(payload.taxon_rank ?? payload.taxonRank, "taxon_rank"),
     genomes: numberOrNull(payload.genomes, "genomes"),
   };
@@ -103,6 +114,7 @@ const staticLandingRoots: ReadonlyMap<number, OrganismTaxonomy> = new Map([
       taxonName: "Bacteria",
       lineageNames: ["cellular organisms", "Bacteria"],
       lineageIds: [131567, 2],
+      lineageRanks: ["cellular root", "domain"],
       taxonRank: "superkingdom",
       genomes: null,
     },
@@ -114,6 +126,7 @@ const staticLandingRoots: ReadonlyMap<number, OrganismTaxonomy> = new Map([
       taxonName: "Viruses",
       lineageNames: ["Viruses"],
       lineageIds: [10239],
+      lineageRanks: ["acellular root"],
       taxonRank: "superkingdom",
       genomes: null,
     },
@@ -125,6 +138,7 @@ const staticLandingRoots: ReadonlyMap<number, OrganismTaxonomy> = new Map([
       taxonName: "cellular organisms",
       lineageNames: ["cellular organisms"],
       lineageIds: [131567],
+      lineageRanks: ["cellular root"],
       taxonRank: "no rank",
       genomes: null,
     },
@@ -137,7 +151,12 @@ export function staticLandingRootTaxonomy(
 ): OrganismTaxonomy | undefined {
   const root = staticLandingRoots.get(taxonId);
   return root
-    ? { ...root, lineageNames: [...root.lineageNames], lineageIds: [...root.lineageIds] }
+    ? {
+        ...root,
+        lineageNames: [...root.lineageNames],
+        lineageIds: [...root.lineageIds],
+        lineageRanks: [...(root.lineageRanks ?? [])],
+      }
     : undefined;
 }
 

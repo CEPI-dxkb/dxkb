@@ -1,92 +1,154 @@
 import { render, screen } from "@testing-library/react";
 
+import type { OrganismTaxonomy } from "@/lib/services/organisms/types";
+
 import { TaxonBreadcrumb } from "../taxon-breadcrumb";
+
+// Live BV-BRC lineage for E. coli K-12 (83333), 2026-10-28.
+const ecoliK12: OrganismTaxonomy = {
+  taxonId: 83333,
+  taxonName: "Escherichia coli K-12",
+  taxonRank: "strain",
+  genomes: 100,
+  lineageIds: [131567, 2, 3379134, 1224, 1236, 91347, 543, 561, 562, 83333],
+  lineageNames: [
+    "cellular organisms",
+    "Bacteria",
+    "Pseudomonadati",
+    "Pseudomonadota",
+    "Gammaproteobacteria",
+    "Enterobacterales",
+    "Enterobacteriaceae",
+    "Escherichia",
+    "Escherichia coli",
+    "Escherichia coli K-12",
+  ],
+  lineageRanks: [
+    "cellular root",
+    "domain",
+    "kingdom",
+    "phylum",
+    "class",
+    "order",
+    "family",
+    "genus",
+    "species",
+    "strain",
+  ],
+};
+
+function trailLinks() {
+  return screen
+    .getAllByRole("link")
+    .map((link) => [link.textContent, link.getAttribute("href")]);
+}
 
 describe("TaxonBreadcrumb", () => {
   it("falls back to the display name when taxon is null", () => {
     render(<TaxonBreadcrumb taxon={null} displayName="Brucella" />);
-    expect(screen.getByRole("heading", { level: 1, name: "Brucella" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { level: 1, name: "Brucella" }),
+    ).toBeInTheDocument();
   });
 
-  it("renders ancestor links and promotes the current taxon to <h1>", () => {
+  it("shows BV-BRC's ranked ancestors and the strain as the heading", () => {
+    render(<TaxonBreadcrumb taxon={ecoliK12} displayName="E. coli K-12" />);
+
+    expect(trailLinks()).toEqual([
+      ["Pseudomonadota", "/taxonomy/1224"],
+      ["Gammaproteobacteria", "/taxonomy/1236"],
+      ["Enterobacterales", "/taxonomy/91347"],
+      ["Enterobacteriaceae", "/taxonomy/543"],
+      ["Escherichia", "/taxonomy/561"],
+      ["Escherichia coli", "/taxonomy/562"],
+    ]);
+    expect(
+      screen.getByRole("heading", { level: 1, name: "Escherichia coli K-12" }),
+    ).toBeInTheDocument();
+  });
+
+  it("never names the root, domain or kingdom", () => {
+    render(<TaxonBreadcrumb taxon={ecoliK12} displayName="E. coli K-12" />);
+    for (const name of ["cellular organisms", "Bacteria", "Pseudomonadati"]) {
+      expect(screen.queryByText(name)).not.toBeInTheDocument();
+    }
+  });
+
+  it("makes a whitelisted taxon its own heading without repeating it", () => {
     render(
       <TaxonBreadcrumb
-        displayName="Brucella"
+        displayName="Escherichia coli"
         taxon={{
-          taxonId: 234,
-          taxonName: "Brucella",
-          taxonRank: "genus",
-          genomes: 1909,
-          lineageNames: ["Bacteria", "Pseudomonadota", "Brucella"],
-          lineageIds: [2, 1224, 234],
+          ...ecoliK12,
+          taxonId: 562,
+          taxonName: "Escherichia coli",
+          taxonRank: "species",
+          lineageIds: ecoliK12.lineageIds.slice(0, 9),
+          lineageNames: ecoliK12.lineageNames.slice(0, 9),
+          lineageRanks: ecoliK12.lineageRanks?.slice(0, 9),
         }}
       />,
     );
-
-    // Ancestors are links with /taxonomy/<id> hrefs
-    const bacteriaLink = screen.getByRole("link", { name: "Bacteria" });
-    expect(bacteriaLink).toHaveAttribute("href", "/taxonomy/2");
-    expect(screen.getByRole("link", { name: "Pseudomonadota" })).toHaveAttribute(
-      "href",
-      "/taxonomy/1224",
-    );
-
-    // Current taxon is a visible h1
-    expect(screen.getByRole("heading", { level: 1, name: "Brucella" })).toBeInTheDocument();
+    expect(trailLinks().at(-1)).toEqual(["Escherichia", "/taxonomy/561"]);
+    expect(
+      screen.getByRole("heading", { level: 1, name: "Escherichia coli" }),
+    ).toBeInTheDocument();
   });
 
-  it("drops 'cellular organisms' from the lineage", () => {
+  it("shows an empty trail for a domain, as BV-BRC does, but keeps an h1", () => {
     render(
       <TaxonBreadcrumb
-        displayName="Bacteria"
+        // Differs from taxonName: the h1 names the taxon, not the display name.
+        displayName="Bacteria landing"
         taxon={{
           taxonId: 2,
           taxonName: "Bacteria",
-          taxonRank: "superkingdom",
-          genomes: 1337420,
-          lineageNames: ["cellular organisms", "Bacteria"],
+          taxonRank: "domain",
+          genomes: 1,
           lineageIds: [131567, 2],
+          lineageNames: ["cellular organisms", "Bacteria"],
+          lineageRanks: ["cellular root", "domain"],
         }}
       />,
     );
-
-    expect(screen.queryByRole("link", { name: /cellular organisms/i })).not.toBeInTheDocument();
+    expect(screen.queryAllByRole("link")).toEqual([]);
+    const heading = screen.getByRole("heading", { level: 1, name: "Bacteria" });
+    expect(heading).toHaveClass("sr-only");
   });
 
-  it("renders ancestor entries without an id as plain text (no /taxonomy/0 fallback)", () => {
+  it("renders a rank BV-BRC repeats without a duplicate-key warning", () => {
+    const consoleError = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
     render(
       <TaxonBreadcrumb
-        displayName="Brucella"
+        displayName="Leaf"
         taxon={{
-          taxonId: 234,
-          taxonName: "Brucella",
-          taxonRank: "genus",
-          genomes: 99,
-          // lineageIds was empty (e.g. SOLR did not return lineage_ids) — names
-          // still render but should NOT link to /taxonomy/0.
-          lineageNames: ["Bacteria", "Brucella"],
-          lineageIds: [],
+          taxonId: 4,
+          taxonName: "Leaf",
+          taxonRank: "no rank",
+          genomes: 1,
+          lineageIds: [1, 2, 3, 4],
+          lineageNames: ["Phylum A", "Class A", "Class B", "Leaf"],
+          lineageRanks: ["phylum", "class", "class", "no rank"],
         }}
       />,
     );
-
-    expect(screen.queryByRole("link", { name: "Bacteria" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: /\/taxonomy\/0/ })).not.toBeInTheDocument();
-    expect(screen.getByText("Bacteria")).toBeInTheDocument();
+    expect(trailLinks()).toEqual([
+      ["Phylum A", "/taxonomy/1"],
+      ["Class A", "/taxonomy/2"],
+      ["Class A", "/taxonomy/2"],
+    ]);
+    // React's dev warning: "Encountered two children with the same key…".
+    expect(consoleError.mock.calls.flat().join(" ")).not.toContain("same key");
+    consoleError.mockRestore();
   });
 
   it("shows the genome count it is given after the heading", () => {
     render(
       <TaxonBreadcrumb
-        displayName="Brucella"
-        taxon={{
-          taxonId: 234,
-          taxonName: "Brucella",
-          taxonRank: "genus",
-          genomes: 1909,
-          lineageNames: ["Brucella"],
-          lineageIds: [234],
-        }}
+        displayName="E. coli K-12"
+        taxon={ecoliK12}
         genomeCount={<span>(1,500 Genomes)</span>}
       />,
     );
@@ -94,19 +156,7 @@ describe("TaxonBreadcrumb", () => {
   });
 
   it("never shows the taxonomy record's genome count, which includes Deprecated genomes", () => {
-    render(
-      <TaxonBreadcrumb
-        displayName="Brucella"
-        taxon={{
-          taxonId: 234,
-          taxonName: "Brucella",
-          taxonRank: "genus",
-          genomes: 1909,
-          lineageNames: ["Brucella"],
-          lineageIds: [234],
-        }}
-      />,
-    );
+    render(<TaxonBreadcrumb displayName="E. coli K-12" taxon={ecoliK12} />);
     expect(screen.queryByText(/Genomes/)).not.toBeInTheDocument();
   });
 });

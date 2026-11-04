@@ -1,8 +1,4 @@
 import type { FastaTypeFor } from "@/lib/data-api/fasta";
-import {
-  isTaxonId,
-  type TaxonomyViewRecord,
-} from "@/lib/taxonomy-view/schema";
 import type { FeatureViewRecord } from "./schema";
 
 /**
@@ -35,53 +31,6 @@ export function featureHeaderParts(feature: FeatureViewRecord): {
     .map((value) => value?.trim())
     .filter((value): value is string => Boolean(value) && value !== name);
   return { name, details };
-}
-
-/** One taxon in a feature's lineage breadcrumb. */
-export interface LineageCrumb {
-  taxonId: string;
-  name: string;
-}
-
-/**
- * The ranks BV-BRC's Feature View names in its breadcrumb (`visibleRanks` in
- * `buildHeaderContent`, `p3/widget/viewer/Feature.js`). The root, realm,
- * kingdom, sub-ranks and unranked strains between them are left out, so
- * Influenza A reads "Negarnaviricota » Insthoviricetes » … » Alphainfluenzavirus
- * influenzae" rather than starting at "Viruses » Riboviria".
- */
-const breadcrumbRanks = new Set([
-  "superkingdom",
-  "phylum",
-  "class",
-  "order",
-  "family",
-  "genus",
-  "species",
-]);
-
-function asList(value: string | number | (string | number)[] | undefined) {
-  if (value === undefined) return [];
-  return (Array.isArray(value) ? value : [value]).map(String);
-}
-
-/**
- * The feature's lineage as BV-BRC's breadcrumb shows it: the taxa of the
- * ranks above, root first. A taxon without a usable id or name is skipped
- * rather than rendered as a dead link.
- */
-export function featureLineageCrumbs(
-  taxon: Pick<TaxonomyViewRecord, "lineage_ids" | "lineage_names" | "lineage_ranks">,
-): LineageCrumb[] {
-  const ids = asList(taxon.lineage_ids);
-  const names = asList(taxon.lineage_names);
-  return asList(taxon.lineage_ranks).flatMap((rank, index) => {
-    const taxonId = ids[index];
-    const name = names[index]?.trim();
-    return breadcrumbRanks.has(rank) && isTaxonId(taxonId) && name
-      ? [{ taxonId, name }]
-      : [];
-  });
 }
 
 function hasLength(value: FeatureViewRecord["na_length"]): boolean {

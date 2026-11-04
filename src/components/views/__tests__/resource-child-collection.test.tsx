@@ -642,7 +642,7 @@ describe("ResourceChildCollection scope changes", () => {
       genome_name: "Genome 1",
     } as GenomeViewRecord;
     const { rerender } = render(
-      <GenomeMember genome={genome} activeTab="features" />,
+      <GenomeMember genome={genome} lineage={Promise.resolve([])} activeTab="features" />,
     );
     changeCollectionState({
       filters: { feature_type: ["CDS"] },
@@ -650,7 +650,7 @@ describe("ResourceChildCollection scope changes", () => {
       sort: "start:desc",
     });
 
-    rerender(<GenomeMember genome={genome} activeTab="proteins" />);
+    rerender(<GenomeMember genome={genome} lineage={Promise.resolve([])} activeTab="proteins" />);
 
     expect(shownCollectionState()).toStrictEqual({
       filters: {},
@@ -814,7 +814,7 @@ describe("ResourceChildCollection scope changes", () => {
     useResourceCollection.mockReturnValue(realCollectionResult({ total: 4 }));
     useRealResourceCollection.current = true;
 
-    render(<GenomeMember genome={genome} activeTab="domains" />);
+    render(<GenomeMember genome={genome} lineage={Promise.resolve([])} activeTab="domains" />);
 
     await downloadFromTile("CSV");
     expect(lastDownload().resource).toBe("protein_feature");
@@ -831,7 +831,7 @@ describe("ResourceChildCollection scope changes", () => {
     useRealResourceCollection.current = true;
 
     const { unmount } = render(
-      <GenomeMember genome={genome} activeTab="proteins" />,
+      <GenomeMember genome={genome} lineage={Promise.resolve([])} activeTab="proteins" />,
     );
     await userEvent.click(screen.getByRole("button", { name: /^DOWNLOAD/ }));
     expect(screen.getByRole("button", { name: "Protein FASTA" })).toBeVisible();
@@ -841,7 +841,7 @@ describe("ResourceChildCollection scope changes", () => {
     unmount();
 
     // The Features tab keeps both.
-    render(<GenomeMember genome={genome} activeTab="features" />);
+    render(<GenomeMember genome={genome} lineage={Promise.resolve([])} activeTab="features" />);
     await userEvent.click(screen.getByRole("button", { name: /^DOWNLOAD/ }));
     expect(screen.getByRole("button", { name: "Protein FASTA" })).toBeVisible();
     expect(screen.getByRole("button", { name: "DNA FASTA" })).toBeVisible();

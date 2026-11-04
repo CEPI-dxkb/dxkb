@@ -584,6 +584,14 @@ describe("BV-BRC website organism tables stay paired", () => {
     );
   });
 
+  it.each(Object.entries(organismTaxonomyRecords))(
+    "taxon %s ranks every lineage entry",
+    (_taxonId, record) => {
+      expect(record.lineage_ranks).toHaveLength(record.lineage_ids.length);
+      expect(record.lineage_names).toHaveLength(record.lineage_ids.length);
+    },
+  );
+
   it.each(Object.keys(organismTaxonomyRecords))(
     "taxon %s reports the same genome count in both tables",
     (taxonId) => {

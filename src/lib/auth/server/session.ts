@@ -37,7 +37,11 @@ function readIdentity(
 
 function clearIdentity(store: CookieStore, names: CookieNames): void {
   for (const name of Object.values(names)) {
-    store.set(name, "", { ...cookieOptions, maxAge: 0 });
+    try {
+      store.set(name, "", { ...cookieOptions, maxAge: 0 });
+    } catch (cause) {
+      console.error("Failed to clear session cookie", { name, cause });
+    }
   }
 }
 
@@ -70,20 +74,34 @@ export async function writeSession(identity: SessionIdentity): Promise<number> {
 export async function clearCurrentSession(): Promise<void> {
   const store = await cookies();
   clearIdentity(store, sessionCookieNames);
-  store.set(vestigialUserProfileCookieName, "", {
-    ...cookieOptions,
-    maxAge: 0,
-  });
+  try {
+    store.set(vestigialUserProfileCookieName, "", {
+      ...cookieOptions,
+      maxAge: 0,
+    });
+  } catch (cause) {
+    console.error("Failed to clear session cookie", {
+      name: vestigialUserProfileCookieName,
+      cause,
+    });
+  }
 }
 
 export async function clearSession(): Promise<void> {
   const store = await cookies();
   clearIdentity(store, sessionCookieNames);
   clearIdentity(store, suBackupCookieNames);
-  store.set(vestigialUserProfileCookieName, "", {
-    ...cookieOptions,
-    maxAge: 0,
-  });
+  try {
+    store.set(vestigialUserProfileCookieName, "", {
+      ...cookieOptions,
+      maxAge: 0,
+    });
+  } catch (cause) {
+    console.error("Failed to clear session cookie", {
+      name: vestigialUserProfileCookieName,
+      cause,
+    });
+  }
 }
 
 export async function readImpersonationBackup(): Promise<SessionIdentity | null> {

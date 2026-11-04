@@ -36,7 +36,7 @@ export function SurveillanceSearch() {
   const [yearFrom, setYearFrom] = useState("");
   const [yearTo, setYearTo] = useState("");
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: React.SubmitEvent) => {
     e.preventDefault();
 
     const clauses: string[] = [];
@@ -88,7 +88,7 @@ export function SurveillanceSearch() {
               id="keyword"
               placeholder="Search term"
               value={keyword}
-              onChange={(e) => setKeyword(e.target.value)}
+              onChange={(e) => { setKeyword(e.target.value); }}
             />
           </div>
         </ServiceCardContent>
@@ -106,7 +106,7 @@ export function SurveillanceSearch() {
                 id="pathogen-test-type"
                 placeholder="e.g. Influenza"
                 value={pathogenTestType}
-                onChange={(e) => setPathogenTestType(e.target.value)}
+                onChange={(e) => { setPathogenTestType(e.target.value); }}
               />
             </div>
             <div className="space-y-1.5">
@@ -115,7 +115,7 @@ export function SurveillanceSearch() {
                 id="pathogen-type"
                 placeholder="e.g. Virus"
                 value={pathogenType}
-                onChange={(e) => setPathogenType(e.target.value)}
+                onChange={(e) => { setPathogenType(e.target.value); }}
               />
             </div>
             <div className="space-y-1.5">
@@ -124,7 +124,7 @@ export function SurveillanceSearch() {
                 id="pathogen-test-result"
                 placeholder="e.g. Positive"
                 value={pathogenTestResult}
-                onChange={(e) => setPathogenTestResult(e.target.value)}
+                onChange={(e) => { setPathogenTestResult(e.target.value); }}
               />
             </div>
             <div className="space-y-1.5">
@@ -133,7 +133,7 @@ export function SurveillanceSearch() {
                 id="subtype"
                 placeholder="e.g. H3N2"
                 value={subtype}
-                onChange={(e) => setSubtype(e.target.value)}
+                onChange={(e) => { setSubtype(e.target.value); }}
               />
             </div>
           </div>
@@ -152,7 +152,7 @@ export function SurveillanceSearch() {
                 id="host-group"
                 placeholder="e.g. Human"
                 value={hostGroup}
-                onChange={(e) => setHostGroup(e.target.value)}
+                onChange={(e) => { setHostGroup(e.target.value); }}
               />
             </div>
             <div className="space-y-1.5">
@@ -161,7 +161,7 @@ export function SurveillanceSearch() {
                 id="host-common-name"
                 placeholder="e.g. Human"
                 value={hostCommonName}
-                onChange={(e) => setHostCommonName(e.target.value)}
+                onChange={(e) => { setHostCommonName(e.target.value); }}
               />
             </div>
             <div className="space-y-1.5">
@@ -170,7 +170,7 @@ export function SurveillanceSearch() {
                 id="host-species"
                 placeholder="e.g. Homo sapiens"
                 value={hostSpecies}
-                onChange={(e) => setHostSpecies(e.target.value)}
+                onChange={(e) => { setHostSpecies(e.target.value); }}
               />
             </div>
           </div>
@@ -189,7 +189,7 @@ export function SurveillanceSearch() {
                 id="geographic-group"
                 placeholder="e.g. Asia"
                 value={geographicGroup}
-                onChange={(e) => setGeographicGroup(e.target.value)}
+                onChange={(e) => { setGeographicGroup(e.target.value); }}
               />
             </div>
             <div className="space-y-1.5">
@@ -198,7 +198,7 @@ export function SurveillanceSearch() {
                 id="collection-country"
                 placeholder="e.g. China"
                 value={collectionCountry}
-                onChange={(e) => setCollectionCountry(e.target.value)}
+                onChange={(e) => { setCollectionCountry(e.target.value); }}
               />
             </div>
           </div>
@@ -220,7 +220,7 @@ export function SurveillanceSearch() {
                 max={2100}
                 placeholder="e.g. 2010"
                 value={yearFrom}
-                onChange={(e) => setYearFrom(e.target.value)}
+                onChange={(e) => { setYearFrom(e.target.value); }}
               />
             </div>
             <div className="space-y-1.5">
@@ -232,7 +232,7 @@ export function SurveillanceSearch() {
                 max={2100}
                 placeholder="e.g. 2024"
                 value={yearTo}
-                onChange={(e) => setYearTo(e.target.value)}
+                onChange={(e) => { setYearTo(e.target.value); }}
               />
             </div>
           </div>

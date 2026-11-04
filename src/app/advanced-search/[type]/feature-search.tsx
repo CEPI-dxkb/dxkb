@@ -33,7 +33,7 @@ export function FeatureSearch() {
   const [pgfamId, setPgfamId] = useState("");
   const [goTerm, setGoTerm] = useState("");
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: React.SubmitEvent) => {
     e.preventDefault();
 
     const clauses: string[] = [];
@@ -87,7 +87,7 @@ export function FeatureSearch() {
               id="keyword"
               placeholder="Search term"
               value={keyword}
-              onChange={(e) => setKeyword(e.target.value)}
+              onChange={(e) => { setKeyword(e.target.value); }}
             />
           </div>
         </ServiceCardContent>
@@ -105,7 +105,7 @@ export function FeatureSearch() {
                 id="genome-id"
                 placeholder="e.g. 1332244.20"
                 value={genomeId}
-                onChange={(e) => setGenomeId(e.target.value)}
+                onChange={(e) => { setGenomeId(e.target.value); }}
               />
             </div>
             <div className="space-y-1.5">
@@ -114,7 +114,7 @@ export function FeatureSearch() {
                 id="genome-name"
                 placeholder="e.g. Influenza A virus"
                 value={genomeName}
-                onChange={(e) => setGenomeName(e.target.value)}
+                onChange={(e) => { setGenomeName(e.target.value); }}
               />
             </div>
             <div className="space-y-1.5">
@@ -123,7 +123,7 @@ export function FeatureSearch() {
                 id="taxon-id"
                 placeholder="e.g. 11320"
                 value={taxonId}
-                onChange={(e) => setTaxonId(e.target.value)}
+                onChange={(e) => { setTaxonId(e.target.value); }}
               />
             </div>
             <div className="space-y-1.5">
@@ -132,7 +132,7 @@ export function FeatureSearch() {
                 id="accession"
                 placeholder="e.g. NC_002016"
                 value={accession}
-                onChange={(e) => setAccession(e.target.value)}
+                onChange={(e) => { setAccession(e.target.value); }}
               />
             </div>
           </div>
@@ -151,7 +151,7 @@ export function FeatureSearch() {
                 id="feature-type"
                 placeholder="e.g. CDS"
                 value={featureType}
-                onChange={(e) => setFeatureType(e.target.value)}
+                onChange={(e) => { setFeatureType(e.target.value); }}
               />
             </div>
             <div className="space-y-1.5">
@@ -160,7 +160,7 @@ export function FeatureSearch() {
                 id="annotation"
                 placeholder="e.g. PATRIC"
                 value={annotation}
-                onChange={(e) => setAnnotation(e.target.value)}
+                onChange={(e) => { setAnnotation(e.target.value); }}
               />
             </div>
             <div className="space-y-1.5">
@@ -169,7 +169,7 @@ export function FeatureSearch() {
                 id="gene"
                 placeholder="e.g. PB1"
                 value={gene}
-                onChange={(e) => setGene(e.target.value)}
+                onChange={(e) => { setGene(e.target.value); }}
               />
             </div>
             <div className="space-y-1.5">
@@ -178,7 +178,7 @@ export function FeatureSearch() {
                 id="product"
                 placeholder="e.g. RNA-directed RNA polymerase catalytic subunit"
                 value={product}
-                onChange={(e) => setProduct(e.target.value)}
+                onChange={(e) => { setProduct(e.target.value); }}
               />
             </div>
             <div className="space-y-1.5">
@@ -187,7 +187,7 @@ export function FeatureSearch() {
                 id="go-term"
                 placeholder="e.g. GO:0003968"
                 value={goTerm}
-                onChange={(e) => setGoTerm(e.target.value)}
+                onChange={(e) => { setGoTerm(e.target.value); }}
               />
             </div>
           </div>
@@ -206,7 +206,7 @@ export function FeatureSearch() {
                 id="patric-id"
                 placeholder="e.g. fig|1332244.20.peg.1"
                 value={patricId}
-                onChange={(e) => setPatricId(e.target.value)}
+                onChange={(e) => { setPatricId(e.target.value); }}
               />
             </div>
             <div className="space-y-1.5">
@@ -215,7 +215,7 @@ export function FeatureSearch() {
                 id="refseq-locus-tag"
                 placeholder="e.g. AFG23627"
                 value={refseqLocusTag}
-                onChange={(e) => setRefseqLocusTag(e.target.value)}
+                onChange={(e) => { setRefseqLocusTag(e.target.value); }}
               />
             </div>
             <div className="space-y-1.5">
@@ -224,7 +224,7 @@ export function FeatureSearch() {
                 id="uniprotkb-accession"
                 placeholder="e.g. P03433"
                 value={uniprotkbAccession}
-                onChange={(e) => setUniprotkbAccession(e.target.value)}
+                onChange={(e) => { setUniprotkbAccession(e.target.value); }}
               />
             </div>
             <div className="space-y-1.5">
@@ -233,7 +233,7 @@ export function FeatureSearch() {
                 id="plfam-id"
                 placeholder="e.g. PLF_11234_00000001"
                 value={plfamId}
-                onChange={(e) => setPlfamId(e.target.value)}
+                onChange={(e) => { setPlfamId(e.target.value); }}
               />
             </div>
             <div className="space-y-1.5">
@@ -242,7 +242,7 @@ export function FeatureSearch() {
                 id="pgfam-id"
                 placeholder="e.g. PGF_00000001"
                 value={pgfamId}
-                onChange={(e) => setPgfamId(e.target.value)}
+                onChange={(e) => { setPgfamId(e.target.value); }}
               />
             </div>
           </div>

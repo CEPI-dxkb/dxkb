@@ -36,7 +36,7 @@ export function GenomeSearch() {
   const [genomeLengthTo, setGenomeLengthTo] = useState("");
   const [completeOnly, setCompleteOnly] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: React.SubmitEvent) => {
     e.preventDefault();
 
     const clauses: string[] = [];
@@ -84,7 +84,7 @@ export function GenomeSearch() {
               id="keyword"
               placeholder="Search term"
               value={keyword}
-              onChange={(e) => setKeyword(e.target.value)}
+              onChange={(e) => { setKeyword(e.target.value); }}
             />
           </div>
         </ServiceCardContent>
@@ -102,7 +102,7 @@ export function GenomeSearch() {
                 id="taxon-name"
                 placeholder="e.g. Influenza A virus"
                 value={taxonName}
-                onChange={(e) => setTaxonName(e.target.value)}
+                onChange={(e) => { setTaxonName(e.target.value); }}
               />
             </div>
             <div className="space-y-1.5">
@@ -111,7 +111,7 @@ export function GenomeSearch() {
                 id="genome-id"
                 placeholder="e.g. 1332244.20"
                 value={genomeId}
-                onChange={(e) => setGenomeId(e.target.value)}
+                onChange={(e) => { setGenomeId(e.target.value); }}
               />
             </div>
             <div className="space-y-1.5">
@@ -120,7 +120,7 @@ export function GenomeSearch() {
                 id="genome-name"
                 placeholder="e.g. Influenza A virus (A/Shanghai/02/2013(H7N9))"
                 value={genomeName}
-                onChange={(e) => setGenomeName(e.target.value)}
+                onChange={(e) => { setGenomeName(e.target.value); }}
               />
             </div>
             <div className="space-y-1.5">
@@ -129,7 +129,7 @@ export function GenomeSearch() {
                 id="host-name"
                 placeholder="e.g. Homo sapiens"
                 value={hostName}
-                onChange={(e) => setHostName(e.target.value)}
+                onChange={(e) => { setHostName(e.target.value); }}
               />
             </div>
             <div className="space-y-1.5">
@@ -138,7 +138,7 @@ export function GenomeSearch() {
                 id="isolation-country"
                 placeholder="e.g. China"
                 value={isolationCountry}
-                onChange={(e) => setIsolationCountry(e.target.value)}
+                onChange={(e) => { setIsolationCountry(e.target.value); }}
               />
             </div>
           </div>
@@ -157,7 +157,7 @@ export function GenomeSearch() {
                 id="date-from"
                 placeholder="YYYY or YYYY-MM or YYYY-MM-DD"
                 value={collectionDateFrom}
-                onChange={(e) => setCollectionDateFrom(e.target.value)}
+                onChange={(e) => { setCollectionDateFrom(e.target.value); }}
               />
             </div>
             <div className="space-y-1.5">
@@ -166,7 +166,7 @@ export function GenomeSearch() {
                 id="date-to"
                 placeholder="YYYY or YYYY-MM or YYYY-MM-DD"
                 value={collectionDateTo}
-                onChange={(e) => setCollectionDateTo(e.target.value)}
+                onChange={(e) => { setCollectionDateTo(e.target.value); }}
               />
             </div>
           </div>
@@ -187,7 +187,7 @@ export function GenomeSearch() {
                 min={0}
                 placeholder="e.g. 10000"
                 value={genomeLengthFrom}
-                onChange={(e) => setGenomeLengthFrom(e.target.value)}
+                onChange={(e) => { setGenomeLengthFrom(e.target.value); }}
               />
             </div>
             <div className="space-y-1.5">
@@ -198,7 +198,7 @@ export function GenomeSearch() {
                 min={0}
                 placeholder="e.g. 50000"
                 value={genomeLengthTo}
-                onChange={(e) => setGenomeLengthTo(e.target.value)}
+                onChange={(e) => { setGenomeLengthTo(e.target.value); }}
               />
             </div>
           </div>

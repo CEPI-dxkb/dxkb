@@ -32,7 +32,7 @@ export function StrainSearch() {
   const [yearFrom, setYearFrom] = useState("");
   const [yearTo, setYearTo] = useState("");
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: React.SubmitEvent) => {
     e.preventDefault();
 
     const clauses: string[] = [];
@@ -76,7 +76,7 @@ export function StrainSearch() {
               id="keyword"
               placeholder="Search term"
               value={keyword}
-              onChange={(e) => setKeyword(e.target.value)}
+              onChange={(e) => { setKeyword(e.target.value); }}
             />
           </div>
         </ServiceCardContent>
@@ -94,7 +94,7 @@ export function StrainSearch() {
                 id="taxon-name"
                 placeholder="e.g. Influenza A virus"
                 value={taxonName}
-                onChange={(e) => setTaxonName(e.target.value)}
+                onChange={(e) => { setTaxonName(e.target.value); }}
               />
             </div>
           </div>
@@ -113,7 +113,7 @@ export function StrainSearch() {
                 id="host-group"
                 placeholder="e.g. Human"
                 value={hostGroup}
-                onChange={(e) => setHostGroup(e.target.value)}
+                onChange={(e) => { setHostGroup(e.target.value); }}
               />
             </div>
             <div className="space-y-1.5">
@@ -122,7 +122,7 @@ export function StrainSearch() {
                 id="host-common-name"
                 placeholder="e.g. Human"
                 value={hostCommonName}
-                onChange={(e) => setHostCommonName(e.target.value)}
+                onChange={(e) => { setHostCommonName(e.target.value); }}
               />
             </div>
           </div>
@@ -141,7 +141,7 @@ export function StrainSearch() {
                 id="geographic-group"
                 placeholder="e.g. Asia"
                 value={geographicGroup}
-                onChange={(e) => setGeographicGroup(e.target.value)}
+                onChange={(e) => { setGeographicGroup(e.target.value); }}
               />
             </div>
             <div className="space-y-1.5">
@@ -150,7 +150,7 @@ export function StrainSearch() {
                 id="isolation-country"
                 placeholder="e.g. China"
                 value={isolationCountry}
-                onChange={(e) => setIsolationCountry(e.target.value)}
+                onChange={(e) => { setIsolationCountry(e.target.value); }}
               />
             </div>
           </div>
@@ -172,7 +172,7 @@ export function StrainSearch() {
                 max={2100}
                 placeholder="e.g. 2010"
                 value={yearFrom}
-                onChange={(e) => setYearFrom(e.target.value)}
+                onChange={(e) => { setYearFrom(e.target.value); }}
               />
             </div>
             <div className="space-y-1.5">
@@ -184,7 +184,7 @@ export function StrainSearch() {
                 max={2100}
                 placeholder="e.g. 2024"
                 value={yearTo}
-                onChange={(e) => setYearTo(e.target.value)}
+                onChange={(e) => { setYearTo(e.target.value); }}
               />
             </div>
           </div>

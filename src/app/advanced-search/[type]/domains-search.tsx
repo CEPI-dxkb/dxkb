@@ -24,7 +24,7 @@ export function DomainsSearch() {
   const [sourceId, setSourceId] = useState("");
   const [description, setDescription] = useState("");
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: React.SubmitEvent) => {
     e.preventDefault();
 
     const clauses: string[] = [];
@@ -64,7 +64,7 @@ export function DomainsSearch() {
               id="keyword"
               placeholder="Search term"
               value={keyword}
-              onChange={(e) => setKeyword(e.target.value)}
+              onChange={(e) => { setKeyword(e.target.value); }}
             />
           </div>
         </ServiceCardContent>
@@ -82,7 +82,7 @@ export function DomainsSearch() {
                 id="genome-id"
                 placeholder="e.g. 1332244.20"
                 value={genomeId}
-                onChange={(e) => setGenomeId(e.target.value)}
+                onChange={(e) => { setGenomeId(e.target.value); }}
               />
             </div>
             <div className="space-y-1.5">
@@ -91,7 +91,7 @@ export function DomainsSearch() {
                 id="patric-id"
                 placeholder="e.g. fig|1332244.20.peg.1"
                 value={patricId}
-                onChange={(e) => setPatricId(e.target.value)}
+                onChange={(e) => { setPatricId(e.target.value); }}
               />
             </div>
           </div>
@@ -110,7 +110,7 @@ export function DomainsSearch() {
                 id="source"
                 placeholder="e.g. CDD"
                 value={source}
-                onChange={(e) => setSource(e.target.value)}
+                onChange={(e) => { setSource(e.target.value); }}
               />
             </div>
             <div className="space-y-1.5">
@@ -119,7 +119,7 @@ export function DomainsSearch() {
                 id="source-id"
                 placeholder="e.g. cd00001"
                 value={sourceId}
-                onChange={(e) => setSourceId(e.target.value)}
+                onChange={(e) => { setSourceId(e.target.value); }}
               />
             </div>
             <div className="space-y-1.5">
@@ -128,7 +128,7 @@ export function DomainsSearch() {
                 id="description"
                 placeholder="e.g. RNA-dependent RNA polymerase"
                 value={description}
-                onChange={(e) => setDescription(e.target.value)}
+                onChange={(e) => { setDescription(e.target.value); }}
               />
             </div>
           </div>

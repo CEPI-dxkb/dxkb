@@ -22,7 +22,7 @@ export function TaxaSearch() {
   const [taxonName, setTaxonName] = useState("");
   const [taxonRank, setTaxonRank] = useState("");
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: React.SubmitEvent) => {
     e.preventDefault();
 
     const clauses: string[] = [];
@@ -57,7 +57,7 @@ export function TaxaSearch() {
               id="keyword"
               placeholder="Search term"
               value={keyword}
-              onChange={(e) => setKeyword(e.target.value)}
+              onChange={(e) => { setKeyword(e.target.value); }}
             />
           </div>
         </ServiceCardContent>
@@ -75,7 +75,7 @@ export function TaxaSearch() {
                 id="taxon-id"
                 placeholder="e.g. 11320"
                 value={taxonId}
-                onChange={(e) => setTaxonId(e.target.value)}
+                onChange={(e) => { setTaxonId(e.target.value); }}
               />
             </div>
             <div className="space-y-1.5">
@@ -84,7 +84,7 @@ export function TaxaSearch() {
                 id="taxon-name"
                 placeholder="e.g. Influenza A virus"
                 value={taxonName}
-                onChange={(e) => setTaxonName(e.target.value)}
+                onChange={(e) => { setTaxonName(e.target.value); }}
               />
             </div>
             <div className="space-y-1.5">
@@ -93,7 +93,7 @@ export function TaxaSearch() {
                 id="taxon-rank"
                 placeholder="e.g. genus"
                 value={taxonRank}
-                onChange={(e) => setTaxonRank(e.target.value)}
+                onChange={(e) => { setTaxonRank(e.target.value); }}
               />
             </div>
           </div>

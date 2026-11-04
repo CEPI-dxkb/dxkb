@@ -62,10 +62,12 @@ const WelcomeSearch = () => {
           <div className="mx-auto max-w-4xl">
             <div className="welcome-search-card rounded-lg bg-card p-6 shadow-lg">
               <Tabs defaultValue="basic" className="w-full">
-                <TabsList className="mb-4">
-                  <TabsTrigger value="basic">Basic Search</TabsTrigger>
+                <div className="mb-4 flex items-end">
+                  <TabsList>
+                    <TabsTrigger value="basic">Basic Search</TabsTrigger>
+                  </TabsList>
                   <AdvancedSearchDropdown variant="tab" />
-                </TabsList>
+                </div>
 
                 <TabsContent value="basic">
                   <SearchBar size="lg" />

@@ -37,7 +37,7 @@ export function SerologySearch() {
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: React.SubmitEvent) => {
     e.preventDefault();
 
     const clauses: string[] = [];
@@ -92,7 +92,7 @@ export function SerologySearch() {
               id="keyword"
               placeholder="Search term"
               value={keyword}
-              onChange={(e) => setKeyword(e.target.value)}
+              onChange={(e) => { setKeyword(e.target.value); }}
             />
           </div>
         </ServiceCardContent>
@@ -110,7 +110,7 @@ export function SerologySearch() {
                 id="test-type"
                 placeholder="e.g. Hemagglutination Inhibition"
                 value={testType}
-                onChange={(e) => setTestType(e.target.value)}
+                onChange={(e) => { setTestType(e.target.value); }}
               />
             </div>
             <div className="space-y-1.5">
@@ -119,7 +119,7 @@ export function SerologySearch() {
                 id="test-result"
                 placeholder="e.g. Positive"
                 value={testResult}
-                onChange={(e) => setTestResult(e.target.value)}
+                onChange={(e) => { setTestResult(e.target.value); }}
               />
             </div>
             <div className="space-y-1.5">
@@ -128,7 +128,7 @@ export function SerologySearch() {
                 id="serotype"
                 placeholder="e.g. H3N2"
                 value={serotype}
-                onChange={(e) => setSerotype(e.target.value)}
+                onChange={(e) => { setSerotype(e.target.value); }}
               />
             </div>
           </div>
@@ -147,7 +147,7 @@ export function SerologySearch() {
                 id="host-type"
                 placeholder="e.g. Avian"
                 value={hostType}
-                onChange={(e) => setHostType(e.target.value)}
+                onChange={(e) => { setHostType(e.target.value); }}
               />
             </div>
             <div className="space-y-1.5">
@@ -156,7 +156,7 @@ export function SerologySearch() {
                 id="host-common-name"
                 placeholder="e.g. Chicken"
                 value={hostCommonName}
-                onChange={(e) => setHostCommonName(e.target.value)}
+                onChange={(e) => { setHostCommonName(e.target.value); }}
               />
             </div>
             <div className="space-y-1.5">
@@ -165,7 +165,7 @@ export function SerologySearch() {
                 id="host-species"
                 placeholder="e.g. Gallus gallus"
                 value={hostSpecies}
-                onChange={(e) => setHostSpecies(e.target.value)}
+                onChange={(e) => { setHostSpecies(e.target.value); }}
               />
             </div>
           </div>
@@ -184,7 +184,7 @@ export function SerologySearch() {
                 id="geographic-group"
                 placeholder="e.g. Asia"
                 value={geographicGroup}
-                onChange={(e) => setGeographicGroup(e.target.value)}
+                onChange={(e) => { setGeographicGroup(e.target.value); }}
               />
             </div>
             <div className="space-y-1.5">
@@ -193,7 +193,7 @@ export function SerologySearch() {
                 id="collection-country"
                 placeholder="e.g. China"
                 value={collectionCountry}
-                onChange={(e) => setCollectionCountry(e.target.value)}
+                onChange={(e) => { setCollectionCountry(e.target.value); }}
               />
             </div>
           </div>
@@ -215,7 +215,7 @@ export function SerologySearch() {
                 max={2100}
                 placeholder="e.g. 2010"
                 value={yearFrom}
-                onChange={(e) => setYearFrom(e.target.value)}
+                onChange={(e) => { setYearFrom(e.target.value); }}
               />
             </div>
             <div className="space-y-1.5">
@@ -227,7 +227,7 @@ export function SerologySearch() {
                 max={2100}
                 placeholder="e.g. 2024"
                 value={yearTo}
-                onChange={(e) => setYearTo(e.target.value)}
+                onChange={(e) => { setYearTo(e.target.value); }}
               />
             </div>
           </div>
@@ -246,7 +246,7 @@ export function SerologySearch() {
                 id="date-from"
                 placeholder="YYYY or YYYY-MM or YYYY-MM-DD"
                 value={dateFrom}
-                onChange={(e) => setDateFrom(e.target.value)}
+                onChange={(e) => { setDateFrom(e.target.value); }}
               />
             </div>
             <div className="space-y-1.5">
@@ -255,7 +255,7 @@ export function SerologySearch() {
                 id="date-to"
                 placeholder="YYYY or YYYY-MM or YYYY-MM-DD"
                 value={dateTo}
-                onChange={(e) => setDateTo(e.target.value)}
+                onChange={(e) => { setDateTo(e.target.value); }}
               />
             </div>
           </div>

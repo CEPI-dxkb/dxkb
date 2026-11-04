@@ -45,7 +45,7 @@ export function EpitopeSearch() {
     });
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: React.SubmitEvent) => {
     e.preventDefault();
 
     const clauses: string[] = [];
@@ -91,7 +91,7 @@ export function EpitopeSearch() {
               id="keyword"
               placeholder="Search term"
               value={keyword}
-              onChange={(e) => setKeyword(e.target.value)}
+              onChange={(e) => { setKeyword(e.target.value); }}
             />
           </div>
         </ServiceCardContent>
@@ -109,7 +109,7 @@ export function EpitopeSearch() {
                 id="taxon-name"
                 placeholder="e.g. Influenza A virus"
                 value={taxonName}
-                onChange={(e) => setTaxonName(e.target.value)}
+                onChange={(e) => { setTaxonName(e.target.value); }}
               />
             </div>
           </div>
@@ -128,7 +128,7 @@ export function EpitopeSearch() {
                 id="epitope-id"
                 placeholder="e.g. 10001"
                 value={epitopeId}
-                onChange={(e) => setEpitopeId(e.target.value)}
+                onChange={(e) => { setEpitopeId(e.target.value); }}
               />
             </div>
             <div className="space-y-1.5">
@@ -137,7 +137,7 @@ export function EpitopeSearch() {
                 id="epitope-type"
                 placeholder="e.g. Linear peptide"
                 value={epitopeType}
-                onChange={(e) => setEpitopeType(e.target.value)}
+                onChange={(e) => { setEpitopeType(e.target.value); }}
               />
             </div>
             <div className="space-y-1.5 md:col-span-2">
@@ -146,7 +146,7 @@ export function EpitopeSearch() {
                 id="epitope-sequence"
                 placeholder="e.g. GILGFVFTL"
                 value={epitopeSequence}
-                onChange={(e) => setEpitopeSequence(e.target.value)}
+                onChange={(e) => { setEpitopeSequence(e.target.value); }}
               />
             </div>
             <div className="space-y-1.5">
@@ -155,7 +155,7 @@ export function EpitopeSearch() {
                 id="protein-name"
                 placeholder="e.g. Hemagglutinin"
                 value={proteinName}
-                onChange={(e) => setProteinName(e.target.value)}
+                onChange={(e) => { setProteinName(e.target.value); }}
               />
             </div>
             <div className="space-y-1.5">
@@ -164,7 +164,7 @@ export function EpitopeSearch() {
                 id="protein-accession"
                 placeholder="e.g. P03437"
                 value={proteinAccession}
-                onChange={(e) => setProteinAccession(e.target.value)}
+                onChange={(e) => { setProteinAccession(e.target.value); }}
               />
             </div>
           </div>

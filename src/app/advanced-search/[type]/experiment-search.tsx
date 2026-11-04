@@ -32,7 +32,7 @@ export function ExperimentSearch() {
   const [taxonId, setTaxonId] = useState("");
   const [strain, setStrain] = useState("");
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: React.SubmitEvent) => {
     e.preventDefault();
 
     const clauses: string[] = [];
@@ -87,7 +87,7 @@ export function ExperimentSearch() {
               id="keyword"
               placeholder="Search term"
               value={keyword}
-              onChange={(e) => setKeyword(e.target.value)}
+              onChange={(e) => { setKeyword(e.target.value); }}
             />
           </div>
         </ServiceCardContent>
@@ -105,7 +105,7 @@ export function ExperimentSearch() {
                 id="exp-id"
                 placeholder="e.g. EXP1234"
                 value={expId}
-                onChange={(e) => setExpId(e.target.value)}
+                onChange={(e) => { setExpId(e.target.value); }}
               />
             </div>
             <div className="space-y-1.5">
@@ -114,7 +114,7 @@ export function ExperimentSearch() {
                 id="study-title"
                 placeholder="e.g. Influenza transcriptome"
                 value={studyTitle}
-                onChange={(e) => setStudyTitle(e.target.value)}
+                onChange={(e) => { setStudyTitle(e.target.value); }}
               />
             </div>
             <div className="space-y-1.5">
@@ -123,7 +123,7 @@ export function ExperimentSearch() {
                 id="study-description"
                 placeholder="e.g. RNA-seq"
                 value={studyDescription}
-                onChange={(e) => setStudyDescription(e.target.value)}
+                onChange={(e) => { setStudyDescription(e.target.value); }}
               />
             </div>
             <div className="space-y-1.5">
@@ -132,7 +132,7 @@ export function ExperimentSearch() {
                 id="study-pi"
                 placeholder="e.g. Smith"
                 value={studyPi}
-                onChange={(e) => setStudyPi(e.target.value)}
+                onChange={(e) => { setStudyPi(e.target.value); }}
               />
             </div>
             <div className="space-y-1.5">
@@ -141,7 +141,7 @@ export function ExperimentSearch() {
                 id="study-institution"
                 placeholder="e.g. NIH"
                 value={studyInstitution}
-                onChange={(e) => setStudyInstitution(e.target.value)}
+                onChange={(e) => { setStudyInstitution(e.target.value); }}
               />
             </div>
           </div>
@@ -160,7 +160,7 @@ export function ExperimentSearch() {
                 id="exp-title"
                 placeholder="e.g. Time course"
                 value={expTitle}
-                onChange={(e) => setExpTitle(e.target.value)}
+                onChange={(e) => { setExpTitle(e.target.value); }}
               />
             </div>
             <div className="space-y-1.5">
@@ -169,7 +169,7 @@ export function ExperimentSearch() {
                 id="exp-type"
                 placeholder="e.g. RNA-Seq"
                 value={expType}
-                onChange={(e) => setExpType(e.target.value)}
+                onChange={(e) => { setExpType(e.target.value); }}
               />
             </div>
             <div className="space-y-1.5">
@@ -178,7 +178,7 @@ export function ExperimentSearch() {
                 id="measurement-technique"
                 placeholder="e.g. microarray"
                 value={measurementTechnique}
-                onChange={(e) => setMeasurementTechnique(e.target.value)}
+                onChange={(e) => { setMeasurementTechnique(e.target.value); }}
               />
             </div>
             <div className="space-y-1.5">
@@ -187,7 +187,7 @@ export function ExperimentSearch() {
                 id="treatment-type"
                 placeholder="e.g. drug"
                 value={treatmentType}
-                onChange={(e) => setTreatmentType(e.target.value)}
+                onChange={(e) => { setTreatmentType(e.target.value); }}
               />
             </div>
             <div className="space-y-1.5">
@@ -196,7 +196,7 @@ export function ExperimentSearch() {
                 id="treatment-name"
                 placeholder="e.g. oseltamivir"
                 value={treatmentName}
-                onChange={(e) => setTreatmentName(e.target.value)}
+                onChange={(e) => { setTreatmentName(e.target.value); }}
               />
             </div>
           </div>
@@ -215,7 +215,7 @@ export function ExperimentSearch() {
                 id="organism"
                 placeholder="e.g. Influenza A virus"
                 value={organism}
-                onChange={(e) => setOrganism(e.target.value)}
+                onChange={(e) => { setOrganism(e.target.value); }}
               />
             </div>
             <div className="space-y-1.5">
@@ -224,7 +224,7 @@ export function ExperimentSearch() {
                 id="taxon-id"
                 placeholder="e.g. 11520"
                 value={taxonId}
-                onChange={(e) => setTaxonId(e.target.value)}
+                onChange={(e) => { setTaxonId(e.target.value); }}
               />
             </div>
             <div className="space-y-1.5">
@@ -233,7 +233,7 @@ export function ExperimentSearch() {
                 id="strain"
                 placeholder="e.g. A/Puerto Rico/8/34"
                 value={strain}
-                onChange={(e) => setStrain(e.target.value)}
+                onChange={(e) => { setStrain(e.target.value); }}
               />
             </div>
           </div>

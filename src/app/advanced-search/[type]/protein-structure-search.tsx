@@ -27,7 +27,7 @@ export function ProteinStructureSearch() {
   const [product, setProduct] = useState("");
   const [method, setMethod] = useState("");
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: React.SubmitEvent) => {
     e.preventDefault();
 
     const clauses: string[] = [];
@@ -72,7 +72,7 @@ export function ProteinStructureSearch() {
               id="keyword"
               placeholder="Search term"
               value={keyword}
-              onChange={(e) => setKeyword(e.target.value)}
+              onChange={(e) => { setKeyword(e.target.value); }}
             />
           </div>
         </ServiceCardContent>
@@ -90,7 +90,7 @@ export function ProteinStructureSearch() {
                 id="taxon-name"
                 placeholder="e.g. Influenza A virus"
                 value={taxonName}
-                onChange={(e) => setTaxonName(e.target.value)}
+                onChange={(e) => { setTaxonName(e.target.value); }}
               />
             </div>
             <div className="space-y-1.5">
@@ -99,7 +99,7 @@ export function ProteinStructureSearch() {
                 id="genome-id"
                 placeholder="e.g. 1332244.20"
                 value={genomeId}
-                onChange={(e) => setGenomeId(e.target.value)}
+                onChange={(e) => { setGenomeId(e.target.value); }}
               />
             </div>
             <div className="space-y-1.5">
@@ -108,7 +108,7 @@ export function ProteinStructureSearch() {
                 id="patric-id"
                 placeholder="e.g. fig|1332244.20.peg.1"
                 value={patricId}
-                onChange={(e) => setPatricId(e.target.value)}
+                onChange={(e) => { setPatricId(e.target.value); }}
               />
             </div>
           </div>
@@ -127,7 +127,7 @@ export function ProteinStructureSearch() {
                 id="pdb-id"
                 placeholder="e.g. 1RUZ"
                 value={pdbId}
-                onChange={(e) => setPdbId(e.target.value)}
+                onChange={(e) => { setPdbId(e.target.value); }}
               />
             </div>
             <div className="space-y-1.5">
@@ -136,7 +136,7 @@ export function ProteinStructureSearch() {
                 id="description"
                 placeholder="e.g. Hemagglutinin"
                 value={description}
-                onChange={(e) => setDescription(e.target.value)}
+                onChange={(e) => { setDescription(e.target.value); }}
               />
             </div>
             <div className="space-y-1.5">
@@ -145,7 +145,7 @@ export function ProteinStructureSearch() {
                 id="gene"
                 placeholder="e.g. HA"
                 value={gene}
-                onChange={(e) => setGene(e.target.value)}
+                onChange={(e) => { setGene(e.target.value); }}
               />
             </div>
             <div className="space-y-1.5">
@@ -154,7 +154,7 @@ export function ProteinStructureSearch() {
                 id="product"
                 placeholder="e.g. Hemagglutinin"
                 value={product}
-                onChange={(e) => setProduct(e.target.value)}
+                onChange={(e) => { setProduct(e.target.value); }}
               />
             </div>
             <div className="space-y-1.5">
@@ -163,7 +163,7 @@ export function ProteinStructureSearch() {
                 id="method"
                 placeholder="e.g. X-RAY DIFFRACTION"
                 value={method}
-                onChange={(e) => setMethod(e.target.value)}
+                onChange={(e) => { setMethod(e.target.value); }}
               />
             </div>
           </div>

@@ -41,7 +41,16 @@ test.describe("Compare Region Viewer", () => {
 
   test.afterEach(async ({ page }, testInfo) => {
     await attachFocusTrail(page, testInfo);
-    assertNoRuntimeErrors();
+    try {
+      assertNoRuntimeErrors();
+    } catch (error) {
+      // The test body passed, so the call above attached nothing; this
+      // failure is the hook's own.
+      if (testInfo.status === testInfo.expectedStatus) {
+        await attachFocusTrail(page, testInfo, { force: true });
+      }
+      throw error;
+    }
   });
 
   test("the figure draws every genome and zooms from 1× to 20×", async ({
@@ -360,6 +369,8 @@ test.describe("Compare Region Viewer", () => {
     await page.keyboard.press("Home");
     await page.keyboard.press("ArrowDown");
     await expect(focused).toHaveAttribute("data-row", "1");
+    const pinned = await focused.getAttribute("data-feature");
+    expect(pinned).not.toBeNull();
 
     // Enter pins it; Tab reaches the card's actions, and closing the card
     // hands focus back to the gene.
@@ -369,6 +380,7 @@ test.describe("Compare Region Viewer", () => {
     // Pinning keeps the keyboard's place on the gene: WebKit would send the
     // next Tab to the top of the page if it were blurred.
     await expect(focused).toHaveAttribute("data-row", "1");
+    await expect(focused).toHaveAttribute("data-feature", pinned ?? "");
     await page.keyboard.press("Tab");
     await expect(
       compare.featureCard.getByRole("button", { name: "Collapse details" }),
@@ -380,6 +392,7 @@ test.describe("Compare Region Viewer", () => {
     await page.keyboard.press("Enter");
     await expect(compare.featureCard).toHaveCount(0);
     await expect(focused).toHaveAttribute("data-row", "1");
+    await expect(focused).toHaveAttribute("data-feature", pinned ?? "");
     await expect(compare.tooltip).toBeVisible();
   });
 

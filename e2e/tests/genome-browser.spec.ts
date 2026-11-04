@@ -9,6 +9,7 @@ import {
 import {
   GenomeBrowserPanelPage,
   GenomeMemberPage,
+  Navbar,
   ThemeSwitcher,
 } from "../pages";
 import { failOnRuntimeErrors } from "../support/runtime-errors";
@@ -162,20 +163,13 @@ test.describe("Genome Browser", () => {
     // JBrowse pins its header at z-index 825-850; without the wrapper's
     // `isolate` that beat the z-50 portalled popups in the root stacking
     // context and showed through them.
-    await page.getByRole("button", { name: "Services" }).first().click();
-    const services = page.locator('[data-slot="navigation-menu-content"]');
-    await expect(services).toBeVisible();
+    const navbar = new Navbar(page);
+    const services = await navbar.openServicesMenu();
     expect(await browser.headerPointsAbove(services)).toBe(0);
-    await page.keyboard.press("Escape");
+    await navbar.closeMenu();
     await expect(services).toBeHidden();
 
-    await page
-      .getByRole("combobox")
-      .filter({ hasText: "All Data Types" })
-      .first()
-      .click();
-    const scope = page.getByRole("listbox");
-    await expect(scope).toBeVisible();
+    const scope = await navbar.openSearchScope();
     expect(await browser.headerPointsAbove(scope)).toBe(0);
   });
 

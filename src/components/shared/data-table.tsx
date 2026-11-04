@@ -44,11 +44,11 @@ import { DataTableControls } from "./data-table-controls";
 import { DataTableFooter } from "./data-table-footer";
 import { DataTableHeader } from "./data-table-header";
 import {
-  columnWidthSettings,
-  resizedColumnWidths,
+  resizeColumns,
   stretchedColumnWidths,
   type ColumnResizeStart,
 } from "./column-resize";
+import { followPointer } from "./pointer-drag";
 import { clsx } from "cn";
 
 export function DataTable(props: DataTableProps) {
@@ -781,7 +781,8 @@ function useDataTableContent(
   // When they already exceed the container (e.g. a column dragged very wide)
   // widths are the settings and the container scrolls horizontally. A pointer
   // drag sets the rendered widths directly (see startPointerResize) so the
-  // dragged edge stays under the pointer.
+  // dragged edge stays under the pointer; they are drawn from the settings it
+  // saves on release, so nothing moves when it ends.
   const [pointerResize, setPointerResize] = useState<{
     columnId: string;
     widths?: ColumnWidths;
@@ -841,8 +842,7 @@ function useDataTableContent(
 
   const startPointerResize = (
     columnId: string,
-    startX: number,
-    pointer: "mouse" | "touch",
+    event: React.PointerEvent<HTMLElement>,
   ) => {
     const index = table
       .getVisibleLeafColumns()
@@ -850,54 +850,41 @@ function useDataTableContent(
     if (index === -1) return;
     const start = resizeStart(index);
     const restWidths = columnWidths;
+    const startX = event.clientX;
     let settings: Record<string, number> = {};
-    setPointerResize({ columnId });
-
-    const move = (clientX: number) => {
-      const widths = resizedColumnWidths(start, clientX - startX);
-      settings = columnWidthSettings(start, widths);
-      setPointerResize({
-        columnId,
-        widths: {
-          ...restWidths,
-          ...Object.fromEntries(start.columnIds.map((id, i) => [id, widths[i]])),
-        },
-        settings: Object.fromEntries(
-          start.columnIds.map((id, i) => [id, settings[id] ?? start.sizes[i]]),
-        ),
-      });
-    };
-    const onMouseMove = (event: MouseEvent) => {
-      move(event.clientX);
-    };
-    const onTouchMove = (event: TouchEvent) => {
-      const touch = event.touches[0] as Touch | undefined;
-      if (touch) move(touch.clientX);
-    };
-    const end = () => {
-      document.removeEventListener("mousemove", onMouseMove);
-      document.removeEventListener("mouseup", end);
-      document.removeEventListener("touchmove", onTouchMove);
-      document.removeEventListener("touchend", end);
-      document.removeEventListener("touchcancel", end);
-      if (Object.keys(settings).length > 0) {
-        const committed = settings;
-        setSizingByKey((prev) => ({
-          ...prev,
-          [sizingKey]: { ...(prev[sizingKey] ?? initialColumnSizing), ...committed },
-        }));
-        onColumnWidthsCommit?.(committed);
-      }
-      setPointerResize(null);
-    };
-    if (pointer === "mouse") {
-      document.addEventListener("mousemove", onMouseMove);
-      document.addEventListener("mouseup", end);
-    } else {
-      document.addEventListener("touchmove", onTouchMove);
-      document.addEventListener("touchend", end);
-      document.addEventListener("touchcancel", end);
-    }
+    const started = followPointer(event, {
+      onMove: (clientX) => {
+        const next = resizeColumns(start, clientX - startX);
+        settings = next.settings;
+        setPointerResize({
+          columnId,
+          widths: {
+            ...restWidths,
+            ...Object.fromEntries(
+              start.columnIds.map((id, i) => [id, next.widths[i]]),
+            ),
+          },
+          settings: Object.fromEntries(
+            start.columnIds.map((id, i) => [id, settings[id] ?? start.sizes[i]]),
+          ),
+        });
+      },
+      onEnd: (released) => {
+        if (released && Object.keys(settings).length > 0) {
+          const committed = settings;
+          setSizingByKey((prev) => ({
+            ...prev,
+            [sizingKey]: {
+              ...(prev[sizingKey] ?? initialColumnSizing),
+              ...committed,
+            },
+          }));
+          onColumnWidthsCommit?.(committed);
+        }
+        setPointerResize(null);
+      },
+    });
+    if (started) setPointerResize({ columnId });
   };
 
   const rows = table.getRowModel().rows;

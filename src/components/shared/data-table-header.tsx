@@ -16,17 +16,19 @@ interface DataTableHeaderProps {
   resizingColumnId?: string;
   /** Width settings during a pointer drag, reported by the handles. */
   widthSettings?: ColumnWidths;
-  /** Starts a pointer resize of a column at the given pointer x. */
+  /** Starts a pointer resize of a column from a press on its handle. */
   onResizeStart: (
     columnId: string,
-    clientX: number,
-    pointer: "mouse" | "touch",
+    event: React.PointerEvent<HTMLElement>,
   ) => void;
 }
 
 /**
- * A press this close to a header's left or right edge (px) never starts a
- * column reorder: it is a resize that missed the handle.
+ * A press this close to the header's content edge (px) never starts a column
+ * reorder: it is a resize that just missed the handle. The handle already
+ * covers the cell's 8px padding on each side, so on a narrow column the guard
+ * shrinks to a quarter of the content width, which leaves the middle half to
+ * reorder.
  */
 const reorderEdgeGuard = 12;
 
@@ -60,6 +62,16 @@ export function DataTableHeader({
   // Where the last press on a header landed, so a drag that starts from the
   // edge of a header (a resize that missed its handle) is not a reorder.
   const pressXRef = useRef<number | null>(null);
+  // Capture retargets the press's click to the handle, so the sort button
+  // should not see it. The window below still swallows a click that lands on
+  // the button within 100 ms of a resize, as WebKit has retargeted clicks
+  // differently before.
+  const markJustResized = () => {
+    justResizedRef.current = true;
+    setTimeout(() => {
+      justResizedRef.current = false;
+    }, 100);
+  };
 
   const handleDrop = (event: React.DragEvent, targetColumnId: string) => {
     event.preventDefault();
@@ -104,53 +116,6 @@ export function DataTableHeader({
                 ...current,
                 [column.id]: size,
               }));
-            };
-            // One entry point for both pointer kinds. The drag itself lives in
-            // data-table.tsx (startPointerResize), which arms touchmove/touchend
-            // or mousemove/mouseup by the kind passed here, so a touchstart
-            // must say so — reporting it as a mouse press would leave the touch
-            // path unarmed.
-            const startResize = (
-              event: React.MouseEvent | React.TouchEvent,
-            ) => {
-              event.stopPropagation();
-              let clientX: number;
-              if ("touches" in event) {
-                const touch = event.touches[0] as Touch | undefined;
-                if (!touch) return;
-                clientX = touch.clientX;
-              } else {
-                if (event.button !== 0) return;
-                // No text selection, focus change or native drag from the press.
-                event.preventDefault();
-                clientX = event.clientX;
-              }
-              justResizedRef.current = false;
-              onResizeStart(
-                column.id,
-                clientX,
-                event.type === "touchstart" ? "touch" : "mouse",
-              );
-              // Mirror that branch: the "just resized, swallow the next
-              // click" window has to close on whichever gesture actually ends.
-              // Listening only for mouseup meant a touch resize-drag left the
-              // flag false and fell through to the sort toggle below.
-              const endEventNames =
-                event.type === "touchstart"
-                  ? (["touchend", "touchcancel"] as const)
-                  : (["mouseup"] as const);
-              const onEnd = () => {
-                justResizedRef.current = true;
-                setTimeout(() => {
-                  justResizedRef.current = false;
-                }, 100);
-                for (const name of endEventNames) {
-                  window.removeEventListener(name, onEnd);
-                }
-              };
-              for (const name of endEventNames) {
-                window.addEventListener(name, onEnd);
-              }
             };
             return (
               <TableHead
@@ -200,12 +165,16 @@ export function DataTableHeader({
                         onDragStart: (event: React.DragEvent) => {
                           const pressX = pressXRef.current;
                           const cell = event.currentTarget.getBoundingClientRect();
+                          const guard = Math.min(
+                            reorderEdgeGuard,
+                            cell.width / 4,
+                          );
                           if (
                             isResizingAny ||
                             (pressX !== null &&
                               cell.width > 0 &&
-                              (pressX - cell.left < reorderEdgeGuard ||
-                                cell.right - pressX < reorderEdgeGuard))
+                              (pressX - cell.left < guard ||
+                                cell.right - pressX < guard))
                           ) {
                             event.preventDefault();
                             return;
@@ -265,8 +234,16 @@ export function DataTableHeader({
                             resizeWithKeyboard(10);
                           }
                         }}
-                        onMouseDown={startResize}
-                        onTouchStart={startResize}
+                        // One pointer path for mouse, pen and touch: the
+                        // drag lives in data-table.tsx (startPointerResize),
+                        // which follows this press's pointer until it is
+                        // lifted or cancelled.
+                        onPointerDown={(event) => {
+                          justResizedRef.current = false;
+                          onResizeStart(column.id, event);
+                        }}
+                        onPointerUp={markJustResized}
+                        onPointerCancel={markJustResized}
                         // 16px wide, centred on the edge: a press that lands a
                         // little off the line still resizes.
                         className="absolute top-0 right-0 z-30 flex h-full w-4 translate-x-1/2 cursor-col-resize touch-none select-none"

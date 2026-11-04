@@ -188,10 +188,24 @@ export class JobsListPage {
       .filter({ has: this.columnResizeHandle(label) });
   }
 
-  /** Rendered width of a column header in whole pixels. */
+  /** Rendered width of a column header in whole pixels (0 before it renders). */
   async columnWidth(label: string): Promise<number> {
     const box = await this.columnHeader(label).boundingBox();
     return Math.round(box?.width ?? 0);
+  }
+
+  /** Left edge of a column header (px from the viewport's left). */
+  async columnLeft(label: string): Promise<number> {
+    const box = await this.columnHeader(label).boundingBox();
+    if (!box) throw new Error(`${label} column header not rendered`);
+    return box.x;
+  }
+
+  /** A column's width setting, as its resize handle reports it. */
+  async columnSetting(label: string): Promise<number> {
+    return Number(
+      await this.columnResizeHandle(label).getAttribute("aria-valuenow"),
+    );
   }
 
   /** Drag a column's resize handle horizontally; positive widens the column. */

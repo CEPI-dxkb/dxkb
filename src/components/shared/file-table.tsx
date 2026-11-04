@@ -47,11 +47,8 @@ import { ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { applyColumnOrder, sameOrder } from "@/lib/table-layout";
 import { useTableLayout } from "@/hooks/use-table-layout";
-import {
-  columnWidthSettings,
-  resizedColumnWidths,
-  type ColumnResizeStart,
-} from "./column-resize";
+import { resizeColumns, type ColumnResizeStart } from "./column-resize";
+import { followPointer } from "./pointer-drag";
 import {
   Table,
   TableBody,
@@ -211,11 +208,10 @@ function DraggableTableHeader<T extends RowData>({
   widthSetting: number | undefined;
   /** Whether this column is being resized (a prop, for the same reason). */
   isResizing: boolean;
-  /** Starts a pointer resize of this column at the given pointer x. */
+  /** Starts a pointer resize of this column from the handle's pointerdown. */
   onResizeStart: (
     columnId: string,
-    clientX: number,
-    pointer: "mouse" | "touch",
+    event: React.PointerEvent<HTMLElement>,
   ) => void;
   onSort: (field: string) => void;
   sort: DataTableSort;
@@ -276,6 +272,7 @@ function DraggableTableHeader<T extends RowData>({
     <TableHead
       ref={setNodeRef}
       colSpan={header.colSpan}
+      data-column-id={header.column.id}
       variant="surface"
       className={className}
       style={style}
@@ -324,15 +321,8 @@ function DraggableTableHeader<T extends RowData>({
               resizeWithKeyboard(10);
             }
           }}
-          onMouseDown={(event) => {
-            if (event.button !== 0) return;
-            // No text selection or focus change while dragging.
-            event.preventDefault();
-            onResizeStart(header.column.id, event.clientX, "mouse");
-          }}
-          onTouchStart={(event) => {
-            const touch = event.touches[0] as Touch | undefined;
-            if (touch) onResizeStart(header.column.id, touch.clientX, "touch");
+          onPointerDown={(event) => {
+            onResizeStart(header.column.id, event);
           }}
           onDoubleClick={() => {
             header.column.resetSize();
@@ -443,10 +433,12 @@ function DataTableInner<T extends RowData>(
   const columnSizing = { ...tableLayout.widths, ...liveColumnSizing };
   // Which columns the user resized (or reset with a double-click on the handle,
   // which deletes the size) since the layout was last saved. Only ids are kept:
-  // the sizing state holds a pointer drag's raw width (0 when dragged far left,
-  // unbounded to the right), and only getSize() clamps it to minSize/maxSize.
+  // Pointer drags bypass the TanStack sizing state, which only receives
+  // keyboard steps and double-click resets; getSize() clamps those to
+  // minSize/maxSize.
   // The pointer drag in progress: its column, and (once the pointer moves) the
-  // rendered width and width setting of every visible column.
+  // rendered width and width setting of every rendered column (CSS-hidden
+  // columns are left out).
   const [pointerResize, setPointerResize] = useState<{
     columnId: string;
     widths?: Record<string, number>;
@@ -523,18 +515,20 @@ function DataTableInner<T extends RowData>(
   useEffect(() => {
     const { resized, reset } = pendingWidthCommitRef.current;
     if (resized.size === 0 && reset.size === 0) return;
-    const widths: Record<string, number> = { ...tableLayout.widths };
-    for (const columnId of resized) {
-      const column = table.getColumn(columnId);
-      if (column) widths[columnId] = Math.round(column.getSize());
-    }
-    for (const columnId of reset) {
-      Reflect.deleteProperty(widths, columnId);
-    }
+    // Copied before the sets are cleared, so the updater below reads them.
+    const resizedIds = [...resized];
+    const resetIds = [...reset];
     resized.clear();
     reset.clear();
-    updateTableLayout({
-      widths: Object.keys(widths).length > 0 ? widths : undefined,
+    // Merged into the widths stored now, so another tab's save survives.
+    updateTableLayout((current) => {
+      const widths: Record<string, number> = { ...current.widths };
+      for (const columnId of resizedIds) {
+        const column = table.getColumn(columnId);
+        if (column) widths[columnId] = Math.round(column.getSize());
+      }
+      for (const columnId of resetIds) Reflect.deleteProperty(widths, columnId);
+      return { widths: Object.keys(widths).length > 0 ? widths : undefined };
     });
     // The write above is read back on the same re-render (a write storage
     // refuses is kept in memory), so the widths on screen do not change.
@@ -554,15 +548,24 @@ function DataTableInner<T extends RowData>(
     table.getAllFlatColumns().map((col) => [col.id, col.getSize()]),
   );
 
-  // A pointer drag sets every column's rendered width directly so the dragged
-  // edge follows the pointer (see column-resize.ts); the settings it would
-  // save are saved once on release.
+  // A pointer drag sets every rendered column's width directly, so the dragged
+  // edge follows the pointer (see column-resize.ts). Its settings are saved
+  // once, on release. Only columns the browser lays out take part:
+  // `hidden md:table-cell` and its kin hide Owner, Created and Type on narrow
+  // screens, and those keep their saved widths.
   const startPointerResize = (
     columnId: string,
-    startX: number,
-    pointer: "mouse" | "touch",
+    event: React.PointerEvent<HTMLElement>,
   ) => {
-    const leafColumns = table.getVisibleLeafColumns();
+    const container = tableContainerRef.current;
+    const rendered = new Set(
+      [...(container?.querySelectorAll<HTMLElement>("th[data-column-id]") ?? [])]
+        .filter((cell) => getComputedStyle(cell).display !== "none")
+        .map((cell) => cell.dataset.columnId),
+    );
+    const leafColumns = table
+      .getVisibleLeafColumns()
+      .filter((column) => rendered.has(column.id));
     const index = leafColumns.findIndex((column) => column.id === columnId);
     if (index === -1) return;
     const start: ColumnResizeStart = {
@@ -571,53 +574,38 @@ function DataTableInner<T extends RowData>(
       minSizes: leafColumns.map((column) => column.columnDef.minSize ?? 40),
       maxSizes: leafColumns.map((column) => column.columnDef.maxSize ?? 1000),
       index,
-      containerWidth: tableContainerRef.current?.clientWidth ?? 0,
+      containerWidth: container?.clientWidth ?? 0,
     };
-    const savedWidths = tableLayout.widths;
+    const startX = event.clientX;
     let settings: Record<string, number> = {};
-    setPointerResize({ columnId });
-
-    const move = (clientX: number) => {
-      const widths = resizedColumnWidths(start, clientX - startX);
-      settings = columnWidthSettings(start, widths);
-      const sizeSettings = Object.fromEntries(
-        start.columnIds.map((id, i) => [id, settings[id] ?? start.sizes[i]]),
-      );
-      setPointerResize({
-        columnId,
-        widths: Object.fromEntries(
-          start.columnIds.map((id, i) => [id, widths[i]]),
-        ),
-        settings: sizeSettings,
-      });
-    };
-    const onMouseMove = (event: MouseEvent) => {
-      move(event.clientX);
-    };
-    const onTouchMove = (event: TouchEvent) => {
-      const touch = event.touches[0] as Touch | undefined;
-      if (touch) move(touch.clientX);
-    };
-    const end = () => {
-      document.removeEventListener("mousemove", onMouseMove);
-      document.removeEventListener("mouseup", end);
-      document.removeEventListener("touchmove", onTouchMove);
-      document.removeEventListener("touchend", end);
-      document.removeEventListener("touchcancel", end);
-      if (Object.keys(settings).length > 0) {
-        // Read back on the same re-render, so nothing moves on release.
-        updateTableLayout({ widths: { ...savedWidths, ...settings } });
-      }
-      setPointerResize(null);
-    };
-    if (pointer === "mouse") {
-      document.addEventListener("mousemove", onMouseMove);
-      document.addEventListener("mouseup", end);
-    } else {
-      document.addEventListener("touchmove", onTouchMove);
-      document.addEventListener("touchend", end);
-      document.addEventListener("touchcancel", end);
-    }
+    const started = followPointer(event, {
+      onMove: (clientX) => {
+        const next = resizeColumns(start, clientX - startX);
+        settings = next.settings;
+        setPointerResize({
+          columnId,
+          widths: Object.fromEntries(
+            start.columnIds.map((id, i) => [id, next.widths[i]]),
+          ),
+          settings: Object.fromEntries(
+            start.columnIds.map((id, i) => [id, settings[id] ?? start.sizes[i]]),
+          ),
+        });
+      },
+      onEnd: (released) => {
+        if (released && Object.keys(settings).length > 0) {
+          const committed = settings;
+          // Merged into the widths stored now, not at the press: another tab
+          // may have saved since. Read back on the same re-render, so nothing
+          // moves on release.
+          updateTableLayout((current) => ({
+            widths: { ...current.widths, ...committed },
+          }));
+        }
+        setPointerResize(null);
+      },
+    });
+    if (started) setPointerResize({ columnId });
   };
 
   // Separate values, so the body context below is cached on them and keeps

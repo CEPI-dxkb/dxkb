@@ -27,6 +27,28 @@ vi.mock("@tanstack/react-virtual", () => ({
   }),
 }));
 
+// jsdom has no pointer capture.
+Element.prototype.setPointerCapture = vi.fn();
+Element.prototype.releasePointerCapture = vi.fn();
+
+/**
+ * Presses a resize handle with the primary pointer. jsdom defaults
+ * `isPrimary` to false, which `followPointer` ignores.
+ */
+function pressHandle(
+  handle: HTMLElement,
+  clientX: number,
+  pointerType: "mouse" | "touch" = "mouse",
+) {
+  fireEvent.pointerDown(handle, {
+    pointerId: 1,
+    button: 0,
+    isPrimary: true,
+    pointerType,
+    clientX,
+  });
+}
+
 function deferred<T>() {
   let resolve!: (value: T) => void;
   const promise = new Promise<T>((res) => {
@@ -1350,6 +1372,43 @@ describe("DataTable column drag affordance", () => {
     it("starts a reorder from the middle of the header", () => {
       expect(dragFrom(renderReorderable(), 200)).toBe(true);
     });
+
+    // The wrapper sits inside the cell's px-2, so a 40px column measures 24px.
+    // A fixed 12px guard would cover all of it; the guard shrinks with width.
+    function renderWithWidth(width: number) {
+      const wrapper = renderReorderable();
+      vi.spyOn(wrapper, "getBoundingClientRect").mockReturnValue(
+        DOMRect.fromRect({ x: 0, y: 0, width, height: 30 }),
+      );
+      return wrapper;
+    }
+
+    it("starts a reorder from the middle of a narrow column", () => {
+      const wrapper = renderWithWidth(24);
+      expect(dragFrom(wrapper, 10)).toBe(true);
+      expect(wrapper).toHaveClass("opacity-50");
+    });
+
+    it("still blocks a press at the very edge of a narrow column", () => {
+      expect(dragFrom(renderWithWidth(24), 2)).toBe(false);
+    });
+
+    it("blocks a press 2px from the edge of a wide column", () => {
+      expect(dragFrom(renderWithWidth(200), 2)).toBe(false);
+    });
+
+    it("never fires dragStart on the wrapper from a pointerDown on the resize handle", () => {
+      const wrapper = renderReorderable();
+      const handle = screen.getByRole("separator", {
+        name: "Resize strain_name column",
+      });
+      expect(wrapper.contains(handle)).toBe(false);
+      const onDragStart = vi.fn();
+      wrapper.addEventListener("dragstart", onDragStart);
+      pressHandle(handle, 105);
+      expect(onDragStart).not.toHaveBeenCalled();
+      expect(wrapper).not.toHaveClass("opacity-50");
+    });
   });
 
   it("ignores a drop on a non-reorderable table instead of reordering", async () => {
@@ -1381,74 +1440,159 @@ describe("DataTable column drag affordance", () => {
   });
 });
 
-// TanStack's getResizeHandler branches on isTouchStartEvent to decide whether
-// to arm touchmove/touchend or mousemove/mouseup. Only onMouseDown was wired,
-// so the touch path was never armed while `touch-none` still suppressed
-// panning over the separator.
+// One pointer path for mouse, pen and touch: the handle follows the pressing
+// pointer (followPointer in pointer-drag.ts) until it is lifted or cancelled.
 describe("DataTable resize handle pointer wiring", () => {
   const resizeColumns = [
     { id: "strain_name", label: "Strain Name", visible: true },
   ];
   const resizeRows = [{ genome_id: "100.1", strain_name: "A" }];
 
-  function renderResizable(onSortingChange?: (sorting: unknown) => void) {
-    render(
+  function renderResizable({
+    onSortingChange,
+    onColumnWidthsCommit,
+  }: {
+    onSortingChange?: (sorting: unknown) => void;
+    onColumnWidthsCommit?: (widths: Record<string, number>) => void;
+  } = {}) {
+    const view = render(
       <DataTable
         id="resizable"
         data={resizeRows}
         columns={resizeColumns}
         totalItems={1}
         resource="genome"
+        savedColumnWidths={{ strain_name: 333 }}
         onSortingChange={onSortingChange}
+        onColumnWidthsCommit={onColumnWidthsCommit}
       />,
     );
-    return screen.getByRole("separator", {
+    const handle = screen.getByRole("separator", {
       name: "Resize strain_name column",
     });
+    return { ...view, handle };
   }
 
-  it("starts a resize from a touchstart, not only a mousedown", () => {
-    const handle = renderResizable();
-    const addSpy = vi.spyOn(document, "addEventListener");
+  it.each(["mouse", "touch"] as const)(
+    "resizes from a %s pointer and commits on release",
+    async (pointerType) => {
+      const onColumnWidthsCommit = vi.fn();
+      const { handle } = renderResizable({ onColumnWidthsCommit });
+      await waitFor(() => {
+        expect(handle).toHaveAttribute("aria-valuenow", "333");
+      });
 
-    fireEvent.touchStart(handle, {
-      touches: [{ clientX: 100, clientY: 0 }],
+      pressHandle(handle, 100, pointerType);
+      fireEvent.pointerMove(handle, { pointerId: 1, clientX: 150 });
+      expect(handle).toHaveAttribute("aria-valuenow", "383");
+      fireEvent.pointerUp(handle, { pointerId: 1, clientX: 150 });
+
+      expect(onColumnWidthsCommit).toHaveBeenCalledWith({ strain_name: 383 });
+      expect(onColumnWidthsCommit).toHaveBeenCalledTimes(1);
+    },
+  );
+
+  it("does not start a resize from a secondary mouse button", async () => {
+    const onColumnWidthsCommit = vi.fn();
+    const { handle } = renderResizable({ onColumnWidthsCommit });
+    await waitFor(() => {
+      expect(handle).toHaveAttribute("aria-valuenow", "333");
     });
 
-    const armed = addSpy.mock.calls.map((call) => call[0]);
-    expect(armed).toContain("touchmove");
-    expect(armed).toContain("touchend");
-    addSpy.mockRestore();
-    fireEvent.touchEnd(handle, { touches: [], changedTouches: [] });
+    fireEvent.pointerDown(handle, {
+      pointerId: 1,
+      button: 2,
+      isPrimary: true,
+      pointerType: "mouse",
+      clientX: 100,
+    });
+    fireEvent.pointerMove(handle, { pointerId: 1, clientX: 150 });
+    fireEvent.pointerUp(handle, { pointerId: 1, clientX: 150 });
+
+    expect(handle).toHaveAttribute("aria-valuenow", "333");
+    expect(onColumnWidthsCommit).not.toHaveBeenCalled();
   });
 
-  it("still arms the mouse path from a mousedown", () => {
-    const handle = renderResizable();
-    const addSpy = vi.spyOn(document, "addEventListener");
+  it("ignores a second finger: its release does not end the drag", async () => {
+    const onColumnWidthsCommit = vi.fn();
+    const { handle } = renderResizable({ onColumnWidthsCommit });
+    await waitFor(() => {
+      expect(handle).toHaveAttribute("aria-valuenow", "333");
+    });
 
-    fireEvent.mouseDown(handle, { clientX: 100 });
+    pressHandle(handle, 100, "touch");
+    fireEvent.pointerDown(handle, {
+      pointerId: 2,
+      isPrimary: false,
+      pointerType: "touch",
+      clientX: 300,
+    });
+    fireEvent.pointerUp(handle, { pointerId: 2, clientX: 300 });
+    expect(onColumnWidthsCommit).not.toHaveBeenCalled();
 
-    const armed = addSpy.mock.calls.map((call) => call[0]);
-    expect(armed).toContain("mousemove");
-    expect(armed).toContain("mouseup");
-    addSpy.mockRestore();
-    fireEvent.mouseUp(window, { clientX: 100 });
+    // The first finger is still dragging.
+    fireEvent.pointerMove(handle, { pointerId: 1, clientX: 150 });
+    expect(handle).toHaveAttribute("aria-valuenow", "383");
+    fireEvent.pointerUp(handle, { pointerId: 1, clientX: 150 });
+
+    expect(onColumnWidthsCommit).toHaveBeenCalledWith({ strain_name: 383 });
+    expect(onColumnWidthsCommit).toHaveBeenCalledTimes(1);
   });
 
-  it("suppresses the sort toggle after a touch resize drag ends", async () => {
+  it("ends a cancelled drag without committing it", async () => {
+    const onColumnWidthsCommit = vi.fn();
+    const { handle } = renderResizable({ onColumnWidthsCommit });
+    await waitFor(() => {
+      expect(handle).toHaveAttribute("aria-valuenow", "333");
+    });
+    const header = screen.getByRole("columnheader", { name: /Strain Name/ });
+
+    pressHandle(handle, 100, "touch");
+    fireEvent.pointerMove(handle, { pointerId: 1, clientX: 150 });
+    expect(handle).toHaveAttribute("aria-valuenow", "383");
+    expect(header.style.getPropertyValue("--col-size")).toBe("383px");
+
+    fireEvent.pointerCancel(handle, { pointerId: 1, isPrimary: true });
+
+    expect(onColumnWidthsCommit).not.toHaveBeenCalled();
+    expect(handle).toHaveAttribute("aria-valuenow", "333");
+    expect(header.style.getPropertyValue("--col-size")).toBe("333px");
+  });
+
+  it("commits nothing when the table unmounts mid-drag", async () => {
+    const onColumnWidthsCommit = vi.fn();
+    const { handle, unmount } = renderResizable({ onColumnWidthsCommit });
+    await waitFor(() => {
+      expect(handle).toHaveAttribute("aria-valuenow", "333");
+    });
+
+    pressHandle(handle, 100);
+    fireEvent.pointerMove(handle, { pointerId: 1, clientX: 150 });
+    expect(handle).toHaveAttribute("aria-valuenow", "383");
+    unmount();
+    // A removed capture target gets no further events; the release lands on
+    // the document, where nothing listens any more.
+    fireEvent.pointerUp(document, { pointerId: 1, clientX: 150 });
+    fireEvent.mouseUp(document);
+    fireEvent.touchEnd(document);
+
+    expect(onColumnWidthsCommit).not.toHaveBeenCalled();
+  });
+
+  it("suppresses the sort toggle after a resize drag ends", async () => {
     vi.useFakeTimers();
     try {
       const onSortingChange = vi.fn();
-      const handle = renderResizable(onSortingChange);
+      const { handle } = renderResizable({ onSortingChange });
       const sortButton = screen.getByRole("button", {
         name: "Sort by Strain Name",
       });
 
-      fireEvent.touchStart(handle, { touches: [{ clientX: 100, clientY: 0 }] });
-      fireEvent.touchEnd(window, { touches: [], changedTouches: [] });
+      pressHandle(handle, 100, "touch");
+      fireEvent.pointerUp(handle, { pointerId: 1, clientX: 100 });
 
-      // justResizedRef is latched by the touchend listener, so the click that
-      // a touch gesture synthesises must not reach getToggleSortingHandler.
+      // justResizedRef is latched by the handle's pointerup, so a click that
+      // lands on the sort button straight after must not toggle the sort.
       fireEvent.click(sortButton);
       expect(onSortingChange).not.toHaveBeenCalled();
 
@@ -1458,6 +1602,58 @@ describe("DataTable resize handle pointer wiring", () => {
       expect(onSortingChange).toHaveBeenCalledTimes(1);
     } finally {
       vi.useRealTimers();
+    }
+  });
+
+  // The preview is drawn from the settings that would be saved, so a drag too
+  // small to change a setting (a 1px pointer move is a fifth of a setting px
+  // when the columns are stretched five-fold) neither moves anything nor
+  // commits. A preview drawn from the raw pointer moved the edge, and the
+  // column snapped back on release.
+  it("moves and commits nothing for a drag smaller than a setting step", async () => {
+    const clientWidth = vi
+      .spyOn(HTMLElement.prototype, "clientWidth", "get")
+      .mockReturnValue(2000);
+    try {
+      const onColumnWidthsCommit = vi.fn();
+      render(
+        <DataTable
+          id="resizable-wide"
+          data={[{ genome_id: "100.1", strain_name: "A", public_id: "B" }]}
+          columns={[
+            { id: "strain_name", label: "Strain Name", visible: true },
+            { id: "public_id", label: "Public ID", visible: true },
+          ]}
+          totalItems={1}
+          resource="genome"
+          savedColumnWidths={{ strain_name: 200, public_id: 200 }}
+          onColumnWidthsCommit={onColumnWidthsCommit}
+        />,
+      );
+      const handle = screen.getByRole("separator", {
+        name: "Resize strain_name column",
+      });
+      await waitFor(() => {
+        expect(handle).toHaveAttribute("aria-valuenow", "200");
+      });
+      const header = screen.getByRole("columnheader", { name: /Strain Name/ });
+      const restingSize = header.style.getPropertyValue("--col-size");
+      // Stretched well past the 200px setting.
+      expect(Number.parseFloat(restingSize)).toBeGreaterThan(900);
+
+      pressHandle(handle, 500);
+      fireEvent.pointerMove(handle, { pointerId: 1, clientX: 501 });
+      // The drag is live (the handle draws its active bar)…
+      expect(handle.firstElementChild).toHaveClass("bg-info");
+      // …but nothing moved.
+      expect(header.style.getPropertyValue("--col-size")).toBe(restingSize);
+      expect(handle).toHaveAttribute("aria-valuenow", "200");
+
+      fireEvent.pointerUp(handle, { pointerId: 1, clientX: 501 });
+      expect(onColumnWidthsCommit).not.toHaveBeenCalled();
+      expect(header.style.getPropertyValue("--col-size")).toBe(restingSize);
+    } finally {
+      clientWidth.mockRestore();
     }
   });
 });
@@ -1520,15 +1716,15 @@ describe("DataTable remembered widths", () => {
     const handle = await screen.findByRole("separator", {
       name: "Resize strain_name column",
     });
-    fireEvent.mouseDown(handle, { clientX: 100 });
-    fireEvent.mouseMove(document, { clientX: 120 });
-    fireEvent.mouseMove(document, { clientX: 150 });
+    pressHandle(handle, 100);
+    fireEvent.pointerMove(handle, { pointerId: 1, clientX: 120 });
+    fireEvent.pointerMove(handle, { pointerId: 1, clientX: 150 });
     await waitFor(() => {
       expect(handle).toHaveAttribute("aria-valuenow", "383");
     });
     expect(onColumnWidthsCommit).not.toHaveBeenCalled();
 
-    fireEvent.mouseUp(document, { clientX: 150 });
+    fireEvent.pointerUp(handle, { pointerId: 1, clientX: 150 });
     await waitFor(() => {
       expect(onColumnWidthsCommit).toHaveBeenCalledWith({ strain_name: 383 });
     });
@@ -1556,9 +1752,9 @@ describe("DataTable remembered widths", () => {
       const handle = await screen.findByRole("separator", {
         name: "Resize strain_name column",
       });
-      fireEvent.mouseDown(handle, { clientX: 1000 });
-      fireEvent.mouseMove(document, { clientX: 1000 + deltaX });
-      fireEvent.mouseUp(document, { clientX: 1000 + deltaX });
+      pressHandle(handle, 1000);
+      fireEvent.pointerMove(handle, { pointerId: 1, clientX: 1000 + deltaX });
+      fireEvent.pointerUp(handle, { pointerId: 1, clientX: 1000 + deltaX });
       return { handle, onColumnWidthsCommit };
     }
 

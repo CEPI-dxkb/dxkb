@@ -80,12 +80,17 @@ export async function recordFocusTrail(page: Page): Promise<void> {
   });
 }
 
-/** On a failed test: attaches the focus trail and the element focus ended on. */
+/**
+ * On a failed test: attaches the focus trail and the element focus ended on.
+ * `force` attaches it even while `testInfo.status` still reads as expected,
+ * for a failure the afterEach hook itself is about to throw.
+ */
 export async function attachFocusTrail(
   page: Page,
   testInfo: TestInfo,
+  { force = false }: { force?: boolean } = {},
 ): Promise<void> {
-  if (testInfo.status === testInfo.expectedStatus) return;
+  if (!force && testInfo.status === testInfo.expectedStatus) return;
   const report = await page
     .evaluate(() => {
       const trailWindow = window as TrailWindow;

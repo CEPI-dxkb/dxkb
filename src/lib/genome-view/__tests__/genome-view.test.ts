@@ -661,7 +661,7 @@ describe("Interactions tab", () => {
   const interactionsTab = (genome: GenomeViewRecord) =>
     buildGenomeTabs(genome).find((tab) => tab.key === "interactions");
 
-  it("stays open for every genome, so one without interactions shows the empty table", () => {
+  it("stays enabled and canonical for every genome", () => {
     for (const genome of [
       record({ superkingdom: "Bacteria" }),
       record({ superkingdom: "Viruses", taxon_lineage_ids: [10239] }),

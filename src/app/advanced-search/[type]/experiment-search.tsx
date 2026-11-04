@@ -53,7 +53,7 @@ export function ExperimentSearch() {
     const rql = clauses.length > 0 ? rqlAnd(...clauses) : undefined;
     const params: string[] = [];
     if (rql) params.push(`rql=${encodeQueryComponent(rql)}`);
-    else if (keyword.trim()) params.push(`keyword=${encodeQueryComponent(keyword.trim())}`);
+    if (keyword.trim()) params.push(`keyword=${encodeQueryComponent(keyword.trim())}`);
     router.push(params.length ? `/experiment?${params.join("&")}` : "/experiment");
   };
 

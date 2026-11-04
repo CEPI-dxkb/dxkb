@@ -33,7 +33,7 @@ export function TaxaSearch() {
     const rql = clauses.length > 0 ? rqlAnd(...clauses) : undefined;
     const params: string[] = [];
     if (rql) params.push(`rql=${encodeQueryComponent(rql)}`);
-    if (!rql && keyword.trim()) params.push(`keyword=${encodeQueryComponent(keyword.trim())}`);
+    if (keyword.trim()) params.push(`keyword=${encodeQueryComponent(keyword.trim())}`);
     router.push(params.length ? `/taxonomy?${params.join("&")}` : "/taxonomy");
   };
 

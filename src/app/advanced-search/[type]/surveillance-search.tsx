@@ -15,9 +15,9 @@ import { rqlEq, rqlAnd, escapeRqlValue } from "@/lib/views/rql";
 import { encodeQueryComponent } from "@/lib/url";
 
 function rqlBetween(field: string, from: string, to: string): string {
-  if (from && to) return `between(${field},${escapeRqlValue(from)},${escapeRqlValue(to)})`;
-  if (from) return `gt(${field},${escapeRqlValue(from)})`;
-  return `lt(${field},${escapeRqlValue(to)})`;
+  if (from && to) return `and(ge(${field},${escapeRqlValue(from)}),le(${field},${escapeRqlValue(to)}))`;
+  if (from) return `ge(${field},${escapeRqlValue(from)})`;
+  return `le(${field},${escapeRqlValue(to)})`;
 }
 
 export function SurveillanceSearch() {
@@ -56,7 +56,7 @@ export function SurveillanceSearch() {
     const rql = clauses.length > 0 ? rqlAnd(...clauses) : undefined;
     const params: string[] = [];
     if (rql) params.push(`rql=${encodeQueryComponent(rql)}`);
-    else if (keyword.trim()) params.push(`keyword=${encodeQueryComponent(keyword.trim())}`);
+    if (keyword.trim()) params.push(`keyword=${encodeQueryComponent(keyword.trim())}`);
     router.push(params.length ? `/surveillance?${params.join("&")}` : "/surveillance");
   };
 

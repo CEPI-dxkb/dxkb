@@ -35,7 +35,7 @@ export function ProteinStructureSearch() {
     if (genomeId.trim()) clauses.push(rqlEq("genome_id", genomeId.trim()));
     if (patricId.trim()) clauses.push(rqlEq("patric_id", patricId.trim()));
     if (pdbId.trim()) clauses.push(rqlEq("pdb_id", pdbId.trim()));
-    if (description.trim()) clauses.push(rqlEq("description", description.trim()));
+    if (description.trim()) clauses.push(rqlEq("title", description.trim()));
     if (gene.trim()) clauses.push(rqlEq("gene", gene.trim()));
     if (product.trim()) clauses.push(rqlEq("product", product.trim()));
     if (method.trim()) clauses.push(rqlEq("method", method.trim()));
@@ -43,7 +43,7 @@ export function ProteinStructureSearch() {
     const rql = clauses.length > 0 ? rqlAnd(...clauses) : undefined;
     const params: string[] = [];
     if (rql) params.push(`rql=${encodeQueryComponent(rql)}`);
-    else if (keyword.trim()) params.push(`keyword=${encodeQueryComponent(keyword.trim())}`);
+    if (keyword.trim()) params.push(`keyword=${encodeQueryComponent(keyword.trim())}`);
     router.push(params.length ? `/protein-structure?${params.join("&")}` : "/protein-structure");
   };
 

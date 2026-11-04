@@ -16,9 +16,9 @@ import { rqlEq, rqlAnd, escapeRqlValue } from "@/lib/views/rql";
 import { genomeListHref } from "@/lib/views/hrefs";
 
 function rqlBetween(field: string, from: string, to: string): string {
-  if (from && to) return `between(${field},${escapeRqlValue(from)},${escapeRqlValue(to)})`;
-  if (from) return `gt(${field},${escapeRqlValue(from)})`;
-  return `lt(${field},${escapeRqlValue(to)})`;
+  if (from && to) return `and(ge(${field},${escapeRqlValue(from)}),le(${field},${escapeRqlValue(to)}))`;
+  if (from) return `ge(${field},${escapeRqlValue(from)})`;
+  return `le(${field},${escapeRqlValue(to)})`;
 }
 
 export function GenomeSearch() {
@@ -45,7 +45,7 @@ export function GenomeSearch() {
     if (taxonName.trim()) clauses.push(rqlEq("taxon_lineage_names", taxonName.trim()));
     if (hostName.trim()) clauses.push(rqlEq("host_name", hostName.trim()));
     if (isolationCountry.trim()) clauses.push(rqlEq("isolation_country", isolationCountry.trim()));
-    if (completeOnly) clauses.push(rqlEq("genome_quality", "Complete"));
+    if (completeOnly) clauses.push(rqlEq("genome_status", "Complete"));
     if (collectionDateFrom.trim() || collectionDateTo.trim()) {
       clauses.push(rqlBetween("collection_date", collectionDateFrom.trim(), collectionDateTo.trim()));
     }

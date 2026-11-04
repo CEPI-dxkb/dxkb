@@ -12,13 +12,12 @@ import {
   ServiceCardTitle,
 } from "@/components/services/form-ui/service-card";
 import { rqlEq, rqlAnd } from "@/lib/views/rql";
-import { encodeQueryComponent } from "@/lib/url";
+import { toQueryString } from "@/lib/url";
 
 export function DomainsSearch() {
   const router = useRouter();
 
   const [keyword, setKeyword] = useState("");
-  const [taxonName, setTaxonName] = useState("");
   const [genomeId, setGenomeId] = useState("");
   const [patricId, setPatricId] = useState("");
   const [source, setSource] = useState("");
@@ -29,7 +28,6 @@ export function DomainsSearch() {
     e.preventDefault();
 
     const clauses: string[] = [];
-    if (taxonName.trim()) clauses.push(rqlEq("taxon_lineage_names", taxonName.trim()));
     if (genomeId.trim()) clauses.push(rqlEq("genome_id", genomeId.trim()));
     if (patricId.trim()) clauses.push(rqlEq("patric_id", patricId.trim()));
     if (source.trim()) clauses.push(rqlEq("source", source.trim()));
@@ -37,15 +35,15 @@ export function DomainsSearch() {
     if (description.trim()) clauses.push(rqlEq("description", description.trim()));
 
     const rql = clauses.length > 0 ? rqlAnd(...clauses) : undefined;
-    const params: string[] = [];
-    if (rql) params.push(`rql=${encodeQueryComponent(rql)}`);
-    else if (keyword.trim()) params.push(`keyword=${encodeQueryComponent(keyword.trim())}`);
-    router.push(params.length ? `/domains-and-motifs?${params.join("&")}` : "/domains-and-motifs");
+    const params = new URLSearchParams();
+    if (rql) params.set("rql", rql);
+    if (keyword.trim()) params.set("keyword", keyword.trim());
+    const qs = toQueryString(params);
+    router.push(qs ? `/domains-and-motifs?${qs}` : "/domains-and-motifs");
   };
 
   const handleReset = () => {
     setKeyword("");
-    setTaxonName("");
     setGenomeId("");
     setPatricId("");
     setSource("");
@@ -78,15 +76,6 @@ export function DomainsSearch() {
         </ServiceCardHeader>
         <ServiceCardContent>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <div className="space-y-1.5">
-              <Label htmlFor="taxon-name">Taxon Name</Label>
-              <Input
-                id="taxon-name"
-                placeholder="e.g. Influenza A virus"
-                value={taxonName}
-                onChange={(e) => setTaxonName(e.target.value)}
-              />
-            </div>
             <div className="space-y-1.5">
               <Label htmlFor="genome-id">Genome ID</Label>
               <Input

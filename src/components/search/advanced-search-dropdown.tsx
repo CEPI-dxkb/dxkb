@@ -14,7 +14,6 @@ import {
   advancedSearchTypes,
   advancedSearchHref,
 } from "@/constants/search-info";
-import { cn } from "@/lib/utils";
 
 interface AdvancedSearchDropdownProps {
   /** Visual style: "tab" renders as a tab-shaped trigger; "button" renders as a segmented button */
@@ -30,15 +29,7 @@ export function AdvancedSearchDropdown({
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger
-        className={cn(
-          variant === "tab" &&
-            "inline-flex items-center gap-1 rounded-t-md border border-b-0 border-border bg-background px-3 py-1.5 text-sm font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring data-open:bg-accent data-open:text-accent-foreground",
-          variant === "button" &&
-            "inline-flex h-9 shrink-0 items-center gap-1 rounded-r-md border border-l-0 border-input bg-background px-3 text-sm font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring data-open:bg-accent data-open:text-accent-foreground",
-          className,
-        )}
-      >
+      <DropdownMenuTrigger variant={variant} className={className}>
         Advanced Search
         <ChevronDown className="size-3.5 opacity-60" />
       </DropdownMenuTrigger>
@@ -48,7 +39,7 @@ export function AdvancedSearchDropdown({
           {advancedSearchTypes.map((type) => (
             <DropdownMenuItem
               key={type.id}
-              onClick={() => router.push(advancedSearchHref(type.id))}
+              onClick={() => { router.push(advancedSearchHref(type.id)); }}
             >
               {type.typeTitle}
             </DropdownMenuItem>

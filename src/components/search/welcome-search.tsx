@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { SearchBar } from "@/components/search/search-bar";
@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { AdvancedSearchDropdown } from "@/components/search/advanced-search-dropdown";
 import { searchHref, searchTypes } from "@/constants/search-info";
 
-const everythingType = searchTypes.find((t) => t.id === "everything")!;
+const everythingType = searchTypes.find((t) => t.id === "everything");
 
 const popularSearches = [
   "SARS-CoV-2",
@@ -23,7 +23,6 @@ const popularSearches = [
 const WelcomeSearch = () => {
   const { isAuthenticated, isVerified } = useAuth();
   const resendVerificationEmail = useResendVerificationEmail();
-  const router = useRouter();
 
   return (
     <section className="grow">
@@ -75,18 +74,17 @@ const WelcomeSearch = () => {
                     <span className="mr-2 text-sm text-muted-foreground">
                       Popular searches:
                     </span>
-                    {popularSearches.map((term) => (
-                      <Badge
-                        key={term}
-                        variant="secondary"
-                        className="cursor-pointer"
-                        onClick={() =>
-                          router.push(searchHref(everythingType, term))
-                        }
-                      >
-                        {term}
-                      </Badge>
-                    ))}
+                    {everythingType &&
+                      popularSearches.map((term) => (
+                        <Badge
+                          key={term}
+                          variant="secondary"
+                          className="cursor-pointer"
+                          render={<Link href={searchHref(everythingType, term)} />}
+                        >
+                          {term}
+                        </Badge>
+                      ))}
                   </div>
                 </TabsContent>
               </Tabs>

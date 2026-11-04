@@ -1,0 +1,19 @@
+src/styles/themes/bvbrc-theme.css
+  s_ec19998837038e::t_48d7907697ea90 16-18
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6fa197ec7cbdcdc24254af7f9fab51551d83b34f",
+  "prompts": {},
+  "sessions": {
+    "s_ec19998837038e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f1d33511-648b-494a-b40b-5c080d89beb6",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>"
+    }
+  }
+}

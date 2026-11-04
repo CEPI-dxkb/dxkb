@@ -92,6 +92,33 @@ describe("CircularViewerFigure", () => {
     expect(ring()?.querySelector('path[fill="#123456"]')).not.toBeNull();
   });
 
+  it("fades a ring its eye button hides or shows, but not one drawn as it mounts", () => {
+    const hidden = tracks.map((track) => ({ ...track, visible: false }));
+    const { rerender } = render(
+      <CircularViewerFigure genomeId="1.1" layout={layout} tracks={tracks} data={data} svgRef={createRef()} />,
+    );
+    const ring = () => screen.getByRole("img").querySelector('[data-track="cds-forward"]');
+    expect(ring()).not.toHaveAttribute("class");
+    expect(ring()).not.toHaveAttribute("display");
+
+    // Hidden at once: the transition keeps it drawn while it fades.
+    rerender(<CircularViewerFigure genomeId="1.1" layout={layout} tracks={hidden} data={data} svgRef={createRef()} />);
+    expect(ring()).toHaveClass("animate-circular-track-toggle");
+    expect(ring()).toHaveAttribute("display", "none");
+
+    rerender(<CircularViewerFigure genomeId="1.1" layout={layout} tracks={tracks} data={data} svgRef={createRef()} />);
+    expect(ring()).toHaveClass("animate-circular-track-toggle");
+    expect(ring()).not.toHaveAttribute("display");
+  });
+
+  it("shows a ring hidden as it mounts at once", () => {
+    const hidden = tracks.map((track) => ({ ...track, visible: false }));
+    render(<CircularViewerFigure genomeId="1.1" layout={layout} tracks={hidden} data={data} svgRef={createRef()} />);
+    const ring = screen.getByRole("img").querySelector('[data-track="cds-forward"]');
+    expect(ring).toHaveAttribute("display", "none");
+    expect(ring).not.toHaveAttribute("class");
+  });
+
   it("names the feature under the pointer and highlights it", () => {
     render(<CircularViewerFigure genomeId="1.1" layout={layout} tracks={tracks} data={data} svgRef={createRef()} />);
     const svg = hoverRing("cds-forward");

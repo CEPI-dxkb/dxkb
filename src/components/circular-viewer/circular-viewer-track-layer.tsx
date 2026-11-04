@@ -140,9 +140,21 @@ function TrackMarks({ drawing }: { drawing: TrackDrawing }) {
   );
 }
 
-/** One track's ring. Hidden tracks keep their ring, as in legacy, so the others do not move. */
+/**
+ * One track's ring. Hidden tracks keep their ring, as in legacy, so the others do not move.
+ *
+ * Its eye button fades it out and back in (`animate-circular-track-toggle` in
+ * globals.css). `display` stays the one mark of a hidden ring, set at once:
+ * a transition keeps the ring drawn until its fade out ends. Only a ring whose
+ * visibility changed since it mounted fades, so the figure's first paint, and
+ * a track just added, show at once. An export drops the class (an `animate-*`
+ * would start again on its copy), so it draws the ring at rest.
+ */
 export function CircularTrackLayer({ drawing }: { drawing: TrackDrawing }) {
   const { ring, body } = drawing;
+  const [mountedVisible] = useState(drawing.visible);
+  const [toggled, setToggled] = useState(false);
+  if (!toggled && drawing.visible !== mountedVisible) setToggled(true);
   const state = body.kind === "pending" ? "pending" : body.kind === "failed" ? "error" : "ready";
   return (
     <g
@@ -151,6 +163,7 @@ export function CircularTrackLayer({ drawing }: { drawing: TrackDrawing }) {
       data-inner-radius={ring.innerRadius.toFixed(1)}
       data-outer-radius={ring.outerRadius.toFixed(1)}
       display={drawing.visible ? undefined : "none"}
+      className={toggled ? "animate-circular-track-toggle" : undefined}
     >
       {drawing.background !== null && drawing.backgroundPath !== "" && (
         <path d={drawing.backgroundPath} fill={drawing.background} />

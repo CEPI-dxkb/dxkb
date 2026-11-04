@@ -38,6 +38,13 @@
   }
 }
 
+/* A Circular Viewer ring its eye button shows again. */
+@keyframes circular-track-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
 @plugin "tailwindcss-animate";
 @custom-variant dark (&:is([data-theme$="-dark"] *));
 
@@ -97,6 +104,27 @@
 
   @media (prefers-reduced-motion: reduce) {
     animation-delay: 0ms;
+  }
+}
+
+/* A Circular Viewer ring its eye button hides or shows. The ring's `display`
+   attribute changes at once. Hiding is a transition, which `allow-discrete`
+   holds drawn until the fade ends (longhands, so a browser without
+   `transition-behavior` still hides it, at once). Showing is an animation,
+   which starts as the ring is displayed again: WebKit applies no
+   `@starting-style` to an SVG element. */
+@utility animate-circular-track-toggle {
+  transition-property: opacity, display;
+  transition-duration: 200ms;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-behavior: allow-discrete;
+
+  &[display="none"] {
+    opacity: 0;
+  }
+
+  &:not([display="none"]) {
+    animation: circular-track-fade-in 200ms cubic-bezier(0.4, 0, 0.2, 1);
   }
 }
 

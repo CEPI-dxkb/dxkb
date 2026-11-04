@@ -1,0 +1,19 @@
+e2e/support/focus-trail.ts
+  s_a0542b6c9e4a2c::t_1c5b8d72250824 36
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f5cc49851bbb2cb1066839eb34f0a564cfc14c69",
+  "prompts": {},
+  "sessions": {
+    "s_a0542b6c9e4a2c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c45ac678-49a7-4263-9ca5-6814e341e169",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>"
+    }
+  }
+}

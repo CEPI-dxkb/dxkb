@@ -1,0 +1,28 @@
+src/app/globals.css
+  s_274cc9782cc426::t_df129de3a12e18 41-47
+  s_274cc9782cc426::t_c2bf53cb4eb2ad 110,117-125,128-130
+  s_274cc9782cc426::t_dfbf307c3ac592 111-116,126-127
+src/components/circular-viewer/__tests__/circular-viewer-figure.test.tsx
+  s_274cc9782cc426::t_ffb0d1bf919c39 95-105,107-109,111-121
+  s_274cc9782cc426::t_081b9398945c44 106,110
+src/components/circular-viewer/circular-viewer-track-layer.tsx
+  s_274cc9782cc426::t_684496bd031a96 148,150-151
+  s_274cc9782cc426::t_081b9398945c44 146,166
+  s_274cc9782cc426::t_71fcaf0220624a 143-145,147,149,152,155-157
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "76f388f35454bb665c553a8695a36aa9d3c60a01",
+  "prompts": {},
+  "sessions": {
+    "s_274cc9782cc426": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "584a7697-70ce-431f-ba51-dbc1edab5218",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>"
+    }
+  }
+}

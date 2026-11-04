@@ -209,7 +209,7 @@ export function GenomeSearch() {
         <Checkbox
           id="complete-only"
           checked={completeOnly}
-          onCheckedChange={(v) => setCompleteOnly(v === true)}
+          onCheckedChange={(v) => { setCompleteOnly(!!v); }}
         />
         <Label htmlFor="complete-only">Complete genomes only</Label>
       </div>

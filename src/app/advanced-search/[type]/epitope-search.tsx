@@ -182,7 +182,7 @@ export function EpitopeSearch() {
                 <Checkbox
                   id={`assay-${option}`}
                   checked={assayResults.has(option)}
-                  onCheckedChange={() => toggleAssayResult(option)}
+                  onCheckedChange={() => { toggleAssayResult(option); }}
                 />
                 <Label htmlFor={`assay-${option}`}>{option}</Label>
               </div>

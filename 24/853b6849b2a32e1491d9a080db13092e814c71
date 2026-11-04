@@ -1,0 +1,100 @@
+src/lib/taxonomy-view/lineage-crumbs.ts
+  s_394ccb5abbe9e1::t_c653043170594b 98-100
+  s_394ccb5abbe9e1::t_d88827b73cc735 10-16,18,28-49,56-57,59-62,64,67,69-97,103-104,112,114-116
+  s_95f92ef1a16897::t_e094b969b06100 1-9,17,19-27,50-55,58,63,65-66,68,117
+  s_394ccb5abbe9e1::t_55ff56c509d2a7 101-102,105-111,113
+src/lib/taxonomy-view/index.ts
+  s_95f92ef1a16897::t_e094b969b06100 2
+src/lib/services/organisms/taxonomy.ts
+  s_394ccb5abbe9e1::t_df1935d18fbf80 129
+  s_394ccb5abbe9e1::t_2d64dbbf5b737b 154-159
+  s_394ccb5abbe9e1::t_f9b169c5bbd080 96
+  s_394ccb5abbe9e1::t_f2ad7938edd6b4 40-49
+  s_394ccb5abbe9e1::t_5988923ff9bd08 117
+  s_394ccb5abbe9e1::t_b8ae2479bb5fb0 141
+src/app/(views)/feature/[featureId]/feature-member.tsx
+  s_394ccb5abbe9e1::t_5769d10da3d263 49-50
+src/components/organisms/taxon-breadcrumb.tsx
+  s_394ccb5abbe9e1::t_536635ad5bbc60 26-29
+  s_394ccb5abbe9e1::t_819d4b13ff0e93 5-6,15-20,23-25,30,39,45-47,51,53-65,69-75
+src/lib/services/organisms/__tests__/taxonomy.test.ts
+  s_394ccb5abbe9e1::t_26b0e8c402792c 206
+  s_394ccb5abbe9e1::t_ec1c35c03acd15 146-166
+  s_394ccb5abbe9e1::t_9b5a8bfca731e3 250-262
+  s_394ccb5abbe9e1::t_5d3c86fc52233f 47
+src/app/(views)/taxonomy/[taxonId]/page.tsx
+  s_394ccb5abbe9e1::t_fa11149b2c9251 114
+  s_394ccb5abbe9e1::t_3995032162b998 111-113
+  s_394ccb5abbe9e1::t_9e7067364211c3 115-117
+  s_4b92bbe6340e37::t_bdc5ab5fc30828 1,3,11-14,21,38-110,118,121-122,135,139,158
+src/lib/e2e-fixtures/records.ts
+  s_394ccb5abbe9e1::t_5a4435da419699 814-822
+  s_394ccb5abbe9e1::t_65f737884245a2 796
+  s_394ccb5abbe9e1::t_d070ed8760cc0f 739-740
+  s_394ccb5abbe9e1::t_99859a17ce626c 786
+  s_394ccb5abbe9e1::t_96610013560da9 922-933
+  s_394ccb5abbe9e1::t_b8d7c946043e89 883-892
+  s_394ccb5abbe9e1::t_22287b30764f9c 953-961
+  s_394ccb5abbe9e1::t_edd106687e1abc 776
+  s_394ccb5abbe9e1::t_1ab9a13c05efdb 848-857
+src/app/(views)/genome/[genomeId]/genome-member.tsx
+  s_394ccb5abbe9e1::t_e7a7e2bdc47c7f 45-46
+src/lib/e2e-fixtures/__tests__/records.test.ts
+  s_394ccb5abbe9e1::t_234f6a4f603211 587-594
+src/components/organisms/__tests__/taxon-breadcrumb.test.tsx
+  s_394ccb5abbe9e1::t_3c68b0b3f087bb 102
+  s_394ccb5abbe9e1::t_a767f68f600646 101
+  s_394ccb5abbe9e1::t_4c3368e64d5d18 3-4,7-45,49-67,70-77,80,82-88,92-95,98,106-107,109-110,114-116,119-122,125,127-133,137-144,150-151,159
+src/app/(views)/genome/[genomeId]/__tests__/page.test.tsx
+  s_394ccb5abbe9e1::t_89f8d68c0b0831 197-227
+src/lib/services/organisms/types.ts
+  s_394ccb5abbe9e1::t_c9d9e9ef6e0e52 16-20
+src/lib/taxonomy-view/lineage-server.ts
+  s_95f92ef1a16897::t_20b3447f6a2a1c 1-26
+src/app/(views)/taxonomy/[taxonId]/__tests__/page.test.tsx
+  s_394ccb5abbe9e1::t_f49437fc78654e 103,106-109
+  s_394ccb5abbe9e1::t_1c69faebedf7b0 233-290
+  s_394ccb5abbe9e1::t_543923f3e01241 4
+  s_394ccb5abbe9e1::t_bfe85f079a0bc8 35,45
+src/components/views/__tests__/resource-child-collection.test.tsx
+  s_95f92ef1a16897::t_857dbc695ad2ab 645,653,817,834,844
+src/lib/taxonomy-view/__tests__/lineage-crumbs.test.ts
+  s_95f92ef1a16897::t_e094b969b06100 74-124
+  s_394ccb5abbe9e1::t_9674e7376f01e9 125-247,265
+  s_394ccb5abbe9e1::t_51f12be46ea34f 248-264
+  s_394ccb5abbe9e1::t_55e8f857eb2d8e 1-73
+e2e/tests/taxonomy-map.spec.ts
+  s_394ccb5abbe9e1::t_9eff879a1a9421 95,98-113
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "24853b6849b2a32e1491d9a080db13092e814c71",
+  "prompts": {},
+  "sessions": {
+    "s_394ccb5abbe9e1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "98f2ce98-3e55-4271-94ab-1b443fc513ac",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>"
+    },
+    "s_4b92bbe6340e37": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a428691fae3fdb03d",
+        "model": "unknown"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>"
+    },
+    "s_95f92ef1a16897": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1622b998-012a-4f70-9b3e-6eaefd802192",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>"
+    }
+  }
+}

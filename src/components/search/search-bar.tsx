@@ -20,6 +20,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { normalizeLegacyKeyword } from "@/app/search/legacy-keyword-normalization";
 import { keywordQuery } from "@/lib/data-api/keyword-terms";
+import { AdvancedSearchDropdown } from "@/components/search/advanced-search-dropdown";
 
 import { Search } from "lucide-react";
 
@@ -104,8 +105,8 @@ function SearchBarForm({
   };
 
   return (
-    <form onSubmit={handleSearch} className={`flex w-full ${className}`}>
-      <div className="relative flex size-full items-stretch overflow-hidden rounded-md border border-input bg-background">
+    <form onSubmit={handleSearch} className={`flex w-full items-stretch ${className}`}>
+      <div className="relative flex min-w-0 flex-1 items-stretch overflow-hidden rounded-l-md border border-input bg-background">
         <Select
           items={searchTypes.map((option) => ({
             value: option.id,
@@ -158,6 +159,7 @@ function SearchBarForm({
           )}
         </div>
       </div>
+      <AdvancedSearchDropdown variant="button" />
     </form>
   );
 }

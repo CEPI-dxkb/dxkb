@@ -6,12 +6,8 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { SearchBar } from "@/components/search/search-bar";
 import ThemeContent from "@/components/ui/theme-content";
 import { useAuth, useResendVerificationEmail } from "@/lib/auth/provider";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import {
-  CardFieldInput,
-  CardFieldLabel,
-} from "@/components/services/form-ui/card-field";
+import { AdvancedSearchDropdown } from "@/components/search/advanced-search-dropdown";
 import { searchHref, searchTypes } from "@/constants/search-info";
 
 const everythingType = searchTypes.find((t) => t.id === "everything")!;
@@ -69,8 +65,7 @@ const WelcomeSearch = () => {
               <Tabs defaultValue="basic" className="w-full">
                 <TabsList className="mb-4">
                   <TabsTrigger value="basic">Basic Search</TabsTrigger>
-                  <TabsTrigger value="advanced">Advanced Search</TabsTrigger>
-                  <TabsTrigger value="sequence">Sequence Search</TabsTrigger>
+                  <AdvancedSearchDropdown variant="tab" />
                 </TabsList>
 
                 <TabsContent value="basic">
@@ -93,57 +88,6 @@ const WelcomeSearch = () => {
                       </Badge>
                     ))}
                   </div>
-                </TabsContent>
-
-                <TabsContent value="advanced">
-                  <div className="mb-4 grid grid-cols-1 gap-4 md:grid-cols-2">
-                    <div>
-                      <CardFieldLabel>Taxonomy</CardFieldLabel>
-                      <CardFieldInput
-                        type="text"
-                        placeholder="e.g., Coronaviridae"
-                      />
-                    </div>
-                    <div>
-                      <CardFieldLabel>Host</CardFieldLabel>
-                      <CardFieldInput
-                        type="text"
-                        placeholder="e.g., Homo sapiens"
-                      />
-                    </div>
-                    <div>
-                      <CardFieldLabel>Genome Type</CardFieldLabel>
-                      <CardFieldInput
-                        type="text"
-                        placeholder="e.g., ssRNA(+)"
-                      />
-                    </div>
-                    <div>
-                      <CardFieldLabel>Protein Function</CardFieldLabel>
-                      <CardFieldInput
-                        type="text"
-                        placeholder="e.g., Polymerase"
-                      />
-                    </div>
-                  </div>
-                  <Button variant="cta" className="w-full">
-                    Submit Advanced Search
-                  </Button>
-                </TabsContent>
-
-                {/* TODO: wire sequence pre-fill once BLAST page supports URL params */}
-                <TabsContent value="sequence">
-                  <p className="mb-4 text-sm text-muted-foreground">
-                    Use the BLAST service to search by nucleotide or protein
-                    sequence against public or private genomes and databases.
-                  </p>
-                  <Button
-                    variant="cta"
-                    className="w-full"
-                    onClick={() => router.push("/services/blast")}
-                  >
-                    Open BLAST Service
-                  </Button>
                 </TabsContent>
               </Tabs>
             </div>

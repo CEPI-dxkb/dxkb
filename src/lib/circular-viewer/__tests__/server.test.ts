@@ -250,6 +250,73 @@ describe("circular viewer reads", () => {
     expect(result.truncated).toBe(false);
   });
 
+  it("pages sp_gene past full windows that one gene's sources fill, to the genes after it", async () => {
+    // Gene 0 fills the first two windows; genes 1 to 10 follow in a third.
+    const spRows = [
+      ...Array.from({ length: 2 * maxTrackFeatures }, (_, index) => ({
+        id: `r${String(index)}`,
+        patric_id: patricId(0),
+        feature_id: "F0",
+      })),
+      ...Array.from({ length: 10 }, (_, index) => ({
+        id: `later${String(index)}`,
+        patric_id: patricId(index + 1),
+        feature_id: `F${String(index + 1)}`,
+      })),
+    ];
+    const { repository, rangedRows } = fakeRepository({
+      ranged: { sp_gene: spRows },
+      selected: (ids) => ids.map((id, index) => row(id, 1000 - index)),
+    });
+    const result = await readSpecialtyTrack(repository, "1.1", "Antibiotic Resistance");
+    expect(rangedRows.mock.calls.map(([, , start, end]) => [start, end])).toEqual([
+      [0, maxTrackFeatures],
+      [maxTrackFeatures, 2 * maxTrackFeatures],
+      [2 * maxTrackFeatures, 3 * maxTrackFeatures],
+    ]);
+    expect(result.features).toHaveLength(11);
+    expect(result.truncated).toBe(false);
+  });
+
+  it("marks sp_gene truncated when a full window of rows without an id names no new gene", async () => {
+    // Nothing shows the second window advancing, so the gene after it is not reached.
+    const spRows = [
+      ...Array.from({ length: 2 * maxTrackFeatures }, () => ({ patric_id: patricId(0), feature_id: "F0" })),
+      { patric_id: patricId(1), feature_id: "F1" },
+    ];
+    const { repository, rangedRows } = fakeRepository({
+      ranged: { sp_gene: spRows },
+      selected: (ids) => ids.map((id, index) => row(id, 1000 - index)),
+    });
+    const result = await readSpecialtyTrack(repository, "1.1", "Transporter");
+    expect(rangedRows).toHaveBeenCalledTimes(2);
+    expect(result.features).toHaveLength(1);
+    expect(result.truncated).toBe(true);
+  });
+
+  it("keeps the first 25,000 features when the genes' patric_ids name more, and marks them truncated", async () => {
+    // 25,000 genes, each patric_id naming two features.
+    const spRows = Array.from({ length: maxTrackFeatures }, (_, index) => ({
+      id: `card${String(index)}`,
+      patric_id: patricId(index),
+    }));
+    const { repository } = fakeRepository({
+      ranged: { sp_gene: spRows },
+      byPatricId: (ids) =>
+        ids.flatMap((id) => {
+          const start = 2 * Number(id.split(".").pop()) + 1;
+          return [
+            { ...row(`A-${id}`, start), patric_id: id },
+            { ...row(`B-${id}`, start + 1), patric_id: id },
+          ];
+        }),
+    });
+    const result = await readSpecialtyTrack(repository, "1.1", "Antibiotic Resistance");
+    expect(result.features).toHaveLength(maxTrackFeatures);
+    expect(result.features.at(-1)?.start).toBe(maxTrackFeatures);
+    expect(result.truncated).toBe(true);
+  });
+
   it("draws a gene sp_gene lists only by patric_id, reading 100 ids per request", async () => {
     // CARD and NDARO rows name the gene by patric_id alone.
     const spRows = Array.from({ length: 101 }, (_, index) => ({ id: `card${String(index)}`, patric_id: patricId(index) }));
@@ -455,6 +522,27 @@ describe("circular viewer reads", () => {
     const repository = { rangedRows } as unknown as ServerDataRepository;
     const result = await readGc(repository, "1.1");
     expect(result.contigs.map(({ accession }) => accession)).toEqual(["A"]);
+  });
+
+  it("rejects a GC answer that leaves out a contig the lengths read listed", async () => {
+    const rangedRows = vi.fn((_resource: string, clause: string) =>
+      Promise.resolve({
+        rows:
+          clause === contigLengthsClause("1.1")
+            ? [
+                { sequence_id: "s0", accession: "E", length: 0 },
+                { sequence_id: "s1", accession: "A", length: 4 },
+                { sequence_id: "s2", accession: "B", length: 4 },
+              ]
+            : [{ sequence_id: "s1", accession: "A", sequence: "GGCC" }],
+        headers: new Headers(),
+      }),
+    );
+    await expect(readGc({ rangedRows } as unknown as ServerDataRepository, "1.1")).rejects.toMatchObject({
+      status: 502,
+      code: "malformed_response",
+      message: "Malformed genome_sequence response for genome 1.1: no sequence for accession B.",
+    });
   });
 
   it("rejects an empty sequence on a row whose length is not 0", async () => {

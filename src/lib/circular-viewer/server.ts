@@ -381,9 +381,13 @@ interface SpecialtyGene {
  * The first `maxTrackFeatures` genes with the property, keyed by `patric_id`
  * (`feature_id` for a row without one). `sp_gene` has a row per source that
  * lists a gene, so its rows are read `maxTrackFeatures` at a time until more
- * genes than that are known or a window comes back short. A window that adds
- * no gene ends the read too, so an upstream that ignored the range cannot
- * keep it paging.
+ * genes than that are known or a window comes back short (the end of them).
+ * A full window can name no new gene (one gene's sources can fill it), so
+ * progress is new rows, told apart by their `id`: a full window of rows
+ * already read means the upstream ignored the range and answered in full
+ * again, which ends the read. A window whose rows have no `id` and name no
+ * new gene shows nothing advancing either, so it ends the read too, but as
+ * truncated, since later genes may remain.
  */
 async function readSpecialtyGenes(
   repository: ServerDataRepository,
@@ -393,8 +397,12 @@ async function readSpecialtyGenes(
 ): Promise<{ genes: SpecialtyGene[]; truncated: boolean }> {
   const clause = specialtyGenesClause(genomeId, property);
   const genes = new Map<string, SpecialtyGene>();
+  const rowIds = new Set<string>();
+  let exhausted = false;
   for (let start = 0; ; start += maxTrackFeatures) {
-    const known = genes.size;
+    const knownGenes = genes.size;
+    const knownRows = rowIds.size;
+    let unread = 0;
     const { rows } = await repository.rangedRows(
       "sp_gene",
       clause,
@@ -403,6 +411,12 @@ async function readSpecialtyGenes(
       signal,
     );
     for (const row of rows) {
+      const id = text(row.id);
+      if (id !== undefined) {
+        if (rowIds.has(id)) continue;
+        rowIds.add(id);
+      }
+      unread += 1;
       const patricId = text(row.patric_id);
       const featureId = text(row.feature_id);
       const key = patricId ?? featureId;
@@ -411,17 +425,20 @@ async function readSpecialtyGenes(
       if (gene === undefined) genes.set(key, { patricId, featureId });
       else gene.featureId ??= featureId;
     }
+    if (rows.length < maxTrackFeatures || unread === 0) {
+      exhausted = true;
+      break;
+    }
     if (
       genes.size > maxTrackFeatures ||
-      rows.length < maxTrackFeatures ||
-      genes.size === known
+      (rowIds.size === knownRows && genes.size === knownGenes)
     ) {
       break;
     }
   }
   return {
     genes: [...genes.values()].slice(0, maxTrackFeatures),
-    truncated: genes.size > maxTrackFeatures,
+    truncated: !exhausted || genes.size > maxTrackFeatures,
   };
 }
 
@@ -487,7 +504,12 @@ export async function readSpecialtyTrack(
   // A gene keyed by `feature_id` and one keyed by `patric_id` can be one feature.
   const unique = [...new Map(features.map((feature) => [feature.featureId, feature])).values()];
   unique.sort(byPosition);
-  return { features: unique, truncated };
+  // A `patric_id` that named two features keeps both, so the genes' features
+  // can outnumber the genes: the track keeps the first `maxTrackFeatures`.
+  return {
+    features: unique.slice(0, maxTrackFeatures),
+    truncated: truncated || unique.length > maxTrackFeatures,
+  };
 }
 
 function genomeTooLong(genomeId: string, genomeLength: number, limit: number): DataApiError {
@@ -545,10 +567,8 @@ export async function readGc(
     maxContigs,
     signal,
   );
-  const genomeLength = lengths.rows.reduce(
-    (sum, row) => sum + (contigRow(genomeId, row)?.length ?? 0),
-    0,
-  );
+  const contigs = lengths.rows.flatMap((row) => contigRow(genomeId, row) ?? []);
+  const genomeLength = contigs.reduce((sum, contig) => sum + contig.length, 0);
   if (genomeLength > limit) throw genomeTooLong(genomeId, genomeLength, limit);
   // The accessions `contigRow` skipped for a length of 0, whose sequences are empty.
   const emptyAccessions = new Set(
@@ -570,23 +590,33 @@ export async function readGc(
       maxContigs,
       signal,
     );
-    return gcResult(
-      genomeId,
-      rows.flatMap((row) => {
-        const accession = text(row.accession);
-        if (accession === undefined) throw malformedSequence(genomeId, row, "no accession");
-        if (typeof row.sequence !== "string") {
-          throw malformedSequence(genomeId, row, `sequence of type ${row.sequence === null ? "null" : typeof row.sequence}, not a string`);
-        }
-        if (row.sequence === "") {
-          // The empty sequence of a length-0 row, which `contigRow` skips; any other is a wrong shape.
-          if (emptyAccessions.has(accession)) return [];
-          throw malformedSequence(genomeId, row, "an empty sequence for a length above 0");
-        }
-        return [{ accession, sequence: row.sequence }];
-      }),
-      limit,
-    );
+    const sequences = rows.flatMap((row) => {
+      const accession = text(row.accession);
+      if (accession === undefined) throw malformedSequence(genomeId, row, "no accession");
+      if (typeof row.sequence !== "string") {
+        throw malformedSequence(genomeId, row, `sequence of type ${row.sequence === null ? "null" : typeof row.sequence}, not a string`);
+      }
+      if (row.sequence === "") {
+        // The empty sequence of a length-0 row, which `contigRow` skips; any other is a wrong shape.
+        if (emptyAccessions.has(accession)) return [];
+        throw malformedSequence(genomeId, row, "an empty sequence for a length above 0");
+      }
+      return [{ accession, sequence: row.sequence }];
+    });
+    // A contig the lengths read listed but the sequence read left out would
+    // drop off the GC rings without a word, so the answer is a wrong shape.
+    const read = new Set(sequences.map(({ accession }) => accession));
+    const missing = contigs.flatMap(({ accession }) => (read.has(accession) ? [] : [accession]));
+    if (missing.length > 0) {
+      const named = missing.slice(0, 5).join(", ");
+      const more = missing.length > 5 ? ` and ${String(missing.length - 5)} more` : "";
+      throw new DataApiError(
+        `Malformed genome_sequence response for genome ${genomeId}: no sequence for accession ${named}${more}.`,
+        502,
+        "malformed_response",
+      );
+    }
+    return gcResult(genomeId, sequences, limit);
   } finally {
     gcReadsInFlight -= 1;
   }

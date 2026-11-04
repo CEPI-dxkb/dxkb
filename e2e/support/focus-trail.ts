@@ -33,9 +33,7 @@ export async function recordFocusTrail(page: Page): Promise<void> {
       if (node === null) return "(none)";
       if (!(node instanceof Element)) return "(document)";
       const label =
-        node.getAttribute("aria-label") ??
-        node.textContent?.trim().slice(0, 40) ??
-        "";
+        node.getAttribute("aria-label") ?? node.textContent.trim().slice(0, 40);
       const row = node.getAttribute("data-row");
       const gene =
         row === null

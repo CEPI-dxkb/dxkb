@@ -2,6 +2,8 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 import type { OrganismTaxonomy } from "@/lib/services/organisms/types";
+import { taxonViewHeader } from "@/lib/taxonomy-view";
+import { taxonomyHref } from "@/lib/views/hrefs";
 
 interface TaxonBreadcrumbProps {
   taxon: OrganismTaxonomy | null;
@@ -10,21 +12,22 @@ interface TaxonBreadcrumbProps {
   genomeCount?: ReactNode;
 }
 
-interface LineageEntry {
-  name: string;
-  id: number | null;
+function Eyebrow() {
+  return (
+    <p className="text-xs/normal font-bold tracking-widest text-foreground uppercase">
+      Taxon View
+    </p>
+  );
 }
 
-function buildLineage(names: string[], ids: number[]): LineageEntry[] {
-  const lineage: LineageEntry[] = [];
-  names.forEach((name, index) => {
-    if (name !== "cellular organisms") {
-      lineage.push({ name, id: ids[index] ?? null });
-    }
-  });
-  return lineage;
-}
-
+/**
+ * BV-BRC's Taxon View header (`buildHeaderContent`, `Taxonomy.js`): the
+ * ranked ancestors (see `taxonViewHeader`), then the taxon itself as the
+ * heading. A taxon where neither an ancestor nor the taxon itself has a shown
+ * rank (a root, domain, kingdom or realm, or a clade or unranked group above
+ * the first phylum) has no crumbs there, so its heading is kept for assistive
+ * technology only. A record that is merely malformed keeps a visible heading.
+ */
 export function TaxonBreadcrumb({
   taxon,
   displayName,
@@ -33,42 +36,42 @@ export function TaxonBreadcrumb({
   if (!taxon) {
     return (
       <div>
-        <p className="text-xs/normal font-bold tracking-widest text-foreground uppercase">
-          Taxon View
-        </p>
+        <Eyebrow />
         <h1 className="text-2xl font-bold tracking-tight">{displayName}</h1>
       </div>
     );
   }
 
-  const lineage = buildLineage(taxon.lineageNames, taxon.lineageIds);
-  const ancestors = lineage.slice(0, -1);
-  const current = lineage.at(-1);
-  const currentName = current?.name ?? taxon.taxonName;
+  const { ancestors, headingHidden } = taxonViewHeader(taxon);
 
   return (
     <div>
-      <p className="text-xs/normal font-bold tracking-widest text-foreground uppercase">
-        Taxon View
-      </p>
+      <Eyebrow />
       <div className="flex flex-wrap items-baseline gap-x-1 text-sm">
-        {ancestors.map(({ name, id }) => (
-          <span key={id ?? name} className="flex items-baseline gap-x-1">
-            {id === null ? (
-              <span className="text-muted-foreground">{name}</span>
-            ) : (
-              <Link
-                href={`/taxonomy/${String(id)}`}
-                className="text-muted-foreground transition-colors hover:text-foreground"
-              >
-                {name}
-              </Link>
-            )}
+        {ancestors.map(({ taxonId, name }, index) => (
+          // A repeated rank repeats its crumb (BV-BRC's `indexOf`), so the
+          // position is part of the key.
+          <span
+            key={`${String(index)}-${taxonId}`}
+            className="flex items-baseline gap-x-1"
+          >
+            <Link
+              href={taxonomyHref(taxonId)}
+              className="text-muted-foreground transition-colors hover:text-foreground"
+            >
+              {name}
+            </Link>
             <span className="text-muted-foreground/50 select-none">»</span>
           </span>
         ))}
-        <h1 className="m-0 inline text-sm leading-none font-bold text-secondary">
-          {currentName}
+        <h1
+          className={
+            headingHidden
+              ? "sr-only"
+              : "m-0 inline text-sm leading-none font-bold text-secondary"
+          }
+        >
+          {taxon.taxonName}
         </h1>
         {genomeCount}
       </div>

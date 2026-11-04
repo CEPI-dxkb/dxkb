@@ -4,6 +4,8 @@ import {
   workspaceOverrides,
   jobsOverrides,
   a11yBackendOverrides,
+  circularViewerFixture,
+  circularViewerScenarioOverrides,
 } from "../../fixtures/overrides";
 import { awaitSettled } from "../../a11y/settle";
 import { scanPage, formatBlocking, logWarnings } from "../../a11y/axe-scan";
@@ -14,7 +16,11 @@ import { forEachTheme } from "../../a11y/theme";
 import generatedBaseline, { reflowSkip } from "../../a11y/baseline.generated";
 import { isReflowSkipped } from "../../a11y/baseline";
 import { recordScan } from "../../a11y/report";
-import { CompareRegionPage, GenomeBrowserPanelPage } from "../../pages";
+import {
+  CircularViewerPanelPage,
+  CompareRegionPage,
+  GenomeBrowserPanelPage,
+} from "../../pages";
 import {
   densitySpecs,
   labelWidthFor,
@@ -55,6 +61,30 @@ async function expectCompareRegionContrast(
     contrast.length === 0
       ? undefined
       : formatBlocking(contrast, `the Compare Region card (${context})`),
+  ).toEqual([]);
+}
+
+/**
+ * No `color-contrast` violation inside the Circular Viewer panel (its track
+ * sidebar and figure), asserted outright for the Compare Region card's reason:
+ * the wildcard baseline's `color-contrast` allowance (DXKBCORE-174) is for
+ * host pages, and once hid the panel's muted "None found" labels at 4.42:1
+ * when the panel sat on the page background instead of a card. It covers the
+ * HTML only: axe leaves SVG text `incomplete` (`imgNode`), so the figure's 10 px
+ * position labels are checked through their token in `theme-contrast.test.ts`.
+ */
+async function expectCircularViewerContrast(
+  page: Page,
+  context: string,
+): Promise<void> {
+  const contrast = (
+    await scanPage(page, { include: '[data-testid="circular-viewer"]' })
+  ).filter((violation) => violation.id === "color-contrast");
+  expect(
+    contrast,
+    contrast.length === 0
+      ? undefined
+      : formatBlocking(contrast, `the Circular Viewer panel (${context})`),
   ).toEqual([]);
 }
 
@@ -476,6 +506,32 @@ test.describe("a11y component surfaces", () => {
         assertNoBlockingViolations(violations, "genome-browser-view", theme);
       },
     );
+  });
+
+  // Circular Viewer tab (src/components/circular-viewer/), here for the Genome
+  // Browser's first reason: the Genome page is already claimed by its own entry.
+  // The whole page is scanned, full ruleset: the figure is the app's own SVG,
+  // whose text axe leaves incomplete; the panel's HTML contrast is asserted
+  // outright (expectCircularViewerContrast) and the position labels' token by
+  // theme-contrast.test.ts.
+  test("circular viewer tab has no blocking a11y violations", async ({
+    page,
+    context,
+  }) => {
+    await context.clearCookies();
+    await applyBackendMocks(page, {
+      overrides: [...circularViewerScenarioOverrides, ...a11yBackendOverrides],
+    });
+    const viewer = new CircularViewerPanelPage(page);
+    await viewer.goto(circularViewerFixture.genomeId);
+    await awaitSettled(page);
+    // Every default track settled, so the rows (and so the scanned nodes) do
+    // not depend on which answers are still in flight.
+    await viewer.expectDefaultTracksSettled();
+    await forEachTheme(page, async (theme) => {
+      assertNoBlockingViolations(await scanPage(page), "circular-viewer", theme);
+      await expectCircularViewerContrast(page, theme);
+    });
   });
 
   test("feature browser tab has no blocking a11y violations", async ({

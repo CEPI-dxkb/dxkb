@@ -38,6 +38,7 @@ export const nonRouteScanKeys: readonly string[] = [
   "auspice-viewer-iframe",
   "genome-browser-host",
   "genome-browser-view",
+  "circular-viewer",
   "feature-browser-host",
   "feature-browser-view",
   "feature-compare-region",

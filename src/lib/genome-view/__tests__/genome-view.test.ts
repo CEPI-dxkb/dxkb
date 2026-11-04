@@ -19,9 +19,12 @@ import {
   genomeStructuralRql,
   genomeTaxonScope,
   genomeViewRecordSchema,
+  isBacterialGenome,
   isGenomeId,
   parseGenomeCollectionState,
   recentGenomeRql,
+  supportsCircularViewer,
+  type GenomeViewRecord,
 } from "@/lib/genome-view";
 import {
   parseCollectionState,
@@ -572,5 +575,103 @@ describe("genomeOverviewScope", () => {
     });
     expect(state.rql?.length).toBeGreaterThan(8000);
     expect(genomeOverviewScope(state)).toEqual({ fieldRql: state.rql });
+  });
+});
+
+describe("Circular Viewer tab", () => {
+  const record = (fields: Partial<GenomeViewRecord>): GenomeViewRecord => ({
+    genome_id: "83332.12",
+    ...fields,
+  });
+
+  it("is offered wherever legacy offered it: not for viruses or eukaryotic hosts", () => {
+    expect(supportsCircularViewer(record({ superkingdom: "Bacteria" }))).toBe(
+      true,
+    );
+    expect(supportsCircularViewer(record({ superkingdom: "Archaea" }))).toBe(
+      true,
+    );
+    expect(supportsCircularViewer(record({ superkingdom: "Viruses" }))).toBe(
+      false,
+    );
+    expect(supportsCircularViewer(record({ superkingdom: "Eukaryota" }))).toBe(
+      false,
+    );
+    expect(
+      supportsCircularViewer(
+        record({ taxon_lineage_names: ["Viruses", "Duplodnaviria"] }),
+      ),
+    ).toBe(false);
+    expect(supportsCircularViewer(record({}))).toBe(true);
+  });
+
+  it("trusts the lineage over a superkingdom of the string \"null\" (phage records)", () => {
+    const phage = record({
+      superkingdom: "null",
+      taxon_lineage_ids: ["10239"],
+      taxon_lineage_names: ["Viruses"],
+    });
+    expect(supportsCircularViewer(phage)).toBe(false);
+    expect(canonicalGenomeTab("circular-viewer", phage)).toBe("overview");
+    expect(
+      supportsCircularViewer(record({ taxon_lineage_ids: [131567, 2759] })),
+    ).toBe(false);
+    expect(
+      supportsCircularViewer(
+        record({
+          superkingdom: "null",
+          taxon_lineage_ids: [131567, 2157],
+          taxon_lineage_names: ["cellular organisms", "Archaea"],
+        }),
+      ),
+    ).toBe(true);
+    expect(
+      supportsCircularViewer(
+        record({ superkingdom: "null", taxon_lineage_ids: ["10239"] }),
+      ),
+    ).toBe(false);
+    expect(
+      supportsCircularViewer(
+        record({
+          superkingdom: "null",
+          taxon_lineage_names: ["cellular organisms", "Eukaryota"],
+        }),
+      ),
+    ).toBe(false);
+    expect(supportsCircularViewer(record({}))).toBe(true);
+  });
+
+  it("sits after the Genome Browser, takes legacy's tab name, and falls back when disabled", () => {
+    const bacterial = record({ superkingdom: "Bacteria" });
+    const viral = record({ genome_id: "1282460.2049", superkingdom: "Viruses" });
+    const keys = buildGenomeTabs(bacterial).map((tab) => tab.key);
+    expect(keys.indexOf("circular-viewer")).toBe(
+      keys.indexOf("genome-browser") + 1,
+    );
+    expect(canonicalGenomeTab("circular", bacterial)).toBe("circular-viewer");
+    expect(canonicalGenomeTab("circular-viewer", viral)).toBe("overview");
+    expect(
+      buildGenomeTabs(viral).find((tab) => tab.key === "circular-viewer"),
+    ).toMatchObject({
+      enabled: false,
+      disabledReason:
+        "The Circular Viewer is available for bacterial and archaeal genomes only.",
+    });
+  });
+});
+
+describe("Interactions tab", () => {
+  const record = (fields: Partial<GenomeViewRecord>): GenomeViewRecord => ({
+    genome_id: "83332.12",
+    ...fields,
+  });
+
+  it("offers Interactions by bacterial lineage id when superkingdom is \"null\"", () => {
+    expect(
+      isBacterialGenome(
+        record({ superkingdom: "null", taxon_lineage_ids: [131567, 2, 1224] }),
+      ),
+    ).toBe(true);
+    expect(isBacterialGenome(record({ superkingdom: "null" }))).toBe(false);
   });
 });

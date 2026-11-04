@@ -1,7 +1,7 @@
 import { http, HttpResponse } from "msw";
 import { render, screen, within } from "@testing-library/react";
 
-import TaxonomyPage from "../page";
+import TaxonomyPage, { generateMetadata } from "../page";
 import { TaxonomyNotFoundError } from "@/lib/services/organisms/taxonomy";
 import { server } from "@/test-helpers/msw-server";
 import { connectTimeout, maintenancePage } from "@/test-helpers/upstream-failures";
@@ -32,6 +32,7 @@ const bacterialTaxon = {
   taxonName: "Brucella",
   lineageNames: ["Bacteria", "Pseudomonadota", "Brucella"],
   lineageIds: [2, 1224, 234],
+  lineageRanks: ["domain", "phylum", "genus"],
   taxonRank: "genus",
   genomes: 1909,
 };
@@ -41,6 +42,7 @@ const viralTaxon = {
   taxonName: "Influenza A virus",
   lineageNames: ["Viruses", "Orthomyxoviridae", "Influenza A virus"],
   lineageIds: [10239, 11308, 11320],
+  lineageRanks: ["acellular root", "family", "species"],
   taxonRank: "species",
   genomes: 1834418,
 };
@@ -98,9 +100,13 @@ describe("TaxonomyPage", () => {
 
     render(node);
 
+    // The visible trail's heading, not the empty-trail sr-only fallback.
     expect(
       screen.getByRole("heading", { level: 1, name: "Brucella" }),
-    ).toBeInTheDocument();
+    ).not.toHaveClass("sr-only");
+    expect(
+      screen.getByRole("link", { name: "Pseudomonadota" }),
+    ).toHaveAttribute("href", "/taxonomy/1224");
   });
 
   it("renders the taxonomy tree view when tab=taxa-tree", async () => {
@@ -209,6 +215,30 @@ describe("TaxonomyPage", () => {
     );
   });
 
+  it.each(["interactions", "no-such-tab"])(
+    "falls back to Overview for the unavailable tab %s on a viral taxon",
+    async (tab) => {
+      fetchOrganismTaxonomyMock.mockResolvedValueOnce(viralTaxon);
+      metadataSpy.mockClear();
+
+      const node = await TaxonomyPage({
+        params: Promise.resolve({ taxonId: "11320" }),
+        searchParams: Promise.resolve({ tab }),
+      });
+      render(node);
+
+      expect(metadataSpy).toHaveBeenCalledTimes(1);
+      expect(metadataSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ showAmr: false }),
+      );
+      const current = document.querySelectorAll('[aria-current="page"]');
+      expect(current.length).toBeGreaterThan(0);
+      current.forEach((element) => {
+        expect(element).toHaveTextContent("Overview");
+      });
+    },
+  );
+
   it("calls notFound when fetchOrganismTaxonomy throws TaxonomyNotFoundError", async () => {
     notFoundSpy.mockClear();
     fetchOrganismTaxonomyMock.mockRejectedValueOnce(
@@ -222,6 +252,64 @@ describe("TaxonomyPage", () => {
       }),
     ).rejects.toThrow("NEXT_NOT_FOUND");
     expect(notFoundSpy).toHaveBeenCalled();
+  });
+
+  describe("generateMetadata", () => {
+    it("titles the default tab as BV-BRC does", async () => {
+      await expect(
+        generateMetadata({
+          params: Promise.resolve({ taxonId: "234" }),
+          searchParams: Promise.resolve({}),
+        }),
+      ).resolves.toEqual({ title: "Brucella::Taxonomy Overview" });
+    });
+
+    it("names the tab ?tab= opens by its rail label", async () => {
+      await expect(
+        generateMetadata({
+          params: Promise.resolve({ taxonId: "234" }),
+          searchParams: Promise.resolve({ tab: "amr-phenotypes" }),
+        }),
+      ).resolves.toEqual({ title: "Brucella::Taxonomy AMR Phenotypes" });
+    });
+
+    it.each(["interactions", "no-such-tab"])(
+      "names Overview, which the page opens instead, for ?tab=%s on a viral taxon",
+      async (tab) => {
+        fetchOrganismTaxonomyMock.mockResolvedValueOnce(viralTaxon);
+        await expect(
+          generateMetadata({
+            params: Promise.resolve({ taxonId: "11320" }),
+            searchParams: Promise.resolve({ tab }),
+          }),
+        ).resolves.toEqual({ title: "Influenza A virus::Taxonomy Overview" });
+      },
+    );
+
+    // `{}` leaves the root layout's title; the page reports the failure.
+    it.each([
+      ["a missing taxon", new TaxonomyNotFoundError(999)],
+      ["an outage", new Error("The BV-BRC data service did not respond.")],
+    ])("keeps the app's title for %s without throwing", async (_, error) => {
+      fetchOrganismTaxonomyMock.mockRejectedValueOnce(error);
+      await expect(
+        generateMetadata({
+          params: Promise.resolve({ taxonId: "999" }),
+          searchParams: Promise.resolve({}),
+        }),
+      ).resolves.toEqual({});
+    });
+
+    it("keeps the app's title for an invalid taxon id without a lookup", async () => {
+      await expect(
+        generateMetadata({
+          params: Promise.resolve({ taxonId: "not-a-number" }),
+          searchParams: Promise.resolve({}),
+        }),
+      ).resolves.toEqual({});
+      expect(fetchOrganismTaxonomyMock).not.toHaveBeenCalled();
+      expect(notFoundSpy).not.toHaveBeenCalled();
+    });
   });
 
   describe("when the taxonomy lookup fails upstream", () => {

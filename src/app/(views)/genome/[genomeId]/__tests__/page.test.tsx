@@ -1,9 +1,10 @@
-import { render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { DataApiError } from "@/lib/data-api/repository";
 
 const mocks = vi.hoisted(() => ({
   getGenome: vi.fn(),
+  getTaxonomy: vi.fn(),
   notFound: vi.fn(() => {
     throw new Error("NEXT_NOT_FOUND");
   }),
@@ -19,6 +20,9 @@ vi.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams(),
 }));
 vi.mock("@/lib/genome-view/server", () => ({ getGenome: mocks.getGenome }));
+vi.mock("@/lib/taxonomy-view/server", () => ({
+  getTaxonomy: mocks.getTaxonomy,
+}));
 vi.mock("@/components/views", async (importOriginal) => {
   const original = await importOriginal<typeof import("@/components/views")>();
   return {
@@ -70,6 +74,8 @@ describe("Genome member route", () => {
     mocks.getGenome.mockReset();
     mocks.notFound.mockClear();
     mocks.redirect.mockClear();
+    mocks.getTaxonomy.mockReset();
+    mocks.getTaxonomy.mockResolvedValue(null);
     mocks.getGenome.mockResolvedValue({
       genome_id: "83332.12",
       genome_name: "E. coli",
@@ -119,6 +125,152 @@ describe("Genome member route", () => {
       }),
     ).toMatchObject({ title: "E. coli | Genome" });
     expect(mocks.redirect).not.toHaveBeenCalled();
+  });
+
+  it("leads with BV-BRC's breadcrumb: the ranked lineage, then the genome", async () => {
+    mocks.getGenome.mockResolvedValue({
+      genome_id: "1595915.3",
+      genome_name: "Campylobacter sp. 2014D-0259",
+      taxon_id: 1595915,
+      taxon_lineage_ids: [131567, 2, 3379134, 29547, 3031852, 213849, 72294, 194, 2648497, 1595915],
+      taxon_lineage_names: ["cellular organisms", "Bacteria"],
+    });
+    mocks.getTaxonomy.mockResolvedValue({
+      taxon_id: "1595915",
+      lineage_ids: [131567, 2, 3379134, 29547, 3031852, 213849, 72294, 194, 2648497, 1595915],
+      lineage_names: [
+        "cellular organisms",
+        "Bacteria",
+        "Pseudomonadati",
+        "Campylobacterota",
+        "Epsilonproteobacteria",
+        "Campylobacterales",
+        "Campylobacteraceae",
+        "Campylobacter",
+        "unclassified Campylobacter",
+        "Campylobacter sp. 2014D-0259",
+      ],
+      // BV-BRC's taxonomy as of 2026: NCBI ranks Bacteria a "domain", which
+      // legacy's `visibleRanks` predates, so BV-BRC's breadcrumb starts at the phylum.
+      lineage_ranks: [
+        "cellular root",
+        "domain",
+        "kingdom",
+        "phylum",
+        "class",
+        "order",
+        "family",
+        "genus",
+        "no rank",
+        "species",
+      ],
+    });
+    const page = await GenomePage({
+      params: Promise.resolve({ genomeId: "1595915.3" }),
+      searchParams: Promise.resolve({}),
+    });
+    // The lineage streams in behind a Suspense boundary; let it land.
+    await act(async () => {
+      render(page);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    expect(mocks.getTaxonomy).toHaveBeenCalledWith("1595915");
+    const heading = screen.getByRole("heading", {
+      level: 1,
+      name: "Campylobacter sp. 2014D-0259",
+    });
+    expect(
+      [...(heading.parentElement?.querySelectorAll("a") ?? [])].map((link) => [
+        link.textContent,
+        link.getAttribute("href"),
+      ]),
+    ).toEqual([
+      ["Campylobacterota", "/taxonomy/29547"],
+      ["Epsilonproteobacteria", "/taxonomy/3031852"],
+      ["Campylobacterales", "/taxonomy/213849"],
+      ["Campylobacteraceae", "/taxonomy/72294"],
+      ["Campylobacter", "/taxonomy/194"],
+      ["Campylobacter sp. 2014D-0259", "/taxonomy/1595915"],
+    ]);
+  });
+
+  it("repeats a crumb for a repeated rank, as BV-BRC's indexOf does", async () => {
+    const consoleError = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
+    mocks.getGenome.mockResolvedValue({
+      genome_id: "4.1",
+      genome_name: "Leaf genome",
+      taxon_id: 4,
+    });
+    mocks.getTaxonomy.mockResolvedValue({
+      taxon_id: "4",
+      lineage_ids: [1, 2, 3, 4],
+      lineage_names: ["Phylum A", "Class A", "Class B", "Leaf"],
+      lineage_ranks: ["phylum", "class", "class", "no rank"],
+    });
+    const page = await GenomePage({
+      params: Promise.resolve({ genomeId: "4.1" }),
+      searchParams: Promise.resolve({}),
+    });
+    await act(async () => {
+      render(page);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    const heading = screen.getByRole("heading", { level: 1, name: "Leaf genome" });
+    expect(
+      [...(heading.parentElement?.querySelectorAll("a") ?? [])].map((link) => link.textContent),
+    ).toEqual(["Phylum A", "Class A", "Class A"]);
+    expect(consoleError.mock.calls.flat().join(" ")).not.toContain("same key");
+    consoleError.mockRestore();
+  });
+
+  it("keeps the genome's name when the taxonomy lookup fails", async () => {
+    const consoleError = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
+    mocks.getGenome.mockResolvedValue({
+      genome_id: "83332.12",
+      genome_name: "E. coli",
+      taxon_id: 83332,
+    });
+    mocks.getTaxonomy.mockRejectedValue(new Error("Taxonomy unavailable"));
+    const page = await GenomePage({
+      params: Promise.resolve({ genomeId: "83332.12" }),
+      searchParams: Promise.resolve({}),
+    });
+    await act(async () => {
+      render(page);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    const heading = screen.getByRole("heading", { level: 1, name: "E. coli" });
+    expect(heading.parentElement?.querySelectorAll("a")).toHaveLength(0);
+    expect(consoleError).toHaveBeenCalledWith(
+      "genome/83332.12: taxonomy/83332 lookup failed",
+      expect.objectContaining({ message: "Taxonomy unavailable" }),
+    );
+    consoleError.mockRestore();
+  });
+
+  it("shows the genome without waiting for its lineage", async () => {
+    // A stalled taxonomy lookup runs to the Data API's budget; the record has
+    // loaded by then, so only the breadcrumb's taxa wait for it.
+    mocks.getGenome.mockResolvedValue({
+      genome_id: "83332.12",
+      genome_name: "E. coli",
+      taxon_id: 83332,
+    });
+    mocks.getTaxonomy.mockReturnValue(new Promise(() => undefined));
+    render(
+      await GenomePage({
+        params: Promise.resolve({ genomeId: "83332.12" }),
+        searchParams: Promise.resolve({}),
+      }),
+    );
+    expect(
+      screen.getByRole("heading", { level: 1, name: "E. coli" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Assembly summary")).toBeInTheDocument();
   });
 
   it("renders exact-scope child tabs", async () => {

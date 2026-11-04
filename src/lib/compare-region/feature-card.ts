@@ -3,7 +3,7 @@
  * with the gene's record. Here is what the comparison itself says about the
  * gene, written as `genome_feature` fields so the detail panel's sections
  * can show it before (or instead of) the record. Where the card goes is
- * `feature-popup.ts`.
+ * `@/lib/popup-placement`, which `place-feature-popup.ts` applies to it.
  */
 import type { CompareRegionFeature, CompareRegionRow } from "./contract";
 

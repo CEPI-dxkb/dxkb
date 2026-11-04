@@ -21,6 +21,7 @@ export {
   type GenomeBrowserDataRequests,
   type ThemeSurfaces,
 } from "./genome-browser-panel";
+export { CircularViewerPanelPage } from "./circular-viewer-panel";
 export { CompareRegionPage } from "./compare-region-page";
 export { ThemeSwitcher } from "./theme-switcher";
 export { SerologyPage } from "./serology-page";

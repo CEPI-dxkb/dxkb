@@ -15,6 +15,7 @@ export const resourceIdField: Record<string, string> = {
   serology: "id",
   sequence_feature: "id",
   ppi: "id",
+  sp_gene: "id",
   "similar-genome-finder-results": "genome_id",
 };
 

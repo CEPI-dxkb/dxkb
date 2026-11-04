@@ -25,6 +25,7 @@ export const dataResources = [
   "genome_sequence",
   "sequence_feature",
   "ppi",
+  "sp_gene",
 ] as const;
 
 export type DataResource = (typeof dataResources)[number];

@@ -46,6 +46,10 @@ export {
   taxonGenomesScenarioOverrides,
 } from "./catchall";
 export { genomeBrowserScenarioOverrides } from "./genome-browser";
+export {
+  circularViewerFixture,
+  circularViewerScenarioOverrides,
+} from "./circular-viewer";
 export { compareRegionScenarioOverrides } from "./compare-region";
 export { journeyOverrides } from "./journey";
 export {

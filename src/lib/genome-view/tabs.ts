@@ -6,6 +6,7 @@ export const genomeTabKeys = [
   "sequences",
   "interactions",
   "genome-browser",
+  "circular-viewer",
   "features",
   "proteins",
   "domains",
@@ -17,6 +18,7 @@ export type GenomeTab = (typeof genomeTabKeys)[number];
 /** Legacy BV-BRC tab names (`#view_tab=browser`) the server redirects. */
 const legacyGenomeTabs: Partial<Record<string, GenomeTab>> = {
   browser: "genome-browser",
+  circular: "circular-viewer",
 };
 
 export function parseGenomeTab(
@@ -29,14 +31,55 @@ export function parseGenomeTab(
     : "overview";
 }
 
+/** A lineage field is an array or a comma-joined string; either way, trimmed entries. */
+function lineageList(
+  value: string | number | readonly (string | number)[] | undefined,
+): readonly string[] {
+  if (value === undefined) return [];
+  const list = Array.isArray(value) ? value : String(value).split(",");
+  return list.map((entry) => String(entry).trim());
+}
+
+function lineageNames(genome: GenomeViewRecord): readonly string[] {
+  return lineageList(genome.taxon_lineage_names);
+}
+
+function lineageIds(genome: GenomeViewRecord): readonly string[] {
+  return lineageList(genome.taxon_lineage_ids);
+}
+
+/**
+ * A genome is bacterial by its `superkingdom` label or by lineage id `2`, which
+ * also covers a label that is missing, the string `"null"`, or wrong.
+ */
 export function isBacterialGenome(genome: GenomeViewRecord): boolean {
-  return genome.superkingdom?.toLowerCase() === "bacteria";
+  return (
+    genome.superkingdom?.toLowerCase() === "bacteria" ||
+    lineageIds(genome).includes("2")
+  );
+}
+
+/**
+ * Legacy `Genome.js` removed the Circular Viewer tab for viruses
+ * (`changeToVirusContext`) and for eukaryotic host genomes (lineage
+ * `2759`), so archaea, and any genome without lineage data, keep it. The
+ * lineage ids, lineage names, and `superkingdom` each exclude on their own, so
+ * a `"null"` kingdom on a viral record cannot hide the lineage.
+ */
+export function supportsCircularViewer(genome: GenomeViewRecord): boolean {
+  const ids = lineageIds(genome);
+  if (ids.includes("10239") || ids.includes("2759")) return false;
+  const names = lineageNames(genome);
+  if (names.includes("Viruses") || names.includes("Eukaryota")) return false;
+  const kingdom = genome.superkingdom?.toLowerCase();
+  return kingdom !== "viruses" && kingdom !== "eukaryota";
 }
 
 export function buildGenomeTabs(
   genome: GenomeViewRecord,
 ): readonly EntityViewTab<GenomeTab>[] {
   const bacterial = isBacterialGenome(genome);
+  const circular = supportsCircularViewer(genome);
   return [
     { key: "overview", label: "Overview" },
     { key: "sequences", label: "Sequences" },
@@ -49,6 +92,14 @@ export function buildGenomeTabs(
         : "Interactions are currently available for bacterial genomes only.",
     },
     { key: "genome-browser", label: "Genome Browser" },
+    {
+      key: "circular-viewer",
+      label: "Circular Viewer",
+      enabled: circular,
+      disabledReason: circular
+        ? undefined
+        : "The Circular Viewer is available for bacterial and archaeal genomes only.",
+    },
     { key: "features", label: "Features" },
     { key: "proteins", label: "Proteins" },
     { key: "domains", label: "Domains and Motifs" },

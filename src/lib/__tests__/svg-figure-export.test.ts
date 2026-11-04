@@ -1,8 +1,8 @@
 import {
   canvasToSrgb,
-  exportCompareRegionFigure as exportWithConverter,
+  exportSvgFigure as exportWithConverter,
   type SrgbColor,
-} from "../compare-region-export";
+} from "../svg-figure-export";
 
 const download = vi.hoisted(() => ({
   blob: vi.fn<(blob: Blob, fileName: string) => void>(),
@@ -39,7 +39,7 @@ function fakeSrgb(color: string): SrgbColor | null {
 }
 
 /** The export, converting colors with `fakeSrgb`, so no test touches a canvas. */
-function exportCompareRegionFigure(svg: SVGSVGElement, fileName: string) {
+function exportSvgFigure(svg: SVGSVGElement, fileName: string) {
   exportWithConverter(svg, fileName, fakeSrgb);
 }
 
@@ -86,9 +86,9 @@ beforeEach(() => {
   document.body.innerHTML = "";
 });
 
-describe("exportCompareRegionFigure", () => {
+describe("exportSvgFigure", () => {
   it("downloads the figure as an SVG file in the SVG namespace", async () => {
-    exportCompareRegionFigure(figure(), "compare-regions-fig_1.1.peg.2.svg");
+    exportSvgFigure(figure(), "compare-regions-fig_1.1.peg.2.svg");
 
     const { blob, fileName, markup, root } = await downloaded();
     expect(fileName).toBe("compare-regions-fig_1.1.peg.2.svg");
@@ -99,7 +99,7 @@ describe("exportCompareRegionFigure", () => {
   });
 
   it("exports a picture: the figure an image, its genes no longer buttons", async () => {
-    exportCompareRegionFigure(figure(), "figure.svg");
+    exportSvgFigure(figure(), "figure.svg");
 
     const { root } = await downloaded();
     expect(root.getAttribute("role")).toBe("img");
@@ -112,7 +112,7 @@ describe("exportCompareRegionFigure", () => {
   });
 
   it("drops the hover overlays: the trace, the row tint and the rings", async () => {
-    exportCompareRegionFigure(figure(), "figure.svg");
+    exportSvgFigure(figure(), "figure.svg");
 
     const { root } = await downloaded();
     expect(root.querySelectorAll("[data-overlay]")).toHaveLength(0);
@@ -122,7 +122,7 @@ describe("exportCompareRegionFigure", () => {
   });
 
   it("puts the sticky label column and ruler back in place", async () => {
-    exportCompareRegionFigure(figure(), "figure.svg");
+    exportSvgFigure(figure(), "figure.svg");
 
     const { root } = await downloaded();
     const sticky = [...root.querySelectorAll("[data-sticky]")];
@@ -133,7 +133,7 @@ describe("exportCompareRegionFigure", () => {
   });
 
   it("resolves every class, the root's too, and leaves none", async () => {
-    exportCompareRegionFigure(figure(), "figure.svg");
+    exportSvgFigure(figure(), "figure.svg");
 
     // jsdom resolves no class (Vitest loads no CSS), so the colors themselves
     // are the browser's to check; here, that every class is gone.
@@ -144,7 +144,7 @@ describe("exportCompareRegionFigure", () => {
   });
 
   it("declares the SVG namespace once, so the file parses", async () => {
-    exportCompareRegionFigure(figure(), "figure.svg");
+    exportSvgFigure(figure(), "figure.svg");
 
     const { markup, root } = await downloaded();
     expect(markup.match(/xmlns=/g)).toHaveLength(1);
@@ -152,7 +152,7 @@ describe("exportCompareRegionFigure", () => {
   });
 
   it("sets text the figure shows in capitals in capitals", async () => {
-    exportCompareRegionFigure(figure(), "figure.svg");
+    exportSvgFigure(figure(), "figure.svg");
 
     const { root } = await downloaded();
     const texts = [...root.querySelectorAll("text")].map(
@@ -164,7 +164,8 @@ describe("exportCompareRegionFigure", () => {
   it("writes the fonts on every text and tspan, inherited ones too", async () => {
     // jsdom computes (and inherits) font-weight from a stylesheet.
     const style = document.createElement("style");
-    style.textContent = ".font-medium { font-weight: 500; }";
+    style.textContent =
+      ".font-medium { font-weight: 500; } .text-3xs { font-size: 10px; }";
     document.head.append(style);
     try {
       const svg = figure();
@@ -173,7 +174,12 @@ describe("exportCompareRegionFigure", () => {
         "beforeend",
         '<g class="font-medium"><text>Genome</text><text><tspan>strain</tspan></text></g>',
       );
-      exportCompareRegionFigure(svg, "figure.svg");
+      // A size from a class, as the Circular Viewer's position labels set it.
+      svg.insertAdjacentHTML(
+        "beforeend",
+        '<g><text class="text-3xs">1.5</text></g>',
+      );
+      exportSvgFigure(svg, "figure.svg");
 
       const { root } = await downloaded();
       const texts = [...root.querySelectorAll("text, tspan")];
@@ -187,9 +193,12 @@ describe("exportCompareRegionFigure", () => {
       expect(weightOf("Genome", "text")).toBe("500");
       expect(weightOf("strain", "text")).toBe("500");
       expect(weightOf("strain", "tspan")).toBe("500");
-      // Every text and tspan gets the four font attributes.
+      const label = texts.find((element) => element.textContent === "1.5");
+      expect(label?.getAttribute("font-size")).toBe("10px");
+      // Every text and tspan gets the five font attributes.
       const fontAttributes = [
         "font-family",
+        "font-size",
         "font-weight",
         "font-style",
         "letter-spacing",
@@ -217,7 +226,7 @@ describe("exportCompareRegionFigure", () => {
       if (!tspan) throw new Error("no tspan");
       tspan.textContent = "strain";
       tspan.setAttribute("class", "fill-muted-foreground dark:uppercase");
-      exportCompareRegionFigure(svg, "figure.svg");
+      exportSvgFigure(svg, "figure.svg");
 
       const { root } = await downloaded();
       expect(root.querySelector("tspan")?.textContent).toBe("strain");
@@ -227,13 +236,57 @@ describe("exportCompareRegionFigure", () => {
     }
   });
 
+  it("exports an animated element at rest, not at its animation's first frame", async () => {
+    // jsdom runs no animations: a stylesheet stands in for the first frame,
+    // which the copy would start again from in the host.
+    const style = document.createElement("style");
+    style.textContent = String.raw`.animate-circular-track-sweep, .animate-pulse { opacity: 0; }`;
+    document.head.append(style);
+    try {
+      const svg = figure();
+      const tspan = svg.querySelector("tspan");
+      if (!tspan) throw new Error("no tspan");
+      tspan.setAttribute("class", "fill-muted-foreground animate-circular-track-sweep");
+      svg.querySelector("text")?.setAttribute("class", "animate-pulse");
+      exportSvgFigure(svg, "figure.svg");
+
+      const { root } = await downloaded();
+      expect(root.querySelector("tspan")?.getAttribute("opacity")).toBe("1");
+      expect(root.querySelector("text")?.getAttribute("opacity")).toBe("1");
+    } finally {
+      style.remove();
+    }
+  });
+
+  it("drops a sweep mask and the references to it, so marks exported mid-sweep are whole", async () => {
+    // Its class sets `mask-type: alpha`, which resolving the classes would not
+    // keep: as a luminance mask, its dark currentColor circle hides the marks.
+    const svg = figure();
+    svg.insertAdjacentHTML(
+      "beforeend",
+      `<mask id="«r1»" data-sweep="" class="mask-type-alpha"><circle class="animate-circular-track-sweep" stroke="currentColor"></circle></mask>
+      <g id="swept" mask="url(#«r1»)"><path d="M1 1"></path></g>
+      <mask id="kept"><rect fill="white"></rect></mask>
+      <g id="masked" mask="url(#kept)"></g>`,
+    );
+    exportSvgFigure(svg, "figure.svg");
+
+    const { root } = await downloaded();
+    expect([...root.querySelectorAll("mask")].map((mask) => mask.id)).toEqual(["kept"]);
+    expect(root.querySelector("#swept")?.hasAttribute("mask")).toBe(false);
+    expect(root.querySelector('#swept path[d="M1 1"]')).not.toBeNull();
+    expect(root.querySelector("#masked")?.getAttribute("mask")).toBe("url(#kept)");
+    // The figure on the page keeps its sweep.
+    expect(svg.querySelector("mask[data-sweep]")).not.toBeNull();
+  });
+
   it("resolves the classes under a light-theme host, then removes it", () => {
     let hostDuringExport: Element | null = null;
     download.blob.mockImplementation(() => {
       hostDuringExport = document.querySelector('[data-theme="dxkb-light"]');
     });
 
-    exportCompareRegionFigure(figure(), "figure.svg");
+    exportSvgFigure(figure(), "figure.svg");
 
     expect(hostDuringExport).not.toBeNull();
     expect(hostDuringExport).toHaveAttribute("aria-hidden", "true");
@@ -246,14 +299,14 @@ describe("exportCompareRegionFigure", () => {
     });
 
     expect(() => {
-      exportCompareRegionFigure(figure(), "figure.svg");
+      exportSvgFigure(figure(), "figure.svg");
     }).toThrow("Downloads are blocked");
     expect(document.querySelector('[data-theme="dxkb-light"]')).toBeNull();
   });
 
   it("leaves the figure on the page as it was", () => {
     const svg = figure();
-    exportCompareRegionFigure(svg, "figure.svg");
+    exportSvgFigure(svg, "figure.svg");
 
     expect(svg).toHaveAttribute("class", "block text-foreground");
     expect(svg.querySelectorAll("[data-overlay]")).toHaveLength(2);
@@ -273,7 +326,7 @@ describe("exportCompareRegionFigure", () => {
         <stop stop-color="oklch(0.73 0.12 212)"></stop>
       </g>`,
     );
-    exportCompareRegionFigure(svg, "figure.svg");
+    exportSvgFigure(svg, "figure.svg");
 
     const { markup, root } = await downloaded();
     expect(markup).not.toMatch(/oklch\(|lab\(|lch\(|color-mix\(/);
@@ -295,7 +348,7 @@ describe("exportCompareRegionFigure", () => {
       "beforeend",
       '<rect fill="oklch(71.57% 0.182 37.18 / 0.5)" fill-opacity="0.5" stroke="oklch(71.57% 0.182 37.18 / 0.5)"></rect>',
     );
-    exportCompareRegionFigure(svg, "figure.svg");
+    exportSvgFigure(svg, "figure.svg");
 
     const { root } = await downloaded();
     const rect = root.querySelector('rect[fill-opacity="0.25"]');
@@ -310,7 +363,7 @@ describe("exportCompareRegionFigure", () => {
       "beforeend",
       '<g id="paints"><path fill="none" stroke="currentColor"></path><path fill="url(#ribbon)" stroke="rgba(0, 0, 0, 0)"></path></g>',
     );
-    exportCompareRegionFigure(svg, "figure.svg");
+    exportSvgFigure(svg, "figure.svg");
 
     const { root } = await downloaded();
     const [plain, patterned] = root.querySelectorAll("#paints > path");

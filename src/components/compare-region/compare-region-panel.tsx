@@ -35,7 +35,7 @@ import { useUiPreference } from "@/lib/ui-preferences/provider";
 import { formatUserFacingErrorMessage } from "@/lib/utils";
 import { CompareRegionChart } from "./compare-region-chart";
 import { CommandBar } from "./compare-region-command-bar";
-import { exportCompareRegionFigure } from "./compare-region-export";
+import { exportSvgFigure } from "@/lib/svg-figure-export";
 import type { ZoomControls } from "./compare-region-zoom-controls";
 import { useCompareRegionSettings } from "./use-compare-region-settings";
 
@@ -224,7 +224,7 @@ export function CompareRegionPanel({ patricId }: CompareRegionPanelProps) {
           density={density}
           onDensityChange={setDensity}
           onExport={(svg) => {
-            exportCompareRegionFigure(
+            exportSvgFigure(
               svg,
               `compare-regions-${patricId.replace(/[^\w.-]+/g, "_")}.svg`,
             );

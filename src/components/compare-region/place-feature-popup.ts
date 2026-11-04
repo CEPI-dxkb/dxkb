@@ -4,17 +4,20 @@
  * density switch, or hides it while the gene is out of view. Written to the
  * element (custom properties `--popup-x`, `--popup-y`, `--popup-max-h` and
  * `--popup-max-w`, and `data-offscreen`), not through React, so following
- * the gene re-renders nothing. The rules are `feature-popup.ts`'s.
+ * the gene re-renders nothing. The rules are `feature-popup.ts`'s and `popup-placement.ts`'s.
  */
 import { rulerHeight } from "@/lib/compare-region/density";
 import type { FeatureRef } from "@/lib/compare-region/families";
 import {
   featureCardMinRoom,
-  featurePopupMaxWidth,
-  featurePopupSide,
+  featurePopupGap,
   glyphInView,
-  placeFeaturePopup,
 } from "@/lib/compare-region/feature-popup";
+import {
+  placePopup,
+  popupMaxWidth,
+  popupSide,
+} from "@/lib/popup-placement";
 
 interface PlaceFeaturePopupOptions {
   popup: HTMLElement | null;
@@ -57,7 +60,7 @@ export function placeFeaturePopupElement({
   // The width first: it sets the popup's height, and its size is measured below.
   popup.style.setProperty(
     "--popup-max-w",
-    `${String(featurePopupMaxWidth(rootBox.width))}px`,
+    `${String(popupMaxWidth(rootBox.width))}px`,
   );
   const scrollerBox = scroller.getBoundingClientRect();
   const left = scrollerBox.left - rootBox.left;
@@ -86,13 +89,19 @@ export function placeFeaturePopupElement({
   // From the figure's top down: the command bar and the strip stay in reach.
   const bounds = { width: rootBox.width, top, bottom: rootBox.height };
   // The height first: the room on its side limits the card's.
-  const { below, room } = featurePopupSide(glyph, bounds, neededHeight(popup));
-  popup.style.setProperty("--popup-max-h", `${String(room)}px`);
-  const { x, y } = placeFeaturePopup({
+  const { below, room } = popupSide(
     glyph,
+    bounds,
+    neededHeight(popup),
+    featurePopupGap,
+  );
+  popup.style.setProperty("--popup-max-h", `${String(room)}px`);
+  const { x, y } = placePopup({
+    box: glyph,
     size: { width: popup.offsetWidth, height: popup.offsetHeight },
     bounds,
     below,
+    gap: featurePopupGap,
   });
   popup.style.setProperty("--popup-x", `${String(x)}px`);
   popup.style.setProperty("--popup-y", `${String(y)}px`);

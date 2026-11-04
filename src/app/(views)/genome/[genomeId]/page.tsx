@@ -9,6 +9,7 @@ import {
   type GenomeViewRecord,
 } from "@/lib/genome-view";
 import { getGenome } from "@/lib/genome-view/server";
+import { loadLineageCrumbs } from "@/lib/taxonomy-view/lineage-server";
 import { genomeHref } from "@/lib/views/hrefs";
 import type { SearchParamsRecord } from "@/lib/views/rql";
 import {
@@ -92,5 +93,13 @@ export default async function GenomePage({
       `${genomeHref(genome.genome_id)}${canonicalQuery ? `?${canonicalQuery}` : ""}`,
     );
   }
-  return <GenomeMember genome={genome} activeTab={activeTab} />;
+  return (
+    <GenomeMember
+      genome={genome}
+      // The genome record names its lineage but not the ranks BV-BRC's
+      // breadcrumb keeps; its taxon's taxonomy record has both.
+      lineage={loadLineageCrumbs(String(genome.taxon_id ?? ""), `genome/${genome.genome_id}`)}
+      activeTab={activeTab}
+    />
+  );
 }

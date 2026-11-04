@@ -27,6 +27,7 @@ export {
   genomeRecordSchema,
   genomeSequenceRecordSchema,
   ppiRecordSchema,
+  spGeneRecordSchema,
   proteinFeatureRecordSchema,
   proteinStructureRecordSchema,
   serologyRecordSchema,

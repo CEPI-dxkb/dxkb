@@ -25,6 +25,7 @@ import {
   genomeRecordSchema,
   genomeSequenceRecordSchema,
   ppiRecordSchema,
+  spGeneRecordSchema,
   proteinFeatureRecordSchema,
   proteinStructureRecordSchema,
   serologyRecordSchema,
@@ -58,6 +59,7 @@ const ids: Record<DataResource, string> = {
   genome_sequence: "sequence_id",
   sequence_feature: "id",
   ppi: "id",
+  sp_gene: "id",
 };
 
 const alternateIdentifiers: Partial<Record<DataResource, readonly string[]>> = {
@@ -212,6 +214,7 @@ const schemas: Record<DataResource, ResourceDefinition["schema"]> = {
   genome_sequence: genomeSequenceRecordSchema,
   sequence_feature: sequenceFeatureRecordSchema,
   ppi: ppiRecordSchema,
+  sp_gene: spGeneRecordSchema,
 };
 
 function inferType(name: string): FieldType {

@@ -92,19 +92,24 @@ test.describe("taxonomy geographic distribution map", () => {
     ).toBe(true);
   });
 
-  test("breadcrumb ancestor links navigate to the corresponding /taxonomy/<id>", async ({ page }) => {
+  test("breadcrumb shows BV-BRC's ranked lineage with /taxonomy/<id> links", async ({ page }) => {
     await page.goto("/taxonomy/234");
 
-    // The taxon-breadcrumb shows ancestors as links. From Brucella, the bvbrc-website
-    // fixture exposes a Bacteria ancestor with id=2.
-    const bacteriaLink = page.getByRole("link", { name: "Bacteria", exact: true });
-    await expect(bacteriaLink).toBeVisible();
-    await expect(bacteriaLink).toHaveAttribute("href", "/taxonomy/2");
-
-    // Clicking should navigate to the bacteria page (also a /taxonomy/<id> route).
-    await bacteriaLink.click();
-    await expect(page).toHaveURL(/\/taxonomy\/2/);
-    // The shell mounts the same OrganismLandingShell with a refreshed taxon header.
-    await expect(page.getByRole("heading", { level: 1, name: "Bacteria" })).toBeVisible();
+    // BV-BRC's Taxon View keeps phylum … species only: no "cellular
+    // organisms" root and no "Bacteria" domain (lineage-crumbs.ts).
+    const heading = page.getByRole("heading", { level: 1, name: "Brucella" });
+    await expect(heading).toBeVisible();
+    const trail = heading.locator("..");
+    await expect(trail.getByRole("link")).toHaveText([
+      "Pseudomonadota",
+      "Alphaproteobacteria",
+      "Hyphomicrobiales",
+      "Brucellaceae",
+    ]);
+    await expect(trail.getByRole("link", { name: "Pseudomonadota" })).toHaveAttribute(
+      "href",
+      "/taxonomy/1224",
+    );
+    await expect(trail.getByRole("link", { name: "Bacteria", exact: true })).toHaveCount(0);
   });
 });

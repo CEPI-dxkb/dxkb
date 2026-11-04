@@ -44,6 +44,10 @@ vi.mock("@/lib/genome-view/server", () => ({
     }),
   ),
 }));
+// The breadcrumb's lineage lookup (`loadLineageCrumbs`); the scaffold genome names no taxon.
+vi.mock("@/lib/taxonomy-view/server", () => ({
+  getTaxonomy: vi.fn(() => Promise.resolve(null)),
+}));
 
 beforeEach(() => {
   notFoundSpy.mockClear();

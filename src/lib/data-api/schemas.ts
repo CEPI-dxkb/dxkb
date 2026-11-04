@@ -212,3 +212,8 @@ export const sequenceFeatureRecordSchema = z.looseObject({
 export const ppiRecordSchema = z.looseObject({
   id: identifier,
 });
+
+/** One `sp_gene` row: a specialty gene as one source lists it (a gene can have several). */
+export const spGeneRecordSchema = z.looseObject({
+  id: identifier,
+});

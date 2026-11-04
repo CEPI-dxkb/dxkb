@@ -1,9 +1,9 @@
 /**
- * The Compare Region Viewer's figure as a standalone SVG file. The figure is
- * drawn with theme classes, which mean nothing outside the page, so a copy is
- * resolved under an off-screen light-theme host first: every class becomes
- * the colors and fonts it computes to there. Exports always use DXKB's light
- * theme, whatever the page's. Every color is then written as sRGB: browsers
+ * A viewer's figure (Compare Region, Circular Viewer) as a standalone SVG
+ * file. The figure is drawn with theme classes, which mean nothing outside
+ * the page, so a copy is resolved under an off-screen light-theme host first:
+ * every class becomes the colors and fonts it computes to there. Exports
+ * always use DXKB's light theme, whatever the page's. Every color is then written as sRGB: browsers
  * compute theme tokens and the data colors as `oklch()` / `lab()`, which
  * Illustrator, Office, LibreOffice and many SVG-to-PDF tools cannot read.
  */
@@ -117,16 +117,42 @@ function lightThemeHost(): HTMLDivElement {
 }
 
 /**
- * The `dark:` variant matches anything under a dark-themed <html>, the light
- * host included (it reads the nearest `data-theme` ending in `-dark`, not the
- * closest `data-theme`): drop those classes so the copy computes as it would
- * in the light theme.
+ * Two kinds of class the copy must not compute with. The `dark:` variant
+ * matches anything under a dark-themed <html>, the light host included (it
+ * reads the nearest `data-theme` ending in `-dark`, not the closest
+ * `data-theme`): without it the copy computes as in the light theme. An
+ * animation (`animate-*`, `motion-safe:animate-*`) starts again on the copy,
+ * which would export its first frame (the Circular Viewer's rings at opacity
+ * 0): without it the copy computes at rest.
  */
-function dropDarkVariants(copy: SVGSVGElement): void {
+function dropLiveOnlyClasses(copy: SVGSVGElement): void {
   for (const element of [copy, ...copy.querySelectorAll("[class]")]) {
     for (const name of [...element.classList]) {
-      if (name.startsWith("dark:")) element.classList.remove(name);
+      const utility = name.slice(name.lastIndexOf(":") + 1);
+      if (name.startsWith("dark:") || utility.startsWith("animate-")) {
+        element.classList.remove(name);
+      }
     }
+  }
+}
+
+/**
+ * A mask that only sweeps marks into view (`data-sweep`, the Circular
+ * Viewer's rings while their data arrives) is dropped with every `mask`
+ * reference to it: at rest it uncovers all the marks, so the file draws them
+ * unmasked. Kept, it would lose its class's `mask-type: alpha` and work as a
+ * luminance mask, whose dark `currentColor` circle hides what it masks.
+ */
+function dropSweepMasks(copy: SVGSVGElement): void {
+  const references = new Set<string>();
+  for (const mask of copy.querySelectorAll("mask[data-sweep]")) {
+    references.add(`url(#${mask.id})`);
+    mask.remove();
+  }
+  if (references.size === 0) return;
+  for (const element of copy.querySelectorAll("[mask]")) {
+    const reference = element.getAttribute("mask")?.trim() ?? "";
+    if (references.has(reference)) element.removeAttribute("mask");
   }
 }
 
@@ -145,12 +171,15 @@ function uppercaseText(copy: SVGSVGElement): void {
 /**
  * Every class as the paint it computes to, then no class. Fonts go on every
  * text and tspan (Compact's genome line sets the strain in a tspan), since
- * they also inherit them from a classed group.
+ * they also inherit them from a classed group: the size too, which a class
+ * such as `text-3xs` sets (the Circular Viewer's position labels), and which
+ * a `font-size` attribute computes to unchanged.
  */
 function resolveClasses(copy: SVGSVGElement): void {
   for (const element of copy.querySelectorAll("text, tspan")) {
     const style = getComputedStyle(element);
     element.setAttribute("font-family", style.fontFamily);
+    element.setAttribute("font-size", style.fontSize);
     element.setAttribute("font-weight", style.fontWeight);
     element.setAttribute("font-style", style.fontStyle);
     element.setAttribute("letter-spacing", style.letterSpacing);
@@ -169,11 +198,12 @@ function resolveClasses(copy: SVGSVGElement): void {
 
 /**
  * Downloads `svg` (the chart's figure) as `fileName`: the hover overlays
- * (`data-overlay`) dropped, the sticky label column and ruler (`data-sticky`)
- * back in place, every theme class resolved to light-theme colors, and every
+ * (`data-overlay`) and sweep masks (`data-sweep`) dropped, the sticky label
+ * column and ruler (`data-sticky`) back in place, every theme class resolved
+ * to light-theme colors, and every
  * color written as sRGB through `toSrgb` (tests pass one; jsdom has no canvas).
  */
-export function exportCompareRegionFigure(
+export function exportSvgFigure(
   svg: SVGSVGElement,
   fileName: string,
   toSrgb: ToSrgb = canvasToSrgb(),
@@ -190,7 +220,8 @@ export function exportCompareRegionFigure(
   for (const node of copy.querySelectorAll("[data-sticky]")) {
     node.removeAttribute("transform");
   }
-  dropDarkVariants(copy);
+  dropSweepMasks(copy);
+  dropLiveOnlyClasses(copy);
   const host = lightThemeHost();
   host.append(copy);
   document.body.append(host);

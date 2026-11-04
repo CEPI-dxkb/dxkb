@@ -221,6 +221,37 @@
 }
 
 /* ---------------------------------------------------------------------------
+ * Right panel icon strip & controls
+ * ------------------------------------------------------------------------- */
+
+.msp-plugin.msp-plugin .msp-right-panel-controls-buttons {
+  background: var(--background);
+  border-left: 1px solid var(--border);
+}
+
+.msp-plugin.msp-plugin .msp-right-panel-controls-buttons button {
+  color: var(--muted-foreground);
+}
+
+.msp-plugin.msp-plugin .msp-right-panel-controls-buttons button:hover {
+  color: var(--msp-accent);
+}
+
+.msp-plugin.msp-plugin .msp-right-panel-controls-buttons .msp-btn-link-toggle-on {
+  color: var(--msp-accent);
+}
+
+.msp-plugin.msp-plugin .msp-layout-region.msp-layout-right button:not(.msp-btn-remove):not(.msp-btn-commit-on):not(.msp-btn-link-toggle-on) {
+  color: var(--muted-foreground) !important;
+  background: transparent !important;
+}
+
+.msp-plugin.msp-plugin .msp-layout-region.msp-layout-right button:not(.msp-btn-remove):not(.msp-btn-commit-on):not(.msp-btn-link-toggle-on):hover {
+  color: var(--msp-accent) !important;
+  background: transparent !important;
+}
+
+/* ---------------------------------------------------------------------------
  * Control rows (label + value rows in settings)
  * ------------------------------------------------------------------------- */
 

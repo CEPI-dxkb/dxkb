@@ -18,9 +18,9 @@ import {
   featureHeaderParts,
   type FeatureTab,
   type FeatureViewRecord,
-  type LineageCrumb,
 } from "@/lib/feature-view";
 import { featureProteinStructureRql } from "@/lib/protein-structure-view";
+import type { LineageCrumb } from "@/lib/taxonomy-view";
 import {
   featureDomainsRql,
   featureInteractionsRql,
@@ -46,8 +46,8 @@ interface CrumbTrailProps {
 
 /** The taxon lineage and the genome as one breadcrumb, root first. */
 function CrumbTrail({ feature, lineage }: CrumbTrailProps) {
-  const crumbs = lineage.map(({ taxonId, name }) => ({
-    key: `taxon-${taxonId}`,
+  const crumbs = lineage.map(({ taxonId, name }, index) => ({
+    key: `taxon-${String(index)}-${taxonId}`,
     href: taxonomyHref(taxonId),
     label: name,
   }));
@@ -124,7 +124,7 @@ function breadcrumbs(
 interface FeatureMemberProps {
   feature: FeatureViewRecord;
   /**
-   * The taxa leading the breadcrumb, root first (see `featureLineageCrumbs`).
+   * The taxa leading the breadcrumb, root first (see `lineageCrumbs`).
    * A promise, so a slow taxonomy lookup holds the breadcrumb, not the page.
    */
   lineage: Promise<readonly LineageCrumb[]>;

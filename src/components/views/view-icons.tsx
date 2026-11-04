@@ -3,6 +3,7 @@ import {
   Binary,
   Blocks,
   ChartNoAxesCombined,
+  CircleDashed,
   Database,
   Dna,
   FlaskConical,
@@ -54,6 +55,7 @@ export const viewIcons = {
   serology: <TestTube />,
   interactions: <Handshake />,
   genomeBrowser: <ScanLine />,
+  circularViewer: <CircleDashed />,
   compareRegion: <GitCompareArrows />,
   transcriptomics: <ChartNoAxesCombined />,
 } as const satisfies Record<string, ReactNode>;

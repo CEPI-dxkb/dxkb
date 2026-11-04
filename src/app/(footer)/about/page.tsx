@@ -1,5 +1,4 @@
 import React from "react";
-import Image from "next/image";
 import FooterHeader from "@/components/headers/footer-header";
 
 const About = () => {
@@ -7,7 +6,7 @@ const About = () => {
     <div id="about-container">
       <FooterHeader title="About DXKB" />
       <div className="about-section">
-        <div id="about-text" className="flex flex-col gap-4 text-sm md:text-lg">
+        <div id="about-text" className="flex flex-col gap-4 text-center text-sm md:text-lg">
           <p>
             The Disease X Knowledge Base (DXKB) is an information system designed
             to support the discovery and development of immunogens for vaccine
@@ -22,15 +21,6 @@ const About = () => {
             is freely available to the public.
           </p>
         </div>
-
-        <Image
-          src="/images/workshop.jpg"
-          alt="BV-BRC Workshop 2024 participants"
-          className="w-full max-w-150 justify-self-center rounded-xl"
-          quality={100}
-          width={600}
-          height={400}
-        />
       </div>
     </div>
   );

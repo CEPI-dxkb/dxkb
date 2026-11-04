@@ -6,6 +6,7 @@ import {
   ambiguousSerologyRecords,
   ambiguousSurveillanceRecords,
   bacteriaSummaryRecord,
+  bacterialGenomeRecord,
   brucellaPpiTotal,
   epitopeRecord,
   experimentRecord,
@@ -327,11 +328,18 @@ function maybeSolrCount(
   }
   const numFound = e2eDeterministicCounts[core];
   if (typeof numFound !== "number") return null;
-  const isGenomeFixtureQuery =
-    core === "genome" &&
-    (equalsValue(query, "genome_id") === genomeRecord.genome_id ||
-      (hasKeyword(query, "MERS*") &&
-        hasClause(query, "sort(+genome_name,+genome_id)")));
+  const requestedGenomeId =
+    core === "genome" ? equalsValue(query, "genome_id") : undefined;
+  const genomeFixture =
+    core !== "genome"
+      ? undefined
+      : ([genomeRecord, bacterialGenomeRecord].find(
+          (record) => record.genome_id === requestedGenomeId,
+        ) ??
+        (hasKeyword(query, "MERS*") &&
+        hasClause(query, "sort(+genome_name,+genome_id)")
+          ? genomeRecord
+          : undefined));
   const itemRange = (
     request.headers.get("range") ?? request.headers.get("x-range")
   )?.match(/^items=(\d+)-(\d+)$/i);
@@ -348,8 +356,8 @@ function maybeSolrCount(
     (equalsValue(query, "feature_id") === genomeFeatureRecord.feature_id ||
       equalsValue(query, "patric_id") === genomeFeatureRecord.patric_id);
   const docs: unknown[] = includesFixtureRow
-    ? isGenomeFixtureQuery
-      ? [genomeRecord]
+    ? genomeFixture
+      ? [genomeFixture]
       : isEpitopeFixtureQuery
         ? [epitopeRecord]
         : isFeatureFixtureQuery

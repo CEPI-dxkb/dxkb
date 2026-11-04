@@ -11,6 +11,7 @@ import {
   genomeRecordSchema,
   proteinStructureRecordSchema,
   serologyRecordSchema,
+  spGeneRecordSchema,
   strainRecordSchema,
   surveillanceRecordSchema,
   taxonomyRecordSchema,
@@ -24,6 +25,17 @@ import {
 } from "../validation";
 
 describe("data API contracts", () => {
+  it("registers Specialty Genes by their row id", () => {
+    expect(resourceRegistry.sp_gene.idField).toBe("id");
+    expect(
+      spGeneRecordSchema.parse({
+        id: "4191b159-1eb7-43b0-854a-acc1c4a46d3a",
+        feature_id: "PATRIC.83332.12.NC_000962.CDS.1520005.1521876.rev",
+        property: "Virulence Factor",
+      }),
+    ).toMatchObject({ property: "Virulence Factor" });
+  });
+
   it("registers every required resource with an allowed stable ID", () => {
     expect(Object.keys(resourceRegistry).sort()).toEqual(
       [...dataResources].sort(),

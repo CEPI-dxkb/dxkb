@@ -44,6 +44,7 @@ describe("fetchOrganismTaxonomy", () => {
       taxonName: "Bacteria",
       lineageNames: ["cellular organisms", "Bacteria"],
       lineageIds: [],
+      lineageRanks: [],
       taxonRank: "superkingdom",
       genomes: 99,
     });
@@ -142,6 +143,27 @@ describe("fetchOrganismTaxonomy", () => {
     const result = await fetchOrganismTaxonomy(234);
     expect(result.lineageIds).toEqual([2, 234]);
   });
+
+  it("keeps lineage_ranks aligned with the lineage, position for position", async () => {
+    server.use(
+      http.get(`${baseUrl}/taxonomy/562`, () =>
+        HttpResponse.json({
+          taxon_id: 562,
+          taxon_name: "Escherichia coli",
+          taxon_rank: "species",
+          lineage_ids: [131567, 2, 561, 562],
+          lineage_names: ["cellular organisms", "Bacteria", "Escherichia", "Escherichia coli"],
+          // A malformed entry keeps its slot so later ranks stay on their taxa.
+          lineage_ranks: ["cellular root", null, "genus", "species"],
+          genomes: 1,
+        }),
+      ),
+    );
+
+    await expect(fetchOrganismTaxonomy(562)).resolves.toMatchObject({
+      lineageRanks: ["cellular root", "", "genus", "species"],
+    });
+  });
 });
 
 describe("fetchLandingRootTaxonomy", () => {
@@ -181,6 +203,7 @@ describe("fetchLandingRootTaxonomy", () => {
       taxonName: "Viruses",
       lineageNames: ["Viruses"],
       lineageIds: [10239],
+      lineageRanks: ["acellular root"],
       taxonRank: "superkingdom",
       genomes: null,
     });
@@ -222,5 +245,18 @@ describe("staticLandingRootTaxonomy", () => {
     const first = staticLandingRootTaxonomy(2);
     first?.lineageIds.push(999);
     expect(staticLandingRootTaxonomy(2)?.lineageIds).toEqual([131567, 2]);
+  });
+});
+
+describe("staticLandingRootTaxonomy", () => {
+  it("carries BV-BRC's current ranks for each root", () => {
+    expect(staticLandingRootTaxonomy(2)?.lineageRanks).toEqual(["cellular root", "domain"]);
+    expect(staticLandingRootTaxonomy(10239)?.lineageRanks).toEqual(["acellular root"]);
+    expect(staticLandingRootTaxonomy(131567)?.lineageRanks).toEqual(["cellular root"]);
+  });
+
+  it("returns a copy of the ranks", () => {
+    staticLandingRootTaxonomy(2)?.lineageRanks?.push("mutated");
+    expect(staticLandingRootTaxonomy(2)?.lineageRanks).toEqual(["cellular root", "domain"]);
   });
 });

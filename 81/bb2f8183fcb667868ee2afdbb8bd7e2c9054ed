@@ -1,0 +1,42 @@
+src/components/workspace/job-metadata-card.tsx
+  s_33e4aed8cddc20::t_8ccc15e2cd73b5 154-156,160,162
+  s_33e4aed8cddc20::t_b1d252d74c2c14 166
+  s_33e4aed8cddc20::t_96bba6e9320495 4,163
+  s_33e4aed8cddc20::t_8d4825deae4f1e 14,149,157,167,188
+  s_33e4aed8cddc20::t_e3f4d01d388be1 150-153
+e2e/pages/genome-browser-panel.ts
+  s_f0fb16d45eb06f::t_3a2aaa564072c0 49-81
+src/components/genome-browser/genome-browser-view.tsx
+  s_f0fb16d45eb06f::t_7acc201b2e4aea 62-67,70
+src/app/viewer/structure/[[...path]]/page.tsx
+  s_f0fb16d45eb06f::t_76afbf3d08bfb3 67-68
+  s_f0fb16d45eb06f::t_4c12921d81c582 72
+src/app/viewer/structure/[[...path]]/__tests__/page.test.tsx
+  s_f0fb16d45eb06f::t_219a4820f41550 82-83
+e2e/tests/genome-browser.spec.ts
+  s_f0fb16d45eb06f::t_deeecbeb28d50c 155-181
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "81bb2f8183fcb667868ee2afdbb8bd7e2c9054ed",
+  "prompts": {},
+  "sessions": {
+    "s_33e4aed8cddc20": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "795956e2-4230-42c9-a127-ef43a767473a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>"
+    },
+    "s_f0fb16d45eb06f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "21e26e24-71b0-49b9-9b58-ae5aa1515257",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>"
+    }
+  }
+}

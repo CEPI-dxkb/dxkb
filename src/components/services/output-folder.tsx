@@ -88,12 +88,9 @@ const OutputFolder = ({
           {tooltipContent && (
             <TooltipProvider>
               <Tooltip>
-                <TooltipTrigger
-                  aria-label={`${resolvedTitle} help`}
-                  render={
-                    <HelpCircle className="service-card-tooltip-icon mb-2" />
-                  }
-                />
+                <TooltipTrigger aria-label={`${resolvedTitle} help`}>
+                  <HelpCircle className="service-card-tooltip-icon mb-2" />
+                </TooltipTrigger>
                 <TooltipContent className="max-w-sm">
                   {resolvedTooltipText}
                 </TooltipContent>

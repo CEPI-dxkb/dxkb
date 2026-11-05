@@ -251,6 +251,14 @@ export const routes: RouteEntry[] = [
     ],
   },
 
+  // ── Advanced Search (dynamic — one variant per type, one sampled for coverage)
+  {
+    name: "advanced-search",
+    path: "/advanced-search/genomes",
+    pages: ["advanced-search/[type]/page.tsx"],
+    unauthenticated: true,
+  },
+
   // ── Taxonomy (dynamic — two variants for multi-param coverage) ───────────────
   // Both variants are bacterial genera — 234 is Brucella, 1763 is
   // Mycobacterium — so they are named for those taxa. They were previously

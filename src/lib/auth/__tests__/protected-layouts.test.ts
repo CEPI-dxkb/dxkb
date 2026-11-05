@@ -34,6 +34,7 @@ const publicLayouts = [
   "src/app/(footer)/layout.tsx",
   "src/app/(footer)/citations/layout.tsx",
   "src/app/(views)/layout.tsx",
+  "src/app/advanced-search/layout.tsx",
   "src/app/organisms/layout.tsx",
   "src/app/search/layout.tsx",
   "src/app/services/layout.tsx",

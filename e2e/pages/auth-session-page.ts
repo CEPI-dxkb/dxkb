@@ -6,9 +6,7 @@ export class AuthSessionPage {
 
   constructor(page: Page) {
     this.page = page;
-    this.userMenuTrigger = page
-      .locator('[data-slot="dropdown-menu-trigger"]')
-      .first();
+    this.userMenuTrigger = page.getByRole("button", { name: "Account menu" });
   }
 
   async expectSignedIn(): Promise<void> {

@@ -1,0 +1,231 @@
+src/lib/services/workspace/helpers.ts
+  s_1e124a587413ca::t_ca0eff471d431b 162-163,192-201,205-207
+  s_1e124a587413ca::t_61a4089f3097cc 129-138
+src/hooks/services/workspace/use-workspace-selection.ts
+  s_1e124a587413ca::t_0aca47b3e29b74 73,101,104,106-113
+  s_1e124a587413ca::t_80495b7d7b19ef 3,102-103,105
+  s_1e124a587413ca::t_a4936858e59313 114
+src/hooks/services/__tests__/use-service-runtime.test.tsx
+  s_1e124a587413ca::t_f0975eb9a7db2e 11,92-95,103,235-241,252,262-280
+  s_1e124a587413ca::t_fb4027610000a9 10,104-115
+  s_1e124a587413ca::t_670eccee25efa9 281-282
+src/components/organisms/reference-genomes/__tests__/reference-genomes-link-prefetch.test.tsx
+  s_1e124a587413ca::t_02a2dd2a6fab45 1-59
+src/components/shared/file-table.tsx
+  s_1e124a587413ca::t_0ad6fd17a8d826 427-429,434
+  s_1e124a587413ca::t_f409e97eb64930 10,421,430-432,437-439
+  s_1e124a587413ca::t_852f13f544619d 422-425
+  s_1e124a587413ca::t_0aca47b3e29b74 426,433,435-436
+docs/auth-api.md
+  s_1e124a587413ca::t_f5da607da5e1c7 32
+src/components/navbars/mobile-workspace-section.tsx
+  s_1e124a587413ca::t_49c7bd11b465d5 13,24-25,38,76-78,106-110
+src/app/api/auth/profile/route.ts
+  s_1e124a587413ca::t_39bed33e956936 6,101-103
+src/lib/search/__tests__/all-types-search-cache.test.ts
+  s_1e124a587413ca::t_a5e53a3042f7c0 1-9
+src/hooks/services/jobs/__tests__/use-jobs-data.test.tsx
+  s_1e124a587413ca::t_097ed92c4f609d 144-145,148-152,154-155,159
+  s_1e124a587413ca::t_c97e52d12af325 153
+  s_1e124a587413ca::t_4707b351a57f4c 332-359,363-364
+  s_1e124a587413ca::t_b082d2eb6ed271 146-147,156-158
+  s_1e124a587413ca::t_e4a0af9ae02fe3 360-362
+src/components/workspace/workspace-file-table.tsx
+  s_1e124a587413ca::t_f087f6033df5d0 277-286,289,317,345
+  s_1e124a587413ca::t_3639cce606975e 233-235,240-242,248-250
+  s_1e124a587413ca::t_43afeb2c08938e 3,213,232,239,247,314-316,319-344,346-349
+src/hooks/services/workspace/__tests__/use-workspace-filtered-items.test.tsx
+  s_1e124a587413ca::t_959164dfb1d812 117-141
+src/lib/ui-preferences/server.ts
+  s_1e124a587413ca::t_0b726dbb24b916 3
+src/lib/services/workspace/mini-browser-items.ts
+  s_1e124a587413ca::t_61a4089f3097cc 31-32
+  s_1e124a587413ca::t_ca0eff471d431b 90
+src/hooks/services/workspace/use-workspace-filtered-items.ts
+  s_1e124a587413ca::t_34041e57410088 44-51
+  s_1e124a587413ca::t_61a4089f3097cc 3,18,21-22,24-30,32-34,36-41,43
+  s_1e124a587413ca::t_f409e97eb64930 20
+src/components/navbars/mobile-sheet-navigation.tsx
+  s_1e124a587413ca::t_49c7bd11b465d5 30-31,71,171
+src/lib/ui-preferences/__tests__/server.test.ts
+  s_1e124a587413ca::t_852f13f544619d 40-41
+e2e/fixtures/overrides/outage.ts
+  s_1e124a587413ca::t_20ab6c6114550e 72
+src/lib/auth/server/session.ts
+  s_1e124a587413ca::t_e754dc08b947da 9,49-58,87,104-105
+.claude/rules/testing.md
+  s_1e124a587413ca::t_f5da607da5e1c7 56
+  s_1e124a587413ca::t_f087f6033df5d0 70
+e2e/fixtures/overrides/jobs.ts
+  s_1e124a587413ca::t_20ab6c6114550e 133-139
+src/components/shared/__tests__/file-table.test.tsx
+  s_1e124a587413ca::t_852f13f544619d 440
+  s_1e124a587413ca::t_dd915bedb16261 427-439,441-458
+src/app/api/e2e-mock/[...path]/route.ts
+  s_1e124a587413ca::t_4707b351a57f4c 1138-1141
+src/lib/auth/server/actions.ts
+  s_1e124a587413ca::t_b60cdf1b3ddd22 61
+  s_1e124a587413ca::t_aa2b4baa473b34 95,118,193-197,217,341-342,349-352
+  s_1e124a587413ca::t_e94bdb360dd3d6 27-32,252-259,343-344,353,365
+  s_1e124a587413ca::t_f0975eb9a7db2e 71-73
+src/lib/auth/server/__tests__/actions.test.ts
+  s_1e124a587413ca::t_7d69f8f6d894e8 453,455
+  s_1e124a587413ca::t_bb44bdc375f49f 432,439-440,450-452,456-458
+  s_1e124a587413ca::t_f0975eb9a7db2e 125-130,412-413,418
+  s_1e124a587413ca::t_b60cdf1b3ddd22 115-124,131-139
+  s_1e124a587413ca::t_f5da607da5e1c7 442
+src/hooks/services/use-rerun-form.ts
+  s_1e124a587413ca::t_b60cdf1b3ddd22 10,104-105
+src/components/navbars/mobile-navbar.tsx
+  s_1e124a587413ca::t_49c7bd11b465d5 40,58-60,75
+  s_1e124a587413ca::t_4707b351a57f4c 103
+src/lib/ui-preferences/definitions.ts
+  s_1e124a587413ca::t_0b726dbb24b916 3,15-18
+src/lib/auth/server/__tests__/current-user-cache.test.ts
+  s_1e124a587413ca::t_a383f44b48181a 1-12,14,16-22,24-56,61-96,98-103,105-135,142-148,150-156,217-282
+  s_1e124a587413ca::t_7140042181b704 13,15,23,97,104,136-137,141,149,157-216
+  s_1e124a587413ca::t_162a931267276f 57-60
+  s_1e124a587413ca::t_b0e419e8a1adca 138-140
+src/hooks/services/jobs/use-jobs-data.ts
+  s_1e124a587413ca::t_b082d2eb6ed271 2
+  s_1e124a587413ca::t_3cf5a8aa0d9a0e 111-112,156
+  s_1e124a587413ca::t_4707b351a57f4c 122,163
+  s_1e124a587413ca::t_d6898da6885355 9-13,16-19,21-22,27-30,32-33,35,47-50,52-55,60-67,70,74,79-80,84
+  s_1e124a587413ca::t_63abb5d38077f4 120-121,123,129,149-155,157-162,165-173
+  s_1e124a587413ca::t_3b5400cff5aceb 164
+src/components/organisms/reference-genomes/reference-genomes-client.tsx
+  s_1e124a587413ca::t_b64633dbd7a1b3 253
+src/lib/search/all-types-search.ts
+  s_1e124a587413ca::t_f5da607da5e1c7 519-521
+  s_1e124a587413ca::t_b64633dbd7a1b3 522-523
+src/lib/auth/server/profile-cache.ts
+  s_1e124a587413ca::t_f5da607da5e1c7 110-112
+  s_1e124a587413ca::t_bb44bdc375f49f 23-25,28-31,41-42,53,55-56,59,65-76,118-119,122-125
+  s_1e124a587413ca::t_6487a29697e288 1-22,35-37,39,43-50,60-61,63-64,77-85,87-89,100-103,105,113-115,120-121,126,129
+  s_1e124a587413ca::t_80495b7d7b19ef 32-34
+  s_1e124a587413ca::t_d212721fb3e6cb 26-27,38,40,51-52,54,57-58,62,86,90-99,104,106-109,116-117,127-128
+e2e/mocks/backends.ts
+  s_1e124a587413ca::t_20ab6c6114550e 78-83
+src/hooks/services/jobs/__tests__/use-jobs-summary.test.tsx
+  s_1e124a587413ca::t_8da9ae4d4f364e 163-207
+  s_1e124a587413ca::t_4707b351a57f4c 18
+src/lib/services/workspace/picker-views.ts
+  s_1e124a587413ca::t_ca0eff471d431b 298
+  s_1e124a587413ca::t_61a4089f3097cc 44-45
+src/hooks/services/workspace/__tests__/use-workspace-selection.test.tsx
+  s_1e124a587413ca::t_dd915bedb16261 51-65,67-75,79-86,88-89
+  s_1e124a587413ca::t_42305dda11be98 87
+  s_1e124a587413ca::t_0ad6fd17a8d826 66,76-78
+src/lib/zod-mini.ts
+  s_1e124a587413ca::t_b082d2eb6ed271 1-13
+src/lib/ui-preferences/schemas.ts
+  s_1e124a587413ca::t_0b726dbb24b916 2-70
+  s_1e124a587413ca::t_b082d2eb6ed271 1
+src/app/api/auth/profile/__tests__/route.test.ts
+  s_1e124a587413ca::t_3ceb7e65e41366 13,163-195
+  s_1e124a587413ca::t_3b5e172eb55cec 196-197
+src/app/services/(genomics)/similar-genome-finder/__tests__/results-section.test.tsx
+  s_1e124a587413ca::t_37eebc3968e023 6,69-71
+docs/architecture.md
+  s_1e124a587413ca::t_f5da607da5e1c7 63,279,283,326
+  s_1e124a587413ca::t_b082d2eb6ed271 313-315
+src/components/views/__tests__/entity-view-shell.test.tsx
+  s_1e124a587413ca::t_219beff66312db 1,8,291,311
+  s_1e124a587413ca::t_d720ecde08a115 2-3,7
+  s_1e124a587413ca::t_c7d247b816f0a4 292-310,312-330
+  s_1e124a587413ca::t_a8ceb9bee76472 331-332
+AGENTS.md
+  s_1e124a587413ca::t_b082d2eb6ed271 112
+src/lib/services/workspace/__tests__/helpers.test.ts
+  s_1e124a587413ca::t_34041e57410088 77-94
+  s_1e124a587413ca::t_959164dfb1d812 165-181
+src/components/jobs/__tests__/job-status-pill.test.tsx
+  s_1e124a587413ca::t_a5e53a3042f7c0 481,483-484,486,577-578,584-606,608-615,623-635,637-645
+  s_1e124a587413ca::t_4707b351a57f4c 1,579-583,607,616-622,636
+  s_1e124a587413ca::t_244eb1fb910e5b 51,62-63,418,422,475,477,497,506,511,513,529,555,570
+  s_1e124a587413ca::t_f134c5bde1ef37 646
+src/hooks/services/workspace/use-workspace-navigation.ts
+  s_1e124a587413ca::t_80495b7d7b19ef 3,26-35,37-43,45-47
+src/hooks/services/workspace/__tests__/use-workspace-navigation.test.tsx
+  s_1e124a587413ca::t_e5bf29af5a97f8 190-209
+src/components/workspace/workspace-browser.tsx
+  s_1e124a587413ca::t_61a4089f3097cc 3,210,214
+src/lib/auth/server/__tests__/profile-cache.test.ts
+  s_1e124a587413ca::t_162a931267276f 45-47
+  s_1e124a587413ca::t_bb44bdc375f49f 96-110
+  s_1e124a587413ca::t_87de53732506c2 1-3,5-44,48-75,132-149
+  s_1e124a587413ca::t_c3f9c1b1827191 126
+  s_1e124a587413ca::t_7140042181b704 4,76-95,111-125,127-131
+src/components/shared/data-table.tsx
+  s_1e124a587413ca::t_b64633dbd7a1b3 305-310
+e2e/tests/jobs-lifecycle.spec.ts
+  s_1e124a587413ca::t_20ab6c6114550e 374-380
+src/hooks/services/jobs/use-jobs-summary.ts
+  s_1e124a587413ca::t_4707b351a57f4c 22-26,67,89-90
+  s_1e124a587413ca::t_63abb5d38077f4 1,27-66,68-71,78
+src/lib/ui-preferences/__tests__/cookie.test.ts
+  s_1e124a587413ca::t_097ed92c4f609d 84-91
+  s_1e124a587413ca::t_0b726dbb24b916 1,5-6,66,68
+src/components/workspace/__tests__/workspace-file-table-navigation.test.tsx
+  s_1e124a587413ca::t_d720ecde08a115 2-3,9,53,78
+  s_1e124a587413ca::t_c7d247b816f0a4 5,67-73,77,92-124
+  s_1e124a587413ca::t_8cfea2719b6893 76
+  s_1e124a587413ca::t_b8dd5b34e75869 84
+  s_1e124a587413ca::t_9a8863728bc5a2 1,4,6-8,10-52,54-66,74-75,79-83,85-91,125
+src/components/shared/__tests__/data-table-link-prefetch.test.tsx
+  s_1e124a587413ca::t_02a2dd2a6fab45 1-59
+src/components/organisms/landing-shell/__tests__/landing-shell-client.test.tsx
+  s_1e124a587413ca::t_219beff66312db 1,8,271
+  s_1e124a587413ca::t_d720ecde08a115 2-3,7
+  s_1e124a587413ca::t_c7d247b816f0a4 272-303
+  s_1e124a587413ca::t_2d4b7f68a14fe4 304-305
+src/lib/jobs/__tests__/formatting.test.ts
+  s_1e124a587413ca::t_34041e57410088 93-109
+src/components/navbars/__tests__/mobile-navbar-favorites.test.tsx
+  s_1e124a587413ca::t_4707b351a57f4c 1,121-123
+  s_1e124a587413ca::t_02a2dd2a6fab45 107-120,124-136
+vitest.setup.ts
+  s_1e124a587413ca::t_122ad7f924b41a 25-28,32-33,63-65,70
+  s_1e124a587413ca::t_058575bddbd4d4 29-31
+src/hooks/services/__tests__/use-rerun-form.test.tsx
+  s_1e124a587413ca::t_b60cdf1b3ddd22 6-7,22-23,25-36,246-247,249-252,255-257,265-274,277,281,298
+  s_1e124a587413ca::t_f0975eb9a7db2e 24,264
+src/lib/auth/types.ts
+  s_1e124a587413ca::t_b60cdf1b3ddd22 14-17
+  s_1e124a587413ca::t_0dea89454f60ca 13
+src/components/views/entity-view-shell.tsx
+  s_1e124a587413ca::t_3639cce606975e 125
+  s_1e124a587413ca::t_17a52cd841f450 4,56-57,71-75,107,115,122-124,126
+src/test-helpers/pending-navigation.tsx
+  s_1e124a587413ca::t_d720ecde08a115 1-31
+src/lib/jobs/formatting.ts
+  s_1e124a587413ca::t_ca0eff471d431b 60-69,72-75
+src/components/organisms/landing-shell/landing-shell-client.tsx
+  s_1e124a587413ca::t_3639cce606975e 121
+  s_1e124a587413ca::t_17a52cd841f450 4,56-57,83-87,103,112,118-120,122
+src/lib/auth/server/__tests__/session.test.ts
+  s_1e124a587413ca::t_160b0c86dbf106 29-30,196-236
+  s_1e124a587413ca::t_ee3af833a46446 237
+src/components/jobs/job-status-pill.tsx
+  s_1e124a587413ca::t_3cf5a8aa0d9a0e 42-44,136
+  s_1e124a587413ca::t_f5da607da5e1c7 140-142
+  s_1e124a587413ca::t_499d500b1b5262 144,146-149
+  s_1e124a587413ca::t_597c2ae85440f8 4,15-19,45-53,72,78,130-131,133,135,139,151-152,231-232
+  s_1e124a587413ca::t_4707b351a57f4c 13,143,145,150
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "dae56ae2ba722569f3e597dac6e5eef435cc385f",
+  "prompts": {},
+  "sessions": {
+    "s_1e124a587413ca": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "690aac73-3b80-4c9b-96ba-240ee5e77295",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>"
+    }
+  }
+}

@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import { server } from "@/test-helpers/msw-server";
@@ -103,5 +103,35 @@ describe("MobileNavbar favorites", () => {
     );
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     expect(calls).toBe(2);
+  });
+
+  it("does not fetch favorites until the sheet opens, showing skeletons while it loads", async () => {
+    const held = Promise.withResolvers<undefined>();
+    let calls = 0;
+    server.use(
+      http.post("/api/services/workspace", async () => {
+        calls += 1;
+        await held.promise;
+        return savedFavorites();
+      }),
+    );
+    const user = userEvent.setup();
+    render(<MobileNavbar />, { wrapper: createQueryClientWrapper() });
+
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    });
+    expect(calls).toBe(0);
+
+    await user.click(screen.getByRole("button", { name: "Open navigation menu" }));
+    await user.click(await screen.findByRole("button", { name: /^Workspace\d+$/ }));
+
+    // Pending: the Favorites subsection holds its place, not "no favorites".
+    expect(await screen.findByText("Favorites")).toBeInTheDocument();
+    expect(document.querySelector('[data-slot="skeleton"]')).not.toBeNull();
+    expect(calls).toBe(1);
+
+    held.resolve(undefined);
+    expect(await screen.findByRole("link", { name: "Saved" })).toBeInTheDocument();
   });
 });

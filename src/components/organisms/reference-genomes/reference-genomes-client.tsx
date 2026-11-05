@@ -250,6 +250,7 @@ function GenomeTable({ genomes }: { genomes: ReferenceGenome[] }) {
                     <TableCell className="overflow-hidden px-3 py-1">
                       <Link
                         href={genomeHref(g.genome_id)}
+                        prefetch={false}
                         className="block truncate text-sm text-primary hover:underline dark:text-link"
                         title={g.genome_name}
                       >

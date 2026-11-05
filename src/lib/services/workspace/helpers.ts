@@ -126,6 +126,16 @@ export function hasWriteAccess(item: WorkspaceItem): boolean {
   );
 }
 
+// Hoisted collators: options passed to localeCompare build an ICU collator per call.
+const nameBaseCollator = new Intl.Collator(undefined, {
+  sensitivity: "base",
+  numeric: true,
+});
+const nameCaseCollator = new Intl.Collator(undefined, {
+  caseFirst: "upper",
+  numeric: true,
+});
+
 export function sortItems(
   items: WorkspaceItem[],
   sort: WorkspaceSortConfig,
@@ -149,14 +159,8 @@ export function sortItems(
           // Primary: case-insensitive alphabetical + natural numeric order.
           // Tiebreaker: uppercase before lowercase (e.g. "Alpha" before "alpha").
           comparison =
-            a.name.localeCompare(b.name, undefined, {
-              sensitivity: "base",
-              numeric: true,
-            }) ||
-            a.name.localeCompare(b.name, undefined, {
-              caseFirst: "upper",
-              numeric: true,
-            });
+            nameBaseCollator.compare(a.name, b.name) ||
+            nameCaseCollator.compare(a.name, b.name);
         }
         break;
       }
@@ -185,17 +189,22 @@ export function formatOwner(ownerId: string): string {
   return ownerId.replace(/@bvbrc$/, "");
 }
 
+// Hoisted: building an Intl object per call costs far more than formatting.
+const dateTimeFormat = new Intl.DateTimeFormat("en-US", {
+  month: "numeric",
+  day: "numeric",
+  year: "2-digit",
+  hour: "numeric",
+  minute: "2-digit",
+  hour12: true,
+});
+
 export function formatDate(dateString: string): string {
   if (!dateString) return "";
   const date = new Date(dateString);
-  return date.toLocaleDateString("en-US", {
-    month: "numeric",
-    day: "numeric",
-    year: "2-digit",
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
-  });
+  // DateTimeFormat#format throws on an invalid date; toLocaleDateString did not.
+  if (Number.isNaN(date.getTime())) return "Invalid Date";
+  return dateTimeFormat.format(date);
 }
 
 export function formatFileSize(

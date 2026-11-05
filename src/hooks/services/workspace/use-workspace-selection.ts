@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { WorkspaceItem } from "@/lib/services/workspace/domain";
 import { isFolderType } from "@/lib/services/workspace/utils";
 import {
@@ -70,7 +70,7 @@ export function useWorkspaceSelection({
   const primaryItem: WorkspaceItem | null =
     currentSelectedItems[currentSelectedItems.length - 1] ?? null;
 
-  const handleSelectItem = (
+  const selectItem = (
     item: WorkspaceItem,
     modifiers?: SelectionModifiers,
   ) => {
@@ -97,6 +97,20 @@ export function useWorkspaceSelection({
       }
     }
   };
+
+  // Rows memoize on this handler, so its identity must not change per selection.
+  // The ref holds the latest closure; it is set in a layout effect, never during render
+  // (a deferred-search commit does not flush passive effects before the next input).
+  const selectItemRef = useRef(selectItem);
+  useLayoutEffect(() => {
+    selectItemRef.current = selectItem;
+  });
+  const handleSelectItem = useCallback(
+    (item: WorkspaceItem, modifiers?: SelectionModifiers) => {
+      selectItemRef.current(item, modifiers);
+    },
+    [],
+  );
 
   const clearSelection = () => {
     if (panelExpansionTimer.current) {

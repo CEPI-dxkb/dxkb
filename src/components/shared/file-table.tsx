@@ -7,6 +7,7 @@ import React, {
   useRef,
   forwardRef,
   useImperativeHandle,
+  useMemo,
   useState,
   type CSSProperties,
   type ReactNode,
@@ -417,7 +418,25 @@ function DataTableInner<T extends RowData>(
 ) {
   const tableContainerRef = useRef<HTMLDivElement>(null);
   const [tableLayout, updateTableLayout] = useTableLayout(layoutKey);
-  const columnOrder = applyColumnOrder(defaultColumnOrder, tableLayout.order);
+  // Explicit memo: the compiler leaves this unmemoized, and a new array re-renders every row.
+  // Keyed on serialized ids: any layout save (widths, visibility) re-parses storage
+  // and yields a new `order` array, and the JSON key keeps columnOrder's identity
+  // across those saves. The default-order key is defensive (current callers pass
+  // module constants).
+  const defaultOrderKey = JSON.stringify(defaultColumnOrder);
+  const savedOrderKey = tableLayout.order
+    ? JSON.stringify(tableLayout.order)
+    : null;
+  const columnOrder = useMemo(
+    () =>
+      applyColumnOrder(
+        JSON.parse(defaultOrderKey) as string[],
+        savedOrderKey === null
+          ? undefined
+          : (JSON.parse(savedOrderKey) as string[]),
+      ),
+    [defaultOrderKey, savedOrderKey],
+  );
   const setColumnOrder = (next: string[]) => {
     updateTableLayout({
       order: sameOrder(next, defaultColumnOrder) ? undefined : next,

@@ -302,7 +302,12 @@ function TableValueLink({
   }
   if (classification === "internal") {
     return (
-      <Link href={href} className={className} onClick={stopRowNavigation}>
+      <Link
+        href={href}
+        prefetch={false}
+        className={className}
+        onClick={stopRowNavigation}
+      >
         {children}
       </Link>
     );

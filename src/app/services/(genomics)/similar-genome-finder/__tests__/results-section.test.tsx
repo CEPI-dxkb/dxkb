@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import type { ReactNode } from "react";
 
+import { AuthBoundary } from "@/lib/auth/provider";
 import { ServiceDebuggingProvider } from "@/contexts/service-debugging-context";
 import { setTestSession } from "@/test-helpers/api-route-helpers";
 import { server } from "@/test-helpers/msw-server";
@@ -65,7 +66,9 @@ function renderHarness() {
   function Wrapper({ children }: { children: ReactNode }) {
     return (
       <QueryWrapper>
-        <ServiceDebuggingProvider>{children}</ServiceDebuggingProvider>
+        <AuthBoundary user={null}>
+          <ServiceDebuggingProvider>{children}</ServiceDebuggingProvider>
+        </AuthBoundary>
       </QueryWrapper>
     );
   }

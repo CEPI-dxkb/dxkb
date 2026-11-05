@@ -74,6 +74,24 @@ describe("formatDate", () => {
   it("returns empty string for empty input", () => {
     expect(formatDate("")).toBe("");
   });
+
+  it("matches toLocaleDateString output for a fixed ISO string", () => {
+    const iso = "2024-06-15T14:30:00Z";
+    expect(formatDate(iso)).toBe(
+      new Date(iso).toLocaleDateString("en-US", {
+        month: "numeric",
+        day: "numeric",
+        year: "2-digit",
+        hour: "numeric",
+        minute: "2-digit",
+        hour12: true,
+      }),
+    );
+  });
+
+  it('returns "Invalid Date" for an unparseable string', () => {
+    expect(formatDate("not a date")).toBe("Invalid Date");
+  });
 });
 
 describe("formatFileSize", () => {
@@ -143,6 +161,23 @@ describe("sortItems", () => {
   const jobResult = makeItem({ name: "aJob", type: "job_result", size: 0, timestamp: 200 });
   const fileA = makeItem({ name: "alpha.txt", type: "contigs", size: 500, timestamp: 300 });
   const fileB = makeItem({ name: "beta.txt", type: "reads", size: 100, timestamp: 150 });
+
+  it("sorts names case-insensitively with natural numbers, upper before lower, text before digits", () => {
+    const names = ["file10", "file2", "beta", "Alpha", "alpha", "1386.5", "Beta"];
+    const sorted = sortItems(
+      names.map((name) => makeItem({ name, type: "contigs" })),
+      { field: "name", direction: "asc" },
+    );
+    expect(sorted.map((i) => i.name)).toEqual([
+      "Alpha",
+      "alpha",
+      "Beta",
+      "beta",
+      "file2",
+      "file10",
+      "1386.5",
+    ]);
+  });
 
   it("places folders before non-folders", () => {
     const sorted = sortItems([fileA, folder, fileB], { field: "name", direction: "asc" });

@@ -1,8 +1,9 @@
+import { serializeUiPreferenceCookie } from "../cookie";
 import {
   parseUiPreference,
   parseUiPreferences,
-  serializeUiPreferenceCookie,
-} from "../cookie";
+  uiPreferenceSchemas,
+} from "../schemas";
 import { defaultUiPreferences, uiPreferenceDefinitions } from "../definitions";
 
 describe("parseUiPreference", () => {
@@ -62,8 +63,9 @@ describe("workspaceSort", () => {
 });
 
 describe("compareRegionDensity", () => {
-  const { cookieName, schema, defaultValue } =
+  const { cookieName, defaultValue } =
     uiPreferenceDefinitions.compareRegionDensity;
+  const schema = uiPreferenceSchemas.compareRegionDensity;
 
   it("is its own cookie, Comfortable unless chosen", () => {
     expect(cookieName).toBe("dxkb-compare-region-density");
@@ -76,6 +78,14 @@ describe("compareRegionDensity", () => {
     expect(schema.safeParse("dense").success).toBe(false);
     expect(parseUiPreference("compareRegionDensity", '"compact"')).toBe("compact");
     expect(parseUiPreference("compareRegionDensity", '"dense"')).toBe("comfortable");
+  });
+});
+
+describe("out-of-schema cookie values", () => {
+  it("yield the default for every key", () => {
+    expect(
+      parseUiPreferences(() => '{"unexpected":"shape","n":-1}'),
+    ).toStrictEqual(defaultUiPreferences);
   });
 });
 

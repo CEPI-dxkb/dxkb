@@ -424,3 +424,35 @@ describe("FileTable remembered layout", () => {
     });
   });
 });
+
+describe("DataTable columnOrder identity", () => {
+  it("keeps the same columnOrder array across a re-render with an unchanged layout", () => {
+    localStorage.setItem(storageKey, JSON.stringify({ order: ["size", "name"] }));
+    const seen: string[][] = [];
+    function Probe() {
+      seen.push(useDataTableBody<Row>().columnOrder);
+      return null;
+    }
+    const table = () => (
+      <DataTable<Row>
+        data={rows}
+        columns={columns}
+        // Defensive: a fresh array each render (current callers pass module constants).
+        defaultColumnOrder={["name", "size"]}
+        isLoading={false}
+        getRowId={(row) => row.id}
+        sort={{ field: "name", direction: "asc" }}
+        onSort={vi.fn()}
+        layoutKey="test-files"
+      >
+        <Probe />
+      </DataTable>
+    );
+    const { rerender } = render(table());
+    const first = seen[seen.length - 1];
+    expect(first).toEqual(["size", "name"]);
+
+    rerender(table());
+    expect(seen[seen.length - 1]).toBe(first);
+  });
+});

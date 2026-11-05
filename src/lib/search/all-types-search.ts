@@ -516,5 +516,10 @@ export function allTypesSearchQueryOptions(keyword: string) {
     // it would build an empty and(), which the Data API rejects.
     enabled: isSearchableKeyword(keyword),
     retry: false,
+    // A 6-13 s backend search whose results change slowly: Back within 30 min is
+    // instant. A new private record may take up to 10 min to appear in a cached
+    // search; account changes clear the cache.
+    staleTime: 10 * 60_000,
+    gcTime: 30 * 60_000,
   });
 }

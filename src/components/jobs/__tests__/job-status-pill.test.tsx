@@ -1,4 +1,4 @@
-import { act, render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { delay, http, HttpResponse } from "msw";
@@ -48,7 +48,7 @@ const outageMessage =
 
 function mockSummaryOutage() {
   server.use(
-    http.post("/api/services/app-service/jobs/summary", () =>
+    http.post("/api/services/app-service/jobs/task-summary", () =>
       HttpResponse.json(
         { error: outageMessage, code: "upstream_timeout" },
         { status: 504 },
@@ -59,8 +59,8 @@ function mockSummaryOutage() {
 
 function mockSummary(taskSummary: Record<string, number>) {
   server.use(
-    http.post("/api/services/app-service/jobs/summary", () =>
-      HttpResponse.json({ taskSummary, appSummary: {} }),
+    http.post("/api/services/app-service/jobs/task-summary", () =>
+      HttpResponse.json({ summary: taskSummary }),
     ),
   );
 }
@@ -415,14 +415,11 @@ describe("JobStatusPill", () => {
 
       let releaseRetry: () => void = () => undefined;
       server.use(
-        http.post("/api/services/app-service/jobs/summary", async () => {
+        http.post("/api/services/app-service/jobs/task-summary", async () => {
           await new Promise<void>((resolve) => {
             releaseRetry = resolve;
           });
-          return HttpResponse.json({
-            taskSummary: { running: 2 },
-            appSummary: {},
-          });
+          return HttpResponse.json({ summary: { running: 2 } });
         }),
       );
       await userEvent.click(within(alert).getByRole("button", { name: "Retry" }));
@@ -475,16 +472,18 @@ describe("JobStatusPill", () => {
     mockAuth.isSessionUnverified = true;
     let summaryCalls = 0;
     server.use(
-      http.post("/api/services/app-service/jobs/summary", () => {
+      http.post("/api/services/app-service/jobs/task-summary", () => {
         summaryCalls += 1;
-        return HttpResponse.json({ taskSummary: { running: 1 }, appSummary: {} });
+        return HttpResponse.json({ summary: { running: 1 } });
       }),
     );
 
+    mockJobsList([]);
     const { queryClient } = renderPillWithClient();
-    expect(
+    // The recent-jobs list loads once the popover opens.
+    await userEvent.click(
       await screen.findByRole("button", { name: /view job status/i }),
-    ).toBeInTheDocument();
+    );
     await waitFor(() => {
       expect(
         queryClient
@@ -495,7 +494,7 @@ describe("JobStatusPill", () => {
 
     expect(summaryCalls).toBe(1);
     // A running job would otherwise poll both every 3 s.
-    expect(nextRefetchInterval(queryClient, ["jobs-summary", false])).toBe(false);
+    expect(nextRefetchInterval(queryClient, ["jobs-summary", "tasks", false])).toBe(false);
     expect(nextRefetchInterval(queryClient, ["jobs-filtered"])).toBe(false);
   });
 
@@ -504,14 +503,14 @@ describe("JobStatusPill", () => {
     const { queryClient } = renderPillWithClient();
     await screen.findByRole("button", { name: /view job status/i });
 
-    expect(nextRefetchInterval(queryClient, ["jobs-summary", false])).toBe(3_000);
+    expect(nextRefetchInterval(queryClient, ["jobs-summary", "tasks", false])).toBe(3_000);
   });
 
   it("holds its place with a loading pill while the first summary is pending", async () => {
     server.use(
-      http.post("/api/services/app-service/jobs/summary", async () => {
+      http.post("/api/services/app-service/jobs/task-summary", async () => {
         await delay("infinite");
-        return HttpResponse.json({ taskSummary: {}, appSummary: {} });
+        return HttpResponse.json({ summary: {} });
       }),
     );
 
@@ -527,7 +526,7 @@ describe("JobStatusPill", () => {
     let releasePoll: (response: Response) => void = () => undefined;
     let holding = false;
     server.use(
-      http.post("/api/services/app-service/jobs/summary", () => {
+      http.post("/api/services/app-service/jobs/task-summary", () => {
         if (!holding) {
           return HttpResponse.json(
             { error: outageMessage, code: "upstream_timeout" },
@@ -553,7 +552,7 @@ describe("JobStatusPill", () => {
     });
     await waitFor(() => {
       expect(
-        queryClient.getQueryState(["jobs-summary", false])?.fetchStatus,
+        queryClient.getQueryState(["jobs-summary", "tasks", false])?.fetchStatus,
       ).toBe("fetching");
     });
 
@@ -568,11 +567,81 @@ describe("JobStatusPill", () => {
 
     act(() => {
       releasePoll(
-        HttpResponse.json({ taskSummary: { running: 1 }, appSummary: {} }),
+        HttpResponse.json({ summary: { running: 1 } }),
       );
     });
     expect(
       await screen.findByRole("button", { name: /view job status/i }),
     ).toBeInTheDocument();
+  });
+
+  describe("request trims", () => {
+    const flushMacrotask = () =>
+      act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 20));
+      });
+
+    function trackRequests() {
+      const seen = { summary: 0, taskSummary: 0, list: 0 };
+      server.use(
+        http.post("/api/services/app-service/jobs/summary", () => {
+          seen.summary += 1;
+          return HttpResponse.json({ taskSummary: { completed: 1 }, appSummary: {} });
+        }),
+        http.post("/api/services/app-service/jobs/task-summary", () => {
+          seen.taskSummary += 1;
+          return HttpResponse.json({ summary: { completed: 1 } });
+        }),
+        http.post("/api/services/app-service/jobs/enumerate-tasks-filtered", () => {
+          seen.list += 1;
+          return HttpResponse.json({ jobs: [], totalTasks: 0 });
+        }),
+      );
+      return seen;
+    }
+
+    it("reads counts from task-summary, not summary, and no recent jobs while closed", async () => {
+      const seen = trackRequests();
+      renderPill();
+      await screen.findByRole("button", { name: /view job status/i });
+      await flushMacrotask();
+      expect(seen.taskSummary).toBe(1);
+      expect(seen.summary).toBe(0);
+      expect(seen.list).toBe(0);
+    });
+
+    it("requests recent jobs when the popover opens", async () => {
+      const seen = trackRequests();
+      renderPill();
+      const trigger = await screen.findByRole("button", {
+        name: /view job status/i,
+      });
+      await flushMacrotask();
+      expect(seen.list).toBe(0);
+      // fireEvent.click sends no pointerenter, so this is the open path alone.
+      fireEvent.click(trigger);
+      await waitFor(() => {
+        expect(seen.list).toBe(1);
+      });
+    });
+
+    it.each(["hover", "focus"] as const)(
+      "warms recent jobs when the trigger is %s-ed",
+      async (gesture) => {
+        const seen = trackRequests();
+        renderPill();
+        const trigger = await screen.findByRole("button", {
+          name: /view job status/i,
+        });
+        await flushMacrotask();
+        expect(seen.list).toBe(0);
+        if (gesture === "hover") await userEvent.hover(trigger);
+        else act(() => { trigger.focus(); });
+        await waitFor(() => {
+          expect(seen.list).toBe(1);
+        });
+        expect(screen.queryByText("No recent jobs")).toBeNull();
+      },
+    );
   });
 });

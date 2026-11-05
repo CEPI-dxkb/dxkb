@@ -53,6 +53,7 @@ The core four (Lint, Typecheck, Build, Test) must pass before merging. `pnpm typ
 - Use `vi.mock()` for module mocks. Do not reference variables declared with `const`/`let` inside a `vi.mock` factory — vitest hoists the factory above all imports, so the variable will not be initialized yet. Instead, import the mocked module inside the test and access its mock there.
 - Prefer `expect.objectContaining()` over non-null assertions (`!`) to satisfy the `@typescript-eslint/no-non-null-assertion` rule.
 - Globals (`describe`, `it`, `expect`, `vi`) are available without importing (configured via `globals: true`).
+- `vitest.setup.ts` mocks `server-only` globally, so test files need no per-file `vi.mock("server-only")`.
 
 ## Shared Test Helpers
 
@@ -66,6 +67,7 @@ The core four (Lint, Typecheck, Build, Test) must pass before merging. `pnpm typ
 - `react.ts`:
   - `createQueryClientWrapper()` — `QueryClientProvider` wrapper (with `retry: false`) for `renderHook` and React tests that touch TanStack Query.
 - `history-navigation.ts` — `historyNavigationMock({ pathname })`, a `next/navigation` mock for components whose URL state is written with `window.history.pushState`/`replaceState` (the `ResourceChildCollection` tests use it). The usual per-file `next/navigation` mocks return a fixed `useSearchParams`, which, unlike Next's, does not change when the History API writes; this one re-renders its subscribers on every write, which a test that pages or sorts a real child table needs. Build it inside the `vi.mock` factory and reset the address with `history.replaceState` in `beforeEach`.
+- `pending-navigation.tsx` — `createPendingNavigation()` returns `{ Suspender, arm }`. Render `<Suspender />` in the tree and call `arm()` from the mocked `router.push`: inside a transition it suspends forever, so a component's `useTransition` pending state (`aria-busy`/`data-pending`) stays observable in jsdom, where an instant `push` mock never shows it.
 
 See `src/app/api/auth/profile/__tests__/route.test.ts` for a representative usage.
 

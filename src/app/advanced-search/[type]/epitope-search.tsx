@@ -15,14 +15,7 @@ import {
 import { rqlEq, rqlAnd } from "@/lib/views/rql";
 import { encodeQueryComponent } from "@/lib/url";
 
-const assayResultOptions = [
-  "B cell - Positive",
-  "T cell - Positive",
-  "MHC cell - Positive",
-  "B cell - Negative",
-  "T cell - Negative",
-  "MHC cell - Negative",
-] as const;
+const assayResultOptions = ["Positive", "Negative"] as const;
 
 export function EpitopeSearch() {
   const router = useRouter();
@@ -49,7 +42,7 @@ export function EpitopeSearch() {
     e.preventDefault();
 
     const clauses: string[] = [];
-    if (taxonName.trim()) clauses.push(rqlEq("taxon_lineage_names", taxonName.trim()));
+    if (taxonName.trim()) clauses.push(rqlEq("organism", taxonName.trim()));
     if (epitopeId.trim()) clauses.push(rqlEq("epitope_id", epitopeId.trim()));
     if (epitopeType.trim()) clauses.push(rqlEq("epitope_type", epitopeType.trim()));
     if (epitopeSequence.trim()) clauses.push(rqlEq("epitope_sequence", epitopeSequence.trim()));

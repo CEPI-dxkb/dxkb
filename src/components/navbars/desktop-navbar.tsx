@@ -28,6 +28,7 @@ import { workspaceUsername } from "@/lib/services/workspace/path-utils";
 import { SuBanner } from "@/components/auth/su-banner";
 import { SessionUnverifiedBanner } from "@/components/auth/session-unverified-banner";
 import { JobStatusPill } from "@/components/jobs/job-status-pill";
+import { CopilotLauncher } from "@/components/copilot/copilot-launcher";
 import { NavbarThemeSwitcher } from "@/components/navbars/theme-switcher-navbar";
 
 const serviceEntries = Object.entries(serviceItems) as unknown as [
@@ -203,6 +204,7 @@ const DesktopNavbar = () => {
 
             {isAuthenticated && (
               <>
+                <CopilotLauncher />
                 <JobStatusPill />
                 <UserAvatarDropdown />
               </>

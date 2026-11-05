@@ -68,7 +68,7 @@ Requires **Node v24** (`nvm use 24`, pinned in `.nvmrc`). `pnpm start` = prod se
 - A one-line workspace path whose end matters (the file name) uses `truncate-start` from `globals.css`, which cuts the start ("…/folder/file.fa"), with the full path in `title`. Do not hand-roll it with `dir="rtl"` and a `bdi` child: WebKit leaves a gap after the ellipsis.
 - A `text-*` size also sets its line height and, through `cn`, drops an earlier `leading-*`: `<Label className="text-sm">` is 20px tall where the base `text-sm leading-none` is 14px. Check the base before deleting a "redundant" size (Label has `leading="normal"` for this).
 - The only sanctioned `eslint-disable-next-line shadcn/require-static-classes` comments are on `className` passthroughs whose value is authored as a static string elsewhere (e.g. TanStack column meta) — always with a `-- reason` naming that source. Selectable table rows use `<TableRow selectionIndicator data-state={selected ? "selected" : undefined}>` instead of restyling the row.
-- These `src/components/ui/` files carry local edits (variants, sizes, base fixes) that `shadcn add --overwrite` would revert — check the diff when regenerating them: `alert`, `avatar`, `badge`, `button`, `button-variants`, `calendar`, `card`, `carousel`, `checkbox`, `command`, `dialog`, `dropdown-menu`, `input`, `input-group`, `label`, `navigation-menu`, `number-input`, `popover`, `radio-group`, `scroll-area`, `select`, `separator`, `sheet`, `skeleton`, `slider`, `sonner`, `switch`, `table`, `tabs`, `textarea`, `tooltip`.
+- These `src/components/ui/` files carry local edits (variants, sizes, base fixes) that `shadcn add --overwrite` would revert — check the diff when regenerating them: `alert`, `avatar`, `badge`, `bubble`, `button`, `button-variants`, `calendar`, `card`, `carousel`, `checkbox`, `command`, `dialog`, `dropdown-menu`, `input`, `input-group`, `label`, `message-scroller`, `navigation-menu`, `number-input`, `popover`, `radio-group`, `scroll-area`, `select`, `separator`, `sheet`, `skeleton`, `slider`, `sonner`, `switch`, `table`, `tabs`, `textarea`, `tooltip`.
 
 ### Formatting
 
@@ -130,3 +130,13 @@ Find the existing example of the same shape and follow it:
 ## File Structure
 
 - All miscellaneous folders (e.g. `/.playwright-mcp`) should be placed in the `/.misc` folder in the root of the repository, as should any new folder like them. Every *report and artifact* folder the Playwright and a11y configs write is already there: `test-results`, `playwright-report`, `a11y-report`, `a11y-results`, `a11y-meta-report`, `a11y-meta-results`. Two paths those configs write stay outside `/.misc` deliberately, because neither is a throwaway artifact: `e2e/__snapshots__` (committed visual baselines) and `e2e/.auth/` (generated storage state, gitignored where it sits). No config sets `--reporter=blob`, so no `blob-report` is produced; if you enable it, point `PLAYWRIGHT_BLOB_OUTPUT_DIR` under `/.misc` as well. The exceptions to this rule are established project, tool, output, and documentation roots: `/.claude`, `/.devcontainer`, `/.git`, `/.github`, `/.misc`, `/.next`, `/.playwright-mcp`, `/.superpowers`, `/.vscode`, `/auspice`, `/coverage`, `/docs`, `/e2e`, `/graphify-out`, `/node_modules`, `/patches`, `/plans`, `/public`, `/scripts`, and `/src`.
+
+<!-- BEGIN:nextjs-agent-rules -->
+
+# This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
+<!-- END:nextjs-agent-rules -->

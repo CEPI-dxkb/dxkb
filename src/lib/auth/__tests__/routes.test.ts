@@ -51,6 +51,7 @@ describe("isProtectedPagePath", () => {
 
   it("returns true for /jobs paths", () => {
     expect(isProtectedPagePath("/jobs")).toBe(true);
+    expect(isProtectedPagePath("/copilot")).toBe(true);
     expect(isProtectedPagePath("/jobs/123")).toBe(true);
   });
 

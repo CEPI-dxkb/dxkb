@@ -1,5 +1,6 @@
 import type { UserProfile } from "@/lib/auth/types";
 import {
+  clearProfileCache,
   forgetProfile,
   profileGeneration,
   readCachedProfile,
@@ -129,6 +130,34 @@ describe("profile cache", () => {
     expect(() =>
       Object.assign(cached ?? {}, { first_name: "Mallory" }),
     ).toThrow(TypeError);
+  });
+
+  it("freezes its own copy of roles, leaving the caller's array alone", () => {
+    const roles = ["admin"];
+    rememberProfile("alice@patricbrc.org", "token-a", { ...profile, roles });
+    const cached = readCachedProfile("alice@patricbrc.org", "token-a");
+
+    expect(cached?.roles).toEqual(["admin"]);
+    expect(cached?.roles).not.toBe(roles);
+    expect(Object.isFrozen(cached?.roles)).toBe(true);
+    expect(Object.isFrozen(roles)).toBe(false);
+  });
+
+  it("stores a profile whose roles is not an array without throwing", () => {
+    const malformed = { ...profile, roles: 1 as unknown as string[] };
+
+    expect(() => {
+      rememberProfile("alice@patricbrc.org", "token-a", malformed);
+    }).not.toThrow();
+    expect(readCachedProfile("alice@patricbrc.org", "token-a")?.roles).toBe(1);
+  });
+
+  it("skips a write whose generation was taken before a clear", () => {
+    const generation = profileGeneration("token-a");
+    clearProfileCache();
+    rememberProfile("alice@patricbrc.org", "token-a", profile, generation);
+
+    expect(readCachedProfile("alice@patricbrc.org", "token-a")).toBeUndefined();
   });
 
   it("is shared by every copy of the module, as Next loads one per server runtime", async () => {

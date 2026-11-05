@@ -112,14 +112,16 @@ export function useWorkspaceSelection({
     [],
   );
 
-  const clearSelection = () => {
+  // Explicit memo: `useWorkspaceNavigation`'s handlers depend on it, and rows
+  // key their handlers on those, so it must stay stable without the compiler.
+  const clearSelection = useCallback(() => {
     if (panelExpansionTimer.current) {
       clearTimeout(panelExpansionTimer.current);
       panelExpansionTimer.current = null;
     }
     setSelectedItems([]);
     setAnchorPath(null);
-  };
+  }, []);
 
   return {
     selectedItems: currentSelectedItems,

@@ -54,9 +54,15 @@ interface ProfileCacheState {
   generations: BoundedCache<number>;
   /** The last generation handed out; only ever grows. */
   lastGeneration: number;
+  /**
+   * A token's generation when no record of it is held: the generation handed
+   * out by the last `clearProfileCache()`, so a lookup in flight across a clear
+   * never matches again.
+   */
+  clearedGeneration: number;
 }
 
-const profileCacheStateKey = Symbol.for("dxkb.auth.profileCache.v3");
+const profileCacheStateKey = Symbol.for("dxkb.auth.profileCache.v4");
 
 const profileCacheHolder = globalThis as typeof globalThis & {
   [profileCacheStateKey]?: ProfileCacheState;
@@ -72,6 +78,7 @@ const state = (profileCacheHolder[profileCacheStateKey] ??= {
     ttlMs: profileCacheTtlMs,
   }),
   lastGeneration: 0,
+  clearedGeneration: 0,
 });
 const { profiles, generations } = state;
 
@@ -89,7 +96,7 @@ export function readCachedProfile(
 
 /** The token's generation, to take before a lookup whose answer is stored. */
 export function profileGeneration(token: string): number {
-  return generations.get(tokenKey(token)) ?? 0;
+  return generations.get(tokenKey(token)) ?? state.clearedGeneration;
 }
 
 /**
@@ -104,11 +111,18 @@ export function rememberProfile(
   generation?: number,
 ): void {
   const key = tokenKey(token);
-  if (generation !== undefined && generation !== (generations.get(key) ?? 0)) {
+  if (
+    generation !== undefined &&
+    generation !== (generations.get(key) ?? state.clearedGeneration)
+  ) {
     return;
   }
-  const roles = profile.roles ? [...profile.roles] : profile.roles;
-  if (roles) Object.freeze(roles);
+  // The upstream JSON is not validated field by field, so a truthy `roles`
+  // that is not an array is stored as it came rather than spread.
+  const roles = Array.isArray(profile.roles)
+    ? [...profile.roles]
+    : profile.roles;
+  if (Array.isArray(roles)) Object.freeze(roles);
   profiles.set(key, { userId, profile: Object.freeze({ ...profile, roles }) });
 }
 
@@ -121,9 +135,12 @@ export function forgetProfile(token: string): void {
 
 /**
  * Test seam: empties the cache between tests. The generation counter keeps
- * counting, so no generation taken before a clear is ever handed out again.
+ * counting and the clear takes a generation of its own, so a lookup that took
+ * its generation before the clear cannot store its answer after it.
  */
 export function clearProfileCache(): void {
   profiles.clear();
   generations.clear();
+  state.lastGeneration += 1;
+  state.clearedGeneration = state.lastGeneration;
 }

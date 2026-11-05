@@ -48,6 +48,25 @@ describe("useWorkspaceSelection", () => {
     ).not.toThrow();
   });
 
+  it("keeps clearSelection identity across a selection change", () => {
+    const items = [makeItem({ name: "a.txt", path: "/a.txt" })];
+    const { result } = renderHook(() =>
+      useWorkspaceSelection({ ...defaultProps, processedItems: items }),
+    );
+    const clear = result.current.clearSelection;
+
+    act(() => {
+      result.current.handleSelectItem(items[0]);
+    });
+    expect(result.current.clearSelection).toBe(clear);
+
+    act(() => {
+      result.current.clearSelection();
+    });
+    expect(result.current.selectedPaths).toEqual([]);
+    expect(result.current.clearSelection).toBe(clear);
+  });
+
   it("keeps handleSelectItem identity across a selection change and still selects", () => {
     const items = [
       makeItem({ name: "a.txt", path: "/a.txt" }),

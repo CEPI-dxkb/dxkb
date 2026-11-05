@@ -15,6 +15,7 @@ vi.mock("@/components/footers/footer", () => ({
 
 import { SearchResults } from "../all-term-search-results";
 import { allTypesSearchQueries } from "@/lib/search/all-types-query";
+import { AuthBoundary } from "@/lib/auth/provider";
 import { allTypesSearchPath } from "@/lib/search/all-types-search";
 import { server } from "@/test-helpers/msw-server";
 import {
@@ -98,11 +99,13 @@ function renderResults(
   const Preferences = createUiPreferencesWrapper();
   return render(<SearchResults query={query} {...props} />, {
     wrapper: ({ children }: { children: ReactNode }) => (
-      <Queries>
-        <Preferences>
-          <main>{children}</main>
-        </Preferences>
-      </Queries>
+      <AuthBoundary user={null}>
+        <Queries>
+          <Preferences>
+            <main>{children}</main>
+          </Preferences>
+        </Queries>
+      </AuthBoundary>
     ),
   });
 }

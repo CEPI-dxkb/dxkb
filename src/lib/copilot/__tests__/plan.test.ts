@@ -2,6 +2,8 @@ import {
   applyPlanUpdates,
   copilotPlanObject,
   copilotPlanState,
+  mergeEditedSteps,
+  mustRunAfter,
   newPlanStepId,
   planStepQuery,
   readCopilotPlan,
@@ -110,6 +112,13 @@ describe("applyPlanUpdates", () => {
     expect(next.steps[0].status).toBe("completed");
   });
 
+  it("ignores a negative step index", () => {
+    const original = plan();
+    expect(
+      applyPlanUpdates(original, [update({ stepIndex: -2, status: "failed" })]),
+    ).toBe(original);
+  });
+
   it("returns the same plan when nothing applies", () => {
     const original = plan();
     expect(applyPlanUpdates(original, [])).toBe(original);
@@ -199,6 +208,7 @@ describe("copilotPlanObject", () => {
   it("drops the wait once it is cleared", () => {
     const waiting = readCopilotPlan(copilotPlanObject(plan(), { waitingFor: ["s1"] }));
     if (!waiting) throw new Error("unreadable");
+    // As sent: JSON drops `undefined` keys; `structuredClone` would keep them.
     const cleared = JSON.parse(
       JSON.stringify(copilotPlanObject(waiting, { waitingFor: [] })),
     ) as Record<string, unknown>;
@@ -207,5 +217,41 @@ describe("copilotPlanObject", () => {
 
   it("names a step's hidden question as BV-BRC does", () => {
     expect(planStepQuery(plan(), 1)).toBe("Execute plan step: Annotate them");
+  });
+
+  it("does not count a negative index from the end", () => {
+    expect(planStepQuery(plan(), -1)).not.toContain("Annotate them");
+    expect(planStepQuery(plan(), -1)).toBe("Execute plan step: step 0");
+  });
+});
+
+describe("mustRunAfter", () => {
+  it("is true only when the step depends on the other", () => {
+    const { steps } = plan();
+    expect(mustRunAfter(steps[1], steps[0])).toBe(true);
+    expect(mustRunAfter(steps[0], steps[1])).toBe(false);
+  });
+});
+
+describe("mergeEditedSteps", () => {
+  it("takes the live status of steps that are not pending", () => {
+    const edited = plan().steps.map((step) => ({ ...step, description: `${step.description}!` }));
+    const live = plan({ status: "executing" });
+    live.steps = withStepStatus(live, 0, "completed").steps;
+    const merged = mergeEditedSteps(live, [edited[1], { ...edited[0], status: "completed" }]);
+    expect(merged?.map((step) => step.stepId)).toEqual(["step_2", "step_1"]);
+    expect(merged?.[1]).toBe(live.steps[0]);
+    expect(merged?.[0].description).toBe("Annotate them!");
+  });
+
+  it("returns null when an edited pending step is no longer pending", () => {
+    const edited = plan().steps;
+    expect(mergeEditedSteps(withStepStatus(plan(), 0, "running"), edited)).toBeNull();
+    expect(mergeEditedSteps(withStepStatus(plan(), 0, "completed"), edited)).toBeNull();
+  });
+
+  it("returns null when a live step that ran is missing from the edit", () => {
+    const live = withStepStatus(plan(), 0, "completed");
+    expect(mergeEditedSteps(live, [live.steps[1]])).toBeNull();
   });
 });

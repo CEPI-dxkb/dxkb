@@ -146,30 +146,40 @@ function RatingButtons({
 }) {
   const queryClient = useQueryClient();
   const key = copilotQueryKeys.session(sessionId);
+  const ratingOf = () =>
+    queryClient
+      .getQueryData<CopilotSessionDetail>(key)
+      ?.messages.find((item) => item.id === message.id)?.rating;
+  const setRating = (rating: CopilotMessage["rating"]) => {
+    queryClient.setQueryData<CopilotSessionDetail>(key, (detail) =>
+      detail
+        ? {
+            ...detail,
+            messages: detail.messages.map((item) =>
+              item.id === message.id ? { ...item, rating } : item,
+            ),
+          }
+        : detail,
+    );
+  };
   const rate = useMutation({
     mutationFn: (rating: -1 | 0 | 1) => rateCopilotMessage(message.id, rating),
-    onMutate: (rating) => {
-      const previous = queryClient.getQueryData<CopilotSessionDetail>(key);
-      queryClient.setQueryData<CopilotSessionDetail>(key, (detail) =>
-        detail
-          ? {
-              ...detail,
-              messages: detail.messages.map((item) =>
-                item.id === message.id ? { ...item, rating } : item,
-              ),
-            }
-          : detail,
-      );
-      return { previous };
+    onMutate: async (rating) => {
+      await queryClient.cancelQueries({ queryKey: key });
+      const previousRating = ratingOf();
+      setRating(rating);
+      return { previousRating };
     },
     onError: (error, _rating, context) => {
-      if (context?.previous) queryClient.setQueryData(key, context.previous);
+      // Only this message's rating: restoring the whole session would undo
+      // another message's rating that saved meanwhile.
+      if (context?.previousRating !== undefined) setRating(context.previousRating);
       toast.error("Could not save your rating", { description: error.message });
     },
   });
 
   const toggle = (value: -1 | 1) => {
-    rate.mutate(message.rating === value ? 0 : value);
+    rate.mutate((ratingOf() ?? message.rating) === value ? 0 : value);
   };
 
   return (

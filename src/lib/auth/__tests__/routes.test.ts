@@ -47,12 +47,17 @@ describe("isProtectedPagePath", () => {
     expect(isProtectedPagePath("/jobs-board")).toBe(false);
     expect(isProtectedPagePath("/settings-guide")).toBe(false);
     expect(isProtectedPagePath("/viewers")).toBe(false);
+    expect(isProtectedPagePath("/copilots")).toBe(false);
   });
 
   it("returns true for /jobs paths", () => {
     expect(isProtectedPagePath("/jobs")).toBe(true);
-    expect(isProtectedPagePath("/copilot")).toBe(true);
     expect(isProtectedPagePath("/jobs/123")).toBe(true);
+  });
+
+  it("returns true for /copilot paths", () => {
+    expect(isProtectedPagePath("/copilot")).toBe(true);
+    expect(isProtectedPagePath("/copilot/some-page")).toBe(true);
   });
 
   it("returns true for /settings paths", () => {

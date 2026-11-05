@@ -8,6 +8,7 @@ export {
   ViralGenomeTreePage,
   type ViralGenomeTreeInput,
 } from "./viral-genome-tree-page";
+export { CopilotPage, type CopilotResizeDirection } from "./copilot-page";
 export { JobsListPage } from "./jobs-list-page";
 export { SettingsPage } from "./settings-page";
 export { TaxonInteractionsPage } from "./taxon-interactions-page";

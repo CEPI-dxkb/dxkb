@@ -42,7 +42,9 @@ function readPlanStepUpdate(
   const planId = text(data.plan_id);
   if (!planId) return null;
   const stepIndex =
-    typeof data.step_index === "number" && Number.isInteger(data.step_index)
+    typeof data.step_index === "number" &&
+    Number.isInteger(data.step_index) &&
+    data.step_index >= 0
       ? data.step_index
       : null;
   const stepId = text(data.step_id);
@@ -217,11 +219,12 @@ export function isCopilotTurnActive(turn: CopilotTurn | null): boolean {
 
 /**
  * Appends a chunk of the answer. The gateway may send the whole answer again
- * as one last chunk after streaming it; a chunk the text already ends with is
- * that repeat, and is skipped (the BV-BRC client's rule).
+ * as one last chunk after streaming it; a multi-character chunk equal to the
+ * whole answer so far is that repeat, and is skipped. A chunk that only
+ * matches the end of the text ("world" after "Hello world") is real text.
  */
 export function appendAnswer(answer: string, chunk: string): string {
-  if (chunk.length > 1 && answer.length >= chunk.length && answer.endsWith(chunk)) {
+  if (chunk.length > 1 && answer === chunk) {
     return answer;
   }
   return answer + chunk;

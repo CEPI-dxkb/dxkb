@@ -1,6 +1,13 @@
 "use client";
 
-import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import {
+  CancelledError,
+  hashKey,
+  queryOptions,
+  useInfiniteQuery,
+  useQuery,
+  type QueryClient,
+} from "@tanstack/react-query";
 import {
   copilotQueryKeys,
   fetchCopilotModels,
@@ -36,6 +43,64 @@ export function useCopilotSessions(enabled: boolean) {
   });
 }
 
+/** The query for one session's messages, shared by its readers. */
+export function copilotSessionQueryOptions(sessionId: string) {
+  return queryOptions({
+    queryKey: copilotQueryKeys.session(sessionId),
+    queryFn: ({ signal }) => fetchCopilotSession(sessionId, signal),
+  });
+}
+
+/**
+ * Reads a session from the gateway now, whether or not anything shows it,
+ * and resolves `null` once a fetch that started after this call (its own, or
+ * one it joined) has delivered data to the cache, or the failure's message.
+ * A fetch already in flight is cancelled first: it may have started before
+ * the turn ended, and joining it would return the old messages.
+ */
+export async function reloadCopilotSession(
+  queryClient: QueryClient,
+  sessionId: string,
+): Promise<string | null> {
+  const options = copilotSessionQueryOptions(sessionId);
+  const queryHash = hashKey(options.queryKey);
+  // Only a fetch's own write counts: `setQueryData` (a rating's optimistic
+  // update) is `manual`, and a cancel's revert dispatches no success at all.
+  let delivered = false;
+  // A call, so the loop's check is not narrowed to the `false` above.
+  const hasDelivered = () => delivered;
+  const unsubscribe = queryClient.getQueryCache().subscribe((event) => {
+    if (
+      event.type === "updated" &&
+      event.query.queryHash === queryHash &&
+      event.action.type === "success" &&
+      event.action.manual !== true
+    ) {
+      delivered = true;
+    }
+  });
+  try {
+    await queryClient.cancelQueries({ queryKey: options.queryKey, exact: true });
+    // A cancel (a later reload's, or a rating's) reverts this fetch, which
+    // then resolves with the old data, or throws `CancelledError` when there
+    // was none. Join the fetch that replaced it, or start one, until a fetch
+    // has delivered.
+    while (!hasDelivered()) {
+      try {
+        await queryClient.query({ ...options, staleTime: 0 });
+      } catch (cause) {
+        if (!(cause instanceof CancelledError && cause.revert === true)) throw cause;
+      }
+    }
+    return null;
+  } catch (cause) {
+    // A `CopilotClientError` carries the route's message verbatim.
+    return cause instanceof Error ? cause.message : "Could not reload the chat.";
+  } finally {
+    unsubscribe();
+  }
+}
+
 /**
  * One session's messages. While the gateway reports a turn running in it and
  * this tab is not streaming that turn (it was started elsewhere, or the
@@ -46,8 +111,7 @@ export function useCopilotSession(
   options: { enabled: boolean; streaming: boolean },
 ) {
   return useQuery({
-    queryKey: copilotQueryKeys.session(sessionId ?? ""),
-    queryFn: ({ signal }) => fetchCopilotSession(sessionId ?? "", signal),
+    ...copilotSessionQueryOptions(sessionId ?? ""),
     enabled: options.enabled && sessionId !== null,
     refetchInterval: (query) =>
       !options.streaming && query.state.data?.activeJobId ? 3000 : false,

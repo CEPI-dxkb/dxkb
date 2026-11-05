@@ -1,16 +1,25 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
-import { delay, http, HttpResponse } from "msw";
+import { http, HttpResponse } from "msw";
 import { server } from "@/test-helpers/msw-server";
 import { createQueryClientWrapper } from "@/test-helpers/react";
-import { useCopilotChat } from "../use-copilot-chat";
+import { useCopilotChat, type CopilotSendResult } from "../use-copilot-chat";
+import { useCopilotSession } from "../use-copilot-queries";
 
 const sessionId = "11111111-2222-3333-4444-555555555555";
+const otherSessionId = "66666666-7777-8888-9999-000000000000";
 
 function sse(...frames: string[]) {
   return new HttpResponse(frames.join(""), {
     headers: { "Content-Type": "text/event-stream" },
   });
 }
+
+const doneFrames = [
+  'event: started\ndata: {"job_id":"j1"}\n\n',
+  'event: progress\ndata: {"step_id":"s1","phase":"tool","status":"done","label":"Searched"}\n\n',
+  'event: final_response\ndata: {"chunk":"Found 12."}\n\n',
+  'event: done\ndata: {"job_id":"j1"}\n\n',
+];
 
 const sendOptions = {
   sessionId,
@@ -20,51 +29,177 @@ const sendOptions = {
   storedCount: 0,
 };
 
-function storedSession() {
+function storedSession(id = sessionId) {
   return HttpResponse.json({
-    sessionId,
+    sessionId: id,
     messages: [],
     executionMode: "plan",
     activeJobId: null,
   });
 }
 
+/**
+ * A turn that starts as job `j7`, then sends an answer chunk every 5 ms until
+ * the request is aborted or the reader cancels it.
+ */
+function endlessTurn() {
+  const encoder = new TextEncoder();
+  let tick: ReturnType<typeof setInterval> | undefined;
+  const end = () => {
+    clearInterval(tick);
+  };
+  return {
+    end,
+    response: (signal: AbortSignal) => {
+      const stream = new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.enqueue(
+            encoder.encode('event: started\ndata: {"job_id":"j7"}\n\n'),
+          );
+          tick = setInterval(() => {
+            controller.enqueue(
+              encoder.encode('event: final_response\ndata: {"chunk":"more "}\n\n'),
+            );
+          }, 5);
+          signal.addEventListener("abort", () => {
+            end();
+            controller.error(new DOMException("Aborted", "AbortError"));
+          });
+        },
+        cancel: end,
+      });
+      return new HttpResponse(stream, {
+        headers: { "Content-Type": "text/event-stream" },
+      });
+    },
+  };
+}
+
+/** The real pairing: the panel's session query plus the chat hook. */
+function renderChat(account: string | null = "user-a") {
+  return renderHook(
+    ({ account: current }: { account: string | null }) => {
+      useCopilotSession(sessionId, { enabled: true, streaming: false });
+      return useCopilotChat(current);
+    },
+    { wrapper: createQueryClientWrapper(), initialProps: { account } },
+  );
+}
+
+async function advance(ms: number) {
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(ms);
+  });
+}
+
+afterEach(() => {
+  vi.useRealTimers();
+});
+
 describe("useCopilotChat", () => {
-  it("streams a turn, reloads the stored session, then titles a first chat", async () => {
+  it("streams a turn, reloads the stored session once, then titles a first chat", async () => {
     const titled = vi.fn();
+    const sessionGets = vi.fn();
+    let releaseReload: () => void = () => undefined;
+    const reloadGate = new Promise<void>((resolve) => {
+      releaseReload = resolve;
+    });
     server.use(
-      http.post("*/api/copilot/chat", () =>
-        sse(
-          'event: started\ndata: {"job_id":"j1"}\n\n',
-          'event: progress\ndata: {"step_id":"s1","phase":"tool","status":"done","label":"Searched"}\n\n',
-          'event: final_response\ndata: {"chunk":"Found 12."}\n\n',
-          'event: done\ndata: {"job_id":"j1"}\n\n',
-        ),
-      ),
-      http.get("*/api/copilot/sessions/:id", () => storedSession()),
+      http.post("*/api/copilot/chat", () => sse(...doneFrames)),
+      http.get("*/api/copilot/sessions/:id", async () => {
+        sessionGets();
+        // The read after the turn waits until the test has looked.
+        if (sessionGets.mock.calls.length > 1) await reloadGate;
+        return storedSession();
+      }),
       http.post("*/api/copilot/sessions/:id/title", async ({ request }) => {
         titled(await request.json());
         return HttpResponse.json({ title: "Mpox genomes" });
       }),
     );
-    const { result } = renderHook(() => useCopilotChat(), {
-      wrapper: createQueryClientWrapper(),
+    const { result } = renderChat();
+    await waitFor(() => {
+      expect(sessionGets).toHaveBeenCalledTimes(1);
     });
 
-    let outcome: unknown;
+    let sending = Promise.resolve<CopilotSendResult>({ status: "busy" });
+    act(() => {
+      sending = result.current.send(sendOptions);
+    });
+    await waitFor(() => {
+      expect(sessionGets).toHaveBeenCalledTimes(2);
+    });
+    // The live turn stays until the stored copy is back.
+    expect(result.current.active?.turn.status).toBe("done");
+
+    releaseReload();
     await act(async () => {
-      outcome = await result.current.send(sendOptions);
+      await expect(sending).resolves.toEqual(
+        expect.objectContaining({ status: "sent", ended: "done", reloadError: null }),
+      );
     });
-
-    expect(outcome).toEqual(
-      expect.objectContaining({ status: "sent", ended: "done" }),
-    );
-    // The live turn is dropped once the stored session is read back.
+    expect(sessionGets).toHaveBeenCalledTimes(2);
     expect(result.current.active).toBeNull();
     expect(result.current.error).toBeNull();
     await waitFor(() => {
       expect(titled).toHaveBeenCalledWith({ model: "m", question: "Find Mpox genomes" });
     });
+  });
+
+  it("keeps the ended turn and reports the reload when the stored session cannot be read", async () => {
+    let failing = false;
+    const sessionGets = vi.fn();
+    server.use(
+      http.post("*/api/copilot/chat", () => sse(...doneFrames)),
+      http.get("*/api/copilot/sessions/:id", () => {
+        sessionGets();
+        return failing
+          ? HttpResponse.json(
+              { error: "The Copilot store did not respond.", code: "upstream" },
+              { status: 500 },
+            )
+          : storedSession();
+      }),
+      http.post("*/api/copilot/sessions/:id/title", () =>
+        HttpResponse.json({ title: null }),
+      ),
+    );
+    const { result } = renderChat();
+    await waitFor(() => {
+      expect(sessionGets).toHaveBeenCalledTimes(1);
+    });
+    failing = true;
+
+    let outcome: CopilotSendResult | undefined;
+    await act(async () => {
+      outcome = await result.current.send(sendOptions);
+    });
+
+    expect(outcome).toEqual(
+      expect.objectContaining({
+        status: "sent",
+        ended: "done",
+        reloadError: "The Copilot store did not respond.",
+      }),
+    );
+    expect(result.current.active?.sessionId).toBe(sessionId);
+    expect(result.current.active?.turn).toEqual(
+      expect.objectContaining({ status: "done", answer: "Found 12." }),
+    );
+    expect(result.current.error).toEqual({
+      sessionId,
+      kind: "reload",
+      message: "The Copilot store did not respond.",
+      query: null,
+    });
+
+    failing = false;
+    await act(async () => {
+      await result.current.reload(sessionId);
+    });
+
+    expect(result.current.active).toBeNull();
+    expect(result.current.error).toBeNull();
   });
 
   it("gives the text back when the gateway refuses the turn before it starts", async () => {
@@ -79,12 +214,11 @@ describe("useCopilotChat", () => {
           { status: 409 },
         ),
       ),
+      http.get("*/api/copilot/sessions/:id", () => storedSession()),
     );
-    const { result } = renderHook(() => useCopilotChat(), {
-      wrapper: createQueryClientWrapper(),
-    });
+    const { result } = renderChat();
 
-    let outcome: unknown;
+    let outcome: CopilotSendResult | undefined;
     await act(async () => {
       outcome = await result.current.send(sendOptions);
     });
@@ -96,6 +230,7 @@ describe("useCopilotChat", () => {
     expect(result.current.active).toBeNull();
     expect(result.current.error).toEqual({
       sessionId,
+      kind: "turn",
       message: "A response is already being generated in this chat.",
       query: null,
     });
@@ -108,9 +243,7 @@ describe("useCopilotChat", () => {
       ),
       http.get("*/api/copilot/sessions/:id", () => storedSession()),
     );
-    const { result } = renderHook(() => useCopilotChat(), {
-      wrapper: createQueryClientWrapper(),
-    });
+    const { result } = renderChat();
 
     await act(async () => {
       await result.current.send(sendOptions);
@@ -118,40 +251,289 @@ describe("useCopilotChat", () => {
 
     expect(result.current.error).toEqual({
       sessionId,
+      kind: "turn",
       message: "The model is unavailable.",
       query: "Find Mpox genomes",
     });
   });
 
-  it("stops a running turn by its job id", async () => {
-    const aborted = vi.fn();
+  it.each([
+    ["with an image", { images: [{ name: "a.png", dataUrl: "data:image/png;base64,AA==" }] }],
+    ["as a hidden plan step", { hidden: true }],
+  ])("offers no Retry for a failed turn sent %s", async (_label, extra) => {
     server.use(
-      http.post("*/api/copilot/chat", () => {
-        const encoder = new TextEncoder();
-        // Starts, then never ends on its own.
-        const stream = new ReadableStream<Uint8Array>({
-          start(controller) {
-            controller.enqueue(encoder.encode('event: started\ndata: {"job_id":"j7"}\n\n'));
-            controller.enqueue(encoder.encode('event: final_response\ndata: {"chunk":"Partial"}\n\n'));
-          },
-        });
-        return new HttpResponse(stream, { headers: { "Content-Type": "text/event-stream" } });
+      http.post("*/api/copilot/chat", () =>
+        sse('event: error\ndata: {"error":"The model is unavailable."}\n\n'),
+      ),
+      http.get("*/api/copilot/sessions/:id", () => storedSession()),
+    );
+    const { result } = renderChat();
+
+    await act(async () => {
+      await result.current.send({ ...sendOptions, ...extra });
+    });
+
+    expect(result.current.error).toEqual(
+      expect.objectContaining({ kind: "turn", message: "The model is unavailable.", query: null }),
+    );
+  });
+
+  describe("Stop", () => {
+    function stopHandlers() {
+      const turn = endlessTurn();
+      let releaseAbort: () => void = () => undefined;
+      const abortGate = new Promise<void>((resolve) => {
+        releaseAbort = resolve;
+      });
+      const aborted = vi.fn();
+      const sessionGets = vi.fn();
+      const chatRequests: Request[] = [];
+      let result: ReturnType<typeof renderChat>["result"] | undefined;
+      server.use(
+        http.post("*/api/copilot/chat", ({ request }) => {
+          chatRequests.push(request);
+          return chatRequests.length === 1
+            ? turn.response(request.signal)
+            : sse(...doneFrames);
+        }),
+        http.post("*/api/copilot/jobs/:jobId/abort", async ({ params }) => {
+          aborted(params.jobId);
+          await abortGate;
+          return new HttpResponse(null, { status: 202 });
+        }),
+        http.get("*/api/copilot/sessions/:id", ({ params }) => {
+          sessionGets(result?.current.active?.turn.status ?? null);
+          return storedSession(String(params.id));
+        }),
+        http.post("*/api/copilot/sessions/:id/title", () =>
+          HttpResponse.json({ title: null }),
+        ),
+      );
+      return {
+        turn,
+        aborted,
+        sessionGets,
+        chatRequests,
+        releaseAbort: () => {
+          releaseAbort();
+        },
+        setResult: (next: ReturnType<typeof renderChat>["result"]) => {
+          result = next;
+        },
+      };
+    }
+
+    async function startStoppedTurn(handlers: ReturnType<typeof stopHandlers>) {
+      vi.useFakeTimers();
+      const rendered = renderChat();
+      handlers.setResult(rendered.result);
+      await advance(10);
+      expect(handlers.sessionGets).toHaveBeenCalledTimes(1);
+
+      let sending: Promise<CopilotSendResult> = Promise.resolve<CopilotSendResult>({ status: "busy" });
+      act(() => {
+        sending = rendered.result.current.send(sendOptions);
+      });
+      await advance(50);
+      expect(rendered.result.current.active?.turn).toEqual(
+        expect.objectContaining({ status: "running", jobId: "j7" }),
+      );
+
+      act(() => {
+        void rendered.result.current.stop();
+      });
+      expect(rendered.result.current.active?.turn.status).toBe("stopped");
+      expect(rendered.result.current.stopping).toBe(true);
+      return { ...rendered, sending };
+    }
+
+    it("reads the stored session once, after the stop request and the save wait", async () => {
+      const handlers = stopHandlers();
+      const { result, sending } = await startStoppedTurn(handlers);
+
+      // The first frame after Stop ended the stream; nothing reloads while
+      // the stop request is pending.
+      await advance(200);
+      expect(handlers.aborted).toHaveBeenCalledWith("j7");
+      expect(handlers.sessionGets).toHaveBeenCalledTimes(1);
+      expect(result.current.active?.turn.status).toBe("stopped");
+
+      handlers.releaseAbort();
+      await advance(1499);
+      expect(handlers.sessionGets).toHaveBeenCalledTimes(1);
+      expect(result.current.active?.turn.status).toBe("stopped");
+
+      await advance(1);
+      await advance(10);
+      expect(handlers.sessionGets).toHaveBeenCalledTimes(2);
+      expect(handlers.sessionGets).toHaveBeenLastCalledWith("stopped");
+      expect(result.current.active).toBeNull();
+      expect(result.current.stopping).toBe(false);
+      await expect(sending).resolves.toEqual(
+        expect.objectContaining({ status: "sent", ended: "stopped", reloadError: null }),
+      );
+      expect(handlers.sessionGets).toHaveBeenCalledTimes(2);
+    });
+
+    it("stays busy until the stopped turn settles, then sends without aborting the next", async () => {
+      const handlers = stopHandlers();
+      const { result, sending } = await startStoppedTurn(handlers);
+
+      let refused: CopilotSendResult | undefined;
+      await act(async () => {
+        refused = await result.current.send({ ...sendOptions, sessionId: otherSessionId });
+      });
+      expect(refused).toEqual({ status: "busy" });
+
+      handlers.releaseAbort();
+      await advance(1600);
+      await expect(sending).resolves.toEqual(
+        expect.objectContaining({ ended: "stopped" }),
+      );
+
+      let next: Promise<CopilotSendResult> = Promise.resolve<CopilotSendResult>({ status: "busy" });
+      act(() => {
+        next = result.current.send({ ...sendOptions, sessionId: otherSessionId });
+      });
+      await advance(50);
+      await expect(next).resolves.toEqual(
+        expect.objectContaining({ status: "sent", ended: "done", reloadError: null }),
+      );
+      expect(handlers.chatRequests).toHaveLength(2);
+      expect(handlers.chatRequests[1]?.signal.aborted).toBe(false);
+    });
+
+    it("settles a turn Stop cancelled while it opened like any stopped turn", async () => {
+      const sessionGets = vi.fn();
+      const sessionStops = vi.fn();
+      server.use(
+        // Never answers: only the abort after Stop ends the request.
+        http.post("*/api/copilot/chat", ({ request }) =>
+          new Promise<Response>((_resolve, reject) => {
+            request.signal.addEventListener("abort", () => {
+              reject(new DOMException("Aborted", "AbortError"));
+            });
+          }),
+        ),
+        http.post("*/api/copilot/sessions/:id/stop", () => {
+          sessionStops();
+          return new HttpResponse(null, { status: 202 });
+        }),
+        http.get("*/api/copilot/sessions/:id", () => {
+          sessionGets();
+          return storedSession();
+        }),
+      );
+      vi.useFakeTimers();
+      const { result } = renderChat();
+      await advance(10);
+      expect(sessionGets).toHaveBeenCalledTimes(1);
+
+      let sending = Promise.resolve<CopilotSendResult>({ status: "busy" });
+      act(() => {
+        sending = result.current.send(sendOptions);
+      });
+      act(() => {
+        void result.current.stop();
+      });
+      // No job id yet: the stop goes by session.
+      await advance(10);
+      expect(sessionStops).toHaveBeenCalledTimes(1);
+      expect(result.current.active?.turn.status).toBe("stopped");
+
+      await advance(1480);
+      expect(sessionGets).toHaveBeenCalledTimes(1);
+      await advance(20);
+      await advance(10);
+      expect(sessionGets).toHaveBeenCalledTimes(2);
+      await expect(sending).resolves.toEqual(
+        expect.objectContaining({ status: "sent", ended: "stopped", reloadError: null }),
+      );
+      expect(result.current.active).toBeNull();
+      expect(result.current.error).toBeNull();
+      expect(sessionGets).toHaveBeenCalledTimes(2);
+    });
+
+    it("reads the session again after a Stop that arrived during the reload", async () => {
+      let releaseReload: () => void = () => undefined;
+      const reloadGate = new Promise<void>((resolve) => {
+        releaseReload = resolve;
+      });
+      const sessionGets = vi.fn();
+      const aborted = vi.fn();
+      server.use(
+        // The connection drops with the turn still running.
+        http.post("*/api/copilot/chat", () =>
+          sse(
+            'event: started\ndata: {"job_id":"j9"}\n\n',
+            'event: final_response\ndata: {"chunk":"Partial"}\n\n',
+          ),
+        ),
+        http.post("*/api/copilot/jobs/:jobId/abort", ({ params }) => {
+          aborted(params.jobId);
+          return new HttpResponse(null, { status: 202 });
+        }),
+        http.get("*/api/copilot/sessions/:id", async () => {
+          sessionGets();
+          if (sessionGets.mock.calls.length === 2) await reloadGate;
+          return storedSession();
+        }),
+      );
+      vi.useFakeTimers();
+      const { result } = renderChat();
+      await advance(10);
+
+      let sending = Promise.resolve<CopilotSendResult>({ status: "busy" });
+      act(() => {
+        sending = result.current.send(sendOptions);
+      });
+      await advance(50);
+      // The stream ended, and the run is reading the session back.
+      expect(sessionGets).toHaveBeenCalledTimes(2);
+      expect(result.current.active?.turn.status).toBe("running");
+
+      act(() => {
+        void result.current.stop();
+      });
+      releaseReload();
+      await advance(10);
+      expect(aborted).toHaveBeenCalledWith("j9");
+      expect(sessionGets).toHaveBeenCalledTimes(2);
+      expect(result.current.active?.turn.status).toBe("stopped");
+
+      await advance(1480);
+      expect(sessionGets).toHaveBeenCalledTimes(2);
+      await advance(20);
+      await advance(10);
+      expect(sessionGets).toHaveBeenCalledTimes(3);
+      await expect(sending).resolves.toEqual(
+        expect.objectContaining({ status: "sent", ended: "stopped", reloadError: null }),
+      );
+      expect(result.current.active).toBeNull();
+      expect(result.current.stopping).toBe(false);
+    });
+  });
+
+  it("drops a running turn when the account changes", async () => {
+    const turn = endlessTurn();
+    const sessionGets = vi.fn();
+    const chatRequests: Request[] = [];
+    server.use(
+      http.post("*/api/copilot/chat", ({ request }) => {
+        chatRequests.push(request);
+        return turn.response(request.signal);
       }),
-      http.post("*/api/copilot/jobs/:jobId/abort", ({ params }) => {
-        aborted(params.jobId);
-        return new HttpResponse(null, { status: 202 });
-      }),
-      http.get("*/api/copilot/sessions/:id", async () => {
-        await delay(10);
+      http.get("*/api/copilot/sessions/:id", () => {
+        sessionGets();
         return storedSession();
       }),
     );
-    vi.useFakeTimers({ shouldAdvanceTime: true });
-    const { result } = renderHook(() => useCopilotChat(), {
-      wrapper: createQueryClientWrapper(),
+    const { result, rerender } = renderChat("user-a");
+    await waitFor(() => {
+      expect(sessionGets).toHaveBeenCalledTimes(1);
     });
 
-    let sending: Promise<unknown> = Promise.resolve();
+    let sending: Promise<CopilotSendResult> = Promise.resolve<CopilotSendResult>({ status: "busy" });
     act(() => {
       sending = result.current.send(sendOptions);
     });
@@ -159,19 +541,17 @@ describe("useCopilotChat", () => {
       expect(result.current.active?.turn.jobId).toBe("j7");
     });
 
-    let stopping: Promise<void> = Promise.resolve();
-    act(() => {
-      stopping = result.current.stop();
-    });
-    expect(result.current.active?.turn.status).toBe("stopped");
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(2000);
-      await stopping;
-      await sending;
-    });
+    rerender({ account: "user-b" });
 
-    expect(aborted).toHaveBeenCalledWith("j7");
     expect(result.current.active).toBeNull();
-    vi.useRealTimers();
+    expect(result.current.error).toBeNull();
+    expect(chatRequests[0]?.signal.aborted).toBe(true);
+    await expect(sending).resolves.toEqual(
+      expect.objectContaining({ status: "sent", ended: "stopped", reloadError: null }),
+    );
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(sessionGets).toHaveBeenCalledTimes(1);
+    expect(result.current.active).toBeNull();
+    turn.end();
   });
 });

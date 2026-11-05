@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Navbar from "@/components/navbars/navbar";
 import { requireCurrentUserOrRedirect } from "@/lib/auth/server/page-auth";
+import { copilotPagePath } from "@/lib/copilot/paths";
 
 export const metadata: Metadata = {
   title: "Copilot | DXKB",
@@ -11,7 +12,7 @@ export default async function CopilotLayout({
 }: {
   children: React.ReactNode;
 }) {
-  await requireCurrentUserOrRedirect("/copilot");
+  await requireCurrentUserOrRedirect(copilotPagePath);
 
   return (
     <div className="flex h-screen flex-col overflow-hidden">

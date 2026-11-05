@@ -1,5 +1,6 @@
 import { test, expect, applyBackendMocks } from "../mocks/backends";
 import type { JsonOverride } from "../mocks/backends";
+import { CopilotPage } from "../pages";
 import {
   copilotOverrides,
   journeyOverrides,
@@ -168,7 +169,7 @@ function planChat() {
       body: ({ parsedBody }) => {
         const saved = (parsedBody as { plan: Record<string, unknown> }).plan;
         saves.push(saved);
-        plan = JSON.parse(JSON.stringify(saved)) as Record<string, unknown>;
+        plan = structuredClone(saved);
         return "";
       },
     },
@@ -260,34 +261,30 @@ function cardChat(card: { card_type: string; card_payload: unknown }) {
   return { overrides, turns, declines };
 }
 
-async function openPanel(page: import("@playwright/test").Page) {
-  await page.goto("/jobs");
-  await page.getByRole("button", { name: "Open the Copilot" }).click();
-}
+const allOverrides = [
+  ...copilotOverrides,
+  ...workspacePopulatedOverrides,
+  ...journeyOverrides,
+];
 
 test.describe("Copilot", () => {
   test("answers a question in the side panel, with what it did", async ({ page }) => {
     const chat = chatOverrides();
-    await applyBackendMocks(page, {
-      overrides: [...chat.overrides, ...copilotOverrides, ...workspacePopulatedOverrides, ...journeyOverrides],
-    });
-    await page.goto("/jobs");
-
-    await page.getByRole("button", { name: "Open the Copilot" }).click();
-    const panel = page.getByRole("dialog");
-    await expect(panel.getByText("Ask the BV-BRC Copilot")).toBeVisible();
+    await applyBackendMocks(page, { overrides: [...chat.overrides, ...allOverrides] });
+    const copilot = new CopilotPage(page);
+    await copilot.gotoAndOpen();
+    await expect(copilot.emptyState).toBeVisible();
 
     // A suggestion fills the box; Enter sends it.
-    await panel.getByRole("button", { name: question }).click();
-    const box = panel.getByRole("textbox", { name: "Ask the Copilot" });
-    await expect(box).toHaveValue(question);
-    await box.press("Enter");
+    await copilot.suggestion(question).click();
+    await expect(copilot.composer).toHaveValue(question);
+    await copilot.composer.press("Enter");
 
-    await expect(panel.getByText("I found")).toBeVisible();
-    await expect(panel.getByRole("strong")).toHaveText("12");
-    await expect(panel.getByText("What I did (1 step)")).toBeVisible();
-    await expect(panel.getByRole("button", { name: "Good answer" })).toBeVisible();
-    await expect(box).toHaveValue("");
+    await expect(copilot.answerText("I found")).toBeVisible();
+    await expect(copilot.boldAnswer).toHaveText("12");
+    await expect(copilot.whatIDidTrigger).toBeVisible();
+    await expect(copilot.goodAnswerButton).toBeVisible();
+    await expect(copilot.composer).toHaveValue("");
 
     expect(chat.sent).toEqual([
       expect.objectContaining({
@@ -300,88 +297,58 @@ test.describe("Copilot", () => {
 
   test("keeps the conversation when moved to the floating window", async ({ page }) => {
     const chat = chatOverrides();
-    await applyBackendMocks(page, {
-      overrides: [...chat.overrides, ...copilotOverrides, ...workspacePopulatedOverrides, ...journeyOverrides],
-    });
-    await page.goto("/jobs");
-    await page.getByRole("button", { name: "Open the Copilot" }).click();
-    const box = page.getByRole("textbox", { name: "Ask the Copilot" });
-    await box.fill(question);
-    await box.press("Enter");
-    await expect(page.getByText("I found")).toBeVisible();
+    await applyBackendMocks(page, { overrides: [...chat.overrides, ...allOverrides] });
+    const copilot = new CopilotPage(page);
+    await copilot.gotoAndOpen();
+    await copilot.ask(question);
+    await expect(copilot.answerText("I found")).toBeVisible();
 
-    await page.getByRole("button", { name: "Copilot options" }).click();
-    await page.getByRole("menuitem", { name: "Floating window" }).click();
+    await copilot.moveToFloating();
 
-    const floating = page.getByRole("dialog");
-    await expect(floating.getByText("I found")).toBeVisible();
+    await expect(copilot.panel.getByText("I found")).toBeVisible();
     // Non-modal: the page behind stays usable.
-    await expect(page.getByRole("button", { name: "Close the Copilot" }).first()).toBeVisible();
-    await page.keyboard.press("Escape");
-    await expect(floating).toBeHidden();
+    await expect(copilot.closeButton).toBeVisible();
+    await copilot.pressEscape();
+    await expect(copilot.panel).toBeHidden();
   });
 
   test("moves from the floating window back to the side panel", async ({ page }) => {
-    await applyBackendMocks(page, {
-      overrides: [...copilotOverrides, ...workspacePopulatedOverrides, ...journeyOverrides],
-    });
-    await page.goto("/jobs");
-    await page.getByRole("button", { name: "Open the Copilot" }).click();
-    await page.getByRole("button", { name: "Copilot options" }).click();
-    await page.getByRole("menuitem", { name: "Floating window" }).click();
-    await expect(page.getByRole("dialog", { name: /New chat/ })).toHaveAttribute("aria-modal", "false");
+    await applyBackendMocks(page, { overrides: allOverrides });
+    const copilot = new CopilotPage(page);
+    await copilot.gotoAndOpen();
+    await copilot.moveToFloating();
+    await expect(copilot.newChatDialog).toHaveAttribute("aria-modal", "false");
 
-    await page.getByRole("button", { name: "Copilot options" }).click();
-    await page.getByRole("menuitem", { name: "Side panel" }).click();
+    await copilot.moveToSidePanel();
 
-    const sheet = page.locator('[data-slot="sheet-content"]');
-    await expect(sheet).toBeVisible();
-    await expect(sheet.getByText("Ask the BV-BRC Copilot")).toBeVisible();
-    await expect(page.locator('[role="dialog"][aria-modal="false"]')).toHaveCount(0);
+    await expect(copilot.sideSheet).toBeVisible();
+    await expect(copilot.sideSheet.getByText("Ask the BV-BRC Copilot")).toBeVisible();
+    await expect(copilot.floating).toHaveCount(0);
   });
 
   test("resizes the floating window from an edge and a corner", async ({ page }) => {
-    await applyBackendMocks(page, {
-      overrides: [...copilotOverrides, ...workspacePopulatedOverrides, ...journeyOverrides],
-    });
-    await page.goto("/jobs");
-    await page.getByRole("button", { name: "Open the Copilot" }).click();
-    await page.getByRole("button", { name: "Copilot options" }).click();
-    await page.getByRole("menuitem", { name: "Floating window" }).click();
-    const floating = page.locator('[role="dialog"][aria-modal="false"]');
-    await expect(floating).toBeVisible();
+    await applyBackendMocks(page, { overrides: allOverrides });
+    const copilot = new CopilotPage(page);
+    await copilot.gotoAndOpen();
+    await copilot.moveToFloating();
     // The side panel animates closed after the switch, and its backdrop
     // covers the page until it is gone; a press before that lands on it.
-    await expect(page.locator('[data-slot="sheet-overlay"]')).toHaveCount(0);
-    await expect(page.getByRole("menu")).toBeHidden();
-    const before = await floating.boundingBox();
-    if (!before) throw new Error("floating window has no box");
-
-    const drag = async (direction: string, dx: number, dy: number) => {
-      const handle = floating.locator(`[data-resize-handle="${direction}"]`);
-      const box = await handle.boundingBox();
-      if (!box) throw new Error(`no ${direction} handle`);
-      const x = box.x + box.width / 2;
-      const y = box.y + box.height / 2;
-      await page.mouse.move(x, y);
-      await page.mouse.down();
-      await page.mouse.move(x + dx, y + dy, { steps: 5 });
-      await page.mouse.up();
-    };
+    await copilot.waitForFloatingSettled();
+    const before = await copilot.floatingBox();
 
     // Left edge out by 60: wider, right edge fixed.
-    await drag("w", -60, 0);
-    const wider = await floating.boundingBox();
-    expect(wider?.width).toBeCloseTo(before.width + 60, 0);
-    expect((wider?.x ?? 0) + (wider?.width ?? 0)).toBeCloseTo(before.x + before.width, 0);
+    await copilot.dragHandle("w", -60, 0);
+    const wider = await copilot.floatingBox();
+    expect(wider.width).toBeCloseTo(before.width + 60, 0);
+    expect(wider.x + wider.width).toBeCloseTo(before.x + before.width, 0);
 
     // Bottom-right corner in by (40, 50): narrower and shorter, top-left fixed.
-    await drag("se", -40, -50);
-    const smaller = await floating.boundingBox();
-    expect(smaller?.width).toBeCloseTo(before.width + 20, 0);
-    expect(smaller?.height).toBeCloseTo(before.height - 50, 0);
-    expect(smaller?.x).toBeCloseTo(wider?.x ?? 0, 0);
-    expect(smaller?.y).toBeCloseTo(before.y, 0);
+    await copilot.dragHandle("se", -40, -50);
+    const smaller = await copilot.floatingBox();
+    expect(smaller.width).toBeCloseTo(before.width + 20, 0);
+    expect(smaller.height).toBeCloseTo(before.height - 50, 0);
+    expect(smaller.x).toBeCloseTo(wider.x, 0);
+    expect(smaller.y).toBeCloseTo(before.y, 0);
   });
 
   test("answers an agent's questions from its card", async ({ page }) => {
@@ -395,20 +362,18 @@ test.describe("Copilot", () => {
         ],
       },
     });
-    await applyBackendMocks(page, {
-      overrides: [...chat.overrides, ...copilotOverrides, ...workspacePopulatedOverrides, ...journeyOverrides],
-    });
-    await openPanel(page);
+    await applyBackendMocks(page, { overrides: [...chat.overrides, ...allOverrides] });
+    const copilot = new CopilotPage(page);
+    await copilot.gotoAndOpen();
 
-    const panel = page.getByRole("dialog");
-    await expect(panel.getByText("Before I create a plan, I have a few questions")).toBeVisible();
+    await expect(copilot.clarificationIntro).toBeVisible();
     // A required question must be answered first.
-    await panel.getByRole("button", { name: "Send answers" }).click();
-    await expect(panel.getByRole("alert")).toHaveText("Please answer: Which assembler?");
+    await copilot.sendAnswersButton.click();
+    await expect(copilot.missingAnswerAlert).toHaveText("Please answer: Which assembler?");
 
-    await panel.getByRole("button", { name: "SPAdes" }).click();
-    await panel.getByRole("textbox", { name: "Your answer to: Anything else?" }).fill("Keep contigs over 500 bp");
-    await panel.getByRole("button", { name: "Send answers" }).click();
+    await copilot.option("SPAdes").click();
+    await copilot.answerQuestion("Anything else?", "Keep contigs over 500 bp");
+    await copilot.sendAnswersButton.click();
 
     await expect.poll(() => chat.turns.length).toBe(1);
     expect(chat.turns[0]).toEqual(
@@ -432,16 +397,14 @@ test.describe("Copilot", () => {
       card_type: "execution_blocked",
       card_payload: { agent: "service", blocked_actions: [preparedJob] },
     });
-    await applyBackendMocks(page, {
-      overrides: [...chat.overrides, ...copilotOverrides, ...workspacePopulatedOverrides, ...journeyOverrides],
-    });
-    await openPanel(page);
+    await applyBackendMocks(page, { overrides: [...chat.overrides, ...allOverrides] });
+    const copilot = new CopilotPage(page);
+    await copilot.gotoAndOpen();
 
-    const panel = page.getByRole("dialog");
-    await expect(panel.getByText("Prepared — nothing submitted yet")).toBeVisible();
-    await expect(panel.getByText("Genome assembly of SRR123456 (unicycler)")).toBeVisible();
-    await expect(panel.getByText("Submit this job?")).toBeVisible();
-    await panel.getByRole("button", { name: "Yes, submit it" }).click();
+    await expect(copilot.preparedNotice).toBeVisible();
+    await expect(copilot.answerText("Genome assembly of SRR123456 (unicycler)")).toBeVisible();
+    await expect(copilot.submitQuestion).toBeVisible();
+    await copilot.submitButton.click();
 
     await expect.poll(() => chat.turns.length).toBe(1);
     expect(chat.turns[0]).toEqual(
@@ -459,21 +422,17 @@ test.describe("Copilot", () => {
       card_type: "execution_blocked",
       card_payload: { agent: "service", blocked_actions: [preparedJob] },
     });
-    await applyBackendMocks(page, {
-      overrides: [...chat.overrides, ...copilotOverrides, ...workspacePopulatedOverrides, ...journeyOverrides],
-    });
-    await openPanel(page);
+    await applyBackendMocks(page, { overrides: [...chat.overrides, ...allOverrides] });
+    const copilot = new CopilotPage(page);
+    await copilot.gotoAndOpen();
 
-    const panel = page.getByRole("dialog");
-    await panel.getByRole("button", { name: "No", exact: true }).click();
-    await expect(panel.getByText("Not submitted.")).toBeVisible();
+    await copilot.decline();
+    await expect(copilot.notSubmittedNotice).toBeVisible();
     expect(chat.declines).toEqual([{ actions: [preparedJob] }]);
     expect(chat.turns).toEqual([]);
 
-    await expect(panel.getByText("Should anything be changed?")).toBeVisible();
-    const change = panel.getByRole("textbox", { name: "Describe the change" });
-    await change.fill("use SPAdes instead");
-    await change.press("Enter");
+    await expect(copilot.changePrompt).toBeVisible();
+    await copilot.describeChange("use SPAdes instead");
 
     await expect.poll(() => chat.turns.length).toBe(1);
     expect(chat.turns[0]).toEqual(
@@ -487,44 +446,38 @@ test.describe("Copilot", () => {
 
   test("sends questions in Execute mode once it is switched on", async ({ page }) => {
     const chat = chatOverrides();
-    await applyBackendMocks(page, {
-      overrides: [...chat.overrides, ...copilotOverrides, ...workspacePopulatedOverrides, ...journeyOverrides],
-    });
-    await openPanel(page);
-    const panel = page.getByRole("dialog");
+    await applyBackendMocks(page, { overrides: [...chat.overrides, ...allOverrides] });
+    const copilot = new CopilotPage(page);
+    await copilot.gotoAndOpen();
 
-    await expect(panel.getByRole("radio", { name: "Plan" })).toHaveAttribute("aria-checked", "true");
-    await panel.getByRole("radio", { name: "Execute" }).click();
-    await expect(panel.getByText(/Execute mode: the Copilot may submit jobs/)).toBeVisible();
+    await expect(copilot.modeRadio("Plan")).toHaveAttribute("aria-checked", "true");
+    await copilot.modeRadio("Execute").click();
+    await expect(copilot.executeNotice).toBeVisible();
 
-    const box = panel.getByRole("textbox", { name: "Ask the Copilot" });
-    await box.fill(question);
-    await box.press("Enter");
+    await copilot.ask(question);
     await expect.poll(() => chat.sent.length).toBe(1);
     expect(chat.sent[0]).toEqual(expect.objectContaining({ executionMode: "execute" }));
   });
 
   test("runs a plan step by step, waiting for the job a step submitted", async ({ page }) => {
     const chat = planChat();
-    await applyBackendMocks(page, {
-      overrides: [...chat.overrides, ...copilotOverrides, ...workspacePopulatedOverrides, ...journeyOverrides],
-    });
-    await openPanel(page);
+    await applyBackendMocks(page, { overrides: [...chat.overrides, ...allOverrides] });
+    const copilot = new CopilotPage(page);
+    await copilot.gotoAndOpen();
 
-    const panel = page.getByRole("dialog");
-    await expect(panel.getByRole("heading", { name: "Assemble and annotate SRR123456" })).toBeVisible();
-    await expect(panel.getByText("Draft")).toBeVisible();
-    await panel.getByRole("button", { name: "Run plan" }).click();
+    await expect(copilot.planHeading("Assemble and annotate SRR123456")).toBeVisible();
+    await expect(copilot.draftBadge).toBeVisible();
+    await copilot.runPlanButton.click();
 
     // Step 1 runs, submits a job, and the plan waits for it.
-    await expect(panel.getByRole("button", { name: "Continue plan" })).toBeVisible();
-    await expect(panel.getByText("The job finished.")).toBeVisible();
-    await expect(panel.getByText("Step 1 done")).toBeVisible();
+    await expect(copilot.continuePlanButton).toBeVisible();
+    await expect(copilot.answerText("The job finished.")).toBeVisible();
+    await expect(copilot.answerText("Step 1 done")).toBeVisible();
     // A step's question is not shown as the user's.
-    await expect(panel.getByText("Execute plan step:")).toHaveCount(0);
+    await expect(copilot.planStepQuestion).toHaveCount(0);
 
-    await panel.getByRole("button", { name: "Continue plan" }).click();
-    await expect(panel.getByText("All steps are done.")).toBeVisible();
+    await copilot.continuePlanButton.click();
+    await expect(copilot.allStepsDone).toBeVisible();
 
     expect(chat.turns).toEqual([
       expect.objectContaining({
@@ -552,41 +505,43 @@ test.describe("Copilot", () => {
 
   test("edits a draft plan's steps before it runs", async ({ page }) => {
     const chat = planChat();
-    await applyBackendMocks(page, {
-      overrides: [...chat.overrides, ...copilotOverrides, ...workspacePopulatedOverrides, ...journeyOverrides],
-    });
-    await openPanel(page);
+    await applyBackendMocks(page, { overrides: [...chat.overrides, ...allOverrides] });
+    const copilot = new CopilotPage(page);
+    await copilot.gotoAndOpen();
 
-    const panel = page.getByRole("dialog");
-    await panel.getByRole("button", { name: "Edit" }).click();
-    await panel.getByRole("textbox", { name: "Step 2: what to do" }).fill("Annotate with RASTtk");
-    await panel.getByRole("button", { name: "Move step 2 up" }).click();
-    await panel.getByRole("button", { name: "Save changes" }).click();
+    await copilot.editPlanButton.click();
+    // Step 2 depends on step 1, so it cannot move above it.
+    await expect(copilot.moveStepUp(2)).toBeDisabled();
 
-    await expect(panel.getByRole("button", { name: "Run plan" })).toBeVisible();
+    await copilot.stepBox(2).fill("Annotate with RASTtk");
+    await copilot.addStepButton.click();
+    await copilot.stepBox(3).fill("Report the results");
+    await copilot.moveStepUp(3).click();
+    await copilot.saveChangesButton.click();
+
+    await expect(copilot.runPlanButton).toBeVisible();
     expect(chat.saves).toHaveLength(1);
     expect(chat.saves[0].steps).toEqual([
-      expect.objectContaining({ step_id: "step_2", description: "Annotate with RASTtk", depends_on: ["step_1"] }),
       expect.objectContaining({ step_id: "step_1", description: "Assemble the reads" }),
+      expect.objectContaining({ step_id: "step_3", description: "Report the results" }),
+      expect.objectContaining({ step_id: "step_2", description: "Annotate with RASTtk", depends_on: ["step_1"] }),
     ]);
   });
 
   test("sends an attached text file with the question", async ({ page }) => {
     const chat = chatOverrides();
-    await applyBackendMocks(page, {
-      overrides: [...chat.overrides, ...copilotOverrides, ...workspacePopulatedOverrides, ...journeyOverrides],
-    });
-    await openPanel(page);
+    await applyBackendMocks(page, { overrides: [...chat.overrides, ...allOverrides] });
+    const copilot = new CopilotPage(page);
+    await copilot.gotoAndOpen();
 
-    const panel = page.getByRole("dialog");
-    await panel.locator('input[type="file"]').setInputFiles({
+    await copilot.attach({
       name: "ids.txt",
       mimeType: "text/plain",
       buffer: Buffer.from("SRR123456\nSRR654321\n"),
     });
-    await expect(panel.getByRole("list", { name: "Attached files" })).toContainText("ids.txt");
-    await panel.getByRole("textbox", { name: "Ask the Copilot" }).fill("Assemble these runs");
-    await panel.getByRole("button", { name: "Send" }).click();
+    await expect(copilot.attachedFiles).toContainText("ids.txt");
+    await copilot.composer.fill("Assemble these runs");
+    await copilot.send();
 
     await expect.poll(() => chat.sent.length).toBe(1);
     expect(chat.sent[0]).toEqual(
@@ -595,18 +550,17 @@ test.describe("Copilot", () => {
         files: [{ name: "ids.txt", content: "SRR123456\nSRR654321\n", mimeType: "text/plain", size: 20 }],
       }),
     );
-    await expect(panel.getByRole("list", { name: "Attached files" })).toHaveCount(0);
+    await expect(copilot.attachedFiles).toHaveCount(0);
   });
 
   test("full page shows the chat list beside an empty chat", async ({ page }) => {
-    await applyBackendMocks(page, {
-      overrides: [...copilotOverrides, ...workspacePopulatedOverrides, ...journeyOverrides],
-    });
-    await page.goto("/copilot");
-    await expect(page.getByRole("complementary", { name: "Your chats" })).toBeVisible();
-    await expect(page.getByText("No chats yet.")).toBeVisible();
-    await expect(page.getByText("Ask the BV-BRC Copilot")).toBeVisible();
+    await applyBackendMocks(page, { overrides: allOverrides });
+    const copilot = new CopilotPage(page);
+    await copilot.openFullPage();
+    await expect(copilot.chatList).toBeVisible();
+    await expect(copilot.emptyChatList).toBeVisible();
+    await expect(copilot.emptyState).toBeVisible();
     // The navbar button is hidden on the full page.
-    await expect(page.getByRole("button", { name: "Open the Copilot" })).toBeHidden();
+    await expect(copilot.launcher).toBeHidden();
   });
 });

@@ -38,7 +38,9 @@ function readPlanStepRef(raw: unknown): CopilotClarificationCard["planStep"] {
     planId,
     stepId: text(raw.step_id),
     stepIndex:
-      typeof raw.step_index === "number" && Number.isInteger(raw.step_index)
+      typeof raw.step_index === "number" &&
+      Number.isInteger(raw.step_index) &&
+      raw.step_index >= 0
         ? raw.step_index
         : null,
   };
@@ -152,16 +154,20 @@ export function executionYesLabel(actions: CopilotBlockedAction[]): string {
  * service agent reads it as "run exactly what you prepared").
  */
 export function executeRunMessage(actions: CopilotBlockedAction[]): string {
-  const tools = new Set(actions.map((action) => action.tool));
-  const submits = tools.has("submit_gowe_job");
-  const groups = tools.has("create_group");
-  if (submits && groups) {
-    return "Execute mode is on for this message. Submit the job and create the group exactly as you prepared them above.";
+  const { jobs, groups, edits } = counts(actions);
+  const prefix = "Execute mode is on for this message.";
+  if (edits > 0) {
+    return jobs === 0 && edits === groups
+      ? `${prefix} Update the group exactly as you prepared it above.`
+      : `${prefix} Run these actions exactly as you prepared them above.`;
   }
-  if (groups) {
-    return "Execute mode is on for this message. Create the group exactly as you prepared it above.";
+  if (jobs > 0 && groups > 0) {
+    return `${prefix} Submit the job and create the group exactly as you prepared them above.`;
   }
-  return "Execute mode is on for this message. Submit the job exactly as you prepared it above.";
+  if (groups > 0) {
+    return `${prefix} Create the group exactly as you prepared it above.`;
+  }
+  return `${prefix} Submit the job exactly as you prepared it above.`;
 }
 
 /**

@@ -153,16 +153,20 @@ export async function readCopilotModels(
   const models = z.array(gatewayModelSchema).safeParse(entries);
   if (!models.success) throw unreadableAnswer();
 
-  return models.data
-    .filter((entry) => entry.active !== false)
-    .map((entry) => ({
-      model: entry.model,
-      modelType: entry.model_type ?? null,
-      priority: entry.priority ?? null,
-      maxTokens: entry.max_tokens ?? null,
-      supportsImage: entry.supports_image === true,
-      isDefault: entry.is_default === true,
-    }));
+  return models.data.flatMap((entry) =>
+    entry.active === false
+      ? []
+      : [
+          {
+            model: entry.model,
+            modelType: entry.model_type ?? null,
+            priority: entry.priority ?? null,
+            maxTokens: entry.max_tokens ?? null,
+            supportsImage: entry.supports_image === true,
+            isDefault: entry.is_default === true,
+          },
+        ],
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -645,6 +649,16 @@ export async function rateCopilotMessage(
 
 /** Longest question accepted; the gateway forwards it to the model whole. */
 export const maxCopilotQueryLength = 100_000;
+
+/**
+ * Prepared actions go back to the gateway verbatim, which checks them against
+ * the card it stored; here they are only bounded.
+ */
+export const copilotActionsSchema = z
+  .array(z.looseObject({ tool: z.string().min(1).max(100) }))
+  .min(1)
+  .max(50)
+  .refine((actions) => JSON.stringify(actions).length <= 200_000);
 export const maxCopilotPageContextLength = 2_000;
 
 /**
@@ -751,6 +765,17 @@ export async function openCopilotTurn(
     { service, timeoutMs: upstreamTimeoutMs.copilot, streamBody: true },
   );
   if (!response.ok) throw await rejection(response);
+  // A proxy's HTML page or a JSON error with a 200 is not a stream to relay.
+  if (
+    /^(text\/(html|xml)|application\/(json|xml|xhtml\+xml))\b/i.test(
+      response.headers.get("content-type") ?? "",
+    )
+  ) {
+    // Not awaited: the answer does not depend on the stream closing, and
+    // under MSW's interceptor the cancel never settles.
+    void response.body?.cancel().catch(() => undefined);
+    throw unreadableAnswer();
+  }
   if (!response.body) throw unreadableAnswer();
   return response;
 }

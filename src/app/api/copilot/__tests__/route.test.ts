@@ -251,6 +251,23 @@ describe("GET /api/copilot/sessions", () => {
     expect(query).toEqual(new URLSearchParams(sent));
   });
 
+  it("forwards an offset beyond the safe integer range as the largest safe integer", async () => {
+    let query: URLSearchParams | null = null;
+    server.use(
+      http.get(`${gatewayUrl}/chatbrc/get-all-sessions`, ({ request }) => {
+        query = new URL(request.url).searchParams;
+        return HttpResponse.json({ sessions: [], total: 0, has_more: false });
+      }),
+    );
+
+    const res = await getSessions({ offset: "99999999999999999999999" });
+
+    expect(res.status).toBe(200);
+    expect(query).toEqual(
+      new URLSearchParams({ limit: "20", offset: "9007199254740991" }),
+    );
+  });
+
   it("keeps the gateway's rejection status and message", async () => {
     vi.spyOn(console, "error").mockImplementation(() => undefined);
     server.use(

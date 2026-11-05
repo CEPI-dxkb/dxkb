@@ -89,6 +89,7 @@ Enabled via `reactCompiler: true` in `next.config.ts` — components are auto-me
 
 - **Do NOT bulk-remove existing memoization** — it can change compiled output. Removing `useMemo` from a context provider's `value` breaks `"use no memo"` consumers (compiler skips context values in opted-out subtrees). Only remove deliberately, with test coverage.
 - **Opt-out**: a component using a hook the compiler can't memoize (such as TanStack Virtual's `useVirtualizer`) needs `"use no memo";` as the first statement in its body. When you add one, you MUST also add the file to the `files: [...]` list in `eslint.config.mjs` (silences `react-hooks/incompatible-library`). `src/__tests__/react-compiler-config.test.ts` guards that list — keep them in sync. Current opt-outs: `shared/data-table.tsx`, `workspace/file-viewer/viewers/csv-viewer.tsx`, `organisms/reference-genomes/reference-genomes-client.tsx`, `taxonomy/taxonomy-tree.tsx`.
+- **Compiler skips are silent.** Functions nested in a hook compile as part of it, so `??=`, `try…finally`, `for await` or `for (;;)` anywhere in a hook body makes the compiler skip the whole hook, and `pnpm lint` does not report it. Keep such code in module-level functions, and check with `babel-plugin-react-compiler` (recipe: "React Compiler check" in `.claude/rules/testing.md`).
 
 ## Staying on-pattern (read before adding anything new)
 
@@ -130,13 +131,3 @@ Find the existing example of the same shape and follow it:
 ## File Structure
 
 - All miscellaneous folders (e.g. `/.playwright-mcp`) should be placed in the `/.misc` folder in the root of the repository, as should any new folder like them. Every *report and artifact* folder the Playwright and a11y configs write is already there: `test-results`, `playwright-report`, `a11y-report`, `a11y-results`, `a11y-meta-report`, `a11y-meta-results`. Two paths those configs write stay outside `/.misc` deliberately, because neither is a throwaway artifact: `e2e/__snapshots__` (committed visual baselines) and `e2e/.auth/` (generated storage state, gitignored where it sits). No config sets `--reporter=blob`, so no `blob-report` is produced; if you enable it, point `PLAYWRIGHT_BLOB_OUTPUT_DIR` under `/.misc` as well. The exceptions to this rule are established project, tool, output, and documentation roots: `/.claude`, `/.devcontainer`, `/.git`, `/.github`, `/.misc`, `/.next`, `/.playwright-mcp`, `/.superpowers`, `/.vscode`, `/auspice`, `/coverage`, `/docs`, `/e2e`, `/graphify-out`, `/node_modules`, `/patches`, `/plans`, `/public`, `/scripts`, and `/src`.
-
-<!-- BEGIN:nextjs-agent-rules -->
-
-# This is NOT the Next.js you know
-
-This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
-
-This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
-
-<!-- END:nextjs-agent-rules -->

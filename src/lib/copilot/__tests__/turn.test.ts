@@ -127,6 +127,12 @@ describe("plan step events", () => {
     });
   });
 
+  it("ignores a plan step update whose only reference is a negative index", () => {
+    expect(
+      decode("plan_step_completed", { plan_id: "p", step_index: -1 }),
+    ).toBeNull();
+  });
+
   it("keeps a turn's step updates in order", () => {
     const events = [
       decode("plan_step_started", { plan_id: "p", step_index: 0 }),
@@ -140,9 +146,12 @@ describe("plan step events", () => {
 });
 
 describe("appendAnswer", () => {
-  it("skips a final chunk that repeats the text's end", () => {
-    expect(appendAnswer("Hello world", "world")).toBe("Hello world");
+  it("skips only a chunk that repeats the whole answer", () => {
+    expect(appendAnswer("Hello world", "Hello world")).toBe("Hello world");
     expect(appendAnswer("Hello", " world")).toBe("Hello world");
+    // A chunk matching only the end is real text.
+    expect(appendAnswer("**bold**", "**")).toBe("**bold****");
+    expect(appendAnswer("Hello world", "world")).toBe("Hello worldworld");
     // A one-character chunk is always appended ("aa" streams as "a", "a").
     expect(appendAnswer("a", "a")).toBe("aa");
   });

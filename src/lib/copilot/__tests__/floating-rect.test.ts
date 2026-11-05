@@ -1,4 +1,5 @@
-import { clampFloatingRect, resizeFloatingRect } from "../copilot-floating-window";
+import { clampFloatingRect, margin, resizeFloatingRect } from "../floating-rect";
+import { uiPreferenceDefinitions } from "@/lib/ui-preferences/definitions";
 
 const viewport = { width: 1400, height: 900 };
 // left 956..right 1376, top 236..bottom 876
@@ -70,5 +71,30 @@ describe("clampFloatingRect", () => {
     expect(
       clampFloatingRect({ right: -50, bottom: 2000, width: 2000, height: 600 }, { width: 800, height: 700 }),
     ).toEqual({ right: 8, bottom: 92, width: 784, height: 600 });
+  });
+});
+
+describe("floating rect edge cases", () => {
+  const { schema } = uiPreferenceDefinitions.copilotFloatingRect;
+
+  it("keeps the left edge at the margin on a viewport narrower than the window", () => {
+    const small = { width: 300, height: 700 };
+    const rect = resizeFloatingRect(start, "w", -500, 0, small);
+    expect(small.width - rect.right - rect.width).toBeGreaterThanOrEqual(margin);
+  });
+
+  it("produces a rect the schema accepts on a 300x340 viewport", () => {
+    const rect = clampFloatingRect(start, { width: 300, height: 340 });
+    expect(schema.safeParse(rect).success).toBe(true);
+  });
+
+  it("accepts an oversized rect and rejects negative or non-finite values", () => {
+    expect(
+      schema.safeParse({ width: 2500, height: 2200, right: 24, bottom: 24 }).success,
+    ).toBe(true);
+    for (const bad of [-1, Number.NaN, Number.POSITIVE_INFINITY]) {
+      expect(schema.safeParse({ ...start, width: bad }).success).toBe(false);
+      expect(schema.safeParse({ ...start, height: bad }).success).toBe(false);
+    }
   });
 });

@@ -25,6 +25,25 @@ describe("describeCopilotPage", () => {
     expect(sentence).not.toContain("They are viewing");
   });
 
+  it.each(["/constructor/x", "/__proto__", "/toString", "/hasOwnProperty?rql=a"])(
+    "describes %s as an undescribed page",
+    (url) => {
+      const [pathname, search = ""] = url.split("?");
+      expect(describeCopilotPage(pathname, search)).toBe(
+        describeCopilotPage("/copilot"),
+      );
+    },
+  );
+
+  it.each(["/organisms/" + "a".repeat(5000), "/organisms/viruses/" + "a".repeat(5000), "/services/" + "a".repeat(5000)])(
+    "bounds a long path segment (%#)",
+    (pathname) => {
+      const sentence = describeCopilotPage(pathname);
+      expect(sentence).toContain("They are viewing");
+      expect(sentence.length).toBeLessThan(2000);
+    },
+  );
+
   it("bounds values taken from the URL", () => {
     const sentence = describeCopilotPage("/genome", `?rql=${"a".repeat(5000)}`);
     expect(sentence.length).toBeLessThan(2000);

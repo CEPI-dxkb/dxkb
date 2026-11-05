@@ -4,6 +4,7 @@ import { withAuth } from "@/lib/auth/server/route";
 import {
   answerCopilot,
   copilotBadRequest,
+  readCopilotJsonBody,
 } from "@/lib/copilot/route-errors";
 import {
   maxCopilotAttachments,
@@ -11,6 +12,7 @@ import {
   maxCopilotImageBytes,
 } from "@/lib/copilot/attachments";
 import {
+  copilotActionsSchema,
   copilotPlanSchema,
   isCopilotId,
   maxCopilotPageContextLength,
@@ -26,14 +28,13 @@ const answerSchema = z.object({
 });
 
 /**
- * Prepared actions go back to the gateway verbatim, which checks them against
- * the card it stored; here they are only bounded.
+ * Largest request body: every attachment slot as a text file (base64 is 4/3
+ * of the bytes it carries, and a tab- or newline-heavy text file can double
+ * when JSON-escaped, so twice the file cap per slot), plus 2 MB for the
+ * query, page context and plan.
  */
-const actionsSchema = z
-  .array(z.looseObject({ tool: z.string().min(1).max(100) }))
-  .min(1)
-  .max(50)
-  .refine((actions) => JSON.stringify(actions).length <= 200_000);
+const maxChatBodyBytes =
+  maxCopilotAttachments * 2 * maxCopilotFileBytes + 2 * 1024 * 1024;
 
 const attachmentName = z.string().trim().min(1).max(255);
 
@@ -87,8 +88,8 @@ const chatRequestSchema = z
         originalQuery: z.string().max(maxCopilotQueryLength),
       })
       .optional(),
-    replayActions: actionsSchema.optional(),
-    preparedActions: actionsSchema.optional(),
+    replayActions: copilotActionsSchema.optional(),
+    preparedActions: copilotActionsSchema.optional(),
     planStep: z
       .object({
         plan: copilotPlanSchema,
@@ -100,6 +101,7 @@ const chatRequestSchema = z
     pdfs: z.array(pdfSchema).max(maxCopilotAttachments).optional(),
   })
   .refine((turn) => !(turn.replayActions && turn.preparedActions))
+  .refine((turn) => !(turn.clarification && turn.planStep))
   .refine(
     (turn) =>
       (turn.images?.length ?? 0) +
@@ -115,13 +117,9 @@ const chatRequestSchema = z
  * gateway still finishes and saves the turn (Stop is the explicit cancel).
  */
 export const POST = withAuth(async (request, { token }) => {
-  let body: unknown;
-  try {
-    body = await request.json();
-  } catch {
-    return copilotBadRequest("Malformed JSON");
-  }
-  const turn = chatRequestSchema.safeParse(body);
+  const body = await readCopilotJsonBody(request, maxChatBodyBytes);
+  if ("error" in body) return body.error;
+  const turn = chatRequestSchema.safeParse(body.value);
   if (!turn.success) return copilotBadRequest("Invalid Copilot chat request.");
 
   return answerCopilot(async () => {

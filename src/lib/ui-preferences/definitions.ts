@@ -132,12 +132,14 @@ export const uiPreferenceDefinitions: {
   copilotFloatingRect: {
     cookieName: "dxkb-copilot-floating-rect",
     // Anchored to the bottom-right corner, so a smaller window later still
-    // shows the window; the component clamps it into the viewport.
+    // shows the window; the component clamps it into the viewport. Width and
+    // height only need to be sane: a cookie saved on a small viewport can hold
+    // less than the 320x360 minimum, and the component restores the minimum.
     schema: z.strictObject({
       right: z.number().min(0).max(10_000),
       bottom: z.number().min(0).max(10_000),
-      width: z.number().min(320).max(2_000),
-      height: z.number().min(360).max(2_000),
+      width: z.number().min(0).max(10_000),
+      height: z.number().min(0).max(10_000),
     }),
     defaultValue: { right: 24, bottom: 24, width: 420, height: 640 },
   },

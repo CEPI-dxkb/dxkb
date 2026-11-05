@@ -71,9 +71,9 @@ const waitingKey = "_waitingForWorkflows";
 function readWaiting(raw: Record<string, unknown>): string[] {
   const waiting = raw[waitingKey];
   if (!isRecord(waiting)) return [];
-  return Object.entries(waiting)
-    .filter(([, entry]) => !isRecord(entry) || entry.status === "active")
-    .map(([id]) => id);
+  return Object.entries(waiting).flatMap(([id, entry]) =>
+    !isRecord(entry) || entry.status === "active" ? [id] : [],
+  );
 }
 
 export function readCopilotPlan(payload: unknown): CopilotPlan | null {
@@ -128,7 +128,9 @@ function stepIndexOf(plan: CopilotPlan, update: CopilotPlanStepUpdate): number {
     const index = plan.steps.findIndex((step) => step.stepId === update.stepId);
     if (index !== -1) return index;
   }
-  return update.stepIndex !== null && update.stepIndex < plan.steps.length
+  return update.stepIndex !== null &&
+    update.stepIndex >= 0 &&
+    update.stepIndex < plan.steps.length
     ? update.stepIndex
     : -1;
 }
@@ -266,8 +268,47 @@ export function withStepStatus(
 
 /** The (hidden) question of a step turn; BV-BRC's wording. */
 export function planStepQuery(plan: CopilotPlan, stepIndex: number): string {
-  const step = plan.steps.at(stepIndex);
+  const step =
+    stepIndex >= 0 && stepIndex < plan.steps.length
+      ? plan.steps[stepIndex]
+      : undefined;
   return `Execute plan step: ${step?.description || `step ${String(stepIndex + 1)}`}`;
+}
+
+/** Whether `step` depends on `other`, so it has to run after it. */
+export function mustRunAfter(
+  step: CopilotPlanStep,
+  other: CopilotPlanStep,
+): boolean {
+  return step.dependsOn.includes(other.stepId);
+}
+
+/**
+ * The edited steps with each step that is not pending taken from `live`, so
+ * an edit made while a step ran does not overwrite its status. Null when the
+ * plan moved on under the edit: a step pending in the edit is no longer
+ * pending in `live`, or a live step that is not pending is missing from it.
+ */
+export function mergeEditedSteps(
+  live: CopilotPlan,
+  edited: CopilotPlanStep[],
+): CopilotPlanStep[] | null {
+  const liveById = new Map(live.steps.map((step) => [step.stepId, step]));
+  const editedIds = new Set(edited.map((step) => step.stepId));
+  for (const step of live.steps) {
+    if (step.status !== "pending" && !editedIds.has(step.stepId)) return null;
+  }
+  const merged: CopilotPlanStep[] = [];
+  for (const step of edited) {
+    const current = liveById.get(step.stepId);
+    if (step.status === "pending") {
+      if (current && current.status !== "pending") return null;
+      merged.push(step);
+    } else {
+      merged.push(current ?? step);
+    }
+  }
+  return merged;
 }
 
 /** A new step id, unused in the plan. */

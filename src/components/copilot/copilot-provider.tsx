@@ -16,12 +16,11 @@ import {
 import { useCopilotModels } from "@/hooks/copilot/use-copilot-queries";
 import { useAuth } from "@/lib/auth/provider";
 import { writeStorageItem } from "@/lib/browser-storage";
+import { resolveCopilotModel } from "@/lib/copilot/models";
+import { copilotPagePath } from "@/lib/copilot/paths";
 import type { CopilotModel } from "@/lib/copilot/types";
 import type { CopilotSurface } from "@/lib/ui-preferences/definitions";
 import { useUiPreference } from "@/lib/ui-preferences/provider";
-
-/** The full-page chat; the panel and floating window stay closed there. */
-export const copilotPagePath = "/copilot";
 
 const modelStorageKey = "dxkb-copilot-model";
 
@@ -29,22 +28,11 @@ function sessionStorageKey(username: string): string {
   return `dxkb-copilot-session:${username}`;
 }
 
-/**
- * The model to use: the user's last pick while the gateway still offers it,
- * else the gateway's default, else its first.
- */
-export function resolveCopilotModel(
-  models: CopilotModel[],
-  stored: string | null,
-): string | null {
-  if (stored && models.some((model) => model.model === stored)) return stored;
-  const fallback = models.find((model) => model.isDefault) ?? models.at(0);
-  return fallback ? fallback.model : null;
-}
-
 interface CopilotContextValue {
   /** Signed in: the Copilot needs the user's BV-BRC session. */
   available: boolean;
+  /** The signed-in user's name, which keys their drafts; null signed out. */
+  username: string | null;
   onCopilotPage: boolean;
   /** The surface showing now, outside the full page. */
   openSurface: CopilotSurface | null;
@@ -107,10 +95,11 @@ export function CopilotProvider({ children }: PropsWithChildren) {
   const storedModel = useStorageItem(modelStorageKey);
   const model = resolveCopilotModel(models, storedModel);
 
-  const chat = useCopilotChat();
+  const chat = useCopilotChat(user?.username ?? null);
 
   const value: CopilotContextValue = {
     available,
+    username: user?.username ?? null,
     onCopilotPage,
     openSurface: onCopilotPage ? null : openSurface,
     preferredSurface,

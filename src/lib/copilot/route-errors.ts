@@ -1,7 +1,12 @@
 import "server-only";
 
-import { NextResponse } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 import { statusToErrorCode } from "@/lib/api/types";
+import {
+  declaresOversizedBody,
+  oversizedBodyResponse,
+  readCappedBody,
+} from "@/lib/data-api/route-guards";
 import {
   CopilotConfigurationError,
   CopilotRejectedError,
@@ -45,6 +50,27 @@ export function copilotBadRequest(message: string): NextResponse {
     { error: message, code: "validation" },
     { status: 400 },
   );
+}
+
+/**
+ * The request's JSON body, read up to `maxBytes`, or the error response to
+ * return: the 413 for an oversized body (declared or streamed), a 400
+ * "Malformed JSON" for one that does not parse.
+ */
+export async function readCopilotJsonBody(
+  request: NextRequest,
+  maxBytes: number,
+): Promise<{ value: unknown } | { error: NextResponse }> {
+  if (declaresOversizedBody(request, maxBytes)) {
+    return { error: oversizedBodyResponse() };
+  }
+  const text = await readCappedBody(request, maxBytes);
+  if (text === null) return { error: oversizedBodyResponse() };
+  try {
+    return { value: JSON.parse(text) as unknown };
+  } catch {
+    return { error: copilotBadRequest("Malformed JSON") };
+  }
 }
 
 export const copilotNoStore = { "Cache-Control": "private, no-store" } as const;

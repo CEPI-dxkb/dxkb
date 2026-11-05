@@ -20,7 +20,7 @@ const collapsedCodeLines = 8;
 function CodeBlock({ children, ...props }: ComponentProps<"pre">) {
   const [expanded, setExpanded] = useState(false);
   const source = blockText(children);
-  const lines = source.split("\n").length;
+  const lines = source.replace(/\n$/, "").split("\n").length;
   const collapsible = lines > collapsedCodeLines;
   return (
     <div className="my-2 overflow-hidden rounded-md border bg-muted">

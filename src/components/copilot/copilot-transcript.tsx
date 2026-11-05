@@ -27,7 +27,7 @@ import {
 import { CopilotLiveStatus } from "./copilot-progress";
 
 /** Starting points shown in an empty chat; picking one fills the box. */
-export const copilotSuggestions = [
+const copilotSuggestions = [
   "Find complete Mpox virus genomes collected since 2022",
   "Which antimicrobial resistance genes are common in Klebsiella pneumoniae?",
   "Summarize what is known about the H5N1 hemagglutinin protein",
@@ -83,6 +83,9 @@ export interface CopilotTranscriptProps {
   detail: CopilotSessionDetail | undefined;
   loading: boolean;
   loadError: Error | null;
+  /** Loads the chat again after `loadError`. */
+  onRetryLoad: () => void;
+  /** Reads the session back after a `reload` error. */
   onReload: () => void;
   /** This tab's running turn, when it belongs to this session. */
   active: CopilotActiveTurn | null;
@@ -96,6 +99,7 @@ export function CopilotTranscript({
   detail,
   loading,
   loadError,
+  onRetryLoad,
   onReload,
   active,
   error,
@@ -111,7 +115,7 @@ export function CopilotTranscript({
           <AlertTitle>Could not load this chat</AlertTitle>
           <AlertDescription>
             <p>{loadError.message}</p>
-            <Button variant="outline" size="sm" onClick={onReload}>
+            <Button variant="outline" size="sm" onClick={onRetryLoad}>
               Retry
             </Button>
           </AlertDescription>
@@ -235,24 +239,37 @@ export function CopilotTranscript({
             {sessionError && (
               <MessageScrollerItem messageId="turn-error">
                 <div className="px-4 pb-2">
-                  <Alert variant="destructive">
-                    <AlertCircle aria-hidden />
-                    <AlertTitle>The Copilot could not answer</AlertTitle>
-                    <AlertDescription>
-                      <p>{sessionError.message}</p>
-                      {sessionError.query && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            if (sessionError.query) onRetry(sessionError.query);
-                          }}
-                        >
-                          Retry
+                  {sessionError.kind === "reload" ? (
+                    <Alert variant="destructive">
+                      <AlertCircle aria-hidden />
+                      <AlertTitle>Could not reload this chat</AlertTitle>
+                      <AlertDescription>
+                        <p>{sessionError.message}</p>
+                        <Button variant="outline" size="sm" onClick={onReload}>
+                          Reload
                         </Button>
-                      )}
-                    </AlertDescription>
-                  </Alert>
+                      </AlertDescription>
+                    </Alert>
+                  ) : (
+                    <Alert variant="destructive">
+                      <AlertCircle aria-hidden />
+                      <AlertTitle>The Copilot could not answer</AlertTitle>
+                      <AlertDescription>
+                        <p>{sessionError.message}</p>
+                        {sessionError.query && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              if (sessionError.query) onRetry(sessionError.query);
+                            }}
+                          >
+                            Retry
+                          </Button>
+                        )}
+                      </AlertDescription>
+                    </Alert>
+                  )}
                 </div>
               </MessageScrollerItem>
             )}

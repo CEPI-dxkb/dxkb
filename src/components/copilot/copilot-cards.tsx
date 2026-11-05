@@ -37,7 +37,16 @@ export interface CopilotCardActions {
 }
 
 const CardActionsContext = createContext<CopilotCardActions | null>(null);
-export const CopilotCardActionsProvider = CardActionsContext.Provider;
+
+export function CopilotCardActionsProvider({
+  value,
+  children,
+}: {
+  value: CopilotCardActions;
+  children: React.ReactNode;
+}) {
+  return <CardActionsContext value={value}>{children}</CardActionsContext>;
+}
 
 function useCardActions(): CopilotCardActions | null {
   return useContext(CardActionsContext);
@@ -82,6 +91,7 @@ export function ClarificationCardView({
   const [answers, setAnswers] = useState<Partial<Record<string, string>>>({});
   const [typed, setTyped] = useState<Partial<Record<string, string>>>({});
   const [missing, setMissing] = useState<string[]>([]);
+  const [noneAnswered, setNoneAnswered] = useState(false);
   const [sent, setSent] = useState(false);
   const canAnswer = interactive && !sent && actions !== null;
 
@@ -89,6 +99,7 @@ export function ClarificationCardView({
     setAnswers((current) => ({ ...current, [id]: value }));
     setTyped((current) => ({ ...current, [id]: "" }));
     setMissing((current) => current.filter((item) => item !== id));
+    setNoneAnswered(false);
   };
 
   const submit = () => {
@@ -105,9 +116,10 @@ export function ClarificationCardView({
       return answer ? [{ question: question.question, answer }] : [];
     });
     if (given.length === 0) {
-      setMissing(card.questions.map((question) => question.id));
+      setNoneAnswered(true);
       return;
     }
+    setNoneAnswered(false);
     setSent(true);
     void actions.answerQuestions(messageId, card, given).then((ok) => {
       if (!ok) setSent(false);
@@ -180,6 +192,7 @@ export function ClarificationCardView({
                     setAnswers((current) => ({ ...current, [question.id]: value }));
                     if (value.trim()) {
                       setMissing((current) => current.filter((item) => item !== question.id));
+                      setNoneAnswered(false);
                     }
                   }}
                 />
@@ -191,7 +204,12 @@ export function ClarificationCardView({
           <p role="alert" className="text-sm text-destructive">
             {missing.length === 1
               ? `Please answer: ${card.questions.find((question) => question.id === missing[0])?.question ?? "the highlighted question"}`
-              : `Please answer the ${String(missing.length)} required questions.`}
+              : `Please answer the ${String(missing.length)} highlighted questions.`}
+          </p>
+        )}
+        {noneAnswered && missing.length === 0 && (
+          <p role="alert" className="text-sm text-destructive">
+            Answer at least one question.
           </p>
         )}
         {canAnswer ? (
@@ -240,33 +258,36 @@ function ChangeForm({
   label,
   placeholder,
   autoFocus = false,
+  value,
+  onChange,
   onSend,
 }: {
   label: string;
   placeholder: string;
   autoFocus?: boolean;
+  value: string;
+  onChange: (text: string) => void;
   onSend: (text: string) => void;
 }) {
-  const [text, setText] = useState("");
   return (
     <form
       className="flex items-center gap-2"
       onSubmit={(event) => {
         event.preventDefault();
-        const change = text.trim();
+        const change = value.trim();
         if (change) onSend(change);
       }}
     >
       <Input
-        value={text}
+        value={value}
         autoFocus={autoFocus}
         aria-label={label}
         placeholder={placeholder}
         onChange={(event) => {
-          setText(event.target.value);
+          onChange(event.target.value);
         }}
       />
-      <Button type="submit" size="sm" variant="outline" disabled={!text.trim()}>
+      <Button type="submit" size="sm" variant="outline" disabled={!value.trim()}>
         Send
       </Button>
     </form>
@@ -292,12 +313,24 @@ export function ExecutionCardView({
   // "No" in this visit: asks whether anything should change.
   const [declined, setDeclined] = useState(false);
   const [busy, setBusy] = useState(false);
+  // Owned here, not by the form: the form unmounts while an answer is sent, and
+  // the typed change must survive a refused one.
+  const [change, setChange] = useState("");
   const canAnswer = interactive && actions !== null && !busy;
   const count = card.actions.length;
   // A refused answer leaves the question open; a sent one waits for the
   // stored card, which comes back answered.
   const settle = (ok: boolean) => {
     if (!ok) setBusy(false);
+  };
+
+  const revise = (text: string) => {
+    if (!actions) return;
+    setBusy(true);
+    void actions.reviseActions(messageId, card, text).then((ok) => {
+      settle(ok);
+      if (ok) setChange("");
+    });
   };
 
   return (
@@ -328,10 +361,9 @@ export function ExecutionCardView({
                 autoFocus
                 label="Describe the change"
                 placeholder="Describe the change, or leave it…"
-                onSend={(change) => {
-                  setBusy(true);
-                  void actions.reviseActions(messageId, card, change).then(settle);
-                }}
+                value={change}
+                onChange={setChange}
+                onSend={revise}
               />
             </div>
           )}
@@ -356,7 +388,10 @@ export function ExecutionCardView({
                 setBusy(true);
                 void actions.declineActions(messageId, card).then((recorded) => {
                   setBusy(false);
-                  if (recorded) setDeclined(true);
+                  if (recorded) {
+                    setDeclined(true);
+                    setChange("");
+                  }
                 });
               }}
             >
@@ -366,10 +401,9 @@ export function ExecutionCardView({
           <ChangeForm
             label="Or describe a change"
             placeholder="Or describe a change (e.g. drop the second job)…"
-            onSend={(change) => {
-              setBusy(true);
-              void actions.reviseActions(messageId, card, change).then(settle);
-            }}
+            value={change}
+            onChange={setChange}
+            onSend={revise}
           />
         </div>
       ) : (

@@ -81,6 +81,22 @@ export interface CopilotComposerProps {
   placeholder?: string;
   /** Sends with only attachments and no text. */
   canSendEmpty?: boolean;
+  /** Attached files are still being read: nothing can be sent yet. */
+  reading?: boolean;
+}
+
+/** The pasted text is just the pasted files' names, one per line. */
+function isPastedFileNames(text: string, files: File[]): boolean {
+  const lines = text
+    .trim()
+    .split(/\r\n|\r|\n/)
+    .map((line) => line.trim())
+    .sort();
+  const names = files.map((file) => file.name).sort();
+  return (
+    lines.length === names.length &&
+    lines.every((line, index) => line === names[index])
+  );
 }
 
 const attachmentIcons: Record<CopilotAttachment["kind"], React.ReactNode> = {
@@ -197,6 +213,7 @@ export function CopilotComposer({
   note,
   placeholder,
   canSendEmpty = false,
+  reading = false,
 }: CopilotComposerProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -205,6 +222,7 @@ export function CopilotComposer({
   const canSend =
     !running &&
     !disabled &&
+    !reading &&
     (value.trim() !== "" || (canSendEmpty && attachments.length > 0));
   const canAttach = !disabled && attachments.length < maxCopilotAttachments;
 
@@ -243,18 +261,23 @@ export function CopilotComposer({
         if (canSend) onSubmit();
       }}
       onDragOver={(event) => {
-        if (!canAttach || !event.dataTransfer.types.includes("Files")) return;
+        if (!event.dataTransfer.types.includes("Files")) return;
+        // Always cancel a file drag: the browser would otherwise open the
+        // file in this tab, replacing the chat.
         event.preventDefault();
-        setDragging(true);
+        event.dataTransfer.dropEffect = canAttach ? "copy" : "none";
+        setDragging(canAttach);
       }}
       onDragLeave={() => {
         setDragging(false);
       }}
       onDrop={(event) => {
         setDragging(false);
-        if (!canAttach || event.dataTransfer.files.length === 0) return;
+        if (!event.dataTransfer.types.includes("Files")) return;
         event.preventDefault();
-        onAttach([...event.dataTransfer.files]);
+        if (canAttach && event.dataTransfer.files.length > 0) {
+          onAttach([...event.dataTransfer.files]);
+        }
       }}
     >
       {executionMode === "execute" && (
@@ -303,7 +326,13 @@ export function CopilotComposer({
           onPaste={(event) => {
             const files = [...event.clipboardData.files];
             if (files.length === 0 || !canAttach) return;
-            event.preventDefault();
+            // Text pasted beside the file (a copied cell, a rich selection)
+            // still goes into the box, unless it is only the files' names,
+            // which macOS Finder puts beside a copied file.
+            const text = event.clipboardData.getData("text/plain");
+            if (text === "" || isPastedFileNames(text, files)) {
+              event.preventDefault();
+            }
             onAttach(files);
           }}
         />
@@ -313,6 +342,7 @@ export function CopilotComposer({
             size="icon-xs"
             variant="ghost"
             aria-label="Attach files"
+            aria-busy={reading || undefined}
             title={`Attach images, text files or PDFs (up to ${String(maxCopilotAttachments)})`}
             disabled={!canAttach || running}
             onClick={() => fileInputRef.current?.click()}

@@ -45,6 +45,18 @@ describe("readCopilotAttachment", () => {
     });
   });
 
+  it("reads an image whose type the browser left empty by its extension", async () => {
+    const result = await readCopilotAttachment(
+      new File([new Uint8Array([137, 80, 0, 71])], "a.png", { type: "" }),
+    );
+    expect(result).toEqual({
+      attachment: expect.objectContaining({
+        kind: "image",
+        dataUrl: expect.stringMatching(/^data:image\/png;base64,/) as unknown,
+      }) as unknown,
+    });
+  });
+
   it("refuses binary files, fake PDFs, odd images and large images", async () => {
     expect(
       await readCopilotAttachment(new File(["a\0b"], "data.bin", { type: "" })),

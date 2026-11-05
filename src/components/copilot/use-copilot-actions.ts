@@ -6,6 +6,7 @@ import type {
   CopilotSendOptions,
   CopilotSendResult,
 } from "@/hooks/copilot/use-copilot-chat";
+import { reloadCopilotSession } from "@/hooks/copilot/use-copilot-queries";
 import { clarificationQuery, executeRunMessage } from "@/lib/copilot/cards";
 import {
   copilotQueryKeys,
@@ -52,6 +53,22 @@ export function newestCopilotPlan(
   return null;
 }
 
+/** The most step turns one run sends: the editor's cap on a plan's steps. */
+const maxPlanTurns = 30;
+
+/** Why a send did not start while another turn holds this tab. */
+const copilotBusyMessage =
+  "The Copilot is still finishing the last answer. Try again in a moment.";
+
+/**
+ * What became of a question the user typed. `message` says why it was not
+ * sent, when that is known (a plan step reply's failures toast their own).
+ */
+export interface CopilotQuestionResult {
+  sent: boolean;
+  message: string | null;
+}
+
 function errorText(error: unknown): string | undefined {
   return error instanceof Error ? error.message : undefined;
 }
@@ -76,10 +93,10 @@ export function useCopilotActions({
   const storedSession = (id: string) =>
     queryClient.getQueryData<CopilotSessionDetail>(copilotQueryKeys.session(id));
 
-  const refetchSession = (id: string) =>
-    queryClient
-      .refetchQueries({ queryKey: copilotQueryKeys.session(id), exact: true })
-      .catch(() => undefined);
+  /** Reads the open session again without waiting for it. */
+  const reloadInBackground = () => {
+    if (sessionId) void reloadCopilotSession(queryClient, sessionId);
+  };
 
   /** Sends a turn in the open session. */
   const sendTurn = async (
@@ -102,10 +119,14 @@ export function useCopilotActions({
       storedCount: storedSession(sessionId)?.messages.length ?? 0,
       ...options,
     });
-    if (result.status !== "sent") {
+    if (result.status === "busy") {
+      // Another turn here holds the tab, or the last one is still being read
+      // back; nothing about the stored session changed.
+      toast.info(copilotBusyMessage);
+    } else if (result.status === "refused") {
       // The stored session shows what actually happened (a card another tab
       // answered, a turn already running).
-      void refetchSession(sessionId);
+      reloadInBackground();
     }
     return result;
   };
@@ -117,7 +138,11 @@ export function useCopilotActions({
     return newest?.plan.planId === planId ? newest.plan : null;
   };
 
-  /** Saves a plan and reloads the session; false (with a toast) if not saved. */
+  /**
+   * Saves a plan and reloads the session. False (with a toast) unless both
+   * worked: callers decide from the stored plan, which a failed reload leaves
+   * as it was before the save.
+   */
   const savePlan = async (
     plan: CopilotPlan,
     changes: Parameters<typeof copilotPlanObject>[1],
@@ -125,33 +150,57 @@ export function useCopilotActions({
     if (!sessionId) return false;
     try {
       await saveCopilotPlan(sessionId, plan.planId, copilotPlanObject(plan, changes));
-      await refetchSession(sessionId);
-      return true;
     } catch (error) {
       toast.error("Could not save the plan", { description: errorText(error) });
-      void refetchSession(sessionId);
+      reloadInBackground();
       return false;
     }
+    const reloadError = await reloadCopilotSession(queryClient, sessionId);
+    if (reloadError !== null) {
+      toast.error("The plan was saved, but the chat could not be reloaded", {
+        description: reloadError,
+      });
+      return false;
+    }
+    return true;
   };
 
   /**
    * Runs plan steps from `stepIndex` until the plan stops: a step fails,
-   * asks, waits for approval or for jobs, the user pauses it, or every step
-   * is done. `first` replaces the first step's hidden question (a reply to
-   * the step's question, shown as the user's message). Resolves, when the
-   * plan stops, to whether its first step was sent at all.
+   * asks, waits for approval or for jobs, reports no result, the user pauses
+   * it, every step is done, or `maxPlanTurns` turns were sent. `first` replaces the first step's hidden
+   * question (a reply to the step's question, shown as the user's message).
+   * Resolves, when the plan stops, to whether its first step was sent at all.
+   *
+   * The next step is carried by id, so a plan edited in another tab between
+   * turns cannot shift which step runs, and each turn is decided from the
+   * session `send` read back after it.
    */
   const runPlan = async (
     planId: string,
     stepIndex: number,
     first?: { query: string; extra?: CopilotTurnExtra },
   ): Promise<boolean> => {
-    let index = stepIndex;
+    let nextStepId: string | null = null;
     let step = first;
     let sent = false;
-    for (;;) {
+    for (let turn = 0; turn < maxPlanTurns; turn += 1) {
       const plan = storedPlan(planId);
       if (!plan) return sent;
+      // The caller's index is read from this same stored plan; later steps
+      // are found by id, as the plan may have changed during the turn.
+      const index =
+        turn === 0
+          ? stepIndex >= 0 && stepIndex < plan.steps.length
+            ? stepIndex
+            : -1
+          : plan.steps.findIndex((candidate) => candidate.stepId === nextStepId);
+      if (index === -1) return sent;
+      // Only the first turn may re-run a step (a retry, or a reply to its
+      // question). A later one that resolves to a settled step means its id
+      // is not unique, and the step would run again.
+      if (turn > 0 && plan.steps[index].status !== "pending") return sent;
+      const sentStepId = plan.steps[index].stepId;
       const result = await sendTurn(step?.query ?? planStepQuery(plan, index), {
         ...step?.extra,
         targetAgent: "planning",
@@ -167,10 +216,18 @@ export function useCopilotActions({
       if (result.status !== "sent") return sent;
       sent = true;
       if (result.ended !== "done") return sent;
+      // The stored plan is still the one from before the step.
+      if (result.reloadError !== null) {
+        toast.error("The plan stopped: the chat could not be reloaded", {
+          description: result.reloadError,
+        });
+        return sent;
+      }
 
-      let after = storedPlan(planId);
+      const after = storedPlan(planId);
       if (!after) return sent;
-      // Jobs the step submitted: the plan waits for them.
+      // Jobs the step submitted: the plan waits for them, saved or not (a
+      // failed save toasts, and the card offers to go on).
       const submitted = result.turn.planUpdates.flatMap((update) =>
         update.planId === planId ? update.submissionIds : [],
       );
@@ -178,8 +235,15 @@ export function useCopilotActions({
         await savePlan(after, {
           waitingFor: [...new Set([...after.waitingFor, ...submitted])],
         });
-        after = storedPlan(planId);
-        if (!after) return sent;
+        return sent;
+      }
+      // Sending the step again would repeat whatever it did.
+      const sentStep = after.steps.find((candidate) => candidate.stepId === sentStepId);
+      if (!sentStep || sentStep.status === "pending") {
+        toast.error(
+          `Step ${String(index + 1)} did not report a result, so the plan stopped.`,
+        );
+        return sent;
       }
       const state = copilotPlanState(after);
       if (state.kind === "completed") {
@@ -187,8 +251,10 @@ export function useCopilotActions({
         return sent;
       }
       if (state.kind !== "ready" || chat.isPlanPaused(planId)) return sent;
-      index = state.stepIndex;
+      nextStepId = after.steps[state.stepIndex].stepId;
     }
+    toast.error(`The plan stopped after ${String(maxPlanTurns)} steps.`);
+    return sent;
   };
 
   /** Goes on with a plan from wherever it stopped, if it can. */
@@ -265,13 +331,19 @@ export function useCopilotActions({
   const sendQuestion = async (
     query: string,
     extra: CopilotTurnExtra = {},
-  ): Promise<boolean> => {
+  ): Promise<CopilotQuestionResult> => {
     const reply = stepAwaitingReply();
     if (reply) {
       chat.resumePlan(reply.planId);
-      return runPlan(reply.planId, reply.stepIndex, { query, extra });
+      const sent = await runPlan(reply.planId, reply.stepIndex, { query, extra });
+      return { sent, message: null };
     }
-    return (await sendTurn(query, extra)).status === "sent";
+    const result = await sendTurn(query, extra);
+    if (result.status === "sent") return { sent: true, message: null };
+    return {
+      sent: false,
+      message: result.status === "refused" ? result.message : copilotBusyMessage,
+    };
   };
 
   const cardActions: CopilotCardActions = {
@@ -279,10 +351,16 @@ export function useCopilotActions({
       if (card.planStep) {
         const { planId } = card.planStep;
         const plan = storedPlan(planId);
-        const stepIndex =
+        const byId =
           plan?.steps.findIndex((step) => step.stepId === card.planStep?.stepId) ??
           -1;
-        const index = stepIndex !== -1 ? stepIndex : card.planStep.stepIndex;
+        const { stepIndex } = card.planStep;
+        const index =
+          byId !== -1
+            ? byId
+            : plan && stepIndex !== null && stepIndex >= 0 && stepIndex < plan.steps.length
+              ? stepIndex
+              : null;
         if (!plan || index === null) {
           toast.error("That plan step is no longer in this chat.");
           return false;
@@ -309,9 +387,24 @@ export function useCopilotActions({
         targetAgent: card.agent ?? undefined,
       });
       if (result.status !== "sent") return false;
+      if (result.ended !== "done") {
+        // The stored card says whether the gateway took the answer.
+        reloadInBackground();
+        return false;
+      }
       markAnswered(messageId, { answer: "yes" });
+      if (result.reloadError !== null) {
+        // The cached plan is from before the turn; going on from it could
+        // start the wrong step.
+        if (card.planId) {
+          toast.error("The plan stopped: the chat could not be reloaded", {
+            description: result.reloadError,
+          });
+        }
+        return true;
+      }
       // A plan step's jobs: once they ran, the plan goes on.
-      if (card.planId && result.ended === "done" && !chat.isPlanPaused(card.planId)) {
+      if (card.planId && !chat.isPlanPaused(card.planId)) {
         void continueStored(card.planId);
       }
       return true;
@@ -324,7 +417,7 @@ export function useCopilotActions({
         return true;
       } catch (error) {
         toast.error("Could not record your answer", { description: errorText(error) });
-        void refetchSession(sessionId);
+        reloadInBackground();
         return false;
       }
     },
@@ -334,6 +427,10 @@ export function useCopilotActions({
         targetAgent: "service",
       });
       if (result.status !== "sent") return false;
+      if (result.ended !== "done") {
+        reloadInBackground();
+        return false;
+      }
       markAnswered(messageId, { answer: "other", text: change });
       return true;
     },

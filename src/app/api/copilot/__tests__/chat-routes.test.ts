@@ -1,6 +1,10 @@
 vi.mock("server-only", () => ({}));
 
 import { http, HttpResponse } from "msw";
+import {
+  maxCopilotAttachments,
+  maxCopilotFileBytes,
+} from "@/lib/copilot/attachments";
 import { server } from "@/test-helpers/msw-server";
 import {
   json,
@@ -266,6 +270,134 @@ describe("POST /api/copilot/chat plan steps and attachments", () => {
       const res = await postChat({ sessionId, query: "q", model: "m", ...extra });
       expect(res.status).toBe(400);
     }
+  });
+});
+
+describe("POST /api/copilot/chat body and stream guards", () => {
+  const maxBytes = maxCopilotAttachments * 2 * maxCopilotFileBytes + 2 * 1024 * 1024;
+
+  function neverCalled() {
+    const calls: string[] = [];
+    server.use(
+      http.post(`${gatewayUrl}/chatbrc/copilot-agent`, () => {
+        calls.push("called");
+        return sse('event: done\ndata: {}\n\n');
+      }),
+    );
+    return calls;
+  }
+
+  it("answers 413 for a declared Content-Length over the cap", async () => {
+    const calls = neverCalled();
+    const { POST } = await import("../chat/route");
+    const request = mockNextRequest({
+      method: "POST",
+      url: "http://localhost:3019/api/copilot/chat",
+      body: { sessionId, query: "q", model: "m" },
+      headers: { "Content-Length": String(maxBytes + 1) },
+    });
+    const res = await POST(request, {});
+    expect(res.status).toBe(413);
+    expect(await json(res)).toEqual(
+      expect.objectContaining({ code: "invalid_request" }),
+    );
+    expect(calls).toEqual([]);
+  });
+
+  it("answers 413 for a streamed body over the cap with no length", async () => {
+    const calls = neverCalled();
+    // A string body carries no Content-Length header on the request, so only
+    // the capped read can catch it.
+    const { POST } = await import("../chat/route");
+    const request = mockNextRequest({
+      method: "POST",
+      url: "http://localhost:3019/api/copilot/chat",
+      rawBody: JSON.stringify({ query: "q".repeat(maxBytes + 1024) }),
+    });
+    expect(request.headers.get("content-length")).toBeNull();
+    const res = await POST(request, {});
+    expect(res.status).toBe(413);
+    expect(calls).toEqual([]);
+  });
+
+  it("answers Malformed JSON for an unparsable body", async () => {
+    const { POST } = await import("../chat/route");
+    const res = await POST(
+      mockNextRequest({
+        method: "POST",
+        url: "http://localhost:3019/api/copilot/chat",
+        rawBody: "{nope",
+      }),
+      {},
+    );
+    expect(res.status).toBe(400);
+    expect(await json(res)).toEqual(
+      expect.objectContaining({ error: "Malformed JSON" }),
+    );
+  });
+
+  it("refuses a clarification together with a plan step, without calling the gateway", async () => {
+    const calls = neverCalled();
+    const res = await postChat({
+      sessionId,
+      query: "q",
+      model: "m",
+      clarification: {
+        answers: [{ question: "Which?", answer: "This" }],
+        originalQuery: "q",
+      },
+      planStep: {
+        plan: {
+          plan_id: "p1",
+          title: "t",
+          status: "executing",
+          steps: [{ step_id: "step_1", description: "d", agent: "data", reasoning: "r" }],
+        },
+        stepIndex: 0,
+      },
+    });
+    expect(res.status).toBe(400);
+    expect(calls).toEqual([]);
+  });
+
+  it.each([
+    ["HTML", "text/html; charset=utf-8"],
+    ["JSON", "application/json"],
+    ["XML", "text/xml"],
+    ["XML", "application/xml"],
+  ])(
+    "answers 502 unreadable answer when the gateway sends %s with a 200 (%s)",
+    async (_kind, contentType) => {
+      server.use(
+        http.post(
+          `${gatewayUrl}/chatbrc/copilot-agent`,
+          () =>
+            new HttpResponse("<html>Maintenance</html>", {
+              headers: { "Content-Type": contentType },
+            }),
+        ),
+      );
+      const res = await postChat({ sessionId, query: "q", model: "m" });
+      expect(res.status).toBe(502);
+      expect((await json<{ error: string }>(res)).error).toContain(
+        "DXKB could not read",
+      );
+    },
+  );
+
+  it("passes text/event-stream with a charset through", async () => {
+    server.use(
+      http.post(
+        `${gatewayUrl}/chatbrc/copilot-agent`,
+        () =>
+          new HttpResponse('event: done\ndata: {"job_id":"j1"}\n\n', {
+            headers: { "Content-Type": "text/event-stream; charset=utf-8" },
+          }),
+      ),
+    );
+    const res = await postChat({ sessionId, query: "q", model: "m" });
+    expect(res.status).toBe(200);
+    expect(await res.text()).toContain("event: done");
   });
 });
 
@@ -582,6 +714,51 @@ describe("session actions", () => {
       path: "update-session-title",
       body: { session_id: sessionId, title: "Mpox genome search" },
     });
+  });
+
+  it("refuses prepared actions over 200,000 characters on an execution card", async () => {
+    const answer = await import("../sessions/[sessionId]/execution-answer/route");
+    const res = await answer.POST(
+      mockNextRequest({
+        method: "POST",
+        body: { actions: [{ tool: "submit_gowe_job", note: "x".repeat(200_001) }] },
+      }),
+      makeRouteContext({ sessionId }),
+    );
+    expect(res.status).toBe(400);
+  });
+
+  it("answers 413 for a title body over 1 MB, and Malformed JSON for bad JSON", async () => {
+    const { POST } = await import("../sessions/[sessionId]/title/route");
+    const big = await POST(
+      mockNextRequest({
+        method: "POST",
+        body: { model: "m", question: "q".repeat(1024 * 1024 + 1) },
+      }),
+      makeRouteContext({ sessionId }),
+    );
+    expect(big.status).toBe(413);
+
+    const bad = await POST(
+      mockNextRequest({ method: "POST", rawBody: "{nope" }),
+      makeRouteContext({ sessionId }),
+    );
+    expect(bad.status).toBe(400);
+    expect(await json(bad)).toEqual(
+      expect.objectContaining({ error: "Malformed JSON" }),
+    );
+  });
+
+  it("refuses a title question over the query cap", async () => {
+    const { POST } = await import("../sessions/[sessionId]/title/route");
+    const res = await POST(
+      mockNextRequest({
+        method: "POST",
+        body: { model: "m", question: "q".repeat(100_001) },
+      }),
+      makeRouteContext({ sessionId }),
+    );
+    expect(res.status).toBe(400);
   });
 
   it("keeps the title when the gateway declines to generate one", async () => {

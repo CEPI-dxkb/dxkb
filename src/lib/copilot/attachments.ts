@@ -56,6 +56,25 @@ function readAs(file: Blob, as: "text" | "dataUrl"): Promise<string> {
   });
 }
 
+const imageExtensions: Record<string, string> = {
+  png: "image/png",
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  gif: "image/gif",
+  webp: "image/webp",
+};
+
+/**
+ * The image MIME type of a file: its supported `type`, or, when the browser
+ * gave none, the one its extension names. Null for anything else.
+ */
+function imageTypeOf(file: File): string | null {
+  if (imageTypes.has(file.type)) return file.type;
+  if (file.type !== "") return null;
+  const extension = file.name.toLowerCase().split(".").pop() ?? "";
+  return Object.hasOwn(imageExtensions, extension) ? imageExtensions[extension] : null;
+}
+
 function isPdf(file: File): boolean {
   return (
     file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf")
@@ -74,14 +93,17 @@ export async function readCopilotAttachment(
   const id = crypto.randomUUID();
   const name = file.name.trim() || "attachment";
 
-  if (file.type.startsWith("image/")) {
-    if (!imageTypes.has(file.type)) {
+  const imageType = imageTypeOf(file);
+  if (file.type.startsWith("image/") || imageType) {
+    if (!imageType) {
       return { error: `${name}: only PNG, JPEG, GIF and WebP images can be attached.` };
     }
     if (file.size > maxCopilotImageBytes) {
       return { error: `${name} is larger than ${megabytes(maxCopilotImageBytes)}.` };
     }
-    const dataUrl = await readAs(file, "dataUrl");
+    const raw = await readAs(file, "dataUrl");
+    // Some browsers label an image without its type; the gateway wants it named.
+    const dataUrl = raw.replace(/^data:[^;,]*;base64,/, `data:${imageType};base64,`);
     return { attachment: { id, kind: "image", name, size: file.size, dataUrl } };
   }
 

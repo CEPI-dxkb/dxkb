@@ -1,6 +1,6 @@
 "use client";
 
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import {
   CopilotClientError,
@@ -9,6 +9,7 @@ import {
   stopCopilotTurn,
   titleCopilotSession,
 } from "@/lib/copilot/client";
+import { reloadCopilotSession } from "@/hooks/copilot/use-copilot-queries";
 import { readSseFrames } from "@/lib/copilot/sse";
 import type {
   CopilotAttachmentInfo,
@@ -43,8 +44,14 @@ export interface CopilotActiveTurn {
 
 export interface CopilotChatError {
   sessionId: string;
+  /**
+   * `turn`: the turn failed (or Stop did not reach the gateway). `reload`:
+   * the turn ended, but the stored session could not be read back, so the
+   * live copy stays on screen until `reload` succeeds.
+   */
+  kind: "turn" | "reload";
   message: string;
-  /** The question to send again from Retry, when it was sent at all. */
+  /** Retry text: set only for a plain visible question (see `retryable`). */
   query: string | null;
 }
 
@@ -74,9 +81,17 @@ export interface CopilotSendOptions
 export type CopilotSendResult =
   /**
    * It ran; `ended` is how (`done`, `stopped`, `error`, or still running if
-   * the stream dropped), and `turn` what the stream reported.
+   * the stream dropped), and `turn` what the stream reported. `reloadError`
+   * is `null` once the stored session was read back after the turn, else
+   * that read's own message (the cache still holds the session from before).
    */
-  | { status: "sent"; ended: CopilotTurn["status"]; turn: CopilotTurn }
+  | {
+      status: "sent";
+      ended: CopilotTurn["status"];
+      turn: CopilotTurn;
+      reloadError: string | null;
+    }
+  /** Another turn (or a stopped one still settling) holds this tab. */
   | { status: "busy" }
   /** Refused before it started: the composer gets the text back. */
   | { status: "refused"; message: string };
@@ -89,21 +104,134 @@ function wait(ms: number): Promise<void> {
 }
 
 /**
+ * One turn this tab sends. It owns its controller, which only its own Stop
+ * (or an account change) aborts, and it settles exactly once.
+ */
+interface CopilotRun {
+  turnId: string;
+  sessionId: string;
+  controller: AbortController;
+  /** Set by Stop: the stop request, then the abort of this run's stream. */
+  stopping: Promise<void> | null;
+  /** The account changed (or the hook unmounted): nothing more is shown. */
+  abandoned: boolean;
+}
+
+interface CopilotRunDeps {
+  queryClient: QueryClient;
+  /** Shows a frame's turn; false once the run's turn is no longer the live, active one. */
+  onFrame: (turn: CopilotTurn) => boolean;
+  /** The turn could not be opened, and not because of Stop. */
+  refuse: (message: string) => void;
+  /** The run ended and the session was read back (or could not be). */
+  finish: (turn: CopilotTurn, reloadError: string | null) => void;
+}
+
+function openFailureMessage(cause: unknown): string {
+  if (cause instanceof CopilotClientError) return cause.message;
+  return cause instanceof Error
+    ? `Could not reach the Copilot: ${cause.message}`
+    : "Could not reach the Copilot.";
+}
+
+/**
+ * A turn from open to settle: open the stream, show its frames, then, after
+ * Stop's request and the save wait when the user stopped it, read the stored
+ * session back once. Module scope because the React Compiler compiles only
+ * components and hooks, and this needs `try` and `for await`.
+ */
+async function runCopilotTurn(
+  run: CopilotRun,
+  request: CopilotChatRequest,
+  startedTurn: CopilotTurn,
+  deps: CopilotRunDeps,
+): Promise<CopilotSendResult> {
+  let turn = startedTurn;
+  // A call, so a check after an `await` is not narrowed to an earlier one.
+  const isAbandoned = () => run.abandoned;
+  const abandoned = (): CopilotSendResult => ({
+    status: "sent",
+    ended: "stopped",
+    turn: reduceCopilotTurn(turn, { type: "cancelled" }),
+    reloadError: null,
+  });
+
+  let body: ReadableStream<Uint8Array> | null = null;
+  try {
+    body = await openCopilotChat(request, run.controller.signal);
+  } catch (cause) {
+    if (isAbandoned()) return abandoned();
+    if (!run.stopping && !run.controller.signal.aborted) {
+      const message = openFailureMessage(cause);
+      deps.refuse(message);
+      return { status: "refused", message };
+    }
+    // Stop ended it while it opened: settle like any stopped turn.
+  }
+
+  if (body) {
+    let noteCount = 0;
+    const noteId = () => `note-${String((noteCount += 1))}`;
+    try {
+      for await (const frame of readSseFrames(body, run.controller.signal)) {
+        const event = decodeCopilotEvent(frame, noteId);
+        if (!event) continue;
+        const next = reduceCopilotTurn(turn, event);
+        // Stop already ended this turn; later frames change nothing.
+        if (!deps.onFrame(next)) break;
+        turn = next;
+        if (!isCopilotTurnActive(turn)) break;
+      }
+    } catch {
+      // The connection dropped (or Stop aborted it). The gateway finishes and
+      // saves the turn either way; the session poll picks the answer up.
+    }
+  }
+
+  // Stop can also arrive while the session is read back (the stream dropped
+  // with the turn still running); then it is read again after that stop.
+  let awaited: Promise<void> | null = null;
+  let reloadError: string | null = null;
+  do {
+    if (run.stopping) {
+      awaited = run.stopping;
+      if (isAbandoned()) return abandoned();
+      await awaited;
+      if (isAbandoned()) return abandoned();
+      await wait(stopSettleMs);
+    }
+    if (isAbandoned()) return abandoned();
+    reloadError = await reloadCopilotSession(deps.queryClient, run.sessionId);
+    if (isAbandoned()) return abandoned();
+  } while (run.stopping !== awaited);
+
+  if (run.stopping) turn = reduceCopilotTurn(turn, { type: "cancelled" });
+  deps.finish(turn, reloadError);
+  return {
+    status: "sent",
+    ended: run.stopping ? "stopped" : turn.status,
+    turn,
+    reloadError,
+  };
+}
+
+/**
  * Sends questions and streams the answers. One turn at a time per tab: the
  * gateway refuses a second turn in the same session anyway (409
  * `TURN_IN_FLIGHT`). The turn keeps streaming when the user switches session
  * or surface; it is shown again when they come back.
  */
-export function useCopilotChat() {
+export function useCopilotChat(account: string | null) {
   const queryClient = useQueryClient();
   const [active, setActive] = useState<CopilotActiveTurn | null>(null);
   const [error, setError] = useState<CopilotChatError | null>(null);
+  // Stop was sent and the stopped turn has not settled yet.
+  const [stopping, setStopping] = useState(false);
 
   // The latest turn, ahead of `active` between animation frames.
   const turnRef = useRef<CopilotActiveTurn | null>(null);
-  const controllerRef = useRef<AbortController | null>(null);
+  const runRef = useRef<CopilotRun | null>(null);
   const frameRef = useRef<number | null>(null);
-  const settledRef = useRef<string | null>(null);
   // Plans the user paused; a running plan stops before its next step.
   const [pausedPlans, setPausedPlans] = useState<ReadonlySet<string>>(new Set());
   const pausedRef = useRef<ReadonlySet<string>>(pausedPlans);
@@ -116,12 +244,30 @@ export function useCopilotChat() {
     setPausedPlans(next);
   }
 
+  // A turn belongs to the account that sent it. On a change of account (or
+  // unmount) the run is dropped: its stream closes, and it shows, reloads
+  // and titles nothing.
   useEffect(
-    () => () => {
-      controllerRef.current?.abort();
-      if (frameRef.current !== null) cancelAnimationFrame(frameRef.current);
-    },
-    [],
+    () =>
+      function abandonRun() {
+        const run = runRef.current;
+        if (run) {
+          run.abandoned = true;
+          run.controller.abort();
+          runRef.current = null;
+        }
+        turnRef.current = null;
+        if (frameRef.current !== null) {
+          cancelAnimationFrame(frameRef.current);
+          frameRef.current = null;
+        }
+        setActive(null);
+        setError(null);
+        setStopping(false);
+        pausedRef.current = new Set();
+        setPausedPlans(pausedRef.current);
+      },
+    [account],
   );
 
   function commit(next: CopilotActiveTurn | null) {
@@ -136,51 +282,43 @@ export function useCopilotChat() {
   // Answer text can arrive in hundreds of small chunks; render once a frame.
   function commitSoon(next: CopilotActiveTurn) {
     turnRef.current = next;
-    frameRef.current ??= requestAnimationFrame(() => {
-      frameRef.current = null;
-      setActive(turnRef.current);
-    });
-  }
-
-  /** Reloads the stored session, then drops the live copy of the turn. */
-  async function settle(sessionId: string, turn: CopilotTurn, model: string, isFirstTurn: boolean) {
-    if (settledRef.current === turn.id) return;
-    settledRef.current = turn.id;
-    await queryClient
-      .refetchQueries({ queryKey: copilotQueryKeys.session(sessionId), exact: true })
-      .catch(() => undefined);
-    void queryClient.invalidateQueries({ queryKey: copilotQueryKeys.sessions() });
-    // The turn may have submitted jobs the gateway now watches.
-    void queryClient.invalidateQueries({
-      queryKey: copilotQueryKeys.workflowWatches(sessionId),
-    });
-    if (turn.status === "error") {
-      setError({ sessionId, message: turn.error ?? "The Copilot stopped with an error.", query: turn.query });
-    }
-    if (turnRef.current?.turn.id === turn.id) commit(null);
-
-    if (isFirstTurn && turn.status === "done") {
-      // Best effort: a chat without a generated title keeps "New Chat".
-      titleCopilotSession(sessionId, model, turn.query)
-        .then((title) => {
-          if (title) {
-            void queryClient.invalidateQueries({ queryKey: copilotQueryKeys.sessions() });
-          }
-        })
-        .catch(() => undefined);
+    if (frameRef.current === null) {
+      frameRef.current = requestAnimationFrame(() => {
+        frameRef.current = null;
+        setActive(turnRef.current);
+      });
     }
   }
 
   async function send(options: CopilotSendOptions): Promise<CopilotSendResult> {
-    if (isCopilotTurnActive(turnRef.current?.turn ?? null)) return { status: "busy" };
+    if (runRef.current !== null) return { status: "busy" };
     setError(null);
 
     const { storedCount, hidden = false, ...request } = options;
     const { sessionId, query, model } = request;
     const isFirstTurn = storedCount === 0;
-    let current: CopilotActiveTurn = {
+    // Retry resends only the text, so only a plain visible question offers it.
+    const retryable =
+      !hidden &&
+      !request.clarification &&
+      !request.planStep &&
+      !request.replayActions &&
+      !request.preparedActions &&
+      !request.images?.length &&
+      !request.files?.length &&
+      !request.pdfs?.length;
+    const turn = startCopilotTurn(crypto.randomUUID(), query);
+    const run: CopilotRun = {
+      turnId: turn.id,
       sessionId,
-      turn: startCopilotTurn(crypto.randomUUID(), query),
+      controller: new AbortController(),
+      stopping: null,
+      abandoned: false,
+    };
+    runRef.current = run;
+    commit({
+      sessionId,
+      turn,
       baseCount: storedCount,
       clarificationAnswers: request.clarification?.answers ?? null,
       hidden,
@@ -201,105 +339,143 @@ export function useCopilotChat() {
           size: pdf.size,
         })),
       ],
-    };
-    commit(current);
+    });
 
-    const controller = new AbortController();
-    controllerRef.current = controller;
-    let noteCount = 0;
-    const noteId = () => `note-${String((noteCount += 1))}`;
-
-    let body: ReadableStream<Uint8Array>;
-    try {
-      body = await openCopilotChat(request, controller.signal);
-    } catch (cause) {
-      commit(null);
-      if (controller.signal.aborted) {
-        return { status: "sent", ended: "stopped", turn: current.turn };
-      }
-      const message =
-        cause instanceof CopilotClientError
-          ? cause.message
-          : cause instanceof Error
-            ? `Could not reach the Copilot: ${cause.message}`
-            : "Could not reach the Copilot.";
-      setError({ sessionId, message, query: null });
-      return { status: "refused", message };
-    }
-
-    try {
-      for await (const frame of readSseFrames(body, controller.signal)) {
-        const event = decodeCopilotEvent(frame, noteId);
-        if (!event) continue;
-        // Stop already ended this turn; later frames change nothing.
+    return runCopilotTurn(run, request, turn, {
+      queryClient,
+      onFrame: (next) => {
         const latest = turnRef.current;
-        if (latest?.turn.id !== current.turn.id || !isCopilotTurnActive(latest.turn)) {
-          break;
+        if (latest?.turn.id !== run.turnId || !isCopilotTurnActive(latest.turn)) {
+          return false;
         }
-        current = { ...current, turn: reduceCopilotTurn(current.turn, event) };
-        if (isCopilotTurnActive(current.turn)) {
-          commitSoon(current);
-        } else {
-          commit(current);
-          break;
+        const updated = { ...latest, turn: next };
+        if (isCopilotTurnActive(next)) commitSoon(updated);
+        else commit(updated);
+        return true;
+      },
+      refuse: (message) => {
+        if (runRef.current !== run) return;
+        runRef.current = null;
+        commit(null);
+        setError({ sessionId, kind: "turn", message, query: null });
+      },
+      finish: (ended, reloadError) => {
+        if (runRef.current !== run) return;
+        runRef.current = null;
+        setStopping(false);
+        void queryClient.invalidateQueries({ queryKey: copilotQueryKeys.sessions() });
+        // The turn may have submitted jobs the gateway now watches.
+        void queryClient.invalidateQueries({
+          queryKey: copilotQueryKeys.workflowWatches(sessionId),
+        });
+        if (ended.status === "error") {
+          setError({
+            sessionId,
+            kind: "turn",
+            message: ended.error ?? "The Copilot stopped with an error.",
+            query: retryable ? ended.query : null,
+          });
+        } else if (reloadError !== null) {
+          setError({ sessionId, kind: "reload", message: reloadError, query: null });
         }
-      }
-    } catch {
-      // The connection dropped (or Stop aborted it). The gateway finishes and
-      // saves the turn either way; the session poll picks the answer up.
-    } finally {
-      if (controllerRef.current === controller) controllerRef.current = null;
-    }
+        // Without the stored copy the live turn stays, so the question and
+        // answer do not vanish; it has ended, so the composer works. Only one
+        // error shows: when an errored turn's reload also failed, the live
+        // turn stays with its `turn` error (and Retry), and the reload
+        // failure is only in the returned `reloadError`.
+        if (reloadError === null && turnRef.current?.turn.id === ended.id) {
+          commit(null);
+        }
 
-    if (!controller.signal.aborted) {
-      await settle(sessionId, current.turn, model, isFirstTurn);
-    }
-    return {
-      status: "sent",
-      ended: controller.signal.aborted ? "stopped" : current.turn.status,
-      turn: current.turn,
-    };
+        if (isFirstTurn && ended.status === "done") {
+          // Best effort: a chat without a generated title keeps "New Chat".
+          titleCopilotSession(sessionId, model, ended.query)
+            .then((title) => {
+              if (title) {
+                void queryClient.invalidateQueries({ queryKey: copilotQueryKeys.sessions() });
+              }
+            })
+            .catch(() => undefined);
+        }
+      },
+    });
   }
 
   /**
    * Stops the running turn. The gateway saves what was written so far with
-   * "Stopped." appended; the stored session replaces the live turn shortly
-   * after.
+   * "Stopped." appended; the run reads the stored session back after the
+   * stop request and a short wait, and `send` stays busy until then. The
+   * promise is the stop request (and the stream's abort after it).
    */
-  async function stop(): Promise<void> {
+  function stop(): Promise<void> {
+    const run = runRef.current;
     const running = turnRef.current;
-    if (!running || !isCopilotTurnActive(running.turn)) return;
-    const stopped: CopilotActiveTurn = {
+    if (
+      !run ||
+      run.stopping ||
+      running?.turn.id !== run.turnId ||
+      !isCopilotTurnActive(running.turn)
+    ) {
+      return Promise.resolve();
+    }
+    commit({
       ...running,
       turn: reduceCopilotTurn(running.turn, { type: "cancelled" }),
-    };
-    commit(stopped);
-    try {
-      await stopCopilotTurn(running.sessionId, running.turn.jobId);
-    } catch (cause) {
-      setError({
-        sessionId: running.sessionId,
-        message:
-          cause instanceof Error
-            ? `Stop did not reach the Copilot: ${cause.message}`
-            : "Stop did not reach the Copilot.",
-        query: null,
+    });
+    setStopping(true);
+    run.stopping = stopCopilotTurn(run.sessionId, running.turn.jobId)
+      .catch((cause: unknown) => {
+        if (run.abandoned) return;
+        setError({
+          sessionId: run.sessionId,
+          kind: "turn",
+          message:
+            cause instanceof Error
+              ? `Stop did not reach the Copilot: ${cause.message}`
+              : "Stop did not reach the Copilot.",
+          query: null,
+        });
+      })
+      .then(() => {
+        run.controller.abort();
       });
-    } finally {
-      controllerRef.current?.abort();
+    return run.stopping;
+  }
+
+  /**
+   * Reads a session back after a failed reload. On success the live copy of
+   * an ended turn in it is dropped, since the stored session now has it.
+   */
+  async function reload(sessionId: string): Promise<void> {
+    const reloadError = await reloadCopilotSession(queryClient, sessionId);
+    if (reloadError === null) {
+      const latest = turnRef.current;
+      if (latest?.sessionId === sessionId && !isCopilotTurnActive(latest.turn)) {
+        commit(null);
+      }
+      setError((current) =>
+        current?.kind === "reload" && current.sessionId === sessionId ? null : current,
+      );
+    } else {
+      // A turn error (with its Retry) or another session's error stays.
+      setError((current) =>
+        current === null || (current.kind === "reload" && current.sessionId === sessionId)
+          ? { sessionId, kind: "reload", message: reloadError, query: null }
+          : current,
+      );
     }
-    await wait(stopSettleMs);
-    await settle(running.sessionId, stopped.turn, "", false);
   }
 
   return {
     active,
     error,
+    stopping,
     dismissError: () => {
       setError(null);
     },
     send,
     stop,
+    reload,
     pausedPlans,
     pausePlan: (planId: string) => {
       setPlanPaused(planId, true);

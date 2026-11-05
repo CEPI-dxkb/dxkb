@@ -92,6 +92,23 @@ describe("execution wording", () => {
     expect(executeRunMessage([job])).toContain("Submit the job exactly as you prepared it");
     expect(executeRunMessage([group])).toContain("Create the group exactly as you prepared it");
     expect(executeRunMessage([job, group])).toContain("Submit the job and create the group");
+    const prefix = "Execute mode is on for this message.";
+    expect(executeRunMessage([edit])).toBe(
+      `${prefix} Update the group exactly as you prepared it above.`,
+    );
+    const mixed = `${prefix} Run these actions exactly as you prepared them above.`;
+    expect(executeRunMessage([job, edit])).toBe(mixed);
+    expect(executeRunMessage([group, edit])).toBe(mixed);
+  });
+
+  it("reads a negative step index as null", () => {
+    expect(
+      readClarificationCard({
+        agent: "data",
+        questions: [{ question: "Q?" }],
+        plan_step: { plan_id: "p1", step_id: "step_2", step_index: -1 },
+      })?.planStep,
+    ).toEqual({ planId: "p1", stepId: "step_2", stepIndex: null });
   });
 });
 

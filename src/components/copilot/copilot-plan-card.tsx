@@ -34,6 +34,8 @@ import {
   applyPlanUpdates,
   copilotPlanAgents,
   copilotPlanState,
+  mergeEditedSteps,
+  mustRunAfter,
   newPlanStepId,
   type CopilotPlan,
   type CopilotPlanStep,
@@ -70,7 +72,15 @@ export interface CopilotPlanActions {
 }
 
 const PlanActionsContext = createContext<CopilotPlanActions | null>(null);
-export const CopilotPlanActionsProvider = PlanActionsContext.Provider;
+export function CopilotPlanActionsProvider({
+  value,
+  children,
+}: {
+  value: CopilotPlanActions;
+  children: React.ReactNode;
+}) {
+  return <PlanActionsContext value={value}>{children}</PlanActionsContext>;
+}
 
 const statusText: Record<CopilotPlanStepStatus, string> = {
   pending: "Not started",
@@ -168,18 +178,42 @@ function StepRow({
   );
 }
 
+/** "Runs after step 1" / "Runs after steps 1, 3", by current position. */
+function RunsAfter({
+  step,
+  steps,
+}: {
+  step: CopilotPlanStep;
+  steps: CopilotPlanStep[];
+}) {
+  const numbers = step.dependsOn.flatMap((id) => {
+    const at = steps.findIndex((other) => other.stepId === id);
+    return at === -1 ? [] : [at + 1];
+  });
+  if (numbers.length === 0) return null;
+  return (
+    <p className="text-xs text-muted-foreground">
+      {`Runs after step${numbers.length > 1 ? "s" : ""} ${numbers.join(", ")}`}
+    </p>
+  );
+}
+
 /** Editing the steps not run yet: text, agent, order; add and delete. */
 function PlanEditor({
   plan,
+  busy,
   onCancel,
   onSave,
 }: {
   plan: CopilotPlan;
+  /** A step is running: the steps cannot be saved now. */
+  busy: boolean;
   onCancel: () => void;
   onSave: (steps: CopilotPlanStep[]) => Promise<boolean>;
 }) {
   const [steps, setSteps] = useState(plan.steps);
   const [saving, setSaving] = useState(false);
+  const [moved, setMoved] = useState(false);
   const editable = (step: CopilotPlanStep) => step.status === "pending";
   // Steps that already ran stay first and fixed.
   const firstEditable = steps.findIndex(editable);
@@ -201,11 +235,23 @@ function PlanEditor({
       className="flex flex-col gap-3"
       onSubmit={(event) => {
         event.preventDefault();
-        if (invalid || saving) return;
+        if (invalid || saving || busy) return;
+        const merged = mergeEditedSteps(plan, steps);
+        if (!merged) {
+          setMoved(true);
+          setSteps(plan.steps);
+          return;
+        }
+        setMoved(false);
         setSaving(true);
-        void onSave(steps.map((step) => ({ ...step, description: step.description.trim() }))).then(
+        void onSave(
+          merged.map((step) => ({ ...step, description: step.description.trim() })),
+        ).then(
           (saved) => {
             if (!saved) setSaving(false);
+          },
+          () => {
+            setSaving(false);
           },
         );
       }}
@@ -224,7 +270,10 @@ function PlanEditor({
                   variant="ghost"
                   size="icon-xs"
                   aria-label={`Move step ${String(index + 1)} up`}
-                  disabled={index <= firstEditable}
+                  disabled={
+                    index <= firstEditable ||
+                    mustRunAfter(step, steps[index - 1])
+                  }
                   onClick={() => {
                     move(index, -1);
                   }}
@@ -236,7 +285,10 @@ function PlanEditor({
                   variant="ghost"
                   size="icon-xs"
                   aria-label={`Move step ${String(index + 1)} down`}
-                  disabled={index === steps.length - 1}
+                  disabled={
+                    index === steps.length - 1 ||
+                    mustRunAfter(steps[index + 1], step)
+                  }
                   onClick={() => {
                     move(index, 1);
                   }}
@@ -256,6 +308,7 @@ function PlanEditor({
                   <Trash2 aria-hidden />
                 </Button>
               </div>
+              <RunsAfter step={step} steps={steps} />
               <Textarea
                 value={step.description}
                 rows={2}
@@ -321,11 +374,28 @@ function PlanEditor({
           Every step needs a description.
         </p>
       )}
+      {moved && (
+        <p role="alert" className="text-xs text-destructive">
+          The plan moved on while you were editing. Check the steps and save
+          again.
+        </p>
+      )}
+      {busy && (
+        <p className="text-xs text-muted-foreground">
+          A step is running. Save when it stops.
+        </p>
+      )}
       <div className="flex gap-2">
-        <Button type="submit" size="sm" disabled={saving}>
+        <Button type="submit" size="sm" disabled={saving || busy}>
           {saving ? "Saving…" : "Save changes"}
         </Button>
-        <Button type="button" variant="outline" size="sm" onClick={onCancel}>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          disabled={saving}
+          onClick={onCancel}
+        >
           Cancel
         </Button>
       </div>
@@ -560,6 +630,7 @@ export function PlanCardView({
       {editing && actions ? (
         <PlanEditor
           plan={plan}
+          busy={busy}
           onCancel={() => {
             setEditing(false);
           }}

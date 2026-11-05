@@ -10,6 +10,12 @@ import { Marker, MarkerContent, MarkerIcon } from "@/components/ui/marker";
 import { Spinner } from "@/components/ui/spinner";
 import type { CopilotStep } from "@/lib/copilot/types";
 
+const stepStatusText: Record<CopilotStep["status"], string> = {
+  done: "Done",
+  error: "Failed",
+  running: "Running",
+};
+
 function seconds(ms: number): string {
   return ms < 1000 ? "<1 s" : `${String(Math.round(ms / 100) / 10)} s`;
 }
@@ -31,6 +37,7 @@ function StepList({ steps }: { steps: CopilotStep[] }) {
               <StepIcon status={step.status} />
             </MarkerIcon>
             <MarkerContent>
+              <span className="sr-only">{stepStatusText[step.status]}: </span>
               <span className="text-foreground">{step.label}</span>
               {step.result && <span> — {step.result}</span>}
               {step.detail && !step.result && <span> — {step.detail}</span>}

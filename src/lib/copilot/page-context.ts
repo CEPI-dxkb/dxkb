@@ -12,17 +12,17 @@ const siteSentence =
   "The user is on DXKB (the Disease X Knowledge Base), a site built on BV-BRC data and services; DXKB page URLs differ from BV-BRC's.";
 
 /** Entity pages: `/<segment>/<id>` → "<label> <id>". */
-const entityLabels: Record<string, string> = {
+const entityLabels = new Map<string, string>(Object.entries({
   genome: "genome",
   feature: "feature",
   taxonomy: "taxon",
   strain: "strain",
   epitope: "epitope",
   experiment: "experiment",
-};
+}));
 
 /** Collection pages with an RQL filter: `/<segment>?rql=…`. */
-const collectionLabels: Record<string, string> = {
+const collectionLabels = new Map<string, string>(Object.entries({
   genome: "genomes",
   feature: "genomic features",
   taxonomy: "taxa",
@@ -33,7 +33,7 @@ const collectionLabels: Record<string, string> = {
   surveillance: "surveillance records",
   "protein-structure": "protein structures",
   "domains-and-motifs": "protein domains and motifs",
-};
+}));
 
 function decode(segment: string): string {
   try {
@@ -55,13 +55,13 @@ function describeView(
   const [first, second] = segments;
   if (!first) return "the DXKB home page";
 
-  const entity = entityLabels[first];
+  const entity = entityLabels.get(first);
   if (entity && second) {
     const tab = search.get("tab");
     return `the page for ${entity} ${clip(decode(second), 100)}${tab ? ` (${clip(tab, 50)} tab)` : ""}`;
   }
 
-  const collection = collectionLabels[first];
+  const collection = collectionLabels.get(first);
   if (collection) {
     const rql = search.get("rql");
     return rql
@@ -70,7 +70,7 @@ function describeView(
   }
 
   if (first === "organisms" && second) {
-    return `the ${decode(second)} organism overview${segments[2] ? ` (${decode(segments.slice(2).join("/"))})` : ""}`;
+    return `the ${clip(decode(second), 100)} organism overview${segments[2] ? ` (${clip(decode(segments.slice(2).join("/")), 200)})` : ""}`;
   }
 
   if (first === "workspace") {
@@ -86,7 +86,7 @@ function describeView(
     // `/services/<name>`: route groups are not in the URL.
     const name = segments[1];
     return name
-      ? `the submission form for the ${decode(name).replace(/-/g, " ")} service`
+      ? `the submission form for the ${clip(decode(name), 100).replace(/-/g, " ")} service`
       : "the list of analysis services";
   }
 
@@ -110,7 +110,12 @@ export function describeCopilotPage(
     typeof search === "string" ? new URLSearchParams(search) : search;
   const segments = pathname.split("/").filter(Boolean);
   const view = describeView(segments, params);
-  return view
-    ? `${siteSentence} They are viewing ${view} (URL path ${clip(pathname, 300)}).`
-    : siteSentence;
+  if (!view) return siteSentence;
+  // Each clipped part is bounded; this literal cap keeps the whole sentence
+  // under the gateway's 2,000-character limit (server.ts is server-only, so
+  // the limit is not imported).
+  return `${siteSentence} They are viewing ${view} (URL path ${clip(pathname, 300)}).`.slice(
+    0,
+    1900,
+  );
 }

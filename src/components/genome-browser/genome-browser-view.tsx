@@ -59,9 +59,15 @@ export interface GenomeBrowserViewProps {
 export function GenomeBrowserView(props: GenomeBrowserViewProps) {
   const appliedTheme = useAppliedTheme();
   if (props.location === undefined) return <GenomeBrowserSkeleton />;
+  // `isolate` keeps JBrowse's z-indexes inside this box. MUI pins the view
+  // header with `position: sticky` at z-index 825-850 and lifts track labels
+  // to 100-300, and no ancestor of this div forms a stacking context, so
+  // without it they compete with the app's z-50 portalled popups (the navbar's
+  // Services menu, the search-scope select, the My Jobs popover) and draw over
+  // them. JBrowse's own menus and dialogs portal to <body>, outside this box.
   return (
     <div
-      className="flex min-h-0 flex-1 flex-col p-2"
+      className="isolate flex min-h-0 flex-1 flex-col p-2"
       data-slot="genome-browser"
       data-testid="genome-browser"
     >

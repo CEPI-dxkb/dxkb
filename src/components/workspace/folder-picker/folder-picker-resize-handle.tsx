@@ -82,7 +82,7 @@ export function PaneResizeHandle({
     >
       <span
         aria-hidden
-        className="absolute inset-y-0 left-1/2 w-0.5 -translate-x-1/2 transition-colors group-hover:bg-primary/50 group-focus-visible:bg-primary group-active:bg-primary"
+        className="absolute inset-y-0 left-1/2 w-0.5 -translate-x-1/2 transition-colors group-hover:bg-info/50 group-focus-visible:bg-info group-active:bg-info"
       />
     </div>
   );

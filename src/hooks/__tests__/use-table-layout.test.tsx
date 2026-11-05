@@ -49,6 +49,21 @@ describe("useTableLayout", () => {
     });
   });
 
+  it("resolves a function patch against the layout stored at write time", () => {
+    const key = "dxkb-table-layout:v1:workspace";
+    const { result } = renderHook(() => useTableLayout("workspace"));
+    // Another tab saves a width after this render.
+    localStorage.setItem(key, JSON.stringify({ widths: { ownerId: 90 } }));
+    act(() => {
+      result.current[1]((current) => ({
+        widths: { ...current.widths, name: 300 },
+      }));
+    });
+    expect(JSON.parse(localStorage.getItem(key) ?? "{}")).toStrictEqual({
+      widths: { ownerId: 90, name: 300 },
+    });
+  });
+
   it("keeps tables apart", () => {
     const { result } = renderHook(() => ({
       genome: useTableLayout("collection:genome"),

@@ -46,6 +46,45 @@ export class GenomeBrowserPanelPage {
       .toBe(0);
   }
 
+  /**
+   * Whether `popup` paints over every point of JBrowse's sticky view header
+   * (the overview scale bar and the toolbar, z-index 825-850) that the two
+   * share. Covers every band the popup overlaps, even only at a band's edge.
+   * Returns the points JBrowse still wins, or -1 when they do not overlap at
+   * all (so a moved popup fails instead of passing vacuously).
+   */
+  async headerPointsAbove(popup: Locator): Promise<number> {
+    const popupBox = await popup.boundingBox();
+    if (!popupBox) return -1;
+    return this.root().evaluate((host, box) => {
+      const header = [...host.querySelectorAll<HTMLElement>("*")].filter(
+        (el) => {
+          const style = getComputedStyle(el);
+          return style.position === "sticky" && Number(style.zIndex) >= 800;
+        },
+      );
+      let checked = 0;
+      let above = 0;
+      for (const band of header) {
+        const rect = band.getBoundingClientRect();
+        // Sample the middle of the band's overlap with the popup, not the
+        // band's own middle: a popup covering only a band's top or bottom edge
+        // still counts.
+        const top = Math.max(rect.top, box.y);
+        const bottom = Math.min(rect.bottom, box.y + box.height);
+        if (bottom <= top) continue;
+        const y = (top + bottom) / 2;
+        const left = Math.max(rect.left, box.x) + 8;
+        const right = Math.min(rect.right, box.x + box.width) - 8;
+        for (let x = left; x < right; x += 40) {
+          checked += 1;
+          if (band.contains(document.elementFromPoint(x, y))) above += 1;
+        }
+      }
+      return checked === 0 ? -1 : above;
+    }, popupBox);
+  }
+
   /** JBrowse's location search box. */
   locationBox(): Locator {
     return this.root().getByPlaceholder(/search for location/i);

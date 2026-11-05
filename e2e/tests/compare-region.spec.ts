@@ -5,6 +5,7 @@ import {
   genomeFeatureScenarioOverrides,
 } from "../fixtures/overrides";
 import { CompareRegionPage } from "../pages";
+import { attachFocusTrail, recordFocusTrail } from "../support/focus-trail";
 import { failOnRuntimeErrors } from "../support/runtime-errors";
 
 /**
@@ -34,11 +35,22 @@ test.describe("Compare Region Viewer", () => {
 
   test.beforeEach(async ({ page }) => {
     assertNoRuntimeErrors = failOnRuntimeErrors(page);
+    await recordFocusTrail(page);
     await applyBackendMocks(page, { overrides: [...overrides] });
   });
 
-  test.afterEach(() => {
-    assertNoRuntimeErrors();
+  test.afterEach(async ({ page }, testInfo) => {
+    await attachFocusTrail(page, testInfo);
+    try {
+      assertNoRuntimeErrors();
+    } catch (error) {
+      // The test body passed, so the call above attached nothing; this
+      // failure is the hook's own.
+      if (testInfo.status === testInfo.expectedStatus) {
+        await attachFocusTrail(page, testInfo, { force: true });
+      }
+      throw error;
+    }
   });
 
   test("the figure draws every genome and zooms from 1× to 20×", async ({
@@ -119,6 +131,10 @@ test.describe("Compare Region Viewer", () => {
     await page.mouse.move(x, y);
     await page.mouse.down();
     await page.mouse.move(x - 10, y);
+    // The drag starts on this move. Zoom's move handler reads isDragging from
+    // its last render, so the next move pans only once that start is drawn;
+    // a loaded runner can deliver it first, and it would be dropped.
+    await expect(compare.dragging).toHaveCount(1);
     await page.mouse.move(x - 110, y);
     const slide = /^translate\(-(\d+(\.\d+)?) 0\)$/;
     await expect(compare.panLayers).toHaveCount(2);
@@ -357,12 +373,18 @@ test.describe("Compare Region Viewer", () => {
     await page.keyboard.press("Home");
     await page.keyboard.press("ArrowDown");
     await expect(focused).toHaveAttribute("data-row", "1");
+    const pinned = await focused.getAttribute("data-feature");
+    expect(pinned).not.toBeNull();
 
     // Enter pins it; Tab reaches the card's actions, and closing the card
     // hands focus back to the gene.
     await page.keyboard.press("Enter");
     await expect(compare.featureCard).toBeVisible();
     await expect(compare.selectionStrip).toBeVisible();
+    // Pinning keeps the keyboard's place on the gene: WebKit would send the
+    // next Tab to the top of the page if it were blurred.
+    await expect(focused).toHaveAttribute("data-row", "1");
+    await expect(focused).toHaveAttribute("data-feature", pinned ?? "");
     await page.keyboard.press("Tab");
     await expect(
       compare.featureCard.getByRole("button", { name: "Collapse details" }),
@@ -374,6 +396,7 @@ test.describe("Compare Region Viewer", () => {
     await page.keyboard.press("Enter");
     await expect(compare.featureCard).toHaveCount(0);
     await expect(focused).toHaveAttribute("data-row", "1");
+    await expect(focused).toHaveAttribute("data-feature", pinned ?? "");
     await expect(compare.tooltip).toBeVisible();
   });
 

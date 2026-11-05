@@ -1,4 +1,5 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { useLayoutEffect } from "react";
 import type { ColumnDef } from "@tanstack/react-table";
 import { jsdomLocalStorage } from "@/test-helpers/storage";
 import {
@@ -19,6 +20,28 @@ const columns: ColumnDef<FileTableFeatures, Row>[] = [
 ];
 
 const storageKey = "dxkb-table-layout:v1:test-files";
+
+// jsdom has no pointer capture.
+Element.prototype.setPointerCapture = vi.fn();
+Element.prototype.releasePointerCapture = vi.fn();
+
+/** A pointer drag of `handle` by `deltaX` px from `startX`, released. */
+function pointerDrag(
+  handle: HTMLElement,
+  startX: number,
+  deltaX: number,
+  pointerType: "mouse" | "touch" = "mouse",
+) {
+  fireEvent.pointerDown(handle, {
+    pointerId: 1,
+    button: 0,
+    isPrimary: true,
+    pointerType,
+    clientX: startX,
+  });
+  fireEvent.pointerMove(handle, { pointerId: 1, clientX: startX + deltaX });
+  fireEvent.pointerUp(handle, { pointerId: 1, clientX: startX + deltaX });
+}
 
 function Body() {
   const { rows: tableRows } = useDataTableBody<Row>();
@@ -111,9 +134,7 @@ describe("FileTable remembered layout", () => {
       const handle = screen.getByRole("separator", {
         name: /resize name column/i,
       });
-      fireEvent.mouseDown(handle, { clientX: 1000 });
-      fireEvent.mouseMove(document, { clientX: 1000 + deltaX });
-      fireEvent.mouseUp(document, { clientX: 1000 + deltaX });
+      pointerDrag(handle, 1000, deltaX);
       return handle;
     }
 
@@ -207,18 +228,199 @@ describe("FileTable remembered layout", () => {
     const handle = screen.getByRole("separator", {
       name: /resize name column/i,
     });
-    fireEvent.mouseDown(handle, { clientX: 100 });
-    fireEvent.mouseMove(document, { clientX: 120 });
-    fireEvent.mouseMove(document, { clientX: 150 });
+    fireEvent.pointerDown(handle, {
+      pointerId: 1,
+      button: 0,
+      isPrimary: true,
+      pointerType: "mouse",
+      clientX: 100,
+    });
+    fireEvent.pointerMove(handle, { pointerId: 1, clientX: 120 });
+    fireEvent.pointerMove(handle, { pointerId: 1, clientX: 150 });
     await waitFor(() => {
       expect(handle).toHaveAttribute("aria-valuenow", "350");
     });
     // Mid-drag the width lives in component state only.
     expect(storedLayout()).toStrictEqual({ widths: { name: 300 } });
 
-    fireEvent.mouseUp(document, { clientX: 150 });
+    fireEvent.pointerUp(handle, { pointerId: 1, clientX: 150 });
     await waitFor(() => {
       expect(storedLayout()).toStrictEqual({ widths: { name: 350 } });
+    });
+  });
+
+  it("ends a cancelled drag without saving it", () => {
+    localStorage.setItem(storageKey, JSON.stringify({ widths: { name: 300 } }));
+    renderTable();
+    const handle = screen.getByRole("separator", {
+      name: /resize name column/i,
+    });
+    const header = screen.getByRole("columnheader", { name: /Name/ });
+    const region = screen.getByRole("region", { name: "Data table" });
+    fireEvent.pointerDown(handle, {
+      pointerId: 1,
+      button: 0,
+      isPrimary: true,
+      pointerType: "touch",
+      clientX: 100,
+    });
+    fireEvent.pointerMove(handle, { pointerId: 1, clientX: 150 });
+    expect(handle).toHaveAttribute("aria-valuenow", "350");
+    expect(header.style.getPropertyValue("--col-size")).toBe("350px");
+    expect(region).toHaveClass("cursor-col-resize");
+
+    fireEvent.pointerCancel(handle, { pointerId: 1, isPrimary: true });
+    expect(storedLayout()).toStrictEqual({ widths: { name: 300 } });
+    expect(region).not.toHaveClass("cursor-col-resize");
+    expect(handle).toHaveAttribute("aria-valuenow", "300");
+    expect(header.style.getPropertyValue("--col-size")).toBe("300px");
+  });
+
+  it("merges a keyboard resize into the widths stored when it is saved", () => {
+    // Writes another tab's save after the table renders the resize but before
+    // its commit effect runs: a layout effect runs between the two, and a
+    // direct write sends no storage event, so the table's render-time layout
+    // is stale when the effect saves.
+    let foreignWrite: string | null = null;
+    function OwnerHeader() {
+      useLayoutEffect(() => {
+        if (foreignWrite === null) return;
+        localStorage.setItem(storageKey, foreignWrite);
+        foreignWrite = null;
+      });
+      return "Owner";
+    }
+    localStorage.setItem(
+      storageKey,
+      JSON.stringify({ widths: { name: 300, size: 120 } }),
+    );
+    render(
+      <DataTable<Row>
+        data={rows}
+        columns={[...columns, { id: "owner", header: () => <OwnerHeader /> }]}
+        defaultColumnOrder={["name", "size", "owner"]}
+        isLoading={false}
+        getRowId={(row) => row.id}
+        sort={{ field: "name", direction: "asc" }}
+        onSort={vi.fn()}
+        layoutKey="test-files"
+      >
+        <Body />
+      </DataTable>,
+    );
+    foreignWrite = JSON.stringify({ widths: { name: 300, size: 200 } });
+    fireEvent.keyDown(
+      screen.getByRole("separator", { name: /resize name column/i }),
+      { key: "ArrowRight" },
+    );
+    expect(foreignWrite).toBeNull();
+    expect(storedLayout()).toStrictEqual({ widths: { name: 310, size: 200 } });
+  });
+
+  it("saves a touch drag on release", () => {
+    localStorage.setItem(storageKey, JSON.stringify({ widths: { name: 300 } }));
+    renderTable();
+    pointerDrag(
+      screen.getByRole("separator", { name: /resize name column/i }),
+      100,
+      40,
+      "touch",
+    );
+    expect(storedLayout()).toStrictEqual({ widths: { name: 340 } });
+  });
+
+  // Responsive tables hide columns with CSS (`hidden md:table-cell`), which
+  // TanStack still counts as visible. jsdom loads no stylesheet, so these
+  // tests hide the Owner header inline, and give the scroll box a width so the
+  // columns after the dragged one share the drag.
+  describe("with a column that CSS hides", () => {
+    const threeColumns: ColumnDef<FileTableFeatures, Row>[] = [
+      ...columns,
+      { id: "owner", header: "Owner", accessorFn: () => "me" },
+    ];
+
+    function renderThreeColumns() {
+      const view = render(
+        <DataTable<Row>
+          data={rows}
+          columns={threeColumns}
+          defaultColumnOrder={["name", "size", "owner"]}
+          isLoading={false}
+          getRowId={(row) => row.id}
+          sort={{ field: "name", direction: "asc" }}
+          onSort={vi.fn()}
+          layoutKey="test-files"
+        >
+          <Body />
+        </DataTable>,
+      );
+      Object.defineProperty(
+        screen.getByRole("region", { name: "Data table" }),
+        "clientWidth",
+        { configurable: true, value: 600 },
+      );
+      screen.getByRole("columnheader", { name: /Owner/ }).style.display =
+        "none";
+      return view;
+    }
+
+    function pressName(pointerType: "mouse" | "touch" = "mouse") {
+      const handle = screen.getByRole("separator", {
+        name: /resize name column/i,
+      });
+      fireEvent.pointerDown(handle, {
+        pointerId: 1,
+        button: 0,
+        isPrimary: true,
+        pointerType,
+        clientX: 100,
+      });
+      return handle;
+    }
+
+    it("leaves the hidden column out of a drag", () => {
+      renderThreeColumns();
+      const handle = pressName();
+      fireEvent.pointerMove(handle, { pointerId: 1, clientX: 160 });
+      fireEvent.pointerUp(handle, { pointerId: 1 });
+      // Name and Size fill 600px at twice their 150px settings: Name's edge
+      // moves 60px (30 setting px) and Size gives the width up.
+      expect(storedLayout()).toStrictEqual({
+        widths: { name: 180, size: 120 },
+      });
+    });
+
+    it("ignores a second finger and keeps widths another tab saved mid-drag", () => {
+      renderThreeColumns();
+      const handle = pressName("touch");
+      // A second finger neither starts a drag of its own nor ends this one.
+      fireEvent.pointerDown(
+        screen.getByRole("separator", { name: /resize size column/i }),
+        { pointerId: 2, isPrimary: false, pointerType: "touch", clientX: 300 },
+      );
+      fireEvent.pointerUp(handle, { pointerId: 2 });
+      fireEvent.pointerMove(handle, { pointerId: 1, clientX: 160 });
+      expect(localStorage.getItem(storageKey)).toBeNull();
+      // Owner is hidden, so this drag does not change it.
+      localStorage.setItem(storageKey, JSON.stringify({ widths: { owner: 90 } }));
+      fireEvent.pointerUp(handle, { pointerId: 1 });
+      expect(storedLayout()).toStrictEqual({
+        widths: { owner: 90, name: 180, size: 120 },
+      });
+    });
+
+    it("drops a drag, saving nothing, when the table unmounts mid-drag", () => {
+      localStorage.setItem(storageKey, JSON.stringify({ widths: { size: 200 } }));
+      const { unmount } = renderThreeColumns();
+      const handle = pressName();
+      fireEvent.pointerMove(handle, { pointerId: 1, clientX: 160 });
+      // The drag is live (Size gives up what Name takes).
+      expect(handle).toHaveAttribute("aria-valuenow", "185");
+      unmount();
+      fireEvent.pointerUp(document, { pointerId: 1 });
+      fireEvent.mouseUp(document);
+      fireEvent.touchEnd(document);
+      expect(storedLayout()).toStrictEqual({ widths: { size: 200 } });
     });
   });
 });

@@ -24,6 +24,7 @@ export {
 export { CircularViewerPanelPage } from "./circular-viewer-panel";
 export { CompareRegionPage } from "./compare-region-page";
 export { ThemeSwitcher } from "./theme-switcher";
+export { Navbar } from "./navbar";
 export { SerologyPage } from "./serology-page";
 export { StrainPage } from "./strain-page";
 export { SurveillancePage } from "./surveillance-page";

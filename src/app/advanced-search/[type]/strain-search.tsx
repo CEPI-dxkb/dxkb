@@ -3,8 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { ServiceInput } from "@/components/services/form-ui/service-input";
+import { ServiceLabel } from "@/components/services/form-ui/service-label";
 import { Card } from "@/components/ui/card";
 import {
   ServiceCardHeader,
@@ -70,9 +70,9 @@ export function StrainSearch() {
           <ServiceCardTitle>Keyword</ServiceCardTitle>
         </ServiceCardHeader>
         <ServiceCardContent>
-          <div className="space-y-1.5">
-            <Label htmlFor="keyword">Keyword</Label>
-            <Input
+          <div className="service-card-row-item">
+            <ServiceLabel htmlFor="keyword">Keyword</ServiceLabel>
+            <ServiceInput
               id="keyword"
               placeholder="Search term"
               value={keyword}
@@ -87,10 +87,10 @@ export function StrainSearch() {
           <ServiceCardTitle>Pathogen</ServiceCardTitle>
         </ServiceCardHeader>
         <ServiceCardContent>
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <div className="space-y-1.5">
-              <Label htmlFor="taxon-name">Taxon Name</Label>
-              <Input
+          <div className="service-card-content-grid">
+            <div className="service-card-row-item">
+              <ServiceLabel htmlFor="taxon-name">Taxon Name</ServiceLabel>
+              <ServiceInput
                 id="taxon-name"
                 placeholder="e.g. Influenza A virus"
                 value={taxonName}
@@ -106,19 +106,19 @@ export function StrainSearch() {
           <ServiceCardTitle>Host</ServiceCardTitle>
         </ServiceCardHeader>
         <ServiceCardContent>
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <div className="space-y-1.5">
-              <Label htmlFor="host-group">Host Group</Label>
-              <Input
+          <div className="service-card-content-grid">
+            <div className="service-card-row-item">
+              <ServiceLabel htmlFor="host-group">Host Group</ServiceLabel>
+              <ServiceInput
                 id="host-group"
                 placeholder="e.g. Human"
                 value={hostGroup}
                 onChange={(e) => { setHostGroup(e.target.value); }}
               />
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="host-common-name">Host Common Name</Label>
-              <Input
+            <div className="service-card-row-item">
+              <ServiceLabel htmlFor="host-common-name">Host Common Name</ServiceLabel>
+              <ServiceInput
                 id="host-common-name"
                 placeholder="e.g. Human"
                 value={hostCommonName}
@@ -134,19 +134,19 @@ export function StrainSearch() {
           <ServiceCardTitle>Geography</ServiceCardTitle>
         </ServiceCardHeader>
         <ServiceCardContent>
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <div className="space-y-1.5">
-              <Label htmlFor="geographic-group">Geographic Group</Label>
-              <Input
+          <div className="service-card-content-grid">
+            <div className="service-card-row-item">
+              <ServiceLabel htmlFor="geographic-group">Geographic Group</ServiceLabel>
+              <ServiceInput
                 id="geographic-group"
                 placeholder="e.g. Asia"
                 value={geographicGroup}
                 onChange={(e) => { setGeographicGroup(e.target.value); }}
               />
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="isolation-country">Isolation Country</Label>
-              <Input
+            <div className="service-card-row-item">
+              <ServiceLabel htmlFor="isolation-country">Isolation Country</ServiceLabel>
+              <ServiceInput
                 id="isolation-country"
                 placeholder="e.g. China"
                 value={isolationCountry}
@@ -162,10 +162,10 @@ export function StrainSearch() {
           <ServiceCardTitle>Collection Year</ServiceCardTitle>
         </ServiceCardHeader>
         <ServiceCardContent>
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <div className="space-y-1.5">
-              <Label htmlFor="year-from">From</Label>
-              <Input
+          <div className="service-card-content-grid">
+            <div className="service-card-row-item">
+              <ServiceLabel htmlFor="year-from">From</ServiceLabel>
+              <ServiceInput
                 id="year-from"
                 type="number"
                 min={1900}
@@ -175,9 +175,9 @@ export function StrainSearch() {
                 onChange={(e) => { setYearFrom(e.target.value); }}
               />
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="year-to">To</Label>
-              <Input
+            <div className="service-card-row-item">
+              <ServiceLabel htmlFor="year-to">To</ServiceLabel>
+              <ServiceInput
                 id="year-to"
                 type="number"
                 min={1900}

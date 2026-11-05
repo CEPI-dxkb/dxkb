@@ -30,6 +30,7 @@ interface SearchBarProps {
   placeholder?: string;
   size?: "default" | "lg";
   showIcon?: boolean;
+  showAdvanced?: boolean;
 }
 
 function extractKeywordQuery(raw: string): string {
@@ -77,6 +78,7 @@ function SearchBarForm({
   placeholder = "Search by virus name, protein, gene, or taxonomy...",
   size = "default",
   showIcon = true,
+  showAdvanced = false,
 }: SearchBarProps & { initialType?: string }) {
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -106,7 +108,9 @@ function SearchBarForm({
 
   return (
     <form onSubmit={handleSearch} className={`flex w-full items-stretch ${className}`}>
-      <div className="relative flex min-w-0 flex-1 items-stretch overflow-hidden rounded-l-md border border-input bg-background">
+      <div
+        className={`relative flex min-w-0 flex-1 items-stretch overflow-hidden border border-input bg-background ${showAdvanced ? "rounded-l-md" : "rounded-md"}`}
+      >
         <Select
           items={searchTypes.map((option) => ({
             value: option.id,
@@ -159,7 +163,7 @@ function SearchBarForm({
           )}
         </div>
       </div>
-      <AdvancedSearchDropdown variant="button" />
+      {showAdvanced && <AdvancedSearchDropdown variant="button" />}
     </form>
   );
 }

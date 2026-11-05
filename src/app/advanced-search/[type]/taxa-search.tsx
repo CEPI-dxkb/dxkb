@@ -3,8 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { ServiceInput } from "@/components/services/form-ui/service-input";
+import { ServiceLabel } from "@/components/services/form-ui/service-label";
 import { Card } from "@/components/ui/card";
 import {
   ServiceCardHeader,
@@ -51,9 +51,9 @@ export function TaxaSearch() {
           <ServiceCardTitle>Keyword</ServiceCardTitle>
         </ServiceCardHeader>
         <ServiceCardContent>
-          <div className="space-y-1.5">
-            <Label htmlFor="keyword">Keyword</Label>
-            <Input
+          <div className="service-card-row-item">
+            <ServiceLabel htmlFor="keyword">Keyword</ServiceLabel>
+            <ServiceInput
               id="keyword"
               placeholder="Search term"
               value={keyword}
@@ -68,28 +68,28 @@ export function TaxaSearch() {
           <ServiceCardTitle>Taxon</ServiceCardTitle>
         </ServiceCardHeader>
         <ServiceCardContent>
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <div className="space-y-1.5">
-              <Label htmlFor="taxon-id">Taxon ID</Label>
-              <Input
+          <div className="service-card-content-grid">
+            <div className="service-card-row-item">
+              <ServiceLabel htmlFor="taxon-id">Taxon ID</ServiceLabel>
+              <ServiceInput
                 id="taxon-id"
                 placeholder="e.g. 11320"
                 value={taxonId}
                 onChange={(e) => { setTaxonId(e.target.value); }}
               />
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="taxon-name">Taxon Name</Label>
-              <Input
+            <div className="service-card-row-item">
+              <ServiceLabel htmlFor="taxon-name">Taxon Name</ServiceLabel>
+              <ServiceInput
                 id="taxon-name"
                 placeholder="e.g. Influenza A virus"
                 value={taxonName}
                 onChange={(e) => { setTaxonName(e.target.value); }}
               />
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="taxon-rank">Taxon Rank</Label>
-              <Input
+            <div className="service-card-row-item">
+              <ServiceLabel htmlFor="taxon-rank">Taxon Rank</ServiceLabel>
+              <ServiceInput
                 id="taxon-rank"
                 placeholder="e.g. genus"
                 value={taxonRank}

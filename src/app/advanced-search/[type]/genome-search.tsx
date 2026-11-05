@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { ServiceInput } from "@/components/services/form-ui/service-input";
+import { ServiceLabel } from "@/components/services/form-ui/service-label";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card } from "@/components/ui/card";
@@ -78,9 +79,9 @@ export function GenomeSearch() {
           <ServiceCardTitle>Keyword</ServiceCardTitle>
         </ServiceCardHeader>
         <ServiceCardContent>
-          <div className="space-y-1.5">
-            <Label htmlFor="keyword">Keyword</Label>
-            <Input
+          <div className="service-card-row-item">
+            <ServiceLabel htmlFor="keyword">Keyword</ServiceLabel>
+            <ServiceInput
               id="keyword"
               placeholder="Search term"
               value={keyword}
@@ -95,46 +96,46 @@ export function GenomeSearch() {
           <ServiceCardTitle>Pathogen / Genome</ServiceCardTitle>
         </ServiceCardHeader>
         <ServiceCardContent>
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <div className="space-y-1.5">
-              <Label htmlFor="taxon-name">Taxon Name</Label>
-              <Input
+          <div className="service-card-content-grid">
+            <div className="service-card-row-item">
+              <ServiceLabel htmlFor="taxon-name">Taxon Name</ServiceLabel>
+              <ServiceInput
                 id="taxon-name"
                 placeholder="e.g. Influenza A virus"
                 value={taxonName}
                 onChange={(e) => { setTaxonName(e.target.value); }}
               />
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="genome-id">Genome ID</Label>
-              <Input
+            <div className="service-card-row-item">
+              <ServiceLabel htmlFor="genome-id">Genome ID</ServiceLabel>
+              <ServiceInput
                 id="genome-id"
                 placeholder="e.g. 1332244.20"
                 value={genomeId}
                 onChange={(e) => { setGenomeId(e.target.value); }}
               />
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="genome-name">Genome Name</Label>
-              <Input
+            <div className="service-card-row-item">
+              <ServiceLabel htmlFor="genome-name">Genome Name</ServiceLabel>
+              <ServiceInput
                 id="genome-name"
                 placeholder="e.g. Influenza A virus (A/Shanghai/02/2013(H7N9))"
                 value={genomeName}
                 onChange={(e) => { setGenomeName(e.target.value); }}
               />
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="host-name">Host Name</Label>
-              <Input
+            <div className="service-card-row-item">
+              <ServiceLabel htmlFor="host-name">Host Name</ServiceLabel>
+              <ServiceInput
                 id="host-name"
                 placeholder="e.g. Homo sapiens"
                 value={hostName}
                 onChange={(e) => { setHostName(e.target.value); }}
               />
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="isolation-country">Isolation Country</Label>
-              <Input
+            <div className="service-card-row-item">
+              <ServiceLabel htmlFor="isolation-country">Isolation Country</ServiceLabel>
+              <ServiceInput
                 id="isolation-country"
                 placeholder="e.g. China"
                 value={isolationCountry}
@@ -150,19 +151,19 @@ export function GenomeSearch() {
           <ServiceCardTitle>Collection Date</ServiceCardTitle>
         </ServiceCardHeader>
         <ServiceCardContent>
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <div className="space-y-1.5">
-              <Label htmlFor="date-from">From</Label>
-              <Input
+          <div className="service-card-content-grid">
+            <div className="service-card-row-item">
+              <ServiceLabel htmlFor="date-from">From</ServiceLabel>
+              <ServiceInput
                 id="date-from"
                 placeholder="YYYY or YYYY-MM or YYYY-MM-DD"
                 value={collectionDateFrom}
                 onChange={(e) => { setCollectionDateFrom(e.target.value); }}
               />
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="date-to">To</Label>
-              <Input
+            <div className="service-card-row-item">
+              <ServiceLabel htmlFor="date-to">To</ServiceLabel>
+              <ServiceInput
                 id="date-to"
                 placeholder="YYYY or YYYY-MM or YYYY-MM-DD"
                 value={collectionDateTo}
@@ -178,10 +179,10 @@ export function GenomeSearch() {
           <ServiceCardTitle>Genome Length</ServiceCardTitle>
         </ServiceCardHeader>
         <ServiceCardContent>
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <div className="space-y-1.5">
-              <Label htmlFor="length-from">From (bp)</Label>
-              <Input
+          <div className="service-card-content-grid">
+            <div className="service-card-row-item">
+              <ServiceLabel htmlFor="length-from">From (bp)</ServiceLabel>
+              <ServiceInput
                 id="length-from"
                 type="number"
                 min={0}
@@ -190,9 +191,9 @@ export function GenomeSearch() {
                 onChange={(e) => { setGenomeLengthFrom(e.target.value); }}
               />
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="length-to">To (bp)</Label>
-              <Input
+            <div className="service-card-row-item">
+              <ServiceLabel htmlFor="length-to">To (bp)</ServiceLabel>
+              <ServiceInput
                 id="length-to"
                 type="number"
                 min={0}

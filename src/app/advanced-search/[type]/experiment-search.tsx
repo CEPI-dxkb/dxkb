@@ -3,8 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { ServiceInput } from "@/components/services/form-ui/service-input";
+import { ServiceLabel } from "@/components/services/form-ui/service-label";
 import { Card } from "@/components/ui/card";
 import {
   ServiceCardHeader,
@@ -81,9 +81,9 @@ export function ExperimentSearch() {
           <ServiceCardTitle>Keyword</ServiceCardTitle>
         </ServiceCardHeader>
         <ServiceCardContent>
-          <div className="space-y-1.5">
-            <Label htmlFor="keyword">Keyword</Label>
-            <Input
+          <div className="service-card-row-item">
+            <ServiceLabel htmlFor="keyword">Keyword</ServiceLabel>
+            <ServiceInput
               id="keyword"
               placeholder="Search term"
               value={keyword}
@@ -98,46 +98,46 @@ export function ExperimentSearch() {
           <ServiceCardTitle>Study</ServiceCardTitle>
         </ServiceCardHeader>
         <ServiceCardContent>
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <div className="space-y-1.5">
-              <Label htmlFor="exp-id">Experiment ID</Label>
-              <Input
+          <div className="service-card-content-grid">
+            <div className="service-card-row-item">
+              <ServiceLabel htmlFor="exp-id">Experiment ID</ServiceLabel>
+              <ServiceInput
                 id="exp-id"
                 placeholder="e.g. 1234"
                 value={expId}
                 onChange={(e) => { setExpId(e.target.value); }}
               />
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="study-title">Study Title</Label>
-              <Input
+            <div className="service-card-row-item">
+              <ServiceLabel htmlFor="study-title">Study Title</ServiceLabel>
+              <ServiceInput
                 id="study-title"
                 placeholder="e.g. Influenza transcriptome"
                 value={studyTitle}
                 onChange={(e) => { setStudyTitle(e.target.value); }}
               />
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="study-description">Study Description</Label>
-              <Input
+            <div className="service-card-row-item">
+              <ServiceLabel htmlFor="study-description">Study Description</ServiceLabel>
+              <ServiceInput
                 id="study-description"
                 placeholder="e.g. RNA-seq"
                 value={studyDescription}
                 onChange={(e) => { setStudyDescription(e.target.value); }}
               />
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="study-pi">PI</Label>
-              <Input
+            <div className="service-card-row-item">
+              <ServiceLabel htmlFor="study-pi">PI</ServiceLabel>
+              <ServiceInput
                 id="study-pi"
                 placeholder="e.g. Smith"
                 value={studyPi}
                 onChange={(e) => { setStudyPi(e.target.value); }}
               />
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="study-institution">Institution</Label>
-              <Input
+            <div className="service-card-row-item">
+              <ServiceLabel htmlFor="study-institution">Institution</ServiceLabel>
+              <ServiceInput
                 id="study-institution"
                 placeholder="e.g. NIH"
                 value={studyInstitution}
@@ -153,46 +153,46 @@ export function ExperimentSearch() {
           <ServiceCardTitle>Experiment</ServiceCardTitle>
         </ServiceCardHeader>
         <ServiceCardContent>
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <div className="space-y-1.5">
-              <Label htmlFor="exp-title">Experiment Title</Label>
-              <Input
+          <div className="service-card-content-grid">
+            <div className="service-card-row-item">
+              <ServiceLabel htmlFor="exp-title">Experiment Title</ServiceLabel>
+              <ServiceInput
                 id="exp-title"
                 placeholder="e.g. Time course"
                 value={expTitle}
                 onChange={(e) => { setExpTitle(e.target.value); }}
               />
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="exp-type">Experiment Type</Label>
-              <Input
+            <div className="service-card-row-item">
+              <ServiceLabel htmlFor="exp-type">Experiment Type</ServiceLabel>
+              <ServiceInput
                 id="exp-type"
                 placeholder="e.g. RNA-Seq"
                 value={expType}
                 onChange={(e) => { setExpType(e.target.value); }}
               />
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="measurement-technique">Measurement Technique</Label>
-              <Input
+            <div className="service-card-row-item">
+              <ServiceLabel htmlFor="measurement-technique">Measurement Technique</ServiceLabel>
+              <ServiceInput
                 id="measurement-technique"
                 placeholder="e.g. microarray"
                 value={measurementTechnique}
                 onChange={(e) => { setMeasurementTechnique(e.target.value); }}
               />
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="treatment-type">Treatment Type</Label>
-              <Input
+            <div className="service-card-row-item">
+              <ServiceLabel htmlFor="treatment-type">Treatment Type</ServiceLabel>
+              <ServiceInput
                 id="treatment-type"
                 placeholder="e.g. drug"
                 value={treatmentType}
                 onChange={(e) => { setTreatmentType(e.target.value); }}
               />
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="treatment-name">Treatment Name</Label>
-              <Input
+            <div className="service-card-row-item">
+              <ServiceLabel htmlFor="treatment-name">Treatment Name</ServiceLabel>
+              <ServiceInput
                 id="treatment-name"
                 placeholder="e.g. oseltamivir"
                 value={treatmentName}
@@ -208,28 +208,28 @@ export function ExperimentSearch() {
           <ServiceCardTitle>Organism</ServiceCardTitle>
         </ServiceCardHeader>
         <ServiceCardContent>
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <div className="space-y-1.5">
-              <Label htmlFor="organism">Organism</Label>
-              <Input
+          <div className="service-card-content-grid">
+            <div className="service-card-row-item">
+              <ServiceLabel htmlFor="organism">Organism</ServiceLabel>
+              <ServiceInput
                 id="organism"
                 placeholder="e.g. Influenza A virus"
                 value={organism}
                 onChange={(e) => { setOrganism(e.target.value); }}
               />
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="taxon-id">Taxon ID</Label>
-              <Input
+            <div className="service-card-row-item">
+              <ServiceLabel htmlFor="taxon-id">Taxon ID</ServiceLabel>
+              <ServiceInput
                 id="taxon-id"
                 placeholder="e.g. 11520"
                 value={taxonId}
                 onChange={(e) => { setTaxonId(e.target.value); }}
               />
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="strain">Strain</Label>
-              <Input
+            <div className="service-card-row-item">
+              <ServiceLabel htmlFor="strain">Strain</ServiceLabel>
+              <ServiceInput
                 id="strain"
                 placeholder="e.g. A/Puerto Rico/8/34"
                 value={strain}

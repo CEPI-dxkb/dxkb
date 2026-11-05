@@ -3,8 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { ServiceInput } from "@/components/services/form-ui/service-input";
+import { ServiceLabel } from "@/components/services/form-ui/service-label";
 import { Card } from "@/components/ui/card";
 import {
   ServiceCardHeader,
@@ -82,9 +82,9 @@ export function SurveillanceSearch() {
           <ServiceCardTitle>Keyword</ServiceCardTitle>
         </ServiceCardHeader>
         <ServiceCardContent>
-          <div className="space-y-1.5">
-            <Label htmlFor="keyword">Keyword</Label>
-            <Input
+          <div className="service-card-row-item">
+            <ServiceLabel htmlFor="keyword">Keyword</ServiceLabel>
+            <ServiceInput
               id="keyword"
               placeholder="Search term"
               value={keyword}
@@ -99,37 +99,37 @@ export function SurveillanceSearch() {
           <ServiceCardTitle>Pathogen</ServiceCardTitle>
         </ServiceCardHeader>
         <ServiceCardContent>
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <div className="space-y-1.5">
-              <Label htmlFor="pathogen-test-type">Pathogen Test Type</Label>
-              <Input
+          <div className="service-card-content-grid">
+            <div className="service-card-row-item">
+              <ServiceLabel htmlFor="pathogen-test-type">Pathogen Test Type</ServiceLabel>
+              <ServiceInput
                 id="pathogen-test-type"
                 placeholder="e.g. Influenza"
                 value={pathogenTestType}
                 onChange={(e) => { setPathogenTestType(e.target.value); }}
               />
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="pathogen-type">Pathogen Type</Label>
-              <Input
+            <div className="service-card-row-item">
+              <ServiceLabel htmlFor="pathogen-type">Pathogen Type</ServiceLabel>
+              <ServiceInput
                 id="pathogen-type"
                 placeholder="e.g. Virus"
                 value={pathogenType}
                 onChange={(e) => { setPathogenType(e.target.value); }}
               />
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="pathogen-test-result">Pathogen Test Result</Label>
-              <Input
+            <div className="service-card-row-item">
+              <ServiceLabel htmlFor="pathogen-test-result">Pathogen Test Result</ServiceLabel>
+              <ServiceInput
                 id="pathogen-test-result"
                 placeholder="e.g. Positive"
                 value={pathogenTestResult}
                 onChange={(e) => { setPathogenTestResult(e.target.value); }}
               />
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="subtype">Subtype</Label>
-              <Input
+            <div className="service-card-row-item">
+              <ServiceLabel htmlFor="subtype">Subtype</ServiceLabel>
+              <ServiceInput
                 id="subtype"
                 placeholder="e.g. H3N2"
                 value={subtype}
@@ -145,28 +145,28 @@ export function SurveillanceSearch() {
           <ServiceCardTitle>Host</ServiceCardTitle>
         </ServiceCardHeader>
         <ServiceCardContent>
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <div className="space-y-1.5">
-              <Label htmlFor="host-group">Host Group</Label>
-              <Input
+          <div className="service-card-content-grid">
+            <div className="service-card-row-item">
+              <ServiceLabel htmlFor="host-group">Host Group</ServiceLabel>
+              <ServiceInput
                 id="host-group"
                 placeholder="e.g. Human"
                 value={hostGroup}
                 onChange={(e) => { setHostGroup(e.target.value); }}
               />
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="host-common-name">Host Common Name</Label>
-              <Input
+            <div className="service-card-row-item">
+              <ServiceLabel htmlFor="host-common-name">Host Common Name</ServiceLabel>
+              <ServiceInput
                 id="host-common-name"
                 placeholder="e.g. Human"
                 value={hostCommonName}
                 onChange={(e) => { setHostCommonName(e.target.value); }}
               />
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="host-species">Host Species</Label>
-              <Input
+            <div className="service-card-row-item">
+              <ServiceLabel htmlFor="host-species">Host Species</ServiceLabel>
+              <ServiceInput
                 id="host-species"
                 placeholder="e.g. Homo sapiens"
                 value={hostSpecies}
@@ -182,19 +182,19 @@ export function SurveillanceSearch() {
           <ServiceCardTitle>Geography</ServiceCardTitle>
         </ServiceCardHeader>
         <ServiceCardContent>
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <div className="space-y-1.5">
-              <Label htmlFor="geographic-group">Geographic Group</Label>
-              <Input
+          <div className="service-card-content-grid">
+            <div className="service-card-row-item">
+              <ServiceLabel htmlFor="geographic-group">Geographic Group</ServiceLabel>
+              <ServiceInput
                 id="geographic-group"
                 placeholder="e.g. Asia"
                 value={geographicGroup}
                 onChange={(e) => { setGeographicGroup(e.target.value); }}
               />
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="collection-country">Collection Country</Label>
-              <Input
+            <div className="service-card-row-item">
+              <ServiceLabel htmlFor="collection-country">Collection Country</ServiceLabel>
+              <ServiceInput
                 id="collection-country"
                 placeholder="e.g. China"
                 value={collectionCountry}
@@ -210,10 +210,10 @@ export function SurveillanceSearch() {
           <ServiceCardTitle>Collection Year</ServiceCardTitle>
         </ServiceCardHeader>
         <ServiceCardContent>
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <div className="space-y-1.5">
-              <Label htmlFor="year-from">From</Label>
-              <Input
+          <div className="service-card-content-grid">
+            <div className="service-card-row-item">
+              <ServiceLabel htmlFor="year-from">From</ServiceLabel>
+              <ServiceInput
                 id="year-from"
                 type="number"
                 min={1900}
@@ -223,9 +223,9 @@ export function SurveillanceSearch() {
                 onChange={(e) => { setYearFrom(e.target.value); }}
               />
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="year-to">To</Label>
-              <Input
+            <div className="service-card-row-item">
+              <ServiceLabel htmlFor="year-to">To</ServiceLabel>
+              <ServiceInput
                 id="year-to"
                 type="number"
                 min={1900}

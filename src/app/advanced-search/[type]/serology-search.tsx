@@ -3,8 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { ServiceInput } from "@/components/services/form-ui/service-input";
+import { ServiceLabel } from "@/components/services/form-ui/service-label";
 import { Card } from "@/components/ui/card";
 import {
   ServiceCardHeader,
@@ -86,9 +86,9 @@ export function SerologySearch() {
           <ServiceCardTitle>Keyword</ServiceCardTitle>
         </ServiceCardHeader>
         <ServiceCardContent>
-          <div className="space-y-1.5">
-            <Label htmlFor="keyword">Keyword</Label>
-            <Input
+          <div className="service-card-row-item">
+            <ServiceLabel htmlFor="keyword">Keyword</ServiceLabel>
+            <ServiceInput
               id="keyword"
               placeholder="Search term"
               value={keyword}
@@ -103,28 +103,28 @@ export function SerologySearch() {
           <ServiceCardTitle>Test</ServiceCardTitle>
         </ServiceCardHeader>
         <ServiceCardContent>
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <div className="space-y-1.5">
-              <Label htmlFor="test-type">Test Type</Label>
-              <Input
+          <div className="service-card-content-grid">
+            <div className="service-card-row-item">
+              <ServiceLabel htmlFor="test-type">Test Type</ServiceLabel>
+              <ServiceInput
                 id="test-type"
                 placeholder="e.g. Hemagglutination Inhibition"
                 value={testType}
                 onChange={(e) => { setTestType(e.target.value); }}
               />
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="test-result">Test Result</Label>
-              <Input
+            <div className="service-card-row-item">
+              <ServiceLabel htmlFor="test-result">Test Result</ServiceLabel>
+              <ServiceInput
                 id="test-result"
                 placeholder="e.g. Positive"
                 value={testResult}
                 onChange={(e) => { setTestResult(e.target.value); }}
               />
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="serotype">Serotype</Label>
-              <Input
+            <div className="service-card-row-item">
+              <ServiceLabel htmlFor="serotype">Serotype</ServiceLabel>
+              <ServiceInput
                 id="serotype"
                 placeholder="e.g. H3N2"
                 value={serotype}
@@ -140,28 +140,28 @@ export function SerologySearch() {
           <ServiceCardTitle>Host</ServiceCardTitle>
         </ServiceCardHeader>
         <ServiceCardContent>
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <div className="space-y-1.5">
-              <Label htmlFor="host-type">Host Type</Label>
-              <Input
+          <div className="service-card-content-grid">
+            <div className="service-card-row-item">
+              <ServiceLabel htmlFor="host-type">Host Type</ServiceLabel>
+              <ServiceInput
                 id="host-type"
                 placeholder="e.g. Avian"
                 value={hostType}
                 onChange={(e) => { setHostType(e.target.value); }}
               />
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="host-common-name">Host Common Name</Label>
-              <Input
+            <div className="service-card-row-item">
+              <ServiceLabel htmlFor="host-common-name">Host Common Name</ServiceLabel>
+              <ServiceInput
                 id="host-common-name"
                 placeholder="e.g. Chicken"
                 value={hostCommonName}
                 onChange={(e) => { setHostCommonName(e.target.value); }}
               />
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="host-species">Host Species</Label>
-              <Input
+            <div className="service-card-row-item">
+              <ServiceLabel htmlFor="host-species">Host Species</ServiceLabel>
+              <ServiceInput
                 id="host-species"
                 placeholder="e.g. Gallus gallus"
                 value={hostSpecies}
@@ -177,19 +177,19 @@ export function SerologySearch() {
           <ServiceCardTitle>Geography</ServiceCardTitle>
         </ServiceCardHeader>
         <ServiceCardContent>
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <div className="space-y-1.5">
-              <Label htmlFor="geographic-group">Geographic Group</Label>
-              <Input
+          <div className="service-card-content-grid">
+            <div className="service-card-row-item">
+              <ServiceLabel htmlFor="geographic-group">Geographic Group</ServiceLabel>
+              <ServiceInput
                 id="geographic-group"
                 placeholder="e.g. Asia"
                 value={geographicGroup}
                 onChange={(e) => { setGeographicGroup(e.target.value); }}
               />
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="collection-country">Collection Country</Label>
-              <Input
+            <div className="service-card-row-item">
+              <ServiceLabel htmlFor="collection-country">Collection Country</ServiceLabel>
+              <ServiceInput
                 id="collection-country"
                 placeholder="e.g. China"
                 value={collectionCountry}
@@ -205,10 +205,10 @@ export function SerologySearch() {
           <ServiceCardTitle>Collection Year</ServiceCardTitle>
         </ServiceCardHeader>
         <ServiceCardContent>
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <div className="space-y-1.5">
-              <Label htmlFor="year-from">From</Label>
-              <Input
+          <div className="service-card-content-grid">
+            <div className="service-card-row-item">
+              <ServiceLabel htmlFor="year-from">From</ServiceLabel>
+              <ServiceInput
                 id="year-from"
                 type="number"
                 min={1900}
@@ -218,9 +218,9 @@ export function SerologySearch() {
                 onChange={(e) => { setYearFrom(e.target.value); }}
               />
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="year-to">To</Label>
-              <Input
+            <div className="service-card-row-item">
+              <ServiceLabel htmlFor="year-to">To</ServiceLabel>
+              <ServiceInput
                 id="year-to"
                 type="number"
                 min={1900}
@@ -239,19 +239,19 @@ export function SerologySearch() {
           <ServiceCardTitle>Collection Date</ServiceCardTitle>
         </ServiceCardHeader>
         <ServiceCardContent>
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <div className="space-y-1.5">
-              <Label htmlFor="date-from">From</Label>
-              <Input
+          <div className="service-card-content-grid">
+            <div className="service-card-row-item">
+              <ServiceLabel htmlFor="date-from">From</ServiceLabel>
+              <ServiceInput
                 id="date-from"
                 placeholder="YYYY or YYYY-MM or YYYY-MM-DD"
                 value={dateFrom}
                 onChange={(e) => { setDateFrom(e.target.value); }}
               />
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="date-to">To</Label>
-              <Input
+            <div className="service-card-row-item">
+              <ServiceLabel htmlFor="date-to">To</ServiceLabel>
+              <ServiceInput
                 id="date-to"
                 placeholder="YYYY or YYYY-MM or YYYY-MM-DD"
                 value={dateTo}

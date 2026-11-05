@@ -3,8 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { ServiceInput } from "@/components/services/form-ui/service-input";
+import { ServiceLabel } from "@/components/services/form-ui/service-label";
 import { Card } from "@/components/ui/card";
 import {
   ServiceCardHeader,
@@ -66,9 +66,9 @@ export function ProteinStructureSearch() {
           <ServiceCardTitle>Keyword</ServiceCardTitle>
         </ServiceCardHeader>
         <ServiceCardContent>
-          <div className="space-y-1.5">
-            <Label htmlFor="keyword">Keyword</Label>
-            <Input
+          <div className="service-card-row-item">
+            <ServiceLabel htmlFor="keyword">Keyword</ServiceLabel>
+            <ServiceInput
               id="keyword"
               placeholder="Search term"
               value={keyword}
@@ -83,28 +83,28 @@ export function ProteinStructureSearch() {
           <ServiceCardTitle>Pathogen / Genome</ServiceCardTitle>
         </ServiceCardHeader>
         <ServiceCardContent>
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <div className="space-y-1.5">
-              <Label htmlFor="taxon-name">Taxon Name</Label>
-              <Input
+          <div className="service-card-content-grid">
+            <div className="service-card-row-item">
+              <ServiceLabel htmlFor="taxon-name">Taxon Name</ServiceLabel>
+              <ServiceInput
                 id="taxon-name"
                 placeholder="e.g. Influenza A virus"
                 value={taxonName}
                 onChange={(e) => { setTaxonName(e.target.value); }}
               />
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="genome-id">Genome ID</Label>
-              <Input
+            <div className="service-card-row-item">
+              <ServiceLabel htmlFor="genome-id">Genome ID</ServiceLabel>
+              <ServiceInput
                 id="genome-id"
                 placeholder="e.g. 1332244.20"
                 value={genomeId}
                 onChange={(e) => { setGenomeId(e.target.value); }}
               />
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="patric-id">BV-BRC ID</Label>
-              <Input
+            <div className="service-card-row-item">
+              <ServiceLabel htmlFor="patric-id">BV-BRC ID</ServiceLabel>
+              <ServiceInput
                 id="patric-id"
                 placeholder="e.g. fig|1332244.20.peg.1"
                 value={patricId}
@@ -120,46 +120,46 @@ export function ProteinStructureSearch() {
           <ServiceCardTitle>Structure</ServiceCardTitle>
         </ServiceCardHeader>
         <ServiceCardContent>
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <div className="space-y-1.5">
-              <Label htmlFor="pdb-id">PDB ID</Label>
-              <Input
+          <div className="service-card-content-grid">
+            <div className="service-card-row-item">
+              <ServiceLabel htmlFor="pdb-id">PDB ID</ServiceLabel>
+              <ServiceInput
                 id="pdb-id"
                 placeholder="e.g. 1RUZ"
                 value={pdbId}
                 onChange={(e) => { setPdbId(e.target.value); }}
               />
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="description">Description</Label>
-              <Input
+            <div className="service-card-row-item">
+              <ServiceLabel htmlFor="description">Description</ServiceLabel>
+              <ServiceInput
                 id="description"
                 placeholder="e.g. Hemagglutinin"
                 value={description}
                 onChange={(e) => { setDescription(e.target.value); }}
               />
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="gene">Gene</Label>
-              <Input
+            <div className="service-card-row-item">
+              <ServiceLabel htmlFor="gene">Gene</ServiceLabel>
+              <ServiceInput
                 id="gene"
                 placeholder="e.g. HA"
                 value={gene}
                 onChange={(e) => { setGene(e.target.value); }}
               />
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="product">Product</Label>
-              <Input
+            <div className="service-card-row-item">
+              <ServiceLabel htmlFor="product">Product</ServiceLabel>
+              <ServiceInput
                 id="product"
                 placeholder="e.g. Hemagglutinin"
                 value={product}
                 onChange={(e) => { setProduct(e.target.value); }}
               />
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="method">Method</Label>
-              <Input
+            <div className="service-card-row-item">
+              <ServiceLabel htmlFor="method">Method</ServiceLabel>
+              <ServiceInput
                 id="method"
                 placeholder="e.g. X-RAY DIFFRACTION"
                 value={method}

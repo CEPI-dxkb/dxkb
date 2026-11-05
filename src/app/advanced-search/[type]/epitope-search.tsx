@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { ServiceInput } from "@/components/services/form-ui/service-input";
+import { ServiceLabel } from "@/components/services/form-ui/service-label";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card } from "@/components/ui/card";
@@ -78,9 +79,9 @@ export function EpitopeSearch() {
           <ServiceCardTitle>Keyword</ServiceCardTitle>
         </ServiceCardHeader>
         <ServiceCardContent>
-          <div className="space-y-1.5">
-            <Label htmlFor="keyword">Keyword</Label>
-            <Input
+          <div className="service-card-row-item">
+            <ServiceLabel htmlFor="keyword">Keyword</ServiceLabel>
+            <ServiceInput
               id="keyword"
               placeholder="Search term"
               value={keyword}
@@ -95,10 +96,10 @@ export function EpitopeSearch() {
           <ServiceCardTitle>Pathogen</ServiceCardTitle>
         </ServiceCardHeader>
         <ServiceCardContent>
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <div className="space-y-1.5">
-              <Label htmlFor="taxon-name">Taxon Name</Label>
-              <Input
+          <div className="service-card-content-grid">
+            <div className="service-card-row-item">
+              <ServiceLabel htmlFor="taxon-name">Taxon Name</ServiceLabel>
+              <ServiceInput
                 id="taxon-name"
                 placeholder="e.g. Influenza A virus"
                 value={taxonName}
@@ -114,46 +115,46 @@ export function EpitopeSearch() {
           <ServiceCardTitle>Epitope</ServiceCardTitle>
         </ServiceCardHeader>
         <ServiceCardContent>
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <div className="space-y-1.5">
-              <Label htmlFor="epitope-id">Epitope ID</Label>
-              <Input
+          <div className="service-card-content-grid">
+            <div className="service-card-row-item">
+              <ServiceLabel htmlFor="epitope-id">Epitope ID</ServiceLabel>
+              <ServiceInput
                 id="epitope-id"
                 placeholder="e.g. 10001"
                 value={epitopeId}
                 onChange={(e) => { setEpitopeId(e.target.value); }}
               />
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="epitope-type">Epitope Type</Label>
-              <Input
+            <div className="service-card-row-item">
+              <ServiceLabel htmlFor="epitope-type">Epitope Type</ServiceLabel>
+              <ServiceInput
                 id="epitope-type"
                 placeholder="e.g. Linear peptide"
                 value={epitopeType}
                 onChange={(e) => { setEpitopeType(e.target.value); }}
               />
             </div>
-            <div className="space-y-1.5 md:col-span-2">
-              <Label htmlFor="epitope-sequence">Epitope Sequence</Label>
-              <Input
+            <div className="service-card-row-item md:col-span-2">
+              <ServiceLabel htmlFor="epitope-sequence">Epitope Sequence</ServiceLabel>
+              <ServiceInput
                 id="epitope-sequence"
                 placeholder="e.g. GILGFVFTL"
                 value={epitopeSequence}
                 onChange={(e) => { setEpitopeSequence(e.target.value); }}
               />
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="protein-name">Protein Name</Label>
-              <Input
+            <div className="service-card-row-item">
+              <ServiceLabel htmlFor="protein-name">Protein Name</ServiceLabel>
+              <ServiceInput
                 id="protein-name"
                 placeholder="e.g. Hemagglutinin"
                 value={proteinName}
                 onChange={(e) => { setProteinName(e.target.value); }}
               />
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="protein-accession">Protein Accession</Label>
-              <Input
+            <div className="service-card-row-item">
+              <ServiceLabel htmlFor="protein-accession">Protein Accession</ServiceLabel>
+              <ServiceInput
                 id="protein-accession"
                 placeholder="e.g. P03437"
                 value={proteinAccession}

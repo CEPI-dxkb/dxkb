@@ -3,8 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { ServiceInput } from "@/components/services/form-ui/service-input";
+import { ServiceLabel } from "@/components/services/form-ui/service-label";
 import { Card } from "@/components/ui/card";
 import {
   ServiceCardHeader,
@@ -58,9 +58,9 @@ export function DomainsSearch() {
           <ServiceCardTitle>Keyword</ServiceCardTitle>
         </ServiceCardHeader>
         <ServiceCardContent>
-          <div className="space-y-1.5">
-            <Label htmlFor="keyword">Keyword</Label>
-            <Input
+          <div className="service-card-row-item">
+            <ServiceLabel htmlFor="keyword">Keyword</ServiceLabel>
+            <ServiceInput
               id="keyword"
               placeholder="Search term"
               value={keyword}
@@ -75,19 +75,19 @@ export function DomainsSearch() {
           <ServiceCardTitle>Pathogen / Genome</ServiceCardTitle>
         </ServiceCardHeader>
         <ServiceCardContent>
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <div className="space-y-1.5">
-              <Label htmlFor="genome-id">Genome ID</Label>
-              <Input
+          <div className="service-card-content-grid">
+            <div className="service-card-row-item">
+              <ServiceLabel htmlFor="genome-id">Genome ID</ServiceLabel>
+              <ServiceInput
                 id="genome-id"
                 placeholder="e.g. 1332244.20"
                 value={genomeId}
                 onChange={(e) => { setGenomeId(e.target.value); }}
               />
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="patric-id">BV-BRC ID</Label>
-              <Input
+            <div className="service-card-row-item">
+              <ServiceLabel htmlFor="patric-id">BV-BRC ID</ServiceLabel>
+              <ServiceInput
                 id="patric-id"
                 placeholder="e.g. fig|1332244.20.peg.1"
                 value={patricId}
@@ -103,28 +103,28 @@ export function DomainsSearch() {
           <ServiceCardTitle>Domain / Motif</ServiceCardTitle>
         </ServiceCardHeader>
         <ServiceCardContent>
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <div className="space-y-1.5">
-              <Label htmlFor="source">Source</Label>
-              <Input
+          <div className="service-card-content-grid">
+            <div className="service-card-row-item">
+              <ServiceLabel htmlFor="source">Source</ServiceLabel>
+              <ServiceInput
                 id="source"
                 placeholder="e.g. CDD"
                 value={source}
                 onChange={(e) => { setSource(e.target.value); }}
               />
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="source-id">Source ID</Label>
-              <Input
+            <div className="service-card-row-item">
+              <ServiceLabel htmlFor="source-id">Source ID</ServiceLabel>
+              <ServiceInput
                 id="source-id"
                 placeholder="e.g. cd00001"
                 value={sourceId}
                 onChange={(e) => { setSourceId(e.target.value); }}
               />
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="description">Description</Label>
-              <Input
+            <div className="service-card-row-item">
+              <ServiceLabel htmlFor="description">Description</ServiceLabel>
+              <ServiceInput
                 id="description"
                 placeholder="e.g. RNA-dependent RNA polymerase"
                 value={description}

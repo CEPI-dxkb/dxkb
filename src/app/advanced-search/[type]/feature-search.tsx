@@ -3,8 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { ServiceInput } from "@/components/services/form-ui/service-input";
+import { ServiceLabel } from "@/components/services/form-ui/service-label";
 import { Card } from "@/components/ui/card";
 import {
   ServiceCardHeader,
@@ -81,9 +81,9 @@ export function FeatureSearch() {
           <ServiceCardTitle>Keyword</ServiceCardTitle>
         </ServiceCardHeader>
         <ServiceCardContent>
-          <div className="space-y-1.5">
-            <Label htmlFor="keyword">Keyword</Label>
-            <Input
+          <div className="service-card-row-item">
+            <ServiceLabel htmlFor="keyword">Keyword</ServiceLabel>
+            <ServiceInput
               id="keyword"
               placeholder="Search term"
               value={keyword}
@@ -98,37 +98,37 @@ export function FeatureSearch() {
           <ServiceCardTitle>Genome</ServiceCardTitle>
         </ServiceCardHeader>
         <ServiceCardContent>
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <div className="space-y-1.5">
-              <Label htmlFor="genome-id">Genome ID</Label>
-              <Input
+          <div className="service-card-content-grid">
+            <div className="service-card-row-item">
+              <ServiceLabel htmlFor="genome-id">Genome ID</ServiceLabel>
+              <ServiceInput
                 id="genome-id"
                 placeholder="e.g. 1332244.20"
                 value={genomeId}
                 onChange={(e) => { setGenomeId(e.target.value); }}
               />
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="genome-name">Genome Name</Label>
-              <Input
+            <div className="service-card-row-item">
+              <ServiceLabel htmlFor="genome-name">Genome Name</ServiceLabel>
+              <ServiceInput
                 id="genome-name"
                 placeholder="e.g. Influenza A virus"
                 value={genomeName}
                 onChange={(e) => { setGenomeName(e.target.value); }}
               />
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="taxon-id">Taxon ID</Label>
-              <Input
+            <div className="service-card-row-item">
+              <ServiceLabel htmlFor="taxon-id">Taxon ID</ServiceLabel>
+              <ServiceInput
                 id="taxon-id"
                 placeholder="e.g. 11320"
                 value={taxonId}
                 onChange={(e) => { setTaxonId(e.target.value); }}
               />
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="accession">Accession</Label>
-              <Input
+            <div className="service-card-row-item">
+              <ServiceLabel htmlFor="accession">Accession</ServiceLabel>
+              <ServiceInput
                 id="accession"
                 placeholder="e.g. NC_002016"
                 value={accession}
@@ -144,46 +144,46 @@ export function FeatureSearch() {
           <ServiceCardTitle>Feature</ServiceCardTitle>
         </ServiceCardHeader>
         <ServiceCardContent>
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <div className="space-y-1.5">
-              <Label htmlFor="feature-type">Feature Type</Label>
-              <Input
+          <div className="service-card-content-grid">
+            <div className="service-card-row-item">
+              <ServiceLabel htmlFor="feature-type">Feature Type</ServiceLabel>
+              <ServiceInput
                 id="feature-type"
                 placeholder="e.g. CDS"
                 value={featureType}
                 onChange={(e) => { setFeatureType(e.target.value); }}
               />
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="annotation">Annotation</Label>
-              <Input
+            <div className="service-card-row-item">
+              <ServiceLabel htmlFor="annotation">Annotation</ServiceLabel>
+              <ServiceInput
                 id="annotation"
                 placeholder="e.g. PATRIC"
                 value={annotation}
                 onChange={(e) => { setAnnotation(e.target.value); }}
               />
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="gene">Gene</Label>
-              <Input
+            <div className="service-card-row-item">
+              <ServiceLabel htmlFor="gene">Gene</ServiceLabel>
+              <ServiceInput
                 id="gene"
                 placeholder="e.g. PB1"
                 value={gene}
                 onChange={(e) => { setGene(e.target.value); }}
               />
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="product">Product</Label>
-              <Input
+            <div className="service-card-row-item">
+              <ServiceLabel htmlFor="product">Product</ServiceLabel>
+              <ServiceInput
                 id="product"
                 placeholder="e.g. RNA-directed RNA polymerase catalytic subunit"
                 value={product}
                 onChange={(e) => { setProduct(e.target.value); }}
               />
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="go-term">GO Term</Label>
-              <Input
+            <div className="service-card-row-item">
+              <ServiceLabel htmlFor="go-term">GO Term</ServiceLabel>
+              <ServiceInput
                 id="go-term"
                 placeholder="e.g. GO:0003968"
                 value={goTerm}
@@ -199,46 +199,46 @@ export function FeatureSearch() {
           <ServiceCardTitle>Identifiers</ServiceCardTitle>
         </ServiceCardHeader>
         <ServiceCardContent>
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <div className="space-y-1.5">
-              <Label htmlFor="patric-id">BV-BRC ID</Label>
-              <Input
+          <div className="service-card-content-grid">
+            <div className="service-card-row-item">
+              <ServiceLabel htmlFor="patric-id">BV-BRC ID</ServiceLabel>
+              <ServiceInput
                 id="patric-id"
                 placeholder="e.g. fig|1332244.20.peg.1"
                 value={patricId}
                 onChange={(e) => { setPatricId(e.target.value); }}
               />
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="refseq-locus-tag">RefSeq Locus Tag</Label>
-              <Input
+            <div className="service-card-row-item">
+              <ServiceLabel htmlFor="refseq-locus-tag">RefSeq Locus Tag</ServiceLabel>
+              <ServiceInput
                 id="refseq-locus-tag"
                 placeholder="e.g. AFG23627"
                 value={refseqLocusTag}
                 onChange={(e) => { setRefseqLocusTag(e.target.value); }}
               />
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="uniprotkb-accession">UniProtKB Accession</Label>
-              <Input
+            <div className="service-card-row-item">
+              <ServiceLabel htmlFor="uniprotkb-accession">UniProtKB Accession</ServiceLabel>
+              <ServiceInput
                 id="uniprotkb-accession"
                 placeholder="e.g. P03433"
                 value={uniprotkbAccession}
                 onChange={(e) => { setUniprotkbAccession(e.target.value); }}
               />
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="plfam-id">PLFam ID</Label>
-              <Input
+            <div className="service-card-row-item">
+              <ServiceLabel htmlFor="plfam-id">PLFam ID</ServiceLabel>
+              <ServiceInput
                 id="plfam-id"
                 placeholder="e.g. PLF_11234_00000001"
                 value={plfamId}
                 onChange={(e) => { setPlfamId(e.target.value); }}
               />
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="pgfam-id">PGFam ID</Label>
-              <Input
+            <div className="service-card-row-item">
+              <ServiceLabel htmlFor="pgfam-id">PGFam ID</ServiceLabel>
+              <ServiceInput
                 id="pgfam-id"
                 placeholder="e.g. PGF_00000001"
                 value={pgfamId}

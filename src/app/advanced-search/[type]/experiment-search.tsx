@@ -103,7 +103,7 @@ export function ExperimentSearch() {
               <Label htmlFor="exp-id">Experiment ID</Label>
               <Input
                 id="exp-id"
-                placeholder="e.g. EXP1234"
+                placeholder="e.g. 1234"
                 value={expId}
                 onChange={(e) => { setExpId(e.target.value); }}
               />

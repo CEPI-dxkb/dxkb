@@ -157,12 +157,8 @@ function SectionHeader({ children }: { children: React.ReactNode }) {
 function NavItem({ href, title }: { href: string; title: string }) {
   return (
     <NavigationMenuLink
-      render={
-        <Link
-          href={href}
-          className="my-0.5 block truncate p-2 font-medium hover:bg-secondary/20"
-        />
-      }
+      variant="workspace-nav"
+      render={<Link href={href} />}
     >
       {title}
     </NavigationMenuLink>

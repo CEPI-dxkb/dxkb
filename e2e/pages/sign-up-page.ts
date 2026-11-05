@@ -1,4 +1,5 @@
 import { type Page, type Locator } from "@playwright/test";
+import { expectHydrated } from "./hydration";
 
 /**
  * Page object for the /sign-up route. Wraps the form selectors and common
@@ -54,6 +55,19 @@ export class SignUpPage {
     // appear before returning so callers can interact without racing the
     // loading skeleton.
     await this.submitButton.waitFor({ state: "visible" });
+    // The button is server-rendered, so it shows before the form hydrates. A
+    // field filled in that window is reset to "" as React hydrates it, and the
+    // submit then fails validation without a request (seen in CI's WebKit).
+    await expectHydrated(
+      this.firstNameInput
+        .or(this.lastNameInput)
+        .or(this.usernameInput)
+        .or(this.emailInput)
+        .or(this.passwordInput)
+        .or(this.passwordRepeatInput),
+      "onChange",
+      "the sign-up form's inputs did not hydrate",
+    );
   }
 
   async fillRequired(values: {

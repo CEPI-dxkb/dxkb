@@ -49,17 +49,6 @@ function lineageIds(genome: GenomeViewRecord): readonly string[] {
 }
 
 /**
- * A genome is bacterial by its `superkingdom` label or by lineage id `2`, which
- * also covers a label that is missing, the string `"null"`, or wrong.
- */
-export function isBacterialGenome(genome: GenomeViewRecord): boolean {
-  return (
-    genome.superkingdom?.toLowerCase() === "bacteria" ||
-    lineageIds(genome).includes("2")
-  );
-}
-
-/**
  * Legacy `Genome.js` removed the Circular Viewer tab for viruses
  * (`changeToVirusContext`) and for eukaryotic host genomes (lineage
  * `2759`), so archaea, and any genome without lineage data, keep it. The
@@ -78,19 +67,13 @@ export function supportsCircularViewer(genome: GenomeViewRecord): boolean {
 export function buildGenomeTabs(
   genome: GenomeViewRecord,
 ): readonly EntityViewTab<GenomeTab>[] {
-  const bacterial = isBacterialGenome(genome);
   const circular = supportsCircularViewer(genome);
   return [
     { key: "overview", label: "Overview" },
     { key: "sequences", label: "Sequences" },
-    {
-      key: "interactions",
-      label: "Interactions",
-      enabled: bacterial,
-      disabledReason: bacterial
-        ? undefined
-        : "Interactions are currently available for bacterial genomes only.",
-    },
+    // Open for every genome, bacterial or not: a genome with no interaction
+    // records shows the table's empty state rather than a disabled tab.
+    { key: "interactions", label: "Interactions" },
     { key: "genome-browser", label: "Genome Browser" },
     {
       key: "circular-viewer",

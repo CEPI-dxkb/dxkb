@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronDown, ChevronRight, ClipboardCopy, Dna, Eye, FileText, Globe } from "lucide-react";
+import { ChevronRight, ClipboardCopy, Dna, Eye, FileText, Globe } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -11,8 +11,8 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { Collapsible } from "@/components/ui/collapsible";
 import {
-  ServiceCollapsible,
   ServiceCollapsibleContent,
   ServiceCollapsibleTrigger,
 } from "@/components/services/form-ui/service-collapsible";
@@ -146,21 +146,25 @@ export function JobMetadataCard({
         </div>
       </dl>
 
-      <ServiceCollapsible
+      {/* Closed, the trigger's fill is the whole control; open, one border
+          wraps the trigger and the parameters together. Both key on the
+          panel not being `hidden` rather than on the open state: Base UI
+          flips `data-open` at the start of the close animation but hides the
+          panel only at its end, so the border and the trigger's square
+          bottom corners stay until the panel has collapsed; both then ease
+          out instead of snapping. The outer radius is one step above the
+          trigger's so the corners nest inside the 1px border. */}
+      <Collapsible
         open={parametersOpen}
         onOpenChange={setParametersOpen}
-        className="p-1!"
+        className="group/parameters w-full rounded-lg border border-transparent transition-colors has-[>[data-slot=collapsible-content]:not([hidden])]:border-border"
       >
-        <ServiceCollapsibleTrigger className="text-sm">
-          {parametersOpen ? (
-            <ChevronDown className="size-4" />
-          ) : (
-            <ChevronRight className="size-4" />
-          )}
+        <ServiceCollapsibleTrigger className="transition-all! group-has-[>[data-slot=collapsible-content]:not([hidden])]/parameters:rounded-b-none!">
+          <ChevronRight className="size-4 transition-transform group-data-open/parameters:rotate-90" />
           Job Parameters
         </ServiceCollapsibleTrigger>
-        <ServiceCollapsibleContent>
-          <div className="relative mt-2">
+        <ServiceCollapsibleContent className="transition-opacity group-data-closed/parameters:opacity-0 starting:opacity-0">
+          <div className="relative">
             <Button
               type="button"
               variant="ghost-outline"
@@ -181,7 +185,7 @@ export function JobMetadataCard({
             </pre>
           </div>
         </ServiceCollapsibleContent>
-      </ServiceCollapsible>
+      </Collapsible>
     </div>
   );
 }

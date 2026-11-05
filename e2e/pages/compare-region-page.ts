@@ -40,6 +40,8 @@ export class CompareRegionPage {
   readonly featureCard: Locator;
   /** The figure's layers a drag slides by a `transform` while it pans. */
   readonly panLayers: Locator;
+  /** Zoom's container once it has rendered a drag's start (moves from then on pan). */
+  readonly dragging: Locator;
 
   constructor(page: Page) {
     this.page = page;
@@ -67,6 +69,7 @@ export class CompareRegionPage {
       name: "Feature details",
     });
     this.panLayers = this.figure.locator("[data-pan]");
+    this.dragging = this.figure.locator("svg[data-dragging]");
   }
 
   /** Closes the feature card with its button, which clears the pin. */

@@ -64,10 +64,12 @@ export default function StructureViewerPage({ params }: StructurePageProps) {
       <Separator />
 
       <div className="relative min-h-0 flex-1">
+        {/* `isolate`, like the default container, keeps Mol*'s z-1000+
+            overlays and toasts below the navbar's z-50 portalled popups. */}
         <StructureSourceViewer
           source={source}
           layout={fullLayout}
-          containerClassName="size-full"
+          containerClassName="isolate size-full"
         />
       </div>
     </div>

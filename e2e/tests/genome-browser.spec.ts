@@ -9,6 +9,7 @@ import {
 import {
   GenomeBrowserPanelPage,
   GenomeMemberPage,
+  Navbar,
   ThemeSwitcher,
 } from "../pages";
 import { failOnRuntimeErrors } from "../support/runtime-errors";
@@ -150,6 +151,26 @@ test.describe("Genome Browser", () => {
     // (patches/@jbrowse__product-core@5.0.0-beta.17.patch). The error is the
     // only sign, so wait past the save before afterEach checks for it.
     await page.waitForTimeout(1000);
+  });
+
+  test("the navbar's menus draw over the browser's sticky header", async ({
+    page,
+  }) => {
+    const browser = new GenomeBrowserPanelPage(page);
+    await page.goto("/genome/1282460.2049?tab=genome-browser");
+    await browser.expectLoaded();
+
+    // JBrowse pins its header at z-index 825-850; without the wrapper's
+    // `isolate` that beat the z-50 portalled popups in the root stacking
+    // context and showed through them.
+    const navbar = new Navbar(page);
+    const services = await navbar.openServicesMenu();
+    expect(await browser.headerPointsAbove(services)).toBe(0);
+    await navbar.closeMenu();
+    await expect(services).toBeHidden();
+
+    const scope = await navbar.openSearchScope();
+    expect(await browser.headerPointsAbove(scope)).toBe(0);
   });
 
   test("switching tabs drops the browser's URL state", async ({ page }) => {

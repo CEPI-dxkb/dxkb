@@ -42,6 +42,48 @@ describe("GET /api/workspace/view/[...path]", () => {
     expect(res.headers.get("Content-Disposition")).toBe('inline; filename="data.fasta"');
     expect(res.headers.get("Content-Length")).toBe("17");
     expect(res.headers.get("Cache-Control")).toBe("private, no-store");
+    expect(res.headers.get("X-Content-Type-Options")).toBe("nosniff");
+    expect(res.headers.get("Content-Security-Policy")).toBe("sandbox");
+  });
+
+  it.each([
+    ["report.html", "text/html", "sandbox allow-scripts allow-popups"],
+    ["figure.svg", "image/svg+xml", "sandbox"],
+    ["tree.xml", "text/xml", "sandbox"],
+  ])(
+    "never serves %s as an app-origin document",
+    async (filename, contentType, policy) => {
+      mockResolve.mockResolvedValue({
+        shockResponse: new Response("<script>alert(1)</script>"),
+        filename,
+        contentType,
+      });
+
+      const req = mockNextRequest({
+        url: `http://localhost:3019/api/workspace/view/user/home/${filename}`,
+      });
+      const res = await GET(req, makeParams(["user", "home", filename]));
+
+      expect(res.status).toBe(200);
+      expect(res.headers.get("Content-Security-Policy")).toBe(policy);
+      expect(res.headers.get("X-Content-Type-Options")).toBe("nosniff");
+    },
+  );
+
+  it("leaves PDF unsandboxed so Chrome's viewer can render it", async () => {
+    mockResolve.mockResolvedValue({
+      shockResponse: new Response("%PDF-1.7"),
+      filename: "paper.pdf",
+      contentType: "application/pdf",
+    });
+
+    const req = mockNextRequest({
+      url: "http://localhost:3019/api/workspace/view/user/home/paper.pdf",
+    });
+    const res = await GET(req, makeParams(["user", "home", "paper.pdf"]));
+
+    expect(res.headers.has("Content-Security-Policy")).toBe(false);
+    expect(res.headers.get("X-Content-Type-Options")).toBe("nosniff");
   });
 
   it("omits Content-Length when not present in shock response", async () => {

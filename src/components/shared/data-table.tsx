@@ -43,11 +43,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { DataTableControls } from "./data-table-controls";
 import { DataTableFooter } from "./data-table-footer";
 import { DataTableHeader } from "./data-table-header";
-import {
-  resizeColumns,
-  stretchedColumnWidths,
-  type ColumnResizeStart,
-} from "./column-resize";
+import { resizeColumns, type ColumnResizeStart } from "./column-resize";
 import { followPointer } from "./pointer-drag";
 import { clsx } from "cn";
 
@@ -132,7 +128,18 @@ export type DataTableInstance = ReactTable<DataTableFeatures, DataRow>;
 /** Resolved pixel width of each column, keyed by column id. */
 export type ColumnWidths = Record<string, number>;
 
-/** How far a header's resize handle reaches past the cell's right edge (px). */
+/**
+ * The custom properties each header and body cell sizes itself from, keyed by
+ * column id (see `columnSizes` in useDataTableContent): `size` is its
+ * `--col-size` (px), `grow` its `--col-grow` (a flex-grow factor).
+ */
+export type ColumnSizes = Record<string, { size: string; grow: string }>;
+
+/**
+ * How far a header's resize handle reaches past the cell's right edge (px).
+ * The last cell's `last:mr-2` keeps this much room after it, so it must stay
+ * equal to that margin.
+ */
 const handleOverhang = 8;
 
 function getTableMeta(table: TanStackTable<DataTableFeatures, DataRow>) {
@@ -537,10 +544,6 @@ function useDataTableContent(
   // resource (derived from the module-level resourceFields[resource]), so id-order
   // alone pins the header estimates too — no need to include labels in the key.
   const sizingKey = `${resource}:${columns.map((c) => c.id).join(",")}`;
-  // Live clientWidth of the scroll container. Drives full-width column stretch;
-  // updated by a ResizeObserver so the table reflows when the side panel or
-  // vertical menu changes the available width.
-  const [containerWidth, setContainerWidth] = useState(0);
   const [internalColumnVisibility, setInternalColumnVisibility] = useState<
     Record<string, boolean>
   >({});
@@ -610,23 +613,6 @@ function useDataTableContent(
     }
     setSizingByKey((current) => ({ ...current, [sizingKey]: next }));
   }, [columns, data, sizingKey, savedColumnWidths, setSizingByKey]);
-
-  // Track the scroll container's width so columns can stretch to fill it.
-  // Fires on side-panel resize, vertical-menu collapse, and window resize.
-  useEffect(() => {
-    const el = tableContainerRef.current;
-    if (!el) return;
-    setContainerWidth(el.clientWidth);
-    const ro = new ResizeObserver((entries) => {
-      // Floor so the stretched total never exceeds the container by a sub-pixel,
-      // which would spawn a spurious 1px horizontal scrollbar.
-      setContainerWidth(Math.floor(entries[0].contentRect.width));
-    });
-    ro.observe(el);
-    return () => {
-      ro.disconnect();
-    };
-  }, []);
 
   const [columnDefs] = useState(() => createColumnDefs(columns));
 
@@ -774,15 +760,8 @@ function useDataTableContent(
     getRowId: (row) => String(row[idField]),
   });
 
-  // Resolved pixel width of every column, passed to the header and body cells
-  // (which re-render with this component: all three carry "use no memo").
-  // Columns stretch to fill the container: when the width settings leave room,
-  // every resizable column is scaled up by the same factor (column-resize.ts).
-  // When they already exceed the container (e.g. a column dragged very wide)
-  // widths are the settings and the container scrolls horizontally. A pointer
-  // drag sets the rendered widths directly (see startPointerResize) so the
-  // dragged edge stays under the pointer; they are drawn from the settings it
-  // saves on release, so nothing moves when it ends.
+  // Rendered widths during a pointer drag (see startPointerResize), and the
+  // settings the handles report meanwhile.
   const [pointerResize, setPointerResize] = useState<{
     columnId: string;
     widths?: ColumnWidths;
@@ -805,51 +784,60 @@ function useDataTableContent(
     if (Object.keys(widths).length > 0) onColumnWidthsCommit(widths);
   });
 
-  // The resize handle (w-4, translateX(50%)) overhangs each cell's right edge
-  // by 8px. Interior overhangs overlap harmlessly, but the last column's would
-  // push a phantom horizontal scrollbar once the table fills exactly — so stop
-  // the stretch short and let that final handle occupy the gap.
-  const stretchWidth = Math.max(0, containerWidth - handleOverhang);
-  const resizeStart = (index: number): ColumnResizeStart => {
+  // How every column's header and body cells size themselves (they re-render
+  // with this component: all three carry "use no memo"). Columns stretch to
+  // fill the container: when the width settings leave room, every resizable
+  // column is scaled up by the same factor (`columnScale` in column-resize.ts).
+  // When they already exceed the container (e.g. a column dragged very wide)
+  // widths are the settings and the container scrolls horizontally.
+  //
+  // The browser does the stretch, not React. Header and body rows are flex
+  // rows, and a resting resizable cell is `--col-size` (its setting) wide with
+  // a flex-grow of that same setting, so the spare room is shared in
+  // proportion to the settings: every one ends up setting × factor, and none
+  // shrinks below its setting. A container resize is then layout only. The
+  // view rail's collapse animation and a detail-panel drag resize the
+  // container on every frame; recomputing the widths in React and rewriting
+  // each visible cell's inline width instead cost a ~100 ms commit per frame in
+  // dev (25–50 ms frames in prod), and a container-level scale variable still
+  // restyled every cell (~13 ms per frame in prod). The last cell's `last:mr-2`
+  // stops the stretch `handleOverhang` short of the edge, where the last
+  // handle overhangs its cell: filling the box exactly would put a phantom
+  // horizontal scrollbar under it.
+  //
+  // A pointer drag sets the rendered widths directly, with no grow (see
+  // startPointerResize), so the dragged edge stays under the pointer; they are
+  // drawn from the settings it saves on release, so nothing moves when it ends.
+  const columnSizes: ColumnSizes = {};
+  for (const { column } of table.getFlatHeaders()) {
+    const dragged = pointerResize?.widths?.[column.id];
+    const size = dragged ?? column.getSize();
+    columnSizes[column.id] = {
+      size: `${String(size)}px`,
+      grow: String(dragged === undefined && column.getCanResize() ? size : 0),
+    };
+  }
+
+  const startPointerResize = (
+    columnId: string,
+    event: React.PointerEvent<HTMLElement>,
+  ) => {
     const leafColumns = table.getVisibleLeafColumns();
-    return {
+    const index = leafColumns.findIndex((column) => column.id === columnId);
+    if (index === -1) return;
+    const start: ColumnResizeStart = {
       columnIds: leafColumns.map((c) => c.id),
       sizes: leafColumns.map((c) => c.getSize()),
       minSizes: leafColumns.map((c) => c.columnDef.minSize ?? 40),
       maxSizes: leafColumns.map((c) => c.columnDef.maxSize ?? 1000),
       fixed: leafColumns.map((c) => !c.getCanResize()),
       index,
-      containerWidth: stretchWidth,
+      // Short of the last handle's overhang, as the resting columns stretch.
+      containerWidth: Math.max(
+        0,
+        (tableContainerRef.current?.clientWidth ?? 0) - handleOverhang,
+      ),
     };
-  };
-  const columnWidths = (() => {
-    if (pointerResize?.widths) return pointerResize.widths;
-    const start = resizeStart(0);
-    const widths: ColumnWidths = {};
-    for (const header of table.getFlatHeaders()) {
-      widths[header.column.id] = header.column.getSize();
-    }
-    const stretched = stretchedColumnWidths(
-      start.sizes,
-      start.containerWidth,
-      start.fixed,
-    );
-    start.columnIds.forEach((id, i) => {
-      widths[id] = stretched[i];
-    });
-    return widths;
-  })();
-
-  const startPointerResize = (
-    columnId: string,
-    event: React.PointerEvent<HTMLElement>,
-  ) => {
-    const index = table
-      .getVisibleLeafColumns()
-      .findIndex((column) => column.id === columnId);
-    if (index === -1) return;
-    const start = resizeStart(index);
-    const restWidths = columnWidths;
     const startX = event.clientX;
     let settings: Record<string, number> = {};
     const started = followPointer(event, {
@@ -858,12 +846,11 @@ function useDataTableContent(
         settings = next.settings;
         setPointerResize({
           columnId,
-          widths: {
-            ...restWidths,
-            ...Object.fromEntries(
-              start.columnIds.map((id, i) => [id, next.widths[i]]),
-            ),
-          },
+          // Every visible column. Anything else keeps its resting size, which
+          // the drag does not change until release.
+          widths: Object.fromEntries(
+            start.columnIds.map((id, i) => [id, next.widths[i]]),
+          ),
           settings: Object.fromEntries(
             start.columnIds.map((id, i) => [id, settings[id] ?? start.sizes[i]]),
           ),
@@ -1020,7 +1007,7 @@ function useDataTableContent(
             >
               <DataTableHeader
                 table={table}
-                columnWidths={columnWidths}
+                columnSizes={columnSizes}
                 onColumnOrderChange={onColumnOrderChange}
                 resizingColumnId={resizingColumnId}
                 widthSettings={pointerResize?.settings}
@@ -1029,7 +1016,7 @@ function useDataTableContent(
 
               <DataTableBody
                 table={table}
-                columnWidths={columnWidths}
+                columnSizes={columnSizes}
                 rows={rows}
                 virtualRows={virtualRows}
                 totalSize={totalSize}
@@ -1065,7 +1052,7 @@ function useDataTableContent(
 
 interface DataTableBodyProps {
   table: ReactTable<DataTableFeatures, DataRow>;
-  columnWidths: ColumnWidths;
+  columnSizes: ColumnSizes;
   rows: TanStackRow<DataTableFeatures, DataRow>[];
   virtualRows: VirtualItem[];
   totalSize: number;
@@ -1084,7 +1071,7 @@ interface DataTableBodyProps {
 
 function DataTableBody({
   table,
-  columnWidths,
+  columnSizes,
   rows,
   virtualRows,
   totalSize,
@@ -1127,13 +1114,14 @@ function DataTableBody({
                 key={col.id}
                 variant="grid"
                 className={clsx(
-                  "flex h-6 w-(--col-size) max-w-(--col-size) min-w-(--col-size) items-center",
+                  "flex h-6 w-(--col-size) min-w-(--col-size) grow-(--col-grow) items-center last:mr-2",
                   // Centered like the header and row checkboxes it stands in for.
                   col.id === "__select__" ? "justify-center p-0" : "p-0.5",
                 )}
                 style={
                   {
-                    "--col-size": `${String(columnWidths[col.id])}px`,
+                    "--col-size": columnSizes[col.id].size,
+                    "--col-grow": columnSizes[col.id].grow,
                   } as CSSProperties
                 }
               >
@@ -1252,14 +1240,15 @@ function DataTableBody({
                     // No ellipsis: text-overflow has no effect on a flex
                     // container, so overflow-hidden is all `truncate` did here
                     // (the cell is already whitespace-nowrap).
-                    "flex h-6 w-(--col-size) max-w-(--col-size) min-w-(--col-size) items-center overflow-hidden",
+                    "flex h-6 w-(--col-size) min-w-(--col-size) grow-(--col-grow) items-center overflow-hidden last:mr-2",
                     cell.column.id === "__select__"
                       ? "sticky left-0 z-1 justify-center p-0"
                       : "justify-start p-0.5",
                   )}
                   style={
                     {
-                      "--col-size": `${String(columnWidths[cell.column.id])}px`,
+                      "--col-size": columnSizes[cell.column.id].size,
+                      "--col-grow": columnSizes[cell.column.id].grow,
                     } as CSSProperties
                   }
                 >

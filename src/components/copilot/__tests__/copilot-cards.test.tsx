@@ -1,11 +1,11 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {
-  ClarificationCardView,
   CopilotCardActionsProvider,
-  ExecutionCardView,
   type CopilotCardActions,
-} from "../copilot-cards";
+} from "../copilot-card-actions";
+import { ClarificationCardView } from "../copilot-clarification-card";
+import { ExecutionCardView } from "../copilot-execution-card";
 import type {
   CopilotClarificationCard,
   CopilotExecutionCard,

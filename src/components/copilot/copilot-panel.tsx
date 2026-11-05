@@ -24,7 +24,7 @@ import {
 import { copilotDraftSignal } from "@/lib/copilot/drafts";
 import type { CopilotExecutionMode } from "@/lib/copilot/types";
 import { isCopilotTurnActive } from "@/lib/copilot/turn";
-import { CopilotCardActionsProvider } from "./copilot-cards";
+import { CopilotCardActionsProvider } from "./copilot-card-actions";
 import { CopilotComposer } from "./copilot-composer";
 import {
   CopilotPanelHeader,

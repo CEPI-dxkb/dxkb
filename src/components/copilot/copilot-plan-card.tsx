@@ -246,14 +246,13 @@ function PlanEditor({
         setSaving(true);
         void onSave(
           merged.map((step) => ({ ...step, description: step.description.trim() })),
-        ).then(
-          (saved) => {
+        )
+          .then((saved) => {
             if (!saved) setSaving(false);
-          },
-          () => {
+          })
+          .catch(() => {
             setSaving(false);
-          },
-        );
+          });
       }}
     >
       <ol className="flex flex-col gap-3">

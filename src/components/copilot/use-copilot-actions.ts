@@ -23,11 +23,12 @@ import {
   type CopilotPlan,
   type CopilotPlanStep,
 } from "@/lib/copilot/plan";
+import type { CopilotTurn } from "@/lib/copilot/turn";
 import type {
   CopilotExecutionMode,
   CopilotSessionDetail,
 } from "@/lib/copilot/types";
-import type { CopilotCardActions } from "./copilot-cards";
+import type { CopilotCardActions } from "./copilot-card-actions";
 import type { CopilotPlanActions } from "./copilot-plan-card";
 import type { useCopilot } from "./copilot-provider";
 
@@ -166,6 +167,29 @@ export function useCopilotActions({
   };
 
   /**
+   * Saves the jobs a turn submitted for a plan as what the plan waits for.
+   * Resolves to whether the turn submitted any: the plan then stops, saved
+   * or not (a failed save toasts, and the card offers to go on), and can be
+   * continued once the jobs finish.
+   */
+  const waitForSubmittedJobs = async (
+    planId: string,
+    turn: CopilotTurn,
+  ): Promise<boolean> => {
+    const submitted = turn.planUpdates.flatMap((update) =>
+      update.planId === planId ? update.submissionIds : [],
+    );
+    if (submitted.length === 0) return false;
+    const plan = storedPlan(planId);
+    if (plan) {
+      await savePlan(plan, {
+        waitingFor: [...new Set([...plan.waitingFor, ...submitted])],
+      });
+    }
+    return true;
+  };
+
+  /**
    * Runs plan steps from `stepIndex` until the plan stops: a step fails,
    * asks, waits for approval or for jobs, reports no result, the user pauses
    * it, every step is done, or `maxPlanTurns` turns were sent. `first` replaces the first step's hidden
@@ -226,17 +250,7 @@ export function useCopilotActions({
 
       const after = storedPlan(planId);
       if (!after) return sent;
-      // Jobs the step submitted: the plan waits for them, saved or not (a
-      // failed save toasts, and the card offers to go on).
-      const submitted = result.turn.planUpdates.flatMap((update) =>
-        update.planId === planId ? update.submissionIds : [],
-      );
-      if (submitted.length > 0) {
-        await savePlan(after, {
-          waitingFor: [...new Set([...after.waitingFor, ...submitted])],
-        });
-        return sent;
-      }
+      if (await waitForSubmittedJobs(planId, result.turn)) return sent;
       // Sending the step again would repeat whatever it did.
       const sentStep = after.steps.find((candidate) => candidate.stepId === sentStepId);
       if (!sentStep || sentStep.status === "pending") {
@@ -403,9 +417,11 @@ export function useCopilotActions({
         }
         return true;
       }
-      // A plan step's jobs: once they ran, the plan goes on.
-      if (card.planId && !chat.isPlanPaused(card.planId)) {
-        void continueStored(card.planId);
+      if (card.planId) {
+        // Jobs the approval submitted: the plan waits for them, as after a
+        // step that submitted jobs (going on would clear that wait).
+        if (await waitForSubmittedJobs(card.planId, result.turn)) return true;
+        if (!chat.isPlanPaused(card.planId)) void continueStored(card.planId);
       }
       return true;
     },

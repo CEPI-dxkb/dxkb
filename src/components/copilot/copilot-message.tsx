@@ -36,7 +36,8 @@ import type {
   CopilotSessionDetail,
   CopilotStep,
 } from "@/lib/copilot/types";
-import { ClarificationCardView, ExecutionCardView } from "./copilot-cards";
+import { ClarificationCardView } from "./copilot-clarification-card";
+import { ExecutionCardView } from "./copilot-execution-card";
 import { CopilotMarkdown } from "./copilot-markdown";
 import { PlanCardView } from "./copilot-plan-card";
 import { CopilotSteps } from "./copilot-progress";
@@ -137,6 +138,20 @@ function CardNotice({ card }: { card: CopilotCard }) {
   );
 }
 
+/**
+ * Rating saves still running, per message id: the newest one (a token unique
+ * to that save) and the last rating the server confirmed. Only the newest
+ * save's failure rolls back, and it rolls back to the confirmed rating, so an
+ * older failure never undoes a newer click (even one that set the same value)
+ * and overlapping failures never leave a rating the server did not store.
+ * Module-level rather than a ref, so it outlives a remount while a save
+ * runs; an entry goes once its newest save settles.
+ */
+const ratingSaves = new Map<
+  string,
+  { latest: object; confirmed: CopilotMessage["rating"] }
+>();
+
 function RatingButtons({
   sessionId,
   message,
@@ -165,16 +180,35 @@ function RatingButtons({
   const rate = useMutation({
     mutationFn: (rating: -1 | 0 | 1) => rateCopilotMessage(message.id, rating),
     onMutate: async (rating) => {
+      const save = {};
+      const running = ratingSaves.get(message.id);
+      ratingSaves.set(message.id, {
+        latest: save,
+        // With no save running, the cached rating is the stored one.
+        confirmed: running ? running.confirmed : (ratingOf() ?? message.rating),
+      });
       await queryClient.cancelQueries({ queryKey: key });
-      const previousRating = ratingOf();
       setRating(rating);
-      return { previousRating };
+      return { save };
+    },
+    onSuccess: (_data, rating) => {
+      const running = ratingSaves.get(message.id);
+      if (running) running.confirmed = rating;
     },
     onError: (error, _rating, context) => {
       // Only this message's rating: restoring the whole session would undo
-      // another message's rating that saved meanwhile.
-      if (context?.previousRating !== undefined) setRating(context.previousRating);
+      // another message's rating that saved meanwhile. A newer click on this
+      // message since then keeps its rating.
+      const running = ratingSaves.get(message.id);
+      if (running && running.latest === context?.save) {
+        setRating(running.confirmed);
+      }
       toast.error("Could not save your rating", { description: error.message });
+    },
+    onSettled: (_data, _error, _rating, context) => {
+      if (ratingSaves.get(message.id)?.latest === context?.save) {
+        ratingSaves.delete(message.id);
+      }
     },
   });
 

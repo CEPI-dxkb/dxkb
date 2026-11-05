@@ -11,7 +11,7 @@ import type {
 import { reloadCopilotSession } from "@/hooks/copilot/use-copilot-queries";
 import type { CopilotClarificationCard, CopilotExecutionCard } from "@/lib/copilot/cards";
 import { copilotQueryKeys } from "@/lib/copilot/client";
-import type { CopilotPlanStepUpdate } from "@/lib/copilot/plan";
+import { readCopilotPlan, type CopilotPlanStepUpdate } from "@/lib/copilot/plan";
 import { startCopilotTurn, type CopilotTurn } from "@/lib/copilot/turn";
 import type { CopilotSessionDetail } from "@/lib/copilot/types";
 import { server } from "@/test-helpers/msw-server";
@@ -508,6 +508,85 @@ describe("card actions", () => {
       "The plan stopped: the chat could not be reloaded",
       { description: "boom" },
     );
+  });
+
+  describe("approving a plan step's jobs", () => {
+    const planExecutionCard: CopilotExecutionCard = { ...executionCard, planId: "p1" };
+
+    beforeEach(() => {
+      // The step the jobs belong to is done; the plan's next step is ready.
+      gatewayStep(0, "completed");
+    });
+
+    it("saves the jobs the approval submitted as the plan's wait, and does not start the next step", async () => {
+      const { result, send } = renderActions(() =>
+        Promise.resolve(
+          sentResult({
+            planUpdates: [stepUpdate({ stepId: "step_1", submissionIds: ["sub-1"] })],
+          }),
+        ),
+      );
+
+      let handled = false;
+      await act(async () => {
+        handled = await result.current.actions.cardActions.runActions("e1", planExecutionCard);
+      });
+
+      expect(handled).toBe(true);
+      expect(planSaves).toHaveLength(1);
+      expect(readCopilotPlan(planSaves[0])?.waitingFor).toEqual(["sub-1"]);
+      expect(send).toHaveBeenCalledTimes(1);
+      expect(toastError).not.toHaveBeenCalled();
+    });
+
+    it("goes on with the plan when the approval submitted no jobs", async () => {
+      let calls = 0;
+      const { result, send } = renderActions((options, queryClient) => {
+        calls += 1;
+        return calls === 1
+          ? Promise.resolve(sentResult())
+          : completingTurn(options, queryClient);
+      });
+
+      await act(async () => {
+        await result.current.actions.cardActions.runActions("e1", planExecutionCard);
+      });
+
+      await waitFor(() => {
+        expect(send).toHaveBeenCalledTimes(2);
+      });
+      const [options] = send.mock.calls[1];
+      expect([options.query, options.planStep?.stepIndex]).toEqual([
+        "Execute plan step: Annotate the assembly",
+        1,
+      ]);
+    });
+
+    it("stops when the jobs the approval submitted could not be saved as the wait", async () => {
+      server.use(
+        http.put("*/api/copilot/sessions/:id/plans/:planId", () =>
+          HttpResponse.json({ error: "The gateway is down" }, { status: 500 }),
+        ),
+      );
+      const { result, send } = renderActions(() =>
+        Promise.resolve(
+          sentResult({
+            planUpdates: [stepUpdate({ stepId: "step_1", submissionIds: ["sub-1"] })],
+          }),
+        ),
+      );
+
+      let handled = false;
+      await act(async () => {
+        handled = await result.current.actions.cardActions.runActions("e1", planExecutionCard);
+      });
+
+      expect(handled).toBe(true);
+      expect(send).toHaveBeenCalledTimes(1);
+      expect(toastError).toHaveBeenCalledWith("Could not save the plan", {
+        description: "The gateway is down",
+      });
+    });
   });
 
   it("does not mark a revised card answered when the turn was stopped", async () => {

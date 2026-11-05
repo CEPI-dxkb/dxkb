@@ -186,6 +186,10 @@ export function CircularViewerFigure({
           setCursorShown(false);
         }}
         onKeyDown={(event) => {
+          // The open details dialog owns the keys, also before its focus
+          // lands (Base UI moves it on the next frame): its Escape must not
+          // also hide the item it gives focus back to.
+          if (pinned) return;
           if (event.altKey || event.ctrlKey || event.metaKey) return;
           const step = itemStepKeys[event.key];
           if (step) {

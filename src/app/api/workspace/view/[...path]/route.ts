@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { upstreamServices } from "@/lib/api/upstream-failure";
 import { upstreamFailureResponse } from "@/lib/api/upstream-route";
-import { contentDisposition, resolveWorkspaceDownload } from "../../resolve-download";
+import {
+  resolveWorkspaceDownload,
+  workspaceFileHeaders,
+} from "../../resolve-download";
 import { documentErrorResponse, wantsDocument } from "./document-error";
 
 /**
@@ -27,8 +30,7 @@ export async function GET(
       const { shockResponse, filename, contentType } = result;
 
       const headers: Record<string, string> = {
-        "Content-Type": contentType,
-        "Content-Disposition": contentDisposition("inline", filename),
+        ...workspaceFileHeaders(filename, contentType),
         "Cache-Control": "private, no-store",
       };
 

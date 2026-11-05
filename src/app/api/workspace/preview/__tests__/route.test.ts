@@ -40,6 +40,48 @@ function makeParams(path: string[]) {
 }
 
 describe("GET /api/workspace/preview/[...path]", () => {
+  it("sandboxes a small file returned whole", async () => {
+    const content = "<svg><script>alert(1)</script></svg>";
+    mockResolve.mockResolvedValue(
+      makeResolvedDownload(content, {
+        contentLength: content.length,
+        filename: "figure.svg",
+        contentType: "image/svg+xml",
+      }),
+    );
+
+    const req = mockNextRequest({
+      url: "http://localhost:3019/api/workspace/preview/user/home/figure.svg",
+    });
+    const res = await GET(req, makeParams(["user", "home", "figure.svg"]));
+
+    expect(res.headers.get("X-Truncated")).toBeNull();
+    expect(res.headers.get("Content-Security-Policy")).toBe("sandbox");
+    expect(res.headers.get("X-Content-Type-Options")).toBe("nosniff");
+  });
+
+  it("sandboxes a truncated file too", async () => {
+    const content = "<p>line</p>\n".repeat(20);
+    mockResolve.mockResolvedValue(
+      makeResolvedDownload(content, {
+        filename: "report.html",
+        contentType: "text/html",
+      }),
+    );
+
+    const req = mockNextRequest({
+      url: "http://localhost:3019/api/workspace/preview/user/home/report.html",
+      searchParams: { maxBytes: "30" },
+    });
+    const res = await GET(req, makeParams(["user", "home", "report.html"]));
+
+    expect(res.headers.get("X-Truncated")).toBe("true");
+    expect(res.headers.get("Content-Security-Policy")).toBe(
+      "sandbox allow-scripts allow-popups",
+    );
+    expect(res.headers.get("X-Content-Type-Options")).toBe("nosniff");
+  });
+
   it("returns full file when Content-Length <= maxBytes", async () => {
     const content = "line1\nline2\nline3\n";
     mockResolve.mockResolvedValue(

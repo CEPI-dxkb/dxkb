@@ -5,6 +5,7 @@ import type { DataRepository, DataResource } from "@/lib/data-api";
 import type { DownloadRequest } from "@/lib/data-api/downloads";
 import type { FeatureViewRecord } from "@/lib/feature-view";
 import type { GenomeViewRecord } from "@/lib/genome-view";
+import { genomeInteractionsRql } from "@/lib/views/child-resources";
 import type { useResourceCollection as useResourceCollectionHook } from "@/hooks/views/use-resource-collection";
 import { resetChildCollectionPage } from "@/hooks/views/use-child-collection-url-state";
 import { FeatureMember } from "@/app/(views)/feature/[featureId]/feature-member";
@@ -820,6 +821,32 @@ describe("ResourceChildCollection scope changes", () => {
     expect(lastDownload().resource).toBe("protein_feature");
     expect(lastDownload().request?.scope.kind).toBe("query");
     expect(lastDownload().request?.sort).toBeUndefined();
+  });
+
+  it("mounts the Interactions table for a genome without interactions", () => {
+    const genome = {
+      genome_id: "10239.1",
+      superkingdom: "Viruses",
+    } as GenomeViewRecord;
+    useResourceCollection.mockReturnValue(realCollectionResult({ total: 0 }));
+
+    render(
+      <GenomeMember
+        genome={genome}
+        lineage={Promise.resolve([])}
+        activeTab="interactions"
+      />,
+    );
+
+    const profile = resourceCollectionProfile.mock.lastCall?.[0] as
+      | ResourceCollectionProfile<Record<string, unknown>>
+      | undefined;
+    expect(profile).toEqual(
+      expect.objectContaining({
+        resource: "ppi",
+        basePredicate: genomeInteractionsRql("10239.1"),
+      }),
+    );
   });
 
   it("offers Protein FASTA alone on a Proteins tab", async () => {

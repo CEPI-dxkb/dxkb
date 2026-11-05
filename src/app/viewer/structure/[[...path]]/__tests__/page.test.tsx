@@ -79,7 +79,8 @@ describe("/viewer/structure/[[...path]] route composition", () => {
     // every Mol* region, where the in-workspace file preview passes "hidden".
     // Asserted as a whole object so a third layout key cannot appear unnoticed.
     expect(viewer.layout).toEqual({ showControls: true, regionState: "full" });
-    expect(viewer.containerClassName).toBe("size-full");
+    // `isolate` keeps Mol*'s z-1000+ overlays below the navbar's popups.
+    expect(viewer.containerClassName).toBe("isolate size-full");
   });
 
   it("decodes the per-segment encoding Next gives a page component", () => {

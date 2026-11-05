@@ -19,7 +19,6 @@ import {
   genomeStructuralRql,
   genomeTaxonScope,
   genomeViewRecordSchema,
-  isBacterialGenome,
   isGenomeId,
   parseGenomeCollectionState,
   recentGenomeRql,
@@ -221,7 +220,7 @@ describe("Genome view contracts", () => {
     ]);
   });
 
-  it("capability-gates interactions and all future tabs", () => {
+  it("capability-gates the tabs that need it", () => {
     const bacterial = genomeViewRecordSchema.parse({
       genome_id: "1.1",
       superkingdom: "Bacteria",
@@ -230,13 +229,6 @@ describe("Genome view contracts", () => {
       genome_id: "2.2",
       superkingdom: "Viruses",
     });
-    expect(
-      buildGenomeTabs(bacterial).find((tab) => tab.key === "interactions")
-        ?.enabled,
-    ).not.toBe(false);
-    expect(
-      buildGenomeTabs(viral).find((tab) => tab.key === "interactions")?.enabled,
-    ).toBe(false);
     expect(canonicalGenomeTab("features", bacterial)).toBe("features");
     expect(canonicalGenomeTab("proteins", bacterial)).toBe("proteins");
     expect(canonicalGenomeTab("domains", bacterial)).toBe("domains");
@@ -666,12 +658,22 @@ describe("Interactions tab", () => {
     ...fields,
   });
 
-  it("offers Interactions by bacterial lineage id when superkingdom is \"null\"", () => {
-    expect(
-      isBacterialGenome(
-        record({ superkingdom: "null", taxon_lineage_ids: [131567, 2, 1224] }),
-      ),
-    ).toBe(true);
-    expect(isBacterialGenome(record({ superkingdom: "null" }))).toBe(false);
+  const interactionsTab = (genome: GenomeViewRecord) =>
+    buildGenomeTabs(genome).find((tab) => tab.key === "interactions");
+
+  it("stays enabled and canonical for every genome", () => {
+    for (const genome of [
+      record({ superkingdom: "Bacteria" }),
+      record({ superkingdom: "Viruses", taxon_lineage_ids: [10239] }),
+      record({ superkingdom: "Eukaryota", taxon_lineage_ids: [2759] }),
+      record({ superkingdom: "null" }),
+      record({}),
+    ]) {
+      expect(interactionsTab(genome)).toEqual({
+        key: "interactions",
+        label: "Interactions",
+      });
+      expect(canonicalGenomeTab("interactions", genome)).toBe("interactions");
+    }
   });
 });

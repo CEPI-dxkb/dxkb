@@ -4,6 +4,8 @@ import { setTestSession, clearTestCookies } from "@/test-helpers/api-route-helpe
 import {
   buildWorkspacePath,
   resolveWorkspaceDownload,
+  workspaceFileHeaders,
+  workspaceFileSandbox,
 } from "../resolve-download";
 
 const workspaceApiUrl = "http://mock-workspace-api";
@@ -43,6 +45,46 @@ describe("buildWorkspacePath", () => {
     expect(buildWorkspacePath(["alice@bvbrc", "100%done.pdb"])).toBe(
       "/alice@bvbrc/100%done.pdb",
     );
+  });
+});
+
+describe("workspaceFileSandbox", () => {
+  it("lets HTML run script, but never as the app origin", () => {
+    const policy = workspaceFileSandbox("text/html");
+    expect(policy).toBe("sandbox allow-scripts allow-popups");
+    expect(policy).not.toContain("allow-same-origin");
+  });
+
+  it.each([
+    "image/svg+xml",
+    "text/xml",
+    "text/plain",
+    "image/png",
+    "application/json",
+    "application/octet-stream",
+  ])("gives %s a sandbox with no script at all", (contentType) => {
+    expect(workspaceFileSandbox(contentType)).toBe("sandbox");
+  });
+
+  it("leaves PDF unsandboxed, since Chrome's PDF viewer refuses any sandbox", () => {
+    expect(workspaceFileSandbox("application/pdf")).toBeNull();
+  });
+});
+
+describe("workspaceFileHeaders", () => {
+  it("serves inline with nosniff and the type's sandbox", () => {
+    expect(workspaceFileHeaders("report.html", "text/html")).toEqual({
+      "Content-Type": "text/html",
+      "Content-Disposition": 'inline; filename="report.html"',
+      "X-Content-Type-Options": "nosniff",
+      "Content-Security-Policy": "sandbox allow-scripts allow-popups",
+    });
+  });
+
+  it("omits the CSP for PDF but keeps nosniff", () => {
+    const headers = workspaceFileHeaders("paper.pdf", "application/pdf");
+    expect(headers).not.toHaveProperty("Content-Security-Policy");
+    expect(headers["X-Content-Type-Options"]).toBe("nosniff");
   });
 });
 

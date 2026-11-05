@@ -1,4 +1,5 @@
 import { expect, type Locator, type Page } from "@playwright/test";
+import { expectHydrated } from "./hydration";
 import { ServiceFormPage } from "./service-form-page";
 
 /**
@@ -63,20 +64,11 @@ export class ViralGenomeTreePage {
       this.selector(input as ViralGenomeTreeInput),
     );
     for (const selector of selectors) {
-      await expect
-        .poll(
-          () =>
-            selector.evaluate((input) =>
-              Object.entries(input).some(
-                ([key, props]) =>
-                  key.startsWith("__reactProps$") &&
-                  typeof (props as { onChange?: unknown }).onChange ===
-                    "function",
-              ),
-            ),
-          { message: "the Input card's selectors did not hydrate" },
-        )
-        .toBe(true);
+      await expectHydrated(
+        selector,
+        "onChange",
+        "the Input card's selectors did not hydrate",
+      );
     }
   }
 

@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { upstreamServices } from "@/lib/api/upstream-failure";
 import { upstreamFailureResponse } from "@/lib/api/upstream-route";
 import {
-  contentDisposition,
   resolveWorkspaceDownload,
+  workspaceFileHeaders,
 } from "../../resolve-download";
 
 const defaultMaxBytes = 2 * 1024 * 1024; // 2 MB default
@@ -45,8 +45,7 @@ export async function GET(
 
     if (fileSize !== null && fileSize <= maxBytes) {
       const headers: Record<string, string> = {
-        "Content-Type": contentType,
-        "Content-Disposition": contentDisposition("inline", filename),
+        ...workspaceFileHeaders(filename, contentType),
         "Cache-Control": "private, max-age=300",
         "Content-Length": String(fileSize),
       };
@@ -115,8 +114,7 @@ export async function GET(
     }
 
     const headers: Record<string, string> = {
-      "Content-Type": contentType,
-      "Content-Disposition": contentDisposition("inline", filename),
+      ...workspaceFileHeaders(filename, contentType),
       "Cache-Control": "private, max-age=300",
       "Content-Length": String(finalBytes.byteLength),
     };

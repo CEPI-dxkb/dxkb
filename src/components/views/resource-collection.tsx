@@ -650,9 +650,9 @@ export function ResourceCollection<Row extends DataTableRow>({
             onColumnVisibilityChange={setColumnVisibility}
             savedColumnWidths={tableLayout.widths}
             onColumnWidthsCommit={(widths) => {
-              updateTableLayout({
-                widths: { ...tableLayout.widths, ...widths },
-              });
+              updateTableLayout((current) => ({
+                widths: { ...current.widths, ...widths },
+              }));
             }}
             rowSelection={displayedSelection}
             selectedIds={displayedSelectedIds}

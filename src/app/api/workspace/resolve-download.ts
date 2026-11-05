@@ -36,6 +36,46 @@ export function contentDisposition(
   return base;
 }
 
+/**
+ * The response sandbox for a workspace file. Its bytes are whatever a user
+ * uploaded, and a readable file may be someone else's (shared and public
+ * folders), so a document rendered from it must never run as the app:
+ * `sandbox` without `allow-same-origin` gives it an opaque origin, which
+ * cannot read app responses or storage and whose requests are cross-site,
+ * so the `SameSite=Strict` session cookie stays home.
+ * - HTML keeps `allow-scripts` (job reports are interactive, as in the
+ *   preview iframe) and `allow-popups` (report links that open a tab;
+ *   a popup inherits the sandbox).
+ * - PDF gets none: Chrome's PDF viewer will not render under any sandbox,
+ *   and PDF script runs in the viewer, not the page origin.
+ * - Everything else gets a bare `sandbox`: SVG and XML can carry script,
+ *   and nothing else needs it.
+ */
+export function workspaceFileSandbox(contentType: string): string | null {
+  if (contentType === "application/pdf") return null;
+  if (contentType === "text/html") return "sandbox allow-scripts allow-popups";
+  return "sandbox";
+}
+
+/**
+ * Content headers for a workspace file served under the app origin. Every
+ * route that answers with a file's bytes uses these, so none can forget the
+ * sandbox. `nosniff` holds the browser to the extension-derived type.
+ */
+export function workspaceFileHeaders(
+  filename: string,
+  contentType: string,
+): Record<string, string> {
+  const headers: Record<string, string> = {
+    "Content-Type": contentType,
+    "Content-Disposition": contentDisposition("inline", filename),
+    "X-Content-Type-Options": "nosniff",
+  };
+  const sandbox = workspaceFileSandbox(contentType);
+  if (sandbox) headers["Content-Security-Policy"] = sandbox;
+  return headers;
+}
+
 export interface ResolvedDownload {
   shockResponse: Response;
   filename: string;

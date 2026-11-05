@@ -178,3 +178,20 @@ export const searchTypes = searchDescriptors
 export const allTermSearchTypes = searchDescriptors
   .filter((descriptor) => descriptor.allTermOrder !== undefined)
   .toSorted((a, b) => (a.allTermOrder ?? 0) - (b.allTermOrder ?? 0));
+
+export const advancedSearchTypes = searchTypes.filter(
+  (t) => t.id !== "everything",
+);
+
+export function advancedSearchSlug(typeTitle: string): string {
+  return typeTitle
+    .toLowerCase()
+    .replace(/\s+/g, "-")
+    .replace(/[^a-z0-9-]/g, "");
+}
+
+export function advancedSearchHref(typeId: string): string {
+  const type = advancedSearchTypes.find((t) => t.id === typeId);
+  if (!type) return "/advanced-search";
+  return `/advanced-search/${advancedSearchSlug(type.typeTitle)}`;
+}

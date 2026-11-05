@@ -1,20 +1,24 @@
 "use client";
 
+import Link from "next/link";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { RadioGroupItem } from "@/components/ui/radio-group";
 import { SearchBar } from "@/components/search/search-bar";
 import ThemeContent from "@/components/ui/theme-content";
-import { Textarea } from "@/components/ui/textarea";
 import { useAuth, useResendVerificationEmail } from "@/lib/auth/provider";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Label } from "@/components/ui/label";
-import {
-  CardFieldInput,
-  CardFieldLabel,
-} from "@/components/services/form-ui/card-field";
-import { ServiceRadioGroup } from "@/components/services/form-ui/service-radio-group";
+import { AdvancedSearchDropdown } from "@/components/search/advanced-search-dropdown";
+import { searchHref, searchTypes } from "@/constants/search-info";
+
+const everythingType = searchTypes.find((t) => t.id === "everything");
+
+const popularSearches = [
+  "SARS-CoV-2",
+  "Influenza A",
+  "HIV-1",
+  "Ebola virus",
+  "Zika virus",
+];
 
 const WelcomeSearch = () => {
   const { isAuthenticated, isVerified } = useAuth();
@@ -58,11 +62,12 @@ const WelcomeSearch = () => {
           <div className="mx-auto max-w-4xl">
             <div className="welcome-search-card rounded-lg bg-card p-6 shadow-lg">
               <Tabs defaultValue="basic" className="w-full">
-                <TabsList className="mb-4">
-                  <TabsTrigger value="basic">Basic Search</TabsTrigger>
-                  <TabsTrigger value="advanced">Advanced Search</TabsTrigger>
-                  <TabsTrigger value="sequence">Sequence Search</TabsTrigger>
-                </TabsList>
+                <div className="mb-4 flex items-end gap-2">
+                  <TabsList>
+                    <TabsTrigger value="basic">Basic Search</TabsTrigger>
+                  </TabsList>
+                  <AdvancedSearchDropdown variant="tab" />
+                </div>
 
                 <TabsContent value="basic">
                   <SearchBar size="lg" />
@@ -71,101 +76,18 @@ const WelcomeSearch = () => {
                     <span className="mr-2 text-sm text-muted-foreground">
                       Popular searches:
                     </span>
-                    <Badge
-                      variant="secondary"
-                      className="cursor-pointer"
-                    >
-                      SARS-CoV-2
-                    </Badge>
-                    <Badge
-                      variant="secondary"
-                      className="cursor-pointer"
-                    >
-                      Influenza A
-                    </Badge>
-                    <Badge
-                      variant="secondary"
-                      className="cursor-pointer"
-                    >
-                      HIV-1
-                    </Badge>
-                    <Badge
-                      variant="secondary"
-                      className="cursor-pointer"
-                    >
-                      Ebola virus
-                    </Badge>
-                    <Badge
-                      variant="secondary"
-                      className="cursor-pointer"
-                    >
-                      Zika virus
-                    </Badge>
+                    {everythingType &&
+                      popularSearches.map((term) => (
+                        <Badge
+                          key={term}
+                          variant="secondary"
+                          className="cursor-pointer"
+                          render={<Link href={searchHref(everythingType, term)} />}
+                        >
+                          {term}
+                        </Badge>
+                      ))}
                   </div>
-                </TabsContent>
-
-                <TabsContent value="advanced">
-                  <div className="mb-4 grid grid-cols-1 gap-4 md:grid-cols-2">
-                    <div>
-                      <CardFieldLabel>Taxonomy</CardFieldLabel>
-                      <CardFieldInput
-                        type="text"
-                        placeholder="e.g., Coronaviridae"
-                      />
-                    </div>
-                    <div>
-                      <CardFieldLabel>Host</CardFieldLabel>
-                      <CardFieldInput
-                        type="text"
-                        placeholder="e.g., Homo sapiens"
-                      />
-                    </div>
-                    <div>
-                      <CardFieldLabel>Genome Type</CardFieldLabel>
-                      <CardFieldInput
-                        type="text"
-                        placeholder="e.g., ssRNA(+)"
-                      />
-                    </div>
-                    <div>
-                      <CardFieldLabel>Protein Function</CardFieldLabel>
-                      <CardFieldInput
-                        type="text"
-                        placeholder="e.g., Polymerase"
-                      />
-                    </div>
-                  </div>
-                  <Button variant="cta" className="w-full">
-                    Submit Advanced Search
-                  </Button>
-                </TabsContent>
-
-                <TabsContent value="sequence">
-                  <div className="mb-4 space-y-4">
-                    <CardFieldLabel>Sequence Type</CardFieldLabel>
-                    <ServiceRadioGroup defaultValue="nucleotide">
-                      <div className="flex items-center gap-3">
-                        <RadioGroupItem id="nucleotide" value="nucleotide" />
-                        <Label htmlFor="nucleotide">Nucleotide</Label>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <RadioGroupItem id="protein" value="protein" />
-                        <Label htmlFor="protein">Protein</Label>
-                      </div>
-                    </ServiceRadioGroup>
-
-                    <div className="gap-4 text-foreground">
-                      <CardFieldLabel>Enter Sequence</CardFieldLabel>
-                      <Textarea
-                        variant="mono"
-                        className="m-2 h-24 w-full"
-                        placeholder="Paste your sequence here (FASTA format supported)"
-                      ></Textarea>
-                    </div>
-                  </div>
-                  <Button variant="cta" className="w-full">
-                    Search by Sequence
-                  </Button>
                 </TabsContent>
               </Tabs>
             </div>

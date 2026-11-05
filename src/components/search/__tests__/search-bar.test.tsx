@@ -80,6 +80,19 @@ describe("SearchBar", () => {
       expect(form.className).toContain("max-w-[1000px]");
     });
 
+    it("omits the Advanced Search button unless showAdvanced is set", () => {
+      const { unmount } = renderSearchBar();
+      expect(
+        screen.queryByRole("button", { name: /advanced search/i }),
+      ).not.toBeInTheDocument();
+      unmount();
+
+      renderSearchBar({ showAdvanced: true });
+      expect(
+        screen.getByRole("button", { name: /advanced search/i }),
+      ).toBeInTheDocument();
+    });
+
     it("exposes an accessible name on the search-type trigger", () => {
       renderSearchBar();
       expect(

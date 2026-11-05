@@ -54,18 +54,17 @@ export function genomesHrefFromIds(
 }
 
 /**
- * Internal genome list route, optionally pre-filtered by a friendly keyword or an
- * RQL string. Explicit RQL takes precedence when both are supplied.
+ * Internal genome list route, optionally pre-filtered by a keyword and/or RQL string.
+ * Both are sent when present; the data layer combines them as additive clauses.
  */
 export function genomeListHref(opts?: {
   keyword?: string;
   rql?: string;
 }): string {
-  if (opts?.rql) return `/genome?rql=${encodeQueryComponent(opts.rql)}`;
-  if (opts?.keyword) {
-    return `/genome?keyword=${encodeQueryComponent(opts.keyword)}`;
-  }
-  return "/genome";
+  const params: string[] = [];
+  if (opts?.rql) params.push(`rql=${encodeQueryComponent(opts.rql)}`);
+  if (opts?.keyword) params.push(`keyword=${encodeQueryComponent(opts.keyword)}`);
+  return params.length ? `/genome?${params.join("&")}` : "/genome";
 }
 
 /** Return the canonical Feature ID from an API row, falling back for legacy search payloads. */
@@ -95,8 +94,9 @@ export function featuresHrefFromIds(
 }
 
 /**
- * Canonical Feature list route. Explicit RQL takes precedence over keyword;
- * `filter` is independent of both and is appended whenever it is supplied.
+ * Canonical Feature list route. Both keyword and RQL are sent when present;
+ * the data layer combines them as additive clauses. `filter` is independent
+ * and appended whenever supplied.
  */
 export function featureListHref(opts?: {
   keyword?: string;
@@ -105,8 +105,7 @@ export function featureListHref(opts?: {
 }): string {
   const params: string[] = [];
   if (opts?.rql) params.push(`rql=${encodeQueryComponent(opts.rql)}`);
-  else if (opts?.keyword)
-    params.push(`keyword=${encodeQueryComponent(opts.keyword)}`);
+  if (opts?.keyword) params.push(`keyword=${encodeQueryComponent(opts.keyword)}`);
   if (opts?.filter) params.push(`filter=${encodeQueryComponent(opts.filter)}`);
   return params.length ? `/feature?${params.join("&")}` : "/feature";
 }

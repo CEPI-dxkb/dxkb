@@ -1,0 +1,214 @@
+src/lib/copilot/cards.ts
+  s_ff4d068d83e2f6::t_4dc51ff333559b 41-43,157-162,164-168,170
+src/components/copilot/__tests__/copilot-progress.test.tsx
+  s_ff4d068d83e2f6::t_160676fb2db176 1-26
+src/components/copilot/use-copilot-actions.ts
+  s_ff4d068d83e2f6::t_79f15e231a3f95 171
+  s_ff4d068d83e2f6::t_edeef36f7fd428 184,190-198
+  s_ff4d068d83e2f6::t_f5d25ba08fc53c 241
+  s_ff4d068d83e2f6::t_504e99913f88d4 96-99,129,155,199-202,256,420
+  s_ff4d068d83e2f6::t_7051a8ae814288 59-71,122-126,334,338-339,341-346
+  s_ff4d068d83e2f6::t_b5c6ce1d642a64 396-405
+  s_ff4d068d83e2f6::t_cb148600e3122a 9,56-58,141-145,158-165,170,172-177,187,203,219-225,227,229-230,238-240,242-246,254,257,354,357-363,390-394,407,430-433
+src/lib/copilot/__tests__/plan.test.ts
+  s_ff4d068d83e2f6::t_28612c88ee92d7 5-6,115-121,211,221-256
+src/lib/copilot/plan.ts
+  s_ff4d068d83e2f6::t_798ba9a5c13ba9 74-76,131-133,271-274,278-312
+  s_ff4d068d83e2f6::t_9beebe0dc30cf4 313
+src/components/copilot/__tests__/copilot-floating-window.test.tsx
+  s_ff4d068d83e2f6::t_4d1e0b81ba4fdc 1-50
+src/app/api/copilot/sessions/[sessionId]/execution-answer/route.ts
+  s_ff4d068d83e2f6::t_fc3528885ef43a 4-13,19-21,32-34
+src/lib/copilot/__tests__/floating-rect.test.ts
+  s_ff4d068d83e2f6::t_4d1e0b81ba4fdc 1-100
+src/hooks/copilot/__tests__/use-copilot-queries.test.ts
+  s_ff4d068d83e2f6::t_066b77483c9dcf 70-92,97-133
+  s_ff4d068d83e2f6::t_642c6b926a87c7 1-69,134
+  s_ff4d068d83e2f6::t_30f7a163200de0 93-96
+src/app/api/copilot/sessions/[sessionId]/title/route.ts
+  s_ff4d068d83e2f6::t_fc3528885ef43a 4-13,19-20,23,34-36
+src/components/copilot/copilot-panel.tsx
+  s_ff4d068d83e2f6::t_cacf1062bf13d1 160,192-193,195-205,207
+  s_ff4d068d83e2f6::t_f0f090cce4abeb 44,49-50,53,144,148,150-155
+  s_ff4d068d83e2f6::t_c716b1c2695933 6,24,37,83-85,126,137-143,146,149,176-191,229,232-234,237,239,242,263-264,266,274,276,278-279,296-298
+  s_ff4d068d83e2f6::t_7e87c112304401 3-4,12,29-32,42
+  s_ff4d068d83e2f6::t_8d72a002bc6a79 107-109,112,115,194
+  s_ff4d068d83e2f6::t_43ed9362cf188b 45-48,51-52
+  s_ff4d068d83e2f6::t_231ece0dbcd00e 43
+src/lib/copilot/__tests__/turn.test.ts
+  s_ff4d068d83e2f6::t_d9a3702bd2d711 152-153
+  s_ff4d068d83e2f6::t_eb87e73051209c 130-135,149-150,154
+src/lib/ui-preferences/definitions.ts
+  s_ff4d068d83e2f6::t_4d1e0b81ba4fdc 135-137,141-142
+src/app/api/copilot/chat/route.ts
+  s_ff4d068d83e2f6::t_fc3528885ef43a 7,15,31-34,36-37,91-92,104,120-122
+src/components/copilot/copilot-progress.tsx
+  s_ff4d068d83e2f6::t_5c81d0f464df1f 13-18,40
+src/components/copilot/__tests__/copilot-message.test.tsx
+  s_ff4d068d83e2f6::t_467f8c4935caf5 1-89
+src/components/copilot/__tests__/use-copilot-actions.test.tsx
+  s_ff4d068d83e2f6::t_cc0ea57d4aba5b 5,200
+  s_ff4d068d83e2f6::t_c892345450fdd5 1-4,6-30,37-40,57,62-199,201-202,204-346,357,382,405-407,444-445,447,450-456,459-460,467-484,513,515,518-530,537-559
+  s_ff4d068d83e2f6::t_59607698ae412f 485-512
+  s_ff4d068d83e2f6::t_b1a82620dc574e 47,56
+  s_ff4d068d83e2f6::t_79f15e231a3f95 31-36,41-46,48-55,58-61,203,347-356,358-381,383-404,446,448-449,457-458,461-466,514,516-517,531-536
+  s_ff4d068d83e2f6::t_5f12424c02212b 408-443
+src/lib/auth/__tests__/routes.test.ts
+  s_ff4d068d83e2f6::t_eb87e73051209c 50,58-60
+  s_ff4d068d83e2f6::t_f97aa927171e4b 61-62
+src/components/copilot/copilot-panel-header.tsx
+  s_ff4d068d83e2f6::t_cacf1062bf13d1 1-126,140,169-171,175,177,180-181
+  s_ff4d068d83e2f6::t_8d72a002bc6a79 127-139,141-168,172-174,176,178-179
+src/lib/copilot/__tests__/cards.test.ts
+  s_ff4d068d83e2f6::t_eb87e73051209c 95-111
+src/components/copilot/__tests__/copilot-plan-card.test.tsx
+  s_ff4d068d83e2f6::t_faf1719b6f5d5a 1-95,97-98,103,106-115,117-166
+  s_ff4d068d83e2f6::t_f289785687b4d0 116
+  s_ff4d068d83e2f6::t_1354a36e9f8191 96,99-102,104-105
+src/lib/copilot/drafts.ts
+  s_ff4d068d83e2f6::t_336486cd682277 1-101,104-108,125-144
+  s_ff4d068d83e2f6::t_c55357657238d0 102-103,109-124
+src/components/copilot/copilot-cards.tsx
+  s_ff4d068d83e2f6::t_5c81d0f464df1f 41-49,94,102,119,122,195,207-212,261-262,268-269,277,282,287,290,316-318,327-335,364-366,391-394,404-406
+  s_ff4d068d83e2f6::t_7277342b746dc3 40
+e2e/pages/copilot-page.ts
+  s_ff4d068d83e2f6::t_b8b28e4b82a3cc 1-301
+src/components/copilot/copilot-transcript.tsx
+  s_ff4d068d83e2f6::t_893def2602130e 30,86-88,102,118,242-249,251-272
+src/app/api/copilot/sessions/route.ts
+  s_ff4d068d83e2f6::t_fc3528885ef43a 14-15
+src/__tests__/proxy.test.ts
+  s_ff4d068d83e2f6::t_eb87e73051209c 65-73,285-288
+src/lib/copilot/server.ts
+  s_ff4d068d83e2f6::t_00dfe7075857cd 770
+  s_ff4d068d83e2f6::t_fc3528885ef43a 156-169,652-661,768-769,771-773,777-778
+  s_ff4d068d83e2f6::t_ec9db635ff19a9 774-776
+src/hooks/copilot/__tests__/use-copilot-chat.test.tsx
+  s_ff4d068d83e2f6::t_a26606eacee4e5 103-106,109-112,120,125-140
+  s_ff4d068d83e2f6::t_507297bba170c2 333,394,536
+  s_ff4d068d83e2f6::t_76512093db8b95 354-355
+  s_ff4d068d83e2f6::t_115301d161e2e4 182,185-187
+  s_ff4d068d83e2f6::t_4664430b01df0a 123,405-514
+  s_ff4d068d83e2f6::t_fc0ddc54dc966c 2,5-6,9,17-23,32,34,41-98,100,102,108,113-114,121-122,141-169,171,173,179-181,183-184,189-200,217,219,221,233,246,254,260-263,265-332,334-353,356-393,395-404,515-524,526-527,531-533,544,547-555
+  s_ff4d068d83e2f6::t_a69487b7925251 124
+src/components/copilot/__tests__/copilot-panel.test.tsx
+  s_ff4d068d83e2f6::t_0229851b79b3df 1-3,5-133,135-196,198-211,237-272
+  s_ff4d068d83e2f6::t_43ed9362cf188b 4,134,197,212-236
+src/lib/copilot/models.ts
+  s_ff4d068d83e2f6::t_1d26c42cc66a52 1-14
+src/components/copilot/copilot-composer.tsx
+  s_ff4d068d83e2f6::t_548a052b22911d 330-333
+  s_ff4d068d83e2f6::t_33027e93969eae 88-89,96,99
+  s_ff4d068d83e2f6::t_19832ea5febaaf 90-95,97-98
+  s_ff4d068d83e2f6::t_9a89752e42db5a 84-85,216,225,264-266,268-269,276,278-280,329,334-335,345
+  s_ff4d068d83e2f6::t_fdbedc8658301b 86-87
+.claude/rules/testing.md
+  s_ff4d068d83e2f6::t_443b151ef9c712 84-110
+src/lib/copilot/paths.ts
+  s_ff4d068d83e2f6::t_1d26c42cc66a52 1-5
+src/hooks/copilot/use-copilot-draft.ts
+  s_ff4d068d83e2f6::t_36b91e1f3b9f77 1-114,117,120-121
+  s_ff4d068d83e2f6::t_c55357657238d0 115-116,118-119
+src/components/copilot/__tests__/copilot-markdown.test.tsx
+  s_ff4d068d83e2f6::t_160676fb2db176 1-19
+src/app/api/copilot/__tests__/route.test.ts
+  s_ff4d068d83e2f6::t_a07bccce881efa 254-270
+src/lib/copilot/attachments.ts
+  s_ff4d068d83e2f6::t_4dc51ff333559b 59-77,96-98,104-106
+src/lib/copilot/route-errors.ts
+  s_ff4d068d83e2f6::t_fc3528885ef43a 3,5-9,55-73
+  s_ff4d068d83e2f6::t_f6ca3c1b5d8a4b 74-75
+src/components/copilot/copilot-plan-card.tsx
+  s_ff4d068d83e2f6::t_74ba07e2bd0e0d 182-188,193-198,311
+  s_ff4d068d83e2f6::t_dadbc46a2d783a 37-38,75-83,181,189-192,199,204,209-210,216,238-245,247-249,253-255,273-276,288-291,377-387,389,392-398,633
+  s_ff4d068d83e2f6::t_1f0c4bddda31e3 200
+src/lib/copilot/floating-rect.ts
+  s_ff4d068d83e2f6::t_69114d80d4f707 1-76
+src/hooks/copilot/use-copilot-chat.ts
+  s_ff4d068d83e2f6::t_ef0423a33f3a60 3,12,47-52,54,84-86,88-94,106-119,121-146,148-149,152-162,164-165,167-180,182-197,199,201-202,206-208,210-217,224,228-229,233,247-249,251-270,285-289,294,300-319,321,342,344-346,348-349,351-381,386-387,390-401,406-408,410-411,413-421,424-440,442-459,472,478
+  s_ff4d068d83e2f6::t_76512093db8b95 120,147,166,181,198,200,204,209,382-385,460-465
+  s_ff4d068d83e2f6::t_d028012a78cda1 150-151,163,203,205
+src/components/copilot/__tests__/copilot-transcript.test.tsx
+  s_ff4d068d83e2f6::t_11b103e7ad75b6 1-80
+src/lib/copilot/__tests__/page-context.test.ts
+  s_ff4d068d83e2f6::t_eb87e73051209c 28-46
+src/lib/copilot/turn.ts
+  s_ff4d068d83e2f6::t_4dc51ff333559b 45-47,222-224,227
+src/proxy.ts
+  s_ff4d068d83e2f6::t_4dc51ff333559b 78
+src/hooks/copilot/use-copilot-queries.ts
+  s_ff4d068d83e2f6::t_74cad1a95e2ee1 4-5,56-59,66-69,72-81,83-87,89-93,99-100
+  s_ff4d068d83e2f6::t_7a61f1fad299b2 6-10,46-55,60-65,82,95-98,101-103,114
+  s_ff4d068d83e2f6::t_597c70efef7ec5 70-71,88
+  s_ff4d068d83e2f6::t_76512093db8b95 94
+  s_ff4d068d83e2f6::t_cd8bc22a67465b 3
+docs/architecture.md
+  s_ff4d068d83e2f6::t_319d78787dc105 153,155
+  s_ff4d068d83e2f6::t_01df57510fbdd6 144,350
+  s_ff4d068d83e2f6::t_2b71dbcd20a9d7 145-146,156-157
+  s_ff4d068d83e2f6::t_edd8ebdf74c21e 351
+src/app/api/copilot/__tests__/chat-routes.test.ts
+  s_ff4d068d83e2f6::t_a07bccce881efa 276,278-292,300-308,311-314,316,318-362,387-403,719-762
+  s_ff4d068d83e2f6::t_97a276c4800c4d 297
+  s_ff4d068d83e2f6::t_11ded7e9a984c9 4-7,277,293-296,298-299
+  s_ff4d068d83e2f6::t_ec9db635ff19a9 309-310,315,317
+  s_ff4d068d83e2f6::t_e1a461139fd9cd 363-367
+  s_ff4d068d83e2f6::t_00dfe7075857cd 368-386
+  s_ff4d068d83e2f6::t_bb5a6d8c002279 763
+e2e/tests/copilot.spec.ts
+  s_ff4d068d83e2f6::t_90c9b3eca315e6 516,527
+  s_ff4d068d83e2f6::t_37b22295f89096 3,172,264-268,273-276,279-281,283-287,300-308,310-312,316-326,330-333,336-337,340-343,346-351,365-367,369,371-372,374-376,400-402,404-407,425-427,429-430,434-435,449-451,453-455,457,464-466,468-470,473-475,477,479-480,508-510,512-514,517-522,526,533-535,537,542-544,553,557-562,564
+src/components/copilot/__tests__/copilot-cards.test.tsx
+  s_ff4d068d83e2f6::t_160676fb2db176 1-91
+src/lib/copilot/__tests__/attachments.test.ts
+  s_ff4d068d83e2f6::t_eb87e73051209c 48-55
+  s_ff4d068d83e2f6::t_1d7010ce3d8671 44-47
+src/app/copilot/layout.tsx
+  s_ff4d068d83e2f6::t_b7cbf70ba0e6ca 4,15
+src/hooks/copilot/use-workflow-watch-reload.ts
+  s_ff4d068d83e2f6::t_cacf1062bf13d1 1-42
+src/hooks/copilot/__tests__/use-copilot-draft.test.tsx
+  s_ff4d068d83e2f6::t_fff07a6dbe87c3 131
+  s_ff4d068d83e2f6::t_722d1da9b11050 1-130,132-239
+src/lib/copilot/page-context.ts
+  s_ff4d068d83e2f6::t_4dc51ff333559b 15,22,25,36,58,64,73,89,113-120
+src/components/copilot/copilot-markdown.tsx
+  s_ff4d068d83e2f6::t_5c81d0f464df1f 23
+src/components/copilot/copilot-floating-window.tsx
+  s_ff4d068d83e2f6::t_69114d80d4f707 6-11,50-52,101,109,119-121,129-130
+  s_ff4d068d83e2f6::t_4d1e0b81ba4fdc 125-127,131
+src/components/copilot/__tests__/copilot-composer.test.tsx
+  s_ff4d068d83e2f6::t_19832ea5febaaf 90
+  s_ff4d068d83e2f6::t_9a89752e42db5a 1-85,95-117
+  s_ff4d068d83e2f6::t_e2447c14f0a0bd 86-89,91-94
+src/lib/copilot/__tests__/drafts.test.ts
+  s_ff4d068d83e2f6::t_3400045fef3891 1-81,85-91,95-119,123-125
+  s_ff4d068d83e2f6::t_975b63384aed72 82-84,92-94,120-122
+e2e/pages/index.ts
+  s_ff4d068d83e2f6::t_b8b28e4b82a3cc 11
+AGENTS.md
+  s_ff4d068d83e2f6::t_01df57510fbdd6 92
+src/components/copilot/copilot-provider.tsx
+  s_ff4d068d83e2f6::t_ef0423a33f3a60 98
+  s_ff4d068d83e2f6::t_b7cbf70ba0e6ca 19-20,34-35,102
+src/lib/copilot/__tests__/models.test.ts
+  s_ff4d068d83e2f6::t_3400045fef3891 1-32
+src/components/copilot/copilot-message.tsx
+  s_ff4d068d83e2f6::t_5c81d0f464df1f 149-164,167-171,174-176,182
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "82902e285c9dfffbe76156be6e92152879f67fb4",
+  "prompts": {},
+  "sessions": {
+    "s_ff4d068d83e2f6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9a8a86c5-89cd-49bc-8553-fb0ec3379fb1",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>"
+    }
+  }
+}

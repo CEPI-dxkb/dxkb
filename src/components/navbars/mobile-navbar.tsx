@@ -194,7 +194,7 @@ const useMobileNavbar = () => {
         >
           <div className="overflow-hidden">
             <div className="px-4 pb-4">
-              <SearchBar />
+              <SearchBar showAdvanced />
             </div>
           </div>
         </div>

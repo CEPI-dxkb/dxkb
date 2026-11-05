@@ -54,6 +54,7 @@ export function UserAvatarDropdown() {
           <DropdownMenu modal={false}>
             <DropdownMenuTrigger
               nativeButton={false}
+              aria-label="Account menu"
               render={
                 <div className="flex size-full items-center justify-center" />
               }

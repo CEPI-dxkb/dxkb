@@ -15,8 +15,30 @@ function DropdownMenuPortal({ ...props }: MenuPrimitive.Portal.Props) {
   return <MenuPrimitive.Portal data-slot="dropdown-menu-portal" {...props} />
 }
 
-function DropdownMenuTrigger({ ...props }: MenuPrimitive.Trigger.Props) {
-  return <MenuPrimitive.Trigger data-slot="dropdown-menu-trigger" {...props} />
+const dropdownMenuTriggerVariants = cva("", {
+  variants: {
+    variant: {
+      default: "",
+      tab: "inline-flex h-8 items-center gap-1 rounded-lg bg-muted px-3 text-sm font-medium text-foreground transition-colors hover:bg-secondary hover:text-secondary-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none data-popup-open:bg-secondary data-popup-open:text-secondary-foreground",
+      button: "inline-flex shrink-0 items-center gap-1 rounded-r-md border border-l-0 border-input bg-background px-3 text-sm font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none data-popup-open:bg-accent data-popup-open:text-accent-foreground",
+      "navbar-icon": "relative flex size-8 items-center justify-center rounded-full border border-white/30 text-white/80 transition-all duration-200 hover:border-white hover:bg-white/10 hover:text-white data-popup-open:border-white data-popup-open:bg-white/15 data-popup-open:text-white",
+    },
+  },
+  defaultVariants: { variant: "default" },
+})
+
+function DropdownMenuTrigger({
+  className,
+  variant,
+  ...props
+}: MenuPrimitive.Trigger.Props & VariantProps<typeof dropdownMenuTriggerVariants>) {
+  return (
+    <MenuPrimitive.Trigger
+      data-slot="dropdown-menu-trigger"
+      className={cn(dropdownMenuTriggerVariants({ variant }), className)}
+      {...props}
+    />
+  )
 }
 
 function DropdownMenuContent({

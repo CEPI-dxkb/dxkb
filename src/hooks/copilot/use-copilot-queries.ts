@@ -3,11 +3,15 @@
 import {
   CancelledError,
   hashKey,
+  matchQuery,
   queryOptions,
   useInfiniteQuery,
   useQuery,
+  useQueryClient,
+  type QueryCache,
   type QueryClient,
 } from "@tanstack/react-query";
+import { useSyncExternalStore } from "react";
 import {
   copilotQueryKeys,
   fetchCopilotModels,
@@ -99,6 +103,65 @@ export async function reloadCopilotSession(
   } finally {
     unsubscribe();
   }
+}
+
+// Per cache: how many fetches have delivered each session's data since the
+// count started. One listener per cache counts from the first read, so a
+// reader that subscribes later still sees deliveries made in between.
+const sessionDeliveryCounts = new WeakMap<QueryCache, Map<string, number>>();
+const sessionKeyPrefix = copilotQueryKeys.session("").slice(0, 2);
+
+function sessionDeliveries(cache: QueryCache): Map<string, number> {
+  const known = sessionDeliveryCounts.get(cache);
+  if (known) return known;
+  const counts = new Map<string, number>();
+  sessionDeliveryCounts.set(cache, counts);
+  cache.subscribe((event) => {
+    // The same filter as `reloadCopilotSession`: a fetch's own write, not
+    // `setQueryData` (`manual`) and not a cancel's revert (no success).
+    if (
+      event.type === "updated" &&
+      event.action.type === "success" &&
+      event.action.manual !== true &&
+      matchQuery({ queryKey: sessionKeyPrefix }, event.query)
+    ) {
+      counts.set(event.query.queryHash, (counts.get(event.query.queryHash) ?? 0) + 1);
+    }
+  });
+  return counts;
+}
+
+/**
+ * How many fetches have delivered this session's data to the cache so far.
+ * Only a later, larger count means newer data arrived; the number itself
+ * means nothing.
+ */
+export function copilotSessionDeliveries(
+  queryClient: QueryClient,
+  sessionId: string,
+): number {
+  return (
+    sessionDeliveries(queryClient.getQueryCache()).get(
+      hashKey(copilotQueryKeys.session(sessionId)),
+    ) ?? 0
+  );
+}
+
+/** `copilotSessionDeliveries`, re-read whenever the session's query changes. */
+export function useCopilotSessionDeliveries(sessionId: string | null): number {
+  const queryClient = useQueryClient();
+  const cache = queryClient.getQueryCache();
+  const queryHash = sessionId === null ? null : hashKey(copilotQueryKeys.session(sessionId));
+  return useSyncExternalStore(
+    (onChange) =>
+      queryHash === null
+        ? () => undefined
+        : cache.subscribe((event) => {
+            if (event.query.queryHash === queryHash) onChange();
+          }),
+    () => (queryHash === null ? 0 : (sessionDeliveries(cache).get(queryHash) ?? 0)),
+    () => 0,
+  );
 }
 
 /**

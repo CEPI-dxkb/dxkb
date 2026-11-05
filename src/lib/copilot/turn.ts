@@ -170,7 +170,13 @@ export type CopilotTurnStatus =
   | "running"
   | "done"
   | "stopped"
-  | "error";
+  | "error"
+  /**
+   * The stream dropped before the turn ended and the stored session could
+   * not be read back. The gateway may still be answering; nothing in this
+   * tab follows the turn any more, so it no longer counts as active.
+   */
+  | "disconnected";
 
 export interface CopilotTurn {
   /** Client id of the user message this turn answers. */

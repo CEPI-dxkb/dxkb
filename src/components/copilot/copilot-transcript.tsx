@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertCircle, Bot, Loader2, Square } from "lucide-react";
+import { AlertCircle, Bot, Loader2, Square, Unplug } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Marker, MarkerContent, MarkerIcon } from "@/components/ui/marker";
@@ -214,6 +214,13 @@ export function CopilotTranscript({
                             <Square />
                           </MarkerIcon>
                           <MarkerContent>Stopped</MarkerContent>
+                        </Marker>
+                      ) : turn.status === "disconnected" ? (
+                        <Marker>
+                          <MarkerIcon>
+                            <Unplug />
+                          </MarkerIcon>
+                          <MarkerContent>Connection lost</MarkerContent>
                         </Marker>
                       ) : null
                     }

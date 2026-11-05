@@ -1,7 +1,11 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { http, HttpResponse } from "msw";
+import { createElement, type ReactNode } from "react";
+import { copilotQueryKeys } from "@/lib/copilot/client";
+import { isCopilotTurnActive } from "@/lib/copilot/turn";
 import { server } from "@/test-helpers/msw-server";
-import { createQueryClientWrapper } from "@/test-helpers/react";
+import { createQueryClientWrapper, nextRefetchInterval } from "@/test-helpers/react";
 import { useCopilotChat, type CopilotSendResult } from "../use-copilot-chat";
 import { useCopilotSession } from "../use-copilot-queries";
 
@@ -200,6 +204,206 @@ describe("useCopilotChat", () => {
 
     expect(result.current.active).toBeNull();
     expect(result.current.error).toBeNull();
+  });
+
+  describe("a stream that drops before the turn ends", () => {
+    const droppedFrames = [
+      'event: started\ndata: {"job_id":"j9"}\n\n',
+      'event: final_response\ndata: {"chunk":"Partial"}\n\n',
+    ];
+
+    /**
+     * The panel's pairing: the session query polls only while the chat's
+     * turn is not active. The stored session reports a job running, so the
+     * poll is observable; the read after the turn fails until `failing` is
+     * turned off.
+     */
+    function renderPanelChat() {
+      const state = { failing: false, dropped: true };
+      const sessionGets = vi.fn();
+      server.use(
+        http.post("*/api/copilot/chat", () =>
+          state.dropped ? sse(...droppedFrames) : sse(...doneFrames),
+        ),
+        http.get("*/api/copilot/sessions/:id", () => {
+          sessionGets();
+          return state.failing
+            ? HttpResponse.json(
+                { error: "The Copilot store did not respond.", code: "upstream" },
+                { status: 500 },
+              )
+            : HttpResponse.json({
+                sessionId,
+                messages: [],
+                executionMode: "plan",
+                activeJobId: "j9",
+              });
+        }),
+        http.post("*/api/copilot/sessions/:id/title", () =>
+          HttpResponse.json({ title: null }),
+        ),
+      );
+      const queryClient = new QueryClient({
+        defaultOptions: { queries: { retry: false } },
+      });
+      const wrapper = ({ children }: { children: ReactNode }) =>
+        createElement(QueryClientProvider, { client: queryClient }, children);
+      const rendered = renderHook(
+        () => {
+          const chat = useCopilotChat("user-a");
+          useCopilotSession(sessionId, {
+            enabled: true,
+            streaming: isCopilotTurnActive(chat.active?.turn ?? null),
+          });
+          return chat;
+        },
+        { wrapper },
+      );
+      return { ...rendered, queryClient, state, sessionGets };
+    }
+
+    it("ends the live turn when the reload fails, so Send and the poll work again", async () => {
+      const { result, queryClient, state, sessionGets } = renderPanelChat();
+      await waitFor(() => {
+        expect(sessionGets).toHaveBeenCalledTimes(1);
+      });
+      state.failing = true;
+
+      let outcome: CopilotSendResult | undefined;
+      await act(async () => {
+        outcome = await result.current.send(sendOptions);
+      });
+
+      // The result reports what the stream did; the shown turn has ended.
+      expect(outcome).toEqual(
+        expect.objectContaining({
+          status: "sent",
+          ended: "running",
+          reloadError: "The Copilot store did not respond.",
+        }),
+      );
+      expect(result.current.active?.turn).toEqual(
+        expect.objectContaining({ status: "disconnected", answer: "Partial" }),
+      );
+      expect(isCopilotTurnActive(result.current.active?.turn ?? null)).toBe(false);
+      expect(result.current.error).toEqual({
+        sessionId,
+        kind: "reload",
+        message: "The Copilot store did not respond.",
+        query: null,
+      });
+      expect(nextRefetchInterval(queryClient, copilotQueryKeys.session(sessionId))).toBe(
+        3000,
+      );
+      // Stop has no run to stop.
+      await act(async () => {
+        await result.current.stop();
+      });
+      expect(result.current.active?.turn.status).toBe("disconnected");
+
+      state.failing = false;
+      state.dropped = false;
+      let next: CopilotSendResult | undefined;
+      await act(async () => {
+        next = await result.current.send(sendOptions);
+      });
+      expect(next).toEqual(
+        expect.objectContaining({ status: "sent", ended: "done", reloadError: null }),
+      );
+      expect(result.current.active).toBeNull();
+      expect(result.current.error).toBeNull();
+    });
+
+    it("replaces the disconnected turn with the stored session on a successful reload", async () => {
+      const { result, state, sessionGets } = renderPanelChat();
+      await waitFor(() => {
+        expect(sessionGets).toHaveBeenCalledTimes(1);
+      });
+      state.failing = true;
+      await act(async () => {
+        await result.current.send(sendOptions);
+      });
+      expect(result.current.active?.turn.status).toBe("disconnected");
+
+      state.failing = false;
+      await act(async () => {
+        await result.current.reload(sessionId);
+      });
+
+      expect(result.current.active).toBeNull();
+      expect(result.current.error).toBeNull();
+    });
+
+    it("gives way to the saved conversation when a later read of the session succeeds", async () => {
+      const { result, queryClient, state, sessionGets } = renderPanelChat();
+      await waitFor(() => {
+        expect(sessionGets).toHaveBeenCalledTimes(1);
+      });
+      state.failing = true;
+      await act(async () => {
+        await result.current.send(sendOptions);
+      });
+      expect(result.current.active?.turn.status).toBe("disconnected");
+      const sessionKey = copilotQueryKeys.session(sessionId);
+
+      // A read that fails again changes nothing.
+      await act(async () => {
+        await queryClient.refetchQueries({ queryKey: sessionKey });
+      });
+      expect(result.current.active?.turn.status).toBe("disconnected");
+      expect(result.current.error).toEqual(expect.objectContaining({ kind: "reload" }));
+
+      // The poll (or a refetch on focus) brings the saved conversation.
+      state.failing = false;
+      await act(async () => {
+        await queryClient.refetchQueries({ queryKey: sessionKey });
+      });
+      expect(result.current.active).toBeNull();
+      expect(result.current.error).toBeNull();
+
+      // Nothing hidden is left behind: Reload failing in another session
+      // still reports its own error.
+      state.failing = true;
+      await act(async () => {
+        await result.current.reload(otherSessionId);
+      });
+      expect(result.current.error).toEqual({
+        sessionId: otherSessionId,
+        kind: "reload",
+        message: "The Copilot store did not respond.",
+        query: null,
+      });
+    });
+
+    it("keeps the turn and its reload error over an optimistic cache write", async () => {
+      const { result, queryClient, state, sessionGets } = renderPanelChat();
+      await waitFor(() => {
+        expect(sessionGets).toHaveBeenCalledTimes(1);
+      });
+      state.failing = true;
+      await act(async () => {
+        await result.current.send(sendOptions);
+      });
+      expect(result.current.active?.turn.status).toBe("disconnected");
+
+      // A rating or a card answer writes the cached session by hand; that is
+      // not the saved conversation.
+      act(() => {
+        queryClient.setQueryData(copilotQueryKeys.session(sessionId), {
+          sessionId,
+          messages: [],
+          executionMode: "plan",
+          activeJobId: null,
+        });
+      });
+
+      expect(result.current.active?.turn).toEqual(
+        expect.objectContaining({ status: "disconnected", answer: "Partial" }),
+      );
+      expect(result.current.error).toEqual(
+        expect.objectContaining({ sessionId, kind: "reload" }),
+      );
+    });
   });
 
   it("gives the text back when the gateway refuses the turn before it starts", async () => {

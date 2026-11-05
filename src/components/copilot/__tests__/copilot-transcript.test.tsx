@@ -1,6 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { CopilotChatError } from "@/hooks/copilot/use-copilot-chat";
+import { startCopilotTurn } from "@/lib/copilot/turn";
 import type { CopilotSessionDetail } from "@/lib/copilot/types";
 import { CopilotTranscript } from "../copilot-transcript";
 
@@ -76,5 +77,40 @@ describe("CopilotTranscript errors", () => {
 
     await user.click(screen.getByRole("button", { name: "Retry" }));
     expect(onRetry).toHaveBeenCalledWith("old q");
+  });
+});
+
+describe("CopilotTranscript live turn", () => {
+  it("marks a turn whose connection dropped, keeping its partial answer", () => {
+    render(
+      <CopilotTranscript
+        sessionId="s1"
+        detail={detail}
+        loading={false}
+        loadError={null}
+        onRetryLoad={vi.fn()}
+        onReload={vi.fn()}
+        active={{
+          sessionId: "s1",
+          turn: {
+            ...startCopilotTurn("t1", "Find Mpox genomes"),
+            status: "disconnected",
+            answer: "Partial answer",
+          },
+          baseCount: 0,
+          clarificationAnswers: null,
+          hidden: false,
+          attachments: [],
+          keptAtDelivery: 1,
+        }}
+        error={null}
+        onRetry={vi.fn()}
+        onSuggestion={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText("Connection lost")).toBeInTheDocument();
+    expect(screen.getByText("Partial answer")).toBeInTheDocument();
+    expect(screen.queryByText("Stopped")).not.toBeInTheDocument();
   });
 });

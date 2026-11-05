@@ -9,7 +9,11 @@ import {
   stopCopilotTurn,
   titleCopilotSession,
 } from "@/lib/copilot/client";
-import { reloadCopilotSession } from "@/hooks/copilot/use-copilot-queries";
+import {
+  copilotSessionDeliveries,
+  reloadCopilotSession,
+  useCopilotSessionDeliveries,
+} from "@/hooks/copilot/use-copilot-queries";
 import { readSseFrames } from "@/lib/copilot/sse";
 import type {
   CopilotAttachmentInfo,
@@ -40,6 +44,13 @@ export interface CopilotActiveTurn {
   hidden: boolean;
   /** What the question carries, shown on it. */
   attachments: CopilotAttachmentInfo[];
+  /**
+   * Set when the turn is kept after its reload failed: the session's
+   * delivery count then (`copilotSessionDeliveries`). A later fetch that
+   * delivers the session (the poll, a refetch, Reload) replaces the turn;
+   * `setQueryData` (an optimistic rating or card answer) does not.
+   */
+  keptAtDelivery?: number;
 }
 
 export interface CopilotChatError {
@@ -81,7 +92,9 @@ export interface CopilotSendOptions
 export type CopilotSendResult =
   /**
    * It ran; `ended` is how (`done`, `stopped`, `error`, or still running if
-   * the stream dropped), and `turn` what the stream reported. `reloadError`
+   * the stream dropped), and `turn` what the stream reported. (A dropped
+   * turn whose reload failed is shown as `disconnected`; `ended` stays what
+   * the stream reported.) `reloadError`
    * is `null` once the stored session was read back after the turn, else
    * that read's own message (the cache still holds the session from before).
    */
@@ -379,12 +392,25 @@ export function useCopilotChat(account: string | null) {
           setError({ sessionId, kind: "reload", message: reloadError, query: null });
         }
         // Without the stored copy the live turn stays, so the question and
-        // answer do not vanish; it has ended, so the composer works. Only one
-        // error shows: when an errored turn's reload also failed, the live
-        // turn stays with its `turn` error (and Retry), and the reload
-        // failure is only in the returned `reloadError`.
-        if (reloadError === null && turnRef.current?.turn.id === ended.id) {
-          commit(null);
+        // answer do not vanish. Only one error shows: when an errored turn's
+        // reload also failed, the live turn stays with its `turn` error (and
+        // Retry), and the reload failure is only in the returned
+        // `reloadError`.
+        const latest = turnRef.current;
+        if (latest?.turn.id === ended.id) {
+          if (reloadError === null) {
+            commit(null);
+          } else {
+            commit({
+              ...latest,
+              // The stream dropped mid-turn: no run follows it any more, so it
+              // must not hold Send, Stop or the session poll.
+              turn: isCopilotTurnActive(latest.turn)
+                ? { ...latest.turn, status: "disconnected" }
+                : latest.turn,
+              keptAtDelivery: copilotSessionDeliveries(queryClient, sessionId),
+            });
+          }
         }
 
         if (isFirstTurn && ended.status === "done") {
@@ -443,14 +469,15 @@ export function useCopilotChat(account: string | null) {
   }
 
   /**
-   * Reads a session back after a failed reload. On success the live copy of
-   * an ended turn in it is dropped, since the stored session now has it.
+   * Reads a session back after a failed reload. On success the stored
+   * session replaces a live turn left in it, unless a run still owns that
+   * turn (it settles the turn itself).
    */
   async function reload(sessionId: string): Promise<void> {
     const reloadError = await reloadCopilotSession(queryClient, sessionId);
     if (reloadError === null) {
       const latest = turnRef.current;
-      if (latest?.sessionId === sessionId && !isCopilotTurnActive(latest.turn)) {
+      if (latest?.sessionId === sessionId && runRef.current?.turnId !== latest.turn.id) {
         commit(null);
       }
       setError((current) =>
@@ -466,9 +493,28 @@ export function useCopilotChat(account: string | null) {
     }
   }
 
+  // A turn kept after a failed reload gives way to any later fetch that
+  // delivers its session (the poll, a refetch on focus), as after Reload,
+  // and so does that session's reload error. Derived from the delivery
+  // count; an optimistic `setQueryData` does not count.
+  const kept = active?.keptAtDelivery === undefined ? null : active;
+  const deliveries = useCopilotSessionDeliveries(kept?.sessionId ?? null);
+  const superseded =
+    kept?.keptAtDelivery !== undefined && deliveries > kept.keptAtDelivery;
+  const hiddenError =
+    superseded && error?.kind === "reload" && error.sessionId === kept.sessionId;
+  if (superseded) {
+    // Drop what the saved conversation replaced (state adjusted during
+    // render), so a hidden error cannot block `reload()` for another session.
+    // `turnRef` may still hold the turn until the next commit; nothing reads
+    // it for a turn no run owns except `reload`, which drops it too.
+    setActive(null);
+    if (hiddenError) setError(null);
+  }
+
   return {
-    active,
-    error,
+    active: superseded ? null : active,
+    error: hiddenError ? null : error,
     stopping,
     dismissError: () => {
       setError(null);

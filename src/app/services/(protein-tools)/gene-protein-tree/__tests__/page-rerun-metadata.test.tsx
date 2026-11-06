@@ -72,9 +72,6 @@ describe("GeneProteinTree page — rerun metadata fields", () => {
   beforeEach(() => {
     sessionStorage.clear();
     server.use(
-      http.get("*/api/auth/profile", () =>
-        HttpResponse.json({ settings: { default_job_folder: "" } }),
-      ),
       // Workspace.get answers "Object not found", so the output name is available.
       http.post("*/api/services/workspace", async ({ request }) => {
         const body = (await request.json()) as { method?: string };

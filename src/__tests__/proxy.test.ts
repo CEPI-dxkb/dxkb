@@ -62,6 +62,15 @@ describe("proxy", () => {
       expect(location.pathname).toBe("/sign-in");
     });
 
+    it("redirects signed-out /copilot, keeping its query", () => {
+      const response = proxy(buildRequest("/copilot?x=1"));
+
+      expect(response.status).toBe(307);
+      const location = getRedirectLocation(response);
+      expect(location.pathname).toBe("/sign-in");
+      expect(location.searchParams.get("redirect")).toBe("/copilot?x=1");
+    });
+
     it("redirects to /sign-in for /settings without session", () => {
       const request = buildRequest("/settings");
       const response = proxy(request);
@@ -273,6 +282,10 @@ describe("proxy", () => {
   // viewSegments at runtime), so it is hand-mirrored in proxy.ts. This guard fails
   // when a new registry entry is added without its matcher line — preventing the
   // ?view=→?tab= rewrite from silently skipping the new segment.
+  it("matches /copilot paths", () => {
+    expect(config.matcher).toContain("/copilot/:path*");
+  });
+
   describe("view-segment matcher drift guard", () => {
     it("includes a matcher line for every view segment", () => {
       for (const segment of viewSegments) {

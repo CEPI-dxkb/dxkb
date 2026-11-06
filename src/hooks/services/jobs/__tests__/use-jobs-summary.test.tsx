@@ -15,7 +15,7 @@ function createWrapper(queryClient = new QueryClient({
   return Wrapper;
 }
 
-import { useJobsSummary } from "../use-jobs-summary";
+import { useJobsSummary, useJobsTaskSummary } from "../use-jobs-summary";
 
 describe("useJobsSummary", () => {
   it("returns summary data on success", async () => {
@@ -158,5 +158,50 @@ describe("useJobsSummary", () => {
     expect(calls).toBe(1);
     // Running jobs would otherwise poll every 3 s.
     expect(nextRefetchInterval(queryClient, ["jobs-summary", false])).toBe(false);
+  });
+});
+
+describe("useJobsTaskSummary", () => {
+  it("reads only task-summary and unwraps its { summary } answer", async () => {
+    let summaryCalls = 0;
+    let capturedBody: unknown;
+    server.use(
+      http.post("/api/services/app-service/jobs/summary", () => {
+        summaryCalls += 1;
+        return HttpResponse.json({ taskSummary: {}, appSummary: {} });
+      }),
+      http.post("/api/services/app-service/jobs/task-summary", async ({ request }) => {
+        capturedBody = await request.json();
+        return HttpResponse.json({ summary: [{ running: 2 }] });
+      }),
+    );
+
+    const { result } = renderHook(() => useJobsTaskSummary(false), {
+      wrapper: createWrapper(),
+    });
+    await waitFor(() => { expect(result.current.isSuccess).toBe(true); });
+
+    expect(result.current.data).toEqual({ taskSummary: { running: 2 } });
+    expect(capturedBody).toEqual(expect.objectContaining({ include_archived: false }));
+    expect(summaryCalls).toBe(0);
+  });
+
+  it("is refreshed by invalidating the jobs-summary prefix and shares the polling policy", async () => {
+    server.use(
+      http.post("/api/services/app-service/jobs/task-summary", () =>
+        HttpResponse.json({ summary: { running: 1 } }),
+      ),
+    );
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    const { result } = renderHook(() => useJobsTaskSummary(false), {
+      wrapper: createWrapper(queryClient),
+    });
+    await waitFor(() => { expect(result.current.isSuccess).toBe(true); });
+
+    expect(nextRefetchInterval(queryClient, ["jobs-summary", "tasks", false])).toBe(3_000);
+    await queryClient.invalidateQueries({ queryKey: ["jobs-summary"] });
+    expect(queryClient.getQueryState(["jobs-summary", "tasks", false])?.dataUpdateCount).toBe(2);
   });
 });

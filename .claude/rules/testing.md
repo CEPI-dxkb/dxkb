@@ -53,6 +53,7 @@ The core four (Lint, Typecheck, Build, Test) must pass before merging. `pnpm typ
 - Use `vi.mock()` for module mocks. Do not reference variables declared with `const`/`let` inside a `vi.mock` factory — vitest hoists the factory above all imports, so the variable will not be initialized yet. Instead, import the mocked module inside the test and access its mock there.
 - Prefer `expect.objectContaining()` over non-null assertions (`!`) to satisfy the `@typescript-eslint/no-non-null-assertion` rule.
 - Globals (`describe`, `it`, `expect`, `vi`) are available without importing (configured via `globals: true`).
+- `vitest.setup.ts` mocks `server-only` globally, so test files need no per-file `vi.mock("server-only")`.
 
 ## Shared Test Helpers
 
@@ -66,6 +67,7 @@ The core four (Lint, Typecheck, Build, Test) must pass before merging. `pnpm typ
 - `react.ts`:
   - `createQueryClientWrapper()` — `QueryClientProvider` wrapper (with `retry: false`) for `renderHook` and React tests that touch TanStack Query.
 - `history-navigation.ts` — `historyNavigationMock({ pathname })`, a `next/navigation` mock for components whose URL state is written with `window.history.pushState`/`replaceState` (the `ResourceChildCollection` tests use it). The usual per-file `next/navigation` mocks return a fixed `useSearchParams`, which, unlike Next's, does not change when the History API writes; this one re-renders its subscribers on every write, which a test that pages or sorts a real child table needs. Build it inside the `vi.mock` factory and reset the address with `history.replaceState` in `beforeEach`.
+- `pending-navigation.tsx` — `createPendingNavigation()` returns `{ Suspender, arm }`. Render `<Suspender />` inside a `<Suspense>` boundary (a suspend outside a transition needs one) and call `arm()` from the mocked `router.push`: inside a transition it suspends forever, so a component's `useTransition` pending state (`aria-busy`/`data-pending`) stays observable in jsdom, where an instant `push` mock never shows it.
 
 See `src/app/api/auth/profile/__tests__/route.test.ts` for a representative usage.
 
@@ -80,6 +82,33 @@ Use [MSW (Mock Service Worker)](https://mswjs.io/docs/) to intercept HTTP reques
 
 - Set env vars (e.g. `process.env.USER_URL`) in `beforeEach` / `afterEach` instead of mocking `getRequiredEnv`.
 - See `src/lib/auth/server/__tests__/session.test.ts`, `server/__tests__/actions.test.ts`, and protected route tests using `setTestSession` for reference examples.
+
+## React Compiler check
+
+Vitest does not run the React Compiler, so a hook or component the compiler skips still passes every unit test, and `pnpm lint` does not report the skip. Functions nested in a hook compile as part of it, so a construct the compiler cannot handle (`??=`, `try…finally`, `for await`, `for (;;)`) anywhere in the hook body skips the whole hook, which then loses its memoization silently. After changing a hook or component, save this script outside the tree (for example in the scratchpad) and run `node rc-check.cjs "$PWD" <file>` from the repo root. Expect no `CompileError` lines and `memo cache present: true`.
+
+```js
+const path = require("node:path");
+const fs = require("node:fs");
+const [root, file] = process.argv.slice(2);
+const pnpmDir = path.join(root, "node_modules/.pnpm");
+const coreDir = fs.readdirSync(pnpmDir).find((d) => d.startsWith("@babel+core@"));
+const babel = require(path.join(pnpmDir, coreDir, "node_modules/@babel/core"));
+const compiler = require(path.join(root, "node_modules/babel-plugin-react-compiler"));
+const events = [];
+const out = babel.transformSync(fs.readFileSync(file, "utf8"), {
+  filename: file, babelrc: false, configFile: false,
+  parserOpts: { plugins: ["typescript", "jsx"] },
+  plugins: [[compiler, { panicThreshold: "none", logger: { logEvent: (_f, e) => events.push(e) } }]],
+});
+for (const e of events) {
+  if (e.kind === "CompileError" || e.kind === "CompileSuccess")
+    console.log(e.kind, e.fnName ?? "", e.detail?.reason ?? e.detail?.options?.reason ?? "", e.detail?.loc?.start?.line ?? "");
+}
+console.log("memo cache present:", /_c\(/.test(out.code));
+```
+
+Move the offending code into a module-level function the hook calls.
 
 ## Linting Rules
 

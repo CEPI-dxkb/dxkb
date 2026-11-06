@@ -1,6 +1,6 @@
 import "server-only";
 import { cookies } from "next/headers";
-import { parseUiPreferences } from "./cookie";
+import { parseUiPreferences } from "./schemas";
 import type { UiPreferences } from "./definitions";
 
 /**

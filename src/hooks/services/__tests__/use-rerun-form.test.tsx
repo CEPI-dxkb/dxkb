@@ -1,9 +1,10 @@
 import { renderHook, waitFor } from "@testing-library/react";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { http, HttpResponse } from "msw";
 import React from "react";
 
 import { useRerunForm } from "@/hooks/services/use-rerun-form";
+import { AuthBoundary } from "@/lib/auth/provider";
+import type { AuthUser } from "@/lib/auth/types";
 import { server } from "@/test-helpers/msw-server";
 import type { Library } from "@/types/services";
 
@@ -18,13 +19,21 @@ function makeForm() {
   };
 }
 
-function wrapper({ children }: { children: React.ReactNode }) {
-  const queryClient = new QueryClient({
-    defaultOptions: { queries: { retry: false } },
-  });
-  return (
-    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
-  );
+function makeWrapper(user: AuthUser | null = null) {
+  return function Wrapper({ children }: { children: React.ReactNode }) {
+    return <AuthBoundary user={user}>{children}</AuthBoundary>;
+  };
+}
+
+const wrapper = makeWrapper();
+
+function userWithFolder(defaultJobFolder?: string): AuthUser {
+  return {
+    id: "u",
+    username: "u",
+    email: "u@example.com",
+    ...(defaultJobFolder ? { defaultJobFolder } : {}),
+  };
 }
 
 function setRerunSession(key: string, payload: Record<string, unknown>) {
@@ -234,36 +243,42 @@ describe("useRerunForm", () => {
     expect(form.setFieldValue).toHaveBeenCalledTimes(1);
   });
 
-  it("applies default_job_folder to output_path when no rerun data", async () => {
+  it("applies defaultJobFolder from the signed-in user without a profile request", async () => {
+    let profileRequests = 0;
     server.use(
-      http.get("*/api/auth/profile", () =>
-        HttpResponse.json({
-          settings: { default_job_folder: "/ws/user/default" },
-        }),
-      ),
+      http.get("*/api/auth/profile", () => {
+        profileRequests += 1;
+        return HttpResponse.json({});
+      }),
     );
     const form = makeForm();
-    renderHook(() => useRerunForm({ form }), { wrapper });
+    renderHook(() => useRerunForm({ form }), {
+      wrapper: makeWrapper(userWithFolder("/ws/user/default")),
+    });
     await waitFor(() => {
       expect(form.setFieldValue).toHaveBeenCalledWith(
         "output_path",
         "/ws/user/default",
       );
     });
+    await new Promise((r) => setTimeout(r, 20));
+    expect(profileRequests).toBe(0);
   });
 
-  it("skips default_job_folder application when rerun data is present", async () => {
+  it("applies nothing when the user has no defaultJobFolder", async () => {
+    const form = makeForm();
+    renderHook(() => useRerunForm({ form }), {
+      wrapper: makeWrapper(userWithFolder()),
+    });
+    await new Promise((r) => setTimeout(r, 20));
+    expect(form.setFieldValue).not.toHaveBeenCalled();
+  });
+
+  it("skips default folder application when rerun data is present", async () => {
     setRerunSession("k8", { output_path: "/ws/rerun" });
-    server.use(
-      http.get("*/api/auth/profile", () =>
-        HttpResponse.json({
-          settings: { default_job_folder: "/ws/default" },
-        }),
-      ),
-    );
     const form = makeForm();
     renderHook(() => useRerunForm({ form, fields: ["output_path"] }), {
-      wrapper,
+      wrapper: makeWrapper(userWithFolder("/ws/default")),
     });
     await waitFor(() => {
       expect(form.setFieldValue).toHaveBeenCalledWith(
@@ -278,16 +293,9 @@ describe("useRerunForm", () => {
   });
 
   it("opts out of default-output-path when defaultOutputPath is null", async () => {
-    server.use(
-      http.get("*/api/auth/profile", () =>
-        HttpResponse.json({
-          settings: { default_job_folder: "/ws/default" },
-        }),
-      ),
-    );
     const form = makeForm();
     renderHook(() => useRerunForm({ form, defaultOutputPath: null }), {
-      wrapper,
+      wrapper: makeWrapper(userWithFolder("/ws/default")),
     });
     await new Promise((r) => setTimeout(r, 20));
     expect(form.setFieldValue).not.toHaveBeenCalled();

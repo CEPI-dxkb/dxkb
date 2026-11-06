@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import {
   CheckCircle2,
@@ -9,10 +10,13 @@ import {
   Clock,
   Loader2,
 } from "lucide-react";
-import { cn, formatUserFacingErrorMessage } from "@/lib/utils";
+import { cn, formatUserFacingErrorMessage, noop } from "@/lib/utils";
 import { useAuth } from "@/lib/auth/provider";
-import { useJobsSummary } from "@/hooks/services/jobs/use-jobs-summary";
-import { useJobsData } from "@/hooks/services/jobs/use-jobs-data";
+import { useJobsTaskSummary } from "@/hooks/services/jobs/use-jobs-summary";
+import {
+  jobsDataQueryOptions,
+  useJobsData,
+} from "@/hooks/services/jobs/use-jobs-data";
 import { useKeptQueryError } from "@/hooks/services/jobs/use-kept-query-error";
 import {
   Popover,
@@ -35,6 +39,18 @@ import {
 /** `formatUserFacingErrorMessage` fallback for a failed job summary read. */
 const summaryErrorFallback = "The job service did not answer.";
 
+/** A warmed list counts as fresh this long, so opening does not refetch it. */
+const recentJobsWarmMs = 10_000;
+
+/** The popover's list: the 5 most recent jobs. */
+const recentJobsParams = {
+  offset: 0,
+  limit: 5,
+  includeArchived: false,
+  sortField: "submit_time",
+  sortOrder: "desc",
+} as const;
+
 function MyJobsHeader({ onNavigate }: { onNavigate: () => void }) {
   return (
     <div className="flex items-center justify-between border-b px-3 py-2">
@@ -53,12 +69,13 @@ function MyJobsHeader({ onNavigate }: { onNavigate: () => void }) {
 export function JobStatusPill() {
   const { isAuthenticated, isSessionUnverified } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
+  const queryClient = useQueryClient();
 
   // While the session could not be verified, the job service may well reject
   // the token too: fetch once and then only when the user asks, rather than
   // polling a request that keeps failing.
   const polls = !isSessionUnverified;
-  const summaryQuery = useJobsSummary(false, { poll: polls });
+  const summaryQuery = useJobsTaskSummary(false, { poll: polls });
   const summary = summaryQuery.data;
   // A refetch of a summary that never loaded (a back-off poll or a Retry)
   // puts it back to pending. Keep its error, so the unavailable pill and its
@@ -110,15 +127,28 @@ export function JobStatusPill() {
   const activeRefetchInterval =
     runningCount > 0 || queuedCount > 0 ? 3_000 : 30_000;
 
+  // The list is only read in the popover, so it loads on open (or on
+  // hover/focus of the trigger, below) rather than polling while closed.
   const { data: jobsResult, isPending } = useJobsData({
-    offset: 0,
-    limit: 5,
-    includeArchived: false,
-    sortField: "submit_time",
-    sortOrder: "desc",
+    ...recentJobsParams,
     refetchInterval: polls ? activeRefetchInterval : false,
-    enabled: displayableCount > 0,
+    enabled: isOpen && displayableCount > 0,
+    staleTime: recentJobsWarmMs,
   });
+
+  const warmRecentJobs = () => {
+    // Covers focus/hover while open. Base UI returns focus to the trigger after
+    // close, so a close may fire one cheap extra read when the list is >10 s old
+    // (accepted).
+    if (isOpen) return;
+    // A failed warm-up is not an error: opening the popover reads it again.
+    void queryClient
+      .query({
+        ...jobsDataQueryOptions(recentJobsParams),
+        staleTime: recentJobsWarmMs,
+      })
+      .catch(noop);
+  };
 
   if (!isAuthenticated) return null;
 
@@ -198,6 +228,8 @@ export function JobStatusPill() {
             variant="inverse-outline"
             size="pill"
             aria-label="View job status"
+            onPointerEnter={warmRecentJobs}
+            onFocus={warmRecentJobs}
           >
             {statusGroups.map(({ key, count, icon: Icon, className }) => (
               <span key={key} className="flex items-center gap-1">

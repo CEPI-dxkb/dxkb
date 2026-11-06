@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { RowSelectionState } from "@tanstack/react-table";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { stretchedColumnWidths } from "../column-resize";
 import { DataTable } from "../data-table";
 import { formatCellValue } from "../data-table-utils";
 
@@ -1440,6 +1441,30 @@ describe("DataTable column drag affordance", () => {
   });
 });
 
+/**
+ * A header cell's rendered width (px) in a scroll box `boxWidth` wide, laid
+ * out as the browser lays out its flex row (jsdom lays out nothing): each cell
+ * is its `--col-size`, plus a share of the room left after the last cell's 8px
+ * margin in proportion to its `--col-grow`.
+ */
+function laidOutWidth(cell: HTMLElement, boxWidth: number): number {
+  const row = [...(cell.closest("tr")?.children ?? [])].filter(
+    (sibling): sibling is HTMLElement => sibling instanceof HTMLElement,
+  );
+  const read = (name: string) =>
+    row.map((sibling) =>
+      Number.parseFloat(sibling.style.getPropertyValue(name)),
+    );
+  const sizes = read("--col-size");
+  const grows = read("--col-grow");
+  const total = (values: number[]) => values.reduce((a, b) => a + b, 0);
+  const room = boxWidth - 8 - total(sizes);
+  const index = row.indexOf(cell);
+  return room > 0 && total(grows) > 0
+    ? sizes[index] + (room * grows[index]) / total(grows)
+    : sizes[index];
+}
+
 // One pointer path for mouse, pen and touch: the handle follows the pressing
 // pointer (followPointer in pointer-drag.ts) until it is lifted or cancelled.
 describe("DataTable resize handle pointer wiring", () => {
@@ -1551,12 +1576,15 @@ describe("DataTable resize handle pointer wiring", () => {
     fireEvent.pointerMove(handle, { pointerId: 1, clientX: 150 });
     expect(handle).toHaveAttribute("aria-valuenow", "383");
     expect(header.style.getPropertyValue("--col-size")).toBe("383px");
+    // A dragged column takes no share of spare room: it is its preview width.
+    expect(header.style.getPropertyValue("--col-grow")).toBe("0");
 
     fireEvent.pointerCancel(handle, { pointerId: 1, isPrimary: true });
 
     expect(onColumnWidthsCommit).not.toHaveBeenCalled();
     expect(handle).toHaveAttribute("aria-valuenow", "333");
     expect(header.style.getPropertyValue("--col-size")).toBe("333px");
+    expect(header.style.getPropertyValue("--col-grow")).toBe("333");
   });
 
   it("commits nothing when the table unmounts mid-drag", async () => {
@@ -1637,24 +1665,69 @@ describe("DataTable resize handle pointer wiring", () => {
         expect(handle).toHaveAttribute("aria-valuenow", "200");
       });
       const header = screen.getByRole("columnheader", { name: /Strain Name/ });
-      const restingSize = header.style.getPropertyValue("--col-size");
+      const restingWidth = laidOutWidth(header, 2000);
       // Stretched well past the 200px setting.
-      expect(Number.parseFloat(restingSize)).toBeGreaterThan(900);
+      expect(restingWidth).toBeGreaterThan(900);
 
       pressHandle(handle, 500);
       fireEvent.pointerMove(handle, { pointerId: 1, clientX: 501 });
       // The drag is live (the handle draws its active bar)…
       expect(handle.firstElementChild).toHaveClass("bg-info");
       // …but nothing moved.
-      expect(header.style.getPropertyValue("--col-size")).toBe(restingSize);
+      expect(laidOutWidth(header, 2000)).toBeCloseTo(restingWidth, 6);
       expect(handle).toHaveAttribute("aria-valuenow", "200");
 
       fireEvent.pointerUp(handle, { pointerId: 1, clientX: 501 });
       expect(onColumnWidthsCommit).not.toHaveBeenCalled();
-      expect(header.style.getPropertyValue("--col-size")).toBe(restingSize);
+      expect(laidOutWidth(header, 2000)).toBeCloseTo(restingWidth, 6);
     } finally {
       clientWidth.mockRestore();
     }
+  });
+
+  // Collapsing the view rail or dragging the detail panel resizes the scroll
+  // container on every animation frame. The browser stretches the columns
+  // (flex-grow in proportion to each setting) so a resize re-renders nothing;
+  // that must still give the widths the stretch formula gives.
+  it("stretches resting columns in proportion to their settings", async () => {
+    render(
+      <DataTable
+        id="flex-stretch"
+        data={[{ genome_id: "100.1", strain_name: "A", public_id: "B" }]}
+        columns={[
+          { id: "strain_name", label: "Strain Name", visible: true },
+          { id: "public_id", label: "Public ID", visible: true },
+        ]}
+        totalItems={1}
+        resource="genome"
+        savedColumnWidths={{ strain_name: 300, public_id: 100 }}
+      />,
+    );
+    const headers = screen.getAllByRole("columnheader");
+    await waitFor(() => {
+      expect(
+        headers.map((header) => header.style.getPropertyValue("--col-size")),
+      ).toEqual(["40px", "300px", "100px"]);
+    });
+    // The selection column keeps its width; the others share the room.
+    expect(
+      headers.map((header) => header.style.getPropertyValue("--col-grow")),
+    ).toEqual(["0", "300", "100"]);
+
+    for (const boxWidth of [2000, 1200]) {
+      const expected = stretchedColumnWidths(
+        [40, 300, 100],
+        boxWidth - 8,
+        [true, false, false],
+      );
+      headers.forEach((header, i) => {
+        expect(laidOutWidth(header, boxWidth)).toBeCloseTo(expected[i], 6);
+      });
+    }
+    // Narrower than the settings: no stretch, the container scrolls.
+    expect(headers.map((header) => laidOutWidth(header, 300))).toEqual([
+      40, 300, 100,
+    ]);
   });
 });
 

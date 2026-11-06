@@ -54,7 +54,6 @@ import {
   pickerPathLabel,
   pickerRowKey,
   pickerTitleFor,
-  pickerTypePhrase,
   viewLabel,
   visiblePickerRows,
   type PickerLocation,
@@ -65,6 +64,7 @@ import {
 import { knownUploadTypes } from "@/lib/services/workspace/types";
 import { workspaceQueryKeys } from "@/lib/services/workspace/workspace-query-keys";
 import { cn } from "@/lib/utils";
+import { FolderPickerAcceptedTypes } from "./folder-picker-accepted-types";
 import { FolderPickerBreadcrumb } from "./folder-picker-breadcrumb";
 import { FolderPickerColumn } from "./folder-picker-column";
 import {
@@ -536,9 +536,15 @@ function FolderColumnsBrowser({
           <div className="flex min-w-0 flex-col gap-1.5">
             <DialogTitle>{title}</DialogTitle>
             <DialogDescription>
-              {target.kind === "object"
-                ? `Click a folder to open it. Double-click a file, or press Enter, to choose it. Accepts ${pickerTypePhrase(target.types)}.`
-                : "Click a folder to open it. Double-click it, or press Enter, to choose it."}
+              {target.kind === "object" ? (
+                <>
+                  Click a folder to open it. Double-click a file, or press
+                  Enter, to choose it.{" "}
+                  <FolderPickerAcceptedTypes types={target.types} />
+                </>
+              ) : (
+                "Click a folder to open it. Double-click it, or press Enter, to choose it."
+              )}
             </DialogDescription>
           </div>
           <div className="flex shrink-0 items-center gap-4">

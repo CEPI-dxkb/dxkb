@@ -102,6 +102,8 @@ export const reflowSkip: ReflowSkipMap = {
   "strain-list": { ticket: "DXKBCORE-178" },
   "domains-and-motifs": { ticket: "DXKBCORE-178" },
   "protein-structure": { ticket: "DXKBCORE-178" },
+  // Advanced search — same mobile navbar overflow as every other page above.
+  "advanced-search": { ticket: "DXKBCORE-178" },
   // The bare `experiment` and `experiment-singular` keys that used to sit here
   // stopped matching when both entries gained variants: the sweep keys those
   // scans `experiment/{experiments,biosets}` and

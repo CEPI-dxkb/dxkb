@@ -130,6 +130,13 @@ export function buildJobsOverrides(
     },
   });
 
+  // The header job pill reads task counts from here, not from /summary.
+  overrides.push({
+    url: /\/api\/services\/app-service\/jobs\/task-summary$/,
+    method: "POST",
+    body: { summary: summarizeJobs(jobs) },
+  });
+
   for (const job of jobs) {
     overrides.push({
       url: new RegExp(`/api/services/app-service/jobs/${job.id}(?:\\?|$)`),

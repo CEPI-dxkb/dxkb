@@ -75,6 +75,7 @@ export const config = {
     "/services/:path*",
     "/workspace/:path*",
     "/jobs/:path*",
+    "/copilot/:path*",
     "/settings/:path*",
     "/viewer/:path*",
     "/view/:path*",

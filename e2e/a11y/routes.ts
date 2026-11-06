@@ -71,6 +71,8 @@ export interface RouteEntry {
   needsWorkspace?: boolean;
   /** Add jobs overrides to mock stack. */
   needsJobs?: boolean;
+  /** Add Copilot (`/api/copilot/*`) overrides to mock stack. */
+  needsCopilot?: boolean;
   /** Include in webkit/firefox thin tripwire project. */
   tripwire?: boolean;
   /** Include in mobile-thin project (375px viewport). */
@@ -247,6 +249,14 @@ export const routes: RouteEntry[] = [
         path: "/search?type=pathway&q=influenza",
       },
     ],
+  },
+
+  // ── Advanced Search (dynamic — one variant per type, one sampled for coverage)
+  {
+    name: "advanced-search",
+    path: "/advanced-search/genomes",
+    pages: ["advanced-search/[type]/page.tsx"],
+    unauthenticated: true,
   },
 
   // ── Taxonomy (dynamic — two variants for multi-param coverage) ───────────────
@@ -449,6 +459,14 @@ export const routes: RouteEntry[] = [
     pages: ["jobs/page.tsx"],
     needsJobs: true,
     tripwire: true,
+  },
+
+  // ── Copilot ──────────────────────────────────────────────────────────────────
+  {
+    name: "copilot",
+    path: "/copilot",
+    pages: ["copilot/page.tsx"],
+    needsCopilot: true,
   },
 
   // ── Settings ─────────────────────────────────────────────────────────────────

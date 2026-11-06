@@ -112,6 +112,31 @@ describe("auth actions", () => {
     expect(result.data?.user).not.toHaveProperty("token");
   });
 
+  it("carries settings.default_job_folder on the user, omitting it when unset or empty", async () => {
+    mocks.authenticate.mockResolvedValue({ data: { token: "t" }, error: null });
+    mocks.writeSession.mockResolvedValue(1);
+    mocks.getProfile.mockResolvedValue({
+      data: profile({ settings: { default_job_folder: "/alice@realm/home" } }),
+      error: null,
+    });
+    const withFolder = await signIn({ username: "u", password: "p" });
+    expect(withFolder.data?.user.defaultJobFolder).toBe("/alice@realm/home");
+
+    for (const settings of [
+      undefined,
+      {},
+      { default_job_folder: "" },
+      { default_job_folder: 42 as unknown as string },
+    ]) {
+      mocks.getProfile.mockResolvedValue({
+        data: profile({ settings }),
+        error: null,
+      });
+      const result = await signIn({ username: "u", password: "p" });
+      expect(result.data?.user).not.toHaveProperty("defaultJobFolder");
+    }
+  });
+
   it("does not create a partial session during profile outage", async () => {
     mocks.authenticate.mockResolvedValue({ data: { token: "t" }, error: null });
     mocks.getProfile.mockResolvedValue({
@@ -384,11 +409,13 @@ describe("auth actions", () => {
     });
     mocks.getProfile.mockResolvedValue({ data: null, error: outage() });
 
-    await expect(getCurrentUser()).resolves.toMatchObject({
+    const user = await getCurrentUser();
+    expect(user).toMatchObject({
       id: "canonical-id",
       realm: "realm",
       sessionUnverified: true,
     });
+    expect(user).not.toHaveProperty("defaultJobFolder");
     expect(mocks.getProfile).toHaveBeenCalledWith("canonical-id", "token", {
       timeoutMs: 5_000,
     });
@@ -402,14 +429,17 @@ describe("auth actions", () => {
       invoke: () => requestPasswordReset("alice@example.com"),
       adapter: mocks.requestPasswordReset,
       args: ["alice@example.com"],
+      readsSession: false,
     },
     {
       name: "email token verification",
       invoke: () => verifyEmailToken("verification-token", "alice"),
       adapter: mocks.verifyEmailToken,
       args: ["verification-token", "alice"],
+      // To drop the session's cached profile once the email is verified.
+      readsSession: true,
     },
-  ])("delegates $name without touching session state", async (testCase) => {
+  ])("delegates $name without changing session state", async (testCase) => {
     testCase.adapter.mockResolvedValue({ data: undefined, error: null });
 
     await expect(testCase.invoke()).resolves.toEqual({
@@ -417,8 +447,15 @@ describe("auth actions", () => {
       error: null,
     });
     expect(testCase.adapter).toHaveBeenCalledWith(...testCase.args);
-    expect(mocks.readSession).not.toHaveBeenCalled();
+    expect(mocks.readSession).toHaveBeenCalledTimes(
+      testCase.readsSession ? 1 : 0,
+    );
+    expect(mocks.writeSession).not.toHaveBeenCalled();
     expect(mocks.clearCurrentSession).not.toHaveBeenCalled();
+    expect(mocks.clearSession).not.toHaveBeenCalled();
+    expect(mocks.writeBackup).not.toHaveBeenCalled();
+    expect(mocks.clearBackup).not.toHaveBeenCalled();
+    expect(mocks.restoreBackup).not.toHaveBeenCalled();
   });
 
   it.each([

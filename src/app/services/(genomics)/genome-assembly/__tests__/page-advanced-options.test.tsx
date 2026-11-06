@@ -31,9 +31,6 @@ describe("GenomeAssembly page — advanced options", () => {
     sessionStorage.clear();
     window.history.replaceState({}, "", "/");
     server.use(
-      http.get("*/api/auth/profile", () =>
-        HttpResponse.json({ settings: { default_job_folder: "" } }),
-      ),
       // Workspace.get "Object not found": the output name is available.
       http.post("*/api/services/workspace", async ({ request }) => {
         const body = (await request.json()) as { method?: string };

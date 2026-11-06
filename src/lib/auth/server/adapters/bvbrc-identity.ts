@@ -13,10 +13,9 @@ import {
   upstreamCauseCode,
   upstreamTimeoutFailure,
 } from "@/lib/api/upstream-failure";
+import { bvbrcServerUserAgent } from "@/lib/api/server-user-agent";
 import { fail, networkFailure, ok } from "../result";
 
-// Cloudflare rejects Node's default user-agent for BV-BRC API requests.
-const serverUserAgent = "curl/8.7.1 DXKB-V2/1.0";
 const requestTimeoutMs = 15_000;
 
 function joinUrl(base: string, path = ""): string {
@@ -65,7 +64,7 @@ async function request(
   }, timeoutMs);
   try {
     const headers = new Headers(init.headers);
-    headers.set("User-Agent", serverUserAgent);
+    headers.set("User-Agent", bvbrcServerUserAgent);
     const response = await fetch(input, {
       ...init,
       headers,

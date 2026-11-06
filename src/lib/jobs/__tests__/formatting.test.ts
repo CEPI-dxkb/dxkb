@@ -90,6 +90,23 @@ describe("formatUnixTimestamp", () => {
     expect(result).not.toBe("\u2014");
   });
 
+  it("matches toLocaleString output for a fixed timestamp", () => {
+    expect(formatUnixTimestamp(1700000000)).toBe(
+      new Date(1700000000 * 1000).toLocaleString("en-US", {
+        month: "numeric",
+        day: "numeric",
+        year: "2-digit",
+        hour: "numeric",
+        minute: "2-digit",
+        hour12: true,
+      }),
+    );
+  });
+
+  it('returns "Invalid Date" for a finite but out-of-range timestamp', () => {
+    expect(formatUnixTimestamp(1e20)).toBe("Invalid Date");
+  });
+
   it('returns "\u2014" for undefined', () => {
     expect(formatUnixTimestamp(undefined)).toBe("\u2014");
   });

@@ -250,6 +250,9 @@ importers:
       '@react-sigma/core':
         specifier: ^5.0.6
         version: 5.0.6(graphology@0.26.0(graphology-types@0.24.8))(react@19.3.0)(sigma@3.0.3(graphology-types@0.24.8))
+      '@shadcn/react':
+        specifier: 0.3.1
+        version: 0.3.1(@types/react@19.3.0)(react@19.3.0)
       '@sigma/export-image':
         specifier: ^3.0.0
         version: 3.0.0(sigma@3.0.3(graphology-types@0.24.8))
@@ -376,6 +379,9 @@ importers:
       react-icons:
         specifier: ^5.7.0
         version: 5.7.0(react@19.3.0)
+      react-markdown:
+        specifier: ^10.1.0
+        version: 10.1.0(@types/react@19.3.0)(react@19.3.0)(supports-color@5.5.0)
       react-number-format:
         specifier: ^5.4.5
         version: 5.4.5(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
@@ -385,6 +391,9 @@ importers:
       react-zoom-pan-pinch:
         specifier: ^4.2.0
         version: 4.2.0(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      remark-gfm:
+        specifier: ^4.0.1
+        version: 4.0.1(supports-color@5.5.0)
       server-only:
         specifier: ^0.0.1
         version: 0.0.1
@@ -3097,6 +3106,17 @@ packages:
       '@typescript-eslint/parser':
         optional: true
       eslint:
+        optional: true
+
+  '@shadcn/react@0.3.1':
+    resolution: {integrity: sha512-2gOR0HDMtWeRsCZfNDaU0YDFdgH3zsDQ6lz67Fv/y/qjY9y+R8kJqAn6q56phqv7/zHi0wqURjntrNO9zL7vnQ==}
+    peerDependencies:
+      '@types/react': '>=19'
+      react: '>=19'
+    peerDependenciesMeta:
+      '@types/react':
+        optional: true
+      react:
         optional: true
 
   '@sigma/export-image@3.0.0':
@@ -12483,6 +12503,11 @@ snapshots:
       '@typescript-eslint/parser': 8.71.0(eslint@9.39.5(jiti@2.7.0)(supports-color@5.5.0))(supports-color@5.5.0)(typescript@6.0.3)
       eslint: 9.39.5(jiti@2.7.0)(supports-color@5.5.0)
       oxc-parser: 0.148.0
+
+  '@shadcn/react@0.3.1(@types/react@19.3.0)(react@19.3.0)':
+    optionalDependencies:
+      '@types/react': 19.3.0
+      react: 19.3.0
 
   '@sigma/export-image@3.0.0(sigma@3.0.3(graphology-types@0.24.8))':
     dependencies:

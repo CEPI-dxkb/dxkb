@@ -187,3 +187,23 @@ describe("useWorkspaceNavigation", () => {
     expect(mockRouter.push).not.toHaveBeenCalled();
   });
 });
+
+describe("useWorkspaceNavigation identity", () => {
+  it("keeps handleItemDoubleClick and navigateToItem across re-renders with equal inputs", () => {
+    const router = { push: vi.fn() };
+    const clearSelection = vi.fn();
+    const { result, rerender } = renderHook(() =>
+      useWorkspaceNavigation({
+        mode: "home",
+        username: "testuser",
+        path: "",
+        router,
+        clearSelection,
+      }),
+    );
+    const first = result.current;
+    rerender();
+    expect(result.current.handleItemDoubleClick).toBe(first.handleItemDoubleClick);
+    expect(result.current.navigateToItem).toBe(first.navigateToItem);
+  });
+});

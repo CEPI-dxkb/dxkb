@@ -10,6 +10,8 @@ import { AuthBoundary } from "@/lib/auth/provider";
 import { getCurrentUser } from "@/lib/auth/server/actions";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { CommandPalette } from "@/components/search/command-palette";
+import { CopilotProvider } from "@/components/copilot/copilot-provider";
+import { CopilotSurfaces } from "@/components/copilot/copilot-surfaces";
 import { UiPreferencesProvider } from "@/lib/ui-preferences/provider";
 import { readUiPreferences } from "@/lib/ui-preferences/server";
 
@@ -51,11 +53,13 @@ export default async function RootLayout({
           <ThemeProvider>
             <AuthBoundary user={initialUser}>
               <UiPreferencesProvider initialPreferences={initialPreferences}>
-                <TooltipProvider>
-                  {children}
-                  {/* Dev-only debug loader: safe to include in dev; no runtime UI */}
-                </TooltipProvider>
-                <CommandPalette />
+                <CopilotProvider>
+                  <TooltipProvider>
+                    {children}
+                    <CopilotSurfaces />
+                  </TooltipProvider>
+                  <CommandPalette />
+                </CopilotProvider>
               </UiPreferencesProvider>
             </AuthBoundary>
             <Toaster

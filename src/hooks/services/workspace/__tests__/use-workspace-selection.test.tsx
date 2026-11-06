@@ -48,6 +48,64 @@ describe("useWorkspaceSelection", () => {
     ).not.toThrow();
   });
 
+  it("keeps clearSelection identity across a selection change", () => {
+    const items = [makeItem({ name: "a.txt", path: "/a.txt" })];
+    const { result } = renderHook(() =>
+      useWorkspaceSelection({ ...defaultProps, processedItems: items }),
+    );
+    const clear = result.current.clearSelection;
+
+    act(() => {
+      result.current.handleSelectItem(items[0]);
+    });
+    expect(result.current.clearSelection).toBe(clear);
+
+    act(() => {
+      result.current.clearSelection();
+    });
+    expect(result.current.selectedPaths).toEqual([]);
+    expect(result.current.clearSelection).toBe(clear);
+  });
+
+  it("keeps handleSelectItem identity across a selection change and still selects", () => {
+    const items = [
+      makeItem({ name: "a.txt", path: "/a.txt" }),
+      makeItem({ name: "b.txt", path: "/b.txt" }),
+      makeItem({ name: "c.txt", path: "/c.txt" }),
+    ];
+    const { result } = renderHook(() =>
+      useWorkspaceSelection({ ...defaultProps, processedItems: items }),
+    );
+    const handler = result.current.handleSelectItem;
+
+    act(() => {
+      result.current.handleSelectItem(items[0]);
+    });
+    expect(result.current.handleSelectItem).toBe(handler);
+    expect(result.current.selectedPaths).toEqual(["a.txt"]);
+
+    act(() => {
+      result.current.handleSelectItem(items[2], {
+        ctrlOrMeta: false,
+        shift: true,
+      });
+    });
+    expect(result.current.handleSelectItem).toBe(handler);
+    expect(result.current.selectedPaths).toEqual([
+      "a.txt",
+      "b.txt",
+      "c.txt",
+    ]);
+
+    act(() => {
+      result.current.handleSelectItem(items[1], {
+        ctrlOrMeta: true,
+        shift: false,
+      });
+    });
+    expect(result.current.selectedPaths).toEqual(["a.txt", "c.txt"]);
+  });
+
   it("updates selection immediately and defers panel expansion", () => {
     vi.useFakeTimers();
     const item = makeItem({

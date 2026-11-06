@@ -71,6 +71,7 @@ export const upstreamServices = {
   fileStorage: "the BV-BRC file storage service",
   minhash: "the BV-BRC minhash service",
   compareRegion: "the BV-BRC compare region service",
+  copilot: "the BV-BRC Copilot service",
 } as const;
 
 /**
@@ -116,6 +117,12 @@ export const upstreamTimeoutMs = {
    * genomes (measured 2026-10-23).
    */
   compareRegion: 120_000,
+  /**
+   * Copilot gateway reads (models, sessions). A chat turn streams through with
+   * `streamBody`, so this bounds only the wait for its headers: the gateway
+   * answers those at once and then sends `: connected` and heartbeats.
+   */
+  copilot: 30_000,
 } as const;
 
 const timeoutCodes = new Set([

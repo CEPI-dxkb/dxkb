@@ -26,6 +26,8 @@ import {
   writeSession,
 } from "../session";
 import { sessionMaxAgeMs } from "../cookies";
+import { readCachedProfile, rememberProfile } from "../profile-cache";
+import type { UserProfile } from "@/lib/auth/types";
 
 beforeEach(() => {
   store.get.mockReset();
@@ -189,5 +191,47 @@ describe("session cookies", () => {
       "bvbrc_realm",
     ]);
     expect(store.set.mock.calls[3][0]).toBe("bvbrc_su_original_token");
+  });
+});
+
+describe("cached profile eviction", () => {
+  const profile = (id: string): UserProfile => ({
+    id,
+    l_id: id,
+    email: `${id}@example.com`,
+    email_verified: true,
+    first_name: "First",
+    last_name: "Last",
+    creation_date: "",
+    last_login: "",
+    organisms: "",
+    reverification: false,
+    source: "test",
+  });
+
+  beforeEach(() => {
+    cookies({
+      bvbrc_token: "user-token",
+      bvbrc_user_id: "user",
+      bvbrc_su_original_token: "admin-token",
+      bvbrc_su_original_user_id: "admin",
+    });
+    rememberProfile("user", "user-token", profile("user"));
+    rememberProfile("admin", "admin-token", profile("admin"));
+  });
+
+  it("forgets the current token's profile when the current session is cleared", async () => {
+    await clearCurrentSession();
+
+    expect(readCachedProfile("user", "user-token")).toBeUndefined();
+    // The SU backup cookies are kept, and so is their profile.
+    expect(readCachedProfile("admin", "admin-token")).toEqual(profile("admin"));
+  });
+
+  it("forgets the current and SU backup tokens' profiles on a full clear", async () => {
+    await clearSession();
+
+    expect(readCachedProfile("user", "user-token")).toBeUndefined();
+    expect(readCachedProfile("admin", "admin-token")).toBeUndefined();
   });
 });

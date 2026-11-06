@@ -10,6 +10,7 @@ import {
   setTestSession,
   testCookieStore,
 } from "@/test-helpers/api-route-helpers";
+import { getCurrentUser } from "@/lib/auth/server/actions";
 import { GET, POST } from "../route";
 const userUrl = "http://mock-user-url";
 
@@ -157,6 +158,41 @@ describe("POST /api/auth/profile", () => {
     expect(capturedBody).toBe(JSON.stringify(patchOps));
     expect(capturedContentType).toBe("application/json-patch+json");
     expect(capturedAuthorization).toBe("the-token");
+  });
+
+  it("makes the next getCurrentUser() read the saved profile, not the cached one", async () => {
+    setAuthCookies("the-token", "user1");
+    let storedProfile = validProfile;
+    let profileReads = 0;
+    server.use(
+      http.get(`${userUrl}/user1`, () => {
+        profileReads += 1;
+        return HttpResponse.json(storedProfile);
+      }),
+      http.post(`${userUrl}/user1`, () => {
+        storedProfile = { ...storedProfile, first_name: "Renamed" };
+        return HttpResponse.json({ success: true });
+      }),
+    );
+    await getCurrentUser();
+    await expect(getCurrentUser()).resolves.toMatchObject({
+      first_name: "Test",
+    });
+    expect(profileReads).toBe(1);
+
+    const response = await POST(
+      mockNextRequest({
+        method: "POST",
+        body: [{ op: "replace", path: "/first_name", value: "Renamed" }],
+      }),
+      {},
+    );
+
+    expect(response.status).toBe(200);
+    await expect(getCurrentUser()).resolves.toMatchObject({
+      first_name: "Renamed",
+    });
+    expect(profileReads).toBe(2);
   });
 
   it.each([

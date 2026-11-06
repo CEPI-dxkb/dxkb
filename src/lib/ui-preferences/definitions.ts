@@ -1,11 +1,6 @@
-import { z } from "zod";
 import { jobsPanelIds } from "@/constants/jobs-panels";
 import { workspacePanelIds } from "@/constants/workspace-panels";
-import { workspaceSortFields } from "@/constants/workspace-sort";
-import {
-  compareRegionDensities,
-  type CompareRegionDensity,
-} from "@/lib/compare-region/density-options";
+import type { CompareRegionDensity } from "@/lib/compare-region/density-options";
 import type { WorkspaceSortConfig } from "@/types/workspace-browser";
 
 /**
@@ -17,6 +12,10 @@ import type { WorkspaceSortConfig } from "@/types/workspace-browser";
  * "use client" module reaches server code as a client reference rather than its
  * value — which is exactly how the old `workspace-panel-layout` cookie read came back
  * `undefined` on every request.
+ *
+ * It also imports no zod: the provider reaches every route's first-load JS through the
+ * root layout. The schemas and the cookie parsers live in `./schemas`, used only by
+ * the server read in `./server`.
  */
 
 type WorkspacePanelId = (typeof workspacePanelIds)[keyof typeof workspacePanelIds];
@@ -37,35 +36,40 @@ export interface UiPreferences {
   workspaceSort: WorkspaceSortConfig;
   /** Compare Region Viewer figure density on the feature page. */
   compareRegionDensity: CompareRegionDensity;
+  /** Where the navbar's Copilot button opens the chat. */
+  copilotSurface: CopilotSurface;
+  /** The floating Copilot window's last position and size, in CSS pixels. */
+  copilotFloatingRect: CopilotFloatingRect;
+}
+
+export const copilotSurfaces = ["sheet", "floating"] as const;
+export type CopilotSurface = (typeof copilotSurfaces)[number];
+
+export interface CopilotFloatingRect {
+  /** Distance from the viewport's right edge. */
+  right: number;
+  /** Distance from the viewport's bottom edge. */
+  bottom: number;
+  width: number;
+  height: number;
 }
 
 export type UiPreferenceKey = keyof UiPreferences;
 
 interface UiPreferenceDefinition<T> {
   cookieName: string;
-  schema: z.ZodType<T>;
   defaultValue: T;
 }
-
-// Strictly positive: the app never saves a share <= 0 (saves need details > 0, and main
-// has a minSize). A hand-edited 0 would make Show a no-op (`resize("0%")`), and {0, 0}
-// makes the library compute a NaN width.
-const panelShare = z.number().gt(0).max(100);
 
 export const uiPreferenceDefinitions: {
   [K in UiPreferenceKey]: UiPreferenceDefinition<UiPreferences[K]>;
 } = {
   viewNavCollapsed: {
     cookieName: "dxkb-view-nav-collapsed",
-    schema: z.boolean(),
     defaultValue: false,
   },
   workspacePanelLayout: {
     cookieName: "dxkb-workspace-panel-layout",
-    schema: z.strictObject({
-      [workspacePanelIds.main]: panelShare,
-      [workspacePanelIds.details]: panelShare,
-    }),
     defaultValue: {
       [workspacePanelIds.main]: 60,
       [workspacePanelIds.details]: 40,
@@ -73,10 +77,6 @@ export const uiPreferenceDefinitions: {
   },
   jobsPanelLayout: {
     cookieName: "dxkb-jobs-panel-layout",
-    schema: z.strictObject({
-      [jobsPanelIds.main]: panelShare,
-      [jobsPanelIds.details]: panelShare,
-    }),
     // The shell used to pass defaultSize 75% and 20%, which the library normalized to
     // this split. Keeping the normalized numbers keeps the default pixel-identical.
     defaultValue: {
@@ -86,27 +86,38 @@ export const uiPreferenceDefinitions: {
   },
   resourceDetailPanelSize: {
     cookieName: "dxkb-resource-detail-panel-size",
-    // Same window as the side-by-side panel's minSize/maxSize in resource-workspace.tsx.
-    schema: z.number().min(10).max(60),
     defaultValue: 15,
   },
   workspaceShowHiddenFiles: {
     cookieName: "dxkb-workspace-show-hidden",
-    schema: z.boolean(),
     defaultValue: false,
   },
   workspaceSort: {
     cookieName: "dxkb-workspace-sort",
-    schema: z.strictObject({
-      field: z.enum(workspaceSortFields),
-      direction: z.enum(["asc", "desc"]),
-    }),
     defaultValue: { field: "name", direction: "asc" },
   },
   compareRegionDensity: {
     cookieName: "dxkb-compare-region-density",
-    schema: z.enum(compareRegionDensities),
     defaultValue: "comfortable",
+  },
+  copilotSurface: {
+    cookieName: "dxkb-copilot-surface",
+    schema: z.enum(copilotSurfaces),
+    defaultValue: "sheet",
+  },
+  copilotFloatingRect: {
+    cookieName: "dxkb-copilot-floating-rect",
+    // Anchored to the bottom-right corner, so a smaller window later still
+    // shows the window; the component clamps it into the viewport. Width and
+    // height only need to be sane: a cookie saved on a small viewport can hold
+    // less than the 320x360 minimum, and the component restores the minimum.
+    schema: z.strictObject({
+      right: z.number().min(0).max(10_000),
+      bottom: z.number().min(0).max(10_000),
+      width: z.number().min(0).max(10_000),
+      height: z.number().min(0).max(10_000),
+    }),
+    defaultValue: { right: 24, bottom: 24, width: 420, height: 640 },
   },
 };
 

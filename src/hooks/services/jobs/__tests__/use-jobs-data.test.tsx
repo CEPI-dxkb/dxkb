@@ -141,6 +141,22 @@ describe("parseJobsResponse", () => {
   ])("throws for %s", (_case, response) => {
     expect(() => parseJobsResponse(response)).toThrow("Invalid jobs response");
   });
+
+  it("names the failing field path in the thrown message", () => {
+    // An unknown status inside a row is reported against the tuple-or-array union
+    // that holds the rows, so the path is "jobs", not "jobs[0].status".
+    expect(() =>
+      parseJobsResponse({
+        jobs: [{ ...validJob, status: "killed" }],
+        totalTasks: 1,
+      }),
+    ).toThrow(/^Invalid jobs response: [\s\S]*→ at jobs/);
+    expect(() =>
+      parseJobsResponse({ jobs: [], totalTasks: "1" }),
+    ).toThrow(
+      /expected number, received string[\s\S]*→ at totalTasks/,
+    );
+  });
 });
 
 describe("useJobsData", () => {
@@ -311,5 +327,38 @@ describe("useJobsData", () => {
     await act(() => result.current.refetch());
     expect(queryClient.getQueryCache().find({ queryKey: ["jobs-filtered"], exact: false })?.state.status).toBe("error");
     expect(nextRefetchInterval(queryClient, ["jobs-filtered"])).toBe(false);
+  });
+});
+
+describe("useJobsData client default staleTime", () => {
+  it("inherits the QueryClient's staleTime when the caller sets none", async () => {
+    server.use(
+      http.post("/api/services/app-service/jobs/enumerate-tasks-filtered", () =>
+        HttpResponse.json({ jobs: [], totalTasks: 0 }),
+      ),
+    );
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false, staleTime: 60_000 } },
+    });
+    const { result } = renderHook(
+      () =>
+        useJobsData({
+          offset: 0,
+          limit: 5,
+          includeArchived: false,
+          sortField: "submit_time",
+          sortOrder: "desc",
+        }),
+      {
+        wrapper: ({ children }: { children: React.ReactNode }) => (
+          <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+        ),
+      },
+    );
+    await waitFor(() => { expect(result.current.isSuccess).toBe(true); });
+
+    // With the client's 60 s window the fresh read is not stale (a 0 window
+    // from an explicit `staleTime: undefined` would make it stale at once).
+    expect(result.current.isStale).toBe(false);
   });
 });

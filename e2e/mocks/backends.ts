@@ -75,6 +75,12 @@ const defaultOverrides: JsonOverride[] = [
     method: "POST",
     body: { taskSummary: {}, appSummary: {} },
   },
+  // The header job pill reads task counts only.
+  {
+    url: "/api/services/app-service/jobs/task-summary",
+    method: "POST",
+    body: { summary: {} },
+  },
 ];
 
 // Per-page log of backend requests the strict guard aborted. Populated inside the

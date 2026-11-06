@@ -39,9 +39,6 @@ describe("GeneProteinTree page — alphabet toggle filters incompatible sequence
     sessionStorage.clear();
     window.history.replaceState({}, "", "/");
     server.use(
-      http.get("*/api/auth/profile", () =>
-        HttpResponse.json({ settings: { default_job_folder: "" } }),
-      ),
       // Workspace.get returns 500 so the OutputFolder name-availability check treats the name
       // as available (same trick as genome-assembly/page-rerun.test.tsx); other workspace RPCs
       // return [] for empty listings.

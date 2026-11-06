@@ -11,6 +11,7 @@ const guardCallPattern =
   /^\s*(?:(?:const|let|var)\s+[^=]+=\s*)?await\s+requireCurrentUserOrRedirect\(/m;
 
 const protectedLayouts = [
+  "src/app/copilot/layout.tsx",
   "src/app/jobs/layout.tsx",
   "src/app/settings/layout.tsx",
   "src/app/viewer/structure/layout.tsx",
@@ -33,6 +34,7 @@ const publicLayouts = [
   "src/app/(footer)/layout.tsx",
   "src/app/(footer)/citations/layout.tsx",
   "src/app/(views)/layout.tsx",
+  "src/app/advanced-search/layout.tsx",
   "src/app/organisms/layout.tsx",
   "src/app/search/layout.tsx",
   "src/app/services/layout.tsx",

@@ -57,14 +57,20 @@ export function formatElapsedSeconds(seconds: number | undefined): string {
   return m > 0 ? `${String(m)}m${String(s)}s` : `${String(s)}s`;
 }
 
+// Hoisted: building an Intl object per call costs far more than formatting.
+const unixTimestampFormat = new Intl.DateTimeFormat("en-US", {
+  month: "numeric",
+  day: "numeric",
+  year: "2-digit",
+  hour: "numeric",
+  minute: "2-digit",
+  hour12: true,
+});
+
 export function formatUnixTimestamp(ts: number | undefined): string {
   if (ts == null || !Number.isFinite(ts)) return "\u2014";
-  return new Date(ts * 1000).toLocaleString("en-US", {
-    month: "numeric",
-    day: "numeric",
-    year: "2-digit",
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
-  });
+  const date = new Date(ts * 1000);
+  // DateTimeFormat#format throws on an invalid date; toLocaleString did not.
+  if (Number.isNaN(date.getTime())) return "Invalid Date";
+  return unixTimestampFormat.format(date);
 }

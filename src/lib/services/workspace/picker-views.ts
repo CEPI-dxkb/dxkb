@@ -41,6 +41,8 @@ export type PickerSelectablePredicate = (object: {
   type?: string;
 }) => boolean;
 
+const nameCollator = new Intl.Collator(undefined, { sensitivity: "base" });
+
 const folderTarget: PickerTarget = { kind: "folder" };
 
 /**
@@ -293,7 +295,7 @@ export function buildPickerItems({
     const aFolder = isFolderType(a.type);
     const bFolder = isFolderType(b.type);
     if (aFolder !== bFolder) return aFolder ? -1 : 1;
-    return a.name.localeCompare(b.name, undefined, { sensitivity: "base" });
+    return nameCollator.compare(a.name, b.name);
   });
 }
 
@@ -405,7 +407,24 @@ export function pickerTypeLabel(type: string): string {
 
 /** "Contigs or Reads". */
 export function pickerTypeList(types: readonly string[]): string {
-  return typeListFormat.format([...new Set(types.map(pickerTypeLabel))]);
+  return typeListFormat.format(pickerTypeLabels(types));
+}
+
+/** Each type's label once, in the order given. */
+export function pickerTypeLabels(types: readonly string[]): string[] {
+  return [...new Set(types.map(pickerTypeLabel))];
+}
+
+/**
+ * The most types a picker names in a sentence. Every service preset is within
+ * it; a longer list (the Copilot's "any file") would bury the instructions,
+ * so the dialog offers it behind a button and the reasons leave it out.
+ */
+export const maxListedPickerTypes = 4;
+
+/** Whether these types are too many to name in a sentence. */
+export function isLongPickerTypeList(types: readonly string[]): boolean {
+  return pickerTypeLabels(types).length > maxListedPickerTypes;
 }
 
 const groupKindByType: Record<string, string | undefined> = {
@@ -535,13 +554,17 @@ export function pickerCommitState({
         canCommit: false,
         reason: kinds
           ? `Pick a ${typeListFormat.format(kinds)} group.`
-          : `Pick a file: ${pickerTypeList(target.types)}.`,
+          : isLongPickerTypeList(target.types)
+            ? "Pick a file."
+            : `Pick a file: ${pickerTypeList(target.types)}.`,
       };
     }
     if (!matchesTargetType(item, target)) {
       return {
         canCommit: false,
-        reason: `Only ${pickerTypePhrase(target.types)} can be used here.`,
+        reason: isLongPickerTypeList(target.types)
+          ? `${pickerTypeLabel(normalizeWorkspaceObjectType(item.type))} files can't be used here.`
+          : `Only ${pickerTypePhrase(target.types)} can be used here.`,
       };
     }
     if (

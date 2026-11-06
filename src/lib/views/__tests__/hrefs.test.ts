@@ -143,6 +143,9 @@ describe("Feature hrefs", () => {
     expect(featureListHref({ keyword: "kinase", filter: "protein" })).toBe(
       "/feature?keyword=kinase&filter=protein",
     );
+    expect(
+      featureListHref({ keyword: "kinase", rql: "eq(genome_id,83332.12)" }),
+    ).toBe("/feature?rql=eq(genome_id,83332.12)&keyword=kinase");
   });
 });
 
@@ -213,10 +216,10 @@ describe("genomeListHref", () => {
       "/genome?keyword=E.+coli+%26+phage",
     );
   });
-  it("prefers explicit rql when keyword is also provided", () => {
+  it("sends both rql and keyword when both are provided", () => {
     expect(
-      genomeListHref({ keyword: "ignored", rql: "eq(genus,Escherichia)" }),
-    ).toBe("/genome?rql=eq(genus,Escherichia)");
+      genomeListHref({ keyword: "phage", rql: "eq(genus,Escherichia)" }),
+    ).toBe("/genome?rql=eq(genus,Escherichia)&keyword=phage");
   });
   it("URL-encodes the rql query value once, keeping RQL punctuation readable", () => {
     expect(genomeListHref({ rql: "eq(genus,Escherichia)" })).toBe(

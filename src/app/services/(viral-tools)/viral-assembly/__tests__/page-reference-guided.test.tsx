@@ -39,9 +39,6 @@ describe("Viral Assembly reference-guided strategy", () => {
     sessionStorage.clear();
     window.history.replaceState({}, "", "/");
     server.use(
-      http.get("*/api/auth/profile", () =>
-        HttpResponse.json({ settings: { default_job_folder: "" } }),
-      ),
       http.post("*/api/services/workspace", () => HttpResponse.json([[]])),
     );
   });

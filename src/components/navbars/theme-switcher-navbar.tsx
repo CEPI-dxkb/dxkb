@@ -17,12 +17,8 @@ export function NavbarThemeSwitcher() {
   return (
     <DropdownMenu modal={false}>
       <DropdownMenuTrigger
-        render={
-          <button
-            aria-label="Open theme selector"
-            className="relative flex size-8 items-center justify-center rounded-full border border-white/30 text-white/80 transition-all duration-200 hover:border-white hover:bg-white/10 hover:text-white data-popup-open:border-white data-popup-open:bg-white/15 data-popup-open:text-white"
-          />
-        }
+        variant="navbar-icon"
+        aria-label="Open theme selector"
       >
         <Palette className="size-4" />
       </DropdownMenuTrigger>

@@ -29,9 +29,6 @@ describe("GenomeAssembly page — rerun + submit flow", () => {
     sessionStorage.clear();
     window.history.replaceState({}, "", "/");
     server.use(
-      http.get("*/api/auth/profile", () =>
-        HttpResponse.json({ settings: { default_job_folder: "" } }),
-      ),
       // Workspace calls used by this page:
       //   - Workspace.ls  → WorkspaceObjectSelector listing (return [])
       //   - Workspace.get → OutputFolder name-availability check; answer

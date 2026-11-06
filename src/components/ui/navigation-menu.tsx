@@ -141,17 +141,29 @@ function NavigationMenuPositioner({
   );
 }
 
+const navigationMenuLinkVariants = cva(
+  "flex items-center gap-2 rounded-lg p-2 text-sm transition-all outline-none hover:bg-muted focus:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-1 in-data-[slot=navigation-menu-content]:rounded-md data-active:bg-muted/50 data-active:hover:bg-muted data-active:focus:bg-muted [&_svg:not([class*='size-'])]:size-4",
+  {
+    variants: {
+      variant: {
+        default: "",
+        "workspace-nav": "my-0.5 block truncate font-medium hover:bg-secondary/20",
+      },
+    },
+    defaultVariants: { variant: "default" },
+  },
+);
+
 function NavigationMenuLink({
   className,
+  variant,
   ...props
-}: NavigationMenuPrimitive.Link.Props) {
+}: NavigationMenuPrimitive.Link.Props &
+  VariantProps<typeof navigationMenuLinkVariants>) {
   return (
     <NavigationMenuPrimitive.Link
       data-slot="navigation-menu-link"
-      className={cn(
-        "flex items-center gap-2 rounded-lg p-2 text-sm transition-all outline-none hover:bg-muted focus:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-1 in-data-[slot=navigation-menu-content]:rounded-md data-active:bg-muted/50 data-active:hover:bg-muted data-active:focus:bg-muted [&_svg:not([class*='size-'])]:size-4",
-        className,
-      )}
+      className={cn(navigationMenuLinkVariants({ variant }), className)}
       {...props}
     />
   );

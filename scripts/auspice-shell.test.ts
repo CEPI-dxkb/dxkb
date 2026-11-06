@@ -39,6 +39,21 @@ describe("Auspice theme bridge", () => {
     expect(buildScript).toMatch(/if \(!shell\.includes\("\/auspice-dark\.css"\)\)/);
   });
 
+  it("points the shell's favicon links at the copied favicon, quoted or not", () => {
+    // The built index.html is minified, so its links read `href=/favicon.png`
+    // with no quotes. A quoted-only replacement left both links pointing at a
+    // /favicon.png the app does not serve.
+    const match = /\.replaceAll\(\/(.+?)\/g, '(href="\/auspice-favicon\.png")'\)/.exec(buildScript);
+    if (!match) throw new Error("favicon replaceAll not found in build-auspice.mjs");
+    const rewrite = (html: string) => html.replaceAll(new RegExp(match[1], "g"), match[2]);
+    expect(rewrite('<link rel=icon href=/favicon.png type=image/png>')).toBe(
+      '<link rel=icon href="/auspice-favicon.png" type=image/png>',
+    );
+    expect(rewrite('<link rel="icon" href="/favicon.png">')).toBe(
+      '<link rel="icon" href="/auspice-favicon.png">',
+    );
+  });
+
   it("runs inline before first paint rather than loading an external script", () => {
     // An external <script src> would resolve after the first frame and flash light.
     expect(buildScript).not.toMatch(/<script src="[^"]*bridge/);

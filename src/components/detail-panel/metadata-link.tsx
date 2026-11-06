@@ -97,15 +97,13 @@ export function renderMetadataLinkButton(
   href: string,
   label: ReactNode,
 ): ReactNode {
-  const buttonClassName =
-    "rounded border-black bg-primary px-2 py-1 text-sm text-secondary";
   const classification = classifyHref(href);
   if (classification === "external") {
     return (
       <Button
         nativeButton={false}
         render={<a href={href} target="_blank" rel="noopener noreferrer" />}
-        className={buttonClassName}
+        size="sm"
       >
         {label}
       </Button>
@@ -116,7 +114,7 @@ export function renderMetadataLinkButton(
       <Button
         nativeButton={false}
         render={<Link href={href} />}
-        className={buttonClassName}
+        size="sm"
       >
         {label}
       </Button>

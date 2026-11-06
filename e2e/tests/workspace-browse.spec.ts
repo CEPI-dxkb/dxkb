@@ -166,6 +166,14 @@ test.describe("workspace browse", () => {
         ),
       ).toBe(true);
       await expect(page).toHaveURL(/\/home$/);
+
+      // The click also opens the details panel, which narrows the table pane.
+      // The breadcrumbs and toolbar above the table must keep their height,
+      // or the rows slide down under the pointer and the second click of a
+      // double-click lands on the row above.
+      await expect(page.getByTitle("Hide panel")).toBeVisible();
+      await expect.poll(() => workspace.panels.detailsWidth()).toBeGreaterThan(0);
+      expect((await row.boundingBox())?.y).toBe(before?.y);
       assertNoRuntimeErrors();
     });
 
@@ -240,8 +248,17 @@ test.describe("workspace browse", () => {
 
       await fileRow.dblclick();
 
+      // Both clicks land on the file and each is a plain select, so it ends
+      // selected. This used to expect "false": the first click opened the
+      // details panel, the toolbar wrapped and pushed the rows down, and the
+      // second click selected (and double-clicked into) "Datasets" above it,
+      // with the URL check racing that navigation.
       await expect(page).toHaveURL(/\/home$/);
-      await expect(fileRow).toHaveAttribute("aria-selected", "false");
+      await expect(fileRow).toHaveAttribute("aria-selected", "true");
+      await expect(workspace.rowByName("Datasets").first()).toHaveAttribute(
+        "aria-selected",
+        "false",
+      );
       await expect(page.getByTitle("Hide panel")).toBeVisible();
       assertNoRuntimeErrors();
     });

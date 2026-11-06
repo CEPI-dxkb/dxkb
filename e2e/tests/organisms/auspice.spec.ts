@@ -1,3 +1,4 @@
+import { mockAuspiceBasemap } from "../../fixtures/overrides/auspice-basemap";
 import { authSessionOverrides } from "../../fixtures/overrides/auth-session";
 import { workspaceRpcOverride } from "../../fixtures/overrides/workspace";
 import dataset from "../../fixtures/overrides/organisms/phylogeny/auspice-tree-map-v2.json" with { type: "json" };
@@ -72,16 +73,7 @@ async function mockAuspice(
       },
     ],
   });
-  await page.route(/https:\/\/[a-d]\.basemaps\.cartocdn\.com\/.+\.png/, route =>
-    route.fulfill({
-      status: 200,
-      contentType: "image/png",
-      body: Buffer.from(
-        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M/wHwAF/gL+X2NDNwAAAABJRU5ErkJggg==",
-        "base64",
-      ),
-    })
-  );
+  await mockAuspiceBasemap(page);
 }
 
 async function openPicker(page: Parameters<typeof applyBackendMocks>[0]) {
@@ -144,6 +136,11 @@ test("opens the exact Auspice dataset and renders tree, map, and attribution", a
   await expect(viewer.getByText("E2E-USA", { exact: true })).toBeVisible();
   await expect(viewer.locator("#map")).toBeVisible();
   await expect(viewer.getByText(/Powered by Nextstrain/)).toBeVisible();
+  // MapLibre reads the credit from the style's sources once it loads; the
+  // `attribution` passed beside the style is never shown.
+  await expect(viewer.locator(".leaflet-control-attribution")).toContainText(
+    "OpenStreetMap",
+  );
   expect(datasetRequests).toEqual([`nextstrain-viewer/${datasetId}`]);
 
   await page.getByRole("button", { name: /Back to trees/ }).click();

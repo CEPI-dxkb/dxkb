@@ -6,7 +6,10 @@ why Coronaviridae has none, why no bacterium ever does, and what the real limits
 
 **Verified against** this checkout (branch `alpha`, `auspice@2.73.2`), the live
 content API (`https://www.bv-brc.org/api/content/...`), and a running
-`localhost:3000`. Numbers below are as-fetched on 2026-08-04.
+`localhost:3000`. Numbers below are as-fetched on 2026-08-04. DXKB now builds
+`auspice@3.2.0`; the dataset and panel findings below do not depend on the
+Auspice version. For the 3.x map and its tile host, see
+`docs/phylogeny-integration.md` → "Auspice map".
 
 ---
 

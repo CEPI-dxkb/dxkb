@@ -12,14 +12,14 @@ Auspice calls the local Charon-compatible routes under `/api/charon`, which fetc
 
 ## Archaeopteryx
 
-`src/lib/phylogeny/archaeopteryx.ts` lazy-loads Archaeopteryx.js 3.x with d3 v7, `archaeopteryx/forester` and phyloxml, publishing each on `window` first: the bundler cannot resolve the guarded `require()` calls in the library's UMD header, so the bundled viewer reads its dependencies from page globals. PNG and PDF downloads appear only when `window.Canvg` (canvg 4) and `window.jspdf` with svg2pdf.js are present, so the loader publishes those too. jQuery, jQuery UI and FileSaver are no longer used.
+`src/lib/phylogeny/archaeopteryx.ts` lazy-loads Archaeopteryx.js 3.28 with d3 v7, `archaeopteryx/forester` and phyloxml, publishing each on `window` first: the bundler cannot resolve the guarded `require()` calls in the library's UMD header, so the bundled viewer reads its dependencies from page globals. PNG and PDF entries in the Download menu (opened by its Download… button) appear only when `window.Canvg` (canvg 4) and `window.jspdf` with svg2pdf.js are present, so the loader publishes those too. jQuery, jQuery UI and FileSaver are no longer used.
 
 - `launch(container, tree, config)` takes one config object and throws on any unknown key. `createViewerConfig` is the only place DXKB builds it, and its unit tests launch the real viewer with it. Bacterial trees enable leaf selection; viral trees open on the `Host` visualization, which the viewer replaces with its own choice (logging a warning) when too few tips carry it.
-- `collectNodeLabels` offers a label checkbox for each node property. Archaeopteryx concatenates those labels and keys into the control panel's HTML without escaping, so only property keys matching `[A-Za-z0-9_-]+` are offered. Upstream escapes tooltip, dialog and menu text itself.
+- No custom node-label config is passed. Archaeopteryx 3.25 retired `nodeLabels` (3.28 still accepts it with a console warning, and it is slated to throw), so DXKB no longer builds label checkboxes: the viewer's own Metadata checkbox and "Metadata fields…" chooser offer the tree's own properties. Upstream escapes tooltip, dialog, menu and panel text itself, and the real-viewer unit tests pin that names render as text. A launch-config test fails if the viewer logs a deprecation warning.
 - The viewer keeps one instance per page in module state, and every handle's `destroy()` tears down whichever viewer is current. `mountArchaeopteryx` makes a replaced handle's `destroy()` a no-op.
 - Theme: 3.x has no background or label color options. `seedViewerTheme` writes the site's light/dark choice to `localStorage["aptx-panel-theme"]` before launch; `syncViewerTheme` clicks the viewer's own theme switch (hidden in `src/styles/archaeopteryx-theme.css`) when `data-theme` changes, which keeps zoom, selection and searches. The same stylesheet maps the viewer's `--p-*` custom properties and the canvas background to DXKB tokens.
 - Control panel: `ArchaeopteryxPhylogeny` launches it collapsed to its header bar when the tree host is 640px wide or less. It measures the host, not the viewport, because the leaf-details side panel can take up to 60% of a wide screen. When a resize takes the host across that width, `setViewerControlsCollapsed` clicks the viewer's own hide/show button. Narrowing folds the panel. Widening reopens it only if narrowing folded it, so a panel the user opened or closed in between stays as they left it.
-- No local patch is applied. The retired `archaeopteryx@2.3.2` patch escaped tooltip, dialog, option and checkbox HTML; namespaced and removed its page listeners; added `destroy()` and `setTheme()`; and awaited canvg for PNG export. 3.x does all of that itself except the checkbox escaping and the theme API, which `collectNodeLabels` and the theme helpers above replace. phyloxml 1.1.0 likewise ships the `require('sax')` fix the retired `phyloxml@1.0.0` patch carried.
+- No local patch is applied. The retired `archaeopteryx@2.3.2` patch escaped tooltip, dialog, option and checkbox HTML; namespaced and removed its page listeners; added `destroy()` and `setTheme()`; and awaited canvg for PNG export. 3.x does all of that itself except the theme API, which the theme helpers above replace. phyloxml 1.1.x likewise ships the `require('sax')` fix the retired `phyloxml@1.0.0` patch carried.
 
 ## Deployment
 
@@ -31,11 +31,23 @@ When a local fallback is provisioned, run `pnpm check:nextstrain-datasets`. It r
 
 Standalone deployments must include `public/dist`, `public/nextstrain-viewer.html`, `public/auspice-dark.css`, and `public/auspice-favicon.png`.
 
+### Auspice map
+
+The build uses `auspice@3.2.0`. Auspice 3 draws the map with MapLibre GL inside Leaflet, from a MapLibre style document, and the 2.x `mapTiles.api` raster URL is no longer read. `auspice/config.json` sets no `mapTiles`, so the viewer uses Auspice's bundled style (`node_modules/auspice/src/util/map-styles.json`), served by OpenFreeMap: the browser fetches the TileJSON, vector tiles, glyphs and sprites from `https://tiles.openfreemap.org`, and MapLibre runs in a `blob:` worker. DXKB sends no Content-Security-Policy on `/nextstrain-viewer/*`; adding one later must allow that host in `connect-src`/`img-src` and `blob:` in `worker-src`.
+
+`patches/auspice@3.2.0.patch` sets css-loader `esModule: false` in Auspice's `webpack.config.cjs`. The repo pins css-loader 7.1.4 through a pnpm override, and its ES-module output is unreadable by Auspice's bundled style-loader 0.13.2, so without the patch none of Auspice's CSS (Leaflet, MapLibre, global styles) reached the page: map dots sat far from their places and the zoom buttons and attribution fell to the bottom of an oversized map box. The theme bridge appends `system-ui, sans-serif` to the host's `--font-geist-sans` (`--dxkb-font`), because Geist is not loaded in the iframe and `Geist Fallback` is a next/font name, so a bare stack fell back to the browser's serif default.
+
+The 2.x build used CARTO's keyless Voyager raster tiles. Every keyless `basemaps.cartocdn.com` tile now answers 200 with an "API KEY REQUIRED" placeholder image, so the old look cannot be kept without a CARTO account. With a key, the tiles can return as a MapLibre raster style in `mapTiles.style` (`"type": "raster"`, the four `{a-d}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{ratio}.png` URLs, `"tileSize": 256`), the key in `mapTiles.accessToken` and the `<ACCESS_TOKEN>` placeholder in the URLs.
+
+`mapTiles` replaces Auspice's defaults wholesale. Its `attribution` field is not shown: `@maplibre/maplibre-gl-leaflet` builds the credit from the style's sources once the style loads. A custom style must carry the credit as an `attribution` on its source (OpenFreeMap's TileJSON already does). `public/auspice-dark.css` inverts the map for dark themes through `.leaflet-tile-pane`, which holds the MapLibre canvas.
+
+E2E specs stub the OpenFreeMap host with `mockAuspiceBasemap` (`e2e/fixtures/overrides/auspice-basemap.ts`).
+
 ## Licensing and attribution
 
 Auspice is AGPL-3.0. Releases must provide the corresponding Auspice source and DXKB build-time customizations as required by that license. Complete this source-availability review as a release requirement rather than assuming npm package availability alone is sufficient.
 
-Keep the visible "Powered by Nextstrain" attribution and the configured CARTO/OpenStreetMap tile attribution. Retain generated third-party license notices unless legal review approves another distribution mechanism.
+Keep the visible "Powered by Nextstrain" attribution and the map's OpenFreeMap/OpenMapTiles/OpenStreetMap attribution. Retain generated third-party license notices unless legal review approves another distribution mechanism.
 
 ## References
 

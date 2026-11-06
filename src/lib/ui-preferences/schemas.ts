@@ -5,6 +5,7 @@ import { jobsPanelIds } from "@/constants/jobs-panels";
 import { workspaceSortFields } from "@/constants/workspace-sort";
 import { compareRegionDensities } from "@/lib/compare-region/density-options";
 import {
+  copilotSurfaces,
   mapUiPreferences,
   uiPreferenceDefinitions,
   type UiPreferenceKey,
@@ -42,6 +43,16 @@ export const uiPreferenceSchemas: {
     direction: z.enum(["asc", "desc"]),
   }),
   compareRegionDensity: z.enum(compareRegionDensities),
+  copilotSurface: z.enum(copilotSurfaces),
+  // Width and height only need to be sane: a cookie saved on a small viewport
+  // can hold less than the 320x360 minimum, and the component restores the
+  // minimum.
+  copilotFloatingRect: z.strictObject({
+    right: z.number().min(0).max(10_000),
+    bottom: z.number().min(0).max(10_000),
+    width: z.number().min(0).max(10_000),
+    height: z.number().min(0).max(10_000),
+  }),
 };
 
 /** Parse one cookie value; anything absent, malformed or out of schema is the default. */

@@ -210,8 +210,10 @@ describe("ChartLegendPill", () => {
     const button = screen.getByRole("button");
     expect(button).toHaveClass("text-foreground");
     expect(button.style.borderColor).toBe("red");
-    expect(button.style.backgroundColor).toBe(
-      "color-mix(in srgb, red 12%, transparent)",
+    // jsdom 30.1.3 serializes the canonical form, "transparent 88%", which
+    // is what browsers do too; both spellings mean 12% red over transparent.
+    expect(button.style.backgroundColor).toMatch(
+      /^color-mix\(in srgb, red 12%, transparent( 88%)?\)$/,
     );
   });
 

@@ -1,0 +1,29 @@
+src/lib/auth/server/adapters/bvbrc-identity.ts
+  s_9637d6f7988c26::t_f6309eb85b5477 16,67
+src/lib/copilot/server.ts
+  s_9637d6f7988c26::t_33949de7bf58b8 21,54-69,103,121,124,420,458,461,772,775
+docs/architecture.md
+  s_9637d6f7988c26::t_a577a3a910415c 83,134
+src/lib/copilot/__tests__/server.test.ts
+  s_9637d6f7988c26::t_fadc76de69c546 1-67
+AGENTS.md
+  s_9637d6f7988c26::t_a577a3a910415c 105
+src/lib/api/server-user-agent.ts
+  s_9637d6f7988c26::t_378814f9e9c671 1-15
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5f3a4d366afb8ac42263aa6ce337fcc64cf5cc1f",
+  "prompts": {},
+  "sessions": {
+    "s_9637d6f7988c26": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "38d4529b-fbbd-47ff-af46-0119c964f514",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>"
+    }
+  }
+}

@@ -3,6 +3,7 @@ import {
   authSessionOverrides,
   workspaceOverrides,
   jobsOverrides,
+  copilotOverrides,
   a11yBackendOverrides,
   circularViewerFixture,
   circularViewerScenarioOverrides,
@@ -253,6 +254,7 @@ function buildOverrides(route: RouteEntry): JsonOverride[] {
     ...authSessionOverrides,
     ...(route.needsWorkspace ? workspaceOverrides : []),
     ...(route.needsJobs ? jobsOverrides : []),
+    ...(route.needsCopilot ? copilotOverrides : []),
     ...a11yBackendOverrides,
   ];
 }

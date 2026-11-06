@@ -57,6 +57,25 @@ describe("picking a file", () => {
     expect(screen.getByText(/Accepts Contigs files\./)).toBeInTheDocument();
   });
 
+  it("hides a long list of accepted types behind a button", async () => {
+    const { user } = pickContigs({
+      target: {
+        kind: "object",
+        types: ["contigs", "reads", "embl", "gff", "tsv"],
+      },
+    });
+    expect(screen.queryByText(/Accepts Contigs/)).toBeNull();
+    await user.click(screen.getByRole("button", { name: "5 file types" }));
+    const list = await screen.findByRole("list", {
+      name: "Accepted file types",
+    });
+    expect(
+      within(list)
+        .getAllByRole("listitem")
+        .map((item) => item.textContent),
+    ).toEqual(["Contigs", "EMBL", "GFF", "Reads", "TSV"]);
+  });
+
   it("selects a file without opening a column, and commits it with its row", async () => {
     const { user, onSelect } = pickContigs();
     await user.click(await findOption("Home", /draft\.fasta/));

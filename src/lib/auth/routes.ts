@@ -1,6 +1,7 @@
 export const protectedPageRequestHeader = "x-dxkb-request-path";
 
 const protectedPagePrefixes = [
+  "/copilot",
   "/workspace",
   "/jobs",
   "/settings",

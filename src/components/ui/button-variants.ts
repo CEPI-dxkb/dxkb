@@ -133,6 +133,9 @@ export const buttonVariants = cva(
           "h-8 gap-1.5 px-2 py-0.5 has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2",
         // Text links that sit inline with surrounding content: no padding.
         inline: "h-8 gap-1.5 px-0",
+        // A link inside a sentence: the line's own height, size and weight,
+        // on the baseline (the folder picker's "Accepts 52 file types").
+        text: "h-auto gap-1 rounded-sm p-0 align-baseline font-[inherit] text-[length:inherit]",
         "menu-item":
           "h-auto gap-2 px-1.5 py-1 has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2",
         banner:

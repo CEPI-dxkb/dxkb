@@ -28,6 +28,7 @@ import { useRecentWorkspaceFolders } from "@/hooks/use-recent-workspace-folders"
 import { SuBanner } from "@/components/auth/su-banner";
 import { SessionUnverifiedBanner } from "@/components/auth/session-unverified-banner";
 import { JobStatusPill } from "@/components/jobs/job-status-pill";
+import { CopilotLauncher } from "@/components/copilot/copilot-launcher";
 import { MobileSheetNavigation } from "@/components/navbars/mobile-sheet-navigation";
 import { useRetryKeepingError } from "@/components/views/use-retry-keeping-error";
 
@@ -174,6 +175,7 @@ const useMobileNavbar = () => {
 
           {isAuthenticated && (
             <>
+              <CopilotLauncher compact />
               {isMobileViewport && <JobStatusPill />}
               <UserAvatarDropdown />
             </>

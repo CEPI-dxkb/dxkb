@@ -81,6 +81,33 @@ Use [MSW (Mock Service Worker)](https://mswjs.io/docs/) to intercept HTTP reques
 - Set env vars (e.g. `process.env.USER_URL`) in `beforeEach` / `afterEach` instead of mocking `getRequiredEnv`.
 - See `src/lib/auth/server/__tests__/session.test.ts`, `server/__tests__/actions.test.ts`, and protected route tests using `setTestSession` for reference examples.
 
+## React Compiler check
+
+Vitest does not run the React Compiler, so a hook or component the compiler skips still passes every unit test, and `pnpm lint` does not report the skip. Functions nested in a hook compile as part of it, so a construct the compiler cannot handle (`??=`, `try…finally`, `for await`, `for (;;)`) anywhere in the hook body skips the whole hook, which then loses its memoization silently. After changing a hook or component, save this script outside the tree (for example in the scratchpad) and run `node rc-check.cjs "$PWD" <file>` from the repo root. Expect no `CompileError` lines and `memo cache present: true`.
+
+```js
+const path = require("node:path");
+const fs = require("node:fs");
+const [root, file] = process.argv.slice(2);
+const pnpmDir = path.join(root, "node_modules/.pnpm");
+const coreDir = fs.readdirSync(pnpmDir).find((d) => d.startsWith("@babel+core@"));
+const babel = require(path.join(pnpmDir, coreDir, "node_modules/@babel/core"));
+const compiler = require(path.join(root, "node_modules/babel-plugin-react-compiler"));
+const events = [];
+const out = babel.transformSync(fs.readFileSync(file, "utf8"), {
+  filename: file, babelrc: false, configFile: false,
+  parserOpts: { plugins: ["typescript", "jsx"] },
+  plugins: [[compiler, { panicThreshold: "none", logger: { logEvent: (_f, e) => events.push(e) } }]],
+});
+for (const e of events) {
+  if (e.kind === "CompileError" || e.kind === "CompileSuccess")
+    console.log(e.kind, e.fnName ?? "", e.detail?.reason ?? e.detail?.options?.reason ?? "", e.detail?.loc?.start?.line ?? "");
+}
+console.log("memo cache present:", /_c\(/.test(out.code));
+```
+
+Move the offending code into a module-level function the hook calls.
+
 ## Linting Rules
 
 - All variables and constants use `camelCase` — including module-level `const` exports. Do not use `SCREAMING_SNAKE_CASE` for constants (that is a C/Java convention, not TypeScript/JavaScript).

@@ -1,4 +1,5 @@
 export { authSessionOverrides } from "./auth-session";
+export { copilotOverrides } from "./copilot";
 export {
   workspaceOverrides,
   mockWorkspaceItems,

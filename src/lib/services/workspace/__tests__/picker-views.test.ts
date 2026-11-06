@@ -983,6 +983,28 @@ describe("pickerCommitState for files", () => {
     );
     expect(reasonFor("embl")).toBe("Pick a file: EMBL.");
   });
+  it("does not spell out a list of more than four types", () => {
+    const target = {
+      kind: "object" as const,
+      types: ["contigs", "reads", "embl", "gff", "tsv"],
+    };
+    expect(
+      pickerCommitState({
+        target,
+        path: "/a@b/home/Data",
+        item: row("Data", "folder"),
+        writable: true,
+      }).reason,
+    ).toBe("Pick a file.");
+    expect(
+      pickerCommitState({
+        target,
+        path,
+        item: row("a.vcf", "vcf"),
+        writable: true,
+      }).reason,
+    ).toBe("VCF files can't be used here.");
+  });
   it("asks for a group, not a file, when the types are groups", () => {
     const target = { kind: "object" as const, types: ["genome_group"] };
     expect(

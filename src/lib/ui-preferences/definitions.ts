@@ -37,6 +37,22 @@ export interface UiPreferences {
   workspaceSort: WorkspaceSortConfig;
   /** Compare Region Viewer figure density on the feature page. */
   compareRegionDensity: CompareRegionDensity;
+  /** Where the navbar's Copilot button opens the chat. */
+  copilotSurface: CopilotSurface;
+  /** The floating Copilot window's last position and size, in CSS pixels. */
+  copilotFloatingRect: CopilotFloatingRect;
+}
+
+export const copilotSurfaces = ["sheet", "floating"] as const;
+export type CopilotSurface = (typeof copilotSurfaces)[number];
+
+export interface CopilotFloatingRect {
+  /** Distance from the viewport's right edge. */
+  right: number;
+  /** Distance from the viewport's bottom edge. */
+  bottom: number;
+  width: number;
+  height: number;
 }
 
 export type UiPreferenceKey = keyof UiPreferences;
@@ -107,6 +123,25 @@ export const uiPreferenceDefinitions: {
     cookieName: "dxkb-compare-region-density",
     schema: z.enum(compareRegionDensities),
     defaultValue: "comfortable",
+  },
+  copilotSurface: {
+    cookieName: "dxkb-copilot-surface",
+    schema: z.enum(copilotSurfaces),
+    defaultValue: "sheet",
+  },
+  copilotFloatingRect: {
+    cookieName: "dxkb-copilot-floating-rect",
+    // Anchored to the bottom-right corner, so a smaller window later still
+    // shows the window; the component clamps it into the viewport. Width and
+    // height only need to be sane: a cookie saved on a small viewport can hold
+    // less than the 320x360 minimum, and the component restores the minimum.
+    schema: z.strictObject({
+      right: z.number().min(0).max(10_000),
+      bottom: z.number().min(0).max(10_000),
+      width: z.number().min(0).max(10_000),
+      height: z.number().min(0).max(10_000),
+    }),
+    defaultValue: { right: 24, bottom: 24, width: 420, height: 640 },
   },
 };
 

@@ -18,6 +18,7 @@ import {
   upstreamServices,
   upstreamTimeoutMs,
 } from "@/lib/api/upstream-failure";
+import { bvbrcServerUserAgent } from "@/lib/api/server-user-agent";
 import { isRecord, readCopilotCard, readCopilotSteps, text } from "./steps";
 import type {
   CopilotAttachmentInfo,
@@ -48,6 +49,22 @@ export class CopilotConfigurationError extends Error {
     super("Copilot needs COPILOT_API_URL, which is not set.");
     this.name = "CopilotConfigurationError";
   }
+}
+
+/**
+ * Headers for every gateway call: the caller's bare token, and the user agent
+ * that gets the request past Cloudflare in front of the gateway (Node's
+ * default draws a "Just a moment..." challenge, HTTP 403).
+ */
+function gatewayHeaders(
+  token: string,
+  headers: Record<string, string>,
+): Record<string, string> {
+  return {
+    ...headers,
+    Authorization: token,
+    "User-Agent": bvbrcServerUserAgent,
+  };
 }
 
 /** The gateway's base (`…/copilot-api`), without a trailing slash. */
@@ -83,7 +100,7 @@ async function copilotGet(
     `${copilotBaseUrl()}${path}`,
     {
       method: "GET",
-      headers: { Accept: "application/json", Authorization: token },
+      headers: gatewayHeaders(token, { Accept: "application/json" }),
       signal,
     },
     { service, timeoutMs: upstreamTimeoutMs.copilot },
@@ -101,11 +118,10 @@ async function copilotPost(
     `${copilotBaseUrl()}${path}`,
     {
       method: "POST",
-      headers: {
+      headers: gatewayHeaders(token, {
         Accept: "application/json",
         "Content-Type": "application/json",
-        Authorization: token,
-      },
+      }),
       body: JSON.stringify(body),
       signal,
     },
@@ -401,7 +417,7 @@ export async function readCopilotSession(
     `${copilotBaseUrl()}/chatbrc/get-session-messages?${query.toString()}`,
     {
       method: "GET",
-      headers: { Accept: "application/json", Authorization: token },
+      headers: gatewayHeaders(token, { Accept: "application/json" }),
       signal,
     },
     { service, timeoutMs: upstreamTimeoutMs.copilot },
@@ -439,11 +455,10 @@ async function copilotAction(
     `${copilotBaseUrl()}${path}`,
     {
       method: "POST",
-      headers: {
+      headers: gatewayHeaders(token, {
         Accept: "application/json",
         "Content-Type": "application/json",
-        Authorization: token,
-      },
+      }),
       body: JSON.stringify(body),
       signal,
     },
@@ -754,11 +769,10 @@ export async function openCopilotTurn(
     `${copilotBaseUrl()}/chatbrc/copilot-agent`,
     {
       method: "POST",
-      headers: {
+      headers: gatewayHeaders(token, {
         Accept: "text/event-stream",
         "Content-Type": "application/json",
-        Authorization: token,
-      },
+      }),
       body: JSON.stringify(copilotTurnBody(turn)),
       signal,
     },

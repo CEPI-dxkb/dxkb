@@ -1,7 +1,11 @@
-import { render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
+import { Suspense } from "react";
+import { createPendingNavigation } from "@/test-helpers/pending-navigation";
 import userEvent from "@testing-library/user-event";
 
 const pushSpy = vi.fn();
+const pendingNavigation = createPendingNavigation();
+
 const searchParamsRef = { current: new URLSearchParams() };
 
 vi.mock("next/navigation", () => ({
@@ -262,5 +266,40 @@ describe("tabParam", () => {
     searchParamsRef.current = new URLSearchParams();
     rerender(shell());
     expect(screen.getByRole("status")).toBeEmptyDOMElement();
+  });
+});
+
+describe("pending navigation", () => {
+  it("shows the clicked view and marks the content busy while the navigation is pending", async () => {
+    const user = userEvent.setup();
+    pushSpy.mockImplementationOnce(() => {
+      pendingNavigation.arm();
+    });
+    render(
+      <LandingShellClient
+        displayName="Brucella"
+        activeView="overview"
+        defaultView="overview"
+        navItems={navItems}
+      >
+        <Suspense fallback={null}>
+          <pendingNavigation.Suspender />
+        </Suspense>
+      </LandingShellClient>,
+    );
+    const column = screen.getByRole("heading", { level: 1 }).closest("section");
+    expect(column).not.toHaveAttribute("aria-busy");
+
+    await act(async () => {
+      await user.click(screen.getByRole("button", { name: "Genomes" }));
+    });
+
+    expect(pushSpy).toHaveBeenCalledWith("/taxonomy/234?tab=genomes");
+    expect(screen.getByRole("button", { name: "Genomes" })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+    expect(column).toHaveAttribute("aria-busy", "true");
+    expect(column).toHaveAttribute("data-pending");
   });
 });

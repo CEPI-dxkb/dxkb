@@ -6,6 +6,7 @@ import {
   sessionMaxAgeMs,
   suBackupCookieNames,
 } from "./cookies";
+import { forgetProfile } from "./profile-cache";
 
 const vestigialUserProfileCookieName = "bvbrc_user_profile";
 const sessionMaxAgeSeconds = sessionMaxAgeMs / 1000;
@@ -45,6 +46,16 @@ function clearIdentity(store: CookieStore, names: CookieNames): void {
   }
 }
 
+/**
+ * Drops the cached profile of the token about to be cleared, so a session
+ * cleared because the upstream rejected its token, or signed out, is not
+ * answered from `profile-cache.ts` again.
+ */
+function forgetCachedProfile(store: CookieStore, names: CookieNames): void {
+  const identity = readIdentity(store, names);
+  if (identity) forgetProfile(identity.token);
+}
+
 function writeIdentity(
   store: CookieStore,
   names: CookieNames,
@@ -73,6 +84,7 @@ export async function writeSession(identity: SessionIdentity): Promise<number> {
 
 export async function clearCurrentSession(): Promise<void> {
   const store = await cookies();
+  forgetCachedProfile(store, sessionCookieNames);
   clearIdentity(store, sessionCookieNames);
   try {
     store.set(vestigialUserProfileCookieName, "", {
@@ -89,6 +101,8 @@ export async function clearCurrentSession(): Promise<void> {
 
 export async function clearSession(): Promise<void> {
   const store = await cookies();
+  forgetCachedProfile(store, sessionCookieNames);
+  forgetCachedProfile(store, suBackupCookieNames);
   clearIdentity(store, sessionCookieNames);
   clearIdentity(store, suBackupCookieNames);
   try {

@@ -26,6 +26,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { QueryRetryButton } from "@/components/views/query-retry-button";
 import { useRetryKeepingError } from "@/components/views/use-retry-keeping-error";
 import { useViewNavCollapsed } from "@/hooks/use-view-nav-collapsed";
+import { useAuth } from "@/lib/auth/provider";
 import {
   allTypesSearchQueryOptions,
   formatCompact,
@@ -85,7 +86,10 @@ export function SearchResults({
 }: SearchResultsProps) {
   // The text as the links write it (`searchHref`), legacy's normalization.
   const keyword = normalizeLegacyKeyword(query);
-  const search = useQuery(allTypesSearchQueryOptions(keyword));
+  const { user } = useAuth();
+  const search = useQuery(
+    allTypesSearchQueryOptions(keyword, user?.id ?? "anonymous"),
+  );
   const { data, isFetching } = search;
   // A Retry keeps the failure on screen, marked "Retrying…", until it answers.
   const { error, retrying, retry } = useRetryKeepingError(search, keyword);

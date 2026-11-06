@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import type { ReactNode } from "react";
+import { useOptimistic, useTransition, type ReactNode } from "react";
 import { useViewNavCollapsed } from "@/hooks/use-view-nav-collapsed";
 import { LandingMobileNav } from "@/components/organisms/landing-shell/landing-mobile-nav";
 import { LandingNav } from "@/components/organisms/landing-shell/landing-nav";
@@ -53,6 +53,8 @@ export function EntityViewShell<Key extends string>({
   children,
 }: EntityViewShellProps<Key>) {
   const router = useRouter();
+  const [isPending, startTransition] = useTransition();
+  const [optimisticTab, setOptimisticTab] = useOptimistic(activeTab);
   const { collapsed: navCollapsed, toggle: toggleNav } = useViewNavCollapsed();
   const navItems = tabs.map((tab) => ({ ...tab, icon: tab.icon ?? null }));
 
@@ -66,7 +68,11 @@ export function EntityViewShell<Key extends string>({
     if (key === defaultTab) params.delete("tab");
     else params.set("tab", key);
     const query = toQueryString(params);
-    router.push(`${url.pathname}${query ? `?${query}` : ""}${url.hash}`);
+    const destination = `${url.pathname}${query ? `?${query}` : ""}${url.hash}`;
+    startTransition(() => {
+      setOptimisticTab(key);
+      router.push(destination);
+    });
   };
 
   const content = serverTab ? (
@@ -98,7 +104,7 @@ export function EntityViewShell<Key extends string>({
       <div className="lg:hidden">
         <LandingMobileNav
           items={navItems}
-          activeView={activeTab}
+          activeView={optimisticTab}
           onChange={navigate}
         />
       </div>
@@ -106,14 +112,18 @@ export function EntityViewShell<Key extends string>({
         <div className="hidden lg:block">
           <LandingNav
             items={navItems}
-            activeView={activeTab}
+            activeView={optimisticTab}
             ariaLabel="Entity views"
             collapsed={navCollapsed}
             onChange={navigate}
             onCollapseToggle={toggleNav}
           />
         </div>
-        <article className="flex min-h-0 min-w-0 flex-1 flex-col">
+        <article
+          aria-busy={isPending || undefined}
+          data-pending={isPending ? "" : undefined}
+          className="flex min-h-0 min-w-0 flex-1 flex-col data-pending:opacity-60 motion-safe:transition-opacity"
+        >
           <header className="mb-0.5 flex items-center justify-between gap-4 rounded-lg border bg-card px-5 py-3 shadow-sm">
             {header}
             {metadataActions && (

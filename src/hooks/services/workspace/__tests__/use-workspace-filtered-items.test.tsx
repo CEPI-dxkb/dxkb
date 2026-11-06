@@ -114,4 +114,29 @@ describe("useWorkspaceFilteredItems", () => {
       expect.objectContaining({ name: "Report.contigs", type: "contigs" }),
     );
   });
+
+  it("returns the same array reference on a re-render with equal inputs", () => {
+    const items = [
+      makeItem({ name: "a.txt", path: "/a.txt" }),
+      makeItem({ name: "b.txt", path: "/b.txt" }),
+    ];
+
+    const { result, rerender } = renderHook(
+      ({ searchQuery }) =>
+        useWorkspaceFilteredItems(items, {
+          ...defaultOptions,
+          searchQuery,
+          // A fresh sort object each render, as the caller may pass.
+          sort: { field: "name", direction: "asc" },
+        }),
+      { initialProps: { searchQuery: "a" } },
+    );
+
+    const first = result.current;
+    rerender({ searchQuery: "a" });
+    expect(result.current).toBe(first);
+
+    rerender({ searchQuery: "b" });
+    expect(result.current).not.toBe(first);
+  });
 });

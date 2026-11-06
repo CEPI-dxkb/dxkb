@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useDeferredValue } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -207,10 +207,11 @@ function useWorkspaceBrowser({
     homeAppearsEmpty,
   });
 
+  const deferredSearchQuery = useDeferredValue(searchQuery);
   const processedItems = useWorkspaceFilteredItems(items, {
     showHiddenFiles: isJobResultView ? true : showHiddenFiles,
     typeFilter: isJobResultView ? "all" : typeFilter,
-    searchQuery: isJobResultView ? "" : searchQuery,
+    searchQuery: isJobResultView ? "" : deferredSearchQuery,
     sort,
   });
 

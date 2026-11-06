@@ -11,6 +11,11 @@ export interface AuthUser {
   isImpersonating?: boolean;
   originalUsername?: string;
   /**
+   * The profile's `settings.default_job_folder`; absent when unset or when the
+   * session is unverified.
+   */
+  defaultJobFolder?: string;
+  /**
    * The session cookies are present but the profile service could not answer
    * (outage, timeout, unreachable), so the user is built from the session alone:
    * `id` and `username` are the session user id, `email` is empty and `roles` is

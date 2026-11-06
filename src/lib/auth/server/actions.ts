@@ -24,6 +24,12 @@ import {
   sendVerificationEmail as sendIdentityVerificationEmail,
   verifyEmailToken as verifyIdentityEmailToken,
 } from "./adapters/bvbrc-identity";
+import {
+  forgetProfile,
+  profileGeneration,
+  readCachedProfile,
+  rememberProfile,
+} from "./profile-cache";
 import { fail, ok } from "./result";
 import {
   clearCurrentSession,
@@ -52,6 +58,7 @@ function buildUser(
   session: SessionIdentity,
   backup?: SessionIdentity | null,
 ): AuthUser {
+  const defaultJobFolder = profile.settings?.default_job_folder;
   return {
     id: profile.id,
     username: profile.l_id || profile.id,
@@ -61,6 +68,9 @@ function buildUser(
     email_verified: profile.email_verified,
     realm: session.realm,
     roles: profile.roles ?? [],
+    ...(typeof defaultJobFolder === "string" && defaultJobFolder !== ""
+      ? { defaultJobFolder }
+      : {}),
     ...(backup
       ? { isImpersonating: true, originalUsername: backup.userId }
       : {}),
@@ -82,6 +92,7 @@ export async function signIn(
   if (profile.error) return profile;
   const identity = buildSessionIdentity(authenticated.data.token, profile.data);
   const expiresAt = await writeSession(identity);
+  rememberProfile(identity.userId, identity.token, profile.data);
   return ok({ user: buildUser(profile.data, identity), expiresAt });
 }
 
@@ -104,6 +115,7 @@ export async function signUp(
   if (profile.error) return profile;
   const identity = buildSessionIdentity(registered.data.token, profile.data);
   const expiresAt = await writeSession(identity);
+  rememberProfile(identity.userId, identity.token, profile.data);
   try {
     await ensureUserWorkspace({
       rpc: createServerWorkspaceRpc(identity.token),
@@ -178,6 +190,11 @@ export async function startImpersonation(
     await clearImpersonationBackup();
     throw error;
   }
+  rememberProfile(
+    targetIdentity.userId,
+    targetIdentity.token,
+    targetProfile.data,
+  );
   return ok({
     user: buildUser(targetProfile.data, targetIdentity, current),
     expiresAt,
@@ -197,6 +214,7 @@ export async function exitImpersonation(): Promise<
   if (expiresAt === null) {
     return fail("validation", "No active impersonation session", 400);
   }
+  rememberProfile(backup.userId, backup.token, profile.data);
   return ok({ user: buildUser(profile.data, backup), expiresAt });
 }
 
@@ -231,7 +249,14 @@ export async function verifyEmailToken(
       400,
     );
   }
-  return verifyIdentityEmailToken(verificationToken, username);
+  const result = await verifyIdentityEmailToken(verificationToken, username);
+  if (!result.error) {
+    // A cached `email_verified: false` would keep the verify prompts up for
+    // the rest of its 30 s.
+    const current = await readSession();
+    if (current) forgetProfile(current.token);
+  }
+  return result;
 }
 
 export async function changePassword(
@@ -313,10 +338,19 @@ function buildUnverifiedUser(
  * answer, the user stays signed in from the session cookies alone with
  * `sessionUnverified` set. Cookies are never cleared here, as with the rule in
  * `respondWithUpstreamFailure`.
+ *
+ * A successful answer is held for 30 s across requests (`profile-cache.ts`); a
+ * failure never is, so the next render asks the service again. An answer whose
+ * token was forgotten while it was in flight is returned but not stored.
  */
 async function readCurrentUser(): Promise<AuthUser | null> {
   const current = await readSession();
   if (!current) return null;
+  const cached = readCachedProfile(current.userId, current.token);
+  if (cached) {
+    return buildUser(cached, current, await readImpersonationBackup());
+  }
+  const generation = profileGeneration(current.token);
   const profile = await getProfile(current.userId, current.token, {
     timeoutMs: currentUserLookupTimeoutMs,
   });
@@ -328,6 +362,7 @@ async function readCurrentUser(): Promise<AuthUser | null> {
       await readImpersonationBackup(),
     );
   }
+  rememberProfile(current.userId, current.token, profile.data, generation);
   return buildUser(profile.data, current, await readImpersonationBackup());
 }
 

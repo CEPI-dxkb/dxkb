@@ -37,8 +37,8 @@ describe("readUiPreferences", () => {
   });
 });
 
-// The root layout (a Server Component) imports definitions.ts and cookie.ts. A value
-// exported from a "use client" module reaches server code as a client reference, so
+// The root layout (a Server Component) reaches definitions.ts via server.ts ->
+// schemas.ts, and only provider.tsx imports cookie.ts. A value exported from a "use client" module reaches server code as a client reference, so
 // the cookie read came back undefined on every request. That regression otherwise
 // shows up only as a three-minute webServer timeout in e2e.
 describe("preference modules server code imports", () => {

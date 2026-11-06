@@ -1135,10 +1135,10 @@ const loopbackRpcResults: Record<string, Record<string, unknown>> = {
   },
   "app-service": {
     // `/api/services/app-service/jobs/task-summary` and `/app-summary` are
-    // server routes with no browser override, so they reach the loopback on
-    // every jobs render. Both contracts are `Record<string, number>`; an
-    // empty record is "no jobs in any state", and the jobs specs that assert
-    // on counts mock `/jobs/summary` in the browser instead.
+    // server routes that reach the loopback on every jobs render unless a
+    // browser override answers first (task-summary has one in the default
+    // mocks and the jobs fixtures; app-summary has none). Both contracts are
+    // `Record<string, number>`; an empty record is "no jobs in any state".
     "AppService.query_task_summary_filtered": {},
     "AppService.query_app_summary_filtered": {},
   },

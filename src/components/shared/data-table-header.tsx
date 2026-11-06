@@ -2,6 +2,7 @@ import { useRef, useState, type CSSProperties } from "react";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import type {
+  ColumnSizes,
   ColumnWidths,
   DataTableInstance,
   DataTableProps,
@@ -10,7 +11,8 @@ import { clsx } from "cn";
 
 interface DataTableHeaderProps {
   table: DataTableInstance;
-  columnWidths: ColumnWidths;
+  /** Each column's `--col-size` and `--col-grow` (see `columnSizes` in data-table.tsx). */
+  columnSizes: ColumnSizes;
   onColumnOrderChange?: DataTableProps["onColumnOrderChange"];
   /** The column a pointer drag is resizing, if any. */
   resizingColumnId?: string;
@@ -34,7 +36,7 @@ const reorderEdgeGuard = 12;
 
 export function DataTableHeader({
   table,
-  columnWidths,
+  columnSizes,
   onColumnOrderChange,
   resizingColumnId,
   widthSettings,
@@ -132,14 +134,15 @@ export function DataTableHeader({
                 }
                 variant="divider-strong-muted"
                 className={clsx(
-                  "group w-(--col-size) max-w-(--col-size) min-w-(--col-size)",
+                  "group w-(--col-size) min-w-(--col-size) grow-(--col-grow) last:mr-2",
                   column.id === "__select__"
                     ? "sticky left-0 z-1 flex h-auto! items-center justify-center p-0"
                     : "relative h-auto! min-h-7! cursor-pointer px-2 py-0 align-middle whitespace-normal",
                 )}
                 style={
                   {
-                    "--col-size": `${String(columnWidths[column.id])}px`,
+                    "--col-size": columnSizes[column.id].size,
+                    "--col-grow": columnSizes[column.id].grow,
                   } as CSSProperties
                 }
               >

@@ -10,6 +10,7 @@ import {
   resolveWorkspaceHref,
 } from "@/components/navbars/workspace-nav-utils";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Skeleton } from "@/components/ui/skeleton";
 import { buttonVariants } from "@/components/ui/button-variants";
 import { QueryRetryButton } from "@/components/views/query-retry-button";
 import {
@@ -20,6 +21,8 @@ import { formatUserFacingErrorMessage } from "@/lib/utils";
 
 interface MobileWorkspaceSectionProps {
   favoritePaths: string[];
+  /** The first favorites read is still in flight; shows skeletons. */
+  favoritesLoading?: boolean;
   /** Why the favorites failed to load; shown instead of hiding the section. */
   favoritesError?: unknown;
   /** The favorites' Retry is in flight; its button reads "Retrying…". */
@@ -32,6 +35,7 @@ interface MobileWorkspaceSectionProps {
 
 export function MobileWorkspaceSection({
   favoritePaths,
+  favoritesLoading = false,
   favoritesError,
   favoritesRetrying = false,
   onRetryFavorites,
@@ -69,7 +73,9 @@ export function MobileWorkspaceSection({
         ))}
       </MobileDecoratedSubSection>
 
-      {isAuthenticated && (favoritePaths.length > 0 || favoritesError != null) && (
+      {isAuthenticated && (favoritePaths.length > 0 ||
+        favoritesLoading ||
+        favoritesError != null) && (
         <MobileDecoratedSubSection
           alwaysShow
           dotColor="bg-highlight/50"
@@ -97,6 +103,11 @@ export function MobileWorkspaceSection({
                 )}
               </AlertDescription>
             </Alert>
+          ) : favoritesLoading ? (
+            <div className="space-y-1 p-2">
+              <Skeleton className="h-5 w-32" />
+              <Skeleton className="h-5 w-24" />
+            </div>
           ) : (
             favoritePaths.map((path) => (
               <MobileNavLink key={path} href={buildFolderHref(path)}>

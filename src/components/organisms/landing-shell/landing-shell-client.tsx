@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import type { ReactNode } from "react";
+import { useOptimistic, useTransition, type ReactNode } from "react";
 import { useViewNavCollapsed } from "@/hooks/use-view-nav-collapsed";
 import { restoreHistoryScroll } from "@/lib/history-scroll-restoration";
 import { deleteChildCollectionParams } from "@/lib/views/child-collection-state";
@@ -53,6 +53,8 @@ export function LandingShellClient({
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const [isPending, startTransition] = useTransition();
+  const [optimisticView, setOptimisticView] = useOptimistic(serverActiveView);
   const { collapsed: navCollapsed, toggle: toggleNav } = useViewNavCollapsed();
 
   function handleViewChange(nextView: OrganismViewKey) {
@@ -78,7 +80,11 @@ export function LandingShellClient({
       params.set("tab", nextView);
     }
     const queryString = toQueryString(params);
-    router.push(queryString ? `${pathname}?${queryString}` : pathname);
+    const destination = queryString ? `${pathname}?${queryString}` : pathname;
+    startTransition(() => {
+      setOptimisticView(nextView);
+      router.push(destination);
+    });
   }
 
   const content =
@@ -94,7 +100,7 @@ export function LandingShellClient({
       <div className="lg:hidden">
         <LandingMobileNav
           items={navItems}
-          activeView={serverActiveView}
+          activeView={optimisticView}
           onChange={handleViewChange}
         />
       </div>
@@ -103,13 +109,17 @@ export function LandingShellClient({
         <div className="hidden lg:block">
           <LandingNav
             items={navItems}
-            activeView={serverActiveView}
+            activeView={optimisticView}
             collapsed={navCollapsed}
             onChange={handleViewChange}
             onCollapseToggle={toggleNav}
           />
         </div>
-        <section className="flex min-h-0 min-w-0 flex-1 flex-col">
+        <section
+          aria-busy={isPending || undefined}
+          data-pending={isPending ? "" : undefined}
+          className="flex min-h-0 min-w-0 flex-1 flex-col data-pending:opacity-60 motion-safe:transition-opacity"
+        >
           <div className="mb-0.5 flex items-center justify-between rounded-lg border bg-card px-5 py-3 shadow-sm">
             {headerContent ?? (
               <div>

@@ -69,7 +69,7 @@ export const outagePassthroughOverrides = {
   /** The jobs list and the summary behind both `/jobs` and the header's job pill. */
   jobs: [
     {
-      url: /\/api\/services\/app-service\/jobs\/(?:enumerate-tasks-filtered|summary)(?:$|\?)/,
+      url: /\/api\/services\/app-service\/jobs\/(?:enumerate-tasks-filtered|summary|task-summary)(?:$|\?)/,
       method: "POST",
       passthrough: true,
     },

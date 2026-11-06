@@ -86,8 +86,8 @@ describe("fetchTypeMatches", () => {
   });
 
   it("is not enabled for text with no search terms", () => {
-    expect(allTypesSearchQueryOptions('""').enabled).toBe(false);
-    expect(allTypesSearchQueryOptions("coli").enabled).toBe(true);
+    expect(allTypesSearchQueryOptions('""', "anonymous").enabled).toBe(false);
+    expect(allTypesSearchQueryOptions("coli", "anonymous").enabled).toBe(true);
   });
 });
 

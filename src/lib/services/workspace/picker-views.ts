@@ -41,6 +41,8 @@ export type PickerSelectablePredicate = (object: {
   type?: string;
 }) => boolean;
 
+const nameCollator = new Intl.Collator(undefined, { sensitivity: "base" });
+
 const folderTarget: PickerTarget = { kind: "folder" };
 
 /**
@@ -293,7 +295,7 @@ export function buildPickerItems({
     const aFolder = isFolderType(a.type);
     const bFolder = isFolderType(b.type);
     if (aFolder !== bFolder) return aFolder ? -1 : 1;
-    return a.name.localeCompare(b.name, undefined, { sensitivity: "base" });
+    return nameCollator.compare(a.name, b.name);
   });
 }
 

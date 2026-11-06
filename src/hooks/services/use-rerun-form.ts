@@ -1,15 +1,13 @@
 "use client";
 
 import { useEffect, useEffectEvent, useRef, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
 
 import {
   buildPairedLibraries,
   buildSingleLibraries,
   buildSraLibraries,
 } from "@/lib/rerun-utility";
-import { getProfile } from "@/lib/auth/client";
-import type { UserProfile } from "@/lib/auth/types";
+import { useAuth } from "@/lib/auth/provider";
 import type {
   ServiceFormApi,
   ServiceFormField,
@@ -103,15 +101,8 @@ export function useRerunForm<
   const rerunApplied = useRef(false);
   const defaultPathApplied = useRef(false);
 
-  const { data: profile } = useQuery<UserProfile>({
-    queryKey: ["user-profile"],
-    queryFn: async () => {
-      return getProfile();
-    },
-    staleTime: 5 * 60 * 1000,
-    enabled: defaultOutputPath !== null && !rerunData,
-  });
-  const defaultJobFolder = profile?.settings?.default_job_folder;
+  const { user } = useAuth();
+  const defaultJobFolder = user?.defaultJobFolder;
 
   // The `rerunApplied` ref enforces one-shot execution, so only `rerunData`
   // matters as a trigger. Callers pass inline arrays/callbacks (fields, libraries,

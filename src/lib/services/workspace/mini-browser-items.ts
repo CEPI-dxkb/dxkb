@@ -28,6 +28,8 @@ export interface BuildMiniBrowserItemsInput {
   showHidden: boolean;
 }
 
+const nameCollator = new Intl.Collator(undefined, { sensitivity: "base" });
+
 /** Trim trailing slashes; empty/nullish paths collapse to "/". */
 export function normalizePath(path: string | null | undefined): string {
   if (!path) return "/";
@@ -85,6 +87,6 @@ export function buildMiniBrowserItems({
     const aFolder = isFolderType(a.type);
     const bFolder = isFolderType(b.type);
     if (aFolder !== bFolder) return aFolder ? -1 : 1;
-    return a.name.localeCompare(b.name, undefined, { sensitivity: "base" });
+    return nameCollator.compare(a.name, b.name);
   });
 }

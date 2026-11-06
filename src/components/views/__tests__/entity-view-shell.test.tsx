@@ -1,7 +1,11 @@
-import { render, screen, within } from "@testing-library/react";
+import { act, render, screen, within } from "@testing-library/react";
+import { Suspense } from "react";
+import { createPendingNavigation } from "@/test-helpers/pending-navigation";
 import userEvent from "@testing-library/user-event";
 
 const pushSpy = vi.fn();
+const pendingNavigation = createPendingNavigation();
+
 const searchParamsRef = vi.hoisted(() => ({ current: new URLSearchParams() }));
 
 vi.mock("next/navigation", () => ({
@@ -282,5 +286,47 @@ describe("serverTab", () => {
     searchParamsRef.current = new URLSearchParams();
     rerender(shell(false));
     expect(screen.getByRole("status")).toBeEmptyDOMElement();
+  });
+});
+
+describe("pending navigation", () => {
+  it("shows the clicked tab and marks the content busy while the navigation is pending", async () => {
+    const user = userEvent.setup();
+    pushSpy.mockImplementationOnce(() => {
+      pendingNavigation.arm();
+    });
+    render(
+      <EntityViewShell
+        viewLabel="Record View"
+        title="Alpha record"
+        tabs={tabs}
+        activeTab="summary"
+        defaultTab="summary"
+      >
+        <Suspense fallback={null}>
+          <pendingNavigation.Suspender />
+        </Suspense>
+        <div>Active content</div>
+      </EntityViewShell>,
+    );
+    const desktopNav = screen.getByRole("navigation", { name: "Entity views" });
+    const article = screen.getByRole("article");
+    expect(article).not.toHaveAttribute("aria-busy");
+
+    await act(async () => {
+      await user.click(
+        within(desktopNav).getByRole("button", { name: "Records" }),
+      );
+    });
+
+    expect(pushSpy).toHaveBeenCalledWith("/records/alpha?tab=records");
+    expect(
+      within(desktopNav).getByRole("button", { name: "Records" }),
+    ).toHaveAttribute("aria-current", "page");
+    expect(
+      within(desktopNav).getByRole("button", { name: "Summary" }),
+    ).not.toHaveAttribute("aria-current");
+    expect(article).toHaveAttribute("aria-busy", "true");
+    expect(article).toHaveAttribute("data-pending");
   });
 });

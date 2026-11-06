@@ -371,6 +371,13 @@ test.describe("jobs lifecycle via recorded HAR replay", () => {
     await applyBackendMocks(page, {
       overrides: [
         ...authSessionOverrides,
+        // The header job pill polls task-summary, which the recording
+        // predates; the recorded /jobs/summary answered `taskSummary: [{}]`.
+        {
+          url: /\/api\/services\/app-service\/jobs\/task-summary$/,
+          method: "POST",
+          body: { summary: [{}] },
+        },
         ...harOverridesFor("jobs-lifecycle.har"),
       ],
     });

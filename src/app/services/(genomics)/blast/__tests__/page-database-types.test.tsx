@@ -41,9 +41,6 @@ describe("BLAST page database type transitions", () => {
     sessionStorage.clear();
     window.history.replaceState({}, "", "/");
     server.use(
-      http.get("*/api/auth/profile", () =>
-        HttpResponse.json({ settings: { default_job_folder: "" } }),
-      ),
       http.post("*/api/services/workspace", async ({ request }) => {
         const body = (await request.json()) as { method?: string };
         if (body.method === "Workspace.get") {

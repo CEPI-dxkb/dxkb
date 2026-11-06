@@ -7,6 +7,8 @@ import {
   ServiceDebuggingProvider,
   useServiceDebugging,
 } from "@/contexts/service-debugging-context";
+import { AuthBoundary } from "@/lib/auth/provider";
+import type { AuthUser } from "@/lib/auth/types";
 import { useServiceRuntime } from "@/hooks/services/use-service-runtime";
 import { createServiceDefinition } from "@/lib/services/service-definition";
 import { server } from "@/test-helpers/msw-server";
@@ -87,7 +89,10 @@ function DebugToggler({
   return null;
 }
 
-function wrapper(capture?: { current: DebugSetters; ready: boolean }) {
+function wrapper(
+  capture?: { current: DebugSetters; ready: boolean },
+  user: AuthUser | null = null,
+) {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
@@ -95,17 +100,19 @@ function wrapper(capture?: { current: DebugSetters; ready: boolean }) {
   return function Wrapper({ children }: { children: React.ReactNode }) {
     return (
       <QueryClientProvider client={queryClient}>
-        <ServiceDebuggingProvider>
-          {capture ? (
-            <DebugToggler
-              onReady={(setters) => {
-                capture.current = setters;
-                capture.ready = true;
-              }}
-            />
-          ) : null}
-          {children}
-        </ServiceDebuggingProvider>
+        <AuthBoundary user={user}>
+          <ServiceDebuggingProvider>
+            {capture ? (
+              <DebugToggler
+                onReady={(setters) => {
+                  capture.current = setters;
+                  capture.ready = true;
+                }}
+              />
+            ) : null}
+            {children}
+          </ServiceDebuggingProvider>
+        </AuthBoundary>
       </QueryClientProvider>
     );
   };
@@ -225,14 +232,14 @@ describe("useServiceRuntime", () => {
     );
   });
 
+  const folderUser: AuthUser = {
+    id: "u",
+    username: "u",
+    email: "u@example.com",
+    defaultJobFolder: "/ws/default",
+  };
+
   it("preserves call-site default-output-path opt out", async () => {
-    server.use(
-      http.get("*/api/auth/profile", () =>
-        HttpResponse.json({
-          settings: { default_job_folder: "/ws/default" },
-        }),
-      ),
-    );
     const form = makeForm();
 
     renderHook(
@@ -242,7 +249,7 @@ describe("useServiceRuntime", () => {
           form,
           rerun: { defaultOutputPath: null },
         }),
-      { wrapper: wrapper() },
+      { wrapper: wrapper(undefined, folderUser) },
     );
 
     await new Promise((resolve) => setTimeout(resolve, 20));
@@ -250,6 +257,27 @@ describe("useServiceRuntime", () => {
       "output_path",
       "/ws/default",
     );
+  });
+
+  it("applies the user's default folder when the call site does not opt out", async () => {
+    const form = makeForm();
+
+    renderHook(
+      () =>
+        useServiceRuntime({
+          definition: defaultPathDefinition,
+          form,
+          rerun: {},
+        }),
+      { wrapper: wrapper(undefined, folderUser) },
+    );
+
+    await waitFor(() => {
+      expect(form.setFieldValue).toHaveBeenCalledWith(
+        "output_path",
+        "/ws/default",
+      );
+    });
   });
 
   it("routes debug mode through the job params dialog without submitting", async () => {

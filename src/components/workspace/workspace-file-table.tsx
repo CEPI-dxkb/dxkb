@@ -1,6 +1,6 @@
 "use client";
 
-import { forwardRef, useImperativeHandle, useRef } from "react";
+import { forwardRef, useImperativeHandle, useRef, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type {
   WorkspaceSortConfig,
@@ -210,6 +210,7 @@ export const WorkspaceDataTable = forwardRef<
     );
   }
   const router = useRouter();
+  const [isPending, startTransition] = useTransition();
   const dataTableRef = useRef<DataTableHandle>(null);
   const isAtRoot = !path || path === "" || path === "/";
 
@@ -228,16 +229,25 @@ export const WorkspaceDataTable = forwardRef<
 
   const handleItemClick = (item: WorkspaceItem) => {
     if (!isFolderType(item.type)) return;
-    router.push(workspaceItemDestination(navigation, item));
+    const destination = workspaceItemDestination(navigation, item);
+    startTransition(() => {
+      router.push(destination);
+    });
   };
 
   const handleParentClick = () => {
-    router.push(workspaceParentDestination(navigation));
+    const destination = workspaceParentDestination(navigation);
+    startTransition(() => {
+      router.push(destination);
+    });
   };
 
   const showLeadingRow = viewMode === "home" && isAtRoot;
   const handleLeadingClick = () => {
-    router.push(workspaceRootDestination(username));
+    const destination = workspaceRootDestination(username);
+    startTransition(() => {
+      router.push(destination);
+    });
   };
 
   const showParentRow =
@@ -264,9 +274,19 @@ export const WorkspaceDataTable = forwardRef<
     return items.findIndex((i) => normalizePath(i.path) === normalizedFocus);
   };
 
+  // Folder opens (double-click, icon click, Enter) run in the same transition
+  // as the parent and leading rows, so the table shows it is updating.
+  const openItem = onItemDoubleClick
+    ? (item: WorkspaceItem) => {
+        startTransition(() => {
+          onItemDoubleClick(item);
+        });
+      }
+    : undefined;
+
   const handleEnter = (item: WorkspaceItem) => {
     if (isFolderType(item.type)) {
-      onItemDoubleClick?.(item);
+      openItem?.(item);
     }
   };
 
@@ -291,35 +311,41 @@ export const WorkspaceDataTable = forwardRef<
   );
 
   return (
-    <DataTable<WorkspaceItem>
-      ref={dataTableRef}
-      data={items}
-      columns={columns}
-      defaultColumnOrder={defaultColumnOrder}
-      layoutKey="workspace"
-      isLoading={isLoading}
-      getRowId={(row) => row.id}
-      sort={{ field: sort.field, direction: sort.direction }}
-      onSort={handleSort}
-      dndId="workspace-table-dnd"
-      onKeyDown={handleKeyDown}
-      ariaLabel="Workspace items"
-      tabIndex={useSelectionMode ? 0 : undefined}
+    <div
+      aria-busy={isPending || undefined}
+      data-pending={isPending ? "" : undefined}
+      className="h-full min-h-0 data-pending:opacity-60 motion-safe:transition-opacity"
     >
-      <WorkspaceTableBody
-        showLeadingRow={showLeadingRow}
-        showParentRow={showParentRow}
-        useSelectionMode={useSelectionMode}
-        focusedSpecialRow={focusedSpecialRow}
-        parentRowLabel={parentRowLabel}
-        selectedPathSet={selectedPathSet}
-        onLeadingClick={handleLeadingClick}
-        onParentClick={handleParentClick}
-        onSelect={onSelect}
-        onItemClick={handleItemClick}
-        onItemDoubleClick={onItemDoubleClick}
-        loadError={loadError}
-      />
-    </DataTable>
+      <DataTable<WorkspaceItem>
+        ref={dataTableRef}
+        data={items}
+        columns={columns}
+        defaultColumnOrder={defaultColumnOrder}
+        layoutKey="workspace"
+        isLoading={isLoading}
+        getRowId={(row) => row.id}
+        sort={{ field: sort.field, direction: sort.direction }}
+        onSort={handleSort}
+        dndId="workspace-table-dnd"
+        onKeyDown={handleKeyDown}
+        ariaLabel="Workspace items"
+        tabIndex={useSelectionMode ? 0 : undefined}
+      >
+        <WorkspaceTableBody
+          showLeadingRow={showLeadingRow}
+          showParentRow={showParentRow}
+          useSelectionMode={useSelectionMode}
+          focusedSpecialRow={focusedSpecialRow}
+          parentRowLabel={parentRowLabel}
+          selectedPathSet={selectedPathSet}
+          onLeadingClick={handleLeadingClick}
+          onParentClick={handleParentClick}
+          onSelect={onSelect}
+          onItemClick={handleItemClick}
+          onItemDoubleClick={openItem}
+          loadError={loadError}
+        />
+      </DataTable>
+    </div>
   );
 });

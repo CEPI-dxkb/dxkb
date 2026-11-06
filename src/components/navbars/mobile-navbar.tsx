@@ -38,6 +38,7 @@ const useMobileNavbar = () => {
   const pathname = usePathname();
   const isHome = pathname === "/";
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [isMobileViewport, setIsMobileViewport] = useState(false);
 
   useEffect(() => {
@@ -55,7 +56,9 @@ const useMobileNavbar = () => {
   const favorites = useQuery({
     queryKey: workspaceQueryKeys.favorites(wsUsername),
     queryFn: () => loadFavorites(wsUsername),
-    enabled: isAuthenticated && !!wsUsername,
+    // Only the open sheet shows favorites; the navbar is mounted on every
+    // signed-in page, desktop included.
+    enabled: isAuthenticated && !!wsUsername && isSheetOpen,
     staleTime: 2 * 60 * 1000,
   });
   // A Retry keeps the failure up ("Retrying…") instead of the Favorites
@@ -70,7 +73,7 @@ const useMobileNavbar = () => {
     <header className="flex flex-col bg-primary lg:hidden">
       <div className="flex items-center justify-between p-4 text-primary-foreground">
         <div className="flex items-center gap-4">
-          <Sheet>
+          <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
             <SheetTrigger
               render={(triggerProps) => (
                 <Button
@@ -98,6 +101,7 @@ const useMobileNavbar = () => {
 
               <MobileSheetNavigation
                 favoritePaths={favorites.data ?? []}
+                favoritesLoading={favorites.isLoading}
                 favoritesError={favoritesRetry.error}
                 favoritesRetrying={favoritesRetry.retrying}
                 onRetryFavorites={favoritesRetry.retry}

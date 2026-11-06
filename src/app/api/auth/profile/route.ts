@@ -3,6 +3,7 @@ import {
   getProfile,
   updateProfile,
 } from "@/lib/auth/server/adapters/bvbrc-identity";
+import { forgetProfile } from "@/lib/auth/server/profile-cache";
 import { withAuth } from "@/lib/auth/server/route";
 import {
   respondWithAck,
@@ -97,6 +98,9 @@ export const POST = withAuth(
     }
     const result = await updateProfile(userId, token, upstreamPatches);
     if (result.error) return respondWithUpstreamFailure(result.error);
+    // The `router.refresh()` that follows a save re-renders the root layout,
+    // whose `getCurrentUser()` must read the new profile, not the cached one.
+    forgetProfile(token);
     return respondWithAck(result);
   },
 );

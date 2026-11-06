@@ -503,18 +503,40 @@ export function toAllTypesResults(
 
 const allTypesSearchKeys = {
   all: ["all-types-search"] as const,
-  overview: (keyword: string) =>
-    [...allTypesSearchKeys.all, "overview", keyword] as const,
+  overview: (account: string, keyword: string) =>
+    [...allTypesSearchKeys.all, "overview", account, keyword] as const,
 };
 
-/** Every type's count and top rows for `keyword` (normalized text). */
-export function allTypesSearchQueryOptions(keyword: string) {
+const completeSearchStaleMs = 10 * 60_000;
+
+/** Whether every DXKB type answered; a type the Data API could not search is absent. */
+export function isCompleteTypeMatches(matches: TypeMatches | undefined): boolean {
+  return (
+    matches !== undefined &&
+    allTermSearchTypes.every((type) => matches[type.id]?.result?.response)
+  );
+}
+
+/**
+ * Every type's count and top rows for `keyword` (normalized text), as
+ * `account` (the signed-in user's id, or `"anonymous"`) sees them: the search
+ * sends the session token, so private records are in the answer and the cache
+ * is kept per account.
+ */
+export function allTypesSearchQueryOptions(keyword: string, account: string) {
   return queryOptions({
-    queryKey: allTypesSearchKeys.overview(keyword),
+    queryKey: allTypesSearchKeys.overview(account, keyword),
     queryFn: ({ signal }) => fetchTypeMatches(keyword, signal),
     // Text without terms (blank, `""`, a lone `OR`, only syntax) is no search:
     // it would build an empty and(), which the Data API rejects.
     enabled: isSearchableKeyword(keyword),
     retry: false,
+    // A 6-13 s backend search whose results change slowly: Back within 30 min is
+    // instant. A new private record may take up to 10 min to appear in a cached
+    // search. An answer missing a type (that type's search failed, so it shows
+    // zero matches) is stale at once, so returning to it searches again.
+    staleTime: (query) =>
+      isCompleteTypeMatches(query.state.data) ? completeSearchStaleMs : 0,
+    gcTime: 30 * 60_000,
   });
 }

@@ -1,36 +1,10 @@
 import {
-  mapUiPreferences,
   uiPreferenceDefinitions,
   type UiPreferenceKey,
   type UiPreferences,
 } from "./definitions";
 
 const maxAgeSeconds = 60 * 60 * 24 * 365;
-
-/** Parse one cookie value; anything absent, malformed or out of schema is the default. */
-export function parseUiPreference<K extends UiPreferenceKey>(
-  key: K,
-  raw: string | undefined,
-): UiPreferences[K] {
-  const { schema, defaultValue } = uiPreferenceDefinitions[key];
-  if (raw === undefined) return defaultValue;
-  let decoded: unknown;
-  try {
-    decoded = JSON.parse(raw);
-  } catch {
-    return defaultValue;
-  }
-  const result = schema.safeParse(decoded);
-  return result.success ? result.data : defaultValue;
-}
-
-export function parseUiPreferences(
-  readCookie: (name: string) => string | undefined,
-): UiPreferences {
-  return mapUiPreferences((key) =>
-    parseUiPreference(key, readCookie(uiPreferenceDefinitions[key].cookieName)),
-  );
-}
 
 /**
  * A `document.cookie` assignment for one preference. This is a cookie value, not a

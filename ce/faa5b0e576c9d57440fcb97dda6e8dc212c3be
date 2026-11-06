@@ -1,0 +1,49 @@
+e2e/pages/copilot-page.ts
+  s_9637d6f7988c26::t_b3b72724ce5ad6 2
+  s_9637d6f7988c26::t_a405e2dd84f916 83,91,93,96,100,105
+src/app/api/copilot/__tests__/route.test.ts
+  s_9637d6f7988c26::t_b3b72724ce5ad6 11
+  s_9637d6f7988c26::t_a405e2dd84f916 160
+src/components/copilot/__tests__/copilot-panel.test.tsx
+  s_9637d6f7988c26::t_a405e2dd84f916 106,198,228,232,263
+  s_9637d6f7988c26::t_b3b72724ce5ad6 13
+src/components/copilot/__tests__/use-copilot-actions.test.tsx
+  s_9637d6f7988c26::t_a405e2dd84f916 410,420,429,438
+  s_9637d6f7988c26::t_b3b72724ce5ad6 21
+src/hooks/copilot/__tests__/use-copilot-queries.test.ts
+  s_9637d6f7988c26::t_a405e2dd84f916 51,66-67
+src/components/copilot/copilot-composer.tsx
+  s_9637d6f7988c26::t_8928a0d08bca5e 286
+src/lib/copilot/client.ts
+  s_9637d6f7988c26::t_a405e2dd84f916 250
+src/components/copilot/__tests__/copilot-transcript.test.tsx
+  s_9637d6f7988c26::t_b3b72724ce5ad6 7
+  s_9637d6f7988c26::t_a405e2dd84f916 64
+e2e/tests/copilot.spec.ts
+  s_9637d6f7988c26::t_b3b72724ce5ad6 9
+  s_9637d6f7988c26::t_a405e2dd84f916 326
+src/components/copilot/__tests__/copilot-composer.test.tsx
+  s_9637d6f7988c26::t_0851e309f6dbd3 119-123,125-132
+  s_9637d6f7988c26::t_a405e2dd84f916 48,124
+  s_9637d6f7988c26::t_b3b72724ce5ad6 7
+src/hooks/copilot/__tests__/use-copilot-chat.test.tsx
+  s_9637d6f7988c26::t_a405e2dd84f916 162,186,196,232,282,292,373
+src/components/copilot/copilot-transcript.tsx
+  s_9637d6f7988c26::t_8b86d0773060ca 240
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "cefaa5b0e576c9d57440fcb97dda6e8dc212c3be",
+  "prompts": {},
+  "sessions": {
+    "s_9637d6f7988c26": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "38d4529b-fbbd-47ff-af46-0119c964f514",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>"
+    }
+  }
+}

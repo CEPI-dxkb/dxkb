@@ -6,6 +6,7 @@ import { isCopilotTurnActive } from "@/lib/copilot/turn";
 import { CopilotPanel } from "./copilot-panel";
 import { useCopilot } from "./copilot-provider";
 import { CopilotSessionList } from "./copilot-session-list";
+import { copilotName } from "@/lib/copilot/name";
 
 /**
  * The full-page Copilot: the user's chats on the left, the open chat beside
@@ -16,7 +17,7 @@ export function CopilotPage() {
   const running = isCopilotTurnActive(copilot.chat.active?.turn ?? null);
   return (
     <div className="flex min-h-0 flex-1">
-      <h1 className="sr-only">Copilot</h1>
+      <h1 className="sr-only">{copilotName}</h1>
       <aside
         className="hidden w-72 shrink-0 flex-col border-r bg-muted/30 md:flex"
         aria-label="Your chats"

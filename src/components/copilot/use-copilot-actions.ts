@@ -31,6 +31,7 @@ import type {
 import type { CopilotCardActions } from "./copilot-card-actions";
 import type { CopilotPlanActions } from "./copilot-plan-card";
 import type { useCopilot } from "./copilot-provider";
+import { copilotName } from "@/lib/copilot/name";
 
 export type CopilotTurnExtra = Omit<
   CopilotSendOptions,
@@ -59,7 +60,7 @@ const maxPlanTurns = 30;
 
 /** Why a send did not start while another turn holds this tab. */
 const copilotBusyMessage =
-  "The Copilot is still finishing the last answer. Try again in a moment.";
+  `${copilotName} is still finishing the last answer. Try again in a moment.`;
 
 /**
  * What became of a question the user typed. `message` says why it was not
@@ -106,7 +107,7 @@ export function useCopilotActions({
   ): Promise<CopilotSendResult> => {
     const { model: turnModel = model, ...options } = extra;
     if (!query || !sessionId || !turnModel) {
-      return { status: "refused", message: "The Copilot is not ready yet." };
+      return { status: "refused", message: `${copilotName} is not ready yet.` };
     }
     const result = await chat.send({
       sessionId,

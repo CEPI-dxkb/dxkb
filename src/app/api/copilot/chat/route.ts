@@ -19,6 +19,7 @@ import {
   maxCopilotQueryLength,
   openCopilotTurn,
 } from "@/lib/copilot/server";
+import { copilotName } from "@/lib/copilot/name";
 
 export const dynamic = "force-dynamic";
 
@@ -120,7 +121,7 @@ export const POST = withAuth(async (request, { token }) => {
   const body = await readCopilotJsonBody(request, maxChatBodyBytes);
   if ("error" in body) return body.error;
   const turn = chatRequestSchema.safeParse(body.value);
-  if (!turn.success) return copilotBadRequest("Invalid Copilot chat request.");
+  if (!turn.success) return copilotBadRequest(`Invalid ${copilotName} chat request.`);
 
   return answerCopilot(async () => {
     const upstream = await openCopilotTurn(token, turn.data, request.signal);

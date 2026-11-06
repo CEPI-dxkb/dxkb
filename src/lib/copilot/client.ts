@@ -14,6 +14,7 @@ import type {
   CopilotWorkflowWatch,
   CopilotWorkflowWatchesResponse,
 } from "./types";
+import { copilotName } from "@/lib/copilot/name";
 
 export const copilotQueryKeys = {
   all: ["copilot"] as const,
@@ -53,7 +54,7 @@ export async function copilotFailure(
   const message =
     typeof record.error === "string" && record.error.trim() !== ""
       ? record.error
-      : `Copilot request failed (${String(response.status)} ${response.statusText})`;
+      : `${copilotName} request failed (${String(response.status)} ${response.statusText})`;
   return new CopilotClientError(
     message,
     response.status,

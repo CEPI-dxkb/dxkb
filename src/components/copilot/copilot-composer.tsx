@@ -29,6 +29,7 @@ import {
   otherWorkspaceObjectTypes,
   viewableTypes,
 } from "@/lib/services/workspace/types";
+import { copilotName } from "@/lib/copilot/name";
 
 const WorkspaceFolderPickerDialog = dynamic(
   () =>
@@ -147,12 +148,12 @@ const modes: { value: CopilotExecutionMode; label: string; hint: string }[] = [
   {
     value: "plan",
     label: "Plan",
-    hint: "Plan: the Copilot prepares jobs and asks before submitting them.",
+    hint: `Plan: ${copilotName} prepares jobs and asks before submitting them.`,
   },
   {
     value: "execute",
     label: "Execute",
-    hint: "Execute: the Copilot may submit jobs and create groups without asking.",
+    hint: `Execute: ${copilotName} may submit jobs and create groups without asking.`,
   },
 ];
 
@@ -169,7 +170,7 @@ function ModeToggle({
   return (
     <div
       role="radiogroup"
-      aria-label="Copilot mode"
+      aria-label={`${copilotName} mode`}
       className="flex items-center rounded-md border p-0.5"
     >
       {modes.map((mode) => (
@@ -310,11 +311,11 @@ export function CopilotComposer({
           ref={textareaRef}
           value={value}
           rows={1}
-          aria-label="Ask the Copilot"
+          aria-label={`Ask ${copilotName}`}
           placeholder={
             placeholder ??
             (executionMode === "execute"
-              ? "Ask, or tell the Copilot what to run…"
+              ? `Ask, or tell ${copilotName} what to run…`
               : "Ask about genomes, pathogens, or analyses…")
           }
           disabled={disabled}

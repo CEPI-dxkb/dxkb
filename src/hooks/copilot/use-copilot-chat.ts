@@ -27,6 +27,7 @@ import {
   startCopilotTurn,
   type CopilotTurn,
 } from "@/lib/copilot/turn";
+import { copilotName } from "@/lib/copilot/name";
 
 /** The turn this tab is streaming, and where it belongs. */
 export interface CopilotActiveTurn {
@@ -143,8 +144,8 @@ interface CopilotRunDeps {
 function openFailureMessage(cause: unknown): string {
   if (cause instanceof CopilotClientError) return cause.message;
   return cause instanceof Error
-    ? `Could not reach the Copilot: ${cause.message}`
-    : "Could not reach the Copilot.";
+    ? `Could not reach ${copilotName}: ${cause.message}`
+    : `Could not reach ${copilotName}.`;
 }
 
 /**
@@ -385,7 +386,7 @@ export function useCopilotChat(account: string | null) {
           setError({
             sessionId,
             kind: "turn",
-            message: ended.error ?? "The Copilot stopped with an error.",
+            message: ended.error ?? `${copilotName} stopped with an error.`,
             query: retryable ? ended.query : null,
           });
         } else if (reloadError !== null) {
@@ -457,8 +458,8 @@ export function useCopilotChat(account: string | null) {
           kind: "turn",
           message:
             cause instanceof Error
-              ? `Stop did not reach the Copilot: ${cause.message}`
-              : "Stop did not reach the Copilot.",
+              ? `Stop did not reach ${copilotName}: ${cause.message}`
+              : `Stop did not reach ${copilotName}.`,
           query: null,
         });
       })

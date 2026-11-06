@@ -322,7 +322,7 @@ test.describe("Copilot", () => {
     await copilot.moveToSidePanel();
 
     await expect(copilot.sideSheet).toBeVisible();
-    await expect(copilot.sideSheet.getByText("Ask the BV-BRC Copilot")).toBeVisible();
+    await expect(copilot.sideSheet.getByText("Ask AskClark")).toBeVisible();
     await expect(copilot.floating).toHaveCount(0);
   });
 

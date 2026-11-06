@@ -14,6 +14,7 @@ import {
   text,
 } from "./steps";
 import type { CopilotCard, CopilotStep } from "./types";
+import { copilotName } from "@/lib/copilot/name";
 
 export type CopilotEvent =
   | { type: "queued"; message: string }
@@ -149,7 +150,7 @@ export function decodeCopilotEvent(
         message:
           text(data.error) ??
           text(data.message) ??
-          "The Copilot stopped with an error it did not describe.",
+          `${copilotName} stopped with an error it did not describe.`,
       };
     case "cancelled":
       return { type: "cancelled" };

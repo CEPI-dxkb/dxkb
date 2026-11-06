@@ -60,7 +60,7 @@ describe("CopilotTranscript errors", () => {
       query: null,
     });
 
-    expect(screen.getByText("The Copilot could not answer")).toBeInTheDocument();
+    expect(screen.getByText("AskClark could not answer")).toBeInTheDocument();
     expect(screen.getByText("The model is overloaded.")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Retry" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Reload" })).not.toBeInTheDocument();

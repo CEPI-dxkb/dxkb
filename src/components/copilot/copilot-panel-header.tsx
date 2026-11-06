@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { copilotPagePath } from "@/lib/copilot/paths";
 import { useCopilot } from "./copilot-provider";
+import { copilotName } from "@/lib/copilot/name";
 
 export type CopilotPanelVariant = "sheet" | "floating" | "page";
 
@@ -38,7 +39,7 @@ function ChatOptionsMenu({ variant }: { variant: CopilotPanelVariant }) {
           <Button
             variant="ghost"
             size="icon-sm"
-            aria-label="Copilot options"
+            aria-label={`${copilotName} options`}
             title="Options"
           >
             <Settings2 aria-hidden />
@@ -72,7 +73,7 @@ function ChatOptionsMenu({ variant }: { variant: CopilotPanelVariant }) {
         {variant !== "page" && <DropdownMenuSeparator />}
         {variant !== "page" && (
           <DropdownMenuGroup>
-            <DropdownMenuLabel>Show the Copilot as</DropdownMenuLabel>
+            <DropdownMenuLabel>Show {copilotName} as</DropdownMenuLabel>
             <DropdownMenuItem
               disabled={variant === "sheet"}
               onClick={() => {
@@ -169,7 +170,7 @@ export function CopilotPanelHeader({
         <Button
           variant="ghost"
           size="icon-sm"
-          aria-label="Close the Copilot"
+          aria-label={`Close ${copilotName}`}
           title="Close"
           onClick={onClose}
         >

@@ -102,7 +102,7 @@ function renderPanel(variant: CopilotPanelVariant = "sheet") {
 }
 
 function box(): HTMLElement {
-  return screen.getByRole("textbox", { name: "Ask the Copilot" });
+  return screen.getByRole("textbox", { name: "Ask AskClark" });
 }
 
 async function ready() {
@@ -259,7 +259,7 @@ describe("CopilotPanel", () => {
   it("cancels a file dropped outside the composer, so the page stays (C8)", async () => {
     renderPanel();
     await ready();
-    const target = screen.getByText("Ask the BV-BRC Copilot");
+    const target = screen.getByText("Ask AskClark");
 
     for (const type of ["dragOver", "drop"] as const) {
       const event = createEvent[type](target, {

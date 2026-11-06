@@ -44,7 +44,7 @@ function fileDrag(type: "dragOver" | "drop", form: Element) {
 }
 
 function paste(files: File[], text: string) {
-  const box = screen.getByRole("textbox", { name: "Ask the Copilot" });
+  const box = screen.getByRole("textbox", { name: "Ask AskClark" });
   const event = createEvent.paste(box, {
     clipboardData: { files, getData: () => text },
   });

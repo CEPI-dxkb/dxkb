@@ -25,6 +25,7 @@ import {
   CopilotUserMessage,
 } from "./copilot-message";
 import { CopilotLiveStatus } from "./copilot-progress";
+import { copilotName } from "@/lib/copilot/name";
 
 /** Starting points shown in an empty chat; picking one fills the box. */
 const copilotSuggestions = [
@@ -43,7 +44,7 @@ function EmptyState({ onSuggestion }: { onSuggestion: (text: string) => void }) 
         <Bot className="size-5" aria-hidden />
       </span>
       <div className="space-y-1">
-        <p className="font-medium">Ask the BV-BRC Copilot</p>
+        <p className="font-medium">Ask {copilotName}</p>
         <p className="text-sm text-muted-foreground">
           It searches BV-BRC data, explains results, and prepares analysis jobs.
         </p>
@@ -147,7 +148,7 @@ export function CopilotTranscript({
   return (
     <MessageScrollerProvider autoScroll defaultScrollPosition="last-anchor">
       <MessageScroller>
-        <MessageScrollerViewport aria-label="Copilot conversation">
+        <MessageScrollerViewport aria-label={`${copilotName} conversation`}>
           <MessageScrollerContent aria-busy={running}>
             {messages.map((message) => (
               <MessageScrollerItem
@@ -260,7 +261,7 @@ export function CopilotTranscript({
                   ) : (
                     <Alert variant="destructive">
                       <AlertCircle aria-hidden />
-                      <AlertTitle>The Copilot could not answer</AlertTitle>
+                      <AlertTitle>{copilotName} could not answer</AlertTitle>
                       <AlertDescription>
                         <p>{sessionError.message}</p>
                         {sessionError.query && (

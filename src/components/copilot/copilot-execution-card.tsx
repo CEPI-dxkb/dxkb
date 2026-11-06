@@ -13,6 +13,7 @@ import { useCardActions } from "./copilot-card-actions";
 import { CardFrame } from "./copilot-card-frame";
 import { ChangeForm } from "./copilot-change-form";
 import { ExecutionAnswered } from "./copilot-execution-answered";
+import { copilotName } from "@/lib/copilot/name";
 
 /**
  * Actions an agent prepared but did not run (Plan mode, or a set of jobs,
@@ -57,8 +58,8 @@ export function ExecutionCardView({
     <CardFrame icon={<CirclePause />} title="Prepared — nothing submitted yet">
       <p className="text-muted-foreground">
         {count === 1
-          ? "The Copilot prepared this and did not run it:"
-          : `The Copilot prepared these ${String(count)} and did not run them:`}
+          ? `${copilotName} prepared this and did not run it:`
+          : `${copilotName} prepared these ${String(count)} and did not run them:`}
       </p>
       <ol className="flex list-decimal flex-col gap-1 pl-5">
         {card.actions.map((action, index) => (

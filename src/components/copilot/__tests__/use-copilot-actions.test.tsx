@@ -416,7 +416,7 @@ describe("sendQuestion", () => {
       outcome = await result.current.actions.sendQuestion("Hi");
     });
 
-    const busy = "The Copilot is still finishing the last answer. Try again in a moment.";
+    const busy = "AskClark is still finishing the last answer. Try again in a moment.";
     expect(outcome).toEqual({ sent: false, message: busy });
     expect(toastInfo).toHaveBeenCalledWith(busy);
     expect(sessionReads).toBe(0);

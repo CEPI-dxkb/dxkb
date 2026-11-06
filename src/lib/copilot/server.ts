@@ -34,6 +34,7 @@ import type {
   CopilotSessionsResponse,
   CopilotWorkflowWatch,
 } from "./types";
+import { copilotName } from "@/lib/copilot/name";
 
 const service = upstreamServices.copilot;
 
@@ -43,7 +44,7 @@ const service = upstreamServices.copilot;
  */
 export class CopilotConfigurationError extends Error {
   readonly userMessage =
-    "Copilot is unavailable right now: it is not configured on this server.";
+    `${copilotName} is unavailable right now: it is not configured on this server.`;
 
   constructor() {
     super("Copilot needs COPILOT_API_URL, which is not set.");

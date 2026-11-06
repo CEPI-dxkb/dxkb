@@ -38,6 +38,7 @@ import { useCopilot } from "./copilot-provider";
 import { CopilotSessionList } from "./copilot-session-list";
 import { CopilotTranscript } from "./copilot-transcript";
 import { newestCopilotPlan, useCopilotActions } from "./use-copilot-actions";
+import { copilotName } from "@/lib/copilot/name";
 
 export type { CopilotPanelVariant };
 
@@ -131,7 +132,7 @@ export function CopilotPanel({
     hasImages && model && turnModel !== model
       ? turnModel
         ? `${model} cannot read images, so this question goes to ${turnModel}.`
-        : "None of the Copilot's models can read images. Remove the image to send."
+        : `None of ${copilotName}'s models can read images. Remove the image to send.`
       : null;
 
   const send = async () => {

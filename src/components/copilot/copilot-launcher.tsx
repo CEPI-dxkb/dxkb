@@ -4,6 +4,7 @@ import { Bot } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { isCopilotTurnActive } from "@/lib/copilot/turn";
 import { useOptionalCopilot } from "./copilot-provider";
+import { copilotName } from "@/lib/copilot/name";
 
 /**
  * The navbar's Copilot button: opens the chat where the user last had it
@@ -15,7 +16,7 @@ export function CopilotLauncher({ compact = false }: { compact?: boolean }) {
   if (!copilot?.available || copilot.onCopilotPage) return null;
   const isOpen = copilot.openSurface !== null;
   const working = isCopilotTurnActive(copilot.chat.active?.turn ?? null);
-  const label = isOpen ? "Close the Copilot" : "Open the Copilot";
+  const label = isOpen ? `Close ${copilotName}` : `Open ${copilotName}`;
 
   return (
     <Button
@@ -23,14 +24,14 @@ export function CopilotLauncher({ compact = false }: { compact?: boolean }) {
       size={compact ? "sm" : "pill"}
       aria-label={label}
       aria-expanded={isOpen}
-      title={working ? "The Copilot is writing an answer" : label}
+      title={working ? `${copilotName} is writing an answer` : label}
       onClick={() => {
         if (isOpen) copilot.close();
         else copilot.open();
       }}
     >
       <Bot className={working ? "size-4 animate-pulse" : "size-4"} aria-hidden />
-      {!compact && <span className="text-sm">Copilot</span>}
+      {!compact && <span className="text-sm">{copilotName}</span>}
     </Button>
   );
 }

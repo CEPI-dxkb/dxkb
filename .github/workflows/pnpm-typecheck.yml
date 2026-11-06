@@ -2,9 +2,12 @@ name: Typecheck Verification
 
 on:
   pull_request:
+    # Title and description edits (often by bots) change no code and used to
+    # start a duplicate run (no concurrency group). A change of base branch
+    # no longer re-triggers this workflow: push a commit or re-run it to
+    # cover that.
     types:
       - opened
-      - edited
       - synchronize
       - reopened
     branches:

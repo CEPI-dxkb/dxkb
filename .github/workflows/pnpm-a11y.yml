@@ -2,9 +2,11 @@ name: Accessibility (WCAG 2.1 AA) Tests
 
 on:
   pull_request:
+    # Title and description edits (often by bots) change no code and used to
+    # restart the whole run. A change of base branch no longer re-triggers
+    # this workflow: push a commit or re-run it to cover that.
     types:
       - opened
-      - edited
       - synchronize
       - reopened
     branches:

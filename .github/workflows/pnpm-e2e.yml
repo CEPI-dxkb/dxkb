@@ -2,9 +2,11 @@ name: Playwright Visual Regression Tests
 
 on:
   pull_request:
+    # Title and description edits (often by bots) change no code and used to
+    # restart the whole matrix. A change of base branch no longer re-triggers
+    # this workflow: push a commit or re-run it to cover that.
     types:
       - opened
-      - edited
       - synchronize
       - reopened
     branches:
@@ -99,8 +101,9 @@ jobs:
 
   e2e:
     needs: [sync-linux-snapshots]
-    # Run even when sync-linux-snapshots is skipped (fork PRs)
-    if: always()
+    # Still runs when sync-linux-snapshots is skipped (fork PRs), but stops when
+    # the run is cancelled (for example by a newer run in the same concurrency group)
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     container: mcr.microsoft.com/playwright:v1.63.0-jammy
 

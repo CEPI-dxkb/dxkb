@@ -1,4 +1,4 @@
-import { ResourceChildCollection } from "@/components/views";
+import { LazyResourceChildCollection } from "./lazy-tab-roots";
 import { sequenceFeatureColumns } from "@/lib/views/child-resources";
 import type { TaxonViewScope } from "./scope";
 
@@ -56,7 +56,7 @@ export function makeSfvtView({
       ? `eq(taxon_id,${String(taxonIds[0])})`
       : `in(taxon_id,(${taxonIds.join(",")}))`;
     return (
-      <ResourceChildCollection
+      <LazyResourceChildCollection
         urlKey="sfvt"
         resource="sequence_feature"
         label="Sequence Features"

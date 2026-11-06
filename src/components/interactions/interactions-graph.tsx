@@ -16,7 +16,7 @@ import {
   selectHubs,
   selectSubgraphs,
 } from "@/lib/interactions/graph-selections";
-import { defaultLayout } from "@/lib/interactions/renderer-capabilities";
+import { useGraphLayout } from "@/lib/interactions/use-graph-layout";
 import { formatUserFacingErrorMessage } from "@/lib/utils";
 import type {
   GEdge,
@@ -62,12 +62,20 @@ interface InteractionsGraphProps {
   rql: string;
   keywordValue: string;
   onKeywordChange: (value: string) => void;
+  /**
+   * The chosen layout. The shell owns it, so it survives the Graph tab's
+   * unmount on a switch to Table and back.
+   */
+  layout: LayoutName;
+  onLayoutChange: (layout: LayoutName) => void;
 }
 
 export function InteractionsGraph({
   rql,
   keywordValue,
   onKeywordChange,
+  layout,
+  onLayoutChange,
 }: InteractionsGraphProps) {
   const interactions = useInteractions(rql, keywordValue);
   const { data } = interactions;
@@ -77,7 +85,6 @@ export function InteractionsGraph({
     interactions,
     JSON.stringify([rql, keywordValue]),
   );
-  const [layout, setLayout] = useState<LayoutName>(defaultLayout);
   const [selection, setSelection] = useState<GraphSelection>(emptySelection);
   const [activeSubgraph, setActiveSubgraph] =
     useState<SubgraphSelection | null>(null);
@@ -100,10 +107,19 @@ export function InteractionsGraph({
   // avoiding graph reloads when only selection state changes.
   const graph = toGraph(data?.rows ?? emptyRows);
   const selectionIndex = buildGraphSelectionIndex(graph.nodes, graph.edges);
+  // Positions come from a worker and are cached per rows and layout, so a
+  // return to this tab reuses them rather than laying the graph out again.
+  const layoutQuery = useGraphLayout({
+    rql,
+    keywordValue,
+    data,
+    nodes: graph.nodes,
+    edges: graph.edges,
+    layout,
+  });
 
   function handleLayoutChange(name: LayoutName) {
-    setLayout(name);
-    canvasHandleRef.current?.runLayout(name);
+    onLayoutChange(name);
   }
 
   const toolbar = (
@@ -230,11 +246,16 @@ export function InteractionsGraph({
             }}
             onSelectSubgraphs={handleSelectSubgraphs}
             onSelectHubs={handleSelectHubs}
-            exportReady={canvasReady && nodes.length > 0}
+            exportReady={
+              canvasReady &&
+              nodes.length > 0 &&
+              !layoutQuery.isFetching &&
+              layoutQuery.data !== undefined
+            }
           />
           {/* The WebGL canvases have no accessible role. Keep this wrapper exposed
               because SigmaCanvas also contains labeled, keyboard-operable zoom controls. */}
-          <div className="min-h-0 flex-1">
+          <div className="relative min-h-0 flex-1">
             {nodes.length === 0 ? (
               <div className="flex size-full items-center justify-center text-sm text-muted-foreground">
                 No Interactions
@@ -243,7 +264,7 @@ export function InteractionsGraph({
               <SigmaCanvas
                 nodes={nodes}
                 edges={edges}
-                layout={layout}
+                positions={layoutQuery.data ?? null}
                 selection={selection}
                 onSelect={(nextSelection) => {
                   clearActivePreset();
@@ -254,6 +275,36 @@ export function InteractionsGraph({
                   setCanvasReady(true);
                 }}
               />
+            )}
+            {layoutQuery.isFetching && (
+              <div
+                role="status"
+                aria-live="polite"
+                className="absolute inset-0 z-10 flex items-center justify-center bg-background/60 text-sm text-muted-foreground"
+              >
+                Laying out…
+              </div>
+            )}
+            {layoutQuery.isError && (
+              <div className="absolute inset-x-0 top-0 z-10 p-2">
+                <Alert variant="destructive">
+                  <AlertTitle>Could not lay out the graph</AlertTitle>
+                  <AlertDescription>
+                    <p>
+                      {formatUserFacingErrorMessage(
+                        layoutQuery.error,
+                        "Failed to lay out the graph.",
+                      )}
+                    </p>
+                    <QueryRetryButton
+                      retrying={layoutQuery.isFetching}
+                      onRetry={() => {
+                        void layoutQuery.refetch();
+                      }}
+                    />
+                  </AlertDescription>
+                </Alert>
+              </div>
             )}
           </div>
         </div>

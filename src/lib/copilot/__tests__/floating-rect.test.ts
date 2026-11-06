@@ -1,5 +1,5 @@
 import { clampFloatingRect, margin, resizeFloatingRect } from "../floating-rect";
-import { uiPreferenceDefinitions } from "@/lib/ui-preferences/definitions";
+import { uiPreferenceSchemas } from "@/lib/ui-preferences/schemas";
 
 const viewport = { width: 1400, height: 900 };
 // left 956..right 1376, top 236..bottom 876
@@ -75,7 +75,7 @@ describe("clampFloatingRect", () => {
 });
 
 describe("floating rect edge cases", () => {
-  const { schema } = uiPreferenceDefinitions.copilotFloatingRect;
+  const schema = uiPreferenceSchemas.copilotFloatingRect;
 
   it("keeps the left edge at the margin on a viewport narrower than the window", () => {
     const small = { width: 300, height: 700 };

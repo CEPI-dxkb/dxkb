@@ -65,6 +65,7 @@ export const genomeCollectionOptions: CollectionStateOptions = {
     "family",
     "genus",
     "species",
+    "reference_genome",
     // Visibility scope behind the "My Genomes" link. A friendly filter rather
     // than `rql` so selecting a facet adds to it instead of replacing it.
     "public",

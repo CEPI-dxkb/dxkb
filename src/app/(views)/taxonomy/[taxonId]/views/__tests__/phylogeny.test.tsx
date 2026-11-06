@@ -4,15 +4,14 @@ import type { OrganismTaxonomy } from "@/lib/services/organisms/types";
 
 import { makePhylogenyView } from "@/components/organisms/taxon-views/phylogeny";
 
-// Both panels pull in Archaeopteryx/Auspice and live network state. Stub them so
-// these tests stay on the factory: lineage routing and the shared frame.
-vi.mock("@/components/phylogeny/viral-phylogeny-panel", () => ({
-  ViralPhylogenyPanel: ({ taxonId, taxonName }: { taxonId: number; taxonName: string }) => (
+// Both panels pull in Archaeopteryx/Auspice and live network state, and the
+// factory reaches them through lazy-tab-roots. Stub its wrappers so these tests
+// stay on the factory: lineage routing and the shared frame.
+vi.mock("@/components/organisms/taxon-views/lazy-tab-roots", () => ({
+  LazyViralPhylogenyPanel: ({ taxonId, taxonName }: { taxonId: number; taxonName: string }) => (
     <div data-testid="viral-panel" data-taxon-id={taxonId} data-taxon-name={taxonName} />
   ),
-}));
-vi.mock("@/components/phylogeny/bacterial-phylogeny-panel", () => ({
-  BacterialPhylogenyPanel: ({ taxonId, taxonName }: { taxonId: number; taxonName: string }) => (
+  LazyBacterialPhylogenyPanel: ({ taxonId, taxonName }: { taxonId: number; taxonName: string }) => (
     <div data-testid="bacterial-panel" data-taxon-id={taxonId} data-taxon-name={taxonName} />
   ),
 }));

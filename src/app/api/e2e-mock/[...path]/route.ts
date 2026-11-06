@@ -916,13 +916,40 @@ function maybeBvBrcWebsite(
   if (endpoint === "genome" || endpoint === "genome/") {
     const query = parseFixtureQuery(request);
 
-    // Reference-genomes endpoint: BV-BRC returns a bare array of docs
-    // (json(nl,map)), not the SOLR envelope shape.
-    if (
-      equalsValue(query, "reference_genome") === "*" &&
-      hasCall(query, "select")
-    ) {
-      return { kind: "ok", body: referenceGenomesFixture };
+    // Reference-genomes endpoint: SOLR envelopes. The summary read
+    // (`eq(reference_genome,*)`) carries numFound and the per-type facet (a
+    // flat [name, count, ...] list); each per-type read (`eq(reference_genome,
+    // <Type>)`) carries that type's docs.
+    const referenceType = equalsValue(query, "reference_genome");
+    if (referenceType !== undefined && hasCall(query, "select")) {
+      const typeCounts = new Map<string, number>();
+      for (const doc of referenceGenomesFixture) {
+        const type = String(doc.reference_genome);
+        typeCounts.set(type, (typeCounts.get(type) ?? 0) + 1);
+      }
+      if (referenceType === "*") {
+        return {
+          kind: "ok",
+          body: {
+            response: {
+              numFound: referenceGenomesFixture.length,
+              docs: referenceGenomesFixture,
+            },
+            facet_counts: {
+              facet_fields: { reference_genome: [...typeCounts].flat() },
+            },
+          },
+        };
+      }
+      if (typeCounts.has(referenceType)) {
+        const docs = referenceGenomesFixture.filter(
+          (doc) => doc.reference_genome === referenceType,
+        );
+        return {
+          kind: "ok",
+          body: { response: { numFound: docs.length, docs } },
+        };
+      }
     }
 
     // Parsed equality, not a substring: a fixture taxon "234" must not match

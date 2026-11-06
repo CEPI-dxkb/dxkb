@@ -145,6 +145,7 @@ export class InMemoryWorkspaceRepository implements WorkspaceRepository {
   private downloadUrls: Record<string, string[]> = {};
   private diskUsageMap: Record<string, [number, number, number, string]> = {};
   private errors: Partial<Record<CallRecord["method"], Error>> = {};
+  private uploadNodes = 0;
 
   constructor(fixtures: InMemoryFixtures = {}) {
     this.load(fixtures);
@@ -170,6 +171,7 @@ export class InMemoryWorkspaceRepository implements WorkspaceRepository {
     this.downloadUrls = {};
     this.diskUsageMap = {};
     this.errors = {};
+    this.uploadNodes = 0;
   }
 
   private throwIfConfigured(method: CallRecord["method"]): void {
@@ -296,7 +298,13 @@ export class InMemoryWorkspaceRepository implements WorkspaceRepository {
     return this.run(() => {
       this.calls.push({ method: "createUploadNode", input });
       this.throwIfConfigured("createUploadNode");
-      return { linkReference: `https://shock.test/node/${input.filename}` };
+      // Shaped like Workspace.create's link_reference: a UUID node under the
+      // Shock API path, so it passes the upload route's node URL check.
+      this.uploadNodes += 1;
+      const nodeId = `00000000-0000-4000-8000-${String(this.uploadNodes).padStart(12, "0")}`;
+      return {
+        linkReference: `https://shock.test/services/shock_api/node/${nodeId}`,
+      };
     });
   }
 

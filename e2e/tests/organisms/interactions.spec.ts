@@ -49,6 +49,37 @@ test.describe("taxon interactions tab", () => {
     await interactionsPage.expectCanvasVisible();
   });
 
+  test("Graph lays out in a Web Worker, not on the main thread", async ({
+    page,
+    browserName,
+  }) => {
+    test.skip(
+      browserName === "firefox",
+      "Headless Firefox has no WebGL for Sigma.js to render into",
+    );
+
+    // jsdom has no Worker, so only a real browser shows the layout leaving the
+    // main thread. requestGraphLayout warns when it falls back to it.
+    const workerUrls: string[] = [];
+    const fallbackWarnings: string[] = [];
+    page.on("worker", (worker) => {
+      workerUrls.push(worker.url());
+    });
+    page.on("console", (message) => {
+      if (message.text().includes("laying out on the main thread")) {
+        fallbackWarnings.push(message.text());
+      }
+    });
+
+    const interactionsPage = await setupInteractionsPage(page);
+    await interactionsPage.switchToGraph();
+    await interactionsPage.expectCanvasVisible();
+    await interactionsPage.waitForLayout();
+
+    expect(workerUrls.length).toBeGreaterThan(0);
+    expect(fallbackWarnings).toEqual([]);
+  });
+
   test("Graph subtab preserves the workspace when there are no interactions", async ({
     page,
   }) => {

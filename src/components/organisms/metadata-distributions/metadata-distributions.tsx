@@ -23,9 +23,11 @@ import {
 import { describeGenomeScope } from "@/lib/services/organisms/genome-scope";
 import { formatUserFacingErrorMessage } from "@/lib/utils";
 
-import { AmrBarStackChart } from "./amr-bar-stack-chart";
-import { BarChart } from "./bar-chart";
-import { DonutChart } from "./donut-chart";
+import {
+  LazyAmrBarStackChart,
+  LazyBarChart,
+  LazyDonutChart,
+} from "./lazy-charts";
 
 type MetadataDistributionsProps = GenomeScopeProps & {
   fields: string[];
@@ -151,7 +153,7 @@ export async function MetadataDistributions({
     showAmr && (!hideEmptyAmr || amrHasData || Boolean(amr.errorMessage));
 
   const taxonomicChart = (
-    <DonutChart
+    <LazyDonutChart
       key={taxonomicDistributionSentinel}
       title={taxonomicDistributionTitle}
       tabs={[
@@ -193,7 +195,7 @@ export async function MetadataDistributions({
 
           if (field === "collection_year") {
             return [
-              <BarChart
+              <LazyBarChart
                 key={`${field}-bar`}
                 title={title}
                 data={data}
@@ -203,7 +205,7 @@ export async function MetadataDistributions({
           }
 
           return [
-            <DonutChart
+            <LazyDonutChart
               key={field}
               title={title}
               data={data}
@@ -215,7 +217,7 @@ export async function MetadataDistributions({
         {!hasTaxonomicSentinel && taxonomicChart}
         {showAmrChart && (
           <div className={`flex flex-col${amrHasData ? " @[640px]:col-span-2 @[1080px]:col-span-2" : ""}`}>
-            <AmrBarStackChart
+            <LazyAmrBarStackChart
               title={amrProfileTitle}
               data={amr.data}
               errorMessage={amr.errorMessage}

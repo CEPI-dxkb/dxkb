@@ -281,7 +281,9 @@ test("keeps the filter sidebar pinned while the tree grid scrolls", async ({ pag
   await openPicker(page);
 
   const filters = page.getByRole("button", { name: /Filters/ });
-  const grid = page.locator('[data-slot="tree-results-scroll"]');
+  // The picker is server-rendered inside the lazy tab's Suspense boundary, so a
+  // hidden streamed copy can sit beside the live one.
+  const grid = page.locator('[data-slot="tree-results-scroll"]').filter({ visible: true });
   await expect(filters).toBeVisible();
 
   const before = await filters.boundingBox();

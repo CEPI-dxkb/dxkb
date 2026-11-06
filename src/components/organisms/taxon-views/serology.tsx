@@ -1,10 +1,10 @@
-import { SerologyResourceCollection } from "@/components/views";
+import { LazySerologyResourceCollection } from "./lazy-tab-roots";
 import { taxonLineageClause, type TaxonViewScope } from "./scope";
 
 export function makeSerologyView({ scope }: { scope: TaxonViewScope }) {
   function SerologyView() {
     return (
-      <SerologyResourceCollection
+      <LazySerologyResourceCollection
         baseRql={taxonLineageClause(scope)}
         enableRowLinks={false}
         keywordMode="loaded"

@@ -667,24 +667,51 @@ describe("api/e2e-mock catch-all — enabled", () => {
     });
   });
 
-  it("GET returns the reference_genome array fixture (not a SOLR envelope)", async () => {
+  it("GET returns the reference_genome fixture as a SOLR envelope with facet counts", async () => {
     const resp = await GET(
       mockNextRequest({
-        url: "http://localhost:3020/api/e2e-mock/bvbrc-website/genome/?eq(taxon_lineage_ids,234)&eq(reference_genome,*)&select(reference_genome,genome_name,genome_id)&limit(25000)",
+        url: "http://localhost:3020/api/e2e-mock/bvbrc-website/genome/?eq(taxon_lineage_ids,234)&eq(reference_genome,*)&select(reference_genome,genome_name,genome_id)&limit(1)&facet((field,reference_genome),(mincount,1))",
       }),
       ctx(["bvbrc-website", "genome"]),
     );
 
     expect(resp.status).toBe(200);
-    const body = (await resp.json()) as Record<string, unknown>[];
-    expect(Array.isArray(body)).toBe(true);
-    expect(body[0]).toMatchObject({
+    const body = (await resp.json()) as {
+      response: { numFound: number; docs: Record<string, unknown>[] };
+      facet_counts: { facet_fields: { reference_genome: unknown[] } };
+    };
+    expect(body.response.numFound).toBe(4);
+    expect(body.response.docs[0]).toMatchObject({
       genome_id: expect.stringMatching(/^234\./) as unknown,
       genome_name: expect.any(String) as unknown,
       reference_genome: expect.stringMatching(
         /Reference|Representative/,
       ) as unknown,
     });
+    expect(body.facet_counts.facet_fields.reference_genome).toEqual([
+      "Reference",
+      2,
+      "Representative",
+      2,
+    ]);
+  });
+
+  it("GET returns one reference type's docs for a per-type read", async () => {
+    const resp = await GET(
+      mockNextRequest({
+        url: "http://localhost:3020/api/e2e-mock/bvbrc-website/genome/?eq(taxon_lineage_ids,234)&eq(reference_genome,Representative)&select(reference_genome,genome_name,genome_id)&sort(+genome_name)&limit(1000)",
+      }),
+      ctx(["bvbrc-website", "genome"]),
+    );
+
+    expect(resp.status).toBe(200);
+    const body = (await resp.json()) as {
+      response: { numFound: number; docs: { reference_genome: string }[] };
+    };
+    expect(body.response.numFound).toBe(2);
+    expect(
+      body.response.docs.every((d) => d.reference_genome === "Representative"),
+    ).toBe(true);
   });
 
   it("GET disambiguates taxon IDs by regex, not substring", async () => {

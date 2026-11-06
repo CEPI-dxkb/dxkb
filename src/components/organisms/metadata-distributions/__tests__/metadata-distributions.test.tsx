@@ -32,6 +32,21 @@ vi.mock("../amr-bar-stack-chart", () => ({
   },
 }));
 
+// Render the charts synchronously: the lazy wrappers are covered by
+// lazy-charts.test.tsx.
+vi.mock("../lazy-charts", async () => {
+  const [amr, bar, donut] = await Promise.all([
+    import("../amr-bar-stack-chart"),
+    import("../bar-chart"),
+    import("../donut-chart"),
+  ]);
+  return {
+    LazyAmrBarStackChart: amr.AmrBarStackChart,
+    LazyBarChart: bar.BarChart,
+    LazyDonutChart: donut.DonutChart,
+  };
+});
+
 import { MetadataDistributions } from "../metadata-distributions";
 import { fetchOrganismMetadataFacets } from "@/lib/services/organisms/metadata-facets";
 import { fetchTaxonomicDistribution } from "@/lib/services/organisms/taxonomic-distribution";

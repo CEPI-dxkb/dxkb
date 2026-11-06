@@ -65,8 +65,11 @@ async function GeoDistributionBoundary({
 
 async function ReferenceGenomesBoundary({
   scope,
-}: Pick<GenomeOverviewSectionsProps, "scope">) {
-  return withSectionError("Reference genomes", () => ReferenceGenomes(scope));
+  genomeList,
+}: Pick<GenomeOverviewSectionsProps, "scope" | "genomeList">) {
+  return withSectionError("Reference genomes", () =>
+    ReferenceGenomes({ ...scope, genomeList }),
+  );
 }
 
 /**
@@ -97,7 +100,7 @@ export function GenomeOverviewSections({
 
         <section className="flex w-full flex-col xl:w-[30%] xl:min-w-0">
           <Suspense fallback={<ReferenceGenomesSkeleton />}>
-            <ReferenceGenomesBoundary scope={scope} />
+            <ReferenceGenomesBoundary scope={scope} genomeList={genomeList} />
           </Suspense>
         </section>
       </div>

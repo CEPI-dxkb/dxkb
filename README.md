@@ -45,7 +45,7 @@ Fill in `.env.local` with the appropriate values:
 | `APP_SERVICE_URL`         | BV-BRC AppService — JSON-RPC endpoint for job submission               |
 | `DATA_SERVICE_URL`        | BV-BRC Data Service URL                                                |
 | `NEXT_PUBLIC_DATA_API`    | Public-facing data API endpoint                                        |
-| `SHOCK_ORIGINS`           | Comma-separated Shock file storage node URLs                           |
+| `SHOCK_ORIGINS`           | Comma-separated `http(s)` Shock origins uploads may go to; a bare origin means its `/services/shock_api` path, an entry with a path uses that path |
 | `DEFAULT_REALM`           | Realm used when a BV-BRC token does not include one (default: `bvbrc`) |
 
 > All variables except `NEXT_PUBLIC_DATA_API` are server-side only and never exposed to the browser.

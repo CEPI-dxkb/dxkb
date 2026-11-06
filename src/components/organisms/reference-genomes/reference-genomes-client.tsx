@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties, PointerEvent as ReactPointerEvent } from "react";
 
 import { useVirtualizer } from "@tanstack/react-virtual";
@@ -33,7 +33,18 @@ const minTypeColumnWidth = 96;
 const maxTypeColumnWidth = 480;
 const minGenomeNameColumnWidth = 160;
 
-function GenomeTable({ genomes }: { genomes: ReferenceGenome[] }) {
+// Exported for the test that pins its memoized sort; the card is the only user.
+export function GenomeTable({
+  genomes,
+  count,
+  sortable = true,
+}: {
+  genomes: ReferenceGenome[];
+  /** Genomes the tab has in all; above `genomes.length` when the list is partial. */
+  count?: number;
+  /** False for a partial list: sorting it client-side would misorder it. */
+  sortable?: boolean;
+}) {
   "use no memo";
   const [sortDir, setSortDir] = useState<"asc" | "desc" | null>(null);
   const parentRef = useRef<HTMLDivElement>(null);
@@ -53,13 +64,18 @@ function GenomeTable({ genomes }: { genomes: ReferenceGenome[] }) {
     return () => { ro.disconnect(); };
   }, []);
 
-  const sorted =
-    sortDir === null
-      ? genomes
-      : [...genomes].sort((a, b) => {
-          const cmp = a.genome_name.localeCompare(b.genome_name);
-          return sortDir === "asc" ? cmp : -cmp;
-        });
+  // This component is opted out of the compiler, so without useMemo the sort
+  // would re-run on every scroll (each virtualizer range change re-renders).
+  const sorted = useMemo(
+    () =>
+      sortDir === null
+        ? genomes
+        : [...genomes].sort((a, b) => {
+            const cmp = a.genome_name.localeCompare(b.genome_name);
+            return sortDir === "asc" ? cmp : -cmp;
+          }),
+    [genomes, sortDir],
+  );
 
   const rowVirtualizer = useVirtualizer({
     count: sorted.length,
@@ -195,25 +211,31 @@ function GenomeTable({ genomes }: { genomes: ReferenceGenome[] }) {
                 />
               </div>
             </TableHead>
-            <TableHead
-              aria-sort={ariaSort}
-              size="xs"
-              className="h-[31.5px]! overflow-hidden p-0"
-            >
-              <button
-                type="button"
-                onClick={cycleSort}
-                aria-label={`Sort by genome name (${ariaSort})`}
-                className="flex size-full cursor-pointer items-center gap-1 px-3 py-1 text-left select-none"
+            {sortable ? (
+              <TableHead
+                aria-sort={ariaSort}
+                size="xs"
+                className="h-[31.5px]! overflow-hidden p-0"
               >
+                <button
+                  type="button"
+                  onClick={cycleSort}
+                  aria-label={`Sort by genome name (${ariaSort})`}
+                  className="flex size-full cursor-pointer items-center gap-1 px-3 py-1 text-left select-none"
+                >
+                  Genome Name
+                  <SortIcon className="size-3 shrink-0" />
+                </button>
+              </TableHead>
+            ) : (
+              <TableHead size="xs" className="h-[31.5px]! px-3 py-1">
                 Genome Name
-                <SortIcon className="size-3 shrink-0" />
-              </button>
-            </TableHead>
+              </TableHead>
+            )}
           </TableRow>
         </TableHeader>
         <TableBody>
-          {sorted.length === 0 ? (
+          {sorted.length === 0 && (count ?? 0) === 0 ? (
             <TableRow>
               <TableCell colSpan={2} className="py-4 text-center">
                 <span className="text-muted-foreground">
@@ -284,10 +306,52 @@ function GenomeTable({ genomes }: { genomes: ReferenceGenome[] }) {
   );
 }
 
-export function ReferenceGenomesClient({ genomes }: { genomes: ReferenceGenome[] }) {
-  const types = Array.from(new Set(genomes.map((g) => g.reference_genome))).sort();
+interface ReferenceGenomesHrefs {
+  all?: string;
+  byType: Record<string, string | undefined>;
+}
+
+/** What follows a tab's table when it lists only some of its genomes. */
+function ShowingNote({
+  shown,
+  count,
+  href,
+}: {
+  shown: number;
+  count: number;
+  href: string | undefined;
+}) {
+  if (shown >= count) return null;
+  return (
+    <p className="px-3 py-2 text-xs text-muted-foreground">
+      Showing {shown.toLocaleString("en-US")} of {count.toLocaleString("en-US")}.{" "}
+      {href && (
+        <Link
+          href={href}
+          prefetch={false}
+          className="text-primary hover:underline dark:text-link"
+        >
+          View all {count.toLocaleString("en-US")} in the Genomes tab
+        </Link>
+      )}
+    </p>
+  );
+}
+
+export function ReferenceGenomesClient({
+  rows,
+  counts,
+  total,
+  hrefs,
+}: {
+  rows: ReferenceGenome[];
+  counts: Record<string, number>;
+  total: number;
+  hrefs: ReferenceGenomesHrefs;
+}) {
+  const types = Object.keys(counts).sort();
   const byType = Object.fromEntries(
-    types.map((t) => [t, genomes.filter((g) => g.reference_genome === t)]),
+    types.map((t) => [t, rows.filter((g) => g.reference_genome === t)]),
   );
 
   return (
@@ -299,11 +363,11 @@ export function ReferenceGenomesClient({ genomes }: { genomes: ReferenceGenome[]
           </h2>
           <TabsList className="mt-2 w-full">
             <TabsTrigger value="all" size="xs" className="flex-1">
-              All ({genomes.length})
+              All ({total.toLocaleString("en-US")})
             </TabsTrigger>
             {types.map((type) => (
               <TabsTrigger key={type} value={type} size="xs" className="flex-1">
-                {type} ({byType[type].length})
+                {type} ({counts[type].toLocaleString("en-US")})
               </TabsTrigger>
             ))}
           </TabsList>
@@ -311,12 +375,22 @@ export function ReferenceGenomesClient({ genomes }: { genomes: ReferenceGenome[]
 
         <CardContent className="p-0 xl:flex xl:min-h-0 xl:flex-1 xl:flex-col">
           <TabsContent value="all" className="mt-0 xl:flex xl:min-h-0 xl:flex-1 xl:flex-col">
-            <GenomeTable genomes={genomes} />
+            <GenomeTable genomes={rows} count={total} sortable={rows.length >= total} />
+            <ShowingNote shown={rows.length} count={total} href={hrefs.all} />
           </TabsContent>
 
           {types.map((type) => (
             <TabsContent key={type} value={type} className="mt-0 xl:flex xl:min-h-0 xl:flex-1 xl:flex-col">
-              <GenomeTable genomes={byType[type]} />
+              <GenomeTable
+                genomes={byType[type]}
+                count={counts[type]}
+                sortable={byType[type].length >= counts[type]}
+              />
+              <ShowingNote
+                shown={byType[type].length}
+                count={counts[type]}
+                href={hrefs.byType[type]}
+              />
             </TabsContent>
           ))}
         </CardContent>

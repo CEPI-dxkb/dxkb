@@ -140,14 +140,17 @@ export function WorkspaceUploadPanel({
         // upload error is what the user needs to see.
         const discardObject = () =>
           repository.delete([fullPath]).catch(() => undefined);
+        // The route streams this body to Shock unchanged, so it carries only
+        // the field Shock reads; the node URL travels in a header. The
+        // browser sets the multipart Content-Type with its boundary.
         const formData = new FormData();
-        formData.append("url", linkReference);
-        formData.append("file", file);
+        formData.append("upload", file);
         let res: Response;
         try {
           res = await fetch(uploadApi, {
             method: "POST",
             credentials: "include",
+            headers: { "X-Shock-Node-Url": linkReference },
             body: formData,
           });
         } catch (err) {

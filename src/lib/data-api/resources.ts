@@ -120,7 +120,9 @@ const numericFields = new Set([
   "parent_id",
   "genomes",
 ]);
-const booleanFields = new Set(["public", "reference_genome"]);
+// `reference_genome` is the text "Reference" or "Representative", not a
+// boolean: typed as one, `eq(reference_genome,Representative)` is rejected.
+const booleanFields = new Set(["public"]);
 const dateFields = new Set([
   "date_created",
   "date_inserted",

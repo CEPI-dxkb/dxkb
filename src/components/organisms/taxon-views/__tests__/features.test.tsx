@@ -1,4 +1,4 @@
-import { render } from "@testing-library/react";
+import { render, waitFor } from "@testing-library/react";
 import { featureListCollectionOptions } from "@/lib/feature-view";
 import { makeFeaturesView } from "../features";
 
@@ -6,7 +6,7 @@ const { featureProps } = vi.hoisted(() => ({
   featureProps: { current: null as Record<string, unknown> | null },
 }));
 
-vi.mock("@/components/views", () => ({
+vi.mock("@/components/views/feature-resource-collection", () => ({
   FeatureResourceCollection: (props: Record<string, unknown>) => {
     featureProps.current = props;
     return null;
@@ -14,7 +14,7 @@ vi.mock("@/components/views", () => ({
 }));
 
 describe("taxon Features tab", () => {
-  it("orders unsorted rows as legacy FeatureGrid does", () => {
+  it("orders unsorted rows as legacy FeatureGrid does", async () => {
     const FeaturesView = makeFeaturesView({
       scope: {
         kind: "lineage",
@@ -33,16 +33,19 @@ describe("taxon Features tab", () => {
 
     // Legacy `p3/widget/FeatureGrid.js` queryOptions:
     // sort(+genome_name,+accession,+start).
-    expect(featureProps.current).toMatchObject({
-      collectionOptions: featureListCollectionOptions,
-      unsortedOrder: {
-        field: "genome_name",
-        direction: "asc",
-        then: [
-          { field: "accession", direction: "asc" },
-          { field: "start", direction: "asc" },
-        ],
-      },
+    // The tab loads its collection through lazy-tab-roots, so wait for it.
+    await waitFor(() => {
+      expect(featureProps.current).toMatchObject({
+        collectionOptions: featureListCollectionOptions,
+        unsortedOrder: {
+          field: "genome_name",
+          direction: "asc",
+          then: [
+            { field: "accession", direction: "asc" },
+            { field: "start", direction: "asc" },
+          ],
+        },
+      });
     });
   });
 });

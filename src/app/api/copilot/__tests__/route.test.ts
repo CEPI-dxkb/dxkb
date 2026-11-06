@@ -105,6 +105,39 @@ describe("GET /api/copilot/models", () => {
     });
   });
 
+  it("lists a model the gateway sends twice once, keeping its first entry", async () => {
+    server.use(
+      http.post(`${gatewayUrl}/db/get-model-list`, () =>
+        HttpResponse.json({
+          models: JSON.stringify([
+            ...gatewayModels,
+            {
+              model: "Qwen/Qwen3.6-35B-A3B",
+              model_type: "chat",
+              active: true,
+              priority: 5,
+              supports_image: false,
+            },
+          ]),
+          vdb_list: "[]",
+        }),
+      ),
+    );
+
+    const res = await getModels();
+
+    expect(res.status).toBe(200);
+    const body = await json<{
+      models: { model: string; priority: number | null }[];
+    }>(res);
+    expect(
+      body.models.map(({ model, priority }) => ({ model, priority })),
+    ).toEqual([
+      { model: "Qwen/Qwen3.6-35B-A3B", priority: 1 },
+      { model: "gpt-oss-120b", priority: 2 },
+    ]);
+  });
+
   it("answers 401 without calling the gateway when signed out", async () => {
     clearTestCookies();
     const res = await getModels();

@@ -149,7 +149,9 @@ const gatewayModelListSchema = z.object({ models: z.string() });
 /**
  * Active chat models, in the gateway's order. An entry the gateway marks
  * `active: false` is dropped; one that leaves `active` out is kept, as the
- * BV-BRC Copilot UI keeps it.
+ * BV-BRC Copilot UI keeps it. A model the gateway lists more than once is kept
+ * once, at its first entry: turns name the model only by its name, so a
+ * second entry is not a second choice (and would repeat a React key).
  */
 export async function readCopilotModels(
   token: string,
@@ -169,20 +171,21 @@ export async function readCopilotModels(
   const models = z.array(gatewayModelSchema).safeParse(entries);
   if (!models.success) throw unreadableAnswer();
 
-  return models.data.flatMap((entry) =>
-    entry.active === false
-      ? []
-      : [
-          {
-            model: entry.model,
-            modelType: entry.model_type ?? null,
-            priority: entry.priority ?? null,
-            maxTokens: entry.max_tokens ?? null,
-            supportsImage: entry.supports_image === true,
-            isDefault: entry.is_default === true,
-          },
-        ],
-  );
+  const seen = new Set<string>();
+  return models.data.flatMap((entry) => {
+    if (entry.active === false || seen.has(entry.model)) return [];
+    seen.add(entry.model);
+    return [
+      {
+        model: entry.model,
+        modelType: entry.model_type ?? null,
+        priority: entry.priority ?? null,
+        maxTokens: entry.max_tokens ?? null,
+        supportsImage: entry.supports_image === true,
+        isDefault: entry.is_default === true,
+      },
+    ];
+  });
 }
 
 // ---------------------------------------------------------------------------

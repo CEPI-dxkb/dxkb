@@ -237,7 +237,7 @@ export function CopilotTranscript({
                       <Loader2 className="animate-spin" />
                     </MarkerIcon>
                     <MarkerContent>
-                      The Copilot is still working on this chat. The answer
+                      {copilotName} is still working on this chat. The answer
                       appears here when it is done.
                     </MarkerContent>
                   </Marker>

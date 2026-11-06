@@ -4,6 +4,7 @@ import {
   type CopilotComposerProps,
 } from "@/components/copilot/copilot-composer";
 import type { CopilotAttachment } from "@/lib/copilot/attachments";
+import { copilotName } from "@/lib/copilot/name";
 
 vi.mock("next/dynamic", () => ({ default: () => () => null }));
 
@@ -44,7 +45,7 @@ function fileDrag(type: "dragOver" | "drop", form: Element) {
 }
 
 function paste(files: File[], text: string) {
-  const box = screen.getByRole("textbox", { name: "Ask AskClark" });
+  const box = screen.getByRole("textbox", { name: `Ask ${copilotName}` });
   const event = createEvent.paste(box, {
     clipboardData: { files, getData: () => text },
   });
@@ -113,5 +114,19 @@ describe("CopilotComposer file drag and paste", () => {
     const { onSubmit } = renderComposer();
     fireEvent.click(screen.getByRole("button", { name: "Send" }));
     expect(onSubmit).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("CopilotComposer Execute mode", () => {
+  it("warns, by the assistant's name, that jobs may be submitted", () => {
+    renderComposer({ executionMode: "execute" });
+    expect(
+      screen.getByText(new RegExp(`^Execute mode: ${copilotName} may submit jobs`)),
+    ).toBeInTheDocument();
+  });
+
+  it("does not warn in Plan mode", () => {
+    renderComposer();
+    expect(screen.queryByText(/^Execute mode:/)).not.toBeInTheDocument();
   });
 });

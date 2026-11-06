@@ -283,7 +283,7 @@ export function CopilotComposer({
     >
       {executionMode === "execute" && (
         <p className="mb-2 text-xs text-warning">
-          Execute mode: the Copilot may submit jobs and create groups without
+          Execute mode: {copilotName} may submit jobs and create groups without
           asking first.
         </p>
       )}

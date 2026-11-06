@@ -10,6 +10,7 @@ import { createQueryClientWrapper } from "@/test-helpers/react";
 import { CopilotPanel, type CopilotPanelVariant } from "../copilot-panel";
 import { useCopilot } from "../copilot-provider";
 import { useCopilotActions } from "../use-copilot-actions";
+import { copilotName } from "@/lib/copilot/name";
 
 // The provider and the turn driver are modules with their own tests; the
 // panel is tested against fakes of them. The session reads go through MSW.
@@ -102,7 +103,7 @@ function renderPanel(variant: CopilotPanelVariant = "sheet") {
 }
 
 function box(): HTMLElement {
-  return screen.getByRole("textbox", { name: "Ask AskClark" });
+  return screen.getByRole("textbox", { name: `Ask ${copilotName}` });
 }
 
 async function ready() {
@@ -194,7 +195,7 @@ describe("CopilotPanel", () => {
   });
 
   it("sends the draft with its file, and gives it back when the send is refused", async () => {
-    sendQuestion.mockResolvedValue({ sent: false, message: "The Copilot did not respond." });
+    sendQuestion.mockResolvedValue({ sent: false, message: `${copilotName} did not respond.` });
     const { container } = renderPanel();
     await ready();
     const user = await stageDraft(container);
@@ -224,11 +225,11 @@ describe("CopilotPanel", () => {
       expect(box()).toHaveValue("");
     });
     await user.type(box(), "a follow-up");
-    refused.resolve({ sent: false, message: "The Copilot did not respond." });
+    refused.resolve({ sent: false, message: `${copilotName} did not respond.` });
 
     await waitFor(() => {
       expect(toastError).toHaveBeenCalledWith("Your question was not sent", {
-        description: "The Copilot did not respond. Your question: “next question”",
+        description: `${copilotName} did not respond. Your question: “next question”`,
       });
     });
     // What was typed since is kept.
@@ -259,7 +260,7 @@ describe("CopilotPanel", () => {
   it("cancels a file dropped outside the composer, so the page stays (C8)", async () => {
     renderPanel();
     await ready();
-    const target = screen.getByText("Ask AskClark");
+    const target = screen.getByText(`Ask ${copilotName}`);
 
     for (const type of ["dragOver", "drop"] as const) {
       const event = createEvent[type](target, {

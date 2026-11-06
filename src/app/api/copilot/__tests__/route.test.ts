@@ -8,6 +8,7 @@ import {
   mockNextRequest,
   setTestSession,
 } from "@/test-helpers/api-route-helpers";
+import { copilotName } from "@/lib/copilot/name";
 
 const gatewayUrl = "http://copilot.test/copilot-api";
 
@@ -156,7 +157,7 @@ describe("GET /api/copilot/models", () => {
     expect(res.status).toBe(500);
     const body = await json(res);
     expect(body).toEqual({
-      error: "AskClark is unavailable right now: it is not configured on this server.",
+      error: `${copilotName} is unavailable right now: it is not configured on this server.`,
       code: "unknown",
     });
     expect(JSON.stringify(body)).not.toContain("COPILOT_API_URL");

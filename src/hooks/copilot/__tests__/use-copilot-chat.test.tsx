@@ -159,7 +159,7 @@ describe("useCopilotChat", () => {
         sessionGets();
         return failing
           ? HttpResponse.json(
-              { error: "The Copilot store did not respond.", code: "upstream" },
+              { error: "The BV-BRC Copilot service did not respond.", code: "upstream" },
               { status: 500 },
             )
           : storedSession();
@@ -183,7 +183,7 @@ describe("useCopilotChat", () => {
       expect.objectContaining({
         status: "sent",
         ended: "done",
-        reloadError: "The Copilot store did not respond.",
+        reloadError: "The BV-BRC Copilot service did not respond.",
       }),
     );
     expect(result.current.active?.sessionId).toBe(sessionId);
@@ -193,7 +193,7 @@ describe("useCopilotChat", () => {
     expect(result.current.error).toEqual({
       sessionId,
       kind: "reload",
-      message: "The Copilot store did not respond.",
+      message: "The BV-BRC Copilot service did not respond.",
       query: null,
     });
 
@@ -229,7 +229,7 @@ describe("useCopilotChat", () => {
           sessionGets();
           return state.failing
             ? HttpResponse.json(
-                { error: "The Copilot store did not respond.", code: "upstream" },
+                { error: "The BV-BRC Copilot service did not respond.", code: "upstream" },
                 { status: 500 },
               )
             : HttpResponse.json({
@@ -279,7 +279,7 @@ describe("useCopilotChat", () => {
         expect.objectContaining({
           status: "sent",
           ended: "running",
-          reloadError: "The Copilot store did not respond.",
+          reloadError: "The BV-BRC Copilot service did not respond.",
         }),
       );
       expect(result.current.active?.turn).toEqual(
@@ -289,7 +289,7 @@ describe("useCopilotChat", () => {
       expect(result.current.error).toEqual({
         sessionId,
         kind: "reload",
-        message: "The Copilot store did not respond.",
+        message: "The BV-BRC Copilot service did not respond.",
         query: null,
       });
       expect(nextRefetchInterval(queryClient, copilotQueryKeys.session(sessionId))).toBe(
@@ -370,7 +370,7 @@ describe("useCopilotChat", () => {
       expect(result.current.error).toEqual({
         sessionId: otherSessionId,
         kind: "reload",
-        message: "The Copilot store did not respond.",
+        message: "The BV-BRC Copilot service did not respond.",
         query: null,
       });
     });

@@ -1,4 +1,5 @@
 import { expect, type Locator, type Page } from "@playwright/test";
+import { copilotName } from "@/lib/copilot/name";
 
 /** The edges and corners a floating window can be resized from. */
 export type CopilotResizeDirection =
@@ -79,7 +80,7 @@ export class CopilotPage {
   constructor(page: Page) {
     this.page = page;
 
-    this.launcher = page.getByRole("button", { name: "Open AskClark" });
+    this.launcher = page.getByRole("button", { name: `Open ${copilotName}` });
     this.panel = page.getByRole("dialog");
     this.floating = page.locator('[role="dialog"][aria-modal="false"]');
     this.newChatDialog = page.getByRole("dialog", { name: /New chat/ });
@@ -87,21 +88,21 @@ export class CopilotPage {
     this.sideSheetOverlay = page.locator('[data-slot="sheet-overlay"]');
     this.chatList = page.getByRole("complementary", { name: "Your chats" });
     this.emptyChatList = page.getByText("No chats yet.");
-    this.emptyState = page.getByText("Ask AskClark");
+    this.emptyState = page.getByText(`Ask ${copilotName}`);
 
-    this.optionsButton = page.getByRole("button", { name: "AskClark options" });
+    this.optionsButton = page.getByRole("button", { name: `${copilotName} options` });
     this.menu = page.getByRole("menu");
     this.closeButton = page
-      .getByRole("button", { name: "Close AskClark" })
+      .getByRole("button", { name: `Close ${copilotName}` })
       .first();
 
     const panel = this.panel;
-    this.composer = panel.getByRole("textbox", { name: "Ask AskClark" });
+    this.composer = panel.getByRole("textbox", { name: `Ask ${copilotName}` });
     this.sendButton = panel.getByRole("button", { name: "Send" });
     this.fileInput = panel.locator('input[type="file"]');
     this.attachedFiles = panel.getByRole("list", { name: "Attached files" });
     this.executeNotice = panel.getByText(
-      /Execute mode: AskClark may submit jobs/,
+      new RegExp(`Execute mode: ${copilotName} may submit jobs`),
     );
 
     this.whatIDidTrigger = panel.getByText("What I did (1 step)");

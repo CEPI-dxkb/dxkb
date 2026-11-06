@@ -4,6 +4,7 @@ import type { CopilotChatError } from "@/hooks/copilot/use-copilot-chat";
 import { startCopilotTurn } from "@/lib/copilot/turn";
 import type { CopilotSessionDetail } from "@/lib/copilot/types";
 import { CopilotTranscript } from "../copilot-transcript";
+import { copilotName } from "@/lib/copilot/name";
 
 const detail: CopilotSessionDetail = {
   sessionId: "s1",
@@ -60,7 +61,7 @@ describe("CopilotTranscript errors", () => {
       query: null,
     });
 
-    expect(screen.getByText("AskClark could not answer")).toBeInTheDocument();
+    expect(screen.getByText(`${copilotName} could not answer`)).toBeInTheDocument();
     expect(screen.getByText("The model is overloaded.")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Retry" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Reload" })).not.toBeInTheDocument();

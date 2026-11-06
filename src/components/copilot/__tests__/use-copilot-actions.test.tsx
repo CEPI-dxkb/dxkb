@@ -18,6 +18,7 @@ import { server } from "@/test-helpers/msw-server";
 import { createQueryClientWrapper } from "@/test-helpers/react";
 import type { useCopilot } from "../copilot-provider";
 import { useCopilotActions } from "../use-copilot-actions";
+import { copilotName } from "@/lib/copilot/name";
 
 const sessionId = "11111111-2222-3333-4444-555555555555";
 
@@ -406,7 +407,7 @@ describe("runPlan with untrusted step ids", () => {
 });
 
 describe("sendQuestion", () => {
-  it("says the Copilot is busy, without reading the session again", async () => {
+  it("says the assistant is busy, without reading the session again", async () => {
     const toastInfo = vi.spyOn(toast, "info");
     const { result } = renderActions(() => Promise.resolve({ status: "busy" }));
 
@@ -416,7 +417,7 @@ describe("sendQuestion", () => {
       outcome = await result.current.actions.sendQuestion("Hi");
     });
 
-    const busy = "AskClark is still finishing the last answer. Try again in a moment.";
+    const busy = `${copilotName} is still finishing the last answer. Try again in a moment.`;
     expect(outcome).toEqual({ sent: false, message: busy });
     expect(toastInfo).toHaveBeenCalledWith(busy);
     expect(sessionReads).toBe(0);
@@ -425,7 +426,7 @@ describe("sendQuestion", () => {
 
   it("gives the refusal's message, and reads the session again", async () => {
     const { result } = renderActions(() =>
-      Promise.resolve({ status: "refused", message: "The Copilot did not respond." }),
+      Promise.resolve({ status: "refused", message: `${copilotName} did not respond.` }),
     );
 
     let outcome: Awaited<ReturnType<typeof result.current.actions.sendQuestion>> | null =
@@ -434,7 +435,7 @@ describe("sendQuestion", () => {
       outcome = await result.current.actions.sendQuestion("Hi");
     });
 
-    expect(outcome).toEqual({ sent: false, message: "The Copilot did not respond." });
+    expect(outcome).toEqual({ sent: false, message: `${copilotName} did not respond.` });
     await waitFor(() => {
       expect(sessionReads).toBe(1);
     });

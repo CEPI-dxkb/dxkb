@@ -6,6 +6,7 @@ import {
   journeyOverrides,
   workspacePopulatedOverrides,
 } from "../fixtures/overrides";
+import { copilotName } from "@/lib/copilot/name";
 
 const question = "Find complete Mpox virus genomes collected since 2022";
 const answer = "I found **12** complete Mpox genomes.";
@@ -322,7 +323,7 @@ test.describe("Copilot", () => {
     await copilot.moveToSidePanel();
 
     await expect(copilot.sideSheet).toBeVisible();
-    await expect(copilot.sideSheet.getByText("Ask AskClark")).toBeVisible();
+    await expect(copilot.sideSheet.getByText(`Ask ${copilotName}`)).toBeVisible();
     await expect(copilot.floating).toHaveCount(0);
   });
 

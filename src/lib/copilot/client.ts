@@ -247,7 +247,7 @@ export async function openCopilotChat(
   if (!response.ok) throw await copilotFailure(response);
   if (!response.body) {
     throw new CopilotClientError(
-      "The Copilot answer arrived without a body.",
+      `${copilotName}'s answer arrived without a body.`,
       502,
       null,
     );

@@ -48,7 +48,7 @@ describe("reloadCopilotSession", () => {
           return HttpResponse.json(session(2));
         }
         return HttpResponse.json(
-          { error: "The Copilot store did not respond.", code: "upstream" },
+          { error: "The BV-BRC Copilot service did not respond.", code: "upstream" },
           { status: 500 },
         );
       }),
@@ -63,8 +63,8 @@ describe("reloadCopilotSession", () => {
     // The second reload cancels the first one's fetch, and its own fails.
     const second = reloadCopilotSession(queryClient, sessionId);
 
-    await expect(second).resolves.toBe("The Copilot store did not respond.");
-    await expect(first).resolves.toBe("The Copilot store did not respond.");
+    await expect(second).resolves.toBe("The BV-BRC Copilot service did not respond.");
+    await expect(first).resolves.toBe("The BV-BRC Copilot service did not respond.");
     releaseFirst();
   });
 

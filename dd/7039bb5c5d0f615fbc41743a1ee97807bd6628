@@ -1,0 +1,39 @@
+src/components/ui/button-variants.ts
+  s_9637d6f7988c26::t_a286f5fa594b0e 136-137
+  s_9637d6f7988c26::t_b8f54fd1a8facd 138
+src/components/workspace/folder-picker/__tests__/folder-picker-files.test.tsx
+  s_9637d6f7988c26::t_993a2e9e527fa1 60-78
+src/lib/services/workspace/picker-views.ts
+  s_9637d6f7988c26::t_6ab5b601697940 408-425,555-557,563-565
+src/app/api/copilot/__tests__/route.test.ts
+  s_9637d6f7988c26::t_e89810377b54b5 108-129,131,133-140
+  s_9637d6f7988c26::t_af631d0a81874b 130,132
+src/lib/services/workspace/__tests__/picker-views.test.ts
+  s_9637d6f7988c26::t_993a2e9e527fa1 986-1007
+docs/architecture.md
+  s_9637d6f7988c26::t_110f1b295a9605 136
+src/lib/copilot/server.ts
+  s_9637d6f7988c26::t_384aeba5239e6b 152-154,174-178,188
+  s_9637d6f7988c26::t_110f1b295a9605 179-187
+src/components/workspace/folder-picker/folder-picker-accepted-types.tsx
+  s_9637d6f7988c26::t_206cfba0017ac8 1-35,37-39,41-54
+  s_9637d6f7988c26::t_a286f5fa594b0e 36,40
+src/components/workspace/folder-picker/folder-picker-dialog.tsx
+  s_9637d6f7988c26::t_a286f5fa594b0e 67,539-547
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "dd7039bb5c5d0f615fbc41743a1ee97807bd6628",
+  "prompts": {},
+  "sessions": {
+    "s_9637d6f7988c26": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "38d4529b-fbbd-47ff-af46-0119c964f514",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>"
+    }
+  }
+}

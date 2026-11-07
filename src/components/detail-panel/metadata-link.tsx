@@ -2,25 +2,13 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { classifyHref } from "./metadata-link-policy";
+import { classifyHref, metadataLinkClassName } from "./metadata-link-policy";
 
 /**
  * The rendering half of the metadata-link boundary. Classification and template
  * resolution live in the sibling `./metadata-link-policy` module; everything
  * here turns an already-classified destination into markup.
  */
-
-/**
- * Shared visual treatment for the detail panel's metadata-driven links —
- * scalar, array and button alike — so internal and external destinations look
- * identical regardless of which shape produced them. Not repo-wide: the
- * collection table styles the same `DataField.link` templates through its own
- * `valueHref` path with a different class string, which
- * `./metadata-link-policy` records alongside the classification boundary that
- * path also bypasses.
- */
-export const metadataLinkClassName =
-  "text-primary underline hover:text-primary/80 dark:text-link dark:hover:text-foreground";
 
 export interface MetadataLinkProps {
   href: string;
@@ -75,28 +63,15 @@ export function MetadataLink({
   return null;
 }
 
-/**
- * Imperative wrapper around {@link MetadataLink} for the detail panel's
- * `render`-callback field shape, which builds nodes rather than composing JSX.
- */
-export function renderMetadataLink(
-  href: string,
-  label: ReactNode,
-  key?: string,
-): ReactNode {
-  return (
-    <MetadataLink key={key} href={href}>
-      {label}
-    </MetadataLink>
-  );
-}
-
 /** Same internal/external/unsafe contract as {@link MetadataLink}, wrapped
  * in the shared `Button` styling for `linkType: "button"` fields. */
-export function renderMetadataLinkButton(
-  href: string,
-  label: ReactNode,
-): ReactNode {
+export function MetadataLinkButton({
+  href,
+  children,
+}: {
+  href: string;
+  children: ReactNode;
+}) {
   const classification = classifyHref(href);
   if (classification === "external") {
     return (
@@ -105,7 +80,7 @@ export function renderMetadataLinkButton(
         render={<a href={href} target="_blank" rel="noopener noreferrer" />}
         size="sm"
       >
-        {label}
+        {children}
       </Button>
     );
   }
@@ -116,7 +91,7 @@ export function renderMetadataLinkButton(
         render={<Link href={href} />}
         size="sm"
       >
-        {label}
+        {children}
       </Button>
     );
   }

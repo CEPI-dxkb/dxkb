@@ -2,7 +2,7 @@
 
 import { Component, Fragment, type ReactNode } from "react";
 import { RetryButton } from "@/components/errors/retry-button";
-import { routeErrorMessage } from "@/components/errors/view-error-boundary";
+import { routeErrorMessage } from "@/components/errors/route-error-message";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { formatUserFacingErrorMessage } from "@/lib/utils";
 

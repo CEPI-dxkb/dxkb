@@ -13,6 +13,7 @@ import {
   ServiceCardContent,
   ServiceCardTitle,
 } from "@/components/services/form-ui/service-card";
+import { KeywordCard, PathogenCard } from "./advanced-search-fields";
 import { rqlEq, rqlAnd } from "@/lib/views/rql";
 import { encodeQueryComponent } from "@/lib/url";
 
@@ -74,41 +75,9 @@ export function EpitopeSearch() {
 
   return (
     <form onSubmit={handleSubmit} onReset={handleReset} className="space-y-6">
-      <Card>
-        <ServiceCardHeader>
-          <ServiceCardTitle>Keyword</ServiceCardTitle>
-        </ServiceCardHeader>
-        <ServiceCardContent>
-          <div className="service-card-row-item">
-            <ServiceLabel htmlFor="keyword">Keyword</ServiceLabel>
-            <ServiceInput
-              id="keyword"
-              placeholder="Search term"
-              value={keyword}
-              onChange={(e) => { setKeyword(e.target.value); }}
-            />
-          </div>
-        </ServiceCardContent>
-      </Card>
+      <KeywordCard value={keyword} onChange={setKeyword} />
 
-      <Card>
-        <ServiceCardHeader>
-          <ServiceCardTitle>Pathogen</ServiceCardTitle>
-        </ServiceCardHeader>
-        <ServiceCardContent>
-          <div className="service-card-content-grid">
-            <div className="service-card-row-item">
-              <ServiceLabel htmlFor="taxon-name">Taxon Name</ServiceLabel>
-              <ServiceInput
-                id="taxon-name"
-                placeholder="e.g. Influenza A virus"
-                value={taxonName}
-                onChange={(e) => { setTaxonName(e.target.value); }}
-              />
-            </div>
-          </div>
-        </ServiceCardContent>
-      </Card>
+      <PathogenCard value={taxonName} onChange={setTaxonName} />
 
       <Card>
         <ServiceCardHeader>

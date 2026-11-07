@@ -11,6 +11,7 @@ import {
   ServiceCardContent,
   ServiceCardTitle,
 } from "@/components/services/form-ui/service-card";
+import { GeographyCard, KeywordCard, RangeCard } from "./advanced-search-fields";
 import { rqlEq, rqlAnd, escapeRqlValue } from "@/lib/views/rql";
 import { encodeQueryComponent } from "@/lib/url";
 
@@ -81,22 +82,7 @@ export function SerologySearch() {
 
   return (
     <form onSubmit={handleSubmit} onReset={handleReset} className="space-y-6">
-      <Card>
-        <ServiceCardHeader>
-          <ServiceCardTitle>Keyword</ServiceCardTitle>
-        </ServiceCardHeader>
-        <ServiceCardContent>
-          <div className="service-card-row-item">
-            <ServiceLabel htmlFor="keyword">Keyword</ServiceLabel>
-            <ServiceInput
-              id="keyword"
-              placeholder="Search term"
-              value={keyword}
-              onChange={(e) => { setKeyword(e.target.value); }}
-            />
-          </div>
-        </ServiceCardContent>
-      </Card>
+      <KeywordCard value={keyword} onChange={setKeyword} />
 
       <Card>
         <ServiceCardHeader>
@@ -172,95 +158,29 @@ export function SerologySearch() {
         </ServiceCardContent>
       </Card>
 
-      <Card>
-        <ServiceCardHeader>
-          <ServiceCardTitle>Geography</ServiceCardTitle>
-        </ServiceCardHeader>
-        <ServiceCardContent>
-          <div className="service-card-content-grid">
-            <div className="service-card-row-item">
-              <ServiceLabel htmlFor="geographic-group">Geographic Group</ServiceLabel>
-              <ServiceInput
-                id="geographic-group"
-                placeholder="e.g. Asia"
-                value={geographicGroup}
-                onChange={(e) => { setGeographicGroup(e.target.value); }}
-              />
-            </div>
-            <div className="service-card-row-item">
-              <ServiceLabel htmlFor="collection-country">Collection Country</ServiceLabel>
-              <ServiceInput
-                id="collection-country"
-                placeholder="e.g. China"
-                value={collectionCountry}
-                onChange={(e) => { setCollectionCountry(e.target.value); }}
-              />
-            </div>
-          </div>
-        </ServiceCardContent>
-      </Card>
+      <GeographyCard
+        country="collection"
+        group={geographicGroup}
+        onGroupChange={setGeographicGroup}
+        countryValue={collectionCountry}
+        onCountryChange={setCollectionCountry}
+      />
 
-      <Card>
-        <ServiceCardHeader>
-          <ServiceCardTitle>Collection Year</ServiceCardTitle>
-        </ServiceCardHeader>
-        <ServiceCardContent>
-          <div className="service-card-content-grid">
-            <div className="service-card-row-item">
-              <ServiceLabel htmlFor="year-from">From</ServiceLabel>
-              <ServiceInput
-                id="year-from"
-                type="number"
-                min={1900}
-                max={2100}
-                placeholder="e.g. 2010"
-                value={yearFrom}
-                onChange={(e) => { setYearFrom(e.target.value); }}
-              />
-            </div>
-            <div className="service-card-row-item">
-              <ServiceLabel htmlFor="year-to">To</ServiceLabel>
-              <ServiceInput
-                id="year-to"
-                type="number"
-                min={1900}
-                max={2100}
-                placeholder="e.g. 2024"
-                value={yearTo}
-                onChange={(e) => { setYearTo(e.target.value); }}
-              />
-            </div>
-          </div>
-        </ServiceCardContent>
-      </Card>
+      <RangeCard
+        kind="year"
+        from={yearFrom}
+        to={yearTo}
+        onFromChange={setYearFrom}
+        onToChange={setYearTo}
+      />
 
-      <Card>
-        <ServiceCardHeader>
-          <ServiceCardTitle>Collection Date</ServiceCardTitle>
-        </ServiceCardHeader>
-        <ServiceCardContent>
-          <div className="service-card-content-grid">
-            <div className="service-card-row-item">
-              <ServiceLabel htmlFor="date-from">From</ServiceLabel>
-              <ServiceInput
-                id="date-from"
-                placeholder="YYYY or YYYY-MM or YYYY-MM-DD"
-                value={dateFrom}
-                onChange={(e) => { setDateFrom(e.target.value); }}
-              />
-            </div>
-            <div className="service-card-row-item">
-              <ServiceLabel htmlFor="date-to">To</ServiceLabel>
-              <ServiceInput
-                id="date-to"
-                placeholder="YYYY or YYYY-MM or YYYY-MM-DD"
-                value={dateTo}
-                onChange={(e) => { setDateTo(e.target.value); }}
-              />
-            </div>
-          </div>
-        </ServiceCardContent>
-      </Card>
+      <RangeCard
+        kind="date"
+        from={dateFrom}
+        to={dateTo}
+        onFromChange={setDateFrom}
+        onToChange={setDateTo}
+      />
 
       <div className="service-form-controls">
         <Button type="reset" variant="outline">Reset</Button>

@@ -1,10 +1,8 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
-import { Spinner } from "@/components/ui/spinner";
 import { JobParamsDialog } from "@/components/services/job-params-dialog";
 import { ServiceHeader } from "@/components/services/service-header";
-import { ServiceSubmitError } from "@/components/services/form-ui/service-submit-error";
+import { ServiceFormFooter } from "@/components/services/form-ui/service-form-footer";
 import { primerDesignInfo } from "@/lib/services/info/primer-design";
 import { PrimerAdvancedSection } from "./primer-advanced-section";
 import { PrimerInputSection } from "./primer-input-section";
@@ -34,19 +32,13 @@ export default function PrimerDesignServicePage() {
           <PrimerAdvancedSection controller={controller} />
         </PrimerInputSection>
         <PrimerOutputSection controller={controller} />
-        <ServiceSubmitError form={form} />
-        <div className="service-form-controls">
-          <Button type="button" variant="outline" onClick={handleReset}>
-            Reset
-          </Button>
-          <Button
-            type="submit"
-            disabled={runtime.isSubmitting || !canSubmit || !isOutputNameValid}
-          >
-            {runtime.isSubmitting ? <Spinner className="mr-2 size-4" /> : null}
-            Submit
-          </Button>
-        </div>
+        <ServiceFormFooter
+          form={form}
+          onReset={handleReset}
+          isSubmitting={runtime.isSubmitting}
+          submitDisabled={!canSubmit || !isOutputNameValid}
+          spinnerClassName="mr-2 size-4"
+        />
       </form>
       <JobParamsDialog
         {...runtime.jobParamsDialogProps}

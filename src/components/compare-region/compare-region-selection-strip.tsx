@@ -48,7 +48,7 @@ import {
 import { compareRegionHref } from "@/lib/compare-region/url-state";
 import { featureHref } from "@/lib/views/hrefs";
 import { FeatureSwatch } from "./compare-region-glyphs";
-import { PinContext } from "./compare-region-highlight";
+import { PinContext } from "./compare-region-contexts";
 
 function Kbd({ children }: { children: string }) {
   return (

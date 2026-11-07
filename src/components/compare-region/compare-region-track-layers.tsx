@@ -27,7 +27,8 @@ import {
   trackScale,
   type TrackMatrix,
 } from "@/lib/compare-region/ruler";
-import { ribbonPaths, RowHoverContext } from "./compare-region-highlight";
+import { RowHoverContext } from "./compare-region-contexts";
+import { ribbonPaths } from "./compare-region-ribbon-paths";
 
 interface LayerProps {
   model: ChartModel;

@@ -16,11 +16,13 @@ import { estimateTextWidth } from "@/lib/compare-region/text-measure";
 import { focusRow, mirroredRow, testGene } from "@/test-helpers/compare-region";
 import { GlyphLayer } from "../compare-region-glyphs";
 import {
-  HighlightLayer,
   HoverContext,
-  LabelHighlight,
   PinContext,
   RowHoverContext,
+} from "../compare-region-contexts";
+import {
+  HighlightLayer,
+  LabelHighlight,
   TraceVeil,
 } from "../compare-region-highlight";
 import {

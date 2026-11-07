@@ -2,8 +2,9 @@
 
 import { useLayoutEffect, useRef } from "react";
 import type { FigureHit } from "@/lib/circular-viewer/drawing";
+import { itemTitle } from "@/lib/circular-viewer/item-fields";
 import { placePopup, popupMaxWidth, popupSide } from "@/lib/popup-placement";
-import { ItemFieldList, itemTitle } from "./circular-viewer-item-fields";
+import { ItemFieldList } from "./circular-viewer-item-fields";
 
 /** From the pointer to the tooltip, px, across and down. */
 const pointerGap = 12;

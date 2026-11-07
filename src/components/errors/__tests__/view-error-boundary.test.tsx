@@ -1,10 +1,7 @@
 import { render, screen } from "@testing-library/react";
 
-import {
-  routeErrorMessage,
-  serverFailureCopy,
-  ViewErrorBoundary,
-} from "../view-error-boundary";
+import { routeErrorMessage, serverFailureCopy } from "../route-error-message";
+import { ViewErrorBoundary } from "../view-error-boundary";
 
 describe("routeErrorMessage", () => {
   it("replaces a digested (server) error's message with the fixed copy", () => {

@@ -1,6 +1,7 @@
 /**
- * The pure half of the metadata-link boundary: href classification and
- * `{placeholder}` template resolution, with no JSX and no React import.
+ * The pure half of the metadata-link boundary: href classification,
+ * `{placeholder}` template resolution and the shared link class string, with
+ * no JSX and no React import.
  *
  * Rendering lives in the sibling `./metadata-link` module and in DataTable's
  * table-specific wrapper. These surfaces, the detail panel, and the four entity
@@ -8,6 +9,17 @@
  * share one security and routing decision instead of each re-deriving a scheme
  * check.
  */
+
+/**
+ * Shared visual treatment for the detail panel's metadata-driven links —
+ * scalar, array and button alike — so internal and external destinations look
+ * identical regardless of which shape produced them. Not repo-wide: the
+ * collection table styles the same `DataField.link` templates through its own
+ * `valueHref` path with a different class string, though it classifies them
+ * through {@link classifyHref} like every other surface.
+ */
+export const metadataLinkClassName =
+  "text-primary underline hover:text-primary/80 dark:text-link dark:hover:text-foreground";
 
 /** Three-way outcome of {@link classifyHref}. */
 export type HrefClassification = "internal" | "external" | "unsafe";
@@ -19,10 +31,10 @@ export type HrefClassification = "internal" | "external" | "unsafe";
  * that every rendered `DataField.link` has been classified:
  *
  * - **Routes through here.** `./info-panel.tsx` renders no `<Link>`, `<a>` or
- *   `href` of its own — every link it produces goes through
- *   `renderMetadataLink` / `renderMetadataLinkButton`, so its scalar, array and
- *   button fields are all covered. The four link-rendering entity overviews
- *   likewise use only `MetadataLink`.
+ *   `href` of its own — every link it produces goes through `MetadataLink` /
+ *   `MetadataLinkButton`, so its scalar, array and button fields are all
+ *   covered. The four link-rendering entity overviews likewise use only
+ *   `MetadataLink`.
  * - **Collection tables.** `src/components/shared/data-table.tsx` resolves and
  *   classifies every `valueHref` through this policy. This keeps metadata links
  *   consistent between table, detail-panel, and overview surfaces.

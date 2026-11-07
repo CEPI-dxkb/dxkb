@@ -2,13 +2,9 @@
 
 import { Fragment } from "react";
 import { useSubspeciesClassificationPage } from "./use-subspecies-classification-page";
-import {
-  FieldItem,
-  FieldErrors,
-  fieldErrorMessage,
-} from "@/components/ui/tanstack-form";
+import { FieldItem, FieldErrors } from "@/components/ui/tanstack-form";
+import { fieldErrorMessage } from "@/components/ui/field-error-message";
 import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -22,11 +18,10 @@ import { RadioGroupItem } from "@/components/ui/radio-group";
 
 import { ServiceHeader } from "@/components/services/service-header";
 import { DialogInfoPopup } from "@/components/services/dialog-info-popup";
-import OutputFolder from "@/components/services/output-folder";
+import { ServiceOutputFields } from "@/components/services/service-output-fields";
 import { RequiredFormCardTitle } from "@/components/forms/required-form-components";
 import { WorkspaceObjectSelector } from "@/components/workspace/workspace-object-selector";
 import { JobParamsDialog } from "@/components/services/job-params-dialog";
-import { Spinner } from "@/components/ui/spinner";
 import {
   ServiceCardContent,
   ServiceCardHeader,
@@ -36,7 +31,7 @@ import { ServiceTextarea } from "@/components/services/form-ui/service-input";
 import { ServiceLabel } from "@/components/services/form-ui/service-label";
 import { ServiceRadioGroup } from "@/components/services/form-ui/service-radio-group";
 import { ServiceSelectTrigger } from "@/components/services/form-ui/service-select";
-import { ServiceSubmitError } from "@/components/services/form-ui/service-submit-error";
+import { ServiceFormFooter } from "@/components/services/form-ui/service-form-footer";
 
 import {
   subspeciesClassificationInfo,
@@ -62,7 +57,6 @@ const subspeciesSpeciesSeparatorBeforeIndex = new Set([5, 7, 17, 21, 23, 24]);
 export default function SubspeciesClassificationPage() {
   const {
     form,
-    outputPath,
     inputSource,
     validatedFasta,
     handleFastaBlur,
@@ -279,59 +273,42 @@ export default function SubspeciesClassificationPage() {
                 )}
               </form.Field>
 
-              <div className="service-card-row">
-                <div className="service-card-row-item">
-                  <form.Field name="output_path">
-                    {(field) => (
-                      <FieldItem>
-                        <OutputFolder
-                          value={field.state.value}
-                          onChange={(value) => {
-                            field.handleChange(value);
-                          }}
-                        />
-                        <FieldErrors field={field} />
-                      </FieldItem>
-                    )}
-                  </form.Field>
-                </div>
-
-                <div className="service-card-row-item">
+              <form.Field name="output_path">
+                {(outputPathField) => (
                   <form.Field name="output_file">
-                    {(field) => (
-                      <FieldItem>
-                        <OutputFolder
-                          variant="name"
-                          value={field.state.value}
-                          onChange={(value) => {
-                            field.handleChange(value);
-                          }}
-                          outputFolderPath={outputPath}
-                          onValidationChange={setIsOutputNameValid}
-                        />
-                        <FieldErrors field={field} />
-                      </FieldItem>
+                    {(outputNameField) => (
+                      <ServiceOutputFields
+                        layout="row"
+                        required={false}
+                        outputPath={{
+                          value: outputPathField.state.value,
+                          onChange: outputPathField.handleChange,
+                          errors: <FieldErrors field={outputPathField} />,
+                        }}
+                        outputName={{
+                          value: outputNameField.state.value,
+                          onChange: outputNameField.handleChange,
+                          errors: <FieldErrors field={outputNameField} />,
+                        }}
+                        onOutputNameValidationChange={setIsOutputNameValid}
+                      />
                     )}
                   </form.Field>
-                </div>
-              </div>
+                )}
+              </form.Field>
             </ServiceCardContent>
           </Card>
         </div>
 
         {/* Form controls */}
         <div className="md:col-span-12">
-          <ServiceSubmitError form={form} />
-          <div className="service-form-controls">
-            <Button type="button" variant="outline" onClick={handleReset}>
-              Reset
-            </Button>
-
-            <Button type="submit" disabled={isSubmitting || !canSubmit}>
-              {isSubmitting ? <Spinner className="mr-2 size-4" /> : null}
-              Submit
-            </Button>
-          </div>
+          <ServiceFormFooter
+            form={form}
+            onReset={handleReset}
+            isSubmitting={isSubmitting}
+            submitDisabled={!canSubmit}
+            spinnerClassName="mr-2 size-4"
+          />
         </div>
       </form>
 

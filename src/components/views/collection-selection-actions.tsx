@@ -126,6 +126,11 @@ interface CollectionSelectionActionsProps {
   onOtherAction?: (actionId: SearchActionId) => void;
 }
 
+/** A built list href that is present and short enough to open safely. */
+function isOpenableListHref(href: string | null): href is string {
+  return !!href && href.length <= selectionListMaxUrlLength;
+}
+
 /**
  * The action bar and dialogs shared by every collection whose row selection resolves
  * to a set of IDs a service or workspace group accepts — Genome IDs (Strains via
@@ -224,13 +229,15 @@ export function CollectionSelectionActions({
     if (pendingActionRef.current) return;
     pendingActionRef.current = actionId;
     setLoadingActionIds([actionId]);
+    const opensGroup = actionId === "group" && isAuthenticated;
     try {
       // Both list actions pre-check the ID count rather than leaning on the href
       // builders returning null: the explicit check can name the resolved ID count and
       // the destination, and it keeps all four owned actions on one enforcement path.
-      // The `!href` arm below stays for type narrowing (and as a backstop if the
-      // builders' rules diverge); the URL-length arm is a genuinely separate bound
-      // that long feature IDs reach well before 500 of them.
+      // `isOpenableListHref` stays for type narrowing and as a backstop if the
+      // builders' rules diverge (a missing href), and it also enforces the
+      // URL-length bound, which is genuinely separate: long feature IDs reach it
+      // well before 500 of them.
       if (actionId === "genomes") {
         const href = genomesHrefFromIds(
           await resolveSelectionIds({
@@ -240,7 +247,7 @@ export function CollectionSelectionActions({
             advice: "Narrow the selection or create a Genome Group.",
           }),
         );
-        if (!href || href.length > selectionListMaxUrlLength) {
+        if (!isOpenableListHref(href)) {
           onError(
             "This selection contains too many genome IDs to open safely. Narrow the selection or create a Genome Group.",
           );
@@ -256,7 +263,7 @@ export function CollectionSelectionActions({
             advice: "Narrow the selection or create a Feature Group.",
           }),
         );
-        if (!href || href.length > selectionListMaxUrlLength) {
+        if (!isOpenableListHref(href)) {
           onError(
             "This selection contains too many feature IDs to open safely. Narrow the selection or create a Feature Group.",
           );
@@ -275,7 +282,7 @@ export function CollectionSelectionActions({
           }),
         );
         setIsServiceOpen(true);
-      } else if (actionId === "group" && isAuthenticated) {
+      } else if (opensGroup) {
         setSelectionIds(
           await resolveSelectionIds({
             maxRows: selectionGroupMaxRows,

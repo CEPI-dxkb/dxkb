@@ -1,9 +1,6 @@
 import { useSelector } from "@tanstack/react-store";
-import {
-  FieldErrors,
-  FieldItem,
-  fieldErrorMessage,
-} from "@/components/ui/tanstack-form";
+import { FieldErrors, FieldItem } from "@/components/ui/tanstack-form";
+import { fieldErrorMessage } from "@/components/ui/field-error-message";
 import { Card } from "@/components/ui/card";
 import {
   Select,

@@ -590,6 +590,50 @@ describe("ResourceCollection Bioset actions", () => {
     ).toBeInTheDocument();
   });
 
+  it("rejects all matching Biosets when none has an experiment", async () => {
+    const user = userEvent.setup();
+    const close = vi.fn();
+    const replace = vi.fn();
+    vi.stubGlobal(
+      "open",
+      vi.fn(() => ({ close, opener: window, location: { replace } })),
+    );
+    const exportAll = vi.fn(() =>
+      Promise.resolve({ rows: [{}, {}] }),
+    );
+    useResourceCollection.mockReturnValueOnce({
+      ...collectionResult(),
+      activeId: null,
+      detail: null,
+      isAllPagesSelected: true,
+      rows: [{ bioset_id: "bioset-1", exp_id: "00042" }],
+      selection: {},
+      selectedIds: [],
+      total: 2,
+    });
+
+    render(
+      <ResourceCollection
+        profile={biosetCollectionProfile}
+        repository={{ exportAll } as unknown as DataRepository}
+        state={{ filters: {}, page: 1, sort: "bioset_id:asc" }}
+        onStateChange={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Biosets action" }));
+
+    await waitFor(() => {
+      expect(close).toHaveBeenCalledOnce();
+    });
+    expect(replace).not.toHaveBeenCalled();
+    expect(
+      screen.getByText(
+        "No experiments are associated with this selection.",
+      ),
+    ).toBeInTheDocument();
+  });
+
   it("reports a blocked pop-up for an explicitly selected Bioset's results", async () => {
     const user = userEvent.setup();
     const selected = vi.fn(() => Promise.resolve({ rows: [] }));

@@ -28,6 +28,7 @@ import {
   stepCursor,
   type FigureCursor,
 } from "@/lib/circular-viewer/keyboard";
+import { itemAnnouncement } from "@/lib/circular-viewer/item-fields";
 import {
   figureRadius,
   toPolar,
@@ -35,7 +36,6 @@ import {
 } from "@/lib/circular-viewer/layout";
 import type { CircularTrack } from "@/lib/circular-viewer/tracks";
 import { CircularViewerItemDialog } from "./circular-viewer-item-dialog";
-import { itemAnnouncement } from "./circular-viewer-item-fields";
 import { CircularViewerTooltip } from "./circular-viewer-tooltip";
 import { CircularTrackLayer } from "./circular-viewer-track-layer";
 

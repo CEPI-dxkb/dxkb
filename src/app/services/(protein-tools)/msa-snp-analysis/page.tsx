@@ -2,17 +2,13 @@
 
 import { useForm } from "@tanstack/react-form";
 import { useSelector } from "@tanstack/react-store";
-import {
-  FieldItem,
-  FieldErrors,
-  fieldErrorMessage,
-} from "@/components/ui/tanstack-form";
+import { FieldItem, FieldErrors } from "@/components/ui/tanstack-form";
+import { fieldErrorMessage } from "@/components/ui/field-error-message";
 import { useState, useEffect } from "react";
 import { useServiceRuntime } from "@/hooks/services/use-service-runtime";
 import { normalizeToArray } from "@/lib/rerun-utility";
 import { ServiceHeader } from "@/components/services/service-header";
 import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -51,7 +47,7 @@ import { ServiceTextarea } from "@/components/services/form-ui/service-input";
 import { ServiceLabel } from "@/components/services/form-ui/service-label";
 import { ServiceRadioGroup } from "@/components/services/form-ui/service-radio-group";
 import { ServiceSelectTrigger } from "@/components/services/form-ui/service-select";
-import { ServiceSubmitError } from "@/components/services/form-ui/service-submit-error";
+import { ServiceFormFooter } from "@/components/services/form-ui/service-form-footer";
 import {
   msaSNPAnalysisInfo,
   msaSNPAnalysisStartWith,
@@ -1226,24 +1222,12 @@ function useMSAandSNPAnalysisPage() {
         </MsaParametersCard>
 
         {/* Form Controls */}
-        <ServiceSubmitError form={form} />
-        <div className="service-form-controls">
-          <Button type="button" variant="outline" onClick={handleReset}>
-            Reset
-          </Button>
-          <Button
-            type="submit"
-            disabled={
-              isSubmitting ||
-              !canSubmit ||
-              !isOutputNameValid ||
-              isCheckingShownPick
-            }
-          >
-            {isSubmitting ? <Spinner /> : null}
-            Submit
-          </Button>
-        </div>
+        <ServiceFormFooter
+          form={form}
+          onReset={handleReset}
+          isSubmitting={isSubmitting}
+          submitDisabled={!canSubmit || !isOutputNameValid || isCheckingShownPick}
+        />
       </form>
 
       <JobParamsDialog {...jobParamsDialogProps} />

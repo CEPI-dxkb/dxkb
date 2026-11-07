@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/select";
 import { FieldErrors, FieldItem } from "@/components/ui/tanstack-form";
 import { DialogInfoPopup } from "@/components/services/dialog-info-popup";
+import { TreeThresholdSelect } from "@/components/services/tree-threshold-select";
 import { ServiceOutputFields } from "@/components/services/service-output-fields";
 import { RequiredFormCardTitle } from "@/components/forms/required-form-components";
 import {
@@ -170,30 +171,12 @@ function ThresholdField({
     <form.Field name={name}>
       {(field) => (
         <FieldItem>
-          <ServiceLabel>{label}</ServiceLabel>
-          <Select
-            items={ViralGenomeTree.thresholdOptions.map((value) => ({
-              value,
-              label: value,
-            }))}
+          <TreeThresholdSelect
+            label={<ServiceLabel>{label}</ServiceLabel>}
+            ariaLabel={ariaLabel}
             value={field.state.value}
-            onValueChange={(value) => {
-              if (value != null) field.handleChange(value);
-            }}
-          >
-            <ServiceSelectTrigger aria-label={ariaLabel}>
-              <SelectValue placeholder="Select" />
-            </ServiceSelectTrigger>
-            <SelectContent>
-              <SelectGroup>
-                {ViralGenomeTree.thresholdOptions.map((value) => (
-                  <SelectItem key={value} value={value}>
-                    {value}
-                  </SelectItem>
-                ))}
-              </SelectGroup>
-            </SelectContent>
-          </Select>
+            onValueChange={field.handleChange}
+          />
           <FieldErrors field={field} />
         </FieldItem>
       )}

@@ -7,8 +7,8 @@ import { TableCell, TableRow } from "@/components/ui/table";
 import type { WorkspaceItem } from "@/lib/services/workspace/domain";
 import { isFolderType } from "@/lib/services/workspace/utils";
 import { columnClassMap } from "./workspace-table-columns";
+import { orderedCells } from "@/components/shared/file-table-utils";
 import {
-  orderedCells,
   useDataTableBody,
   type FileTableFeatures,
 } from "@/components/shared/file-table";

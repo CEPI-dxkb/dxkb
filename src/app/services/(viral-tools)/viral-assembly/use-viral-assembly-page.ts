@@ -43,10 +43,6 @@ export function useViralAssemblyPage() {
     form.store,
     (value) => value.values.reference_type,
   );
-  const outputPath = useSelector(
-    form.store,
-    (value) => value.values.output_path,
-  );
   const canSubmit = useSelector(form.store, (value) => value.canSubmit);
   const selection = useTanstackLibrarySelection<ViralAssemblyLibraryItem>({
     form,
@@ -171,7 +167,6 @@ export function useViralAssemblyPage() {
     inputType,
     strategy,
     referenceType,
-    outputPath,
     handleReset,
     setPairedRead1: setState("pairedRead1"),
     setPairedRead2: setState("pairedRead2"),

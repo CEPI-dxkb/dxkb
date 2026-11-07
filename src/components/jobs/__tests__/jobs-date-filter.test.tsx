@@ -60,15 +60,18 @@ describe("JobsDateFilter applied filter", () => {
     render(filterElement(from, to));
 
     expect(screen.getByRole("button", { name: label })).toBeVisible();
-    // The trigger and the clear button.
-    expect(screen.getAllByRole("button")).toHaveLength(2);
+    expect(
+      screen.getByRole("button", { name: "Clear date filter" }),
+    ).toBeVisible();
   });
 
   it("shows All dates, inactive, with no dates", () => {
     render(filterElement());
 
     expect(screen.getByRole("button", { name: "All dates" })).toBeVisible();
-    expect(screen.getAllByRole("button")).toHaveLength(1);
+    expect(
+      screen.queryByRole("button", { name: "Clear date filter" }),
+    ).not.toBeInTheDocument();
   });
 
   it("goes back to All dates when the props are cleared", () => {
@@ -77,7 +80,9 @@ describe("JobsDateFilter applied filter", () => {
     view.rerender(filterElement());
 
     expect(screen.getByRole("button", { name: "All dates" })).toBeVisible();
-    expect(screen.getAllByRole("button")).toHaveLength(1);
+    expect(
+      screen.queryByRole("button", { name: "Clear date filter" }),
+    ).not.toBeInTheDocument();
   });
 
   it("follows the props when they change from outside", () => {

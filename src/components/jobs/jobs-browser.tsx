@@ -26,9 +26,9 @@ import {
   DataTable,
   type DataTableSort,
   type FileTableFeatures,
-  orderedCells,
   useDataTableBody,
 } from "@/components/shared/file-table";
+import { orderedCells } from "@/components/shared/file-table-utils";
 import { useTableKeyboardNavigation } from "@/hooks/use-table-keyboard-navigation";
 import { useJobsColumns } from "./jobs-table-columns";
 import { JobsToolbar } from "./jobs-toolbar";

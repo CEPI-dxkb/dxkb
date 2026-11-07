@@ -53,10 +53,6 @@ export function useGeneProteinTree() {
   });
   const alphabet = useSelector(form.store, (state) => state.values.alphabet);
   const sequences = useSelector(form.store, (state) => state.values.sequences);
-  const outputPath = useSelector(
-    form.store,
-    (state) => state.values.output_path,
-  );
   const canSubmit = useSelector(form.store, (state) => state.canSubmit);
   const substitutionModelOptions =
     alphabet === "DNA" ? dnaModels : proteinModels;
@@ -231,7 +227,6 @@ export function useGeneProteinTree() {
     form,
     alphabet,
     sequences,
-    outputPath,
     canSubmit,
     substitutionModelOptions,
     handleAlphabetChange,

@@ -43,10 +43,13 @@ export function WorkspaceBreadcrumbs({
     workspaceRootUsername,
   });
 
+  // One line at every width: segments truncate (full name in `title`) rather
+  // than wrap, so narrowing the pane (opening the details panel) cannot push
+  // the table rows down under the pointer.
   return (
     <nav
       aria-label="Workspace path"
-      className="flex flex-wrap items-center gap-1 text-sm"
+      className="flex min-w-0 items-center gap-1 text-sm"
     >
       {onToggleFavorite && (
         <Button
@@ -68,25 +71,31 @@ export function WorkspaceBreadcrumbs({
       {breadcrumbs.map((breadcrumb, index) => {
         const content = (
           <>
-            {breadcrumb.icon === "home" && <Home className="size-3.5" />}
-            {breadcrumb.icon === "public" && <Globe className="size-3.5" />}
-            <span>{breadcrumb.label}</span>
+            {breadcrumb.icon === "home" && (
+              <Home className="size-3.5 shrink-0" />
+            )}
+            {breadcrumb.icon === "public" && (
+              <Globe className="size-3.5 shrink-0" />
+            )}
+            <span className="truncate" title={breadcrumb.label}>
+              {breadcrumb.label}
+            </span>
           </>
         );
 
         return (
           <span
             key={breadcrumb.href ?? `current-${breadcrumb.label}`}
-            className="flex items-center gap-1"
+            className="flex min-w-0 items-center gap-1"
           >
             {index > 0 && (
-              <ChevronRight className="size-3.5 text-muted-foreground" />
+              <ChevronRight className="size-3.5 shrink-0 text-muted-foreground" />
             )}
             {breadcrumb.href ? (
               <Link
                 href={breadcrumb.href}
                 className={cn(
-                  "flex items-center gap-1 font-medium transition-colors hover:text-foreground",
+                  "flex min-w-0 items-center gap-1 font-medium transition-colors hover:text-foreground",
                   breadcrumb.muted
                     ? "text-muted-foreground"
                     : "text-foreground",
@@ -95,7 +104,7 @@ export function WorkspaceBreadcrumbs({
                 {content}
               </Link>
             ) : (
-              <span className="flex items-center gap-1 font-medium text-foreground">
+              <span className="flex min-w-0 items-center gap-1 font-medium text-foreground">
                 {content}
               </span>
             )}
@@ -103,7 +112,7 @@ export function WorkspaceBreadcrumbs({
         );
       })}
       {itemCount !== undefined && (
-        <span className="ml-2 text-xs text-muted-foreground">
+        <span className="ml-2 shrink-0 text-xs whitespace-nowrap text-muted-foreground">
           ({itemCount} {itemCount === 1 ? "item" : "items"})
         </span>
       )}

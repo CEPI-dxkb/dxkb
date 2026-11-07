@@ -44,10 +44,9 @@ export const uiPreferenceSchemas: {
   }),
   compareRegionDensity: z.enum(compareRegionDensities),
   copilotSurface: z.enum(copilotSurfaces),
-  // Anchored to the bottom-right corner, so a smaller window later still
-  // shows the window; the component clamps it into the viewport. Width and
-  // height only need to be sane: a cookie saved on a small viewport can hold
-  // less than the 320x360 minimum, and the component restores the minimum.
+  // Width and height only need to be sane: a cookie saved on a small viewport
+  // can hold less than the 320x360 minimum, and the component restores the
+  // minimum.
   copilotFloatingRect: z.strictObject({
     right: z.number().min(0).max(10_000),
     bottom: z.number().min(0).max(10_000),

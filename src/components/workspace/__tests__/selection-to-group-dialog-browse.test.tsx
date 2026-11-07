@@ -44,6 +44,14 @@ describe("SelectionToGroupDialog browse", () => {
     );
 
     const folderField = screen.getByLabelText("Folder");
+    // Base UI moves focus into the dialog (to its first tab) shortly after it
+    // opens. Typing before that lands on the field and then loses focus mid-word.
+    const dialogElement = screen.getByRole("dialog");
+    await waitFor(() => {
+      expect(dialogElement).toContainElement(
+        document.activeElement as HTMLElement,
+      );
+    });
     await user.clear(folderField);
     await user.type(folderField, "Exp");
     const listbox = await screen.findByRole("listbox");

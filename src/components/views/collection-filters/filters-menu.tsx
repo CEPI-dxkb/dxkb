@@ -556,7 +556,7 @@ export function FiltersMenu({
         }
       >
         <ListFilter aria-hidden="true" className="size-3.5" />
-        Filters
+        {"Filters "}
         {activeCount > 0 ? (
           <span className="min-w-3.5 border-l border-border pl-1.5 text-center text-2xs font-semibold text-primary tabular-nums dark:text-foreground">
             {activeCount}

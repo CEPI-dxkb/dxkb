@@ -63,7 +63,7 @@ export const buttonVariants = cva(
         field:
           "border-input bg-background font-normal hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50",
         "field-active":
-          "border-primary bg-primary/5 font-normal text-primary hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:border-input dark:text-foreground dark:bg-input/30 dark:hover:bg-input/50",
+          "border-primary bg-primary/5 font-normal text-primary hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:border-input dark:bg-input/30 dark:text-foreground dark:hover:bg-input/50",
         // Round ghost info triggers with an accent hover (service info
         // popups); ghost-accent-primary is the header one.
         "ghost-accent":
@@ -115,6 +115,13 @@ export const buttonVariants = cva(
         // Compact controls in filter and table toolbars.
         toolbar:
           "h-8 gap-1.5 rounded px-2 py-1 text-xs has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2",
+        // A labelled action that folds to a square icon button when its
+        // `@container` is narrower than @3xl, so a toolbar row keeps one
+        // height however wide its pane is (the workspace toolbar, beside the
+        // details panel). The label goes in a `<span data-label>` child, which
+        // turns `sr-only` when folded, so it stays the accessible name.
+        foldable:
+          "size-8 gap-1.5 *:data-label:sr-only @3xl:w-auto @3xl:px-2.5 @3xl:has-data-[icon=inline-start]:pl-2 @3xl:*:data-label:not-sr-only",
         // Icon-over-label tiles in the action bars (jobs, workspace, search).
         tile: "h-15 flex-col gap-1 px-2.5 font-normal has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2",
         // Collapsed-panel toggles in the jobs and workspace shells.

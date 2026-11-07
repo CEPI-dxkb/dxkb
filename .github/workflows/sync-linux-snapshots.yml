@@ -14,7 +14,7 @@ env:
 jobs:
   sync-linux-snapshots:
     runs-on: ubuntu-latest
-    container: mcr.microsoft.com/playwright:v1.63.0-jammy
+    container: mcr.microsoft.com/playwright:v1.64.1-jammy
 
     steps:
       - name: Code Checkout

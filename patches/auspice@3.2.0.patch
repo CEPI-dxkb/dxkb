@@ -1,0 +1,35 @@
+diff --git a/cli-build/develop.js b/cli-build/develop.js
+--- a/cli-build/develop.js
++++ b/cli-build/develop.js
+@@ -43,6 +43,7 @@
+     /* webpack set up */
+     const extensionPath = args.extend ? path.resolve(args.extend) : undefined;
+     const webpackConfig = generateWebpackConfig({ extensionPath, devMode: true });
++    webpackConfig.infrastructureLogging = { level: 'warn' };
+     const compiler = webpack(webpackConfig);
+     /* variables available to babel (which is called by webpack) */
+     process.env.BABEL_INCLUDE_TIMING_FUNCTIONS = args.includeTiming;
+@@ -55,7 +56,7 @@
+         }
+         next();
+     });
+-    app.use((webpackDevMiddleware)(compiler, { logLevel: 'warn', publicPath: webpackConfig.output.publicPath }));
++    app.use((webpackDevMiddleware)(compiler, { publicPath: webpackConfig.output.publicPath }));
+     app.use((webpackHotMiddleware)(compiler, { log: console.log, path: '/__webpack_hmr', heartbeat: 10 * 1000 }));
+     let handlerMsg = "";
+     if (args.gh_pages) {
+diff --git a/webpack.config.cjs b/webpack.config.cjs
+--- a/webpack.config.cjs
++++ b/webpack.config.cjs
+@@ -316,7 +316,10 @@
+         },
+         {
+           test: /\.css$/,
+-          use: ["style-loader", "css-loader"]
++          // DXKB patch: pnpm-workspace.yaml overrides css-loader to 7.x, whose
++          // default ES-module output the bundled style-loader 0.13 cannot read,
++          // so no CSS reached the page. CommonJS output restores it.
++          use: ["style-loader", {loader: "css-loader", options: {esModule: false}}]
+         },
+         {
+           test: /\.(gif|png|jpe?g|svg|woff2?|eot|otf|ttf)$/i,

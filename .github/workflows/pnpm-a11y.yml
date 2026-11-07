@@ -29,7 +29,7 @@ jobs:
   # One job per spec file — parallel CI runtime (plan Q16).
   a11y-routes-sweep:
     runs-on: ubuntu-latest
-    container: mcr.microsoft.com/playwright:v1.63.0-jammy
+    container: mcr.microsoft.com/playwright:v1.64.1-jammy
 
     steps:
       - uses: actions/checkout@v4
@@ -105,7 +105,7 @@ jobs:
 
   a11y-deep-tier:
     runs-on: ubuntu-latest
-    container: mcr.microsoft.com/playwright:v1.63.0-jammy
+    container: mcr.microsoft.com/playwright:v1.64.1-jammy
 
     steps:
       - uses: actions/checkout@v4
@@ -156,7 +156,7 @@ jobs:
 
   a11y-keyboard:
     runs-on: ubuntu-latest
-    container: mcr.microsoft.com/playwright:v1.63.0-jammy
+    container: mcr.microsoft.com/playwright:v1.64.1-jammy
 
     steps:
       - uses: actions/checkout@v4
@@ -207,7 +207,7 @@ jobs:
 
   a11y-tripwire:
     runs-on: ubuntu-latest
-    container: mcr.microsoft.com/playwright:v1.63.0-jammy
+    container: mcr.microsoft.com/playwright:v1.64.1-jammy
 
     steps:
       - uses: actions/checkout@v4
@@ -258,7 +258,7 @@ jobs:
 
   a11y-primitives:
     runs-on: ubuntu-latest
-    container: mcr.microsoft.com/playwright:v1.63.0-jammy
+    container: mcr.microsoft.com/playwright:v1.64.1-jammy
 
     steps:
       - uses: actions/checkout@v4

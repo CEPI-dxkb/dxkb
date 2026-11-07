@@ -150,7 +150,8 @@ function GenomeBrowserInstance({
     });
   }, [viewState, hasDefaultHighlight]);
 
-  // Works around a JBrowse 5.0.0-beta.17 teardown bug. `destroyViewState`
+  // Works around a JBrowse 5.0.0-beta.20 teardown bug (still present: its
+  // `destroyViewState` calls `rpcManager.destroy()` before `destroy(viewState)`). `destroyViewState`
   // destroys the RPC manager before the view tree, so each track's disposer
   // (`releaseAdapterSession` -> `rpcManager.freeSession`) finds the manager
   // destroyed and frees nothing. With main-thread RPC the adapters then stay in
@@ -163,16 +164,17 @@ function GenomeBrowserInstance({
   // again. StrictMode-safe: `useFinalUnmount` skips the dev double mount.
   // Recheck on every beta bump; drop it once JBrowse frees the sessions first.
   //
-  // The other 5.0.0-beta.17 workaround lives outside this file, in
-  // `patches/@jbrowse__product-core@5.0.0-beta.17.patch`. Editing the
-  // Reference Sequence track's settings (Show... > Translation) ends in
+  // The other 5.0.0-beta.20 workaround lives outside this file, in
+  // `patches/@jbrowse__product-core@5.0.0-beta.20.patch`. Editing the
+  // Reference Sequence track's settings (Show > Translation) ends in
   // `Tracks.updateTrackConfiguration`, because that track lives in the
   // assembly and has no `tracks` entry to hold the edit, and it calls
-  // `self.jbrowse.updateTrackConf`, which only the full JBrowse app's root
-  // config defines; the embedded one has none, so the edit threw a TypeError
-  // 400 ms later. The patch makes the call optional (the edit is already on the
-  // track). pnpm fails the install when the patched version is gone, so a bump
-  // forces the recheck; drop the patch once embedded JBrowse defines it.
+  // `editableConfig(self).updateTrackConf`, which throws "this product's
+  // config cannot be edited" for the embedded product's config, 400 ms after
+  // the edit. The patch guards the call with `isEditableJBrowseConfig` (the
+  // edit is already on the track). pnpm fails the install when the patched
+  // version is gone, so a bump forces the recheck; drop the patch once embedded
+  // JBrowse's config is editable or the call is guarded upstream.
   useFinalUnmount(() => {
     void keepAdapters(() => false);
   });

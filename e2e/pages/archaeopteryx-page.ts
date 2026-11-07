@@ -73,10 +73,26 @@ export class ArchaeopteryxPage {
       .click();
   }
 
+  /**
+   * Opens the panel's Download… menu. The Download section starts folded, and
+   * the format menu is the only way to pick a format.
+   */
+  async openDownloadMenu(): Promise<void> {
+    const section = this.panel.locator("fieldset.aptx-download");
+    if ((await section.getAttribute("class"))?.includes("aptx-collapsed")) {
+      await section.locator(":scope > legend").click();
+    }
+    await section.getByRole("button", { name: "Download…", exact: true }).click();
+  }
+
+  /** Opens the Download… menu and chooses `format` from it. */
   async download(format: string): Promise<Download> {
-    await this.panel.locator("#exp_f_sel").selectOption(format);
+    await this.openDownloadMenu();
     const download = this.page.waitForEvent("download");
-    await this.panel.getByRole("button", { name: "Download", exact: true }).click();
+    await this.page
+      .locator(".aptx-node-menu")
+      .getByRole("button", { name: new RegExp(`^${format}`) })
+      .click();
     return download;
   }
 

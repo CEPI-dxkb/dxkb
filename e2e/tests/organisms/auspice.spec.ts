@@ -1,7 +1,9 @@
+import { mockAuspiceBasemap } from "../../fixtures/overrides/auspice-basemap";
 import { authSessionOverrides } from "../../fixtures/overrides/auth-session";
 import { workspaceRpcOverride } from "../../fixtures/overrides/workspace";
 import dataset from "../../fixtures/overrides/organisms/phylogeny/auspice-tree-map-v2.json" with { type: "json" };
 import { applyBackendMocks, expect, test } from "../../mocks/backends";
+import { hasWebGl } from "../../support/webgl";
 
 const familyUrl = /\/api\/content\/phyloxml_trees\/families\/2955291\/2955291\.json$/;
 const datasetId = "Influenza-A-Virus/H3N2/HA";
@@ -72,16 +74,7 @@ async function mockAuspice(
       },
     ],
   });
-  await page.route(/https:\/\/[a-d]\.basemaps\.cartocdn\.com\/.+\.png/, route =>
-    route.fulfill({
-      status: 200,
-      contentType: "image/png",
-      body: Buffer.from(
-        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M/wHwAF/gL+X2NDNwAAAABJRU5ErkJggg==",
-        "base64",
-      ),
-    })
-  );
+  await mockAuspiceBasemap(page);
 }
 
 async function openPicker(page: Parameters<typeof applyBackendMocks>[0]) {
@@ -142,8 +135,19 @@ test("opens the exact Auspice dataset and renders tree, map, and attribution", a
   const viewer = page.frameLocator('iframe[title="Auspice phylogeny viewer for H3N2 segment 4 (HA)"]');
   await expect(viewer.getByText("Deterministic H3N2 Auspice tree", { exact: true })).toBeVisible({ timeout: 30_000 });
   await expect(viewer.getByText("E2E-USA", { exact: true })).toBeVisible();
-  await expect(viewer.locator("#map")).toBeVisible();
   await expect(viewer.getByText(/Powered by Nextstrain/)).toBeVisible();
+  if (await hasWebGl(page)) {
+    await expect(viewer.locator("#map")).toBeVisible();
+    // MapLibre reads the credit from the style's sources once it loads; the
+    // `attribution` passed beside the style is never shown.
+    await expect(viewer.locator(".leaflet-control-attribution")).toContainText(
+      "OpenStreetMap",
+    );
+  } else {
+    // Without WebGL (headless Firefox in CI) Auspice drops the map panel and
+    // keeps the tree.
+    await expect(viewer.locator("#map")).toHaveCount(0);
+  }
   expect(datasetRequests).toEqual([`nextstrain-viewer/${datasetId}`]);
 
   await page.getByRole("button", { name: /Back to trees/ }).click();

@@ -279,6 +279,14 @@ The committed sets are currently a patchwork. This is the measured per-file stat
 
 Every PR runs three jobs via GitHub Actions (`.github/workflows/pnpm-e2e.yml`): chromium, firefox, webkit. Each shard caches its own browser binary in `~/.cache/ms-playwright`. Reports upload as artifacts on failure.
 
+### Playwright is pinned to 1.64.1
+
+`@playwright/test` is an exact pin, and the `mcr.microsoft.com/playwright:v<version>-jammy` container in `pnpm-e2e.yml`, `pnpm-a11y.yml` and `sync-linux-snapshots.yml` must name the same version (the container carries the browser builds). Playwright 1.65 ships Firefox 159, whose content process segfaults ("Page crashed") when anything reads `ariaLabelledByElements` on an open Base UI dialog. Both axe's accessible-name rules and Playwright's own `getByRole` read it, so every scan or role query inside a dialog crashed on Firefox. Firefox 157 (Playwright 1.64) does not crash. Before raising the pin, run a Firefox scan of an open dialog (the command palette in `e2e/tests/a11y/deep-tier.spec.ts`, or the output folder picker specs) on the new version.
+
+### Firefox in CI has no WebGL
+
+Auspice 3 draws its map with MapLibre (WebGL). The headless Firefox in the Linux CI container has no WebGL, and there Auspice renders the tree without a map panel. Specs that check the map do so only when the browser reports WebGL (`hasWebGl` in `e2e/support/webgl.ts`).
+
 ## Agents: driving the app interactively
 
 Two paths, depending on what the agent needs to do.

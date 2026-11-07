@@ -104,7 +104,7 @@ export function ArchaeopteryxPhylogeny({
       const tree = archaeopteryx.parsePhyloXML(xml);
       narrowHost = isNarrowHost();
       controlsCollapsedForWidth = narrowHost;
-      const config = createViewerConfig(tree, {
+      const config = createViewerConfig({
         selectable,
         collapseControlPanel: narrowHost,
       });

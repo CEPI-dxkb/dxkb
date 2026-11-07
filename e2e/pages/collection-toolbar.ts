@@ -167,9 +167,9 @@ export class CollectionToolbar {
 
   // -- Columns menu ---------------------------------------------------------
 
-  /** "Columns, 8 of 20 shown[, customised]". */
+  /** "Columns 8/20 shown[, customised]". */
   columnsButton(): Locator {
-    return this.root().getByRole("button", { name: /^Columns, \d+ of \d+ shown/ });
+    return this.root().getByRole("button", { name: /^Columns \d+\/\d+ shown/ });
   }
 
   columnList(): Locator {

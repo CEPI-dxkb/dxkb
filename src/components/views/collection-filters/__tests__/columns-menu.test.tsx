@@ -87,8 +87,8 @@ describe("ColumnsMenu", () => {
     const user = userEvent.setup();
     renderColumnsMenu();
     expect(
-      screen.getByRole("button", { name: "Columns, 3 of 5 shown" }),
-    ).toHaveTextContent("Columns3/5");
+      screen.getByRole("button", { name: "Columns 3/5 shown" }),
+    ).toHaveTextContent("Columns 3/5");
 
     await openColumns(user);
 
@@ -117,7 +117,7 @@ describe("ColumnsMenu", () => {
     ]);
     await expectAnnouncement("Strain hidden. 2 columns shown.");
     expect(
-      screen.getByRole("button", { name: "Columns, 2 of 5 shown, customised" }),
+      screen.getByRole("button", { name: "Columns 2/5 shown, customised" }),
     ).toBeInTheDocument();
   });
 
@@ -204,7 +204,7 @@ describe("ColumnsMenu", () => {
 
     // Only the order differs from the default, and that counts as customised.
     expect(
-      screen.getByRole("button", { name: "Columns, 3 of 5 shown, customised" }),
+      screen.getByRole("button", { name: "Columns 3/5 shown, customised" }),
     ).toBeInTheDocument();
     expect(footerButton("Reset to default")).toBeEnabled();
   });
@@ -275,7 +275,7 @@ describe("ColumnsMenu", () => {
     await expectAnnouncement("Columns reset to the default set and order.");
     expect(footerButton("Reset to default")).toBeDisabled();
     expect(
-      screen.getByRole("button", { name: "Columns, 3 of 5 shown" }),
+      screen.getByRole("button", { name: "Columns 3/5 shown" }),
     ).toBeInTheDocument();
   });
 

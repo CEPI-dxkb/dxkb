@@ -124,6 +124,7 @@ export function ActiveFilterPill({
       <span className="min-w-0 shrink-2 truncate whitespace-nowrap text-muted-foreground">
         {label}
       </span>
+      {" "}
       <span
         className={cn(
           "max-w-36 min-w-6 truncate font-medium whitespace-nowrap text-foreground",

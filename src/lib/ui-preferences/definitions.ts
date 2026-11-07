@@ -106,6 +106,8 @@ export const uiPreferenceDefinitions: {
   },
   copilotFloatingRect: {
     cookieName: "dxkb-copilot-floating-rect",
+    // Anchored to the bottom-right corner, so a smaller window later still
+    // shows the window; the component clamps it into the viewport.
     defaultValue: { right: 24, bottom: 24, width: 420, height: 640 },
   },
 };

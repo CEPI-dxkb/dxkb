@@ -7,7 +7,6 @@ import {
   fieldErrorMessage,
 } from "@/components/ui/tanstack-form";
 import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroupItem } from "@/components/ui/radio-group";
@@ -19,7 +18,6 @@ import OutputFolder from "@/components/services/output-folder";
 import { RequiredFormCardTitle } from "@/components/forms/required-form-components";
 import { WorkspaceObjectSelector } from "@/components/workspace/workspace-object-selector";
 import { JobParamsDialog } from "@/components/services/job-params-dialog";
-import { Spinner } from "@/components/ui/spinner";
 import {
   ServiceCardContent,
   ServiceCardHeader,
@@ -27,7 +25,7 @@ import {
 import { ServiceTextarea } from "@/components/services/form-ui/service-input";
 import { ServiceLabel } from "@/components/services/form-ui/service-label";
 import { ServiceRadioGroup } from "@/components/services/form-ui/service-radio-group";
-import { ServiceSubmitError } from "@/components/services/form-ui/service-submit-error";
+import { ServiceFormFooter } from "@/components/services/form-ui/service-form-footer";
 
 import {
   haSubtypeNumberingInput,
@@ -344,16 +342,13 @@ export default function HASubtypeNumberingPage() {
 
         {/* Form Controls */}
         <div className="md:col-span-12">
-          <ServiceSubmitError form={form} />
-          <div className="service-form-controls">
-            <Button type="button" variant="outline" onClick={handleReset}>
-              Reset
-            </Button>
-            <Button type="submit" disabled={isSubmitDisabled}>
-              {isSubmitting ? <Spinner className="mr-2 size-4" /> : null}
-              Submit
-            </Button>
-          </div>
+          <ServiceFormFooter
+            form={form}
+            onReset={handleReset}
+            isSubmitting={isSubmitting}
+            submitDisabled={isSubmitDisabled}
+            spinnerClassName="mr-2 size-4"
+          />
         </div>
       </form>
 

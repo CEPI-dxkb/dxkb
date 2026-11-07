@@ -7,7 +7,6 @@ import { useSelector } from "@tanstack/react-store";
 import { FieldItem, FieldErrors } from "@/components/ui/tanstack-form";
 import { ServiceHeader } from "@/components/services/service-header";
 import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { ChevronDown } from "lucide-react";
 import {
   proteomeComparisonInfo,
@@ -23,7 +22,6 @@ import { WorkspaceObject } from "@/lib/services/workspace/types";
 import { SingleGenomeSelector } from "@/components/services/single-genome-selector";
 import { JobParamsDialog } from "@/components/services/job-params-dialog";
 import { toast } from "sonner";
-import { Spinner } from "@/components/ui/spinner";
 import SelectedItemsTable from "@/components/services/selected-items-table";
 import {
   ServiceCardContent,
@@ -42,7 +40,7 @@ import {
 } from "@/components/services/form-ui/service-input";
 import { ServiceAddButton } from "@/components/services/form-ui/service-add-button";
 import { ServiceFieldSubLabel } from "@/components/services/form-ui/service-field";
-import { ServiceSubmitError } from "@/components/services/form-ui/service-submit-error";
+import { ServiceFormFooter } from "@/components/services/form-ui/service-form-footer";
 import {
   ServiceLabel,
   ServiceSubLabel,
@@ -804,19 +802,13 @@ function useProteomeComparisonPage() {
         </div>
 
         {/* Form Controls */}
-        <ServiceSubmitError form={form} />
-        <div className="service-form-controls">
-          <Button type="button" variant="outline" onClick={handleReset}>
-            Reset
-          </Button>
-          <Button
-            type="submit"
-            disabled={isSubmitting || !canSubmit || !isOutputNameValid}
-          >
-            {isSubmitting ? <Spinner className="mr-2 size-4" /> : null}
-            Submit
-          </Button>
-        </div>
+        <ServiceFormFooter
+          form={form}
+          onReset={handleReset}
+          isSubmitting={isSubmitting}
+          submitDisabled={!canSubmit || !isOutputNameValid}
+          spinnerClassName="mr-2 size-4"
+        />
       </form>
 
       <JobParamsDialog {...jobParamsDialogProps} />

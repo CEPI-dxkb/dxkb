@@ -4,13 +4,11 @@ import { useEffect, useLayoutEffect, useRef } from "react";
 import { useServicePageState } from "../../use-service-page-state";
 import { useForm } from "@tanstack/react-form";
 import { useSelector } from "@tanstack/react-store";
-import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
 import { ServiceHeader } from "@/components/services/service-header";
 import { JobParamsDialog } from "@/components/services/job-params-dialog";
-import { Spinner } from "@/components/ui/spinner";
-import { ServiceSubmitError } from "@/components/services/form-ui/service-submit-error";
+import { ServiceFormFooter } from "@/components/services/form-ui/service-form-footer";
 
 import { useServiceRuntime } from "@/hooks/services/use-service-runtime";
 import { sarsCov2WastewaterAnalysisInfo } from "@/lib/services/info/sars-cov2-wastewater-analysis";
@@ -320,19 +318,13 @@ export default function SarsCov2WastewaterAnalysisPage() {
 
         {/* Form controls */}
         <div className="md:col-span-12">
-          <ServiceSubmitError form={form} />
-          <div className="service-form-controls">
-            <Button type="button" variant="outline" onClick={handleReset}>
-              Reset
-            </Button>
-            <Button
-              type="submit"
-              disabled={isSubmitting || !canSubmit || !isOutputNameValid}
-            >
-              {isSubmitting ? <Spinner className="mr-2 size-4" /> : null}
-              Submit
-            </Button>
-          </div>
+          <ServiceFormFooter
+            form={form}
+            onReset={handleReset}
+            isSubmitting={isSubmitting}
+            submitDisabled={!canSubmit || !isOutputNameValid}
+            spinnerClassName="mr-2 size-4"
+          />
         </div>
       </form>
 

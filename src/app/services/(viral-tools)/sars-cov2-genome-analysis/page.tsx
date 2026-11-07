@@ -6,14 +6,12 @@ import { useSelector } from "@tanstack/react-store";
 import { useServicePageState } from "../../use-service-page-state";
 import { FieldErrors, FieldItem } from "@/components/ui/tanstack-form";
 import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { RadioGroupItem } from "@/components/ui/radio-group";
 import { ServiceHeader } from "@/components/services/service-header";
 import { RequiredFormCardTitle } from "@/components/forms/required-form-components";
 import { WorkspaceObjectSelector } from "@/components/workspace/workspace-object-selector";
 import { JobParamsDialog } from "@/components/services/job-params-dialog";
-import { Spinner } from "@/components/ui/spinner";
 import { useServiceRuntime } from "@/hooks/services/use-service-runtime";
 import {
   sarsCov2GenomeAnalysisInfo,
@@ -26,7 +24,7 @@ import {
 } from "@/components/services/form-ui/service-card";
 import { ServiceLabel } from "@/components/services/form-ui/service-label";
 import { ServiceRadioGroup } from "@/components/services/form-ui/service-radio-group";
-import { ServiceSubmitError } from "@/components/services/form-ui/service-submit-error";
+import { ServiceFormFooter } from "@/components/services/form-ui/service-form-footer";
 import {
   defaultPrimerVersion,
   defaultSarsCov2GenomeAnalysisFormValues,
@@ -288,21 +286,14 @@ export default function SarsCov2GenomeAnalysisPage() {
             onValidationChange={setState("isOutputNameValid")}
           />
         </div>
-        <ServiceSubmitError form={form} />
-        <div className="service-form-controls col-span-full">
-          <Button type="button" variant="outline" onClick={reset}>
-            Reset
-          </Button>
-          <Button
-            type="submit"
-            disabled={
-              runtime.isSubmitting || !canSubmit || !state.isOutputNameValid
-            }
-          >
-            {runtime.isSubmitting ? <Spinner className="mr-2 size-4" /> : null}
-            Submit
-          </Button>
-        </div>
+        <ServiceFormFooter
+          form={form}
+          onReset={reset}
+          isSubmitting={runtime.isSubmitting}
+          submitDisabled={!canSubmit || !state.isOutputNameValid}
+          className="col-span-full"
+          spinnerClassName="mr-2 size-4"
+        />
       </form>
       <JobParamsDialog {...runtime.jobParamsDialogProps} />
     </section>

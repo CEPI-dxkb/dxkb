@@ -32,7 +32,6 @@ import { WorkspaceObjectSelector } from "@/components/workspace/workspace-object
 import { WorkspaceObject } from "@/lib/services/workspace/types";
 import { JobParamsDialog } from "@/components/services/job-params-dialog";
 import { toast } from "sonner";
-import { Spinner } from "@/components/ui/spinner";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import SelectedItemsTable from "@/components/services/selected-items-table";
 import {
@@ -48,7 +47,7 @@ import { ServiceLabel } from "@/components/services/form-ui/service-label";
 import { ServiceRadioGroup } from "@/components/services/form-ui/service-radio-group";
 import { ServiceSelectTrigger } from "@/components/services/form-ui/service-select";
 import { ServiceAutocompleteInput } from "@/components/services/form-ui/service-autocomplete";
-import { ServiceSubmitError } from "@/components/services/form-ui/service-submit-error";
+import { ServiceFormFooter } from "@/components/services/form-ui/service-form-footer";
 import {
   Autocomplete,
   AutocompleteContent,
@@ -948,19 +947,12 @@ function useMetaCATSPage() {
         </Card>
 
         {/* Form Controls */}
-        <ServiceSubmitError form={form} />
-        <div className="service-form-controls">
-          <Button type="button" variant="outline" onClick={handleReset}>
-            Reset
-          </Button>
-          <Button
-            type="submit"
-            disabled={isSubmitting || !canSubmit || !isOutputNameValid}
-          >
-            {isSubmitting ? <Spinner /> : null}
-            Submit
-          </Button>
-        </div>
+        <ServiceFormFooter
+          form={form}
+          onReset={handleReset}
+          isSubmitting={isSubmitting}
+          submitDisabled={!canSubmit || !isOutputNameValid}
+        />
       </form>
 
       <JobParamsDialog {...jobParamsDialogProps} />

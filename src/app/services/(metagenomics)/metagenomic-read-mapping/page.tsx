@@ -8,9 +8,7 @@ import {
 import { useMetagenomicReadMappingController } from "./use-metagenomic-read-mapping-controller";
 import { ServiceHeader } from "@/components/services/service-header";
 import { JobParamsDialog } from "@/components/services/job-params-dialog";
-import { Button } from "@/components/ui/button";
-import { Spinner } from "@/components/ui/spinner";
-import { ServiceSubmitError } from "@/components/services/form-ui/service-submit-error";
+import { ServiceFormFooter } from "@/components/services/form-ui/service-form-footer";
 import { metagenomicReadMappingInfo } from "@/lib/services/info/metagenomic-read-mapping";
 
 export default function MetagenomicReadMappingPage() {
@@ -36,29 +34,13 @@ export default function MetagenomicReadMappingPage() {
         <SelectedLibrariesCard controller={controller} />
         <ReadMappingParametersCard controller={controller} />
         <div className="md:col-span-12">
-          <ServiceSubmitError form={controller.form} />
-          <div className="service-form-controls">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={controller.handleReset}
-            >
-              Reset
-            </Button>
-            <Button
-              type="submit"
-              disabled={
-                controller.isSubmitting ||
-                !controller.canSubmit ||
-                !controller.isOutputNameValid
-              }
-            >
-              {controller.isSubmitting ? (
-                <Spinner className="mr-2 size-4" />
-              ) : null}
-              Submit
-            </Button>
-          </div>
+          <ServiceFormFooter
+            form={controller.form}
+            onReset={controller.handleReset}
+            isSubmitting={controller.isSubmitting}
+            submitDisabled={!controller.canSubmit || !controller.isOutputNameValid}
+            spinnerClassName="mr-2 size-4"
+          />
         </div>
       </form>
       <JobParamsDialog {...controller.jobParamsDialogProps} />

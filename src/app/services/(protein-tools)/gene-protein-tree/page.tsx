@@ -1,10 +1,8 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
-import { Spinner } from "@/components/ui/spinner";
 import { JobParamsDialog } from "@/components/services/job-params-dialog";
 import { ServiceHeader } from "@/components/services/service-header";
-import { ServiceSubmitError } from "@/components/services/form-ui/service-submit-error";
+import { ServiceFormFooter } from "@/components/services/form-ui/service-form-footer";
 import { phylogeneticTreeInfo } from "@/lib/services/info/phylogenetic-tree";
 import { GeneProteinTreeInput } from "./gene-protein-tree-input";
 import { GeneProteinTreeMetadata } from "./gene-protein-tree-metadata";
@@ -39,19 +37,13 @@ export default function GeneProteinTreePage() {
         <GeneProteinTreeInput controller={controller} />
         <GeneProteinTreeParameters controller={controller} />
         <GeneProteinTreeMetadata controller={controller} />
-        <ServiceSubmitError form={form} />
-        <div className="service-form-controls md:col-span-2">
-          <Button type="button" variant="outline" onClick={handleReset}>
-            Reset
-          </Button>
-          <Button
-            type="submit"
-            disabled={isSubmitting || !canSubmit || !isOutputNameValid}
-          >
-            {isSubmitting ? <Spinner /> : null}
-            Submit
-          </Button>
-        </div>
+        <ServiceFormFooter
+          form={form}
+          onReset={handleReset}
+          isSubmitting={isSubmitting}
+          submitDisabled={!canSubmit || !isOutputNameValid}
+          className="md:col-span-2"
+        />
       </form>
       <JobParamsDialog {...jobParamsDialogProps} />
     </section>

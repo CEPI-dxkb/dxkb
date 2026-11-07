@@ -13,23 +13,17 @@
 
 import {
   useEffect,
-  useLayoutEffect,
   useRef,
   useState,
   type CSSProperties,
   type RefObject,
 } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Eye, EyeOff, XIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
-  DialogClose,
   DialogContent,
-  DialogDescription,
   DialogFooter,
-  DialogHeader,
-  DialogTitle,
 } from "@/components/ui/dialog";
 import type { FolderIconVariant } from "@/components/workspace/workspace-item-icon";
 import { useWorkspaceRepository } from "@/contexts/workspace-repository-context";
@@ -64,14 +58,10 @@ import {
 import { knownUploadTypes } from "@/lib/services/workspace/types";
 import { workspaceQueryKeys } from "@/lib/services/workspace/workspace-query-keys";
 import { cn } from "@/lib/utils";
-import { FolderPickerAcceptedTypes } from "./folder-picker-accepted-types";
 import { FolderPickerBreadcrumb } from "./folder-picker-breadcrumb";
 import { FolderPickerColumn } from "./folder-picker-column";
-import {
-  captureColumns,
-  playColumnTransition,
-  type ColumnsSnapshot,
-} from "./folder-picker-motion";
+import { FolderPickerHeader } from "./folder-picker-header";
+import { FolderPickerPlacesNav } from "./folder-picker-places-nav";
 import {
   FilePickerInfo,
   FolderPickerInfo,
@@ -82,13 +72,12 @@ import {
   columnWidthLimitsFor,
   folderTarget,
   isInlineEditTarget,
-  placeGroups,
-  placeIcons,
   previewWidthLimits,
   rowSelector,
   tabStopSelector,
   uploadPaneMinWidth,
 } from "./folder-picker-utils";
+import { useColumnStripMotion } from "./use-column-strip-motion";
 
 function columnFolderVariant(
   index: number,
@@ -312,53 +301,15 @@ function FolderColumnsBrowser({
 
   // --- column motion -----------------------------------------------------
 
-  const contentRef = useRef<HTMLDivElement>(null);
-  const overlayRef = useRef<HTMLDivElement>(null);
-  const snapshotRef = useRef<ColumnsSnapshot | null>(null);
-
-  /** Record the strip as it is on screen; every navigation calls this first. */
-  const prepareTransition = () => {
-    const strip = stripRef.current;
-    const overlay = overlayRef.current;
-    snapshotRef.current =
-      strip && overlay
-        ? captureColumns({ strip, overlay, place, depth: chain.length })
-        : null;
-  };
-
-  // Keep the newest column fully in view, without scrolling the column that
-  // holds the selection off the left edge, then animate from the snapshot.
-  // A layout effect, so the new layout never paints before its animation.
   const lastPath = chain.at(-1) ?? "";
-  useLayoutEffect(() => {
-    const strip = stripRef.current;
-    const content = contentRef.current;
-    const overlay = overlayRef.current;
-    const snapshot = snapshotRef.current;
-    snapshotRef.current = null;
-    if (!strip || !content || !overlay) return;
-    const column = (index: number) =>
-      strip.querySelector<HTMLElement>(
-        `[data-picker-column="${String(index)}"]`,
-      );
-    const last = column(lastIndex);
-    const anchor = column(Math.max(currentIndex, 0));
-    if (!last) return;
-    const revealLast = last.offsetLeft + last.offsetWidth - strip.clientWidth;
-    const left = Math.max(
-      0,
-      Math.min(revealLast, anchor?.offsetLeft ?? revealLast),
-    );
-    playColumnTransition({
-      strip,
-      content,
-      overlay,
-      snapshot,
-      scrollLeft: left,
-      place,
-      depth: lastIndex,
-    });
-  }, [stripRef, place, lastPath, lastIndex, currentIndex]);
+  const { contentRef, overlayRef, prepareTransition } = useColumnStripMotion({
+    stripRef,
+    place,
+    depth: chain.length,
+    lastIndex,
+    currentIndex,
+    lastPath,
+  });
 
   // --- navigation --------------------------------------------------------
 
@@ -515,6 +466,32 @@ function FolderColumnsBrowser({
     pendingFocusRef.current = { column, path };
   };
 
+  /** Closed at once, then the picked file is selected once it has listed. */
+  const handleUploadComplete = (uploaded: { path: string; type: string }[]) => {
+    // Closed at once: the panel keeps its files, so left open
+    // while the listings refresh it would offer the same upload
+    // again.
+    setIsUploadOpen(false);
+    pendingFocusRef.current = { column: 0, path: null };
+    const only = uploaded.length === 1 ? uploaded[0] : undefined;
+    const pick =
+      target.kind === "object" && only && target.types.includes(only.type)
+        ? only.path
+        : null;
+    const revision = revisionRef.current;
+    void (async () => {
+      // Awaited, so the file is in its column's listing when it
+      // is selected; otherwise it would be dropped as gone.
+      await queryClient.invalidateQueries({
+        queryKey: workspaceQueryKeys.all,
+      });
+      // The user moved on meanwhile: the selection is theirs.
+      if (!pick || revisionRef.current !== revision) return;
+      setFile(pick);
+      pendingFocusRef.current = { column: lastIndex, path: pick };
+    })();
+  };
+
   const isRowWritable = (item: WorkspaceItem, siblings: WorkspaceItem[]) => {
     const path = pickerRowKey(item, target);
     return isWritable(path, item, evidenceFor(path, siblings));
@@ -531,117 +508,23 @@ function FolderColumnsBrowser({
 
   return (
     <>
-      <DialogHeader>
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex min-w-0 flex-col gap-1.5">
-            <DialogTitle>{title}</DialogTitle>
-            <DialogDescription>
-              {target.kind === "object" ? (
-                <>
-                  Click a folder to open it. Double-click a file, or press
-                  Enter, to choose it.{" "}
-                  <FolderPickerAcceptedTypes types={target.types} />
-                </>
-              ) : (
-                "Click a folder to open it. Double-click it, or press Enter, to choose it."
-              )}
-            </DialogDescription>
-          </div>
-          <div className="flex shrink-0 items-center gap-4">
-            <KeyboardHints />
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              aria-pressed={showFiles}
-              onClick={() => {
-                onShowFilesChange(!showFiles);
-              }}
-            >
-              {showFiles ? (
-                <EyeOff data-icon="inline-start" />
-              ) : (
-                <Eye data-icon="inline-start" />
-              )}
-              {isPickingFiles
-                ? showFiles
-                  ? "Hide other files"
-                  : "Show other files"
-                : showFiles
-                  ? "Hide files"
-                  : "Show files"}
-            </Button>
-            {/* In the header row rather than the dialog's own corner button,
-                which sits 8px higher than the rest of the row. Disabled, not
-                hidden, mid-upload so the row doesn't shift. */}
-            <DialogClose
-              disabled={isUploading}
-              render={
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-sm"
-                  aria-label="Close"
-                  title="Close"
-                >
-                  <XIcon />
-                </Button>
-              }
-            />
-          </div>
-        </div>
-      </DialogHeader>
+      <FolderPickerHeader
+        title={title}
+        target={target}
+        showFiles={showFiles}
+        onShowFilesChange={onShowFilesChange}
+        isUploading={isUploading}
+      />
 
       {/* Below `md` the sidebar and info pane would leave the columns no room,
           so the body stacks: places as a scrolling row on top, the columns,
           then the info pane, compact, underneath. */}
       <div className="-mx-4 -mb-4 flex min-h-0 flex-1 flex-col border-t md:flex-row">
-        <nav
-          aria-label="Places"
-          inert={isUploading}
-          className="scrollbar-themed flex shrink-0 gap-1 overflow-auto border-b bg-muted/50 p-2 md:w-48 md:flex-col md:gap-4 md:border-r md:border-b-0"
-        >
-          {placeGroups.map((group) => (
-            <div key={group.label} className="flex shrink-0 gap-0.5 md:flex-col">
-              <p className="hidden px-2 py-1 text-2xs font-medium tracking-wide text-muted-foreground uppercase md:block">
-                {group.label}
-              </p>
-              {group.views.map((view) => {
-                const Icon = placeIcons[view];
-                const isActive = view === place;
-                return (
-                  <button
-                    key={view}
-                    type="button"
-                    aria-current={isActive ? "true" : undefined}
-                    onClick={() => {
-                      selectPlace(view);
-                    }}
-                    className={cn(
-                      "flex h-8 shrink-0 items-center gap-2 rounded-md px-2 text-left text-sm transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring md:w-full",
-                      isActive
-                        ? "bg-primary/10 font-medium text-primary dark:text-foreground"
-                        : "text-foreground/80 hover:bg-foreground/5 hover:text-foreground",
-                    )}
-                  >
-                    <Icon
-                      aria-hidden
-                      className={cn(
-                        "size-4 shrink-0",
-                        view === "favorites"
-                          ? "text-highlight"
-                          : isActive
-                            ? "text-primary dark:text-foreground"
-                            : "text-muted-foreground",
-                      )}
-                    />
-                    <span className="truncate">{viewLabel(view)}</span>
-                  </button>
-                );
-              })}
-            </div>
-          ))}
-        </nav>
+        <FolderPickerPlacesNav
+          place={place}
+          isUploading={isUploading}
+          onSelectPlace={selectPlace}
+        />
 
         {/* On a narrow screen the upload form needs the whole body. */}
         <div
@@ -769,32 +652,7 @@ function FolderColumnsBrowser({
                 setIsUploadOpen(false);
                 pendingFocusRef.current = { column: 0, path: null };
               }}
-              onComplete={(uploaded) => {
-                // Closed at once: the panel keeps its files, so left open
-                // while the listings refresh it would offer the same upload
-                // again.
-                setIsUploadOpen(false);
-                pendingFocusRef.current = { column: 0, path: null };
-                const only = uploaded.length === 1 ? uploaded[0] : undefined;
-                const pick =
-                  target.kind === "object" &&
-                  only &&
-                  target.types.includes(only.type)
-                    ? only.path
-                    : null;
-                const revision = revisionRef.current;
-                void (async () => {
-                  // Awaited, so the file is in its column's listing when it
-                  // is selected; otherwise it would be dropped as gone.
-                  await queryClient.invalidateQueries({
-                    queryKey: workspaceQueryKeys.all,
-                  });
-                  // The user moved on meanwhile: the selection is theirs.
-                  if (!pick || revisionRef.current !== revision) return;
-                  setFile(pick);
-                  pendingFocusRef.current = { column: lastIndex, path: pick };
-                })();
-              }}
+              onComplete={handleUploadComplete}
               onUploadingChange={onUploadingChange}
             />
           ) : file && selectedItem ? (
@@ -865,32 +723,6 @@ function FolderColumnsBrowser({
         </div>
       </DialogFooter>
     </>
-  );
-}
-
-function KeyboardHints() {
-  return (
-    <div
-      aria-hidden
-      className="hidden shrink-0 items-center gap-1.5 pt-0.5 text-2xs text-muted-foreground md:flex"
-    >
-      <Kbd>↑</Kbd>
-      <Kbd>↓</Kbd>
-      <span className="mr-1.5">move</span>
-      <Kbd>←</Kbd>
-      <Kbd>→</Kbd>
-      <span className="mr-1.5">close / open</span>
-      <Kbd>↵</Kbd>
-      <span>choose</span>
-    </div>
-  );
-}
-
-function Kbd({ children }: { children: string }) {
-  return (
-    <kbd className="flex h-5 min-w-5 items-center justify-center rounded border bg-muted px-1 font-mono text-2xs text-foreground/80">
-      {children}
-    </kbd>
   );
 }
 

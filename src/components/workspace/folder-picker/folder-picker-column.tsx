@@ -14,20 +14,14 @@ import {
   type KeyboardEvent,
 } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { ChevronRight, FolderPlus, Lock } from "lucide-react";
+import { FolderPlus } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
-import {
-  WorkspaceItemIcon,
-  type FolderIconVariant,
-} from "@/components/workspace/workspace-item-icon";
-import { QueryRetryButton } from "@/components/views/query-retry-button";
+import type { FolderIconVariant } from "@/components/workspace/workspace-item-icon";
 import { useRetryKeepingError } from "@/components/views/use-retry-keeping-error";
 import { useWorkspacePickerListing } from "@/hooks/services/workspace/use-workspace-picker-listing";
 import type { WorkspaceItem } from "@/lib/services/workspace/domain";
-import { formatFileSize, formatOwner } from "@/lib/services/workspace/helpers";
 import {
-  emptyListingMessage,
   folderNameError,
   isPickerItemInteractive,
   isPickerItemNavigable,
@@ -37,7 +31,10 @@ import {
   type PickerTarget,
 } from "@/lib/services/workspace/picker-views";
 import { workspaceQueryKeys } from "@/lib/services/workspace/workspace-query-keys";
-import { cn, formatUserFacingErrorMessage } from "@/lib/utils";
+import { cn } from "@/lib/utils";
+import { FolderPickerColumnEmpty } from "./folder-picker-column-empty";
+import { FolderPickerColumnError } from "./folder-picker-column-error";
+import { FolderPickerRow } from "./folder-picker-row";
 import { PaneResizeHandle } from "./folder-picker-resize-handle";
 import { columnWidthLimitsFor } from "./folder-picker-utils";
 
@@ -274,44 +271,21 @@ export function FolderPickerColumn({
       >
         {newFolder ? <NewFolderRow {...newFolder} /> : null}
         {retry.error ? (
-          <div role="alert" className="flex flex-col items-start gap-1 p-2 text-xs">
-            <p className="font-medium text-destructive">
-              Couldn&apos;t load this folder.
-            </p>
-            <p className="wrap-break-word text-muted-foreground">
-              {formatUserFacingErrorMessage(
-                retry.error,
-                "The workspace service gave no reason.",
-              )}
-            </p>
-            <QueryRetryButton retrying={retry.retrying} onRetry={retry.retry} />
-          </div>
+          <FolderPickerColumnError
+            error={retry.error}
+            retrying={retry.retrying}
+            onRetry={retry.retry}
+          />
         ) : listing.isLoading ? (
           <ColumnSkeleton />
         ) : rows.length === 0 ? (
           newFolder ? null : (
-            <div className="flex h-full flex-col items-center justify-center gap-1 px-4 text-center text-xs text-muted-foreground">
-              {hiddenFileCount > 0 ? (
-                <>
-                  <p>
-                    {isPickingFiles
-                      ? "No matching files here."
-                      : "No folders here."}
-                  </p>
-                  <button
-                    type="button"
-                    onClick={onShowFiles}
-                    className="text-2xs text-link underline-offset-4 hover:underline"
-                  >
-                    Show {hiddenFileCount}
-                    {isPickingFiles ? " other " : " "}
-                    {hiddenFileCount === 1 ? "file" : "files"}
-                  </button>
-                </>
-              ) : (
-                <p>{emptyListingMessage(location)}</p>
-              )}
-            </div>
+            <FolderPickerColumnEmpty
+              location={location}
+              hiddenFileCount={hiddenFileCount}
+              isPickingFiles={isPickingFiles}
+              onShowFiles={onShowFiles}
+            />
           )
         ) : (
           <div
@@ -321,107 +295,31 @@ export function FolderPickerColumn({
           >
             {rows.map((item) => {
               const key = pickerRowKey(item, target);
-              const navigable = isPickerItemNavigable(item, target);
-              const interactive = isPickerItemInteractive(item, target);
-              const isSelected = interactive && key === selectedPath;
-              const isActive = isSelected && isCurrent;
-              const writable = isRowWritable(item, listing.items);
-              const usable = isRowUsable(item);
+              const isSelected =
+                isPickerItemInteractive(item, target) && key === selectedPath;
               return (
-                <div
+                <FolderPickerRow
                   key={item.id}
-                  role="option"
-                  aria-selected={isSelected}
-                  aria-disabled={interactive ? undefined : true}
-                  tabIndex={
-                    interactive ? (key === tabStopPath ? 0 : -1) : undefined
-                  }
-                  data-picker-row=""
-                  data-picker-col={index}
-                  data-picker-path={key}
-                  title={item.path}
-                  onClick={
-                    interactive
-                      ? () => {
-                          onSelect(index, item);
-                        }
-                      : undefined
-                  }
-                  onDoubleClick={
-                    interactive
-                      ? () => {
-                          onCommit(item, listing.items);
-                        }
-                      : undefined
-                  }
-                  onKeyDown={
-                    interactive
-                      ? (event) => {
-                          handleKeyDown(event, item);
-                        }
-                      : undefined
-                  }
-                  className={cn(
-                    "flex h-7 shrink-0 items-center gap-2 rounded-md px-2 text-sm outline-none select-none focus-visible:ring-2 focus-visible:ring-ring",
-                    !interactive && "text-muted-foreground",
-                    interactive && !isSelected && "hover:bg-muted/70",
-                    interactive &&
-                      !isSelected &&
-                      !usable &&
-                      "text-muted-foreground",
-                    isActive && "bg-primary text-primary-foreground",
-                    isSelected && !isActive && "bg-muted text-foreground",
-                  )}
-                >
-                  <WorkspaceItemIcon
-                    type={item.type}
-                    variant={folderVariant}
-                    className={isActive ? "text-primary-foreground" : undefined}
-                  />
-                  <span className="min-w-0 flex-1 truncate">{item.name}</span>
-                  {showOwner ? (
-                    <span
-                      className={cn(
-                        "max-w-20 shrink-0 truncate text-2xs",
-                        isActive
-                          ? "text-primary-foreground/80"
-                          : "text-muted-foreground",
-                      )}
-                    >
-                      {formatOwner(item.ownerId ?? "")}
-                    </span>
-                  ) : null}
-                  {!navigable && item.size > 0 ? (
-                    <span className="shrink-0 text-2xs text-muted-foreground tabular-nums">
-                      {formatFileSize(item.size)}
-                    </span>
-                  ) : null}
-                  {target.kind === "folder" && navigable && !writable ? (
-                    <>
-                      <Lock
-                        aria-hidden
-                        className={cn(
-                          "size-3 shrink-0",
-                          isActive
-                            ? "text-primary-foreground/80"
-                            : "text-muted-foreground",
-                        )}
-                      />
-                      <span className="sr-only">(read-only)</span>
-                    </>
-                  ) : null}
-                  {navigable ? (
-                    <ChevronRight
-                      aria-hidden
-                      className={cn(
-                        "size-3.5 shrink-0",
-                        isActive
-                          ? "text-primary-foreground/80"
-                          : "text-muted-foreground",
-                      )}
-                    />
-                  ) : null}
-                </div>
+                  item={item}
+                  target={target}
+                  index={index}
+                  folderVariant={folderVariant}
+                  showOwner={showOwner}
+                  isSelected={isSelected}
+                  isActive={isSelected && isCurrent}
+                  isTabStop={key === tabStopPath}
+                  isWritable={isRowWritable(item, listing.items)}
+                  isUsable={isRowUsable(item)}
+                  onSelect={() => {
+                    onSelect(index, item);
+                  }}
+                  onCommit={() => {
+                    onCommit(item, listing.items);
+                  }}
+                  onKeyDown={(event) => {
+                    handleKeyDown(event, item);
+                  }}
+                />
               );
             })}
           </div>

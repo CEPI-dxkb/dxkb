@@ -1,6 +1,7 @@
 /**
- * The pure half of the metadata-link boundary: href classification and
- * `{placeholder}` template resolution, with no JSX and no React import.
+ * The pure half of the metadata-link boundary: href classification,
+ * `{placeholder}` template resolution and the shared link class string, with
+ * no JSX and no React import.
  *
  * Rendering lives in the sibling `./metadata-link` module and in DataTable's
  * table-specific wrapper. These surfaces, the detail panel, and the four entity
@@ -14,9 +15,8 @@
  * scalar, array and button alike — so internal and external destinations look
  * identical regardless of which shape produced them. Not repo-wide: the
  * collection table styles the same `DataField.link` templates through its own
- * `valueHref` path with a different class string, which
- * this module records alongside the classification boundary that
- * path also bypasses.
+ * `valueHref` path with a different class string, though it classifies them
+ * through {@link classifyHref} like every other surface.
  */
 export const metadataLinkClassName =
   "text-primary underline hover:text-primary/80 dark:text-link dark:hover:text-foreground";

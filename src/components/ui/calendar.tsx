@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import {
+  DateLib,
   DayPicker,
   getDefaultClassNames,
   type DayButton,
@@ -25,6 +26,7 @@ function Calendar({
   buttonVariant = "ghost",
   locale,
   formatters,
+  labels,
   components,
   ...props
 }: React.ComponentProps<typeof DayPicker> & {
@@ -43,6 +45,19 @@ function Calendar({
       )}
       captionLayout={captionLayout}
       locale={locale}
+      labels={{
+        // The default label spells the day as an ordinal ("November 1st,
+        // 2026"), which does not contain the button's visible text ("1"), so a
+        // speech-input user saying "click 1" misses it (WCAG 2.5.3).
+        labelDayButton: (date, modifiers, options, dateLib) => {
+          const lib = dateLib ?? new DateLib(options);
+          let label = lib.format(date, "EEEE, MMMM d, yyyy");
+          if (modifiers.today) label = `Today, ${label}`;
+          if (modifiers.selected) label = `${label}, selected`;
+          return label;
+        },
+        ...labels,
+      }}
       formatters={{
         formatMonthDropdown: (date) =>
           locale?.localize?.month(

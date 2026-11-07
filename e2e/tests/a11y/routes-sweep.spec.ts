@@ -32,6 +32,8 @@ import type { BaselineMap } from "../../a11y/baseline";
 import type { RouteEntry } from "../../a11y/routes";
 import type { Page } from "@playwright/test";
 import type { JsonOverride } from "../../mocks/backends";
+import { mockAuspiceBasemap } from "../../fixtures/overrides/auspice-basemap";
+import { hasWebGl } from "../../support/webgl";
 import auspiceDataset from "../../fixtures/overrides/organisms/phylogeny/auspice-tree-map-v2.json" with { type: "json" };
 
 const auspiceDatasetId = "Influenza-A-Virus/H3N2/HA";
@@ -145,7 +147,7 @@ async function expectCircularViewerContrast(
  * theme mapping's (`jbrowse/theme.ts`), so a contrast failure there is ours to
  * fix.
  *
- * Two rules are disabled for the subtree only, for JBrowse 5.0.0-beta.17's own
+ * Two rules are disabled for the subtree only, for JBrowse 5.0.0-beta.20's own
  * icon-only controls, which this app cannot name without patching the
  * dependency. Both are critical-impact, which the baseline mechanism refuses by
  * design (see canBaseline in e2e/a11y/baseline.ts), so they are disabled here
@@ -452,19 +454,8 @@ test.describe("a11y component surfaces", () => {
         ...a11yBackendOverrides,
       ],
     });
-    // Basemap tiles are the one outbound host the viewer needs; serve a 1×1 PNG.
-    await page.route(
-      /https:\/\/[a-d]\.basemaps\.cartocdn\.com\/.+\.png/,
-      (route) =>
-        route.fulfill({
-          status: 200,
-          contentType: "image/png",
-          body: Buffer.from(
-            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M/wHwAF/gL+X2NDNwAAAABJRU5ErkJggg==",
-            "base64",
-          ),
-        }),
-    );
+    // The basemap is the one outbound host the viewer needs.
+    await mockAuspiceBasemap(page);
 
     await page.goto("/taxonomy/2955291?tab=phylogeny");
     await page
@@ -488,8 +479,9 @@ test.describe("a11y component surfaces", () => {
       .waitFor({
         timeout: 30_000,
       });
-    await viewer.locator("#map").waitFor();
     await viewer.getByText(/Powered by Nextstrain/).waitFor();
+    // Without WebGL (headless Firefox in CI) Auspice renders no map panel.
+    if (await hasWebGl(page)) await viewer.locator("#map").waitFor();
 
     // The bridge mirrors the host theme into the iframe, so scanning per theme
     // exercises both token sets inside Auspice too. color-contrast stays

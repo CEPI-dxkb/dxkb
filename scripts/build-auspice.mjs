@@ -65,7 +65,8 @@ var from=host.document.documentElement,to=document.documentElement;
 var names=${JSON.stringify(bridgedTokens)};
 function sync(){var s=host.getComputedStyle(from);
 for(var i=0;i<names.length;i++){var v=s.getPropertyValue("--"+names[i]).trim();
-if(v)to.style.setProperty("--dxkb-"+(names[i]==="font-geist-sans"?"font":names[i]),v);}
+if(!v)continue;var f=names[i]==="font-geist-sans";
+to.style.setProperty("--dxkb-"+(f?"font":names[i]),f?v+", system-ui, sans-serif":v);}
 var t=from.getAttribute("data-theme");if(t)to.setAttribute("data-theme",t);}
 sync();new host.MutationObserver(sync).observe(from,{attributes:true,attributeFilter:["data-theme","class","style"]});
 }catch(e){}})();`;
@@ -117,8 +118,10 @@ try {
     resolve(publicDir, "auspice-favicon.png"),
   );
 
+  // Auspice minifies its shell, so attribute quotes are optional
+  // (`href=/favicon.png`); match both forms.
   const shell = readFileSync(resolve(scratch, "index.html"), "utf8")
-    .replaceAll('href="/favicon.png"', 'href="/auspice-favicon.png"')
+    .replaceAll(/href=(["']?)\/favicon\.png\1/g, 'href="/auspice-favicon.png"')
     .replace(
       "</head>",
       `<link rel="stylesheet" href="/auspice-dark.css"><script>${themeBridge}</script></head>`,

@@ -227,7 +227,8 @@ export function JobStatusPill() {
           <Button
             variant="inverse-outline"
             size="pill"
-            aria-label="View job status"
+            // Opens with the visible counts (WCAG 2.5.3), e.g. "0 1 1".
+            aria-label={`${statusGroups.map(({ count }) => String(count)).join(" ")}, view job status`}
             onPointerEnter={warmRecentJobs}
             onFocus={warmRecentJobs}
           >
@@ -235,6 +236,7 @@ export function JobStatusPill() {
               <span key={key} className="flex items-center gap-1">
                 <Icon className={cn("size-3.5", className)} />
                 <span className="text-sm">{count}</span>
+                {" "}
               </span>
             ))}
           </Button>

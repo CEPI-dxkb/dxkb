@@ -15,10 +15,10 @@ describe("ActiveFilterPill", () => {
     });
 
     expect(editButton("Genome Status: WGS, Complete")).toHaveTextContent(
-      "Genome StatusWGS+1",
+      "Genome Status WGS+1",
     );
     expect(editButton("Host Name: (empty)")).toHaveTextContent(
-      "Host Name(empty)",
+      "Host Name (empty)",
     );
     expect(
       screen.getByRole("button", { name: "Filters, 2 active" }),

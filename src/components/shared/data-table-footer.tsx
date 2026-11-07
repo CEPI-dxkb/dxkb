@@ -100,7 +100,7 @@ export function DataTableFooter({
               table.previousPage();
             }}
             disabled={!table.getCanPreviousPage()}
-            aria-label="Previous page"
+            aria-label="Prev page"
             variant="pager-step"
             size="pager"
           >

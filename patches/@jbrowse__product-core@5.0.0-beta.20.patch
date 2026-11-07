@@ -1,0 +1,26 @@
+diff --git a/esm/Session/Tracks.js b/esm/Session/Tracks.js
+--- a/esm/Session/Tracks.js
++++ b/esm/Session/Tracks.js
+@@ -1,4 +1,4 @@
+-import { editableConfig } from '@jbrowse/core/util';
++import { editableConfig, isEditableJBrowseConfig } from '@jbrowse/core/util';
+ import { addDisposer, types } from '@jbrowse/mobx-state-tree';
+ import { autorun, computed } from 'mobx';
+ import { BaseSessionModel } from './BaseSession.js';
+@@ -176,9 +176,15 @@
+                 trackConf.trackId in self.connectionTrackConfigs) {
+                 self.updateConnectionTrackConfig(trackConf);
+             }
+-            else {
++            else if (isEditableJBrowseConfig(self.jbrowse)) {
+                 editableConfig(self).updateTrackConf(trackConf);
+             }
++            // DXKB patch: the embedded products' config model
++            // (createConfigModel) is not editable, so editableConfig threw
++            // "this product's config cannot be edited" on an edit to a track
++            // with no base config (an assembly's sequence track). The edit
++            // already lives on the track's working copy; an embedded config
++            // has nowhere to persist it.
+         },
+         /**
+          * #action

@@ -58,7 +58,7 @@ body,
   color: var(--dxkb-foreground, #333333);
 }
 
-html,
+:root,
 p,
 div,
 input,
@@ -89,8 +89,8 @@ html {
     transparent;
 }
 
-a,
-.link {
+html a,
+html .link {
   color: var(--dxkb-brand);
 }
 
@@ -265,40 +265,52 @@ div[style*="z-index: 9000"] div,
 }
 
 /* ── Legend ──────────────────────────────────────────────────────────────
-   Auspice paints translucent white plates behind the legend so it reads over
-   the tree. The tree is dark now, so drop them and re-tint the text. Swatch
-   rects keep their data colours (they never match this attribute prefix). */
+   Since Auspice 3.1 one legend component serves the tree, map and measurements
+   panels: an HTML #LegendContainer holding a title bar (#TitleAndChevron) and,
+   on the map, a deme-size title row, both with an inline translucent white
+   `background-color`, plus swatch and deme <svg>s that each start with a
+   translucent white backing <rect>. The panels are dark now, so drop the
+   plates and re-tint the text. Swatch rects keep their data colours (they
+   never match this attribute prefix). */
 
-/* Drop the plates entirely and paint the <svg> instead. Retinting them in place
-   would look right but still fail the audit: they are <rect> siblings of the
-   text, which axe cannot resolve as a background, so it falls back to the page
-   default and reports 1.04:1 against white. An element background it can
-   measure fixes that, and it must be opaque — axe skips translucent backdrops
-   and keeps walking up. Costs Auspice's 85% see-through legend; a solid panel
-   over a dense tree is the better read anyway. */
+/* Drop the plates entirely and paint the container instead. Retinting them in
+   place would look right but still fail the audit: the <rect>s are siblings of
+   the text, which axe cannot resolve as a background, so it falls back to the
+   page default. An element background it can measure fixes that, and it must
+   be opaque — axe skips translucent backdrops and keeps walking up. Costs
+   Auspice's 85% see-through legend; a solid panel over a dense tree is the
+   better read anyway. */
 
-#TreeLegendContainer rect[fill^="rgba(255"],
-#Chevron rect[fill^="rgba(255"] {
+#LegendContainer rect[fill^="rgba(255"] {
   fill: transparent !important;
 }
 
-#TreeLegendContainer {
+#LegendContainer div[style*="background-color: rgba(255"] {
+  background-color: transparent !important;
+}
+
+#LegendContainer {
   border: 1px solid var(--dxkb-border, #dddddd);
   background-color: var(--dxkb-card, #ffffff);
 }
 
-/* The title <text> carries its own inline `background-color: #fff` (harmless on
-   an SVG glyph, but axe measures contrast against an element's own background
-   before walking up, so it read 1.04:1 white-on-white). Clearing it lets the
-   panel behind be measured. */
-#TreeLegendContainer text,
-#TreeLegendContainer #Title text {
-  background-color: transparent !important;
+/* Titles are <span>s and labels SVG <text>, all with an inline #333. */
+#LegendContainer span {
+  color: var(--dxkb-foreground, #333333) !important;
+}
+
+#LegendContainer text {
   fill: var(--dxkb-foreground, #333333) !important;
 }
 
-#Chevron path {
+#TitleAndChevron path {
   fill: var(--dxkb-dim) !important;
+}
+
+/* Deme-size key on the map legend: hollow #333 circles and leader lines. */
+#LegendDemesContainer circle,
+#LegendDemesContainer line {
+  stroke: var(--dxkb-dim) !important;
 }
 
 /* ── react-select dropdowns ──────────────────────────────────────────────
@@ -360,12 +372,13 @@ div[style*="z-index: 9000"] div,
 }
 
 /* ── Map ─────────────────────────────────────────────────────────────────
-   The tile URL is baked into the bundle at build time, so it cannot vary by
+   The map style is baked into the bundle at build time, so it cannot vary by
    theme. The bridge mirrors the host's `data-theme` onto this document and the
-   light CARTO tiles are inverted here for the dark themes only. Two filters
-   rather than one: a plain invert() would also flip the hues, turning oceans
-   orange, so hue-rotate puts them back. Only the raster tiles are touched —
-   the demographic circles live in an SVG overlay pane above them. */
+   light basemap (Auspice's MapLibre canvas, which sits in the tile pane) is
+   inverted here for the dark themes only. Two filters rather than one: a plain
+   invert() would also flip the hues, turning oceans orange, so hue-rotate puts
+   them back. Only the basemap is touched — the demographic circles live in an
+   SVG overlay pane above it. */
 
 .leaflet-container {
   background-color: var(--dxkb-canvas) !important;

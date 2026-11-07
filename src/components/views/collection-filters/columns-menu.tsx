@@ -456,13 +456,14 @@ export function ColumnsMenu({
         render={
           <button
             type="button"
-            aria-label={`Columns, ${String(shown.length)} of ${String(columns.length)} shown${customised ? ", customised" : ""}`}
+            // Starts with the visible text ("Columns 3/5"): WCAG 2.5.3.
+            aria-label={`Columns ${String(shown.length)}/${String(columns.length)} shown${customised ? ", customised" : ""}`}
             className="relative inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md border border-input bg-background pr-1.5 pl-2 text-xs font-medium text-foreground shadow-xs outline-none hover:bg-foreground/5 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 aria-expanded:bg-foreground/5"
           />
         }
       >
         <Columns3 aria-hidden="true" className="size-3.5" />
-        Columns
+        {"Columns "}
         <span className="border-l border-border pl-1.5 text-2xs font-medium text-muted-foreground tabular-nums">
           {shown.length}/{columns.length}
         </span>

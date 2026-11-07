@@ -1,9 +1,7 @@
 import type {
   Archaeopteryx,
   ArchaeopteryxConfig,
-  NodeLabelSpec,
   Phylogeny,
-  PhylogenyNode,
   ViewerHandle,
 } from "archaeopteryx";
 
@@ -54,10 +52,6 @@ interface ArchaeopteryxGlobals extends Window {
 // Archaeopteryx keeps the light/dark choice of its panel and canvas here, and
 // reads it when a viewer launches.
 const panelThemeStorageKey = "aptx-panel-theme";
-
-// Custom label keys become element ids and are concatenated into the control
-// panel's HTML unescaped, so only plain identifiers are offered.
-const safeLabelKey = /^[A-Za-z0-9_-]+$/;
 
 let loader: Promise<Archaeopteryx> | null = null;
 let activeViewer: ViewerHandle | null = null;
@@ -131,7 +125,6 @@ export function mountArchaeopteryx(
  * unknown key, so this is also what its unit tests launch the real viewer with.
  */
 export function createViewerConfig(
-  tree: Phylogeny,
   {
     selectable,
     collapseControlPanel,
@@ -144,45 +137,11 @@ export function createViewerConfig(
     enableDynamicSizing: true,
     enableManualNodeSelection: selectable,
     enableSubtreeDeletion: false,
-    nodeLabels: collectNodeLabels(tree),
     zoomToFitUponWindowResize: true,
     // Matches the legacy OutbreaksPhylogenyTreeViewer.js viral default;
     // Archaeopteryx falls back to its own pick when a tree lacks the field.
     ...(!selectable && { initialVisualization: "Host" }),
   };
-}
-
-/** Offers a label checkbox for every node property the tree carries. */
-export function collectNodeLabels(
-  tree: Phylogeny,
-): Record<string, NodeLabelSpec> {
-  const refs = new Set<string>();
-  const pending: PhylogenyNode[] = [tree];
-  for (let node = pending.pop(); node; node = pending.pop()) {
-    for (const property of node.properties ?? []) {
-      if (property.ref && property.applies_to === "node")
-        refs.add(property.ref);
-    }
-    pending.push(...(node.children ?? []));
-  }
-
-  const labels: Record<string, NodeLabelSpec> = {};
-  for (const ref of refs) {
-    const key = ref.replace(/^.*:/, "");
-    if (!safeLabelKey.test(key)) continue;
-    const label = key
-      .replaceAll(/[_-]+/g, " ")
-      .trim()
-      .replace(/\b\w/g, (character) => character.toUpperCase());
-    if (!label) continue;
-    labels[key] = {
-      label,
-      propertyRef: ref,
-      description: `the ${label}`,
-      showButton: true,
-    };
-  }
-  return labels;
 }
 
 export function documentViewerTheme(): ViewerTheme {

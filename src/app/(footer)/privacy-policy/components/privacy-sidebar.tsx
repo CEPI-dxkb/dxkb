@@ -34,9 +34,9 @@ const PrivacySidebar = () => {
         </p>
         <Button
           size="sm"
-          variant="outline"
+          variant="cta"
           nativeButton={false}
-          className="w-full bg-secondary text-white hover:bg-accent"
+          className="w-full"
           render={<Link href="/contact" />}
         >
           Contact Us

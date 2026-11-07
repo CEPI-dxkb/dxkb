@@ -1,7 +1,6 @@
 import type { Archaeopteryx } from "archaeopteryx";
 
 import {
-  collectNodeLabels,
   type MountedViewer,
   createViewerConfig,
   documentViewerTheme,
@@ -79,6 +78,21 @@ function stubSvgGeometry() {
       return textWidth(this);
     },
   });
+  // 3.28 measures label and branch-mark fonts on a canvas 2D context
+  // (`branchFontMetrics` does not guard a null context, unlike its legend
+  // measuring); jsdom has no canvas, so give it a fixed-width one.
+  define(HTMLCanvasElement.prototype, "getContext", {
+    value() {
+      return {
+        font: "",
+        measureText: (text: string) => ({
+          width: text.length * 6,
+          fontBoundingBoxAscent: 8,
+          fontBoundingBoxDescent: 2,
+        }),
+      };
+    },
+  });
   return () => {
     for (const restore of restores.reverse()) restore();
   };
@@ -131,51 +145,10 @@ describe("loadArchaeopteryx", () => {
   });
 });
 
-describe("collectNodeLabels", () => {
-  it("offers a checkbox for each node property at any depth", async () => {
-    const archaeopteryx = await loadArchaeopteryx();
-    const labels = collectNodeLabels(archaeopteryx.parsePhyloXML(treeXml));
-
-    expect(labels).toEqual({
-      host_common_name: {
-        label: "Host Common Name",
-        propertyRef: "dxkb:host_common_name",
-        description: "the Host Common Name",
-        showButton: true,
-      },
-      "in-group": {
-        label: "In Group",
-        propertyRef: "dxkb:in-group",
-        description: "the In Group",
-        showButton: true,
-      },
-    });
-  });
-
-  it("skips property keys that are not plain identifiers", () => {
-    const labels = collectNodeLabels({
-      children: [
-        {
-          properties: [
-            { ref: `dxkb:${maliciousName}`, value: "x", applies_to: "node" },
-            { ref: 'dxkb:a" onmouseover="x', value: "x", applies_to: "node" },
-            { ref: "dxkb:__", value: "x", applies_to: "node" },
-            { ref: "dxkb:year", value: "2020", applies_to: "node" },
-          ],
-        },
-      ],
-    });
-
-    expect(Object.keys(labels)).toEqual(["year"]);
-  });
-});
-
 describe("createViewerConfig", () => {
   it("opens viral trees on the Host visualization and only lets bacterial trees select leaves", () => {
-    const tree = { children: [] };
-
     expect(
-      createViewerConfig(tree, {
+      createViewerConfig({
         selectable: false,
         collapseControlPanel: false,
       }),
@@ -183,7 +156,7 @@ describe("createViewerConfig", () => {
       enableManualNodeSelection: false,
       initialVisualization: "Host",
     });
-    const bacterial = createViewerConfig(tree, {
+    const bacterial = createViewerConfig({
       selectable: true,
       collapseControlPanel: true,
     });
@@ -194,6 +167,9 @@ describe("createViewerConfig", () => {
       enableSubtreeDeletion: false,
     });
     expect(bacterial).not.toHaveProperty("initialVisualization");
+    // Retired in archaeopteryx 3.25 (the Metadata chooser replaces it), and
+    // scheduled to throw.
+    expect(bacterial).not.toHaveProperty("nodeLabels");
   });
 });
 
@@ -280,7 +256,7 @@ describe("mountArchaeopteryx with the real viewer", () => {
   ) => {
     const tree = archaeopteryx.parsePhyloXML(treeXml);
     const viewer = mountArchaeopteryx(archaeopteryx, container, tree, {
-      ...createViewerConfig(tree, {
+      ...createViewerConfig({
         selectable: options.selectable ?? true,
         collapseControlPanel: false,
       }),
@@ -305,12 +281,25 @@ describe("mountArchaeopteryx with the real viewer", () => {
       host.querySelectorAll(".aptx-panel label"),
       (label) => label.textContent,
     );
-    expect(labels).toEqual(
-      expect.arrayContaining(["Node Name", "Host Common Name", "In Group"]),
-    );
+    expect(labels).toEqual(expect.arrayContaining(["Node Name", "Metadata"]));
+    // The launch config must carry no key the viewer deprecates.
+    const warnings = vi.mocked(console.warn).mock.calls.flat().join("\n");
+    expect(warnings).not.toMatch(/deprecat|retired|nodeLabels/i);
+    // 3.28 lists the formats in a menu the Download button opens; PNG and PDF
+    // are only offered when the page-level canvg/jspdf/svg2pdf.js globals
+    // loaded, so this also guards the export libraries.
+    expect(
+      Array.from(
+        host.querySelectorAll(".aptx-panel label, .aptx-panel span"),
+        (element) => element.textContent,
+      ),
+    ).toEqual(expect.arrayContaining(["4×"]));
+    const download = host.querySelector<HTMLButtonElement>("#dl_b");
+    expect(download).not.toBeNull();
+    download?.click();
     const formats = Array.from(
-      host.querySelectorAll("#exp_f_sel option"),
-      (option) => option.textContent,
+      document.querySelectorAll(".aptx-node-menu button"),
+      (button) => button.firstChild?.textContent,
     );
     expect(formats).toEqual(
       expect.arrayContaining(["PNG", "PDF", "SVG", "phyloXML", "Newick"]),

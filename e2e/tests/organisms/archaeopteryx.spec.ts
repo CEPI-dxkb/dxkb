@@ -69,7 +69,7 @@ test.use({
 test.setTimeout(60_000);
 
 test.describe("Archaeopteryx phylogeny viewer", () => {
-  test("draws the tree with its control panel and property label fields", async ({
+  test("draws the tree with its control panel and metadata labels", async ({
     page,
   }) => {
     const errors: string[] = [];
@@ -77,25 +77,28 @@ test.describe("Archaeopteryx phylogeny viewer", () => {
     const tree = await openPhylogeny(page);
 
     await expect(tree.node("Leaf B")).toBeVisible();
-    for (const label of [
-      "Node Name",
-      "Genome Name",
-      "Host Common Name",
-      "In Group",
-    ]) {
+    // 3.25 retired custom node-label checkboxes: the tree's own properties
+    // are offered through the Metadata checkbox instead.
+    for (const label of ["Node Name", "Metadata"]) {
       await expect(tree.displayCheckbox(label)).toBeAttached();
     }
     await expect(tree.themeToggle).toBeHidden();
+    await tree.openDownloadMenu();
     expect(
-      await tree.panel.locator("#exp_f_sel option").allTextContents(),
+      await tree.page
+        .locator(".aptx-node-menu button")
+        .evaluateAll((buttons) =>
+          buttons.map((button) => button.firstChild?.textContent),
+        ),
     ).toEqual(
       expect.arrayContaining(["PNG", "PDF", "SVG", "phyloXML", "Newick"]),
     );
+    await tree.page.keyboard.press("Escape");
     expect(await tree.canvasBackground()).toBe(
       await tree.expectedCanvasBackground(),
     );
 
-    await tree.displayCheckbox("Genome Name").check({ force: true });
+    await tree.displayCheckbox("Metadata").check({ force: true });
     await expect(tree.svg.getByText(/Genome A/)).toBeVisible();
     expect(errors).toEqual([]);
   });

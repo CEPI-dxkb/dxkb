@@ -17,6 +17,7 @@ import { knownUploadTypes } from "@/lib/services/workspace/types";
 import { invalidateWorkspace } from "@/lib/services/workspace/workspace-query-keys";
 import { workspaceErrorMessage } from "@/lib/services/workspace/workspace-errors";
 import { useWorkspaceRepository } from "@/contexts/workspace-repository-context";
+import type { WorkspaceRepository } from "@/lib/services/workspace/workspace-repository";
 import { toast } from "sonner";
 import { XIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -29,6 +30,104 @@ const uploadTypeOptions = Object.entries(knownUploadTypes).map(
     label,
   }),
 );
+
+interface UploadedFile {
+  path: string;
+  type: string;
+}
+
+/**
+ * Uploads the files one after another and reports failures as toasts. Lives
+ * outside the component because a `throw` inside `try`, or a ternary or `??`
+ * inside one, makes the React Compiler skip the component. Returns how many
+ * files went in and whether anything failed.
+ */
+async function uploadFilesToWorkspace({
+  files,
+  targetPath,
+  uploadType,
+  repository,
+  onUploadComplete,
+}: {
+  files: File[];
+  targetPath: string;
+  uploadType: string;
+  repository: WorkspaceRepository;
+  onUploadComplete: (uploaded: UploadedFile[]) => void;
+}): Promise<{ hasError: boolean; uploadedCount: number }> {
+  let hasError = false;
+  let uploadedCount = 0;
+  let currentFileName: string | null = null;
+  const uploaded: UploadedFile[] = [];
+  try {
+    for (const file of files) {
+      currentFileName = file.name;
+      const dir = targetPath.endsWith("/") ? targetPath : targetPath + "/";
+      const fullPath = dir + file.name;
+      const { linkReference } = await repository.createUploadNode({
+        directoryPath: targetPath,
+        filename: file.name,
+        type: uploadType,
+      });
+      // Workspace.create has made the object (it refuses an existing name,
+      // so this is ours). If the data never reaches Shock it is an empty
+      // entry that cannot be opened, so take it back out. Best effort: the
+      // upload error is what the user needs to see.
+      const discardObject = () =>
+        repository.delete([fullPath]).catch(() => undefined);
+      // The route streams this body to Shock unchanged, so it carries only
+      // the field Shock reads; the node URL travels in a header. The
+      // browser sets the multipart Content-Type with its boundary.
+      const formData = new FormData();
+      formData.append("upload", file);
+      let res: Response;
+      try {
+        res = await fetch(uploadApi, {
+          method: "POST",
+          credentials: "include",
+          headers: { "X-Shock-Node-Url": linkReference },
+          body: formData,
+        });
+      } catch (err) {
+        await discardObject();
+        throw err;
+      }
+      if (!res.ok) {
+        const err = await (res.json() as Promise<{ error?: string }>).catch(
+          () => ({ error: res.statusText }),
+        );
+        await discardObject();
+        toast.error(`Upload failed: ${file.name}`, {
+          description: err.error ?? res.statusText,
+        });
+        hasError = true;
+        break;
+      }
+      uploadedCount += 1;
+      await repository.updateAutoMetadata([fullPath]);
+      uploaded.push({ path: fullPath, type: uploadType });
+    }
+    if (!hasError) {
+      toast.success("Upload complete", {
+        description: `${String(files.length)} file(s) uploaded.`,
+      });
+      onUploadComplete(uploaded);
+    }
+  } catch (err) {
+    // Name the file and keep the reason, as the Shock-failure toast does.
+    toast.error(
+      currentFileName ? `Upload failed: ${currentFileName}` : "Upload failed",
+      {
+        description: workspaceErrorMessage(
+          err,
+          "The workspace service returned an error.",
+        ),
+      },
+    );
+    hasError = true;
+  }
+  return { hasError, uploadedCount };
+}
 
 export interface WorkspaceUploadPanelProps {
   targetPath: string;
@@ -120,77 +219,13 @@ export function WorkspaceUploadPanel({
   const handleStartUpload = async () => {
     if (!files.length || !targetPath.trim() || isUploading) return;
     setIsUploading(true);
-    let hasError = false;
-    let uploadedCount = 0;
-    let currentFileName: string | null = null;
-    const uploaded: { path: string; type: string }[] = [];
-    try {
-      for (const file of files) {
-        currentFileName = file.name;
-        const dir = targetPath.endsWith("/") ? targetPath : targetPath + "/";
-        const fullPath = dir + file.name;
-        const { linkReference } = await repository.createUploadNode({
-          directoryPath: targetPath,
-          filename: file.name,
-          type: uploadType,
-        });
-        // Workspace.create has made the object (it refuses an existing name,
-        // so this is ours). If the data never reaches Shock it is an empty
-        // entry that cannot be opened, so take it back out. Best effort: the
-        // upload error is what the user needs to see.
-        const discardObject = () =>
-          repository.delete([fullPath]).catch(() => undefined);
-        // The route streams this body to Shock unchanged, so it carries only
-        // the field Shock reads; the node URL travels in a header. The
-        // browser sets the multipart Content-Type with its boundary.
-        const formData = new FormData();
-        formData.append("upload", file);
-        let res: Response;
-        try {
-          res = await fetch(uploadApi, {
-            method: "POST",
-            credentials: "include",
-            headers: { "X-Shock-Node-Url": linkReference },
-            body: formData,
-          });
-        } catch (err) {
-          await discardObject();
-          throw err;
-        }
-        if (!res.ok) {
-          const err = await (res.json() as Promise<{ error?: string }>).catch(
-            () => ({ error: res.statusText }),
-          );
-          await discardObject();
-          toast.error(`Upload failed: ${file.name}`, {
-            description: err.error ?? res.statusText,
-          });
-          hasError = true;
-          break;
-        }
-        uploadedCount += 1;
-        await repository.updateAutoMetadata([fullPath]);
-        uploaded.push({ path: fullPath, type: uploadType });
-      }
-      if (!hasError) {
-        toast.success("Upload complete", {
-          description: `${String(files.length)} file(s) uploaded.`,
-        });
-        onUploadComplete(uploaded);
-      }
-    } catch (err) {
-      // Name the file and keep the reason, as the Shock-failure toast does.
-      toast.error(
-        currentFileName ? `Upload failed: ${currentFileName}` : "Upload failed",
-        {
-          description: workspaceErrorMessage(
-            err,
-            "The workspace service returned an error.",
-          ),
-        },
-      );
-      hasError = true;
-    }
+    const { hasError, uploadedCount } = await uploadFilesToWorkspace({
+      files,
+      targetPath,
+      uploadType,
+      repository,
+      onUploadComplete,
+    });
     // The files before the one that failed stay uploaded, and the panel stays
     // open without onUploadComplete, so refresh the listings that show them.
     if (hasError && uploadedCount > 0) invalidateWorkspace(queryClient);

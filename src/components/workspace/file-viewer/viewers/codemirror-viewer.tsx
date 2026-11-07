@@ -13,6 +13,63 @@ import { LoadingProgress } from "./loading-progress";
 
 const largeFileThreshold = 10 * 1024 * 1024; // 10 MB
 
+// The helpers below are module-level on purpose: a dynamic `import()`, a
+// `throw` or ternary inside `try`, and a `for (;;)` loop each make the React
+// Compiler skip the whole component, so they must not move back into it.
+
+// Loaded lazily so the editor bundle stays out of the initial chunk.
+function loadCodeMirror() {
+  return import("./codemirror-loader");
+}
+
+function dropCachedView(filePath: string): void {
+  void loadCodeMirror().then(({ viewCache }) => {
+    viewCache.delete(filePath);
+  });
+}
+
+function assertResponseOk(response: Response): void {
+  if (!response.ok) {
+    throw new Error(`Failed to load file (HTTP ${String(response.status)})`);
+  }
+}
+
+function parseContentLength(header: string | null): number | null {
+  return header ? parseInt(header, 10) : null;
+}
+
+function truncationMarker(fileSize: number | undefined): string {
+  const divider = "─".repeat(60);
+  const sizeLabel = fileSize ? formatFileSize(fileSize) : "full file";
+  return `\n${divider}\n  Preview truncated at ${formatFileSize(largeFileThreshold)} of ${sizeLabel}. Download for complete content.\n${divider}`;
+}
+
+/**
+ * Reads the body chunk by chunk, handing each decoded chunk and the running
+ * byte count to `onChunk`. Stops early at the large-file threshold.
+ */
+async function readStream(
+  reader: ReadableStreamDefaultReader<Uint8Array>,
+  decoder: TextDecoder,
+  isDestroyed: () => boolean,
+  onChunk: (text: string, loaded: number) => void,
+): Promise<"destroyed" | "truncated" | "complete"> {
+  let loaded = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) return "complete";
+    if (isDestroyed()) return "destroyed";
+
+    loaded += value.byteLength;
+    onChunk(decoder.decode(value, { stream: true }), loaded);
+
+    if (loaded >= largeFileThreshold) {
+      void reader.cancel();
+      return "truncated";
+    }
+  }
+}
+
 interface CodeMirrorViewerProps {
   filePath: string;
   fileName: string;
@@ -54,7 +111,7 @@ export function CodeMirrorViewer({
     let entry: CachedEntry | null = null;
 
     async function init() {
-      const codeMirror = await import("./codemirror-loader");
+      const codeMirror = await loadCodeMirror();
       if (isDestroyed()) return;
 
       const cached = codeMirror.viewCache.get(filePath);
@@ -97,14 +154,11 @@ export function CodeMirrorViewer({
         });
         if (isDestroyed()) return;
 
-        if (!response.ok) {
-          throw new Error(
-            `Failed to load file (HTTP ${String(response.status)})`,
-          );
-        }
+        assertResponseOk(response);
 
-        const contentLength = response.headers.get("Content-Length");
-        const total = contentLength ? parseInt(contentLength, 10) : null;
+        const total = parseContentLength(
+          response.headers.get("Content-Length"),
+        );
         setProgress((prev) => ({ ...prev, totalBytes: total }));
 
         const body = response.body;
@@ -139,40 +193,33 @@ export function CodeMirrorViewer({
           setProgress({ bytesLoaded: loaded, totalBytes: total });
         }
 
-        let wasTruncated = false;
+        const outcome = await readStream(
+          reader,
+          decoder,
+          isDestroyed,
+          (text, loadedSoFar) => {
+            loaded = loadedSoFar;
+            pendingText += text;
 
-        for (;;) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          if (isDestroyed()) return;
-
-          loaded += value.byteLength;
-          pendingText += decoder.decode(value, { stream: true });
-
-          if (!rafScheduled) {
-            rafScheduled = true;
-            requestAnimationFrame(flushToEditor);
-          }
-
-          if (loaded >= largeFileThreshold) {
-            wasTruncated = true;
-            void reader.cancel();
-            break;
-          }
-        }
+            if (!rafScheduled) {
+              rafScheduled = true;
+              requestAnimationFrame(flushToEditor);
+            }
+          },
+        );
+        if (outcome === "destroyed") return;
+        const wasTruncated = outcome === "truncated";
 
         pendingText += decoder.decode();
         flushToEditor();
 
         if (!isDestroyed()) {
           if (wasTruncated) {
-            const divider = "─".repeat(60);
-            const sizeLabel = fileSizeRef.current
-              ? formatFileSize(fileSizeRef.current)
-              : "full file";
-            const marker = `\n${divider}\n  Preview truncated at ${formatFileSize(largeFileThreshold)} of ${sizeLabel}. Download for complete content.\n${divider}`;
             view.dispatch({
-              changes: { from: view.state.doc.length, insert: marker },
+              changes: {
+                from: view.state.doc.length,
+                insert: truncationMarker(fileSizeRef.current),
+              },
             });
           }
           if (startFolded) codeMirror.foldAll(view);
@@ -213,9 +260,7 @@ export function CodeMirrorViewer({
       if (entry && entry.status !== "done") {
         controller.abort();
         entry.view?.destroy();
-        void import("./codemirror-loader").then(({ viewCache }) => {
-          viewCache.delete(filePath);
-        });
+        dropCachedView(filePath);
       }
     };
   }, [fileName, filePath, foldable, startFolded]);

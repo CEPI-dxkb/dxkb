@@ -88,6 +88,10 @@ export function useMolstarPlugin(
       );
       download.catch(noop);
 
+      // Computed outside the `try`: a ternary inside it makes the React
+      // Compiler skip this hook.
+      const format = source.format === "bcif" ? "mmcif" : source.format;
+
       try {
         const { createPluginUI, renderReact18, DefaultPluginUISpec } =
           await loadMolstar();
@@ -128,7 +132,6 @@ export function useMolstarPlugin(
 
         pluginRef.current = plugin;
 
-        const format = source.format === "bcif" ? "mmcif" : source.format;
         const contents = await download;
         if (isDisposed()) return;
         const data = await plugin.builders.data.rawData(

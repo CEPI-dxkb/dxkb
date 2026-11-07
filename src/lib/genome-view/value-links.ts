@@ -4,7 +4,7 @@ import {
   serializeCollectionState,
   type CollectionState,
 } from "@/lib/views/collection-state";
-import { rqlAnd } from "@/lib/views/rql";
+import { rqlAnd, rqlAnyOf } from "@/lib/views/rql";
 
 import { genomeCollectionOptions } from "./query";
 
@@ -39,17 +39,27 @@ export function genomeStateWithValue(
   field: string,
   value: string,
 ): CollectionState | undefined {
+  return genomeStateWithValues(state, field, [value]);
+}
+
+/** `genomeStateWithValue` for several values of one field, ORed together. */
+function genomeStateWithValues(
+  state: CollectionState,
+  field: string,
+  values: readonly string[],
+): CollectionState | undefined {
   if (!genomeCollectionOptions.friendlyFilters?.includes(field)) {
     return undefined;
   }
   if (state.rql) {
+    const clauses = values.map((value) => eq("genome", field, value));
     return {
       ...state,
-      rql: rqlAnd(state.rql, eq("genome", field, value)),
+      rql: rqlAnd(state.rql, rqlAnyOf(clauses)),
       page: 1,
     };
   }
-  return { ...state, filters: { ...state.filters, [field]: [value] }, page: 1 };
+  return { ...state, filters: { ...state.filters, [field]: [...values] }, page: 1 };
 }
 
 /**
@@ -69,11 +79,25 @@ export function genomeListValueHref(
   field: string,
   value: string,
 ): string | undefined {
-  if (unselectableValue.test(value)) return undefined;
-  const state = genomeStateWithValue(
+  return genomeListValuesHref(link, field, [value]);
+}
+
+/**
+ * Like `genomeListValueHref` for the genomes whose `field` is any of `values`.
+ * `undefined` when any value cannot be selected.
+ */
+export function genomeListValuesHref(
+  link: GenomeListLink,
+  field: string,
+  values: readonly string[],
+): string | undefined {
+  if (values.length === 0 || values.some((v) => unselectableValue.test(v))) {
+    return undefined;
+  }
+  const state = genomeStateWithValues(
     link.state ?? unfilteredGenomeState,
     field,
-    value,
+    values,
   );
   if (!state) return undefined;
   const params = new URLSearchParams(link.params);

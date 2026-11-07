@@ -38,3 +38,8 @@ export function rqlAnd(...clauses: string[]): string {
   if (clauses.length === 1) return clauses[0];
   return `and(${clauses.join(",")})`;
 }
+
+/** One clause as it is, several as `or(...)`: the values of one field. */
+export function rqlAnyOf(clauses: readonly string[]): string {
+  return clauses.length === 1 ? clauses[0] : `or(${clauses.join(",")})`;
+}

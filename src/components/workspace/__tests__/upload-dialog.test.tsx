@@ -194,8 +194,19 @@ describe("UploadDialog", () => {
 
   it("reports each uploaded file's path and type once all are in", async () => {
     await stubNodeFormData();
+    const sent: { nodeUrl: string | null; parts: string[] }[] = [];
     server.use(
-      http.post("*/api/services/workspace/upload", () => HttpResponse.json({})),
+      http.post("*/api/services/workspace/upload", async ({ request }) => {
+        // `request.formData()` cannot parse here: undici's parser rejects the
+        // File it builds under jsdom. Read the part headers from the raw body.
+        const body = await request.text();
+        sent.push({
+          nodeUrl: request.headers.get("x-shock-node-url"),
+          parts: [...body.matchAll(/Content-Disposition: form-data; [^\r\n]*/g)]
+            .map(([header]) => header),
+        });
+        return HttpResponse.json({});
+      }),
     );
     const { onUploadComplete, user } = renderUploadDialog();
 
@@ -208,6 +219,24 @@ describe("UploadDialog", () => {
         { path: `${targetPath}/second.fq`, type: "unspecified" },
       ]);
     });
+    // The route streams the body to Shock as is: the one `upload` part Shock
+    // reads, with the node Workspace.create returned in the header.
+    expect(sent).toEqual([
+      {
+        nodeUrl:
+          "https://shock.test/services/shock_api/node/00000000-0000-4000-8000-000000000001",
+        parts: [
+          'Content-Disposition: form-data; name="upload"; filename="first.fq"',
+        ],
+      },
+      {
+        nodeUrl:
+          "https://shock.test/services/shock_api/node/00000000-0000-4000-8000-000000000002",
+        parts: [
+          'Content-Disposition: form-data; name="upload"; filename="second.fq"',
+        ],
+      },
+    ]);
   });
 
   it("deletes nothing when the entry itself cannot be created", async () => {

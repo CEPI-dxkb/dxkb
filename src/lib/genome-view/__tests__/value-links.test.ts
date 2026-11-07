@@ -1,6 +1,8 @@
 import {
   genomeListValueHref,
+  genomeListValuesHref,
   genomeStateWithValue,
+  genomeStructuralRql,
   parseGenomeCollectionState,
 } from "@/lib/genome-view";
 import {
@@ -121,6 +123,83 @@ describe("genomeListValueHref", () => {
         "Infectious Diseases(USAMRIID)",
       ),
     ).toBeUndefined();
+  });
+});
+
+describe("genomeListValuesHref", () => {
+  it("links one value like genomeListValueHref", () => {
+    expect(
+      genomeListValuesHref(taxonGenomes, "reference_genome", ["Reference"]),
+    ).toBe("/taxonomy/11266?tab=genomes&reference_genome=Reference");
+  });
+
+  it("filters to several values of one field", () => {
+    const href = genomeListValuesHref(taxonGenomes, "reference_genome", [
+      "Reference",
+      "Representative",
+    ]);
+    expect(href).toBe(
+      "/taxonomy/11266?tab=genomes&reference_genome=Reference&reference_genome=Representative",
+    );
+    expect(stateOf(href).filters).toEqual({
+      reference_genome: ["Reference", "Representative"],
+    });
+  });
+
+  it("joins one value to an explicit rql", () => {
+    const link = {
+      pathname: "/genome",
+      state: {
+        rql: "eq(genus,Escherichia)",
+        filters: {},
+        page: 1,
+        sort: "unsorted" as const,
+      },
+    };
+    expect(
+      stateOf(genomeListValuesHref(link, "reference_genome", ["Reference"])).rql,
+    ).toBe("and(eq(genus,Escherichia),eq(reference_genome,Reference))");
+  });
+
+  it("joins several values to an explicit rql as an or", () => {
+    const link = {
+      pathname: "/genome",
+      state: {
+        rql: "eq(genus,Escherichia)",
+        filters: {},
+        page: 1,
+        sort: "unsorted" as const,
+      },
+    };
+    expect(
+      stateOf(
+        genomeListValuesHref(link, "reference_genome", [
+          "Reference",
+          "Representative",
+        ]),
+      ).rql,
+    ).toBe(
+      "and(eq(genus,Escherichia),or(eq(reference_genome,Reference),eq(reference_genome,Representative)))",
+    );
+  });
+
+  it("links nothing when any value cannot be selected", () => {
+    expect(
+      genomeListValuesHref(taxonGenomes, "reference_genome", ["Reference", " "]),
+    ).toBeUndefined();
+    expect(
+      genomeListValuesHref(taxonGenomes, "reference_genome", []),
+    ).toBeUndefined();
+  });
+
+  it("opens a URL whose reference_genome filter reaches the query", () => {
+    const state = stateOf(
+      "/genome?reference_genome=Representative",
+    );
+    expect(state.filters).toEqual({ reference_genome: ["Representative"] });
+    expect(genomeStructuralRql(state)).toContain(
+      "eq(reference_genome,Representative)",
+    );
   });
 });
 

@@ -37,7 +37,7 @@ describe("GeoDistribution", () => {
       GeoDistribution({ taxonId: 2871700, accent: "bacteria" }),
     );
 
-    expect(screen.getByTestId("geo-distribution-client")).toBeVisible();
+    expect(await screen.findByTestId("geo-distribution-client")).toBeVisible();
   });
 
   it("renders the map when any geographic data exists", async () => {
@@ -47,6 +47,6 @@ describe("GeoDistribution", () => {
       GeoDistribution({ taxonId: 2871700, accent: "bacteria" }),
     );
 
-    expect(screen.getByTestId("geo-distribution-client")).toBeVisible();
+    expect(await screen.findByTestId("geo-distribution-client")).toBeVisible();
   });
 });

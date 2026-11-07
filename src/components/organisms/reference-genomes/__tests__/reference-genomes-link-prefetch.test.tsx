@@ -41,13 +41,16 @@ describe("ReferenceGenomesClient genome links", () => {
   it("do not prefetch their target on viewport entry", () => {
     render(
       <ReferenceGenomesClient
-        genomes={[
+        rows={[
           {
             genome_id: "234.1",
             genome_name: "Charlie strain",
             reference_genome: "Reference",
           },
         ]}
+        counts={{ Reference: 1 }}
+        total={1}
+        hrefs={{ byType: {} }}
       />,
     );
 
@@ -55,5 +58,26 @@ describe("ReferenceGenomesClient genome links", () => {
       "data-prefetch",
       "false",
     );
+  });
+
+  it("does not prefetch the 'View all' link either", () => {
+    render(
+      <ReferenceGenomesClient
+        rows={[
+          {
+            genome_id: "234.1",
+            genome_name: "Charlie strain",
+            reference_genome: "Reference",
+          },
+        ]}
+        counts={{ Reference: 5 }}
+        total={5}
+        hrefs={{ all: "/genome?reference_genome=Reference", byType: {} }}
+      />,
+    );
+
+    expect(
+      screen.getByRole("link", { name: "View all 5 in the Genomes tab" }),
+    ).toHaveAttribute("data-prefetch", "false");
   });
 });

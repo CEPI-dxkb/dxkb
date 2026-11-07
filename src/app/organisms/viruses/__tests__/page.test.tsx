@@ -27,9 +27,15 @@ function GenomeResourceCollection({ baseRql }: CollectionProps) {
   return <div>{`genome:${baseRql}`}</div>;
 }
 
-vi.mock("@/components/views", () => ({
+// The tabs load their client roots through lazy-tab-roots, by each root's own
+// module path, so the stubs replace those paths and the tests wait for them.
+vi.mock("@/components/views/feature-resource-collection", () => ({
   FeatureResourceCollection,
+}));
+vi.mock("@/components/views/genome-resource-collection", () => ({
   GenomeResourceCollection,
+}));
+vi.mock("@/components/views/resource-child-collection", () => ({
   ResourceChildCollection: ({ resource, rql }: { resource: string; rql: string }) => (
     <div>{`${resource}:${rql}`}</div>
   ),
@@ -57,7 +63,7 @@ describe("VirusesPage", () => {
   it("supports legacy ?view= when ?tab= is absent", async () => {
     render(await VirusesPage({ searchParams: Promise.resolve({ view: "features" }) }));
     expect(
-      screen.getByText(
+      await screen.findByText(
         "genome_feature:and(eq(genome_id,*),genome(and(eq(taxon_lineage_ids,10239),ne(genome_status,Deprecated))))",
       ),
     ).toBeInTheDocument();
@@ -69,7 +75,7 @@ describe("VirusesPage", () => {
         searchParams: Promise.resolve({ tab: "taxa-tree", view: "features" }),
       }),
     );
-    expect(screen.getByText("Viruses tree")).toBeInTheDocument();
+    expect(await screen.findByText("Viruses tree")).toBeInTheDocument();
     expect(screen.queryByText(/^genome_feature:/)).not.toBeInTheDocument();
   });
 });

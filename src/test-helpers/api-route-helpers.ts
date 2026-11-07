@@ -74,8 +74,11 @@ export function mockNextRequest(
   };
 
   if (method !== "GET") {
-    if (rawBody !== undefined) init.body = rawBody;
-    else if (body !== undefined) init.body = JSON.stringify(body);
+    if (rawBody !== undefined) {
+      init.body = rawBody;
+      // Node's Request requires it for a stream body.
+      if (rawBody instanceof ReadableStream) init.duplex = "half";
+    } else if (body !== undefined) init.body = JSON.stringify(body);
   }
   if (signal) init.signal = signal;
 

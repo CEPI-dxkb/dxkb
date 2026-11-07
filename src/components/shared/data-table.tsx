@@ -1,11 +1,11 @@
 "use client";
 
-import { useKeyHold } from "@tanstack/react-hotkeys";
 import {
   columnOrderingFeature,
   columnResizingFeature,
   columnSizingFeature,
   columnVisibilityFeature,
+  FlexRender,
   metaHelper,
   rowPaginationFeature,
   rowSelectionFeature,
@@ -23,7 +23,14 @@ import {
 } from "@tanstack/react-table";
 
 import Link from "next/link";
-import { useRef, useState, useEffect, type CSSProperties } from "react";
+import {
+  memo,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+} from "react";
 import { getIdField } from "@/constants/resources";
 import {
   classifyHref,
@@ -35,7 +42,7 @@ import {
   formatCellValue,
 } from "./data-table-utils";
 
-import { useVirtualizer, type VirtualItem } from "@tanstack/react-virtual";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import { Loader2 } from "lucide-react";
 
 import { Table, TableRow, TableBody, TableCell } from "@/components/ui/table";
@@ -106,7 +113,6 @@ interface DataTableMeta {
   onAllPagesSelectionChange?: (selected: boolean) => void;
   onGenomeSelect?: (id: string | null) => void;
   onRowSelectionChange?: (selection: RowSelectionState) => void;
-  shiftHeldRef: React.RefObject<boolean>;
   totalItems: number;
 }
 
@@ -151,11 +157,12 @@ function getTableMeta(table: TanStackTable<DataTableFeatures, DataRow>) {
 function toggleRowSelection(
   row: TanStackRow<DataTableFeatures, DataRow>,
   table: TanStackTable<DataTableFeatures, DataRow>,
+  shiftKey: boolean,
 ) {
   const meta = getTableMeta(table);
   const anchorId = meta.lastSelectedIdRef.current;
 
-  if (meta.shiftHeldRef.current && anchorId && anchorId !== row.id) {
+  if (shiftKey && anchorId && anchorId !== row.id) {
     const rangeIds = computeShiftRangeIds(
       table.getRowModel().rows,
       anchorId,
@@ -190,6 +197,14 @@ function toggleRowSelection(
   }
 }
 
+/**
+ * Whether Shift was held for an event. React dispatches a checkbox's `onChange`
+ * from its `click`, so a checkbox change's native event is that MouseEvent.
+ */
+function shiftKeyOf(nativeEvent: Event) {
+  return "shiftKey" in nativeEvent && nativeEvent.shiftKey === true;
+}
+
 function SelectionCell({
   row,
   table,
@@ -201,8 +216,12 @@ function SelectionCell({
         type="checkbox"
         aria-label={`Select row ${row.id}`}
         checked={selected}
-        onChange={() => {
-          toggleRowSelection(row, table);
+        onChange={(event) => {
+          // A memoized row can still show a row the table no longer has.
+          const current = currentRow(table, row.id);
+          if (current) {
+            toggleRowSelection(current, table, shiftKeyOf(event.nativeEvent));
+          }
         }}
         onClick={(event) => {
           event.stopPropagation();
@@ -578,21 +597,17 @@ function useDataTableContent(
 
   const idField = explicitIdField ?? getIdField(resource);
 
-  const shiftHeld = useKeyHold("Shift");
-  const ctrlHeld = useKeyHold("Control");
-  const metaHeld = useKeyHold("Meta");
-  const ctrlOrCmdHeld = ctrlHeld || metaHeld;
-  // Mirror shiftHeld into a ref so the memoized checkbox cell reads the live value
-  // without shiftHeld entering renderCheckboxCell's deps — which would rebuild
-  // columnDefs (and reconfigure the table) on every Shift press/release.
-  const shiftHeldRef = useRef(false);
-  useEffect(() => {
-    shiftHeldRef.current = shiftHeld;
-  }, [shiftHeld]);
-
   const lastSelectedIdRef = useRef<string | null>(null);
 
-  const tableContainerRef = useRef<HTMLDivElement>(null);
+  // The scroll container, in state rather than a ref so the body re-renders
+  // once it exists. React runs the body's layout effects before this
+  // component's ref attaches, so on the first commit a ref would still be null
+  // when the virtualizer looks for its scroll element. The setter is a stable
+  // callback ref: React calls it on attach and detach only, never per render
+  // or scroll.
+  const [scrollElement, setScrollElement] = useState<HTMLDivElement | null>(
+    null,
+  );
 
   // What the table shows before this key's data has been measured (and what a
   // resize starts from): the widths the user saved, else nothing.
@@ -643,7 +658,6 @@ function useDataTableContent(
       onAllPagesSelectionChange,
       onGenomeSelect,
       onRowSelectionChange,
-      shiftHeldRef,
       totalItems,
     } satisfies DataTableMeta,
     state: {
@@ -790,7 +804,8 @@ function useDataTableContent(
   });
 
   // How every column's header and body cells size themselves (they re-render
-  // with this component: all three carry "use no memo"). Columns stretch to
+  // with this component, the memoized body rows when the body's
+  // `columnSignature` of these values changes). Columns stretch to
   // fill the container: when the width settings leave room, every resizable
   // column is scaled up by the same factor (`columnScale` in column-resize.ts).
   // When they already exceed the container (e.g. a column dragged very wide)
@@ -840,7 +855,7 @@ function useDataTableContent(
       // Short of the last handle's overhang, as the resting columns stretch.
       containerWidth: Math.max(
         0,
-        (tableContainerRef.current?.clientWidth ?? 0) - handleOverhang,
+        (scrollElement?.clientWidth ?? 0) - handleOverhang,
       ),
     };
     const startX = event.clientX;
@@ -901,16 +916,6 @@ function useDataTableContent(
       window.removeEventListener("resize", update);
     };
   }, []);
-
-  const rowVirtualizer = useVirtualizer({
-    count: rows.length,
-    getScrollElement: () => tableContainerRef.current,
-    estimateSize: () => 24,
-    overscan: 10,
-    getItemKey: (index) => rows[index]?.id ?? index,
-  });
-  const virtualRows = rowVirtualizer.getVirtualItems();
-  const totalSize = rowVirtualizer.getTotalSize();
 
   // Now that all the setup is done, let's render the table!
   return (
@@ -990,13 +995,12 @@ function useDataTableContent(
             // During load, clip the overestimated skeleton rows (no scrollbar);
             // switch to auto once real rows/virtualizer drive the height.
             isLoading ? "overflow-hidden" : "overflow-auto",
-            (shiftHeld || ctrlOrCmdHeld) && "select-none",
             // A drag outruns its handle whenever the column stops at its
             // minimum or maximum width; keep the resize cursor until release.
             resizingColumnId &&
               "cursor-col-resize select-none **:cursor-col-resize",
           )}
-          ref={tableContainerRef}
+          ref={setScrollElement}
           role="region"
           aria-label={scrollRegionLabel ?? `${resource} results`}
           // The skeleton rows are not results: assistive tech waits for the
@@ -1023,11 +1027,8 @@ function useDataTableContent(
                 table={table}
                 columnSizes={columnSizes}
                 rows={rows}
-                virtualRows={virtualRows}
-                totalSize={totalSize}
+                scrollElement={scrollElement}
                 idField={idField}
-                shiftHeld={shiftHeld}
-                ctrlOrCmdHeld={ctrlOrCmdHeld}
                 lastSelectedIdRef={lastSelectedIdRef}
                 onGenomeSelect={onGenomeSelect}
                 onActiveRowChange={onActiveRowChange}
@@ -1059,11 +1060,9 @@ interface DataTableBodyProps {
   table: ReactTable<DataTableFeatures, DataRow>;
   columnSizes: ColumnSizes;
   rows: TanStackRow<DataTableFeatures, DataRow>[];
-  virtualRows: VirtualItem[];
-  totalSize: number;
+  /** The scroll container the rows are virtualized against. */
+  scrollElement: HTMLDivElement | null;
   idField: string;
-  shiftHeld: boolean;
-  ctrlOrCmdHeld: boolean;
   lastSelectedIdRef: React.RefObject<string | null>;
   onGenomeSelect?: (id: string | null) => void;
   onActiveRowChange?: (id: string | null) => void;
@@ -1074,15 +1073,245 @@ interface DataTableBodyProps {
   skeletonRowCount?: number;
 }
 
+/** What the body's stable row handlers read when they run. */
+interface BodyRowLatest {
+  table: ReactTable<DataTableFeatures, DataRow>;
+  scrollElement: HTMLDivElement | null;
+  idField: string;
+  lastSelectedIdRef: React.RefObject<string | null>;
+  onGenomeSelect?: (id: string | null) => void;
+  onActiveRowChange?: (id: string | null) => void;
+}
+
+interface BodyRowHandlers {
+  onRowClick: (rowId: string, event: React.MouseEvent<HTMLElement>) => void;
+  onSelectCellClick: (
+    rowId: string,
+    event: React.MouseEvent<HTMLElement>,
+  ) => void;
+  onRowMouseDown: (event: React.MouseEvent<HTMLElement>) => void;
+}
+
+function isCheckboxTarget(event: React.MouseEvent<HTMLElement>) {
+  return (event.target as HTMLElement).closest('input[type="checkbox"]') !== null;
+}
+
+const pressFocusableSelector =
+  "a[href], button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]";
+
+/**
+ * What a plain press on a row would focus: the control under the pointer (the
+ * row checkbox, or a link or button in a cell), else the scroll region.
+ */
+function pressFocusTarget(
+  event: React.MouseEvent<HTMLElement>,
+  scrollElement: HTMLElement | null,
+): HTMLElement | null {
+  const control = (event.target as Element).closest<HTMLElement>(
+    pressFocusableSelector,
+  );
+  return control && event.currentTarget.contains(control)
+    ? control
+    : scrollElement;
+}
+
+/**
+ * The row the table holds under `rowId` now, or undefined when it no longer
+ * has it: a transition can hand the table new data and then suspend, leaving
+ * the old rows on screen to be clicked.
+ */
+function currentRow(
+  table: TanStackTable<DataTableFeatures, DataRow>,
+  rowId: string,
+): TanStackRow<DataTableFeatures, DataRow> | undefined {
+  return table.getRowModel().rowsById[rowId];
+}
+
+/**
+ * The row handlers, created once per body so the memoized rows never re-render
+ * for a new handler. They read the live table and callbacks from `latestRef`,
+ * and the live row from the table: a memoized row can hold a row object from
+ * an earlier render. Modifier keys come from the event itself.
+ */
+function createBodyRowHandlers(
+  latestRef: React.RefObject<BodyRowLatest>,
+): BodyRowHandlers {
+  return {
+    // Clicking a row notifies listeners about the active row (used to open side
+    // panels). A click from a checkbox is left to the checkbox, which already
+    // calls onActiveRowChange/onGenomeSelect.
+    onRowClick: (rowId, event) => {
+      if (isCheckboxTarget(event)) return;
+      const {
+        table,
+        idField,
+        lastSelectedIdRef,
+        onGenomeSelect,
+        onActiveRowChange,
+      } = latestRef.current;
+      const row = currentRow(table, rowId);
+      if (!row) return;
+      const anchorId = lastSelectedIdRef.current;
+
+      if (event.shiftKey && anchorId) {
+        // Exclusive range (replace existing selection)
+        const rangeIds = computeShiftRangeIds(
+          table.getRowModel().rows,
+          anchorId,
+          rowId,
+        );
+        if (rangeIds.length > 0) {
+          const next: RowSelectionState = {};
+          for (const rid of rangeIds) next[rid] = true;
+          table.setRowSelection(next);
+          return;
+        }
+        // stale anchor (off-page/re-sorted): fall through to single-select
+      }
+
+      lastSelectedIdRef.current = rowId;
+
+      if (event.ctrlKey || event.metaKey) {
+        row.toggleSelected();
+      } else {
+        table.setRowSelection({ [rowId]: true });
+      }
+
+      const idVal = row.original[idField] ?? row.original["genome_id"] ?? null;
+      if (
+        idVal != null &&
+        (typeof idVal === "string" || typeof idVal === "number")
+      ) {
+        onGenomeSelect?.(String(idVal));
+        onActiveRowChange?.(String(idVal));
+      }
+    },
+    onSelectCellClick: (rowId, event) => {
+      event.stopPropagation();
+      if (isCheckboxTarget(event)) return;
+      const { table } = latestRef.current;
+      const row = currentRow(table, rowId);
+      if (row) toggleRowSelection(row, table, event.shiftKey);
+    },
+    // A modifier-click selects rows; keep it from starting a text selection.
+    // Preventing the default also stops the press from moving focus, so focus
+    // what a plain press would (the control pressed, else the scroll region),
+    // without scrolling it.
+    onRowMouseDown: (event) => {
+      if (event.shiftKey || event.ctrlKey || event.metaKey) {
+        event.preventDefault();
+        pressFocusTarget(event, latestRef.current.scrollElement)?.focus({
+          preventScroll: true,
+        });
+      }
+    },
+  };
+}
+
+interface DataTableBodyRowProps extends BodyRowHandlers {
+  row: TanStackRow<DataTableFeatures, DataRow>;
+  rowId: string;
+  original: DataRow;
+  selected: boolean;
+  start: number;
+  columnSizes: ColumnSizes;
+  columnSignature: string;
+}
+
+/**
+ * A row re-renders only when what it shows changes: its data (`original` by
+ * identity), its selection, its position, or the columns (`columnSignature`,
+ * which stands for `columnSizes`: visibility, order, sizes and grow factors).
+ * It deliberately ignores `columnSizes`, a fresh object every body
+ * render while the signature is unchanged, the handlers, which are created
+ * once per body, and `row`, whose rendered output those other props already
+ * cover (a new row object for the same data must not re-render the row; a
+ * re-render for another reason takes the current one).
+ */
+function areBodyRowPropsEqual(
+  previous: DataTableBodyRowProps,
+  next: DataTableBodyRowProps,
+) {
+  return (
+    previous.rowId === next.rowId &&
+    previous.original === next.original &&
+    previous.selected === next.selected &&
+    previous.start === next.start &&
+    previous.columnSignature === next.columnSignature
+  );
+}
+
+const DataTableBodyRow = memo(function DataTableBodyRow({
+  row,
+  rowId,
+  selected,
+  start,
+  columnSizes,
+  onRowClick,
+  onSelectCellClick,
+  onRowMouseDown,
+}: DataTableBodyRowProps) {
+  // Compiled, row.getVisibleCells() would be cached on `row`, which can be the
+  // same object after a column is hidden or reordered, and go stale.
+  "use no memo";
+  return (
+    <TableRow
+      onClick={(event) => {
+        onRowClick(rowId, event);
+      }}
+      onMouseDown={onRowMouseDown}
+      style={
+        {
+          "--row-start": `${String(start)}px`,
+        } as CSSProperties
+      }
+      variant="tint"
+      data-state={selected ? "selected" : undefined}
+      className="group absolute inset-x-0 flex h-6 translate-y-(--row-start) cursor-pointer"
+    >
+      {row.getVisibleCells().map((cell) => (
+        <TableCell
+          key={cell.id}
+          onClick={
+            cell.column.id === "__select__"
+              ? (event) => {
+                  onSelectCellClick(rowId, event);
+                }
+              : undefined
+          }
+          // The sticky select cell needs an opaque background (scrolled
+          // cells would show through a transparent one), keyed on the
+          // row's data-state; see TableCell `sticky-select`.
+          variant={cell.column.id === "__select__" ? "sticky-select" : "grid"}
+          className={clsx(
+            // No ellipsis: text-overflow has no effect on a flex
+            // container, so overflow-hidden is all `truncate` did here
+            // (the cell is already whitespace-nowrap).
+            "flex h-6 w-(--col-size) min-w-(--col-size) grow-(--col-grow) items-center overflow-hidden last:mr-2",
+            cell.column.id === "__select__"
+              ? "sticky left-0 z-1 justify-center p-0"
+              : "justify-start p-0.5",
+          )}
+          style={
+            {
+              "--col-size": columnSizes[cell.column.id].size,
+              "--col-grow": columnSizes[cell.column.id].grow,
+            } as CSSProperties
+          }
+        >
+          <FlexRender cell={cell} />
+        </TableCell>
+      ))}
+    </TableRow>
+  );
+}, areBodyRowPropsEqual);
+
 function DataTableBody({
   table,
   columnSizes,
   rows,
-  virtualRows,
-  totalSize,
+  scrollElement,
   idField,
-  shiftHeld,
-  ctrlOrCmdHeld,
   lastSelectedIdRef,
   onGenomeSelect,
   onActiveRowChange,
@@ -1093,6 +1322,52 @@ function DataTableBody({
   skeletonRowCount = 20,
 }: DataTableBodyProps) {
   "use no memo";
+  // The virtualizer lives here so a scroll tick re-renders only the body, and
+  // its memoized rows only those entering the window. useFlushSync stays at
+  // its default (true): false would defer that render past the scroll frame
+  // and flash blank rows on a fast scroll.
+  const rowVirtualizer = useVirtualizer({
+    count: rows.length,
+    getScrollElement: () => scrollElement,
+    estimateSize: () => 24,
+    overscan: 10,
+    getItemKey: (index) => rows[index]?.id ?? index,
+  });
+  const virtualRows = rowVirtualizer.getVirtualItems();
+  const totalSize = rowVirtualizer.getTotalSize();
+
+  const latestRef = useRef<BodyRowLatest>({
+    table,
+    scrollElement,
+    idField,
+    lastSelectedIdRef,
+    onGenomeSelect,
+    onActiveRowChange,
+  });
+  useLayoutEffect(() => {
+    latestRef.current = {
+      table,
+      scrollElement,
+      idField,
+      lastSelectedIdRef,
+      onGenomeSelect,
+      onActiveRowChange,
+    };
+  });
+  // Created once: the body is opted out of the compiler, so nothing else keeps
+  // their identity, and the memoized rows compare on it.
+  const [handlers] = useState(() => createBodyRowHandlers(latestRef));
+
+  // From the headers, in their order: `columnSizes` is keyed by column id, and
+  // integer-like keys ("1", "2") iterate in numeric order whatever the order.
+  const columnSignature = table
+    .getFlatHeaders()
+    .map(({ column }) => {
+      const { size, grow } = columnSizes[column.id];
+      return `${column.id}:${size}:${grow}`;
+    })
+    .join("|");
+
   return (
     <TableBody
       // TableBody dims itself while busy.
@@ -1164,103 +1439,19 @@ function DataTableBody({
         virtualRows.map((virtualRow) => {
           const row = rows[virtualRow.index];
           return (
-            <TableRow
+            <DataTableBodyRow
               key={row.id}
-              // Clicking a row should notify listeners about the active row (used to open side panels).
-              // If the click originated from a checkbox/input, avoid double-handling because
-              // the checkbox click handler already calls onActiveRowChange/onGenomeSelect.
-              onClick={(e) => {
-                if ((e.target as HTMLElement).closest('input[type="checkbox"]'))
-                  return;
-                const currentRowId = row.id;
-                const anchorId = lastSelectedIdRef.current;
-
-                if (shiftHeld && anchorId) {
-                  // Exclusive range (replace existing selection)
-                  const rangeIds = computeShiftRangeIds(
-                    table.getRowModel().rows,
-                    anchorId,
-                    currentRowId,
-                  );
-                  if (rangeIds.length > 0) {
-                    const next: RowSelectionState = {};
-                    for (const rid of rangeIds) next[rid] = true;
-                    table.setRowSelection(next);
-                    return;
-                  }
-                  // stale anchor (off-page/re-sorted): fall through to single-select
-                }
-
-                lastSelectedIdRef.current = currentRowId;
-
-                if (ctrlOrCmdHeld) {
-                  row.toggleSelected();
-                } else {
-                  table.setRowSelection({ [currentRowId]: true });
-                }
-
-                const idVal =
-                  row.original[idField] ?? row.original["genome_id"] ?? null;
-                if (
-                  idVal != null &&
-                  (typeof idVal === "string" || typeof idVal === "number")
-                ) {
-                  onGenomeSelect?.(String(idVal));
-                  onActiveRowChange?.(String(idVal));
-                }
-              }}
-              style={
-                {
-                  "--row-start": `${String(virtualRow.start)}px`,
-                } as CSSProperties
-              }
-              variant="tint"
-              data-state={row.getIsSelected() ? "selected" : undefined}
-              className="group absolute inset-x-0 flex h-6 translate-y-(--row-start) cursor-pointer"
-            >
-              {row.getVisibleCells().map((cell) => (
-                <TableCell
-                  key={cell.id}
-                  onClick={
-                    cell.column.id === "__select__"
-                      ? (event) => {
-                          event.stopPropagation();
-                          if (
-                            !(event.target as HTMLElement).closest(
-                              'input[type="checkbox"]',
-                            )
-                          ) {
-                            toggleRowSelection(row, table);
-                          }
-                        }
-                      : undefined
-                  }
-                  // The sticky select cell needs an opaque background (scrolled
-                  // cells would show through a transparent one), keyed on the
-                  // row's data-state; see TableCell `sticky-select`.
-                  variant={
-                    cell.column.id === "__select__" ? "sticky-select" : "grid"
-                  }
-                  className={clsx(
-                    // No ellipsis: text-overflow has no effect on a flex
-                    // container, so overflow-hidden is all `truncate` did here
-                    // (the cell is already whitespace-nowrap).
-                    "flex h-6 w-(--col-size) min-w-(--col-size) grow-(--col-grow) items-center overflow-hidden last:mr-2",
-                    cell.column.id === "__select__"
-                      ? "sticky left-0 z-1 justify-center p-0"
-                      : "justify-start p-0.5",
-                  )}
-                  style={
-                    {
-                      "--col-size": columnSizes[cell.column.id].size,
-                      "--col-grow": columnSizes[cell.column.id].grow,
-                    } as CSSProperties
-                  }
-                >
-                  <table.FlexRender cell={cell} />
-                </TableCell>
-              ))}
-            </TableRow>
+              row={row}
+              rowId={row.id}
+              original={row.original}
+              selected={row.getIsSelected()}
+              start={virtualRow.start}
+              columnSizes={columnSizes}
+              columnSignature={columnSignature}
+              onRowClick={handlers.onRowClick}
+              onSelectCellClick={handlers.onSelectCellClick}
+              onRowMouseDown={handlers.onRowMouseDown}
+            />
           );
         })
       )}

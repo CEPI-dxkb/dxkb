@@ -1,4 +1,4 @@
-import { ProteinStructureResourceCollection } from "@/components/views";
+import { LazyProteinStructureResourceCollection } from "./lazy-tab-roots";
 import { taxonLineageClause, type TaxonViewScope } from "./scope";
 
 export function makeProteinStructuresView({
@@ -8,7 +8,7 @@ export function makeProteinStructuresView({
 }) {
   function ProteinStructuresView() {
     return (
-      <ProteinStructureResourceCollection
+      <LazyProteinStructureResourceCollection
         baseRql={`and(eq(genome_id,*),genome(and(${taxonLineageClause(scope)},ne(genome_status,Deprecated))))`}
         enableFacets={false}
         enableRowLinks={false}

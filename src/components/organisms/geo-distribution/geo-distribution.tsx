@@ -5,7 +5,7 @@ import {
 import { describeGenomeScope } from "@/lib/services/organisms/genome-scope";
 import { fetchOrganismGeoDistribution } from "@/lib/services/organisms/geo-distribution";
 
-import { GeoDistributionClient } from "./geo-distribution-client";
+import { LazyGeoDistributionClient } from "./lazy-geo-distribution-client";
 import type { GeoDistributionAccent } from "./types";
 
 type GeoDistributionProps = GenomeScopeProps & {
@@ -17,7 +17,7 @@ export async function GeoDistribution({ accent, ...scopeProps }: GeoDistribution
   const data = await fetchOrganismGeoDistribution(scope);
 
   return (
-    <GeoDistributionClient
+    <LazyGeoDistributionClient
       key={describeGenomeScope(scope)}
       data={data}
       accent={accent}

@@ -1,6 +1,7 @@
 import { eq, type DataResource } from "@/lib/data-api";
 
 import type { CollectionState } from "./collection-state";
+import { rqlAnd, rqlAnyOf } from "./rql";
 
 /**
  * The one remap shared by every resource that carries a taxonomic lineage: the
@@ -60,14 +61,8 @@ export function structuralFilterRql(
     const field = fieldMap[name] ?? (unknownFilters === "drop" ? undefined : name);
     if (!field) return [];
     const predicates = selected.map((value) => eq(resource, field, value));
-    return predicates.length === 0
-      ? []
-      : [
-          predicates.length === 1
-            ? predicates[0]
-            : `or(${predicates.join(",")})`,
-        ];
+    return predicates.length === 0 ? [] : [rqlAnyOf(predicates)];
   });
   if (clauses.length === 0) return undefined;
-  return clauses.length === 1 ? clauses[0] : `and(${clauses.join(",")})`;
+  return rqlAnd(...clauses);
 }

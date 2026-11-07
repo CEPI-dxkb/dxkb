@@ -1,4 +1,4 @@
-import { TaxonomyTreePanel } from "@/components/taxonomy/taxonomy-tree-panel";
+import { LazyTaxonomyTreePanel } from "./lazy-tab-roots";
 import { scopeRoots, type TaxonViewScope } from "./scope";
 
 export function makeTaxonomyTreeView({
@@ -10,7 +10,7 @@ export function makeTaxonomyTreeView({
 }) {
   function TaxonomyTreeView() {
     return (
-      <TaxonomyTreePanel
+      <LazyTaxonomyTreePanel
         taxa={scopeRoots(scope)}
         phylogenyTaxonIds={phylogenyTaxonIds}
       />

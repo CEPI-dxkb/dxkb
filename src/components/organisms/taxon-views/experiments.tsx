@@ -1,7 +1,7 @@
 import {
-  ExperimentResourceCollection,
-  ResourceChildCollection,
-} from "@/components/views";
+  LazyExperimentResourceCollection,
+  LazyResourceChildCollection,
+} from "./lazy-tab-roots";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { taxonLineageClause, type TaxonViewScope } from "./scope";
 
@@ -16,14 +16,14 @@ export function makeExperimentsView({ scope }: { scope: TaxonViewScope }) {
           <TabsTrigger value="biosets">Biosets</TabsTrigger>
         </TabsList>
         <TabsContent value="experiments" className="mt-2 flex min-h-0 flex-1 flex-col">
-          <ExperimentResourceCollection
+          <LazyExperimentResourceCollection
             baseRql={lineageClause}
             enableRowLinks={false}
             keywordMode="loaded"
           />
         </TabsContent>
         <TabsContent value="biosets" className="mt-2 flex min-h-0 flex-1 flex-col">
-          <ResourceChildCollection
+          <LazyResourceChildCollection
             urlKey="biosets"
             resource="bioset"
             label="Biosets"

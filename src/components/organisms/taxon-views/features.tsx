@@ -1,4 +1,4 @@
-import { FeatureResourceCollection } from "@/components/views";
+import { LazyFeatureResourceCollection } from "./lazy-tab-roots";
 import {
   featureGridDefaultOrder,
   featureListCollectionOptions,
@@ -11,7 +11,7 @@ export function makeFeaturesView({ scope }: { scope: TaxonViewScope }) {
     // annotation=PATRIC default rather than a pinned PATRIC clause, and
     // FeatureGrid's default row order.
     return (
-      <FeatureResourceCollection
+      <LazyFeatureResourceCollection
         baseRql={`and(eq(genome_id,*),genome(and(${taxonLineageClause(scope)},ne(genome_status,Deprecated))))`}
         collectionOptions={featureListCollectionOptions}
         enableRowLinks={false}

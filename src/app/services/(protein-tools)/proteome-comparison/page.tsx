@@ -294,10 +294,17 @@ function useProteomeComparisonPage() {
     setIsLoadingGenomeGroup(true);
 
     try {
-      // Fetch genome IDs from the group
+      // Fetch genome IDs from the group. The spinner ends when the read
+      // settles, either way, so the early returns below (empty group, over the
+      // limit, duplicate) and a failed read all give the "+" button back. After
+      // a reset the spinner belongs to whichever add started since, if any.
       const genomeIds = await getGenomeIdsFromGroup(
         selectedCompGenomeGroup.path,
-      );
+      ).finally(() => {
+        if (resetRevision === resetRevisionRef.current) {
+          setIsLoadingGenomeGroup(false);
+        }
+      });
 
       // A reset during the read already cleared the list and this spinner.
       if (resetRevision !== resetRevisionRef.current) return;
@@ -358,13 +365,6 @@ function useProteomeComparisonPage() {
         description: errorMessage,
         closeButton: true,
       });
-    } finally {
-      // The early returns above (empty group, over the limit, duplicate) left
-      // the "+" button on its spinner, so only a reload recovered it. After a
-      // reset the spinner belongs to whichever add started since, if any.
-      if (resetRevision === resetRevisionRef.current) {
-        setIsLoadingGenomeGroup(false);
-      }
     }
   }
 

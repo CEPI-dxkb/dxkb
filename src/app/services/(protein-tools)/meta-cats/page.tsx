@@ -85,6 +85,12 @@ import { MetaCatsInputSection } from "./meta-cats-input-sections";
 const emptyAutoGroups: NonNullable<MetaCatsFormData["auto_groups"]> = [];
 const emptyFeatureGroups: string[] = [];
 
+// Outside the hook so the add handler's `try` holds no `||`, which would make
+// the React Compiler skip the whole page.
+function autoGroupsOrEmpty(autoGroups: MetaCatsFormData["auto_groups"]) {
+  return autoGroups || [];
+}
+
 function useMetaCATSPage() {
   // State for auto grouping
   const [selectedAutoFeatureGroupObject, setSelectedAutoFeatureGroupObject] =
@@ -269,7 +275,9 @@ function useMetaCATSPage() {
         fields: metaCatsGenomeFields(currentMetadataGroup),
       });
 
-      const currentAutoGroups = form.state.values.auto_groups || [];
+      const currentAutoGroups = autoGroupsOrEmpty(
+        form.state.values.auto_groups,
+      );
 
       const { newAutoGroups, nextGroupNames } =
         buildMetaCatsAutoGroupsFromGenomes({

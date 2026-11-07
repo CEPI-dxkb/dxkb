@@ -10,7 +10,11 @@ import type {
   DataTableColumn,
   DataTableRow,
 } from "@/components/shared/data-table";
-import { maxExportRows, serializeRql, type DataResource } from "@/lib/data-api";
+import {
+  maxExportRows,
+  serializeRql,
+  type DataResource,
+} from "@/lib/data-api";
 import type {
   DownloadScope,
   ResolvedCollectionDownloadSpec,
@@ -286,6 +290,33 @@ function missingExperimentsMessage(experimentCount: number): string {
   return experimentCount === 0
     ? "No experiments are associated with this selection."
     : "Some selected Biosets are not associated with experiments.";
+}
+
+/**
+ * Resolve the experiment IDs of every matching Bioset, refusing a selection over
+ * the export limit (by this query's total, then by what the read returned).
+ */
+async function readBiosetExperimentIds({
+  matchingTotal,
+  resolveAllMatchingRows,
+  limitMessage,
+}: {
+  matchingTotal: () => Promise<number>;
+  resolveAllMatchingRows: (
+    fields: readonly string[],
+  ) => Promise<MatchingRowsRead>;
+  limitMessage: (count: number) => string;
+}) {
+  const total = await matchingTotal();
+  if (total > maxExportRows) throw new Error(limitMessage(total));
+  const read = await resolveAllMatchingRows(["exp_id"]);
+  if (exceedsReadLimit(read, maxExportRows)) {
+    throw new Error(limitMessage(read.total));
+  }
+  return {
+    experimentIds: biosetExperimentIds(read.rows),
+    rowCount: read.rows.length,
+  };
 }
 
 function openMemberTab(
@@ -690,20 +721,12 @@ export function useResourceCollectionActions<Row extends DataTableRow>({
     resultsWindow.opener = null;
     pendingBiosetActionRef.current = true;
     setLoadingActionIds(["biosets"]);
-    const readExperimentIds = async () => {
-      const total = await matchingTotal();
-      if (total > maxExportRows) throw new Error(limitMessage(total));
-      const read = await resolveAllMatchingRows(["exp_id"]);
-      if (exceedsReadLimit(read, maxExportRows)) {
-        throw new Error(limitMessage(read.total));
-      }
-      return {
-        experimentIds: biosetExperimentIds(read.rows),
-        rowCount: read.rows.length,
-      };
-    };
     try {
-      const { experimentIds, rowCount } = await readExperimentIds();
+      const { experimentIds, rowCount } = await readBiosetExperimentIds({
+        matchingTotal,
+        resolveAllMatchingRows,
+        limitMessage,
+      });
       if (experimentIds.length === rowCount) {
         navigateReservedTab(resultsWindow, biosetResultsHref(experimentIds));
       } else {
@@ -761,11 +784,7 @@ export function useResourceCollectionActions<Row extends DataTableRow>({
         onError,
       );
     } else if (actionId === "structure" && targets.selectedStructureHref) {
-      openMemberTab(
-        targets.selectedStructureHref,
-        "Protein Structure",
-        onError,
-      );
+      openMemberTab(targets.selectedStructureHref, "Protein Structure", onError);
     } else if (actionId === "epitope" && targets.selectedEpitopeId) {
       openMemberTab(epitopeHref(targets.selectedEpitopeId), "Epitope", onError);
     } else if (actionId === "experiment" && targets.selectedExperimentId) {

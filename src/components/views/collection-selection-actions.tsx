@@ -128,7 +128,7 @@ interface CollectionSelectionActionsProps {
 
 /** A built list href that is present and short enough to open safely. */
 function isOpenableListHref(href: string | null): href is string {
-  return href !== null && href.length <= selectionListMaxUrlLength;
+  return !!href && href.length <= selectionListMaxUrlLength;
 }
 
 /**
@@ -234,9 +234,10 @@ export function CollectionSelectionActions({
       // Both list actions pre-check the ID count rather than leaning on the href
       // builders returning null: the explicit check can name the resolved ID count and
       // the destination, and it keeps all four owned actions on one enforcement path.
-      // The `!href` arm below stays for type narrowing (and as a backstop if the
-      // builders' rules diverge); the URL-length arm is a genuinely separate bound
-      // that long feature IDs reach well before 500 of them.
+      // `isOpenableListHref` stays for type narrowing and as a backstop if the
+      // builders' rules diverge (a missing href), and it also enforces the
+      // URL-length bound, which is genuinely separate: long feature IDs reach it
+      // well before 500 of them.
       if (actionId === "genomes") {
         const href = genomesHrefFromIds(
           await resolveSelectionIds({

@@ -42,7 +42,7 @@ import {
 import type { Library } from "@/types/services";
 import { WastewaterParameters } from "./wastewater-parameters";
 import { WastewaterLibrary } from "./wastewater-library";
-import { WastewaterSelectedLibraries } from "./wastewater-selected-libraries";
+import { SelectedLibrariesCard } from "@/components/services/selected-libraries-card";
 
 const quickReference =
   "https://www.bv-brc.org/docs/quick_references/services/sars_cov_2_wastewater_analysis_service.html";
@@ -303,9 +303,10 @@ export default function SarsCov2WastewaterAnalysisPage() {
           <WastewaterLibrary page={page} />
         </div>
         <div className="md:col-span-6">
-          <WastewaterSelectedLibraries
-            libraries={selectedLibraries}
+          <SelectedLibrariesCard
+            items={selectedLibraries}
             onRemove={removeLibrary}
+            tableClassName="max-h-80 overflow-y-auto"
           />
         </div>
 

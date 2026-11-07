@@ -15,7 +15,7 @@ import {
   proteomeComparisonReferenceGenome,
 } from "@/lib/services/info/proteome-comparison";
 import { DialogInfoPopup } from "@/components/services/dialog-info-popup";
-import OutputFolder from "@/components/services/output-folder";
+import { ServiceOutputFields } from "@/components/services/service-output-fields";
 import { RequiredFormCardTitle } from "@/components/forms/required-form-components";
 import { WorkspaceObjectSelector } from "@/components/workspace/workspace-object-selector";
 import { WorkspaceObject } from "@/lib/services/workspace/types";
@@ -131,7 +131,6 @@ function useProteomeComparisonPage() {
     form.store,
     (s) => s.values.comparison_items,
   );
-  const outputPath = useSelector(form.store, (s) => s.values.output_path);
   const canSubmit = useSelector(form.store, (s) => s.canSubmit);
 
   // Calculate total genome count (accounting for genome groups)
@@ -413,35 +412,27 @@ function useProteomeComparisonPage() {
 
               <ServiceCardContent>
                 <div className="space-y-4">
-                  <div className="flex flex-col space-y-4">
-                    <form.Field name="output_path">
-                      {(field) => (
-                        <FieldItem>
-                          <OutputFolder
-                            required={true}
-                            value={field.state.value}
-                            onChange={field.handleChange}
+                  <form.Field name="output_path">
+                    {(outputPathField) => (
+                      <form.Field name="output_file">
+                        {(outputNameField) => (
+                          <ServiceOutputFields
+                            outputPath={{
+                              value: outputPathField.state.value,
+                              onChange: outputPathField.handleChange,
+                              errors: <FieldErrors field={outputPathField} />,
+                            }}
+                            outputName={{
+                              value: outputNameField.state.value,
+                              onChange: outputNameField.handleChange,
+                              errors: <FieldErrors field={outputNameField} />,
+                            }}
+                            onOutputNameValidationChange={setIsOutputNameValid}
                           />
-                          <FieldErrors field={field} />
-                        </FieldItem>
-                      )}
-                    </form.Field>
-                    <form.Field name="output_file">
-                      {(field) => (
-                        <FieldItem>
-                          <OutputFolder
-                            variant="name"
-                            required={true}
-                            value={field.state.value}
-                            onChange={field.handleChange}
-                            outputFolderPath={outputPath}
-                            onValidationChange={setIsOutputNameValid}
-                          />
-                          <FieldErrors field={field} />
-                        </FieldItem>
-                      )}
-                    </form.Field>
-                  </div>
+                        )}
+                      </form.Field>
+                    )}
+                  </form.Field>
 
                   {/* Advanced Parameters */}
                   <ServiceCollapsible

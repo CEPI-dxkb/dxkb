@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/select";
 import { FieldErrors, FieldItem } from "@/components/ui/tanstack-form";
 import { DialogInfoPopup } from "@/components/services/dialog-info-popup";
-import OutputFolder from "@/components/services/output-folder";
+import { ServiceOutputFields } from "@/components/services/service-output-fields";
 import { RequiredFormCardTitle } from "@/components/forms/required-form-components";
 import {
   ServiceCardContent,
@@ -36,8 +36,7 @@ export function GeneProteinTreeParameters({
 }: {
   controller: GeneProteinTreeController;
 }) {
-  const { form, outputPath, substitutionModelOptions, setIsOutputNameValid } =
-    controller;
+  const { form, substitutionModelOptions, setIsOutputNameValid } = controller;
   return (
     <div className="space-y-4">
       <Card>
@@ -132,35 +131,27 @@ export function GeneProteinTreeParameters({
                 </FieldItem>
               )}
             </form.Field>
-            <div className="flex flex-col space-y-4">
-              <form.Field name="output_path">
-                {(field) => (
-                  <FieldItem>
-                    <OutputFolder
-                      required
-                      value={field.state.value}
-                      onChange={field.handleChange}
+            <form.Field name="output_path">
+              {(outputPathField) => (
+                <form.Field name="output_file">
+                  {(outputNameField) => (
+                    <ServiceOutputFields
+                      outputPath={{
+                        value: outputPathField.state.value,
+                        onChange: outputPathField.handleChange,
+                        errors: <FieldErrors field={outputPathField} />,
+                      }}
+                      outputName={{
+                        value: outputNameField.state.value,
+                        onChange: outputNameField.handleChange,
+                        errors: <FieldErrors field={outputNameField} />,
+                      }}
+                      onOutputNameValidationChange={setIsOutputNameValid}
                     />
-                    <FieldErrors field={field} />
-                  </FieldItem>
-                )}
-              </form.Field>
-              <form.Field name="output_file">
-                {(field) => (
-                  <FieldItem>
-                    <OutputFolder
-                      variant="name"
-                      required
-                      value={field.state.value}
-                      onChange={field.handleChange}
-                      outputFolderPath={outputPath}
-                      onValidationChange={setIsOutputNameValid}
-                    />
-                    <FieldErrors field={field} />
-                  </FieldItem>
-                )}
-              </form.Field>
-            </div>
+                  )}
+                </form.Field>
+              )}
+            </form.Field>
           </div>
         </ServiceCardContent>
       </Card>

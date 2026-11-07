@@ -265,7 +265,8 @@ export function FiltersMenu({
    * facet not yet counted (a search lists it while More is folded) is only
    * highlighted: hovering or arrowing never starts a read.
    */
-  const preview = (row: LeftRow, query = menu.leftQuery) => {
+  const preview = (row: LeftRow, queryArg?: string) => {
+    const query = queryArg ?? menu.leftQuery;
     setActiveKey(row.key);
     if (row.kind === "more" || !facetActions.isCounted(row.field)) return;
     menu.setField(row.field);

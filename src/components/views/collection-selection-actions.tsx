@@ -126,6 +126,11 @@ interface CollectionSelectionActionsProps {
   onOtherAction?: (actionId: SearchActionId) => void;
 }
 
+/** A built list href that is present and short enough to open safely. */
+function isOpenableListHref(href: string | null): href is string {
+  return href !== null && href.length <= selectionListMaxUrlLength;
+}
+
 /**
  * The action bar and dialogs shared by every collection whose row selection resolves
  * to a set of IDs a service or workspace group accepts — Genome IDs (Strains via
@@ -224,6 +229,7 @@ export function CollectionSelectionActions({
     if (pendingActionRef.current) return;
     pendingActionRef.current = actionId;
     setLoadingActionIds([actionId]);
+    const opensGroup = actionId === "group" && isAuthenticated;
     try {
       // Both list actions pre-check the ID count rather than leaning on the href
       // builders returning null: the explicit check can name the resolved ID count and
@@ -240,7 +246,7 @@ export function CollectionSelectionActions({
             advice: "Narrow the selection or create a Genome Group.",
           }),
         );
-        if (!href || href.length > selectionListMaxUrlLength) {
+        if (!isOpenableListHref(href)) {
           onError(
             "This selection contains too many genome IDs to open safely. Narrow the selection or create a Genome Group.",
           );
@@ -256,7 +262,7 @@ export function CollectionSelectionActions({
             advice: "Narrow the selection or create a Feature Group.",
           }),
         );
-        if (!href || href.length > selectionListMaxUrlLength) {
+        if (!isOpenableListHref(href)) {
           onError(
             "This selection contains too many feature IDs to open safely. Narrow the selection or create a Feature Group.",
           );
@@ -275,7 +281,7 @@ export function CollectionSelectionActions({
           }),
         );
         setIsServiceOpen(true);
-      } else if (actionId === "group" && isAuthenticated) {
+      } else if (opensGroup) {
         setSelectionIds(
           await resolveSelectionIds({
             maxRows: selectionGroupMaxRows,

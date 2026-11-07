@@ -1,5 +1,5 @@
 import { render, screen } from "@testing-library/react";
-import { metadataLinkClassName } from "@/components/detail-panel/metadata-link";
+import { metadataLinkClassName } from "@/components/detail-panel/metadata-link-policy";
 import type { GenomeViewRecord } from "@/lib/genome-view";
 import {
   emptyOverviewSectionTitles,

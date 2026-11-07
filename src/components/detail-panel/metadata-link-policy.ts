@@ -9,6 +9,18 @@
  * check.
  */
 
+/**
+ * Shared visual treatment for the detail panel's metadata-driven links —
+ * scalar, array and button alike — so internal and external destinations look
+ * identical regardless of which shape produced them. Not repo-wide: the
+ * collection table styles the same `DataField.link` templates through its own
+ * `valueHref` path with a different class string, which
+ * this module records alongside the classification boundary that
+ * path also bypasses.
+ */
+export const metadataLinkClassName =
+  "text-primary underline hover:text-primary/80 dark:text-link dark:hover:text-foreground";
+
 /** Three-way outcome of {@link classifyHref}. */
 export type HrefClassification = "internal" | "external" | "unsafe";
 
@@ -20,7 +32,7 @@ export type HrefClassification = "internal" | "external" | "unsafe";
  *
  * - **Routes through here.** `./info-panel.tsx` renders no `<Link>`, `<a>` or
  *   `href` of its own — every link it produces goes through
- *   `renderMetadataLink` / `renderMetadataLinkButton`, so its scalar, array and
+ *   `MetadataLink` / `MetadataLinkButton`, so its scalar, array and
  *   button fields are all covered. The four link-rendering entity overviews
  *   likewise use only `MetadataLink`.
  * - **Collection tables.** `src/components/shared/data-table.tsx` resolves and

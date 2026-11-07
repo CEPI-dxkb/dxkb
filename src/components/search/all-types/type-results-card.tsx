@@ -1,10 +1,9 @@
 import Link from "next/link";
-import { useState, type KeyboardEvent, type ReactNode } from "react";
+import { useState } from "react";
 import { ChevronDown, ChevronRight, ChevronUp } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { viewIcons } from "@/components/views/view-icons";
 import {
   Table,
   TableBody,
@@ -20,54 +19,7 @@ import {
   type TypeResults,
 } from "@/lib/search/all-types-search";
 import { cn } from "@/lib/utils";
-
-/** Each data type's view icon, as every view rail shows it. */
-const typeIcons: Readonly<Record<string, ReactNode>> = {
-  taxonomy: viewIcons.taxonomy,
-  genome: viewIcons.genomes,
-  strain: viewIcons.strains,
-  genome_feature: viewIcons.features,
-  protein_feature: viewIcons.domainsAndMotifs,
-  epitope: viewIcons.epitopes,
-  protein_structure: viewIcons.proteinStructures,
-  surveillance: viewIcons.surveillance,
-  serology: viewIcons.serology,
-  experiment: viewIcons.experiments,
-};
-
-export function searchTypeIcon(id: string): ReactNode {
-  return typeIcons[id] ?? viewIcons.features;
-}
-
-/**
- * ↑/↓ move between the result links inside the handler's element, past the
- * rows "Show more" has yet to show. From anything else focused there (a fold
- * button, a type's heading link), they go to the nearest result link in that
- * direction.
- */
-export function moveResultFocus(event: KeyboardEvent<HTMLElement>): void {
-  if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
-  const from = document.activeElement;
-  if (!from) return;
-  const links = [
-    ...event.currentTarget.querySelectorAll<HTMLElement>("[data-result-link]"),
-  ].filter((link) => !link.closest("[inert]"));
-  const next =
-    event.key === "ArrowDown"
-      ? links.find(
-          (link) =>
-            from.compareDocumentPosition(link) &
-            Node.DOCUMENT_POSITION_FOLLOWING,
-        )
-      : links.findLast(
-          (link) =>
-            from.compareDocumentPosition(link) &
-            Node.DOCUMENT_POSITION_PRECEDING,
-        );
-  if (!next) return;
-  event.preventDefault();
-  next.focus();
-}
+import { searchTypeIcon } from "./search-type-icon";
 
 function ResultTitle({ row }: { row: ResultRow }) {
   const className = cn(

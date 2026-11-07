@@ -3,8 +3,9 @@
 import Link from "next/link";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import type { FigureHit } from "@/lib/circular-viewer/drawing";
+import { itemTitle } from "@/lib/circular-viewer/item-fields";
 import { featureHref } from "@/lib/views/hrefs";
-import { ItemFieldList, itemTitle } from "./circular-viewer-item-fields";
+import { ItemFieldList } from "./circular-viewer-item-fields";
 
 /**
  * Legacy's click dialog (`formatDialogContent`): every field, and a way to the record.

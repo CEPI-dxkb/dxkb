@@ -29,10 +29,9 @@ import {
   EmptyState,
   FacetValueList,
   MenuSearch,
-  navigationTarget,
   RefreshHairline,
 } from "./facet-value-list";
-import { displayFacetValue } from "./facet-values";
+import { displayFacetValue, navigationTarget } from "./facet-values";
 import type { FacetActions } from "./use-facet-actions";
 
 /** Where a facet sits in the menu's left pane. */

@@ -1,9 +1,6 @@
 import { Card } from "@/components/ui/card";
-import {
-  FieldErrors,
-  FieldItem,
-  fieldErrorMessage,
-} from "@/components/ui/tanstack-form";
+import { FieldErrors, FieldItem } from "@/components/ui/tanstack-form";
+import { fieldErrorMessage } from "@/components/ui/field-error-message";
 import { DialogInfoPopup } from "@/components/services/dialog-info-popup";
 import { FastaTextarea } from "@/components/services/fasta-textarea";
 import { WorkspaceObjectSelector } from "@/components/workspace/workspace-object-selector";

@@ -2,11 +2,8 @@
 
 import { Fragment } from "react";
 import { useSubspeciesClassificationPage } from "./use-subspecies-classification-page";
-import {
-  FieldItem,
-  FieldErrors,
-  fieldErrorMessage,
-} from "@/components/ui/tanstack-form";
+import { FieldItem, FieldErrors } from "@/components/ui/tanstack-form";
+import { fieldErrorMessage } from "@/components/ui/field-error-message";
 import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import {

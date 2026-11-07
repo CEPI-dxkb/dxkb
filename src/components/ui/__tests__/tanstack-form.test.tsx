@@ -2,7 +2,8 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useForm } from "@tanstack/react-form";
 import { z } from "zod";
-import { FieldErrors, fieldErrorMessage } from "@/components/ui/tanstack-form";
+import { FieldErrors } from "@/components/ui/tanstack-form";
+import { fieldErrorMessage } from "@/components/ui/field-error-message";
 
 /**
  * A one-field form: `name` must not be empty. The field's message as

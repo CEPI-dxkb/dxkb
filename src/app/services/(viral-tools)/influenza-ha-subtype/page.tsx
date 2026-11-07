@@ -1,11 +1,8 @@
 "use client";
 
 import { useInfluenzaHaSubtypePage } from "./use-influenza-ha-subtype-page";
-import {
-  FieldItem,
-  FieldErrors,
-  fieldErrorMessage,
-} from "@/components/ui/tanstack-form";
+import { FieldItem, FieldErrors } from "@/components/ui/tanstack-form";
+import { fieldErrorMessage } from "@/components/ui/field-error-message";
 import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";

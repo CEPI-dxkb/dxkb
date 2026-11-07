@@ -12,34 +12,18 @@ import {
 import { Check, Inbox, Search, SearchX, type LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { displayFacetValue, type FacetValueOption } from "./facet-values";
+import {
+  displayFacetValue,
+  navigationTarget,
+  type FacetValueOption,
+} from "./facet-values";
 import type { FacetStatus } from "./types";
-
-/**
- * The index ↑/↓/Page Up/Page Down moves a list's highlight to from `index`,
- * kept inside the list's `count` rows; `undefined` for any other key.
- */
-export function navigationTarget(
-  key: string,
-  index: number,
-  count: number,
-): number | undefined {
-  const steps: Partial<Record<string, number>> = {
-    ArrowDown: 1,
-    ArrowUp: -1,
-    PageDown: 8,
-    PageUp: -8,
-  };
-  const step = steps[key];
-  if (step === undefined) return undefined;
-  return Math.max(0, Math.min(count - 1, index + step));
-}
 
 /**
  * Keyboard model of the menus' lists: focus stays in the search box, the
  * arrows move a highlighted option (`aria-activedescendant`), Enter picks it.
  */
-export function useOptionNavigation(
+function useOptionNavigation(
   count: number,
   onPick: (index: number) => void,
   listRef: RefObject<HTMLDivElement | null>,

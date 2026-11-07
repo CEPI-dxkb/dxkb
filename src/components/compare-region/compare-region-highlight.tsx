@@ -13,13 +13,11 @@
  * flashes. Every overlay is marked `data-overlay`, which the export drops.
  */
 import {
-  createContext,
   use,
   useState,
-  type ReactNode,
   type TransitionEvent,
 } from "react";
-import { familyColor, featurePaint } from "@/lib/compare-region/colors";
+import { featurePaint } from "@/lib/compare-region/colors";
 import { rulerHeight } from "@/lib/compare-region/density";
 import {
   bridgeRibbons,
@@ -27,25 +25,16 @@ import {
   resolveFeature,
   type ChartModel,
   type FeatureRef,
-  type Ribbon,
 } from "@/lib/compare-region/families";
 import { glyphBox, glyphKind } from "@/lib/compare-region/figure-frame";
 import { glyphPath } from "@/lib/compare-region/glyph-paths";
 import { placeGlyph } from "@/lib/compare-region/glyph-placement";
 import type { TextMeasure } from "@/lib/compare-region/labels";
-import { ribbonKey, ribbonPath } from "@/lib/compare-region/ribbons";
 import { trackScale, type TrackMatrix } from "@/lib/compare-region/ruler";
 import { cn } from "@/lib/utils";
+import { HoverContext, PinContext } from "./compare-region-contexts";
 import { GlyphMark } from "./compare-region-glyphs";
-
-/** The gene under the pointer; undefined while the tooltip is closed. */
-export const HoverContext = createContext<FeatureRef | undefined>(undefined);
-
-/** The pinned gene, or null. */
-export const PinContext = createContext<FeatureRef | null>(null);
-
-/** Compact only: the row under the pointer, anywhere across the label column and the track. */
-export const RowHoverContext = createContext<number | null>(null);
+import { ribbonPaths } from "./compare-region-ribbon-paths";
 
 /** The gene the trace follows: the hovered one, else the pinned one. */
 function useTraceFocus(): {
@@ -130,34 +119,6 @@ function useTraceSlots(model: ChartModel, focus: FeatureRef | undefined) {
       );
     },
   };
-}
-
-/**
- * One family-colored band per ribbon, under the zoom's scale `x` (none for a
- * ribbon more than `reach` px off the plot): the trace's bridges and ribbons,
- * and Comfortable's resting ribbons.
- */
-export function ribbonPaths(
-  model: ChartModel,
-  ribbons: readonly Ribbon[],
-  x: (offset: number) => number,
-  plotWidth: number,
-  reach: number,
-): ReactNode[] {
-  return ribbons.map((ribbon) => {
-    const d = ribbonPath(
-      model.spec,
-      model.layout,
-      model.frame,
-      ribbon,
-      x,
-      plotWidth,
-      reach,
-    );
-    return d ? (
-      <path key={ribbonKey(ribbon)} d={d} fill={familyColor(ribbon.family)} />
-    ) : null;
-  });
 }
 
 interface RingProps {

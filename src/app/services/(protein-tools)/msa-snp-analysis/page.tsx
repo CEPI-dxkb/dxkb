@@ -2,11 +2,8 @@
 
 import { useForm } from "@tanstack/react-form";
 import { useSelector } from "@tanstack/react-store";
-import {
-  FieldItem,
-  FieldErrors,
-  fieldErrorMessage,
-} from "@/components/ui/tanstack-form";
+import { FieldItem, FieldErrors } from "@/components/ui/tanstack-form";
+import { fieldErrorMessage } from "@/components/ui/field-error-message";
 import { useState, useEffect } from "react";
 import { useServiceRuntime } from "@/hooks/services/use-service-runtime";
 import { normalizeToArray } from "@/lib/rerun-utility";

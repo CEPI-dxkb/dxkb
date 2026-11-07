@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/select";
 import { FieldErrors, FieldItem } from "@/components/ui/tanstack-form";
 import { DialogInfoPopup } from "@/components/services/dialog-info-popup";
+import { TreeThresholdSelect } from "@/components/services/tree-threshold-select";
 import { ServiceOutputFields } from "@/components/services/service-output-fields";
 import { RequiredFormCardTitle } from "@/components/forms/required-form-components";
 import {
@@ -25,10 +26,7 @@ import {
   phylogeneticTreeAlignmentParameters,
   phylogeneticTreeTreeParameters,
 } from "@/lib/services/info/phylogenetic-tree";
-import {
-  thresholdOptions,
-  type GeneProteinTreeFormData,
-} from "@/lib/forms/(protein-tools)/gene-protein-tree/gene-protein-tree-form-schema";
+import type { GeneProteinTreeFormData } from "@/lib/forms/(protein-tools)/gene-protein-tree/gene-protein-tree-form-schema";
 import type { GeneProteinTreeController } from "./use-gene-protein-tree";
 
 export function GeneProteinTreeParameters({
@@ -174,28 +172,12 @@ function ThresholdField({
     <form.Field name={name}>
       {(field) => (
         <FieldItem>
-          <ServiceRequiredLabel>
-            {label}
-          </ServiceRequiredLabel>
-          <Select
+          <TreeThresholdSelect
+            label={<ServiceRequiredLabel>{label}</ServiceRequiredLabel>}
+            ariaLabel={ariaLabel}
             value={field.state.value}
-            onValueChange={(value) => {
-              if (value != null) field.handleChange(value);
-            }}
-          >
-            <ServiceSelectTrigger aria-label={ariaLabel}>
-              <SelectValue placeholder="Select" />
-            </ServiceSelectTrigger>
-            <SelectContent>
-              <SelectGroup>
-                {thresholdOptions.map((value) => (
-                  <SelectItem key={value} value={value}>
-                    {value}
-                  </SelectItem>
-                ))}
-              </SelectGroup>
-            </SelectContent>
-          </Select>
+            onValueChange={field.handleChange}
+          />
           <FieldErrors field={field} />
         </FieldItem>
       )}

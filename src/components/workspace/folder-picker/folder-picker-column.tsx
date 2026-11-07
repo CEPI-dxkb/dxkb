@@ -295,13 +295,15 @@ export function FolderPickerColumn({
           >
             {rows.map((item) => {
               const key = pickerRowKey(item, target);
-              const isSelected =
-                isPickerItemInteractive(item, target) && key === selectedPath;
+              const interactive = isPickerItemInteractive(item, target);
+              const isSelected = interactive && key === selectedPath;
               return (
                 <FolderPickerRow
                   key={item.id}
                   item={item}
                   target={target}
+                  rowKey={key}
+                  interactive={interactive}
                   index={index}
                   folderVariant={folderVariant}
                   showOwner={showOwner}

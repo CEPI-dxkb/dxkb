@@ -31,7 +31,7 @@ const uploadTypeOptions = Object.entries(knownUploadTypes).map(
   }),
 );
 
-interface UploadedFile {
+export interface UploadedFile {
   path: string;
   type: string;
 }
@@ -135,7 +135,7 @@ export interface WorkspaceUploadPanelProps {
   initialUploadType?: string;
   onCancel: () => void;
   /** Called once every file is in, with each one's path and upload type. */
-  onUploadComplete: (uploaded: { path: string; type: string }[]) => void;
+  onUploadComplete: (uploaded: UploadedFile[]) => void;
   /** Reports when an upload starts and ends, e.g. to hide a close button. */
   onUploadingChange?: (uploading: boolean) => void;
   cancelLabel?: string;

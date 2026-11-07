@@ -293,8 +293,10 @@ function useProteomeComparisonPage() {
     try {
       // Fetch genome IDs from the group. The spinner ends when the read
       // settles, either way, so the early returns below (empty group, over the
-      // limit, duplicate) and a failed read all give the "+" button back. After
-      // a reset the spinner belongs to whichever add started since, if any.
+      // limit, duplicate) and a failed read all give the "+" button back. The reset sits on the read's
+      // `.finally()`, not a `finally` clause, which would make the React
+      // Compiler skip this page. After a reset the spinner belongs to whichever
+      // add started since, if any.
       const genomeIds = await getGenomeIdsFromGroup(
         selectedCompGenomeGroup.path,
       ).finally(() => {

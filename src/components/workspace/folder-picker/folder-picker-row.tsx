@@ -7,9 +7,7 @@ import {
 import { formatFileSize, formatOwner } from "@/lib/services/workspace/helpers";
 import type { WorkspaceItem } from "@/lib/services/workspace/domain";
 import {
-  isPickerItemInteractive,
   isPickerItemNavigable,
-  pickerRowKey,
   type PickerTarget,
 } from "@/lib/services/workspace/picker-views";
 import { cn } from "@/lib/utils";
@@ -17,6 +15,10 @@ import { cn } from "@/lib/utils";
 interface FolderPickerRowProps {
   item: WorkspaceItem;
   target: PickerTarget;
+  /** `pickerRowKey(item, target)`, computed by the column. */
+  rowKey: string;
+  /** `isPickerItemInteractive(item, target)`, computed by the column. */
+  interactive: boolean;
   /** The column holding the row. */
   index: number;
   folderVariant: FolderIconVariant;
@@ -38,6 +40,8 @@ interface FolderPickerRowProps {
 export function FolderPickerRow({
   item,
   target,
+  rowKey,
+  interactive,
   index,
   folderVariant,
   showOwner,
@@ -50,9 +54,7 @@ export function FolderPickerRow({
   onCommit,
   onKeyDown,
 }: FolderPickerRowProps) {
-  const key = pickerRowKey(item, target);
   const navigable = isPickerItemNavigable(item, target);
-  const interactive = isPickerItemInteractive(item, target);
   return (
     <div
       role="option"
@@ -61,7 +63,7 @@ export function FolderPickerRow({
       tabIndex={interactive ? (isTabStop ? 0 : -1) : undefined}
       data-picker-row=""
       data-picker-col={index}
-      data-picker-path={key}
+      data-picker-path={rowKey}
       title={item.path}
       onClick={interactive ? onSelect : undefined}
       onDoubleClick={interactive ? onCommit : undefined}

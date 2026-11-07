@@ -104,7 +104,8 @@ export function UserTrackForm({
     const result = await readUserTrack(submittedFile, plot, sequenceLengths);
     if (result.ok) {
       // No `finally` here (it makes the React Compiler skip this component):
-      // the catch ends the try, so `setReading(false)` below always runs.
+      // the catch handles anything `onAdd` or the toasts throw, so
+      // `setReading(false)` below still runs.
       try {
         const { parsed, offSequence, pastEnd } = result;
         onAdd(plot, parsed, submittedFile.name, submittedName);

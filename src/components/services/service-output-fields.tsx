@@ -16,6 +16,10 @@ interface ServiceOutputFieldsProps {
   outputPath: ServiceOutputFieldBinding;
   outputName: ServiceOutputFieldBinding;
   onOutputNameValidationChange: (valid: boolean) => void;
+  /**
+   * Marks both labels required. Defaults to `true`, unlike `OutputFolder`
+   * (`false`), so a row page whose labels carry no "*" passes `false`.
+   */
   required?: boolean;
   /**
    * `column` stacks the two fields; `row` puts each in a

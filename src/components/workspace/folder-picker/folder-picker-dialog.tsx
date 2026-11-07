@@ -25,6 +25,7 @@ import {
   DialogContent,
   DialogFooter,
 } from "@/components/ui/dialog";
+import type { UploadedFile } from "@/components/workspace/upload-panel";
 import type { FolderIconVariant } from "@/components/workspace/workspace-item-icon";
 import { useWorkspaceRepository } from "@/contexts/workspace-repository-context";
 import { useKeptQueryError } from "@/hooks/services/jobs/use-kept-query-error";
@@ -282,7 +283,7 @@ function FolderColumnsBrowser({
     ) ?? null;
 
   // `preventScroll`: focusing a row would scroll the strip sideways on its own
-  // (instantly, and only when moving forward). The effect below owns that.
+  // (instantly, and only when moving forward). `useColumnStripMotion` owns that.
   /** Focus a row now if it is rendered, otherwise as soon as it is. */
   const focusRow = (column: number, path: string) => {
     const row = findRow({ column, path });
@@ -305,7 +306,6 @@ function FolderColumnsBrowser({
   const { contentRef, overlayRef, prepareTransition } = useColumnStripMotion({
     stripRef,
     place,
-    depth: chain.length,
     lastIndex,
     currentIndex,
     lastPath,
@@ -466,11 +466,10 @@ function FolderColumnsBrowser({
     pendingFocusRef.current = { column, path };
   };
 
-  /** Closed at once, then the picked file is selected once it has listed. */
-  const handleUploadComplete = (uploaded: { path: string; type: string }[]) => {
-    // Closed at once: the panel keeps its files, so left open
-    // while the listings refresh it would offer the same upload
-    // again.
+  const handleUploadComplete = (uploaded: UploadedFile[]) => {
+    // Closed at once, then the picked file is selected once it has listed: the
+    // panel keeps its files, so left open while the listings refresh it would
+    // offer the same upload again.
     setIsUploadOpen(false);
     pendingFocusRef.current = { column: 0, path: null };
     const only = uploaded.length === 1 ? uploaded[0] : undefined;

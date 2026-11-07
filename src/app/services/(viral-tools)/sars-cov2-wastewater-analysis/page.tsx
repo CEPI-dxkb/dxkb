@@ -8,6 +8,7 @@ import { toast } from "sonner";
 
 import { ServiceHeader } from "@/components/services/service-header";
 import { JobParamsDialog } from "@/components/services/job-params-dialog";
+import { SelectedLibrariesCard } from "@/components/services/selected-libraries-card";
 import { ServiceFormFooter } from "@/components/services/form-ui/service-form-footer";
 
 import { useServiceRuntime } from "@/hooks/services/use-service-runtime";
@@ -40,7 +41,6 @@ import {
 import type { Library } from "@/types/services";
 import { WastewaterParameters } from "./wastewater-parameters";
 import { WastewaterLibrary } from "./wastewater-library";
-import { SelectedLibrariesCard } from "@/components/services/selected-libraries-card";
 
 const quickReference =
   "https://www.bv-brc.org/docs/quick_references/services/sars_cov_2_wastewater_analysis_service.html";

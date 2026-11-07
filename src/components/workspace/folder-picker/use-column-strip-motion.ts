@@ -10,8 +10,7 @@ interface ColumnStripMotionInput {
   /** The scrolling strip, owned by the dialog (its initial focus reads it). */
   stripRef: RefObject<HTMLDivElement | null>;
   place: PickerView;
-  /** Number of selected folders; the strip shows one more column. */
-  depth: number;
+  /** Index of the newest column: the number of selected folders. */
   lastIndex: number;
   currentIndex: number;
   /** The deepest selected folder; a change means a new column opened. */
@@ -26,7 +25,6 @@ interface ColumnStripMotionInput {
 export function useColumnStripMotion({
   stripRef,
   place,
-  depth,
   lastIndex,
   currentIndex,
   lastPath,
@@ -41,7 +39,7 @@ export function useColumnStripMotion({
     const overlay = overlayRef.current;
     snapshotRef.current =
       strip && overlay
-        ? captureColumns({ strip, overlay, place, depth })
+        ? captureColumns({ strip, overlay, place, depth: lastIndex })
         : null;
   };
 

@@ -14,7 +14,7 @@ interface FieldProps {
 }
 
 /** A titled card; `grid` wraps the children in the two-column content grid. */
-export function SearchCard({
+function SearchCard({
   title,
   grid = false,
   children,
@@ -40,21 +40,19 @@ export function SearchCard({
 }
 
 /** A labelled text input row (`service-card-row-item`). */
-export function SearchTextField({
+function SearchTextField({
   id,
   label,
   placeholder,
   value,
   onChange,
-  className = "service-card-row-item",
 }: FieldProps & {
   id: string;
   label: string;
   placeholder: string;
-  className?: string;
 }) {
   return (
-    <div className={className}>
+    <div className="service-card-row-item">
       <ServiceLabel htmlFor={id}>{label}</ServiceLabel>
       <ServiceInput
         id={id}
@@ -129,6 +127,38 @@ export function GeographyCard({
   );
 }
 
+const datePlaceholder = "YYYY or YYYY-MM or YYYY-MM-DD";
+
+/** One From/To input row; the label and input share `${kind}-${edge}`. */
+function RangeField({
+  kind,
+  edge,
+  placeholder,
+  value,
+  onChange,
+}: FieldProps & {
+  kind: "year" | "date";
+  edge: "from" | "to";
+  placeholder: string;
+}) {
+  const id = `${kind}-${edge}`;
+  const yearProps = kind === "year" ? { type: "number", min: 1900, max: 2100 } : {};
+  return (
+    <div className="service-card-row-item">
+      <ServiceLabel htmlFor={id}>{edge === "from" ? "From" : "To"}</ServiceLabel>
+      <ServiceInput
+        id={id}
+        {...yearProps}
+        placeholder={placeholder}
+        value={value}
+        onChange={(e) => {
+          onChange(e.target.value);
+        }}
+      />
+    </div>
+  );
+}
+
 /** From/To card: `year` uses bounded number inputs, `date` free-text dates. */
 export function RangeCard({
   kind,
@@ -146,58 +176,20 @@ export function RangeCard({
   const isYear = kind === "year";
   return (
     <SearchCard title={isYear ? "Collection Year" : "Collection Date"} grid>
-      <div className="service-card-row-item">
-        <ServiceLabel htmlFor={`${kind}-from`}>From</ServiceLabel>
-        {isYear ? (
-          <ServiceInput
-            id="year-from"
-            type="number"
-            min={1900}
-            max={2100}
-            placeholder="e.g. 2010"
-            value={from}
-            onChange={(e) => {
-              onFromChange(e.target.value);
-            }}
-          />
-        ) : (
-          <ServiceInput
-            id="date-from"
-            placeholder={datePlaceholder}
-            value={from}
-            onChange={(e) => {
-              onFromChange(e.target.value);
-            }}
-          />
-        )}
-      </div>
-      <div className="service-card-row-item">
-        <ServiceLabel htmlFor={`${kind}-to`}>To</ServiceLabel>
-        {isYear ? (
-          <ServiceInput
-            id="year-to"
-            type="number"
-            min={1900}
-            max={2100}
-            placeholder="e.g. 2024"
-            value={to}
-            onChange={(e) => {
-              onToChange(e.target.value);
-            }}
-          />
-        ) : (
-          <ServiceInput
-            id="date-to"
-            placeholder={datePlaceholder}
-            value={to}
-            onChange={(e) => {
-              onToChange(e.target.value);
-            }}
-          />
-        )}
-      </div>
+      <RangeField
+        kind={kind}
+        edge="from"
+        placeholder={isYear ? "e.g. 2010" : datePlaceholder}
+        value={from}
+        onChange={onFromChange}
+      />
+      <RangeField
+        kind={kind}
+        edge="to"
+        placeholder={isYear ? "e.g. 2024" : datePlaceholder}
+        value={to}
+        onChange={onToChange}
+      />
     </SearchCard>
   );
 }
-
-const datePlaceholder = "YYYY or YYYY-MM or YYYY-MM-DD";

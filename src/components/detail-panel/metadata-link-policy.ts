@@ -31,10 +31,10 @@ export type HrefClassification = "internal" | "external" | "unsafe";
  * that every rendered `DataField.link` has been classified:
  *
  * - **Routes through here.** `./info-panel.tsx` renders no `<Link>`, `<a>` or
- *   `href` of its own — every link it produces goes through
- *   `MetadataLink` / `MetadataLinkButton`, so its scalar, array and
- *   button fields are all covered. The four link-rendering entity overviews
- *   likewise use only `MetadataLink`.
+ *   `href` of its own — every link it produces goes through `MetadataLink` /
+ *   `MetadataLinkButton`, so its scalar, array and button fields are all
+ *   covered. The four link-rendering entity overviews likewise use only
+ *   `MetadataLink`.
  * - **Collection tables.** `src/components/shared/data-table.tsx` resolves and
  *   classifies every `valueHref` through this policy. This keeps metadata links
  *   consistent between table, detail-panel, and overview surfaces.

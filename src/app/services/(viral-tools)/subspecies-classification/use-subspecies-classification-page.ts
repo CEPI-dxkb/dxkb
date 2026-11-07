@@ -20,10 +20,6 @@ export function useSubspeciesClassificationPage() {
     validators: { onChange: subspeciesClassificationFormSchema },
     onSubmit: async ({ value }) => runtime.submitFormData(value),
   });
-  const outputPath = useSelector(
-    form.store,
-    (state) => state.values.output_path,
-  );
   const canSubmit = useSelector(form.store, (state) => state.canSubmit);
   const inputSource = useSelector(
     form.store,
@@ -63,7 +59,6 @@ export function useSubspeciesClassificationPage() {
   });
   return {
     form,
-    outputPath,
     inputSource,
     validatedFasta,
     handleFastaBlur,

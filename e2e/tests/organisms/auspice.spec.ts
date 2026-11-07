@@ -116,6 +116,13 @@ test("opens the exact Auspice dataset and renders tree, map, and attribution", a
   });
   const workerPaths: string[] = [];
   page.on("worker", worker => workerPaths.push(new URL(worker.url()).pathname));
+  const tileRequests: string[] = [];
+  page.on("request", request => {
+    const url = new URL(request.url());
+    if (url.hostname === "tiles.openfreemap.org" && url.pathname.endsWith(".pbf")) {
+      tileRequests.push(url.pathname);
+    }
+  });
 
   await openPicker(page);
   await page.getByRole("radio", { name: "Auspice" }).click();
@@ -151,6 +158,10 @@ test("opens the exact Auspice dataset and renders tree, map, and attribution", a
     await expect
       .poll(() => workerPaths.some(path => /^\/dist\/[0-9a-f]+\.mjs$/.test(path)))
       .toBe(true);
+    // The worker, not the page, fetches vector tiles, and only after MapLibre
+    // asks it for one, so a tile request shows the worker loaded, started and
+    // is answering MapLibre's messages. Drawing the tile is MapLibre's own job.
+    await expect.poll(() => tileRequests.length).toBeGreaterThan(0);
   } else {
     // Without WebGL (headless Firefox in CI) Auspice drops the map panel and
     // keeps the tree.

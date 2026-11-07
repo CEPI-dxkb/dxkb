@@ -33,17 +33,20 @@ const defaultCreateWorker = (): GraphLayoutWorker =>
  * failed to load), so lay it out here instead and say why once. The layout code
  * loads on demand: `useGraphLayout` imports the same module, so the browser
  * fetches it once (as its own chunk) instead of a copy inside this one.
+ * Rejects with `signal.reason` when the caller aborts before the layout runs.
  */
-function layOutOnMainThread(
+async function layOutOnMainThread(
   request: GraphLayoutRequest,
   cause: string,
+  signal: AbortSignal | undefined,
 ): Promise<Float64Array> {
   console.warn(
     `Interactions graph: laying out on the main thread because ${cause}.`,
   );
-  return import("./layout-positions").then(({ computeLayoutPositions }) =>
-    computeLayoutPositions(request),
-  );
+  const { computeLayoutPositions } = await import("./layout-positions");
+  // The caller can abort while the layout code loads; then nobody wants it.
+  signal?.throwIfAborted();
+  return computeLayoutPositions(request);
 }
 
 function errorMessage(error: unknown): string {
@@ -76,7 +79,9 @@ export function requestGraphLayout(
   if (signal?.aborted) return Promise.reject(signal.reason as Error);
 
   const started = startWorker(createWorker);
-  if ("cause" in started) return layOutOnMainThread(request, started.cause);
+  if ("cause" in started) {
+    return layOutOnMainThread(request, started.cause, signal);
+  }
   const { worker } = started;
 
   return new Promise<Float64Array>((resolve, reject) => {
@@ -103,7 +108,13 @@ export function requestGraphLayout(
     });
     worker.addEventListener("error", () => {
       settle(() => {
-        resolve(layOutOnMainThread(request, "the layout worker failed to load"));
+        resolve(
+          layOutOnMainThread(
+            request,
+            "the layout worker failed to load",
+            signal,
+          ),
+        );
       });
     });
     signal?.addEventListener("abort", onAbort, { once: true });

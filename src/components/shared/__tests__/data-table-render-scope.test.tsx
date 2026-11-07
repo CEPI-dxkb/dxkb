@@ -217,6 +217,16 @@ describe("DataTable row selection render scope", () => {
   });
 });
 
+describe("DataTable row checkboxes", () => {
+  it("keeps the earlier selection when a second checkbox is ticked", () => {
+    render(<ControlledTable />);
+    fireEvent.click(checkboxOf(2));
+    fireEvent.click(checkboxOf(5));
+
+    expect(selectedIndexes()).toEqual([2, 5]);
+  });
+});
+
 describe("DataTable modifier keys", () => {
   it("selects the exclusive range on a shift-click after a plain click", () => {
     render(<ControlledTable />);
@@ -392,6 +402,7 @@ describe("DataTable data changes", () => {
 
     fireEvent.click(staleRow);
     fireEvent.click(checkboxOf(3).closest("td") as HTMLElement);
+    fireEvent.click(checkboxOf(4));
 
     expect(onGenomeSelect).not.toHaveBeenCalled();
     expect(selectedIndexes()).toEqual([]);
@@ -425,6 +436,44 @@ describe("DataTable column changes reach the memoized rows", () => {
     );
 
     expect(cellTexts(0)).toEqual(["", "Country 0", "Strain 0", "Host 0"]);
+  });
+
+  // Object keys that look like array indices iterate in numeric order, not
+  // insertion order, so the row signature must follow the headers.
+  it("renders cells in the new order of integer-like column ids", () => {
+    const numericColumns = [
+      { id: "1", label: "One" },
+      { id: "2", label: "Two" },
+    ];
+    const numericRows = rows.map((row, index) => ({
+      genome_id: row.genome_id,
+      "1": `One ${String(index)}`,
+      "2": `Two ${String(index)}`,
+    }));
+    const firstRowTexts = () =>
+      within(screen.getByText("One 0").closest("tr") as HTMLElement)
+        .getAllByRole("cell")
+        .map((cell) => cell.textContent);
+    const { rerender } = render(
+      <ControlledTable
+        data={numericRows}
+        columns={numericColumns}
+        columnOrder={["__select__", "1", "2"]}
+        onColumnOrderChange={vi.fn()}
+      />,
+    );
+    expect(firstRowTexts()).toEqual(["", "One 0", "Two 0"]);
+
+    rerender(
+      <ControlledTable
+        data={numericRows}
+        columns={numericColumns}
+        columnOrder={["__select__", "2", "1"]}
+        onColumnOrderChange={vi.fn()}
+      />,
+    );
+
+    expect(firstRowTexts()).toEqual(["", "Two 0", "One 0"]);
   });
 
   it("sizes the cells from a committed resize", async () => {

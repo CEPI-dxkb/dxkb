@@ -75,6 +75,8 @@ test.describe("taxon interactions tab", () => {
     await interactionsPage.switchToGraph();
     await interactionsPage.expectCanvasVisible();
     await interactionsPage.waitForLayout();
+    // A worker that reports an error also ends "Laying out…".
+    await interactionsPage.expectNoLayoutError();
 
     expect(workerUrls.length).toBeGreaterThan(0);
     expect(fallbackWarnings).toEqual([]);

@@ -919,8 +919,11 @@ function maybeBvBrcWebsite(
     // Reference-genomes endpoint: SOLR envelopes. The summary read
     // (`eq(reference_genome,*)`) carries numFound and the per-type facet (a
     // flat [name, count, ...] list); each per-type read (`eq(reference_genome,
-    // <Type>)`) carries that type's docs.
-    const referenceType = equalsValue(query, "reference_genome");
+    // <Type>)`) carries that type's docs. The last equality, not the first:
+    // the request puts it after the scope, which can filter by type itself.
+    const referenceType = query.equals.findLast(
+      ({ field }) => field === "reference_genome",
+    )?.value;
     if (referenceType !== undefined && hasCall(query, "select")) {
       const typeCounts = new Map<string, number>();
       for (const doc of referenceGenomesFixture) {

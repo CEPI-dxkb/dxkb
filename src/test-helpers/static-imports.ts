@@ -14,7 +14,25 @@ export function aliasPath(specifier: string, fromDir: string): string {
 }
 
 /**
- * Specifiers of the value imports (not `import type`) in `source`, which lives
+ * Whether TypeScript drops the declaration from the emitted code: `import
+ * type { … }`, or braces whose every specifier is an inline `type` one.
+ */
+function isTypeOnly(clause: string): boolean {
+  if (/^type\s/.test(clause)) return true;
+  const named = /^\{([^}]*)\}$/.exec(clause)?.[1];
+  if (named === undefined) return false;
+  const specifiers = named
+    .split(",")
+    .map((specifier) => specifier.trim())
+    .filter(Boolean);
+  return (
+    specifiers.length > 0 &&
+    specifiers.every((specifier) => /^type\s/.test(specifier))
+  );
+}
+
+/**
+ * Specifiers of the value imports (not type-only ones) in `source`, which lives
  * in `fromDir`, whose `@/` path matches `target`. Returned as written.
  */
 export function valueImportsMatching(
@@ -25,7 +43,7 @@ export function valueImportsMatching(
   return [...source.matchAll(staticImport)]
     .filter(([, clause, specifier]) => {
       if (!target.test(aliasPath(specifier, fromDir))) return false;
-      return !/^type\s/.test(clause);
+      return !isTypeOnly(clause);
     })
     .map(([, , specifier]) => specifier);
 }

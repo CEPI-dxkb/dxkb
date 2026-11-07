@@ -276,6 +276,20 @@ describe("ReferenceGenomesClient", () => {
     }
   });
 
+  it("keeps a list that turns partial in server order, though it was sorted", () => {
+    const { rerender } = render(<GenomeTable genomes={genomes} />);
+    fireEvent.click(screen.getByRole("button", { name: /Sort by genome name/ }));
+
+    rerender(<GenomeTable genomes={genomes} count={1000} sortable={false} />);
+
+    expect(screen.getAllByRole("link").map((link) => link.textContent)).toEqual([
+      "Charlie strain",
+      "Alpha strain",
+      "Bravo strain",
+      "Delta strain",
+    ]);
+  });
+
   it("renders the empty-state message when nothing is listed at all", () => {
     render(<ReferenceGenomesClient {...empty} />);
     expect(screen.getByText("No genomes in this category.")).toBeInTheDocument();

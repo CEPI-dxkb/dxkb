@@ -4,7 +4,9 @@ on:
   pull_request:
     # Title and description edits (often by bots) change no code and used to
     # restart the whole matrix. A change of base branch no longer re-triggers
-    # this workflow: push a commit or re-run it to cover that.
+    # this workflow: push a commit, or close and reopen the pull request, to
+    # cover that. A re-run does not: it checks out the merge commit of the
+    # original event.
     types:
       - opened
       - synchronize

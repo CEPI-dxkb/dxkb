@@ -47,6 +47,13 @@ export class TaxonInteractionsPage {
     ).toHaveCount(0, { timeout: 15_000 });
   }
 
+  /** The layout reported no failure (its Alert would sit over the canvas). */
+  async expectNoLayoutError(): Promise<void> {
+    await expect(
+      this.page.getByRole("tabpanel", { name: "Graph" }).getByText("Could not lay out the graph"),
+    ).toHaveCount(0);
+  }
+
   async expectCanvasVisible(): Promise<void> {
     await expect(this.page.getByRole("tabpanel", { name: "Graph" }).locator("canvas").first()).toBeVisible();
   }

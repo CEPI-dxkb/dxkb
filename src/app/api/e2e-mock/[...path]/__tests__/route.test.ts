@@ -709,9 +709,32 @@ describe("api/e2e-mock catch-all — enabled", () => {
       response: { numFound: number; docs: { reference_genome: string }[] };
     };
     expect(body.response.numFound).toBe(2);
-    expect(
-      body.response.docs.every((d) => d.reference_genome === "Representative"),
-    ).toBe(true);
+    expect(body.response.docs.map((d) => d.reference_genome)).toEqual([
+      "Representative",
+      "Representative",
+    ]);
+  });
+
+  // fetchReferenceGenomes puts its own reference_genome clause after the
+  // scope, which a Genome list filtered by type also gives one.
+  it("GET answers the summary read of a scope that filters reference_genome itself", async () => {
+    const resp = await GET(
+      mockNextRequest({
+        url: "http://localhost:3020/api/e2e-mock/bvbrc-website/genome/?eq(reference_genome,Reference)&eq(reference_genome,*)&select(reference_genome,genome_name,genome_id)&limit(1)&facet((field,reference_genome),(mincount,1))",
+      }),
+      ctx(["bvbrc-website", "genome"]),
+    );
+
+    expect(resp.status).toBe(200);
+    const body = (await resp.json()) as {
+      facet_counts?: { facet_fields: { reference_genome: unknown[] } };
+    };
+    expect(body.facet_counts?.facet_fields.reference_genome).toEqual([
+      "Reference",
+      2,
+      "Representative",
+      2,
+    ]);
   });
 
   it("GET disambiguates taxon IDs by regex, not substring", async () => {

@@ -67,8 +67,11 @@ describe("fetchReferenceGenomes", () => {
     expect(inlineReferenceGenomeLimit).toBe(1000);
     expect(requested).toHaveLength(3);
     const [summary, ...types] = requested.map((query) => query.split("&"));
+    const lineageScope =
+      "and(eq(taxon_lineage_ids,2),ne(genome_status,Deprecated))";
     expect(summary).toEqual(
       expect.arrayContaining([
+        lineageScope,
         "eq(reference_genome,*)",
         "facet((field,reference_genome),(mincount,1))",
       ]),
@@ -79,6 +82,7 @@ describe("fetchReferenceGenomes", () => {
       );
       expect(clauses, `read ${String(index)}`).toEqual(
         expect.arrayContaining([
+          lineageScope,
           `eq(reference_genome,${type})`,
           "select(reference_genome,genome_name,genome_id)",
           "sort(+genome_name)",
@@ -87,6 +91,33 @@ describe("fetchReferenceGenomes", () => {
       );
     }
     expect(requested.join("\n")).not.toContain("json(nl,map)");
+  });
+
+  it("scopes every read to a Genome list's own query", async () => {
+    const requested: string[] = [];
+    serveTypes(
+      {
+        response: { numFound: 2, docs: [] },
+        ...facet("Reference", 1, "Representative", 1),
+      },
+      {
+        Reference: { response: { numFound: 1, docs: [doc] } },
+        Representative: { response: { numFound: 1, docs: [repDoc] } },
+      },
+      requested,
+    );
+
+    await fetchReferenceGenomes({
+      fieldRql: "eq(genus,Escherichia)",
+      keywordRql: "keyword(coli)",
+    });
+
+    expect(requested).toHaveLength(3);
+    for (const query of requested) {
+      expect(query.split("&")).toContain(
+        "and(eq(genus,Escherichia),keyword(coli))",
+      );
+    }
   });
 
   it("percent-encodes a facet value in its per-type read", async () => {

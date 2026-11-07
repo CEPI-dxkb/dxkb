@@ -46,7 +46,10 @@ export function GenomeTable({
   sortable?: boolean;
 }) {
   "use no memo";
-  const [sortDir, setSortDir] = useState<"asc" | "desc" | null>(null);
+  const [storedSortDir, setSortDir] = useState<"asc" | "desc" | null>(null);
+  // A list that turns partial (new data) keeps its server order, as the
+  // header it gets has no sort control to undo a direction picked before.
+  const sortDir = sortable ? storedSortDir : null;
   const parentRef = useRef<HTMLDivElement>(null);
   const [containerHeight, setContainerHeight] = useState(320); // h-80 default
   const [typeColumnWidth, setTypeColumnWidth] = useState(defaultTypeColumnWidth);

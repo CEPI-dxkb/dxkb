@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { DataTable } from "../data-table";
 
 // The real useVirtualizer (no module mock). virtual-core 3.19 sizes its window
@@ -55,6 +55,17 @@ describe("DataTable with the real virtualizer", () => {
     expect(screen.getByText("Strain 9")).toBeInTheDocument();
     // Windowed: the rows far below are not rendered.
     expect(screen.queryByText("Strain 99")).not.toBeInTheDocument();
+  });
+
+  it("renders the rows a scroll of the results region brings into view", () => {
+    render(renderTable(rows));
+    const region = screen.getByRole("region", { name: "genome results" });
+
+    region.scrollTop = 90 * 24;
+    fireEvent.scroll(region);
+
+    expect(screen.getByText("Strain 99")).toBeInTheDocument();
+    expect(screen.queryByText("Strain 0")).not.toBeInTheDocument();
   });
 
   it("renders the first window of rows when the data arrives late", () => {

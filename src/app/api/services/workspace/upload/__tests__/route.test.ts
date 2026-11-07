@@ -48,14 +48,19 @@ async function multipartBody() {
 async function uploadRequest(
   overrides: {
     nodeUrl?: string | null;
-    contentType?: string;
+    /** A replacement, or a rewrite of the serialized body's own header. */
+    contentType?: string | ((serialized: string) => string);
     contentLength?: string;
     signal?: AbortSignal;
   } = {},
 ) {
   const body = await multipartBody();
+  const { contentType } = overrides;
   const headers: Record<string, string> = {
-    "content-type": overrides.contentType ?? body.contentType,
+    "content-type":
+      typeof contentType === "function"
+        ? contentType(body.contentType)
+        : (contentType ?? body.contentType),
     "content-length": overrides.contentLength ?? body.contentLength,
   };
   const nodeUrl = overrides.nodeUrl === undefined ? shockUrl : overrides.nodeUrl;
@@ -112,6 +117,52 @@ describe("POST /api/services/workspace/upload", () => {
       uploadName: "reads.fq",
       uploadText: "ACGT",
     });
+  });
+
+  it("forwards the body to Shock before the browser has sent all of it", async () => {
+    const { rawBody, contentType } = await multipartBody();
+    const bytes = new Uint8Array(rawBody);
+    const half = Math.floor(bytes.byteLength / 2);
+    let source: ReadableStreamDefaultController<Uint8Array> | undefined;
+    const browserBody = new ReadableStream<Uint8Array>({
+      start(controller) {
+        source = controller;
+        controller.enqueue(bytes.slice(0, half));
+      },
+    });
+    let firstChunkArrived: () => void = () => undefined;
+    const firstChunk = new Promise<"first chunk">((resolve) => {
+      firstChunkArrived = () => {
+        resolve("first chunk");
+      };
+    });
+    let received = 0;
+    server.use(
+      http.put(shockUrl, async ({ request }) => {
+        if (!request.body) return HttpResponse.json({}, { status: 400 });
+        for await (const chunk of request.body) {
+          received += chunk.byteLength;
+          firstChunkArrived();
+        }
+        return HttpResponse.json({});
+      }),
+    );
+
+    const response = POST(
+      mockNextRequest({
+        method: "POST",
+        rawBody: browserBody,
+        headers: { "content-type": contentType, "x-shock-node-url": shockUrl },
+      }),
+      {},
+    );
+    const seen = await Promise.race([firstChunk, delay(2000)]);
+    source?.enqueue(bytes.slice(half));
+    source?.close();
+
+    expect(seen).toBe("first chunk");
+    expect((await response).status).toBe(200);
+    expect(received).toBe(bytes.byteLength);
   });
 
   it("answers a refused Shock connection with 502 and the cause", async () => {
@@ -194,17 +245,25 @@ describe("POST /api/services/workspace/upload", () => {
   });
 
   it("accepts a boundary parameter in any letter case", async () => {
-    server.use(http.put(shockUrl, () => HttpResponse.json({})));
-    const { contentType } = await multipartBody();
+    let uploadText: string | null = null;
+    server.use(
+      http.put(shockUrl, async ({ request }) => {
+        const upload = (await request.formData()).get("upload");
+        uploadText = upload instanceof File ? await upload.text() : null;
+        return HttpResponse.json({});
+      }),
+    );
     const response = await POST(
       (
         await uploadRequest({
-          contentType: contentType.replace("boundary=", "BOUNDARY="),
+          contentType: (serialized) =>
+            serialized.replace("boundary=", "BOUNDARY="),
         })
       ).request,
       {},
     );
     expect(response.status).toBe(200);
+    expect(uploadText).toBe("ACGT");
   });
 
   it("uses the API path of a SHOCK_ORIGINS entry that names one", async () => {

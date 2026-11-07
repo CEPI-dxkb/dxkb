@@ -217,7 +217,11 @@ function SelectionCell({
         aria-label={`Select row ${row.id}`}
         checked={selected}
         onChange={(event) => {
-          toggleRowSelection(row, table, shiftKeyOf(event.nativeEvent));
+          // A memoized row can still show a row the table no longer has.
+          const current = currentRow(table, row.id);
+          if (current) {
+            toggleRowSelection(current, table, shiftKeyOf(event.nativeEvent));
+          }
         }}
         onClick={(event) => {
           event.stopPropagation();
@@ -1117,7 +1121,7 @@ function pressFocusTarget(
  * the old rows on screen to be clicked.
  */
 function currentRow(
-  table: ReactTable<DataTableFeatures, DataRow>,
+  table: TanStackTable<DataTableFeatures, DataRow>,
   rowId: string,
 ): TanStackRow<DataTableFeatures, DataRow> | undefined {
   return table.getRowModel().rowsById[rowId];
@@ -1354,8 +1358,14 @@ function DataTableBody({
   // their identity, and the memoized rows compare on it.
   const [handlers] = useState(() => createBodyRowHandlers(latestRef));
 
-  const columnSignature = Object.entries(columnSizes)
-    .map(([id, { size, grow }]) => `${id}:${size}:${grow}`)
+  // From the headers, in their order: `columnSizes` is keyed by column id, and
+  // integer-like keys ("1", "2") iterate in numeric order whatever the order.
+  const columnSignature = table
+    .getFlatHeaders()
+    .map(({ column }) => {
+      const { size, grow } = columnSizes[column.id];
+      return `${column.id}:${size}:${grow}`;
+    })
     .join("|");
 
   return (

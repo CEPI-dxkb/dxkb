@@ -69,6 +69,8 @@ describe("requestGraphLayout", () => {
     expect(message.layout).toBe("grid");
     expect(Array.from(message.edges)).toEqual([0, 1]);
     expect(transfer).toEqual([message.edges.buffer]);
+    // A copy: the transfer detaches it, and the fallback reads the original.
+    expect(transfer[0]).not.toBe(request.edges.buffer);
 
     const positions = new Float64Array([1, 2, 3, 4]);
     worker.answer({ positions });
@@ -157,6 +159,33 @@ describe("requestGraphLayout", () => {
     expect(Array.from(positions)).toEqual([0, 0, 1, 0]);
     expect(warn).toHaveBeenCalledTimes(1);
     expect(String(warn.mock.calls[0][0])).toContain("Refused to create a worker");
+  });
+
+  it("rejects with the signal's reason on an abort while the worker's fallback loads", async () => {
+    const worker = new FakeWorker();
+    const controller = new AbortController();
+    const result = requestGraphLayout(makeRequest(), {
+      signal: controller.signal,
+      createWorker: () => worker,
+    });
+
+    worker.fail();
+    const reason = new Error("left the Graph tab");
+    controller.abort(reason);
+
+    await expect(result).rejects.toBe(reason);
+  });
+
+  it("rejects with the signal's reason on an abort while the main-thread layout loads", async () => {
+    const controller = new AbortController();
+    const result = requestGraphLayout(makeRequest(), {
+      signal: controller.signal,
+    });
+
+    const reason = new Error("left the Graph tab");
+    controller.abort(reason);
+
+    await expect(result).rejects.toBe(reason);
   });
 
   it("lays out on the main thread where there is no Worker (jsdom)", async () => {

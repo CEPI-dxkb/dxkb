@@ -1,12 +1,12 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useForm } from "@tanstack/react-form";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { http, HttpResponse } from "msw";
 
 import { ServiceFormFooter } from "@/components/services/form-ui/service-form-footer";
 import { useServiceFormSubmission } from "@/hooks/services/use-service-form-submission";
 import { server } from "@/test-helpers/msw-server";
+import { createQueryClientWrapper } from "@/test-helpers/react";
 
 vi.mock("sonner", () => ({
   toast: { success: vi.fn(), error: vi.fn() },
@@ -28,11 +28,9 @@ function Harness(props: FooterProps) {
 }
 
 function renderFooter(props: FooterProps = {}) {
-  return render(
-    <QueryClientProvider client={new QueryClient()}>
-      <Harness {...props} />
-    </QueryClientProvider>,
-  );
+  return render(<Harness {...props} />, {
+    wrapper: createQueryClientWrapper(),
+  });
 }
 
 describe("ServiceFormFooter", () => {
@@ -121,19 +119,17 @@ describe("ServiceFormFooter", () => {
         </form>
       );
     }
-    render(
-      <QueryClientProvider
-        client={
-          new QueryClient({
-            defaultOptions: { mutations: { retry: false } },
-          })
-        }
-      >
-        <SubmittingForm />
-      </QueryClientProvider>,
-    );
+    const { container } = render(<SubmittingForm />, {
+      wrapper: createQueryClientWrapper(),
+    });
     await userEvent.click(screen.getByRole("button", { name: "Submit" }));
     const alert = await screen.findByRole("alert");
     expect(alert).toHaveTextContent("JSON-RPC call failed: fetch failed");
+    const row = container.querySelector(".service-form-controls");
+    expect(row).not.toBeNull();
+    expect(
+      alert.compareDocumentPosition(row as Node) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
   });
 });

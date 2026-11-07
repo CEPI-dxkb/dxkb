@@ -145,6 +145,7 @@ describe("ServiceOutputFields", () => {
         "flex",
         "flex-col",
         "space-y-4",
+        { exact: true },
       );
       expect(container.querySelector(".service-card-row-item")).toBeNull();
       expect(container.querySelector("[data-required]")).toHaveAttribute(

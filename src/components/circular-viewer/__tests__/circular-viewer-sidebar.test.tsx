@@ -247,6 +247,21 @@ describe("UserTrackForm", () => {
     return onAdd;
   }
 
+  it("shows the error and re-enables the buttons when adding the track throws", async () => {
+    const onAdd = vi.fn(() => {
+      throw new Error("plot exploded");
+    });
+    render(<UserTrackForm onAdd={onAdd} sequenceLengths={sequenceLengths} />);
+    await userEvent.upload(fileInput(), new File(["NC_1\t1\t100\t0.5\n"], "scores.tsv"));
+    await userEvent.click(screen.getByRole("button", { name: "Add user track" }));
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith(expect.stringContaining("plot exploded"));
+    });
+    expect(onAdd).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole("button", { name: "Data file Choose file" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Add user track" })).toBeEnabled();
+  });
+
   it("parses the chosen file with the chosen plot type", async () => {
     const onAdd = await addFile("NC_1\t1\t100\t0.5\n", "Line plot");
     await waitFor(() => {

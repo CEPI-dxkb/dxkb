@@ -752,6 +752,44 @@ describe("api/e2e-mock catch-all — enabled", () => {
     expect(body.response.docs).toEqual([]);
   });
 
+  it("GET ORs a scope that filters reference_genome to several types", async () => {
+    const scope =
+      "or(eq(reference_genome,Reference),eq(reference_genome,Representative))";
+    const summary = await GET(
+      mockNextRequest({
+        url: `http://localhost:3020/api/e2e-mock/bvbrc-website/genome/?${scope}&eq(reference_genome,*)&select(reference_genome,genome_name,genome_id)&limit(1)&facet((field,reference_genome),(mincount,1))`,
+      }),
+      ctx(["bvbrc-website", "genome"]),
+    );
+    expect(summary.status).toBe(200);
+    const summaryBody = (await summary.json()) as {
+      response: { numFound: number };
+      facet_counts?: { facet_fields: { reference_genome: unknown[] } };
+    };
+    expect(summaryBody.response.numFound).toBe(4);
+    expect(summaryBody.facet_counts?.facet_fields.reference_genome).toEqual([
+      "Reference",
+      2,
+      "Representative",
+      2,
+    ]);
+
+    const perType = await GET(
+      mockNextRequest({
+        url: `http://localhost:3020/api/e2e-mock/bvbrc-website/genome/?and(${scope},eq(taxon_lineage_ids,234))&eq(reference_genome,Representative)&select(reference_genome,genome_name,genome_id)&limit(1000)`,
+      }),
+      ctx(["bvbrc-website", "genome"]),
+    );
+    const perTypeBody = (await perType.json()) as {
+      response: { numFound: number; docs: { reference_genome: string }[] };
+    };
+    expect(perTypeBody.response.numFound).toBe(2);
+    expect(perTypeBody.response.docs.map((d) => d.reference_genome)).toEqual([
+      "Representative",
+      "Representative",
+    ]);
+  });
+
   it("GET disambiguates taxon IDs by regex, not substring", async () => {
     // taxon "234" is a substring of "1234" — the old code would have matched both
     // and returned the geo-specific fixture for "1234". With regex matching,

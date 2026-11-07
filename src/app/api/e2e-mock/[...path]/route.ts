@@ -37,6 +37,7 @@ import {
   hasCall,
   hasClause,
   hasKeyword,
+  matchesReferenceGenome,
   parseFixtureQuery,
   type FixtureQuery,
 } from "./query";
@@ -919,10 +920,10 @@ function maybeBvBrcWebsite(
     // Reference-genomes endpoint: SOLR envelopes. The summary read
     // (`eq(reference_genome,*)`) carries numFound and the per-type facet (a
     // flat [name, count, ...] list); each per-type read (`eq(reference_genome,
-    // <Type>)`) carries that type's docs. Like the backend, every
-    // reference_genome equality applies (AND): the request puts its own after
-    // the scope, which can filter by type itself. `*` matches any doc that has
-    // a type; a type the fixture lacks falls through.
+    // <Type>)`) carries that type's docs. Like the backend, equalities follow
+    // RQL grouping (see matchesReferenceGenome): the request puts its own
+    // after the scope, which can filter by one type or `or(...)` several. `*`
+    // matches any doc that has a type; a type the fixture lacks falls through.
     const referenceTypes = query.equals
       .filter(({ field }) => field === "reference_genome")
       .map(({ value }) => value);
@@ -935,9 +936,7 @@ function maybeBvBrcWebsite(
       referenceTypes.every((type) => type === "*" || knownTypes.has(type))
     ) {
       const docs = referenceGenomesFixture.filter((doc) =>
-        referenceTypes.every(
-          (type) => type === "*" || doc.reference_genome === type,
-        ),
+        matchesReferenceGenome(query, String(doc.reference_genome)),
       );
       const typeCounts = new Map<string, number>();
       for (const doc of docs) {

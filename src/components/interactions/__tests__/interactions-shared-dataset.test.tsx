@@ -5,6 +5,7 @@ import { http, HttpResponse } from "msw";
 import { server } from "@/test-helpers/msw-server";
 import { createQueryClientWrapper } from "@/test-helpers/react";
 import { resourceCollectionPageSize } from "@/hooks/views/collection-state";
+import { requestGraphLayout } from "@/lib/interactions/layout-client";
 
 import { InteractionsSubviewShell } from "../interactions-subview-shell";
 
@@ -24,7 +25,17 @@ vi.mock("next/navigation", async () =>
   }),
 );
 vi.mock("../sigma/sigma-canvas", () => ({
-  SigmaCanvas: () => <div data-testid="sigma-canvas" />,
+  SigmaCanvas: ({ positions }: { positions: Float64Array | null }) => (
+    <div
+      data-testid="sigma-canvas"
+      data-positions={positions ? String(positions.length) : "none"}
+    />
+  ),
+}));
+// The layout runs in a Web Worker in the browser, which jsdom does not have;
+// the tests decide when it answers.
+vi.mock("@/lib/interactions/layout-client", () => ({
+  requestGraphLayout: vi.fn(),
 }));
 vi.mock("@/components/shared/data-table", () => ({
   // The real pager is inside TanStack Virtual's DataTable, which has no working
@@ -103,6 +114,13 @@ vi.stubGlobal("ResizeObserver", ResizeObserverStub);
 vi.stubGlobal("scrollTo", vi.fn());
 Element.prototype.scrollIntoView = vi.fn();
 
+// Each test renders the full data path, and the first Graph render loads the
+// layout code (graphology) on demand. Under a loaded machine that import alone
+// could take most of the default 5 s, so it is paid here, outside any test, and
+// the file gets a wider per-test budget.
+vi.setConfig({ testTimeout: 15_000, hookTimeout: 15_000 });
+beforeAll(() => import("@/lib/interactions/layout-positions"));
+
 const scopeRql = "eq(evidence,experimental)";
 /** One row past the Table's first page, so only a server-side search can find it. */
 const beyondFirstPageIndex = resourceCollectionPageSize + 49;
@@ -150,6 +168,9 @@ function matching(keyword: string | undefined) {
 }
 
 beforeEach(() => {
+  vi.mocked(requestGraphLayout).mockImplementation((request) =>
+    Promise.resolve(new Float64Array(2 * request.nodeCount)),
+  );
   window.history.replaceState(null, "", "/genome/1.1");
   tablePredicates.length = 0;
   graphPredicates.length = 0;
@@ -373,5 +394,79 @@ describe("Interactions Table paging follows the shared keyword", () => {
     } finally {
       pushState.mockRestore();
     }
+  });
+});
+
+describe("Interactions Graph layout across tab switches", () => {
+  it("shows the layout's progress and keeps the chosen layout and its positions through a Table round trip", async () => {
+    const user = userEvent.setup();
+    // A handful of rows: this test is about the layout, and role queries over
+    // the full dataset's node list are slow in jsdom.
+    const fewRows = allRows.slice(0, 3);
+    server.use(
+      http.get("/api/data/ppi", () =>
+        HttpResponse.json({
+          rows: fewRows,
+          total: fewRows.length,
+          facets: {},
+          page: 1,
+          pageSize: resourceCollectionPageSize,
+        }),
+      ),
+      http.post("/api/data/ppi", () => HttpResponse.json({ rows: fewRows })),
+    );
+    let resolveLayout: (positions: Float64Array) => void = () => undefined;
+    vi.mocked(requestGraphLayout).mockReturnValueOnce(
+      new Promise<Float64Array>((resolve) => {
+        resolveLayout = resolve;
+      }),
+    );
+    render(<InteractionsSubviewShell rql={scopeRql} />, {
+      wrapper: createQueryClientWrapper(),
+    });
+
+    await user.click(screen.getByRole("tab", { name: "Graph" }));
+
+    expect(await graphPanel().findByRole("status")).toHaveTextContent(
+      "Laying out…",
+    );
+    expect(graphPanel().getByRole("button", { name: "Export" })).toBeDisabled();
+    const nodeCount = vi.mocked(requestGraphLayout).mock.calls[0][0].nodeCount;
+    expect(nodeCount).toBe(6);
+    resolveLayout(new Float64Array(2 * nodeCount));
+    await waitFor(() => {
+      expect(graphPanel().queryByRole("status")).not.toBeInTheDocument();
+    });
+    expect(graphPanel().getByTestId("sigma-canvas")).toHaveAttribute(
+      "data-positions",
+      String(2 * nodeCount),
+    );
+
+    await user.click(graphPanel().getByRole("combobox", { name: "Layout" }));
+    await user.click(await screen.findByRole("option", { name: "Circular" }));
+    await waitFor(() => {
+      expect(graphPanel().queryByRole("status")).not.toBeInTheDocument();
+    });
+    expect(requestGraphLayout).toHaveBeenCalledTimes(2);
+    expect(vi.mocked(requestGraphLayout).mock.calls[1][0].layout).toBe(
+      "circular",
+    );
+
+    // The Graph panel unmounts while hidden; its layout and positions do not.
+    await user.click(screen.getByRole("tab", { name: "Table" }));
+    expect(
+      screen.queryByRole("tabpanel", { name: "Graph" }),
+    ).not.toBeInTheDocument();
+    await user.click(screen.getByRole("tab", { name: "Graph" }));
+
+    expect(
+      graphPanel().getByRole("combobox", { name: "Layout" }),
+    ).toHaveTextContent("Circular");
+    expect(graphPanel().getByTestId("sigma-canvas")).toHaveAttribute(
+      "data-positions",
+      String(2 * nodeCount),
+    );
+    expect(graphPanel().queryByRole("status")).not.toBeInTheDocument();
+    expect(requestGraphLayout).toHaveBeenCalledTimes(2);
   });
 });

@@ -1,8 +1,11 @@
 import "@/styles/archaeopteryx-theme.css";
 
-import { BacterialPhylogenyPanel } from "@/components/phylogeny/bacterial-phylogeny-panel";
-import { ViralPhylogenyPanel } from "@/components/phylogeny/viral-phylogeny-panel";
 import type { OrganismTaxonomy } from "@/lib/services/organisms/types";
+
+import {
+  LazyBacterialPhylogenyPanel,
+  LazyViralPhylogenyPanel,
+} from "./lazy-tab-roots";
 
 export function makePhylogenyView({
   taxon,
@@ -17,13 +20,13 @@ export function makePhylogenyView({
     return (
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-tl-lg border">
         {taxon.lineageNames.includes("Bacteria") ? (
-          <BacterialPhylogenyPanel
+          <LazyBacterialPhylogenyPanel
             key={taxon.taxonId}
             taxonId={taxon.taxonId}
             taxonName={taxon.taxonName}
           />
         ) : (
-          <ViralPhylogenyPanel
+          <LazyViralPhylogenyPanel
             key={taxon.taxonId}
             taxonId={taxon.taxonId}
             taxonName={taxon.taxonName}

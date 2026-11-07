@@ -38,18 +38,18 @@ function FeatureResourceCollection({
   );
 }
 
-vi.mock("@/components/views", () => ({
-  ResourceChildCollection: ({
-    resource,
-    rql,
-    guideUrl,
-    keywordMode,
-  }: {
-    resource: string;
-    rql: string;
-    guideUrl?: string;
-    keywordMode?: "server" | "loaded";
-  }) => (
+function ResourceChildCollection({
+  resource,
+  rql,
+  guideUrl,
+  keywordMode,
+}: {
+  resource: string;
+  rql: string;
+  guideUrl?: string;
+  keywordMode?: "server" | "loaded";
+}) {
+  return (
     <div
       data-testid={resource === "bioset" ? "resource-child-collection" : "taxon-data-panel"}
       data-resource={resource}
@@ -57,8 +57,24 @@ vi.mock("@/components/views", () => ({
       data-guide={guideUrl}
       data-keyword-mode={keywordMode}
     />
-  ),
-  ExperimentResourceCollection: ({
+  );
+}
+
+// The real Interactions shell renders its Table through the child collection's
+// own module path.
+vi.mock("@/components/views/resource-child-collection", () => ({
+  ResourceChildCollection,
+}));
+
+// The factories reach their client roots through lazy-tab-roots; synchronous
+// stubs keep these tests on the props each factory passes. Interactions keeps
+// the real shell, so its Table's query is still asserted.
+vi.mock("@/components/organisms/taxon-views/lazy-tab-roots", async () => ({
+  LazyInteractionsSubviewShell: (
+    await import("@/components/interactions/interactions-subview-shell")
+  ).InteractionsSubviewShell,
+  LazyResourceChildCollection: ResourceChildCollection,
+  LazyExperimentResourceCollection: ({
     baseRql,
     enableRowLinks,
     keywordMode,
@@ -74,7 +90,7 @@ vi.mock("@/components/views", () => ({
       data-keyword-mode={keywordMode ?? "loaded"}
     />
   ),
-  EpitopeResourceCollection: ({
+  LazyEpitopeResourceCollection: ({
     baseRql,
     enableRowLinks,
     keywordMode,
@@ -90,7 +106,7 @@ vi.mock("@/components/views", () => ({
       data-keyword-mode={keywordMode ?? "loaded"}
     />
   ),
-  SurveillanceResourceCollection: function SurveillanceResourceCollection({
+  LazySurveillanceResourceCollection: function SurveillanceResourceCollection({
     baseRql,
     enableRowLinks,
     keywordMode,
@@ -108,7 +124,7 @@ vi.mock("@/components/views", () => ({
       />
     );
   },
-  SerologyResourceCollection: function SerologyResourceCollection({
+  LazySerologyResourceCollection: function SerologyResourceCollection({
     baseRql,
     enableRowLinks,
     keywordMode,
@@ -126,7 +142,7 @@ vi.mock("@/components/views", () => ({
       />
     );
   },
-  StrainResourceCollection: function StrainResourceCollection({
+  LazyStrainResourceCollection: function StrainResourceCollection({
     baseRql,
     enableRowLinks,
     keywordMode,
@@ -144,7 +160,7 @@ vi.mock("@/components/views", () => ({
       />
     );
   },
-  ProteinStructureResourceCollection:
+  LazyProteinStructureResourceCollection:
     function ProteinStructureResourceCollection({
       baseRql,
       keywordMode,
@@ -160,7 +176,7 @@ vi.mock("@/components/views", () => ({
         />
       );
     },
-  ProteinFeatureResourceCollection: function ProteinFeatureResourceCollection({
+  LazyProteinFeatureResourceCollection: function ProteinFeatureResourceCollection({
     baseRql,
     enableRowLinks,
     keywordMode,
@@ -178,8 +194,8 @@ vi.mock("@/components/views", () => ({
       />
     );
   },
-  FeatureResourceCollection,
-  GenomeResourceCollection: ({
+  LazyFeatureResourceCollection: FeatureResourceCollection,
+  LazyGenomeResourceCollection: ({
     baseRql,
     enableRowLinks,
     keywordMode,

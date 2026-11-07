@@ -7,7 +7,7 @@ import { InteractionsSubviewShell } from "../interactions-subview-shell";
 // counter verifies the component instance survives while keyword text is shared
 // separately by the shell.
 let tableMountCount = 0;
-vi.mock("@/components/views", () => ({
+vi.mock("@/components/views/resource-child-collection", () => ({
   ResourceChildCollection: ({
     urlKey,
     resource,
@@ -51,13 +51,27 @@ vi.mock("../interactions-graph", () => ({
     rql,
     keywordValue,
     onKeywordChange,
+    layout,
+    onLayoutChange,
   }: {
     rql: string;
     keywordValue?: string;
     onKeywordChange?: (value: string) => void;
+    layout: string;
+    onLayoutChange: (layout: string) => void;
   }) => (
     <div data-testid="graph-panel" data-rql={rql} data-keyword={keywordValue}>
       <button onClick={() => { onKeywordChange?.("fromGraph"); }}>set-from-graph</button>
+      <select
+        aria-label="Layout"
+        value={layout}
+        onChange={(event) => {
+          onLayoutChange(event.target.value);
+        }}
+      >
+        <option value="forceatlas2">Force Atlas 2</option>
+        <option value="circular">Circular</option>
+      </select>
     </div>
   ),
 }));
@@ -163,6 +177,26 @@ describe("InteractionsSubviewShell", () => {
     fireEvent.click(screen.getByRole("tab", { name: "Graph" }));
     fireEvent.click(screen.getByText("set-from-graph"));
     expect(window.location.search).toBe("?tab=interactions");
+  });
+
+  it("keeps the chosen graph layout across a switch to Table and back", () => {
+    render(<InteractionsSubviewShell rql="eq(evidence,experimental)" />);
+    fireEvent.click(screen.getByRole("tab", { name: "Graph" }));
+    expect(screen.getByRole("combobox", { name: "Layout" })).toHaveValue(
+      "forceatlas2",
+    );
+
+    fireEvent.change(screen.getByRole("combobox", { name: "Layout" }), {
+      target: { value: "circular" },
+    });
+    fireEvent.click(screen.getByRole("tab", { name: "Table" }));
+    // The Graph panel unmounts while hidden, so the layout has to live above it.
+    expect(screen.queryByTestId("graph-panel")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("tab", { name: "Graph" }));
+
+    expect(screen.getByRole("combobox", { name: "Layout" })).toHaveValue(
+      "circular",
+    );
   });
 
   it("keeps the Table's URL page when the keyword is committed again unchanged", () => {

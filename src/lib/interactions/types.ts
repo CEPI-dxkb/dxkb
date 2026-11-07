@@ -44,14 +44,17 @@ export interface GraphSelection {
 }
 
 export interface GraphCanvasHandle {
-  runLayout: (name: LayoutName) => void;
   exportPng: () => void;
 }
 
 export interface GraphCanvasProps {
   nodes: GNode[];
   edges: GEdge[];
-  layout: LayoutName;
+  /**
+   * Laid-out positions `[x0, y0, x1, y1, …]` in `nodes` order (`useGraphLayout`),
+   * or null while none are ready for these nodes.
+   */
+  positions: Float64Array | null;
   // Controlled selection: the canvas highlight reducer reads this so keyboard
   // selection (node list / edge list) highlights the same node/edge a canvas
   // click would. onSelect reports selections back out.

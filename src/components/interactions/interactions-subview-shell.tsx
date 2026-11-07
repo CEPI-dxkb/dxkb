@@ -3,8 +3,10 @@
 import { useState } from "react";
 
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { ResourceChildCollection } from "@/components/views";
+import { ResourceChildCollection } from "@/components/views/resource-child-collection";
 import { resetChildCollectionPage } from "@/hooks/views/use-child-collection-url-state";
+import { defaultLayout } from "@/lib/interactions/renderer-capabilities";
+import type { LayoutName } from "@/lib/interactions/types";
 import { interactionColumns } from "@/lib/views/child-resources";
 
 import { InteractionsGraph } from "./interactions-graph";
@@ -25,8 +27,13 @@ export function InteractionsSubviewShell({
   const [subTab, setSubTab] = useState<"table" | "graph">("table");
   // Keep table-only state (facets, pagination, sorting, selection) mounted.
   // Only keyword text is shared because both sibling views expose that input.
-  // Graph remains lazy-mounted to avoid fetching its full dataset until opened.
+  // Graph remains lazy-mounted to avoid fetching its full dataset until opened,
+  // and unmounts when hidden (a hidden Sigma has no size and would hold a WebGL
+  // context). What a return to Graph needs survives it anyway: the chosen
+  // layout lives here, and the computed positions in TanStack Query
+  // (useGraphLayout), so the same picture comes back without a new layout run.
   const [keywordText, setKeywordText] = useState("");
+  const [graphLayout, setGraphLayout] = useState<LayoutName>(defaultLayout);
   // One predicate for two representations of the same data. The fragment is
   // stripped once, here, so the Table's and the Graph's requests carry byte-equal
   // RQL, and the keyword goes to both as a request predicate — a server-side
@@ -75,6 +82,8 @@ export function InteractionsSubviewShell({
           rql={scopedRql}
           keywordValue={keywordText}
           onKeywordChange={handleKeywordChange}
+          layout={graphLayout}
+          onLayoutChange={setGraphLayout}
         />
       </TabsContent>
     </Tabs>

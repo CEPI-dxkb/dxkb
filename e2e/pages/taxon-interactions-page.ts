@@ -36,6 +36,24 @@ export class TaxonInteractionsPage {
     await expect(tab).toHaveAttribute("aria-selected", "true");
   }
 
+  /**
+   * The graph lays out in a Web Worker after its rows load, behind a "Laying
+   * out…" status over the canvas. Wait for it to clear before measuring or
+   * clicking the canvas.
+   */
+  async waitForLayout(): Promise<void> {
+    await expect(
+      this.page.getByRole("tabpanel", { name: "Graph" }).getByRole("status").filter({ hasText: "Laying out…" }),
+    ).toHaveCount(0, { timeout: 15_000 });
+  }
+
+  /** The layout reported no failure (its Alert would sit over the canvas). */
+  async expectNoLayoutError(): Promise<void> {
+    await expect(
+      this.page.getByRole("tabpanel", { name: "Graph" }).getByText("Could not lay out the graph"),
+    ).toHaveCount(0);
+  }
+
   async expectCanvasVisible(): Promise<void> {
     await expect(this.page.getByRole("tabpanel", { name: "Graph" }).locator("canvas").first()).toBeVisible();
   }

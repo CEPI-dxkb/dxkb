@@ -4,6 +4,7 @@ import {
   useEffect,
   useEffectEvent,
   useImperativeHandle,
+  useRef,
   useState,
   type CSSProperties,
 } from "react";
@@ -27,20 +28,22 @@ import {
   renderEdge,
   renderEdgeExperimental,
 } from "@/lib/interactions/graph-theme";
-import { runGraphLayout } from "@/lib/interactions/layouts";
 import type {
   GEdge,
   GNode,
   GraphCanvasProps,
   GraphSelection,
-  LayoutName,
 } from "@/lib/interactions/types";
 
 import { ZoomControl } from "./zoom-control";
 
-function buildGraph(nodes: GNode[], edges: GEdge[]): Graph {
+function buildGraph(
+  nodes: GNode[],
+  edges: GEdge[],
+  positions: Float64Array,
+): Graph {
   const g = new Graph({ multi: true });
-  for (const n of nodes) {
+  nodes.forEach((n, i) => {
     g.addNode(n.id, {
       ...n,
       label: n.gene || n.id,
@@ -48,10 +51,10 @@ function buildGraph(nodes: GNode[], edges: GEdge[]): Graph {
       // connecting edges of tight 2–4 node clusters stay visible at any zoom.
       size: 2.5,
       color: n.kind === "host" ? colors.host : colors.microbial,
-      x: Math.random(),
-      y: Math.random(),
+      x: positions[2 * i],
+      y: positions[2 * i + 1],
     });
-  }
+  });
   for (const e of edges) {
     if (g.hasNode(e.source) && g.hasNode(e.target)) {
       g.addEdgeWithKey(e.id, e.source, e.target, {
@@ -87,19 +90,54 @@ const drawNodeHover: NodeHoverDrawingFunction = (context, data, settings) => {
 interface GraphLoaderProps {
   nodes: GNode[];
   edges: GEdge[];
-  layout: LayoutName;
+  positions: Float64Array | null;
 }
 
-function GraphLoader({ nodes, edges, layout }: GraphLoaderProps) {
+interface LoadedGraph extends GraphLoaderProps {
+  sigma: ReturnType<typeof useSigma>;
+}
+
+// Positions are computed off the main thread (useGraphLayout), so they arrive
+// after the nodes. Nothing is drawn until positions for these exact nodes exist:
+// new nodes clear the previous graph until their positions arrive (so a failed
+// layout never leaves a stale, clickable graph beside its error), then load a
+// new graph, and new positions for the same nodes (a layout switch) move the
+// loaded nodes in place.
+function GraphLoader({ nodes, edges, positions }: GraphLoaderProps) {
+  const sigma = useSigma();
   const loadGraph = useLoadGraph();
+  const loaded = useRef<LoadedGraph | null>(null);
   useEffect(() => {
-    const g = buildGraph(nodes, edges);
-    runGraphLayout(g, layout);
-    loadGraph(g);
-    // Layout is intentionally excluded: the imperative handle's runLayout
-    // re-runs the layout in place via useSigma, without reloading the graph.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [nodes, edges, loadGraph]);
+    const previous = loaded.current;
+    const sameGraph =
+      previous?.sigma === sigma &&
+      previous.nodes === nodes &&
+      previous.edges === edges;
+    if (positions?.length !== 2 * nodes.length) {
+      if (previous !== null && !sameGraph) {
+        loaded.current = null;
+        sigma.getGraph().clear();
+      }
+      return;
+    }
+    loaded.current = { nodes, edges, positions, sigma };
+    if (!sameGraph) {
+      loadGraph(buildGraph(nodes, edges, positions));
+      return;
+    }
+    if (previous.positions === positions) return;
+    const graph = sigma.getGraph();
+    nodes.forEach((node, i) => {
+      graph.setNodeAttribute(node.id, "x", positions[2 * i]);
+      graph.setNodeAttribute(node.id, "y", positions[2 * i + 1]);
+    });
+    sigma.refresh();
+    // Sigma auto-frames only on initial load. Switching layout in place can
+    // shift the graph's normalized extent (packed layouts especially), so
+    // reset the camera to re-fit the new positions instead of leaving it
+    // panned/zoomed to the previous layout.
+    void sigma.getCamera().animatedReset();
+  }, [nodes, edges, positions, loadGraph, sigma]);
   return null;
 }
 
@@ -208,16 +246,6 @@ function HandleBridge({
   useImperativeHandle(
     handleRef,
     () => ({
-      runLayout: (name) => {
-        const g = sigma.getGraph();
-        runGraphLayout(g, name);
-        sigma.refresh();
-        // Sigma auto-frames only on initial load. Switching layout in place can
-        // shift the graph's normalized extent (packed layouts especially), so
-        // reset the camera to re-fit the new positions instead of leaving it
-        // panned/zoomed to the previous layout.
-        void sigma.getCamera().animatedReset();
-      },
       exportPng: () => {
         void downloadAsImage(sigma, { fileName: "BVBRC_interaction" });
       },
@@ -237,7 +265,7 @@ function HandleBridge({
 export function SigmaCanvas({
   nodes,
   edges,
-  layout,
+  positions,
   selection,
   onSelect,
   handleRef,
@@ -278,7 +306,7 @@ export function SigmaCanvas({
           defaultDrawNodeHover: drawNodeHover,
         }}
       >
-        <GraphLoader nodes={nodes} edges={edges} layout={layout} />
+        <GraphLoader nodes={nodes} edges={edges} positions={positions} />
         <GraphEvents
           onSelect={onSelect}
           onHover={setTooltip}

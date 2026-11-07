@@ -1,4 +1,4 @@
-import { ResourceChildCollection } from "@/components/views";
+import { LazyResourceChildCollection } from "./lazy-tab-roots";
 import {
   genomeSequenceColumns,
   taxonomySequenceRql,
@@ -8,7 +8,7 @@ import { taxonLineageClause, type TaxonViewScope } from "./scope";
 export function makeSequencesView({ scope }: { scope: TaxonViewScope }) {
   function SequencesView() {
     return (
-      <ResourceChildCollection
+      <LazyResourceChildCollection
         urlKey="sequences"
         resource="genome_sequence"
         label="Sequences"

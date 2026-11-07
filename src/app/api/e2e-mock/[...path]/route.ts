@@ -37,6 +37,7 @@ import {
   hasCall,
   hasClause,
   hasKeyword,
+  matchesReferenceGenome,
   parseFixtureQuery,
   type FixtureQuery,
 } from "./query";
@@ -916,13 +917,45 @@ function maybeBvBrcWebsite(
   if (endpoint === "genome" || endpoint === "genome/") {
     const query = parseFixtureQuery(request);
 
-    // Reference-genomes endpoint: BV-BRC returns a bare array of docs
-    // (json(nl,map)), not the SOLR envelope shape.
+    // Reference-genomes endpoint: SOLR envelopes. The summary read
+    // (`eq(reference_genome,*)`) carries numFound and the per-type facet (a
+    // flat [name, count, ...] list); each per-type read (`eq(reference_genome,
+    // <Type>)`) carries that type's docs. Like the backend, equalities follow
+    // RQL grouping (see matchesReferenceGenome): the request puts its own
+    // after the scope, which can filter by one type or `or(...)` several. `*`
+    // matches any doc that has a type; a type the fixture lacks falls through.
+    const referenceTypes = query.equals
+      .filter(({ field }) => field === "reference_genome")
+      .map(({ value }) => value);
+    const knownTypes = new Set(
+      referenceGenomesFixture.map((doc) => String(doc.reference_genome)),
+    );
     if (
-      equalsValue(query, "reference_genome") === "*" &&
-      hasCall(query, "select")
+      referenceTypes.length > 0 &&
+      hasCall(query, "select") &&
+      referenceTypes.every((type) => type === "*" || knownTypes.has(type))
     ) {
-      return { kind: "ok", body: referenceGenomesFixture };
+      const docs = referenceGenomesFixture.filter((doc) =>
+        matchesReferenceGenome(query, String(doc.reference_genome)),
+      );
+      const typeCounts = new Map<string, number>();
+      for (const doc of docs) {
+        const type = String(doc.reference_genome);
+        typeCounts.set(type, (typeCounts.get(type) ?? 0) + 1);
+      }
+      return {
+        kind: "ok",
+        body: {
+          response: { numFound: docs.length, docs },
+          ...(referenceTypes.includes("*")
+            ? {
+                facet_counts: {
+                  facet_fields: { reference_genome: [...typeCounts].flat() },
+                },
+              }
+            : {}),
+        },
+      };
     }
 
     // Parsed equality, not a substring: a fixture taxon "234" must not match

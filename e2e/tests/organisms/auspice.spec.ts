@@ -114,6 +114,8 @@ test("opens the exact Auspice dataset and renders tree, map, and attribution", a
       datasetRequests.push(url.searchParams.get("prefix") ?? "");
     }
   });
+  const workerPaths: string[] = [];
+  page.on("worker", worker => workerPaths.push(new URL(worker.url()).pathname));
 
   await openPicker(page);
   await page.getByRole("radio", { name: "Auspice" }).click();
@@ -143,6 +145,12 @@ test("opens the exact Auspice dataset and renders tree, map, and attribution", a
     await expect(viewer.locator(".leaflet-control-attribution")).toContainText(
       "OpenStreetMap",
     );
+    // MapLibre 6 cannot find its worker inside a webpack bundle, so
+    // patches/auspice@3.2.0.patch emits it as a hashed /dist/ asset and hands
+    // MapLibre that URL. Without a worker no tile is ever drawn.
+    await expect
+      .poll(() => workerPaths.some(path => /^\/dist\/[0-9a-f]+\.mjs$/.test(path)))
+      .toBe(true);
   } else {
     // Without WebGL (headless Firefox in CI) Auspice drops the map panel and
     // keeps the tree.

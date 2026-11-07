@@ -18,7 +18,7 @@ import { RadioGroupItem } from "@/components/ui/radio-group";
 
 import { ServiceHeader } from "@/components/services/service-header";
 import { DialogInfoPopup } from "@/components/services/dialog-info-popup";
-import OutputFolder from "@/components/services/output-folder";
+import { ServiceOutputFields } from "@/components/services/service-output-fields";
 import { RequiredFormCardTitle } from "@/components/forms/required-form-components";
 import { WorkspaceObjectSelector } from "@/components/workspace/workspace-object-selector";
 import { JobParamsDialog } from "@/components/services/job-params-dialog";
@@ -57,7 +57,6 @@ const subspeciesSpeciesSeparatorBeforeIndex = new Set([5, 7, 17, 21, 23, 24]);
 export default function SubspeciesClassificationPage() {
   const {
     form,
-    outputPath,
     inputSource,
     validatedFasta,
     handleFastaBlur,
@@ -274,42 +273,29 @@ export default function SubspeciesClassificationPage() {
                 )}
               </form.Field>
 
-              <div className="service-card-row">
-                <div className="service-card-row-item">
-                  <form.Field name="output_path">
-                    {(field) => (
-                      <FieldItem>
-                        <OutputFolder
-                          value={field.state.value}
-                          onChange={(value) => {
-                            field.handleChange(value);
-                          }}
-                        />
-                        <FieldErrors field={field} />
-                      </FieldItem>
-                    )}
-                  </form.Field>
-                </div>
-
-                <div className="service-card-row-item">
+              <form.Field name="output_path">
+                {(outputPathField) => (
                   <form.Field name="output_file">
-                    {(field) => (
-                      <FieldItem>
-                        <OutputFolder
-                          variant="name"
-                          value={field.state.value}
-                          onChange={(value) => {
-                            field.handleChange(value);
-                          }}
-                          outputFolderPath={outputPath}
-                          onValidationChange={setIsOutputNameValid}
-                        />
-                        <FieldErrors field={field} />
-                      </FieldItem>
+                    {(outputNameField) => (
+                      <ServiceOutputFields
+                        layout="row"
+                        required={false}
+                        outputPath={{
+                          value: outputPathField.state.value,
+                          onChange: outputPathField.handleChange,
+                          errors: <FieldErrors field={outputPathField} />,
+                        }}
+                        outputName={{
+                          value: outputNameField.state.value,
+                          onChange: outputNameField.handleChange,
+                          errors: <FieldErrors field={outputNameField} />,
+                        }}
+                        onOutputNameValidationChange={setIsOutputNameValid}
+                      />
                     )}
                   </form.Field>
-                </div>
-              </div>
+                )}
+              </form.Field>
             </ServiceCardContent>
           </Card>
         </div>

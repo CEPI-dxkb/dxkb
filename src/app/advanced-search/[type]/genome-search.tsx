@@ -13,6 +13,7 @@ import {
   ServiceCardContent,
   ServiceCardTitle,
 } from "@/components/services/form-ui/service-card";
+import { KeywordCard, RangeCard } from "./advanced-search-fields";
 import { rqlEq, rqlAnd, escapeRqlValue } from "@/lib/views/rql";
 import { genomeListHref } from "@/lib/views/hrefs";
 
@@ -74,22 +75,7 @@ export function GenomeSearch() {
 
   return (
     <form onSubmit={handleSubmit} onReset={handleReset} className="space-y-6">
-      <Card>
-        <ServiceCardHeader>
-          <ServiceCardTitle>Keyword</ServiceCardTitle>
-        </ServiceCardHeader>
-        <ServiceCardContent>
-          <div className="service-card-row-item">
-            <ServiceLabel htmlFor="keyword">Keyword</ServiceLabel>
-            <ServiceInput
-              id="keyword"
-              placeholder="Search term"
-              value={keyword}
-              onChange={(e) => { setKeyword(e.target.value); }}
-            />
-          </div>
-        </ServiceCardContent>
-      </Card>
+      <KeywordCard value={keyword} onChange={setKeyword} />
 
       <Card>
         <ServiceCardHeader>
@@ -146,33 +132,13 @@ export function GenomeSearch() {
         </ServiceCardContent>
       </Card>
 
-      <Card>
-        <ServiceCardHeader>
-          <ServiceCardTitle>Collection Date</ServiceCardTitle>
-        </ServiceCardHeader>
-        <ServiceCardContent>
-          <div className="service-card-content-grid">
-            <div className="service-card-row-item">
-              <ServiceLabel htmlFor="date-from">From</ServiceLabel>
-              <ServiceInput
-                id="date-from"
-                placeholder="YYYY or YYYY-MM or YYYY-MM-DD"
-                value={collectionDateFrom}
-                onChange={(e) => { setCollectionDateFrom(e.target.value); }}
-              />
-            </div>
-            <div className="service-card-row-item">
-              <ServiceLabel htmlFor="date-to">To</ServiceLabel>
-              <ServiceInput
-                id="date-to"
-                placeholder="YYYY or YYYY-MM or YYYY-MM-DD"
-                value={collectionDateTo}
-                onChange={(e) => { setCollectionDateTo(e.target.value); }}
-              />
-            </div>
-          </div>
-        </ServiceCardContent>
-      </Card>
+      <RangeCard
+        kind="date"
+        from={collectionDateFrom}
+        to={collectionDateTo}
+        onFromChange={setCollectionDateFrom}
+        onToChange={setCollectionDateTo}
+      />
 
       <Card>
         <ServiceCardHeader>

@@ -1,16 +1,17 @@
 import { render, screen } from "@testing-library/react";
 import { DataTable } from "../data-table";
 
-// The real useVirtualizer (no module mock). It sizes its window from the scroll
-// element's offsetHeight, which jsdom reports as 0, so every element gets 240px
-// here: ten 24px rows, plus the overscan.
-const offsetHeight = Object.getOwnPropertyDescriptor(
-  HTMLElement.prototype,
-  "offsetHeight",
+// The real useVirtualizer (no module mock). virtual-core 3.19 sizes its window
+// from the scroll element's clientHeight (3.17 read offsetHeight), which jsdom
+// reports as 0, so every element gets 240px here: ten 24px rows, plus the
+// overscan.
+const clientHeight = Object.getOwnPropertyDescriptor(
+  Element.prototype,
+  "clientHeight",
 );
 
 beforeAll(() => {
-  Object.defineProperty(HTMLElement.prototype, "offsetHeight", {
+  Object.defineProperty(Element.prototype, "clientHeight", {
     configurable: true,
     get: () => 240,
   });
@@ -22,8 +23,8 @@ beforeAll(() => {
 });
 
 afterAll(() => {
-  if (offsetHeight) {
-    Object.defineProperty(HTMLElement.prototype, "offsetHeight", offsetHeight);
+  if (clientHeight) {
+    Object.defineProperty(Element.prototype, "clientHeight", clientHeight);
   }
 });
 

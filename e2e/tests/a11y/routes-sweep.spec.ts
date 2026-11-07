@@ -33,6 +33,7 @@ import type { RouteEntry } from "../../a11y/routes";
 import type { Page } from "@playwright/test";
 import type { JsonOverride } from "../../mocks/backends";
 import { mockAuspiceBasemap } from "../../fixtures/overrides/auspice-basemap";
+import { hasWebGl } from "../../support/webgl";
 import auspiceDataset from "../../fixtures/overrides/organisms/phylogeny/auspice-tree-map-v2.json" with { type: "json" };
 
 const auspiceDatasetId = "Influenza-A-Virus/H3N2/HA";
@@ -478,8 +479,9 @@ test.describe("a11y component surfaces", () => {
       .waitFor({
         timeout: 30_000,
       });
-    await viewer.locator("#map").waitFor();
     await viewer.getByText(/Powered by Nextstrain/).waitFor();
+    // Without WebGL (headless Firefox in CI) Auspice renders no map panel.
+    if (await hasWebGl(page)) await viewer.locator("#map").waitFor();
 
     // The bridge mirrors the host theme into the iframe, so scanning per theme
     // exercises both token sets inside Auspice too. color-contrast stays

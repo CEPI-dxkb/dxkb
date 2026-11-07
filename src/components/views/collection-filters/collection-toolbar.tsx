@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useId, useRef, useState } from "react";
 import { Braces, CircleAlert, Search, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -27,6 +27,9 @@ import {
 import type { CollectionToolbarProps } from "./types";
 import { useFacetActions } from "./use-facet-actions";
 
+const customQueryExplanation =
+  "The link carries a hand-written query the filters cannot show. Clear all removes it.";
+
 /**
  * A resource collection's one-row toolbar:
  * keyword · Filters (n) · active filter pills · Clear all · Columns.
@@ -34,6 +37,7 @@ import { useFacetActions } from "./use-facet-actions";
  * grows as filters are added (pills that do not fit go behind "+N").
  */
 export function CollectionToolbar(props: CollectionToolbarProps) {
+  const customQueryDescriptionId = useId();
   const {
     keyword,
     onKeywordChange,
@@ -256,23 +260,31 @@ export function CollectionToolbar(props: CollectionToolbarProps) {
         )}
 
         {hasExplicitRql && (
-          <Tooltip>
-            <TooltipTrigger
-              render={
-                <span
-                  tabIndex={0}
-                  className="inline-flex h-8 shrink-0 items-center gap-1 rounded-md border border-info/40 bg-info/10 px-2 text-2xs font-medium text-info outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
-                />
-              }
-            >
-              <Braces aria-hidden="true" className="size-3" />
-              Custom query
-            </TooltipTrigger>
-            <TooltipContent side="bottom">
-              The link carries a hand-written query the filters cannot show.
-              Clear all removes it.
-            </TooltipContent>
-          </Tooltip>
+          <>
+            {/* Base UI tooltips set no aria-describedby, so screen readers get
+                the explanation once, through the hidden span, not from the
+                portalled tooltip. */}
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <span
+                    tabIndex={0}
+                    aria-describedby={customQueryDescriptionId}
+                    className="inline-flex h-8 shrink-0 items-center gap-1 rounded-md border border-info/40 bg-info/10 px-2 text-2xs font-medium text-info outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+                  />
+                }
+              >
+                <Braces aria-hidden="true" className="size-3" />
+                Custom query
+              </TooltipTrigger>
+              <TooltipContent side="bottom" aria-hidden="true">
+                {customQueryExplanation}
+              </TooltipContent>
+            </Tooltip>
+            <span id={customQueryDescriptionId} hidden>
+              {customQueryExplanation}
+            </span>
+          </>
         )}
 
         {canClear && (

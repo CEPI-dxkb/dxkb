@@ -225,6 +225,7 @@ export function JobsDateFilter({
           <Button
             variant="ghost"
             size="icon"
+            aria-label="Clear date filter"
             onClick={(e) => {
               e.stopPropagation();
               resetFilter(true);

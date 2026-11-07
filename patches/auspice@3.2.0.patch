@@ -1,7 +1,8 @@
 diff --git a/cli-build/develop.js b/cli-build/develop.js
+index c53191da688c1200f4d8fecd682f74b1861050ed..99cb58388371dc47774bda0c77801f2304a70e50 100644
 --- a/cli-build/develop.js
 +++ b/cli-build/develop.js
-@@ -43,6 +43,7 @@
+@@ -43,6 +43,7 @@ const run = async (args) => {
      /* webpack set up */
      const extensionPath = args.extend ? path.resolve(args.extend) : undefined;
      const webpackConfig = generateWebpackConfig({ extensionPath, devMode: true });
@@ -9,7 +10,7 @@ diff --git a/cli-build/develop.js b/cli-build/develop.js
      const compiler = webpack(webpackConfig);
      /* variables available to babel (which is called by webpack) */
      process.env.BABEL_INCLUDE_TIMING_FUNCTIONS = args.includeTiming;
-@@ -55,7 +56,7 @@
+@@ -55,7 +56,7 @@ const run = async (args) => {
          }
          next();
      });
@@ -18,10 +19,58 @@ diff --git a/cli-build/develop.js b/cli-build/develop.js
      app.use((webpackHotMiddleware)(compiler, { log: console.log, path: '/__webpack_hmr', heartbeat: 10 * 1000 }));
      let handlerMsg = "";
      if (args.gh_pages) {
+diff --git a/src/actions/filesDropped/parseCsv.ts b/src/actions/filesDropped/parseCsv.ts
+index d11def6d1ac56959b562bd02356321eb2c55f27c..600789d39e60cf0824b61287f711e28a2f48edc1 100644
+--- a/src/actions/filesDropped/parseCsv.ts
++++ b/src/actions/filesDropped/parseCsv.ts
+@@ -1,5 +1,7 @@
+ let Papa: typeof import("papaparse"); /* lazily imported once a file is dropped on */
+-let XLSX: typeof import("xlsx/xlsx.mini"); /* lazily imported once a file is dropped on */
++/* DXKB patch: pnpm-workspace.yaml takes xlsx from the SheetJS CDN (0.20.x, GHSA-4r6h-8v6p-xvw6),
++   whose exports map names the mini build only under dist/. */
++let XLSX: typeof import("xlsx/dist/xlsx.mini.min"); /* lazily imported once a file is dropped on */
+ import { rgb } from "d3-color";
+ import { NewMetadata, AttrDetails } from "../updateMetadata/updateMetadata.types"
+ 
+@@ -141,7 +143,7 @@ async function readDroppedFile(file: File): Promise<{fileName: string; csvString
+       try {
+         /* the XLSX library will handle CSV, TSV, Excel etc, converting to a CSV string */
+         /* If dropped file is Excel workbook, only reads in the data from the first sheet */
+-        if (!XLSX) XLSX = (await import("xlsx/xlsx.mini")).default;
++        if (!XLSX) XLSX = (await import("xlsx/dist/xlsx.mini.min")).default;
+         const workbook = XLSX.read(reader.result, { type: 'binary', raw: true });
+         const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+         const csvString = XLSX.utils.sheet_to_csv(firstSheet);
+diff --git a/src/components/map/map.js b/src/components/map/map.js
+index f208ea58caf180a045c4387a4d88846750b6b987..4dc49e1cfd25e3581ff0932fd2b59b9ca344fdb7 100644
+--- a/src/components/map/map.js
++++ b/src/components/map/map.js
+@@ -8,6 +8,7 @@ import "leaflet/dist/leaflet.css";
+ import "leaflet-gesture-handling/dist/leaflet-gesture-handling.css";
+ import 'maplibre-gl/dist/maplibre-gl.css';
+ import '@maplibre/maplibre-gl-leaflet';
++import { setWorkerUrl } from "maplibre-gl";
+ import _min from "lodash/min";
+ import _max from "lodash/max";
+ import { select } from "d3-selection";
+@@ -30,6 +31,12 @@ import HoverPanel from "../hoverPanel/hoverPanel";
+ import { InfoLine } from "../tree/infoPanels/hover";
+ import "../../css/mapbox.css"; // controls the rendering of the mapbox logo (optional; toggled on via customisations)
+ 
++/* DXKB patch: pnpm-workspace.yaml overrides maplibre-gl to 6.x (GHSA-jrc7-96c5-q579).
++   6.x looks for its worker beside its own module through import.meta.url, which webpack
++   rewrites to a file:// URL, so it would start no worker. Emit the worker as an asset and
++   point maplibre at it. */
++setWorkerUrl(new URL("maplibre-gl/dist/maplibre-gl-worker.mjs", import.meta.url).href);
++
+ /* global L */
+ // L is global in scope and placed by leaflet()
+ @connect((state) => {
 diff --git a/webpack.config.cjs b/webpack.config.cjs
+index 0d60626cd27ca43a2eced99ca122babc313e948a..a62bbe15e35594f55979b58fc3ebf8e0b8520a7c 100644
 --- a/webpack.config.cjs
 +++ b/webpack.config.cjs
-@@ -316,7 +316,10 @@
+@@ -316,7 +316,10 @@ const generateConfig = ({extensionPath, devMode=false, customOutputPath, analyze
          },
          {
            test: /\.css$/,

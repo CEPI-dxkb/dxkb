@@ -6,16 +6,30 @@ const globalsCss = readFileSync(
   "utf8",
 ).replace(/\/\*[\s\S]*?\*\//g, "");
 
-/** Each rank badge rule: the ranks its selectors name, and its `@apply` classes. */
+/** One rank badge selector: the bare default, or a rank by name. */
+const badgeSelector = /^\[data-slot="badge"\]\[data-rank(?:="([^"]+)")?\]$/;
+
+/**
+ * Each rank badge rule: the ranks its selectors name, and its `@apply` classes.
+ * Rules are split on braces first and then filtered, because one pattern that
+ * repeats the badge selector up to the `{` backtracks exponentially. Each
+ * match starts at the text start or a brace, which keeps the split linear.
+ * Only exact badge selectors count, so another `[data-rank]` selector (a rank
+ * icon, say) neither adds a rank nor makes its rule a badge rule.
+ */
 const rankRules = [
-  ...globalsCss.matchAll(/((?:\[data-slot="badge"\]\[data-rank[^{]*?)+)\{([^}]*)\}/g),
-].map(([, selectors, body]) => ({
-  // A bare `[data-rank]` (the default) leaves the group unmatched.
-  ranks: [...selectors.matchAll(/\[data-rank(?:="([^"]+)")?\]/g)].map(
-    ([, rank]) => rank || "*",
-  ),
-  classes: body.trim(),
-}));
+  ...globalsCss.matchAll(/(?<=^|[{}])([^{}]*)\{([^{}]*)\}/g),
+]
+  .map(([, selectors, body]) => ({
+    ranks: selectors
+      .split(",")
+      .map((selector) => badgeSelector.exec(selector.trim()))
+      .filter((match) => match !== null)
+      // A bare `[data-rank]` (the default) leaves the group unmatched.
+      .map(([, rank]) => rank || "*"),
+    classes: body.trim(),
+  }))
+  .filter((rule) => rule.ranks.length > 0);
 
 // Every taxon_rank value the BV-BRC taxonomy core held on 2026-10-20.
 const bvbrcRanks = [

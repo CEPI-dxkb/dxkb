@@ -4,9 +4,11 @@ on:
   pull_request:
     # Title and description edits (often by bots) change no code and used to
     # restart the whole matrix. A change of base branch no longer re-triggers
-    # this workflow: push a commit, or close and reopen the pull request, to
-    # cover that. A re-run does not: it checks out the merge commit of the
-    # original event.
+    # this workflow. Pushing or reopening tests the head branch (the e2e job
+    # checks out sync-linux-snapshots' head sha), so it covers the new base
+    # only once the head branch contains it: merge the base in. A re-run does
+    # not either. Fork PRs, where sync-linux-snapshots is skipped, use the
+    # merge commit (github.sha).
     types:
       - opened
       - synchronize

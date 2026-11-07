@@ -729,12 +729,27 @@ describe("api/e2e-mock catch-all — enabled", () => {
     const body = (await resp.json()) as {
       facet_counts?: { facet_fields: { reference_genome: unknown[] } };
     };
+    // The backend ANDs every equality: Reference AND any type is Reference.
     expect(body.facet_counts?.facet_fields.reference_genome).toEqual([
       "Reference",
       2,
-      "Representative",
-      2,
     ]);
+  });
+
+  it("GET ANDs a per-type read with a scope filtered to another type", async () => {
+    const resp = await GET(
+      mockNextRequest({
+        url: "http://localhost:3020/api/e2e-mock/bvbrc-website/genome/?eq(reference_genome,Reference)&eq(reference_genome,Representative)&select(reference_genome,genome_name,genome_id)&limit(1000)",
+      }),
+      ctx(["bvbrc-website", "genome"]),
+    );
+
+    expect(resp.status).toBe(200);
+    const body = (await resp.json()) as {
+      response: { numFound: number; docs: unknown[] };
+    };
+    expect(body.response.numFound).toBe(0);
+    expect(body.response.docs).toEqual([]);
   });
 
   it("GET disambiguates taxon IDs by regex, not substring", async () => {

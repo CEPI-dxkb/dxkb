@@ -46,4 +46,27 @@ describe("valueImportsMatching", () => {
       "@/components/heavy/donut",
     ]);
   });
+
+  it("finds the specifier of a multi-line import with a quote in a comment", () => {
+    const source = [
+      "import {",
+      "  chart, // it's the heavy one",
+      '} from "@/components/heavy/chart";',
+      "import { Light } from \"@/components/light\";",
+    ].join("\n");
+
+    expect(valueImportsMatching(source, fromDir, heavy)).toEqual([
+      "@/components/heavy/chart",
+    ]);
+  });
+
+  it("ignores import-looking text inside comments and strings", () => {
+    const source = [
+      '// import { A } from "@/components/heavy/a";',
+      '/* import "@/components/heavy/b"; */',
+      'const text = `import x from "@/components/heavy/c"`;',
+    ].join("\n");
+
+    expect(valueImportsMatching(source, fromDir, heavy)).toEqual([]);
+  });
 });

@@ -919,40 +919,44 @@ function maybeBvBrcWebsite(
     // Reference-genomes endpoint: SOLR envelopes. The summary read
     // (`eq(reference_genome,*)`) carries numFound and the per-type facet (a
     // flat [name, count, ...] list); each per-type read (`eq(reference_genome,
-    // <Type>)`) carries that type's docs. The last equality, not the first:
-    // the request puts it after the scope, which can filter by type itself.
-    const referenceType = query.equals.findLast(
-      ({ field }) => field === "reference_genome",
-    )?.value;
-    if (referenceType !== undefined && hasCall(query, "select")) {
+    // <Type>)`) carries that type's docs. Like the backend, every
+    // reference_genome equality applies (AND): the request puts its own after
+    // the scope, which can filter by type itself. `*` matches any doc that has
+    // a type; a type the fixture lacks falls through.
+    const referenceTypes = query.equals
+      .filter(({ field }) => field === "reference_genome")
+      .map(({ value }) => value);
+    const knownTypes = new Set(
+      referenceGenomesFixture.map((doc) => String(doc.reference_genome)),
+    );
+    if (
+      referenceTypes.length > 0 &&
+      hasCall(query, "select") &&
+      referenceTypes.every((type) => type === "*" || knownTypes.has(type))
+    ) {
+      const docs = referenceGenomesFixture.filter((doc) =>
+        referenceTypes.every(
+          (type) => type === "*" || doc.reference_genome === type,
+        ),
+      );
       const typeCounts = new Map<string, number>();
-      for (const doc of referenceGenomesFixture) {
+      for (const doc of docs) {
         const type = String(doc.reference_genome);
         typeCounts.set(type, (typeCounts.get(type) ?? 0) + 1);
       }
-      if (referenceType === "*") {
-        return {
-          kind: "ok",
-          body: {
-            response: {
-              numFound: referenceGenomesFixture.length,
-              docs: referenceGenomesFixture,
-            },
-            facet_counts: {
-              facet_fields: { reference_genome: [...typeCounts].flat() },
-            },
-          },
-        };
-      }
-      if (typeCounts.has(referenceType)) {
-        const docs = referenceGenomesFixture.filter(
-          (doc) => doc.reference_genome === referenceType,
-        );
-        return {
-          kind: "ok",
-          body: { response: { numFound: docs.length, docs } },
-        };
-      }
+      return {
+        kind: "ok",
+        body: {
+          response: { numFound: docs.length, docs },
+          ...(referenceTypes.includes("*")
+            ? {
+                facet_counts: {
+                  facet_fields: { reference_genome: [...typeCounts].flat() },
+                },
+              }
+            : {}),
+        },
+      };
     }
 
     // Parsed equality, not a substring: a fixture taxon "234" must not match

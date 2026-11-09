@@ -12,7 +12,10 @@ import {
 } from "./workspace-selector-presets";
 import { useAuth } from "@/lib/auth/provider";
 import { workspaceUsername } from "@/lib/services/workspace/path-utils";
-import { WorkspaceFolderPickerDialog } from "@/components/workspace/folder-picker/folder-picker-dialog";
+import {
+  preloadFolderPickerDialog,
+  WorkspaceFolderPickerDialog,
+} from "@/components/workspace/folder-picker/folder-picker-dialog-lazy";
 import { toWorkspaceObject, type WorkspaceItem } from "@/lib/services/workspace/domain";
 import { lastSegment, pickerTargetFor } from "@/lib/services/workspace/picker-views";
 import { isFolderType } from "@/lib/services/workspace/utils";
@@ -113,6 +116,9 @@ function useWorkspaceObjectSelector({
   const resolvedTypes = validatedTypes?.valid;
   const username = workspaceUsername(user);
   const [isPickerOpen, setIsPickerOpen] = React.useState(false);
+  // The picker mounts on the first Browse and stays mounted, so it keeps its
+  // close animation and the layout it remembers between opens.
+  const [hasOpenedPicker, setHasOpenedPicker] = React.useState(false);
   const [hasInteracted, setHasInteracted] = React.useState(false);
   const searchEnabled = !searchOnInteraction || hasInteracted;
   const pickerTarget =
@@ -461,13 +467,15 @@ function useWorkspaceObjectSelector({
                     : "Browse workspace files",
                 disabled: disabled || !username,
                 onClick: () => {
+                  setHasOpenedPicker(true);
                   setIsPickerOpen(true);
                 },
+                onPreload: preloadFolderPickerDialog,
               }
             : null
         }
       />
-      {pickerTarget ? (
+      {pickerTarget && hasOpenedPicker ? (
         <WorkspaceFolderPickerDialog
           open={isPickerOpen}
           onOpenChange={setIsPickerOpen}

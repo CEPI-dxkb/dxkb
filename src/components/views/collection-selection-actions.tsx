@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useRef, useState } from "react";
@@ -11,7 +12,6 @@ import {
   type SearchActionId,
 } from "@/components/search/search-action-bar";
 import { noServicesReason } from "@/components/search/search-action-policy";
-import { SelectionToGroupDialog } from "@/components/workspace/selection-to-group-dialog";
 import type { DataTableColumn } from "@/components/shared/data-table";
 import { useAuth } from "@/lib/auth/provider";
 import { useWorkspaceRepository } from "@/contexts/workspace-repository-context";
@@ -126,6 +126,25 @@ interface CollectionSelectionActionsProps {
   onOtherAction?: (actionId: SearchActionId) => void;
 }
 
+// The group dialog (its folder field and the workspace picker behind it)
+// loads when the group action first runs, so a collection does not carry it
+// in its first bundle. `preloadGroupDialog` starts the load while the
+// selection's IDs resolve.
+const SelectionToGroupDialog = dynamic(
+  () =>
+    import("@/components/workspace/selection-to-group-dialog").then(
+      (module) => module.SelectionToGroupDialog,
+    ),
+  { ssr: false },
+);
+
+/** A failed load is left to the render, which reports it. */
+function preloadGroupDialog(): void {
+  import("@/components/workspace/selection-to-group-dialog").catch(
+    () => undefined,
+  );
+}
+
 /** A built list href that is present and short enough to open safely. */
 function isOpenableListHref(href: string | null): href is string {
   return !!href && href.length <= selectionListMaxUrlLength;
@@ -170,6 +189,8 @@ export function CollectionSelectionActions({
   const [isCopyOpen, setIsCopyOpen] = useState(false);
   const [isServiceOpen, setIsServiceOpen] = useState(false);
   const [isGroupOpen, setIsGroupOpen] = useState(false);
+  // Mounted from the first open on, so it keeps its close animation.
+  const [hasOpenedGroup, setHasOpenedGroup] = useState(false);
   const [loadingActionIds, setLoadingActionIds] = useState<SearchActionId[]>(
     [],
   );
@@ -283,6 +304,7 @@ export function CollectionSelectionActions({
         );
         setIsServiceOpen(true);
       } else if (opensGroup) {
+        preloadGroupDialog();
         setSelectionIds(
           await resolveSelectionIds({
             maxRows: selectionGroupMaxRows,
@@ -291,6 +313,7 @@ export function CollectionSelectionActions({
             advice: "Narrow the selection and try again.",
           }),
         );
+        setHasOpenedGroup(true);
         setIsGroupOpen(true);
       }
     } catch (error) {
@@ -417,7 +440,7 @@ export function CollectionSelectionActions({
         workspaceUsername={user ? workspaceUsername(user) : undefined}
         signInHref={signInHref}
       />
-      {user && (
+      {user && hasOpenedGroup && (
         <SelectionToGroupDialog
           open={isGroupOpen}
           onOpenChange={setIsGroupOpen}

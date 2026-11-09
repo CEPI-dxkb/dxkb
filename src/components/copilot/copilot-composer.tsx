@@ -9,7 +9,6 @@ import {
   Square,
   X,
 } from "lucide-react";
-import dynamic from "next/dynamic";
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import {
   InputGroup,
@@ -17,6 +16,7 @@ import {
   InputGroupButton,
   InputGroupTextarea,
 } from "@/components/ui/input-group";
+import { WorkspaceFolderPickerDialog } from "@/components/workspace/folder-picker/folder-picker-dialog-lazy";
 import {
   copilotAttachmentAccept,
   maxCopilotAttachments,
@@ -30,14 +30,6 @@ import {
   viewableTypes,
 } from "@/lib/services/workspace/types";
 import { copilotName } from "@/lib/copilot/name";
-
-const WorkspaceFolderPickerDialog = dynamic(
-  () =>
-    import("@/components/workspace/folder-picker/folder-picker-dialog").then(
-      (module) => module.WorkspaceFolderPickerDialog,
-    ),
-  { ssr: false },
-);
 
 /**
  * Any workspace file. Folders are opened, not picked; a job result is opened

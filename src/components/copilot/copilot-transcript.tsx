@@ -136,6 +136,14 @@ export function CopilotTranscript({
   // Only the newest message's card takes answers, and only while nothing is
   // running: the gateway checks a reply against the cards it stored.
   const last = messages.at(-1);
+  // Only the newest question is a scroll anchor. When a turn ends, its two
+  // live items give way to their saved copies (same item count, new
+  // elements), and the scroller then jumps to the first anchor it has not
+  // scrolled to yet: with every question an anchor, that is the chat's first
+  // one, so an existing chat would jump back to the top.
+  const lastQuestionId = messages.findLast(
+    (message) => message.role === "user",
+  )?.id;
   const answerableId =
     !turn && !busyElsewhere && last?.role === "assistant" && last.card
       ? last.id
@@ -154,7 +162,7 @@ export function CopilotTranscript({
               <MessageScrollerItem
                 key={message.id}
                 messageId={message.id}
-                scrollAnchor={message.role === "user"}
+                scrollAnchor={message.id === lastQuestionId}
               >
                 <div className="px-4 pt-2">
                   {message.role === "user" ? (

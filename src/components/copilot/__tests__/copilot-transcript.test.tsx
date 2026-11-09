@@ -1,10 +1,11 @@
-import { render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { CopilotChatError } from "@/hooks/copilot/use-copilot-chat";
 import { startCopilotTurn } from "@/lib/copilot/turn";
 import type { CopilotSessionDetail } from "@/lib/copilot/types";
 import { CopilotTranscript } from "../copilot-transcript";
 import { copilotName } from "@/lib/copilot/name";
+import { createQueryClientWrapper } from "@/test-helpers/react";
 
 const detail: CopilotSessionDetail = {
   sessionId: "s1",
@@ -113,5 +114,153 @@ describe("CopilotTranscript live turn", () => {
     expect(screen.getByText("Connection lost")).toBeInTheDocument();
     expect(screen.getByText("Partial answer")).toBeInTheDocument();
     expect(screen.queryByText("Stopped")).not.toBeInTheDocument();
+  });
+});
+
+describe("CopilotTranscript scrolling", () => {
+  const itemHeight = 200;
+  const viewportHeight = 300;
+  const scrollTops = new WeakMap<Element, number>();
+
+  function message(id: string, role: "user" | "assistant", content: string) {
+    return {
+      id,
+      role,
+      content,
+      timestamp: null,
+      model: null,
+      steps: [],
+      card: null,
+      rating: null,
+      persisted: true,
+      systemInitiated: false,
+      isClarification: false,
+      clarificationAnswers: [],
+      attachments: [],
+    } satisfies CopilotSessionDetail["messages"][number];
+  }
+
+  function viewportOf(element: Element) {
+    return element.closest('[data-slot="message-scroller-viewport"]');
+  }
+
+  // jsdom has no layout: stack the items 200px apart in a 300px viewport.
+  function rect(top: number, height: number) {
+    return DOMRect.fromRect({ x: 0, y: top, width: 400, height });
+  }
+
+  beforeEach(() => {
+    vi.spyOn(Element.prototype, "getBoundingClientRect").mockImplementation(
+      function (this: Element) {
+        if (this.getAttribute("data-slot") === "message-scroller-viewport") {
+          return rect(0, viewportHeight);
+        }
+        const viewport = viewportOf(this);
+        const id = this.getAttribute("data-message-id");
+        if (!viewport || !id || !this.parentElement) return rect(0, 0);
+        const items = Array.from(this.parentElement.children).filter((child) =>
+          child.hasAttribute("data-message-id"),
+        );
+        const scrollTop = scrollTops.get(viewport) ?? 0;
+        return rect(items.indexOf(this) * itemHeight - scrollTop, itemHeight);
+      },
+    );
+    vi.spyOn(Element.prototype, "clientHeight", "get").mockImplementation(
+      function (this: Element) {
+        return this.getAttribute("data-slot") === "message-scroller-viewport"
+          ? viewportHeight
+          : 0;
+      },
+    );
+    vi.spyOn(Element.prototype, "scrollTop", "get").mockImplementation(
+      function (this: Element) {
+        return scrollTops.get(this) ?? 0;
+      },
+    );
+    vi.spyOn(Element.prototype, "scrollTop", "set").mockImplementation(
+      function (this: Element, value: number) {
+        scrollTops.set(this, value);
+      },
+    );
+    Element.prototype.scrollTo = function (
+      this: Element,
+      options?: ScrollToOptions | number,
+    ) {
+      if (typeof options === "object" && options.top !== undefined) {
+        scrollTops.set(this, options.top);
+      }
+    };
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("stays on the new question when a finished turn is replaced by its saved copy", async () => {
+    const earlier = [
+      message("m1", "user", "First question"),
+      message("m2", "assistant", "First answer"),
+      message("m3", "user", "Second question"),
+      message("m4", "assistant", "Second answer"),
+    ];
+    const props = {
+      sessionId: "s1",
+      loading: false,
+      loadError: null,
+      onRetryLoad: vi.fn(),
+      onReload: vi.fn(),
+      error: null,
+      onRetry: vi.fn(),
+      onSuggestion: vi.fn(),
+    };
+    const { rerender } = render(
+      <CopilotTranscript
+        {...props}
+        detail={{ ...detail, messages: earlier }}
+        active={{
+          sessionId: "s1",
+          turn: {
+            ...startCopilotTurn("t1", "Third question"),
+            status: "done",
+            answer: "Third answer",
+          },
+          baseCount: earlier.length,
+          clarificationAnswers: null,
+          hidden: false,
+          attachments: [],
+        }}
+      />,
+      { wrapper: createQueryClientWrapper() },
+    );
+    const viewport = screen.getByRole("region", {
+      name: `${copilotName} conversation`,
+    });
+    await act(async () => {
+      await new Promise((resolve) => requestAnimationFrame(resolve));
+    });
+    // Opening the chat shows the live question at the top.
+    expect(viewport.scrollTop).toBe(4 * itemHeight - 64);
+
+    rerender(
+      <CopilotTranscript
+        {...props}
+        detail={{
+          ...detail,
+          messages: [
+            ...earlier,
+            message("m5", "user", "Third question"),
+            message("m6", "assistant", "Third answer"),
+          ],
+        }}
+        active={null}
+      />,
+    );
+    await act(async () => {
+      await new Promise((resolve) => requestAnimationFrame(resolve));
+    });
+
+    // The saved question sits fifth (index 4); it is shown at the top, with
+    // the default 64px of the previous answer peeking above it.
+    expect(viewport.scrollTop).toBe(4 * itemHeight - 64);
   });
 });

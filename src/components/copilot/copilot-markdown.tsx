@@ -1,7 +1,7 @@
 "use client";
 
 import { ChevronDown, ChevronUp, ImageIcon } from "lucide-react";
-import { memo, useState, type ComponentProps } from "react";
+import { memo, useState, type ComponentProps, type ReactElement } from "react";
 import Markdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Button } from "@/components/ui/button";
@@ -147,3 +147,12 @@ export const CopilotMarkdown = memo(function CopilotMarkdown({
     </div>
   );
 });
+
+/**
+ * `CopilotMarkdown` for `content`. `copilot-markdown-lazy.tsx` loads this
+ * module on its own and draws answers through this function, so the component
+ * it renders is the memoized one above, not one made at render.
+ */
+export function copilotMarkdownElement(content: string): ReactElement {
+  return <CopilotMarkdown content={content} />;
+}

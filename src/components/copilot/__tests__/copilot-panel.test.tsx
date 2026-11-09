@@ -1,10 +1,12 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createEvent, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import { toast } from "sonner";
 import type { CopilotChat, CopilotChatError } from "@/hooks/copilot/use-copilot-chat";
+import { copilotQueryKeys } from "@/lib/copilot/client";
 import { clearCopilotDrafts } from "@/lib/copilot/drafts";
-import type { CopilotSessionDetail } from "@/lib/copilot/types";
+import type { CopilotMessage, CopilotSessionDetail } from "@/lib/copilot/types";
 import { server } from "@/test-helpers/msw-server";
 import { createQueryClientWrapper } from "@/test-helpers/react";
 import { CopilotPanel, type CopilotPanelVariant } from "../copilot-panel";
@@ -79,6 +81,16 @@ function fakeCopilot(
   };
 }
 
+function fakeActions(): CopilotActions {
+  return {
+    sendTurn,
+    sendQuestion,
+    cardActions: {} as CopilotActions["cardActions"],
+    planActions: {} as CopilotActions["planActions"],
+    stepAwaitingReply: () => null,
+  };
+}
+
 function sessionDetail(sessionId: string): CopilotSessionDetail {
   return { sessionId, messages: [], executionMode: "plan", activeJobId: null };
 }
@@ -133,13 +145,7 @@ beforeEach(() => {
   useBackend();
   sendTurn.mockResolvedValue({ status: "busy" });
   sendQuestion.mockResolvedValue({ sent: true, message: null });
-  vi.mocked(useCopilotActions).mockReturnValue({
-    sendTurn,
-    sendQuestion,
-    cardActions: {} as CopilotActions["cardActions"],
-    planActions: {} as CopilotActions["planActions"],
-    stepAwaitingReply: () => null,
-  });
+  vi.mocked(useCopilotActions).mockReturnValue(fakeActions());
   vi.mocked(useCopilot).mockReturnValue(fakeCopilot());
 });
 
@@ -269,5 +275,83 @@ describe("CopilotPanel", () => {
       fireEvent(target, event);
       expect(event.defaultPrevented).toBe(true);
     }
+  });
+});
+
+describe("CopilotPanel markdown renderer", () => {
+  it("holds the chat until the renderer is in, so a stored answer never shows as plain text", async () => {
+    const renderer = Promise.withResolvers<undefined>();
+    vi.doMock("../copilot-markdown", async (importOriginal) => {
+      await renderer.promise;
+      return importOriginal();
+    });
+    onTestFinished(() => {
+      vi.doUnmock("../copilot-markdown");
+    });
+    // A fresh module graph, so nothing has loaded the renderer yet. The mocked
+    // modules come back as fresh mocks and are set up again.
+    vi.resetModules();
+    vi.mocked((await import("../copilot-provider")).useCopilot).mockReturnValue(
+      fakeCopilot(),
+    );
+    vi.mocked(
+      (await import("../use-copilot-actions")).useCopilotActions,
+    ).mockReturnValue(fakeActions());
+    const { CopilotPanel: FreshPanel } = await import("../copilot-panel");
+    const stored: CopilotMessage = {
+      id: "a1",
+      role: "assistant",
+      content: "Found **12** genomes",
+      timestamp: null,
+      model: null,
+      steps: [],
+      card: null,
+      rating: null,
+      persisted: true,
+      systemInitiated: false,
+      isClarification: false,
+      clarificationAnswers: [],
+      attachments: [],
+    };
+    server.use(
+      http.get("*/api/copilot/sessions/:id", ({ params }) =>
+        HttpResponse.json({ ...sessionDetail(String(params.id)), messages: [stored] }),
+      ),
+    );
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    const { container } = render(
+      <QueryClientProvider client={queryClient}>
+        <FreshPanel variant="sheet" />
+      </QueryClientProvider>,
+    );
+    // Every node the transcript ever adds, so a plain-text frame that was
+    // replaced at once is still seen.
+    let showedRawText = false;
+    const observer = new MutationObserver((records) => {
+      for (const record of records) {
+        for (const node of record.addedNodes) {
+          if (node.textContent?.includes("**12**")) showedRawText = true;
+        }
+      }
+    });
+    observer.observe(container, { childList: true, subtree: true, characterData: true });
+    onTestFinished(() => {
+      observer.disconnect();
+    });
+
+    await waitFor(() => {
+      expect(queryClient.getQueryData(copilotQueryKeys.session("s1"))).toBeDefined();
+    });
+    // The chat is read, but the renderer is not in: still loading.
+    expect(screen.getByLabelText("Loading chat")).toBeInTheDocument();
+    expect(box()).toBeDisabled();
+
+    renderer.resolve(undefined);
+    await ready();
+    expect(screen.getByText("12", { selector: "strong" })).toBeInTheDocument();
+    expect(screen.queryByLabelText("Loading chat")).not.toBeInTheDocument();
+    expect(showedRawText).toBe(false);
   });
 });

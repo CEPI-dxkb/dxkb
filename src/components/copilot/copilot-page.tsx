@@ -3,10 +3,15 @@
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { isCopilotTurnActive } from "@/lib/copilot/turn";
+import { loadCopilotMarkdown } from "./copilot-markdown-lazy";
 import { CopilotPanel } from "./copilot-panel";
 import { useCopilot } from "./copilot-provider";
 import { CopilotSessionList } from "./copilot-session-list";
 import { copilotName } from "@/lib/copilot/name";
+
+// The answers' markdown renderer is not in this page's first bundle: start
+// loading it with the page, ahead of the chat's own read, which waits for it.
+if (typeof window !== "undefined") void loadCopilotMarkdown();
 
 /**
  * The full-page Copilot: the user's chats on the left, the open chat beside

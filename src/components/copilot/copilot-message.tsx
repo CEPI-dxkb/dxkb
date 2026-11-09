@@ -38,7 +38,7 @@ import type {
 } from "@/lib/copilot/types";
 import { ClarificationCardView } from "./copilot-clarification-card";
 import { ExecutionCardView } from "./copilot-execution-card";
-import { CopilotMarkdown } from "./copilot-markdown";
+import { CopilotMarkdown } from "./copilot-markdown-lazy";
 import { PlanCardView } from "./copilot-plan-card";
 import { CopilotSteps } from "./copilot-progress";
 

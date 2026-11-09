@@ -717,7 +717,7 @@ follow-up. Guidance for the next engineer:
 
 - **Why deferred:** the search UX is the motivating use case but depends on the List views
   rendering real results (8.1). Repointing to placeholder lists would look broken.
-- **Next steps:** in `search-bar.tsx` / `command-palette.tsx`, replace the
+- **Next steps:** in `search-bar.tsx` / `command-palette-body.tsx` (the palette's commands; `command-palette.tsx` is the eager shell), replace the
   `/search?q=…&searchtype=…` push with a push to `/{segment}?keyword=…`, mapping the
   selected `searchtype` → `segment` via the registry `searchType` field (already populated).
   Decide the fate of the catch-all `/search` page (keep as "everything" aggregator, or

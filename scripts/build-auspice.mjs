@@ -107,11 +107,6 @@ try {
   cpSync(resolve(scratch, "dist"), resolve(publicDir, "dist"), {
     recursive: true,
   });
-  for (const artifact of globSync("**/*.{br,gz}", {
-    cwd: resolve(publicDir, "dist"),
-  })) {
-    rmSync(resolve(publicDir, "dist", artifact));
-  }
   rmSync(resolve(publicDir, "dist", "index.html"), { force: true });
   cpSync(
     resolve(root, "node_modules/auspice/favicon.png"),

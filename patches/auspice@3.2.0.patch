@@ -67,10 +67,46 @@ index f208ea58caf180a045c4387a4d88846750b6b987..4dc49e1cfd25e3581ff0932fd2b59b9c
  // L is global in scope and placed by leaflet()
  @connect((state) => {
 diff --git a/webpack.config.cjs b/webpack.config.cjs
-index 0d60626cd27ca43a2eced99ca122babc313e948a..a62bbe15e35594f55979b58fc3ebf8e0b8520a7c 100644
+index 0d60626cd27ca43a2eced99ca122babc313e948a..68da02c70d314cc93916066e002cb08842b2022a 100644
 --- a/webpack.config.cjs
 +++ b/webpack.config.cjs
-@@ -316,7 +316,10 @@ const generateConfig = ({extensionPath, devMode=false, customOutputPath, analyze
+@@ -111,8 +111,9 @@ const generateConfig = ({extensionPath, devMode=false, customOutputPath, analyze
+   ] : [
+     new LodashModuleReplacementPlugin(),
+     pluginProcessEnvData,
+-    pluginCompressGzip,
+-    pluginCompressBrotli,
++    /* DXKB patch: scripts/build-auspice.mjs serves the uncompressed bundles, so
++       the gzip/brotli copies were discarded, and compression-webpack-plugin 3
++       triggers webpack 5's DEP_WEBPACK_COMPILATION_ASSETS warning. */
+     pluginHtml,
+     cleanWebpackPlugin
+   ];
+@@ -247,6 +248,14 @@ const generateConfig = ({extensionPath, devMode=false, customOutputPath, analyze
+       }
+     },
+     plugins,
++    /* DXKB patch: the size hints are about Auspice's own chunking, which we do not
++       control. maplibre-gl 6 (pnpm-workspace.yaml override) resolves its worker URL
++       with `new URL(<expression>, import.meta.url)`, which webpack cannot follow;
++       map.js sets that URL itself through setWorkerUrl. */
++    performance: { hints: false },
++    ignoreWarnings: [
++      { module: /maplibre-gl/, message: /Critical dependency: the request of a dependency is an expression/ }
++    ],
+     optimization: {
+       minimize: !devMode,
+       runtimeChunk: "single",
+@@ -311,12 +320,18 @@ const generateConfig = ({extensionPath, devMode=false, customOutputPath, analyze
+             /node_modules\/maplibre-gl/
+           ],
+           options: {
+-            cwd: path.resolve(__dirname)
++            cwd: path.resolve(__dirname),
++            /* DXKB patch: terser minifies the output anyway; compact skips Babel's
++               "deoptimised the styling" note for files over 500KB (lodash, react-icons). */
++            compact: true
+           }
          },
          {
            test: /\.css$/,

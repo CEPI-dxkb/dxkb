@@ -3,7 +3,7 @@
 {
     "name": "DXKB Dev Env",
     // Or use a Dockerfile or Docker Compose file. More info: https://containers.dev/guide/dockerfile
-    "image": "mcr.microsoft.com/devcontainers/typescript-node:4-24-trixie",
+    "image": "mcr.microsoft.com/devcontainers/typescript-node:5-26-trixie",
     "features": {
         "ghcr.io/devcontainers/features/github-cli:1": {},
         "ghcr.io/nils-geistmann/devcontainers-features/zsh:0": {},

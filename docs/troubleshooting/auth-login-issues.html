@@ -566,7 +566,7 @@ curl -o /dev/null -w '%{http_code}' localhost:3019/api/auth/sign-in/email
     <div class="block">
       <h3>Why</h3>
       <p>
-        Node 24's built-in <code>fetch</code> sends
+        Node's built-in <code>fetch</code> sends
         <code>User-Agent: node</code> by default. Cloudflare in front of
         <code>user.patricbrc.org</code> answers that with a
         <strong>403 bot challenge</strong> — an HTML page reading

@@ -2,7 +2,7 @@
 
 ## Node Version
 
-Tests require **Node.js >= 22** (vitest 4.x / rolldown needs `node:util#styleText`). The project targets **Node v24**. Use `nvm use 24` (or the `.nvmrc` if present) before running any commands.
+Tests require **Node.js >= 22** (vitest 4.x / rolldown needs `node:util#styleText`). The project targets **Node v26**. Use `nvm use 26` (or the `.nvmrc` if present) before running any commands.
 
 ## Test Runner
 

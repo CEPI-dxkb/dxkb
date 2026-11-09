@@ -1,11 +1,14 @@
 import React from "react";
 import "@testing-library/jest-dom/vitest";
 
-// vitest's populateGlobal skips localStorage/sessionStorage because Node.js v22+
-// already defines them (as broken experimental APIs). Explicitly re-bind to jsdom's
-// working implementations via global.jsdom, which vitest always sets for the jsdom
-// environment. Done in beforeAll so jsdom is guaranteed to be initialized.
-beforeAll(() => {
+// vitest's populateGlobal skips localStorage/sessionStorage because Node.js v25+
+// already defines them (Web Storage is unflagged; without --localstorage-file the
+// getter returns undefined). Explicitly re-bind to jsdom's working implementations
+// via global.jsdom, which vitest always sets for the jsdom environment. Done in
+// beforeEach, not beforeAll: a suite's `vi.unstubAllGlobals()` restores Node's
+// undefined getter, and a once-per-file stub would leave every later test in that
+// file without storage.
+beforeEach(() => {
   const dom = (global as unknown as { jsdom?: { window: Window & typeof globalThis } }).jsdom;
   if (dom) {
     vi.stubGlobal("localStorage", dom.window.localStorage);

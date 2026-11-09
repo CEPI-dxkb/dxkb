@@ -13,6 +13,10 @@ const listeners = new Set<() => void>();
 const unsavedItems = new Map<string, string | null>();
 
 export function readStorageItem(key: string): string | null {
+  // Node 25+ has a localStorage global of its own (one on-disk store for every
+  // request under --localstorage-file), and this module's in-memory fallback is
+  // shared across requests too, so the server must not consult either.
+  if (typeof window === "undefined") return null;
   if (unsavedItems.has(key)) return unsavedItems.get(key) ?? null;
   try {
     return localStorage.getItem(key);

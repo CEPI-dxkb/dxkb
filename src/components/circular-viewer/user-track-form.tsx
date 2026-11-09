@@ -28,6 +28,51 @@ const plotItems: Record<UserPlotType, string> = {
   heatmap: "Heatmap",
 };
 
+type UserTrackRead =
+  | { ok: true; parsed: ParsedUserTrack; offSequence: number; pastEnd: number }
+  | { ok: false; message: string };
+
+// Module-level because a `finally`, or a ternary inside `try`, makes the React
+// Compiler skip the component. Never throws: a failure is the `message`.
+async function readUserTrack(
+  file: File,
+  plot: UserPlotType,
+  sequenceLengths: ReadonlyMap<string, number>,
+): Promise<UserTrackRead> {
+  try {
+    const text = await file.text();
+    const read = parseUserTrack(text, plot);
+    if (read.items.length === 0) {
+      return {
+        ok: false,
+        message:
+          plot === "tiles"
+            ? "User file format error: no line has an accession, start and end separated by tabs."
+            : parseUserTrack(text, "tiles").items.length > 0
+              ? "User file format error: no line has an accession, start, end and score separated by tabs. A file of three columns can be shown as Tiles."
+              : "User file format error: no line has an accession, start, end and score separated by tabs.",
+      };
+    }
+    const { parsed, offSequence, pastEnd } = keepSequences(read, sequenceLengths);
+    if (parsed.items.length === 0) {
+      return { ok: false, message: `No line of ${file.name} starts within a drawn sequence of this genome.` };
+    }
+    if (parsed.items.length > maxUserTrackRows) {
+      return {
+        ok: false,
+        message: `${file.name} has ${parsed.items.length.toLocaleString("en-US")} lines to draw, more than the ${maxUserTrackRows.toLocaleString("en-US")} a track can show. Split the file or keep fewer lines.`,
+      };
+    }
+    return { ok: true, parsed, offSequence, pastEnd };
+  } catch (error) {
+    return { ok: false, message: formatPrefixedErrorMessage(`Could not read ${file.name}`, error) };
+  }
+}
+
+function clearFileInput(input: HTMLInputElement | null, file: File): void {
+  if (input?.files?.[0] === file) input.value = "";
+}
+
 /** Legacy `TrackController`'s "Upload your own data" section. */
 export function UserTrackForm({
   onAdd,
@@ -56,48 +101,33 @@ export function UserTrackForm({
     const submittedFile = file;
     const submittedName = name;
     setReading(true);
-    try {
-      const text = await submittedFile.text();
-      const read = parseUserTrack(text, plot);
-      if (read.items.length === 0) {
-        toast.error(
-          plot === "tiles"
-            ? "User file format error: no line has an accession, start and end separated by tabs."
-            : parseUserTrack(text, "tiles").items.length > 0
-              ? "User file format error: no line has an accession, start, end and score separated by tabs. A file of three columns can be shown as Tiles."
-              : "User file format error: no line has an accession, start, end and score separated by tabs.",
-        );
-        return;
+    const result = await readUserTrack(submittedFile, plot, sequenceLengths);
+    if (result.ok) {
+      // No `finally` here (it makes the React Compiler skip this component):
+      // the catch handles anything `onAdd` or the toasts throw, so
+      // `setReading(false)` below still runs.
+      try {
+        const { parsed, offSequence, pastEnd } = result;
+        onAdd(plot, parsed, submittedFile.name, submittedName);
+        if (parsed.skipped > 0) {
+          toast.warning(`Skipped ${String(parsed.skipped)} line(s) of ${submittedFile.name} that could not be read.`);
+        }
+        if (offSequence > 0) {
+          toast.warning(`Skipped ${String(offSequence)} line(s) of ${submittedFile.name} that are not on a drawn sequence.`);
+        }
+        if (pastEnd > 0) {
+          toast.warning(`Skipped ${String(pastEnd)} line(s) of ${submittedFile.name} that start past the end of their sequence.`);
+        }
+        setFile((current) => (current === submittedFile ? null : current));
+        setName((current) => (current === submittedName ? "" : current));
+        clearFileInput(fileInput.current, submittedFile);
+      } catch (error) {
+        toast.error(formatPrefixedErrorMessage(`Could not read ${submittedFile.name}`, error));
       }
-      const { parsed, offSequence, pastEnd } = keepSequences(read, sequenceLengths);
-      if (parsed.items.length === 0) {
-        toast.error(`No line of ${submittedFile.name} starts within a drawn sequence of this genome.`);
-        return;
-      }
-      if (parsed.items.length > maxUserTrackRows) {
-        toast.error(
-          `${submittedFile.name} has ${parsed.items.length.toLocaleString("en-US")} lines to draw, more than the ${maxUserTrackRows.toLocaleString("en-US")} a track can show. Split the file or keep fewer lines.`,
-        );
-        return;
-      }
-      onAdd(plot, parsed, submittedFile.name, submittedName);
-      if (parsed.skipped > 0) {
-        toast.warning(`Skipped ${String(parsed.skipped)} line(s) of ${submittedFile.name} that could not be read.`);
-      }
-      if (offSequence > 0) {
-        toast.warning(`Skipped ${String(offSequence)} line(s) of ${submittedFile.name} that are not on a drawn sequence.`);
-      }
-      if (pastEnd > 0) {
-        toast.warning(`Skipped ${String(pastEnd)} line(s) of ${submittedFile.name} that start past the end of their sequence.`);
-      }
-      setFile((current) => (current === submittedFile ? null : current));
-      setName((current) => (current === submittedName ? "" : current));
-      if (fileInput.current?.files?.[0] === submittedFile) fileInput.current.value = "";
-    } catch (error) {
-      toast.error(formatPrefixedErrorMessage(`Could not read ${submittedFile.name}`, error));
-    } finally {
-      setReading(false);
+    } else {
+      toast.error(result.message);
     }
+    setReading(false);
   }
 
   return (

@@ -56,10 +56,10 @@ import { cn } from "@/lib/utils";
 import { FeatureCard } from "./compare-region-feature-card";
 import {
   HoverContext,
-  LabelHighlight,
   PinContext,
   RowHoverContext,
-} from "./compare-region-highlight";
+} from "./compare-region-contexts";
+import { LabelHighlight } from "./compare-region-highlight";
 import {
   IdentityInfo,
   LabelColumn,

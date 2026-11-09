@@ -12,7 +12,8 @@ import {
 } from "@/components/ui/select";
 import { FieldErrors, FieldItem } from "@/components/ui/tanstack-form";
 import { DialogInfoPopup } from "@/components/services/dialog-info-popup";
-import OutputFolder from "@/components/services/output-folder";
+import { TreeThresholdSelect } from "@/components/services/tree-threshold-select";
+import { ServiceOutputFields } from "@/components/services/service-output-fields";
 import { RequiredFormCardTitle } from "@/components/forms/required-form-components";
 import {
   ServiceCardContent,
@@ -25,10 +26,7 @@ import {
   phylogeneticTreeAlignmentParameters,
   phylogeneticTreeTreeParameters,
 } from "@/lib/services/info/phylogenetic-tree";
-import {
-  thresholdOptions,
-  type GeneProteinTreeFormData,
-} from "@/lib/forms/(protein-tools)/gene-protein-tree/gene-protein-tree-form-schema";
+import type { GeneProteinTreeFormData } from "@/lib/forms/(protein-tools)/gene-protein-tree/gene-protein-tree-form-schema";
 import type { GeneProteinTreeController } from "./use-gene-protein-tree";
 
 export function GeneProteinTreeParameters({
@@ -36,8 +34,7 @@ export function GeneProteinTreeParameters({
 }: {
   controller: GeneProteinTreeController;
 }) {
-  const { form, outputPath, substitutionModelOptions, setIsOutputNameValid } =
-    controller;
+  const { form, substitutionModelOptions, setIsOutputNameValid } = controller;
   return (
     <div className="space-y-4">
       <Card>
@@ -132,35 +129,27 @@ export function GeneProteinTreeParameters({
                 </FieldItem>
               )}
             </form.Field>
-            <div className="flex flex-col space-y-4">
-              <form.Field name="output_path">
-                {(field) => (
-                  <FieldItem>
-                    <OutputFolder
-                      required
-                      value={field.state.value}
-                      onChange={field.handleChange}
+            <form.Field name="output_path">
+              {(outputPathField) => (
+                <form.Field name="output_file">
+                  {(outputNameField) => (
+                    <ServiceOutputFields
+                      outputPath={{
+                        value: outputPathField.state.value,
+                        onChange: outputPathField.handleChange,
+                        errors: <FieldErrors field={outputPathField} />,
+                      }}
+                      outputName={{
+                        value: outputNameField.state.value,
+                        onChange: outputNameField.handleChange,
+                        errors: <FieldErrors field={outputNameField} />,
+                      }}
+                      onOutputNameValidationChange={setIsOutputNameValid}
                     />
-                    <FieldErrors field={field} />
-                  </FieldItem>
-                )}
-              </form.Field>
-              <form.Field name="output_file">
-                {(field) => (
-                  <FieldItem>
-                    <OutputFolder
-                      variant="name"
-                      required
-                      value={field.state.value}
-                      onChange={field.handleChange}
-                      outputFolderPath={outputPath}
-                      onValidationChange={setIsOutputNameValid}
-                    />
-                    <FieldErrors field={field} />
-                  </FieldItem>
-                )}
-              </form.Field>
-            </div>
+                  )}
+                </form.Field>
+              )}
+            </form.Field>
           </div>
         </ServiceCardContent>
       </Card>
@@ -183,28 +172,12 @@ function ThresholdField({
     <form.Field name={name}>
       {(field) => (
         <FieldItem>
-          <ServiceRequiredLabel>
-            {label}
-          </ServiceRequiredLabel>
-          <Select
+          <TreeThresholdSelect
+            label={<ServiceRequiredLabel>{label}</ServiceRequiredLabel>}
+            ariaLabel={ariaLabel}
             value={field.state.value}
-            onValueChange={(value) => {
-              if (value != null) field.handleChange(value);
-            }}
-          >
-            <ServiceSelectTrigger aria-label={ariaLabel}>
-              <SelectValue placeholder="Select" />
-            </ServiceSelectTrigger>
-            <SelectContent>
-              <SelectGroup>
-                {thresholdOptions.map((value) => (
-                  <SelectItem key={value} value={value}>
-                    {value}
-                  </SelectItem>
-                ))}
-              </SelectGroup>
-            </SelectContent>
-          </Select>
+            onValueChange={field.handleChange}
+          />
           <FieldErrors field={field} />
         </FieldItem>
       )}

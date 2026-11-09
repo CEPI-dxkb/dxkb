@@ -4,7 +4,6 @@ import { useFastqUtilitiesPage } from "./use-fastq-utilities-page";
 import { FastqOutputCard, FastqPipelineCard } from "./fastq-parameters";
 import { FieldItem, FieldErrors } from "@/components/ui/tanstack-form";
 import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -20,7 +19,6 @@ import { SelectedLibrariesCard } from "@/components/services/selected-libraries-
 import { RequiredFormCardTitle } from "@/components/forms/required-form-components";
 import { WorkspaceObjectSelector } from "@/components/workspace/workspace-object-selector";
 import { JobParamsDialog } from "@/components/services/job-params-dialog";
-import { Spinner } from "@/components/ui/spinner";
 import {
   ServiceCardContent,
   ServiceCardHeader,
@@ -31,7 +29,7 @@ import {
   ServiceLibraryHeader,
 } from "@/components/services/form-ui/service-library-header";
 import { ServiceSelectTrigger } from "@/components/services/form-ui/service-select";
-import { ServiceSubmitError } from "@/components/services/form-ui/service-submit-error";
+import { ServiceFormFooter } from "@/components/services/form-ui/service-form-footer";
 
 import {
   fastqUtilitiesInfo,
@@ -209,16 +207,13 @@ export default function FastqUtilitiesPage() {
 
         {/* Form Controls */}
         <div className="md:col-span-12">
-          <ServiceSubmitError form={form} />
-          <div className="service-form-controls">
-            <Button type="button" variant="outline" onClick={handleReset}>
-              Reset
-            </Button>
-            <Button type="submit" disabled={isSubmitting || !canSubmit}>
-              {isSubmitting ? <Spinner className="mr-2 size-4" /> : null}
-              Submit
-            </Button>
-          </div>
+          <ServiceFormFooter
+            form={form}
+            onReset={handleReset}
+            isSubmitting={isSubmitting}
+            submitDisabled={!canSubmit}
+            spinnerClassName="mr-2 size-4"
+          />
         </div>
       </form>
 

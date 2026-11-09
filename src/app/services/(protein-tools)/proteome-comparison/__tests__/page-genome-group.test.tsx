@@ -166,6 +166,39 @@ describe("ProteomeComparisonPage genome group add", () => {
     });
   });
 
+  it("returns the add button to its plus and reports why when the group read fails", async () => {
+    server.use(
+      http.post("*/api/services/workspace", () =>
+        HttpResponse.json(
+          {
+            error:
+              "The BV-BRC workspace service did not respond (timed out after 20 s).",
+            code: "upstream",
+          },
+          { status: 504 },
+        ),
+      ),
+    );
+    const user = userEvent.setup();
+    render(<ProteomeComparisonPage />, { wrapper: createQueryClientWrapper() });
+
+    await pickGroupAndAdd(user);
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith("Failed to add genome group", {
+        description:
+          "The BV-BRC workspace service did not respond (timed out after 20 s).",
+        closeButton: true,
+      });
+    });
+    await waitFor(() => {
+      expect(
+        screen.getByRole("button", { name: "Add genome group" }),
+      ).toBeEnabled();
+    });
+    expect(screen.queryByRole("status", { name: "Loading" })).toBeNull();
+  });
+
   it("clears the spinner of an add still in flight on reset", async () => {
     let release!: () => void;
     const gate = new Promise<void>((resolve) => {

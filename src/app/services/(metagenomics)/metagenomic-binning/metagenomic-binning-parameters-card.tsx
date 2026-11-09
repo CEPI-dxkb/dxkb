@@ -9,11 +9,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { RadioGroupItem } from "@/components/ui/radio-group";
-import {
-  FieldErrors,
-  FieldItem,
-  fieldErrorMessage,
-} from "@/components/ui/tanstack-form";
+import { FieldErrors, FieldItem } from "@/components/ui/tanstack-form";
+import { fieldErrorMessage } from "@/components/ui/field-error-message";
 import { ServiceCardHeader } from "@/components/services/form-ui/service-card";
 import {
   ServiceCollapsible,

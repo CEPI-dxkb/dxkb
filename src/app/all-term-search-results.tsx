@@ -10,11 +10,9 @@ import { LandingMobileNav } from "@/components/organisms/landing-shell/landing-m
 import { LandingNav } from "@/components/organisms/landing-shell/landing-nav";
 import { LandingNavSkeleton } from "@/components/organisms/landing-shell/landing-nav-skeleton";
 import { SearchResultsHeader } from "@/components/search/all-types/search-results-header";
-import {
-  TypeResultsCard,
-  moveResultFocus,
-  searchTypeIcon,
-} from "@/components/search/all-types/type-results-card";
+import { moveResultFocus } from "@/components/search/all-types/result-focus";
+import { searchTypeIcon } from "@/components/search/all-types/search-type-icon";
+import { TypeResultsCard } from "@/components/search/all-types/type-results-card";
 import {
   sectionAnchorId,
   useSectionNav,

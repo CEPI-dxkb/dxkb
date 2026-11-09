@@ -24,6 +24,12 @@ import * as ViralGenomeTree from "@/lib/forms/(phylogenomics)/viral-genome-tree/
 import * as ViralGenomeTreeUtils from "@/lib/forms/(phylogenomics)/viral-genome-tree/viral-genome-tree-form-utils";
 import { viralGenomeTreeService } from "@/lib/forms/(phylogenomics)/viral-genome-tree/viral-genome-tree-service";
 
+// Outside the hook so the add handler's `try` holds no ternary, which would
+// make the React Compiler skip the whole hook.
+function genomeGroupAddedDescription(genomeCount: number) {
+  return `Added genome group with ${String(genomeCount)} genome${genomeCount === 1 ? "" : "s"}.`;
+}
+
 export function useViralGenomeTree() {
   const [selectedGenomeGroupObject, setSelectedGenomeGroupObject] =
     useState<WorkspaceObject | null>(null);
@@ -201,7 +207,7 @@ export function useViralGenomeTree() {
         current?.path === inputValue ? null : current,
       );
       toast.success("Genome group added", {
-        description: `Added genome group with ${String(genomeIds.length)} genome${genomeIds.length === 1 ? "" : "s"}.`,
+        description: genomeGroupAddedDescription(genomeIds.length),
         closeButton: true,
       });
     } catch (error) {

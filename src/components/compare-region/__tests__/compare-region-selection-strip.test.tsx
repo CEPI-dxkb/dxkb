@@ -14,7 +14,7 @@ import {
 } from "@/lib/compare-region/families";
 import { featureHref } from "@/lib/views/hrefs";
 import { focusRow, mirroredRow, testGene } from "@/test-helpers/compare-region";
-import { HoverContext, PinContext } from "../compare-region-highlight";
+import { HoverContext, PinContext } from "../compare-region-contexts";
 import { SelectionStrip } from "../compare-region-selection-strip";
 
 // Spied, to count the strip's renders: it resolves the pin first thing.

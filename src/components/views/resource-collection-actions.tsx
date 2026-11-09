@@ -263,6 +263,62 @@ const selectionActionsConfigByResource = {
   >
 >;
 
+/** Where a taxonomy action opens, or null when the selection has no target. */
+function taxonomyResultsHref(
+  actionId: SearchActionId,
+  ids: readonly string[],
+): string | null {
+  if (actionId === "taxonOverview" && ids.length === 1) {
+    return taxonomyHref(ids[0]);
+  }
+  if (actionId === "genomes") return taxonomyGenomesHref(ids);
+  if (actionId === "features" && ids.length === 1) {
+    return taxonomyFeaturesHref(ids);
+  }
+  return null;
+}
+
+/** The experiment IDs of the rows that have one, in row order. */
+function biosetExperimentIds(rows: readonly DataTableRow[]): string[] {
+  return rows.flatMap((row) => {
+    const experimentId = experimentIdFromRow(row);
+    return experimentId ? [experimentId] : [];
+  });
+}
+
+function missingExperimentsMessage(experimentCount: number): string {
+  return experimentCount === 0
+    ? "No experiments are associated with this selection."
+    : "Some selected Biosets are not associated with experiments.";
+}
+
+/**
+ * Resolve the experiment IDs of every matching Bioset, refusing a selection over
+ * the export limit (by this query's total, then by what the read returned).
+ */
+async function readBiosetExperimentIds({
+  matchingTotal,
+  resolveAllMatchingRows,
+  limitMessage,
+}: {
+  matchingTotal: () => Promise<number>;
+  resolveAllMatchingRows: (
+    fields: readonly string[],
+  ) => Promise<MatchingRowsRead>;
+  limitMessage: (count: number) => string;
+}) {
+  const total = await matchingTotal();
+  if (total > maxExportRows) throw new Error(limitMessage(total));
+  const read = await resolveAllMatchingRows(["exp_id"]);
+  if (exceedsReadLimit(read, maxExportRows)) {
+    throw new Error(limitMessage(read.total));
+  }
+  return {
+    experimentIds: biosetExperimentIds(read.rows),
+    rowCount: read.rows.length,
+  };
+}
+
 function openMemberTab(
   href: string,
   label: string,
@@ -607,14 +663,7 @@ export function useResourceCollectionActions<Row extends DataTableRow>({
     setLoadingActionIds([actionId]);
     try {
       const ids = await resolveSelectedTaxonIds();
-      const href =
-        actionId === "taxonOverview" && ids.length === 1
-          ? taxonomyHref(ids[0])
-          : actionId === "genomes"
-            ? taxonomyGenomesHref(ids)
-            : actionId === "features" && ids.length === 1
-              ? taxonomyFeaturesHref(ids)
-              : null;
+      const href = taxonomyResultsHref(actionId, ids);
       if (href) {
         navigateReservedTab(resultsWindow, href);
       } else {
@@ -673,26 +722,16 @@ export function useResourceCollectionActions<Row extends DataTableRow>({
     pendingBiosetActionRef.current = true;
     setLoadingActionIds(["biosets"]);
     try {
-      const total = await matchingTotal();
-      if (total > maxExportRows) throw new Error(limitMessage(total));
-      const read = await resolveAllMatchingRows(["exp_id"]);
-      if (exceedsReadLimit(read, maxExportRows)) {
-        throw new Error(limitMessage(read.total));
-      }
-      const { rows } = read;
-      const experimentIds = rows.flatMap((row) => {
-        const experimentId = experimentIdFromRow(row);
-        return experimentId ? [experimentId] : [];
+      const { experimentIds, rowCount } = await readBiosetExperimentIds({
+        matchingTotal,
+        resolveAllMatchingRows,
+        limitMessage,
       });
-      if (experimentIds.length === rows.length) {
+      if (experimentIds.length === rowCount) {
         navigateReservedTab(resultsWindow, biosetResultsHref(experimentIds));
       } else {
         resultsWindow.close();
-        onError(
-          experimentIds.length === 0
-            ? "No experiments are associated with this selection."
-            : "Some selected Biosets are not associated with experiments.",
-        );
+        onError(missingExperimentsMessage(experimentIds.length));
       }
     } catch (error) {
       resultsWindow.close();

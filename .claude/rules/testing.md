@@ -86,7 +86,7 @@ Use [MSW (Mock Service Worker)](https://mswjs.io/docs/) to intercept HTTP reques
 
 ## React Compiler check
 
-Vitest does not run the React Compiler, so a hook or component the compiler skips still passes every unit test, and `pnpm lint` does not report the skip. Functions nested in a hook compile as part of it, so a construct the compiler cannot handle (`??=`, `try…finally`, `for await`, `for (;;)`) anywhere in the hook body skips the whole hook, which then loses its memoization silently. After changing a hook or component, save this script outside the tree (for example in the scratchpad) and run `node rc-check.cjs "$PWD" <file>` from the repo root. Expect no `CompileError` lines and `memo cache present: true`.
+Vitest does not run the React Compiler, so a hook or component the compiler skips still passes every unit test, and `pnpm lint` does not report the skip. Functions nested in a hook compile as part of it, so any of these anywhere in the body skips the whole component or hook, which then loses its memoization silently: `try…finally`; a `throw` inside `try`; a ternary, `&&`, `||`, `??` or `?.` inside a `try` block (inside `catch` is fine); dynamic `import()`; `for (;;)` or a non-variable `for` init; `??=`; `for await`; a default parameter that reads a property (`x = obj.prop`); an `eslint-disable` of a react-hooks rule. After changing a hook or component, save this script outside the tree (for example in the scratchpad) and run `node rc-check.cjs "$PWD" <file>` from the repo root. Expect no `CompileError` lines and `memo cache present: true`.
 
 ```js
 const path = require("node:path");

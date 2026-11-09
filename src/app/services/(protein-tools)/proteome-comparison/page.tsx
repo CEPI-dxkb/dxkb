@@ -7,7 +7,6 @@ import { useSelector } from "@tanstack/react-store";
 import { FieldItem, FieldErrors } from "@/components/ui/tanstack-form";
 import { ServiceHeader } from "@/components/services/service-header";
 import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { ChevronDown } from "lucide-react";
 import {
   proteomeComparisonInfo,
@@ -16,14 +15,13 @@ import {
   proteomeComparisonReferenceGenome,
 } from "@/lib/services/info/proteome-comparison";
 import { DialogInfoPopup } from "@/components/services/dialog-info-popup";
-import OutputFolder from "@/components/services/output-folder";
+import { ServiceOutputFields } from "@/components/services/service-output-fields";
 import { RequiredFormCardTitle } from "@/components/forms/required-form-components";
 import { WorkspaceObjectSelector } from "@/components/workspace/workspace-object-selector";
 import { WorkspaceObject } from "@/lib/services/workspace/types";
 import { SingleGenomeSelector } from "@/components/services/single-genome-selector";
 import { JobParamsDialog } from "@/components/services/job-params-dialog";
 import { toast } from "sonner";
-import { Spinner } from "@/components/ui/spinner";
 import SelectedItemsTable from "@/components/services/selected-items-table";
 import {
   ServiceCardContent,
@@ -42,7 +40,7 @@ import {
 } from "@/components/services/form-ui/service-input";
 import { ServiceAddButton } from "@/components/services/form-ui/service-add-button";
 import { ServiceFieldSubLabel } from "@/components/services/form-ui/service-field";
-import { ServiceSubmitError } from "@/components/services/form-ui/service-submit-error";
+import { ServiceFormFooter } from "@/components/services/form-ui/service-form-footer";
 import {
   ServiceLabel,
   ServiceSubLabel,
@@ -133,7 +131,6 @@ function useProteomeComparisonPage() {
     form.store,
     (s) => s.values.comparison_items,
   );
-  const outputPath = useSelector(form.store, (s) => s.values.output_path);
   const canSubmit = useSelector(form.store, (s) => s.canSubmit);
 
   // Calculate total genome count (accounting for genome groups)
@@ -294,10 +291,19 @@ function useProteomeComparisonPage() {
     setIsLoadingGenomeGroup(true);
 
     try {
-      // Fetch genome IDs from the group
+      // Fetch genome IDs from the group. The spinner ends when the read
+      // settles, either way, so the early returns below (empty group, over the
+      // limit, duplicate) and a failed read all give the "+" button back.
+      // Ending the spinner sits on the read's `.finally()`, not a `finally`
+      // clause, which would make the React Compiler skip this page. After a
+      // form reset the spinner belongs to whichever add started since, if any.
       const genomeIds = await getGenomeIdsFromGroup(
         selectedCompGenomeGroup.path,
-      );
+      ).finally(() => {
+        if (resetRevision === resetRevisionRef.current) {
+          setIsLoadingGenomeGroup(false);
+        }
+      });
 
       // A reset during the read already cleared the list and this spinner.
       if (resetRevision !== resetRevisionRef.current) return;
@@ -358,13 +364,6 @@ function useProteomeComparisonPage() {
         description: errorMessage,
         closeButton: true,
       });
-    } finally {
-      // The early returns above (empty group, over the limit, duplicate) left
-      // the "+" button on its spinner, so only a reload recovered it. After a
-      // reset the spinner belongs to whichever add started since, if any.
-      if (resetRevision === resetRevisionRef.current) {
-        setIsLoadingGenomeGroup(false);
-      }
     }
   }
 
@@ -415,35 +414,27 @@ function useProteomeComparisonPage() {
 
               <ServiceCardContent>
                 <div className="space-y-4">
-                  <div className="flex flex-col space-y-4">
-                    <form.Field name="output_path">
-                      {(field) => (
-                        <FieldItem>
-                          <OutputFolder
-                            required={true}
-                            value={field.state.value}
-                            onChange={field.handleChange}
+                  <form.Field name="output_path">
+                    {(outputPathField) => (
+                      <form.Field name="output_file">
+                        {(outputNameField) => (
+                          <ServiceOutputFields
+                            outputPath={{
+                              value: outputPathField.state.value,
+                              onChange: outputPathField.handleChange,
+                              errors: <FieldErrors field={outputPathField} />,
+                            }}
+                            outputName={{
+                              value: outputNameField.state.value,
+                              onChange: outputNameField.handleChange,
+                              errors: <FieldErrors field={outputNameField} />,
+                            }}
+                            onOutputNameValidationChange={setIsOutputNameValid}
                           />
-                          <FieldErrors field={field} />
-                        </FieldItem>
-                      )}
-                    </form.Field>
-                    <form.Field name="output_file">
-                      {(field) => (
-                        <FieldItem>
-                          <OutputFolder
-                            variant="name"
-                            required={true}
-                            value={field.state.value}
-                            onChange={field.handleChange}
-                            outputFolderPath={outputPath}
-                            onValidationChange={setIsOutputNameValid}
-                          />
-                          <FieldErrors field={field} />
-                        </FieldItem>
-                      )}
-                    </form.Field>
-                  </div>
+                        )}
+                      </form.Field>
+                    )}
+                  </form.Field>
 
                   {/* Advanced Parameters */}
                   <ServiceCollapsible
@@ -804,19 +795,13 @@ function useProteomeComparisonPage() {
         </div>
 
         {/* Form Controls */}
-        <ServiceSubmitError form={form} />
-        <div className="service-form-controls">
-          <Button type="button" variant="outline" onClick={handleReset}>
-            Reset
-          </Button>
-          <Button
-            type="submit"
-            disabled={isSubmitting || !canSubmit || !isOutputNameValid}
-          >
-            {isSubmitting ? <Spinner className="mr-2 size-4" /> : null}
-            Submit
-          </Button>
-        </div>
+        <ServiceFormFooter
+          form={form}
+          onReset={handleReset}
+          isSubmitting={isSubmitting}
+          submitDisabled={!canSubmit || !isOutputNameValid}
+          spinnerClassName="mr-2 size-4"
+        />
       </form>
 
       <JobParamsDialog {...jobParamsDialogProps} />

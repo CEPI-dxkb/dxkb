@@ -4,17 +4,12 @@ import { Card } from "@/components/ui/card";
 import { RequiredFormCardTitle } from "@/components/forms/required-form-components";
 import { DialogInfoPopup } from "@/components/services/dialog-info-popup";
 import SraRunAccessionWithValidation from "@/components/services/sra-run-accession-with-validation";
-import { WorkspaceObjectSelector } from "@/components/workspace/workspace-object-selector";
+import { ReadLibraryInputSection } from "@/components/services/read-library-input-section";
 import {
   ServiceCardContent,
   ServiceCardHeader,
 } from "@/components/services/form-ui/service-card";
-import {
-  ServiceLibraryAddButton,
-  ServiceLibraryHeader,
-} from "@/components/services/form-ui/service-library-header";
 import { readInputFileInfo } from "@/lib/services/info/variation-analysis";
-import type { WorkspaceObject } from "@/lib/services/workspace/types";
 import type { VariationAnalysisController } from "./use-variation-analysis-form";
 
 export function LibraryInputSection({
@@ -48,50 +43,16 @@ export function LibraryInputSection({
         </RequiredFormCardTitle>
       </ServiceCardHeader>
       <ServiceCardContent className="space-y-6">
-        <div className="space-y-4">
-          <ServiceLibraryHeader title="Paired Read Library">
-            <ServiceLibraryAddButton
-              aria-label="Add paired read library"
-              onClick={handlePairedLibraryAdd}
-              disabled={!pairedRead1 || !pairedRead2}
-            />
-          </ServiceLibraryHeader>
-          <div className="space-y-3">
-            <WorkspaceObjectSelector
-              preset="reads"
-              placeholder="Select READ FILE 1..."
-              value={pairedRead1 ?? ""}
-              onObjectSelect={(object: WorkspaceObject) =>
-                { setPairedRead1(object.path); }
-              }
-            />
-            <WorkspaceObjectSelector
-              preset="reads"
-              placeholder="Select READ FILE 2..."
-              value={pairedRead2 ?? ""}
-              onObjectSelect={(object: WorkspaceObject) =>
-                { setPairedRead2(object.path); }
-              }
-            />
-          </div>
-        </div>
-        <div className="space-y-4">
-          <ServiceLibraryHeader title="Single Read Library">
-            <ServiceLibraryAddButton
-              aria-label="Add single read library"
-              onClick={handleSingleLibraryAdd}
-              disabled={!singleRead}
-            />
-          </ServiceLibraryHeader>
-          <WorkspaceObjectSelector
-            preset="reads"
-            placeholder="Select READ FILE..."
-            value={singleRead ?? ""}
-            onObjectSelect={(object: WorkspaceObject) =>
-              { setSingleRead(object.path); }
-            }
-          />
-        </div>
+        <ReadLibraryInputSection
+          pairedRead1={pairedRead1}
+          pairedRead2={pairedRead2}
+          singleRead={singleRead}
+          onPairedRead1Change={setPairedRead1}
+          onPairedRead2Change={setPairedRead2}
+          onSingleReadChange={setSingleRead}
+          onAddPairedLibrary={handlePairedLibraryAdd}
+          onAddSingleLibrary={handleSingleLibraryAdd}
+        />
         <SraRunAccessionWithValidation
           key={sraResetKey}
           title="SRA Run Accession"

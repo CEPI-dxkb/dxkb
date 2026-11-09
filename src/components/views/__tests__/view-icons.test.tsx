@@ -2,7 +2,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import { join, relative, resolve } from "node:path";
 
 import { defaultViewDescriptors } from "@/components/organisms/shared/default-nav-items";
-import { searchTypeIcon } from "@/components/search/all-types/type-results-card";
+import { searchTypeIcon } from "@/components/search/all-types/search-type-icon";
 import { getCuratedLists } from "@/lib/taxon-view/curated-lists";
 import { buildTabContext } from "@/lib/taxon-view/tab-context";
 import { resolveTabs } from "@/lib/taxon-view/tab-policy";

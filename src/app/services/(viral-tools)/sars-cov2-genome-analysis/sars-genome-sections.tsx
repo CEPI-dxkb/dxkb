@@ -7,23 +7,14 @@ import {
   SelectItem,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import { HelpCircle } from "lucide-react";
 import SraRunAccessionWithValidation from "@/components/services/sra-run-accession-with-validation";
-import SelectedItemsTable from "@/components/services/selected-items-table";
+import { SelectedLibrariesCard } from "@/components/services/selected-libraries-card";
 import { WorkspaceObjectSelector } from "@/components/workspace/workspace-object-selector";
 import { DialogInfoPopup } from "@/components/services/dialog-info-popup";
 import { RequiredFormCardTitle } from "@/components/forms/required-form-components";
 import {
   ServiceCardContent,
-  ServiceCardDescription,
   ServiceCardHeader,
-  ServiceCardTitle,
 } from "@/components/services/form-ui/service-card";
 import { ServiceSubLabel } from "@/components/services/form-ui/service-label";
 import {
@@ -32,7 +23,6 @@ import {
 } from "@/components/services/form-ui/service-library-header";
 import { ServiceSelectTrigger } from "@/components/services/form-ui/service-select";
 import { readInputFileInfo } from "@/lib/services/info/sars-cov2-genome-analysis";
-import { getLibraryTypeLabel } from "@/lib/forms/shared-schemas";
 import {
   sarsCov2PairedPlatformOptions,
   sarsCov2SinglePlatformOptions,
@@ -153,37 +143,11 @@ export function SarsGenomeReadInputs({ page }: { page: SarsGenomePage }) {
         </Card>
       </div>
       <div className="md:col-span-6">
-        <Card className="h-full">
-          <ServiceCardHeader>
-            <ServiceCardTitle>
-              Selected Libraries
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger aria-label="Help: place read files using arrow buttons">
-                    <HelpCircle className="service-card-tooltip-icon" />
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Place read files here using the arrow buttons</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            </ServiceCardTitle>
-            <ServiceCardDescription>
-              Place read files here using the arrow buttons.
-            </ServiceCardDescription>
-          </ServiceCardHeader>
-          <ServiceCardContent>
-            <SelectedItemsTable
-              items={page.selectedLibraries.map((library) => ({
-                id: library.id,
-                name: library.name,
-                type: getLibraryTypeLabel(library.type),
-              }))}
-              onRemove={page.removeLibrary}
-              className="max-h-80 overflow-y-auto"
-            />
-          </ServiceCardContent>
-        </Card>
+        <SelectedLibrariesCard
+          items={page.selectedLibraries}
+          onRemove={page.removeLibrary}
+          tableClassName="max-h-80 overflow-y-auto"
+        />
       </div>
     </>
   );

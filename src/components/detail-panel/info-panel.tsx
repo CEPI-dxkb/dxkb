@@ -18,7 +18,7 @@ import { ppiFields } from "@/constants/datafields/ppi";
 import type { DataFieldMap } from "@/constants/datafields/types";
 import { DetailPanel, type DetailField } from "./index";
 import { isLinkValue, resolveLink } from "./metadata-link-policy";
-import { renderMetadataLink, renderMetadataLinkButton } from "./metadata-link";
+import { MetadataLink, MetadataLinkButton } from "./metadata-link";
 import { formatOwner, formatFileSize } from "@/lib/services/workspace/helpers";
 import type { WorkspaceItem } from "@/lib/services/workspace/domain";
 import {
@@ -887,10 +887,13 @@ function renderSearchInfoPanel(
                           index,
                         ) {
                           if (href === undefined) return null;
-                          return renderMetadataLink(
-                            href,
-                            String(value),
-                            `${String(value)}-${String(index)}`,
+                          return (
+                            <MetadataLink
+                              key={`${String(value)}-${String(index)}`}
+                              href={href}
+                            >
+                              {String(value)}
+                            </MetadataLink>
                           );
                         })}
                       </span>
@@ -912,15 +915,20 @@ function renderSearchInfoPanel(
                 return {
                   label: item.label,
                   value: rawValue,
-                  render: () =>
-                    renderMetadataLinkButton(href, item.linkText ?? "View"),
+                  render: () => (
+                    <MetadataLinkButton href={href}>
+                      {item.linkText ?? "View"}
+                    </MetadataLinkButton>
+                  ),
                 };
               }
 
               return {
                 label: item.label,
                 value: rawValue,
-                render: () => renderMetadataLink(href, String(rawValue)),
+                render: () => (
+                  <MetadataLink href={href}>{String(rawValue)}</MetadataLink>
+                ),
               };
             });
 

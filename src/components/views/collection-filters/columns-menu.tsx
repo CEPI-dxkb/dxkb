@@ -25,7 +25,8 @@ import {
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 
-import { CheckMark, EmptyState, navigationTarget } from "./facet-value-list";
+import { CheckMark, EmptyState } from "./facet-value-list";
+import { navigationTarget } from "./facet-values";
 import type { CollectionColumnControls, CollectionColumnOption } from "./types";
 
 type ColumnRow = CollectionColumnOption & { group: "shown" | "hidden" };

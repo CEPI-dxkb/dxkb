@@ -38,10 +38,8 @@ import {
   ServiceCardContent,
   ServiceCardHeader,
 } from "@/components/services/form-ui/service-card";
-import {
-  ServiceInput,
-  ServiceNumberInput,
-} from "@/components/services/form-ui/service-input";
+import { ServiceInput } from "@/components/services/form-ui/service-input";
+import { ServiceNumberInput } from "@/components/services/form-ui/service-number-input";
 import { ServiceAddButton } from "@/components/services/form-ui/service-add-button";
 import { ServiceLabel } from "@/components/services/form-ui/service-label";
 import { ServiceRadioGroup } from "@/components/services/form-ui/service-radio-group";

@@ -34,10 +34,8 @@ import {
   ServiceCollapsibleContent,
   ServiceCollapsibleTrigger,
 } from "@/components/services/form-ui/service-collapsible";
-import {
-  ServiceInput,
-  ServiceNumberInput,
-} from "@/components/services/form-ui/service-input";
+import { ServiceInput } from "@/components/services/form-ui/service-input";
+import { ServiceNumberInput } from "@/components/services/form-ui/service-number-input";
 import { ServiceAddButton } from "@/components/services/form-ui/service-add-button";
 import { ServiceFieldSubLabel } from "@/components/services/form-ui/service-field";
 import { ServiceFormFooter } from "@/components/services/form-ui/service-form-footer";

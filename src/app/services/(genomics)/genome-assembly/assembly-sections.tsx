@@ -34,7 +34,7 @@ import {
   ServiceCollapsibleTrigger,
 } from "@/components/services/form-ui/service-collapsible";
 import { ServiceFieldLabel } from "@/components/services/form-ui/service-field";
-import { ServiceNumberInput } from "@/components/services/form-ui/service-input";
+import { ServiceNumberInput } from "@/components/services/form-ui/service-number-input";
 import {
   ServiceLibraryAddButton,
   ServiceLibraryHeader,

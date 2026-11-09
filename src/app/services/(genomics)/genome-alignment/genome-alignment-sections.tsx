@@ -25,7 +25,7 @@ import {
   ServiceCollapsibleTrigger,
 } from "@/components/services/form-ui/service-collapsible";
 import { ServiceAddButton } from "@/components/services/form-ui/service-add-button";
-import { ServiceNumberInput } from "@/components/services/form-ui/service-input";
+import { ServiceNumberInput } from "@/components/services/form-ui/service-number-input";
 import { ServiceLabel } from "@/components/services/form-ui/service-label";
 import {
   genomeAlignmentAdvancedParameterOptions,

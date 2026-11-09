@@ -6,10 +6,10 @@ A Next.js 16 bioinformatics platform for genomics, metagenomics, and viral resea
 
 ## Prerequisites
 
-- **Node.js v24** — required by Vitest 4 / rolldown. Use [nvm](https://github.com/nvm-sh/nvm):
+- **Node.js v26** — the version pinned in `.nvmrc` and used by CI (Vitest 4 / rolldown need at least v22). Use [nvm](https://github.com/nvm-sh/nvm):
   ```bash
-  nvm install 24
-  nvm use 24
+  nvm install 26
+  nvm use 26
   ```
 - **pnpm** — the project's package manager:
   ```bash

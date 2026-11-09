@@ -5,7 +5,7 @@ import {
   clearRecentFolders,
 } from "@/lib/recent-workspace-folders";
 
-// Node 24 exposes globalThis.localStorage as undefined unless --localstorage-file is
+// Node 25+ exposes globalThis.localStorage as undefined unless --localstorage-file is
 // provided, which prevents jsdom from overriding it. Stub a real in-memory store so
 // the module under test and the beforeEach calls work correctly in both environments.
 const localStorageMock = (() => {

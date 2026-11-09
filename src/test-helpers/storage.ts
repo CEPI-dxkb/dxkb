@@ -1,6 +1,7 @@
 /**
- * jsdom's working localStorage. Node 22+ defines a broken experimental global of
- * its own, which is what a suite gets back after `vi.unstubAllGlobals()` (see the
+ * jsdom's working localStorage. Node 25+ defines a Web Storage global of
+ * its own (undefined without --localstorage-file), which is what a suite gets back
+ * after `vi.unstubAllGlobals()` until the next test's setup re-stub (see the
  * matching note in vitest.setup.ts).
  */
 export function jsdomLocalStorage(): Storage {

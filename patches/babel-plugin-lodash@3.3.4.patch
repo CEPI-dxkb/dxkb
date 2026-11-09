@@ -1,0 +1,15 @@
+diff --git a/lib/index.js b/lib/index.js
+index 16ed6be8be8f555cc99096c2ff60954b42dc313d..27a40c5fc014a93db502475c8199a8620ad8a3b2 100644
+--- a/lib/index.js
++++ b/lib/index.js
+@@ -99,7 +99,9 @@ function lodash(_ref) {
+ 
+         var node = _ref3;
+ 
+-        if ((0, _types.isModuleDeclaration)(node)) {
++        // DXKB patch: isModuleDeclaration is deprecated in @babel/types 7.21+ and
++        // prints a stack trace on every build; this is its renamed equivalent.
++        if ((0, _types.isImportOrExportDeclaration)(node)) {
+           isModule = true;
+           break;
+         }

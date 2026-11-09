@@ -16,7 +16,7 @@ pnpm a11y         # Accessibility suite (own config: playwright.a11y.config.ts)
 
 **Before committing, run `pnpm lint && pnpm typecheck && pnpm build && pnpm test`** — all four gate every PR in CI.
 
-Requires **Node v24** (`nvm use 24`, pinned in `.nvmrc`). `pnpm start` = prod server on port 3010. More scripts (`test:watch`, `test:coverage`, `e2e:record`, `e2e:update-snapshots`, `a11y:*`, `build-pm2`) in `package.json`.
+Requires **Node v26** (`nvm use 26`, pinned in `.nvmrc`). `pnpm start` = prod server on port 3010. More scripts (`test:watch`, `test:coverage`, `e2e:record`, `e2e:update-snapshots`, `a11y:*`, `build-pm2`) in `package.json`.
 
 ## Architecture (summary — full map in `docs/architecture.md`)
 

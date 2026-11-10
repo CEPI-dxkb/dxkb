@@ -5,6 +5,7 @@ import {
   genomeScenarioOverrides,
 } from "../fixtures/overrides";
 import { ResourceCollectionPage } from "../pages";
+import { e2eSignedInStatePath } from "../auth/storage-state";
 
 test.use({ storageState: { cookies: [], origins: [] } });
 
@@ -81,4 +82,45 @@ test("the header checkbox follows the page selection and the all-results selecti
   await expect(collection.allResultsSelectedNotice(401)).toHaveCount(0);
   await expect(collection.rowCheckbox(firstRow.genome_id)).not.toBeChecked();
   await expect(collection.rowCheckbox(secondRow.genome_id)).not.toBeChecked();
+});
+
+test.describe("signed in", () => {
+  test.use({ storageState: e2eSignedInStatePath });
+
+  // GROUP and SERVICES are disabled while the selection's IDs resolve, which moves
+  // focus to the body before their dialog opens. Closing the dialog has to hand
+  // focus back to the tile rather than leave it on the body.
+  for (const { tile, dialog } of [
+    { tile: "GROUP", dialog: "Add Genomes to Group" },
+    { tile: "SERVICES", dialog: "Use selected Genomes in a service" },
+    { tile: "COPY", dialog: "Copy selected Genomes (1)" },
+  ]) {
+    test(`Escape on the ${tile} dialog returns focus to ${tile}`, async ({
+      page,
+    }) => {
+      await applyBackendMocks(page, {
+        overrides: [
+          pageOneOverride,
+          ...genomeScenarioOverrides,
+          ...emptyBackendFallbackOverrides,
+        ],
+      });
+      const collection = new ResourceCollectionPage(
+        page,
+        "genome",
+        "genome",
+        firstRow.genome_id,
+        firstRow.genome_name,
+      );
+      await collection.goto("influenza");
+      await collection.rowCheckbox(firstRow.genome_id).check();
+
+      await collection.actionTile(tile).click();
+      const opened = page.getByRole("dialog", { name: dialog });
+      await expect(opened).toBeVisible();
+      await page.keyboard.press("Escape");
+      await expect(opened).toBeHidden();
+      await expect(collection.actionTile(tile)).toBeFocused();
+    });
+  }
 });

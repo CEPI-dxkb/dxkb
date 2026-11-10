@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type RefObject } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -23,6 +23,13 @@ interface CollectionCopyDialogProps {
     columnMode: CopyColumnMode,
     includeHeaders: boolean,
   ) => Promise<void>;
+  /**
+   * The control that opened the dialog, which takes focus back when it closes.
+   * The dialog has no `DialogTrigger`, so it otherwise returns focus to whatever
+   * was focused as it opened: the body, when the opening button was disabled
+   * while its action loaded.
+   */
+  finalFocus?: RefObject<HTMLElement | null>;
 }
 
 const copyChoices = [
@@ -54,6 +61,7 @@ export function CollectionCopyDialog({
   label,
   selectedCount,
   onCopy,
+  finalFocus,
 }: CollectionCopyDialogProps) {
   const [copyingChoice, setCopyingChoice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -97,7 +105,7 @@ export function CollectionCopyDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent finalFocus={finalFocus}>
         <DialogHeader>
           <DialogTitle>
             Copy selected {label} ({selectedCount.toLocaleString()})

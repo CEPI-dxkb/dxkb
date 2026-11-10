@@ -592,6 +592,8 @@ export function useResourceCollectionActions<Row extends DataTableRow>({
    * resolution would replace the IDs an already-open chooser is working with.
    */
   const pendingTaxonomyActionRef = useRef<SearchActionId | null>(null);
+  /** SERVICES, which takes focus back when the Taxonomy chooser closes. */
+  const taxonomyServicesButtonRef = useRef<HTMLButtonElement>(null);
   const pendingBiosetActionRef = useRef(false);
   const [loadingActionIds, setLoadingActionIds] = useState<SearchActionId[]>(
     [],
@@ -871,6 +873,7 @@ export function useResourceCollectionActions<Row extends DataTableRow>({
       guideUrl={profile.guideUrl}
       enabledActions={enabledActionsByResource[profile.resource]}
       loadingActionIds={loadingActionIds}
+      actionRefs={{ services: taxonomyServicesButtonRef }}
       onError={onError}
       onAction={dispatchAction}
     />
@@ -884,6 +887,7 @@ export function useResourceCollectionActions<Row extends DataTableRow>({
           open={isTaxonomyServiceOpen}
           onOpenChange={setIsTaxonomyServiceOpen}
           taxonIds={taxonomyServiceIds}
+          finalFocus={taxonomyServicesButtonRef}
         />
       ) : null,
   };

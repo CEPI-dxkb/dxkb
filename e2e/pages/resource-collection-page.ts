@@ -118,6 +118,11 @@ export class ResourceCollectionPage {
     );
   }
 
+  /** An action rail tile named by its label, e.g. "GROUP" or "SERVICES". */
+  actionTile(label: string) {
+    return this.page.getByRole("button", { name: label, exact: true });
+  }
+
   /** The action rail's Download tile; its name ends in the selection badge. */
   downloadTile() {
     return this.page.getByRole("button", { name: /^DOWNLOAD/ });

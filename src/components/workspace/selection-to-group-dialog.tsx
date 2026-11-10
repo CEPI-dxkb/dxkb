@@ -33,6 +33,13 @@ export interface SelectionToGroupDialogProps {
   defaultFolder: string;
   onCreate: (folderPath: string, name: string) => Promise<void>;
   onAppend: (path: string) => Promise<void>;
+  /**
+   * The control that opened the dialog, which takes focus back when it closes.
+   * The dialog has no `DialogTrigger`, so it otherwise returns focus to whatever
+   * was focused as it opened: the body, when the opening button was disabled
+   * while its action loaded.
+   */
+  finalFocus?: RefObject<HTMLElement | null>;
 }
 
 type GroupMode = "new" | "existing";
@@ -89,7 +96,7 @@ function SelectionToGroupForm({
   onCreate,
   onAppend,
   sessionRef,
-}: Omit<SelectionToGroupDialogProps, "open"> & {
+}: Omit<SelectionToGroupDialogProps, "open" | "finalFocus"> & {
   sessionRef: RefObject<number>;
 }) {
   const copy = groupCopy[groupKind];
@@ -282,6 +289,7 @@ export function SelectionToGroupDialog({
   defaultFolder,
   onCreate,
   onAppend,
+  finalFocus,
 }: SelectionToGroupDialogProps) {
   /**
    * Identifies the current dialog session so a create or append that resolves after
@@ -297,7 +305,10 @@ export function SelectionToGroupDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex max-h-[calc(100dvh-2rem)] flex-col overflow-hidden sm:max-w-lg">
+      <DialogContent
+        finalFocus={finalFocus}
+        className="flex max-h-[calc(100dvh-2rem)] flex-col overflow-hidden sm:max-w-lg"
+      >
         <SelectionToGroupForm
           ids={ids}
           groupKind={groupKind}

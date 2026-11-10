@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import type { ReactNode, RefObject } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -40,6 +40,15 @@ export interface SearchActionBarProps {
   enabledActions?: readonly SearchActionId[];
   loadingActionIds?: SearchActionId[];
   actionPopovers?: Partial<Record<SearchActionId, ReactNode>>;
+  /**
+   * Refs to the buttons that dispatch `onAction`, so a dialog an action opens can
+   * hand focus back to its button on close (`finalFocus`). The button is disabled
+   * while the action is loading, and Chromium then moves focus to the body, so
+   * the dialog has nothing focused to return to.
+   */
+  actionRefs?: Partial<
+    Record<SearchActionId, RefObject<HTMLButtonElement | null>>
+  >;
   onAction?: (actionId: SearchActionId) => void;
   onError?: (message: string) => void;
 }
@@ -52,6 +61,7 @@ export function SearchActionBar({
   enabledActions,
   loadingActionIds,
   actionPopovers,
+  actionRefs,
   onAction,
   onError,
 }: SearchActionBarProps) {
@@ -116,6 +126,7 @@ export function SearchActionBar({
           const buttonEl = (
             <Button
               key={renderKey}
+              ref={actionRefs?.[action.id]}
               variant="secondary"
               size="tile"
               className="w-full max-md:w-16 max-md:shrink-0"

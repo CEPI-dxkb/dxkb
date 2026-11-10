@@ -196,6 +196,10 @@ export function CollectionSelectionActions({
   );
   /** The action currently resolving IDs, so overlapping resolutions are rejected. */
   const pendingActionRef = useRef<SearchActionId | null>(null);
+  // Each dialog hands focus back to the button that opened it when it closes.
+  const copyButtonRef = useRef<HTMLButtonElement>(null);
+  const servicesButtonRef = useRef<HTMLButtonElement>(null);
+  const groupButtonRef = useRef<HTMLButtonElement>(null);
   // "Strains" -> "Strain". Only used for the copied-rows toast and the no-genomes
   // reason, so labels that do not pluralize by suffix pass their own singular.
   const singularLabel = singularLabelProp ?? label.replace(/s$/, "");
@@ -419,6 +423,11 @@ export function CollectionSelectionActions({
               }
         }
         disabledActions={resolvedDisabledActions}
+        actionRefs={{
+          copyRows: copyButtonRef,
+          services: servicesButtonRef,
+          group: groupButtonRef,
+        }}
         onError={onError}
         onAction={(actionId) => {
           void runAction(actionId);
@@ -430,6 +439,7 @@ export function CollectionSelectionActions({
         label={label}
         selectedCount={selectedCount}
         onCopy={copySelectedRows}
+        finalFocus={copyButtonRef}
       />
       <SelectionServiceChooser
         open={isServiceOpen}
@@ -439,11 +449,13 @@ export function CollectionSelectionActions({
         kind={idKind}
         workspaceUsername={user ? workspaceUsername(user) : undefined}
         signInHref={signInHref}
+        finalFocus={servicesButtonRef}
       />
       {user && hasOpenedGroup && (
         <SelectionToGroupDialog
           open={isGroupOpen}
           onOpenChange={setIsGroupOpen}
+          finalFocus={groupButtonRef}
           ids={selectionIds}
           groupKind={idKind}
           defaultFolder={`/${workspaceUsername(user)}/home/${groupCopy.title}s`}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type RefObject } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -17,12 +17,20 @@ interface TaxonomyServiceChooserProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   taxonIds: readonly string[];
+  /**
+   * The control that opened the dialog, which takes focus back when it closes.
+   * The dialog has no `DialogTrigger`, so it otherwise returns focus to whatever
+   * was focused as it opened: the body, when the opening button was disabled
+   * while its action loaded.
+   */
+  finalFocus?: RefObject<HTMLElement | null>;
 }
 
 export function TaxonomyServiceChooser({
   open,
   onOpenChange,
   taxonIds,
+  finalFocus,
 }: TaxonomyServiceChooserProps) {
   const [error, setError] = useState<string | null>(null);
   const [lastOpen, setLastOpen] = useState(open);
@@ -35,7 +43,7 @@ export function TaxonomyServiceChooser({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent finalFocus={finalFocus}>
         <DialogHeader>
           <DialogTitle>Use selected Taxa in a service</DialogTitle>
           <DialogDescription>

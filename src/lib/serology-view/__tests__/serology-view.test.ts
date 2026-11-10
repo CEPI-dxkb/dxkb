@@ -80,6 +80,15 @@ describe("Serology view contracts", () => {
     expect(serologyStructuralRql(explicit)).toBeUndefined();
   });
 
+  it("queries an (empty) Test Type pick instead of throwing", () => {
+    // `test_type` is never quoted, but "" has only the quoted form.
+    const state = parseSerologyCollectionState({ test_type: ["", "ELISA"] });
+    expect(state.filters.test_type).toEqual(["", "ELISA"]);
+    expect(serologyStructuralRql(state)).toBe(
+      'or(eq(test_type,""),eq(test_type,ELISA))',
+    );
+  });
+
   it("uses backend id for row identity and public compound member links", () => {
     expect(serologyCollectionProfile.idField).toBe("id");
     expect(serologyCollectionProfile.rowLinkField).toBe("sample_identifier");

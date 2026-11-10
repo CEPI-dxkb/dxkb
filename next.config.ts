@@ -23,9 +23,33 @@ interface WebpackConfig {
   };
 }
 
+// Next's Server Action CSRF check compares the browser's `Origin` with the
+// forwarded host. Behind a reverse proxy that forwards the backend address
+// instead of the public one, the two differ and every Server Action (sign-out
+// included) is rejected. The fix for that belongs in the proxy
+// (`X-Forwarded-Host: <public host>`); as a safety net, this deployment's own
+// public host, from `APP_BASE_URL` (the origin it already declares to the
+// BV-BRC services, `getAppBaseUrl`), is always accepted. Next loads `.env`
+// before this file, and the list is baked in at build time.
+function appBaseHost(): string[] {
+  const configured = process.env.APP_BASE_URL;
+  if (!configured) return [];
+  try {
+    return [new URL(configured).host];
+  } catch {
+    // `getAppBaseUrl` reports a malformed value where it is used.
+    return [];
+  }
+}
+
 const nextConfig: NextConfig = {
   output: "standalone",
   reactCompiler: true,
+  experimental: {
+    serverActions: {
+      allowedOrigins: appBaseHost(),
+    },
+  },
   env: {
     NEXT_PUBLIC_APP_VERSION: pkg.version,
   },

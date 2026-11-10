@@ -1,3 +1,4 @@
+import { booleanFilterValues } from "@/lib/data-api/resources";
 import {
   parseCollectionState,
   serializeCollectionState,
@@ -150,6 +151,7 @@ export function childCollectionOptions(
       ]),
     ],
     friendlyFilters: facets?.map((facet) => facet.field) ?? [],
+    filterValues: booleanFilterValues(facets?.map((facet) => facet.field) ?? []),
     defaultFilters,
   };
 }

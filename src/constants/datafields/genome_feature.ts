@@ -71,6 +71,17 @@ export const genomeFeatureFields = {
         search: true 
         },
         
+    // Facet and filter, not a table column: private rows carry public=false.
+    public: {
+      label: 'Public',
+      field: 'public',
+      hidden: true,
+      show_in_table: false,
+      group: 'Source',
+      facet: true,
+      facet_hidden: false,
+      search: false
+    },
     feature_id: { 
         label: 'Feature ID', 
         field: 'feature_id', 

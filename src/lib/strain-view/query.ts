@@ -1,4 +1,4 @@
-import { validateRql } from "@/lib/data-api";
+import { booleanFilterValues, validateRql } from "@/lib/data-api";
 import {
   parseCollectionState,
   type CollectionState,
@@ -17,6 +17,7 @@ export const strainCollectionOptions: CollectionStateOptions = {
   defaultSort: "unsorted",
   sortAllowlist: ["unsorted", ...strainSorts],
   friendlyFilters: ["taxon_id", "strain", ...strainMetadata.facetFields],
+  filterValues: booleanFilterValues(strainMetadata.facetFields),
 };
 
 export function parseStrainCollectionState(

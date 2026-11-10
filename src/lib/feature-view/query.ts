@@ -1,4 +1,9 @@
-import { eq, validateRql, type DataSort } from "@/lib/data-api";
+import {
+  booleanFilterValues,
+  eq,
+  validateRql,
+  type DataSort,
+} from "@/lib/data-api";
 import {
   parseCollectionState,
   type CollectionState,
@@ -17,8 +22,9 @@ export const featureSorts = featureMetadata.sorts;
 export const featureCollectionOptions: CollectionStateOptions = {
   defaultSort: "unsorted",
   sortAllowlist: ["unsorted", ...featureSorts],
-  friendlyFilters: ["genome_id", "annotation", "feature_type", "filter"],
+  friendlyFilters: ["genome_id", "annotation", "feature_type", "public", "filter"],
   independentFilters: ["filter"],
+  filterValues: booleanFilterValues(["public"]),
 };
 
 /**

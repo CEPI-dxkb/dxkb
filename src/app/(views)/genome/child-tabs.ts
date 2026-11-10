@@ -3,10 +3,7 @@ import type { DataResource, DataSort } from "@/lib/data-api";
 import type { CollectionDownloadSpec } from "@/lib/data-api/downloads";
 import { featureGridDefaultOrder } from "@/lib/feature-view";
 import type { ChildCollectionUrlKey } from "@/lib/views/child-collection-state";
-import {
-  genomeSequenceColumns,
-  proteinDownloadSpec,
-} from "@/lib/views/child-resources";
+import { proteinDownloadSpec } from "@/lib/views/child-resources";
 
 interface GenomeChildCollection {
   urlKey: ChildCollectionUrlKey;
@@ -25,10 +22,10 @@ interface GenomeChildCollection {
  * label, id field, sort, columns and URL param prefix are defined once here. Each
  * `urlKey` is unique so two tabs never read one another's page or sort.
  *
- * `genome_feature`, `protein_feature` and `protein_structure` deliberately carry no
- * columns — ResourceChildCollection substitutes the resource's own collection profile
- * (columns, detail fields, facets and row links) and ignores any columns prop for
- * those three.
+ * `genome_sequence`, `genome_feature`, `protein_feature` and `protein_structure`
+ * deliberately carry no columns — ResourceChildCollection substitutes the resource's
+ * own collection profile (columns, detail fields, facets and row links) and ignores
+ * any columns prop for those four.
  */
 export const genomeChildCollections = {
   sequences: {
@@ -37,7 +34,6 @@ export const genomeChildCollections = {
     label: "Sequences",
     idField: "sequence_id",
     defaultSort: "sequence_id:asc",
-    columns: genomeSequenceColumns,
   },
   // Legacy FeatureGrid's and ProteinGrid's order, which marks no column as
   // sorted: a genome's features run along each sequence from position 1.

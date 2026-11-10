@@ -18,6 +18,7 @@ import { proteinStructureCollectionProfile } from "@/lib/protein-structure-view"
 import { serologyCollectionProfile } from "@/lib/serology-view";
 import { strainCollectionProfile } from "@/lib/strain-view";
 import { surveillanceCollectionProfile } from "@/lib/surveillance-view";
+import { genomeSequenceCollectionProfile } from "@/lib/views/child-resources";
 import {
   childCollectionOptions,
   type ChildCollectionUrlKey,
@@ -88,6 +89,8 @@ const canonicalProfiles: Partial<
     scopedProfile(genomeAmrCollectionProfile, label, rql),
   genome_feature: (label, rql) =>
     scopedProfile(featureCollectionProfile, label, rql),
+  genome_sequence: (label, rql) =>
+    scopedProfile(genomeSequenceCollectionProfile, label, rql),
   protein_feature: (label, rql) =>
     scopedProfile(proteinFeatureCollectionProfile, label, rql),
   protein_structure: (label, rql) =>

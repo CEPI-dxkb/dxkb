@@ -29,6 +29,7 @@ describe("AMR Phenotypes collection profile", () => {
       "evidence",
       "pmid",
       "resistant_phenotype",
+      "public",
       "laboratory_typing_method",
       "computational_method",
     ]);

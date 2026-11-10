@@ -1,8 +1,5 @@
 import { LazyResourceChildCollection } from "./lazy-tab-roots";
-import {
-  genomeSequenceColumns,
-  taxonomySequenceRql,
-} from "@/lib/views/child-resources";
+import { taxonomySequenceRql } from "@/lib/views/child-resources";
 import { taxonLineageClause, type TaxonViewScope } from "./scope";
 
 export function makeSequencesView({ scope }: { scope: TaxonViewScope }) {
@@ -14,7 +11,6 @@ export function makeSequencesView({ scope }: { scope: TaxonViewScope }) {
         label="Sequences"
         idField="sequence_id"
         rql={taxonomySequenceRql(taxonLineageClause(scope))}
-        columns={genomeSequenceColumns}
         defaultSort="sequence_id:asc"
         guideUrl="https://www.bv-brc.org/docs/quick_references/organisms_taxon/sequences.html"
       />

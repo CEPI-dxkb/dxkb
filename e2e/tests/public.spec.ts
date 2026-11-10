@@ -3,7 +3,7 @@ import {
   workspaceOverrides,
   emptyBackendFallbackOverrides,
 } from "../fixtures/overrides";
-import { SignInPage } from "../pages";
+import { SignInPage, SiteChrome } from "../pages";
 
 test.use({ storageState: { cookies: [], origins: [] } });
 
@@ -51,17 +51,12 @@ test.describe("public routes (no auth)", () => {
   test("a page with the site footer paints the root in the footer's fill", async ({
     page,
   }) => {
-    const fill = (element: Element) => getComputedStyle(element).backgroundColor;
+    const chrome = new SiteChrome(page);
     for (const path of ["/", "/about"]) {
-      await page.goto(path);
-      const footer = page.locator("[data-site-footer]");
-      await expect(footer).toHaveCount(1);
-      const footerFill = await footer.evaluate(fill);
-      expect(await page.locator("html").evaluate(fill), path).toBe(footerFill);
-      // The body keeps the page background over its own box.
-      expect(await page.locator("body").evaluate(fill), path).not.toBe(
-        footerFill,
-      );
+      await test.step(path, async () => {
+        await page.goto(path);
+        await chrome.expectOverscrollInFooterFill();
+      });
     }
   });
 

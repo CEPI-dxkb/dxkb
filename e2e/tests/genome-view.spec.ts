@@ -6,7 +6,7 @@ import {
   genomeSequenceScenarioOverrides,
   taxonGenomesScenarioOverrides,
 } from "../fixtures/overrides";
-import { CollectionToolbar, GenomeMemberPage } from "../pages";
+import { CollectionToolbar, GenomeMemberPage, SiteChrome } from "../pages";
 
 const genomeViewOverrides = [
   ...taxonGenomesScenarioOverrides,
@@ -151,12 +151,7 @@ test.describe("Genome view", () => {
     await expect(
       page.getByRole("heading", { level: 1, name: "Genomes" }),
     ).toBeVisible();
-    await expect(page.locator("[data-site-footer]")).toHaveCount(0);
-    expect(
-      await page
-        .locator("html")
-        .evaluate((element) => getComputedStyle(element).backgroundColor),
-    ).toBe("rgba(0, 0, 0, 0)");
+    await new SiteChrome(page).expectOverscrollUnpainted();
   });
 
   test("canonicalizes invalid collection position without rendering an error", async ({

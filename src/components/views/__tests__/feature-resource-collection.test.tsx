@@ -88,7 +88,6 @@ describe("FeatureResourceCollection", () => {
   });
 
   it("keeps the Proteins scope in the facet counts beside the untouched default", () => {
-    // The Proteins search always adds filter=protein; only PATRIC is left out.
     const proteins: CollectionState = {
       ...listState,
       filters: { annotation: ["PATRIC"], filter: ["protein"] },

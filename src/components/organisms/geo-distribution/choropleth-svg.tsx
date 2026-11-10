@@ -93,8 +93,6 @@ export const ChoroplethSvg = forwardRef<ChoroplethHandle, ChoroplethSvgProps>(
       onLeaveMap();
     };
     const [width, setWidth] = useState(800);
-    // The map fills the height its card leaves (at least `mapHeight`), so the
-    // legend below it keeps even spacing however tall the card is.
     const [height, setHeight] = useState(mapHeight);
     const containerRef = useRef<HTMLDivElement | null>(null);
     const isDraggingRef = useRef(false);
@@ -117,9 +115,8 @@ export const ChoroplethSvg = forwardRef<ChoroplethHandle, ChoroplethSvgProps>(
           setWidth(next);
           if (nextHeight && nextHeight > 0) setHeight(nextHeight);
         };
-        // Fire immediately on first observation so initial render has correct width.
-        // Debounce all subsequent events so the SVG doesn't re-render on every frame
-        // of a CSS width transition (e.g. collapsing the nav sidebar).
+        // The first observation fires immediately; later ones are debounced so a CSS
+        // width transition does not re-render the SVG every frame.
         if (isFirstObservation) {
           isFirstObservation = false;
           applySize();
@@ -135,11 +132,9 @@ export const ChoroplethSvg = forwardRef<ChoroplethHandle, ChoroplethSvgProps>(
       };
     }, []);
 
-    // A plain wheel scrolls the page past the map, which can fill the whole
-    // overview; Ctrl/⌘ + wheel, and a trackpad pinch (which browsers send as a
-    // Ctrl wheel), zoom it. Stopping a plain wheel here, in the capture phase,
-    // keeps it from Zoom's non-passive listener on the svg, which would cancel
-    // the scroll.
+    // A plain wheel scrolls the page; Ctrl/⌘ + wheel (and a trackpad pinch) zooms.
+    // Stopping a plain wheel in the capture phase keeps Zoom's non-passive
+    // listener from cancelling the scroll.
     useEffect(() => {
       const node = containerRef.current;
       if (!node) return;
@@ -176,8 +171,7 @@ export const ChoroplethSvg = forwardRef<ChoroplethHandle, ChoroplethSvgProps>(
           )
         : [];
 
-    // Exclude antimeridian-crossing counties from fit bounds so Alaska does not
-    // produce a near-global bounding box.
+    // Antimeridian-crossing counties would make Alaska give a near-global bounding box.
     const safeCountyFeatures = countyFeatures.filter(
       (feature) => !crossesAntimeridian(feature),
     );
@@ -194,16 +188,12 @@ export const ChoroplethSvg = forwardRef<ChoroplethHandle, ChoroplethSvgProps>(
             ],
           ];
 
-    // AlbersUsa standard: scale=1070 at translate [487,305] fits US in ~960×600.
-    // Tie to the height so the full US (including Alaska/Hawaii insets) fits vertically.
     const albersScale = height * 1.55;
     const worldScale = Math.min(width / 6.3, height * 0.29);
 
     return (
       <div
         ref={containerRef}
-        // min-h-131 is `mapHeight` (524px): the map's height wherever the card
-        // does not set one, and its floor where it does.
         className="relative flex min-h-131 w-full flex-1 items-center justify-center overflow-hidden rounded-md bg-muted/30"
         onPointerLeave={onLeaveMap}
       >
@@ -217,7 +207,6 @@ export const ChoroplethSvg = forwardRef<ChoroplethHandle, ChoroplethSvgProps>(
           wheelDelta={mapWheelDelta}
         >
           {(zoom) => {
-            // Update ref every frame — no setState so no re-render cascade.
             isDraggingRef.current = zoom.isDragging;
             zoomImperativeRef.current = {
               reset: zoom.reset,
@@ -292,7 +281,6 @@ export const ChoroplethSvg = forwardRef<ChoroplethHandle, ChoroplethSvgProps>(
                   </g>
                 </svg>
 
-                {/* Overlay messages rendered outside the zoom SVG */}
                 {mapState.view === "world" && worldTopoLoading && (
                   <div className="pointer-events-none absolute inset-0 flex items-center justify-center text-sm text-muted-foreground">
                     Loading world map…

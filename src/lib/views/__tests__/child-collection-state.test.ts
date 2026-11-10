@@ -51,7 +51,7 @@ describe("child collection URL state", () => {
 
   it("keeps its filters when the URL also carries a stray rql or refine", () => {
     // An explicit rql makes parseCollectionState skip friendly filters, so the
-    // stray param has to be gone before parsing, not just from the result.
+    // stray param must go before parsing.
     expect(
       parseChildCollectionState(
         {

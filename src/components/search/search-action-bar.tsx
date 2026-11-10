@@ -23,19 +23,14 @@ import {
   type SearchActionId,
 } from "./search-action-policy";
 
-// The action table, the visibility filter and the disabled rule live in
-// `search-action-policy.ts`, which the `SearchActionBar` test fake also consumes, so
-// the fake cannot offer an interaction this component would have hidden. Re-exported
-// here because this module is the action bar's public face for its consumers.
+// Re-exported because this module is the action bar's public face; the policy
+// lives in `search-action-policy.ts`, shared with the test fake.
 export { notReady, type SearchActionId } from "./search-action-policy";
 
 export interface SearchActionBarProps {
   selectedCount: number;
   searchType: string;
   guideUrl?: string;
-  // Per-consumer disable with a tooltip reason. Lets one shared config power both
-  // /search and the taxon-view, which disable different subsets of the same
-  // taxonomy actions.
   disabledActions?: Partial<Record<SearchActionId, string>>;
   enabledActions?: readonly SearchActionId[];
   loadingActionIds?: SearchActionId[];
@@ -61,10 +56,9 @@ export function SearchActionBar({
     hasGuideUrl: Boolean(guideUrl),
   });
 
-  // Two calls, deliberately. The button's own `disabled` covers all three rules; the
-  // *structure* around it (sign-in popover, "not ready" tooltip, or a plain button)
-  // follows the consumer's enablement only, so an action that is merely mid-flight
-  // keeps its shape and just goes disabled while it resolves.
+  // The button's `disabled` covers all three rules, but the structure around it
+  // follows the consumer's enablement only, so a mid-flight action keeps its
+  // shape.
   const isDisabled = (action: SearchActionConfig) =>
     isSearchActionDisabled(action, {
       disabledActions,

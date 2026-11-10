@@ -10,14 +10,9 @@ import { ResourceCollectionPage } from "../pages";
 test.use({ storageState: { cookies: [], origins: [] } });
 
 /**
- * A resource collection reads its facet counts apart from its rows, and only
- * once the user reaches for them: nothing before the Filters menu (or a pill)
- * opens, then one request for the pinned facets of the scope (each facet its
- * own query, batched), and one more per facet the user turns on. A field's
- * counts leave its own filter out, so a pick re-reads the other fields only.
- * The unit suites pin each half against a stubbed hook or a stubbed table;
- * this spec is the real page: the preference provider, the saved table
- * layout, the toolbar, the hook and the gateway requests they add up to.
+ * Facet counts are read apart from rows, only once the user reaches for them (Filters
+ * menu or a pill). A field's counts leave its own filter out. This spec covers the real
+ * page; the unit suites stub the hook or table.
  */
 
 const firstRow = { genome_id: "1282460.2049", genome_name: "Selected genome" };
@@ -52,9 +47,8 @@ const rowOverrides: JsonOverride[] = [
 }));
 
 /**
- * Answers every facet read with counts for exactly the facets it asked for.
- * `respond` can hold a read (or fail it) to observe the states in between.
- * Registered after `applyBackendMocks`, so it is matched first.
+ * Answers every facet read with counts for exactly the facets asked for; `respond` can
+ * hold or fail a read. Registered after applyBackendMocks, so it is matched first.
  */
 async function routeFacetReads(
   page: Page,
@@ -143,8 +137,6 @@ test.describe("resource collection facet counts", () => {
     });
 
     await collection.goto("influenza");
-    // The menu is closed: the rows and the next-page prefetch are read, and
-    // no counts at all.
     await expect.poll(() => rowPages).toContain("2");
     expect(reads).toHaveLength(0);
 
@@ -153,17 +145,12 @@ test.describe("resource collection facet counts", () => {
     await expect(
       toolbar.facetValueOption("Genome Status", "Complete", 5),
     ).toBeVisible();
-    // One read for every pinned facet. Pointing at Filters starts it, and the
-    // opened menu joins that read rather than sending its own.
     expect(reads).toHaveLength(1);
     const [read] = reads;
-    // A count read, not a page of rows: one row, no page, no sort.
     expect(read.searchParams.get("pageSize")).toBe("1");
     expect(read.searchParams.has("page")).toBe(false);
     expect(read.searchParams.has("sort")).toBe(false);
     expect(read.searchParams.get("keyword")).toBe("influenza");
-    // Exactly the pinned facets: Genome Status is pinned by default,
-    // Superkingdom and Genus start under More.
     const requested = facetsOf(read);
     await expect(toolbar.pinnedFacetOptions()).toHaveCount(requested.length);
     expect(requested).toContain("genome_status");
@@ -173,7 +160,6 @@ test.describe("resource collection facet counts", () => {
     await toolbar.closeFilters();
     await collection.goToPage(2);
     await expect(collection.rowCheckbox(secondRow.genome_id)).toBeVisible();
-    // Counts depend on the scope, not the page.
     await toolbar.openFilters();
     await toolbar.openFacet("Genome Status");
     await expect(
@@ -197,16 +183,12 @@ test.describe("resource collection facet counts", () => {
     ).toBeVisible();
     expect(reads).toHaveLength(1);
 
-    // Unfolding More counts every facet in it, in one read, and none of the
-    // pinned ones again.
     await toolbar.openFacet("Genus");
     await expect.poll(() => reads.length).toBe(2);
     const more = facetsOf(reads[1]);
     expect(more).toContain("genus");
     expect(more).toContain("superkingdom");
     expect(more).not.toContain("genome_status");
-    // Until Genus is counted, its checklist holds placeholders rather than
-    // "No values", and the counted facets keep their counts.
     await expect(toolbar.valuePlaceholders("Genus").first()).toBeAttached();
     await expect(toolbar.noValues("Genus")).toHaveCount(0);
     await toolbar.openFacet("Genome Status");
@@ -221,8 +203,6 @@ test.describe("resource collection facet counts", () => {
       toolbar.facetValueOption("Genus", "Alphainfluenzavirus", 5),
     ).toBeVisible();
     await expect(toolbar.valuePlaceholders("Genus")).toHaveCount(0);
-    // Pinning the peeked facet keeps its counts: nothing is read again, and
-    // it opens with the pinned set from now on.
     await expect(toolbar.pinToggle()).toHaveAttribute("aria-pressed", "false");
     await toolbar.pinToggle().click();
     await expect(toolbar.pinToggle()).toHaveAttribute("aria-pressed", "true");
@@ -258,9 +238,6 @@ test.describe("resource collection facet counts", () => {
       "Filters, 1 active",
     );
     await expect.poll(() => reads.length).toBe(2);
-    // Genome Status's counts leave its own filter out, so its scope is
-    // unchanged and it is not read again; every other pinned facet is, in one
-    // request carrying the filter.
     const afterPick = reads[1];
     expect(facetsOf(afterPick)).toEqual(
       pinned.filter((field) => field !== "genome_status"),
@@ -276,8 +253,6 @@ test.describe("resource collection facet counts", () => {
     await expect(toolbar.activeFilterPill("Genome Status")).toHaveAccessibleName(
       "Genome Status: Complete. Edit filter",
     );
-    // Clearing the filter returns to the first scope, whose counts are still
-    // fresh: nothing is read.
     await toolbar.clearFilter("Genome Status");
     await expect(toolbar.activeFilterPill("Genome Status")).toHaveCount(0);
     await expect(toolbar.filtersButton()).toHaveAccessibleName("Filters");
@@ -299,11 +274,8 @@ test.describe("resource collection facet counts", () => {
   }) => {
     const collection = await openGenomeCollection(page);
     const { toolbar } = collection;
-    // A 502 is an upstream outage, which the app's query client does not
-    // retry on its own (`shouldRetryQuery`): one failed read reports it.
-    // Every count read fails until the upstream recovers. Opening the menu can
-    // re-read counts whose hover prefetch failed, so the number of failed reads
-    // before the alert depends on timing; the Retry is the read after recovery.
+    // A 502 is not retried by the query client (`shouldRetryQuery`); how many failed
+    // reads precede the alert depends on timing.
     let upstreamDown = true;
     const reads = await routeFacetReads(page, async (route, url) => {
       if (upstreamDown) {
@@ -331,7 +303,6 @@ test.describe("resource collection facet counts", () => {
       /Could not load filter values: Facet query timed out upstream\./,
     );
     await toolbar.closeFilters();
-    // A failed count read leaves the table usable.
     await expect(collection.rowCheckbox(firstRow.genome_id)).toBeVisible();
 
     const failedReads = reads.length;
@@ -342,7 +313,6 @@ test.describe("resource collection facet counts", () => {
     await expect(
       toolbar.facetValueOption("Genome Status", "Complete", 5),
     ).toBeVisible();
-    // The Retry re-reads the failed counts in one request, and no rows.
     expect(reads).toHaveLength(failedReads + 1);
     expect(facetsOf(reads.at(-1))).toEqual(facetsOf(reads[0]));
   });

@@ -16,17 +16,9 @@ interface TaxIDSelectorProps extends TaxonomySelectorProps {
   id?: string;
   apiServiceUrl?: string;
   queryFilter?: string;
-  /**
-   * Draws the error border for a failure the caller reports (a form field's
-   * error). Unlike `required`, it adds no message of its own.
-   */
+  /** Draws the error border for a caller-reported failure; unlike `required`, adds no message. */
   invalid?: boolean;
-  /**
-   * The form field's error (`fieldErrorMessage(field)`), shown under the
-   * input in place of a `FieldErrors` beside it. While nothing is picked
-   * because the search failed, the failure shows instead, so an outage never
-   * reads as "Taxonomy ID is required".
-   */
+  /** The form field's error, shown under the input; a failed search shows instead while nothing is picked. */
   fieldError?: string | null;
 }
 
@@ -46,11 +38,6 @@ async function searchTaxonById(
     params.append("fq", queryFilter);
   }
 
-  // A failure carries the proxy's own message ("BV-BRC Taxonomy API error:
-  // 503 …"). The proxy relays BV-BRC's `Accept: application/json` reply, a
-  // bare array of documents (the Solr `{ response: { docs } }` envelope only
-  // comes with application/solr+json), and the API serializes taxon_id as a
-  // string.
   const docs = await apiGet<
     (Omit<TaxonomyItem, "taxon_id"> & { taxon_id: number | string })[]
   >(`${apiUrl}?${params.toString()}`, undefined, {
@@ -75,15 +62,13 @@ export function TaxIDSelector({
 }: TaxIDSelectorProps) {
   const resolvedApiServiceUrl = apiServiceUrl;
   const [showDropdown, setShowDropdown] = useState(false);
-  // Initialize searchQuery from value prop to ensure SSR/client hydration match
   const [searchQuery, setSearchQuery] = useState(
     value ? String(value.taxon_id) : "",
   );
   const [debouncedQuery, setDebouncedQuery] = useState(searchQuery);
   const [touched, setTouched] = useState(false);
   const inputRef = useRef<HTMLDivElement>(null);
-  // The blur close waits so a click on a suggestion lands before the list
-  // goes; unmount cancels it so it cannot fire into a torn-down component.
+  // The blur close waits so a click on a suggestion lands first; unmount cancels it.
   const blurCloseTimeoutRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   useEffect(() => {
@@ -92,7 +77,6 @@ export function TaxIDSelector({
     };
   }, []);
 
-  // Debounce the search query
   useEffect(() => {
     const timeoutId = setTimeout(() => {
       setDebouncedQuery(searchQuery);
@@ -123,18 +107,14 @@ export function TaxIDSelector({
   const results = searchResult.data ?? [];
   const lookup = taxonomyLookupState(searchResult);
 
-  // Sync searchQuery with value prop when value is set externally
   const [prevValue, setPrevValue] = useState(value);
   const [prevDisabled, setPrevDisabled] = useState(disabled);
   if (prevValue !== value || prevDisabled !== disabled) {
     setPrevValue(value);
     setPrevDisabled(disabled);
     if (disabled) {
-      // When disabled, always sync with value
       setSearchQuery(value ? String(value.taxon_id) : "");
     } else if (value && String(value.taxon_id) !== searchQuery) {
-      // When not disabled but value changes externally (e.g., from taxon name selector),
-      // update searchQuery only if it doesn't match (to avoid overriding active typing)
       setSearchQuery(String(value.taxon_id));
     } else if (
       !value &&
@@ -167,8 +147,6 @@ export function TaxIDSelector({
 
   const isValid = !required || !!value;
   const displayResults = results;
-  // With nothing picked, a failed search is the reason, not the user: it
-  // takes the required message's place (in the list while that is open).
   const shownLookupError = value || disabled ? null : lookup.error;
   const requiredMessage =
     fieldError ??
@@ -228,7 +206,6 @@ export function TaxIDSelector({
           </Button>
         )}
 
-        {/* Live Search Dropdown - only show when not disabled */}
         {!disabled && showDropdown && (
           <div className="absolute inset-x-0 top-full z-50 mt-1 max-h-64 scrollbar-thin scrollbar-thumb-muted-foreground/20 scrollbar-track-transparent overflow-y-auto rounded-md border bg-popover shadow-md hover:scrollbar-thumb-muted-foreground/40 dark:scrollbar-thumb-muted-foreground/30 dark:hover:scrollbar-thumb-muted-foreground/50">
             <TaxonomySuggestionContent
@@ -256,7 +233,6 @@ export function TaxIDSelector({
               message={shownLookupError}
               onRetry={() => {
                 lookup.retry();
-                // Focus reopens the list, where the retry's answer shows.
                 inputRef.current?.querySelector("input")?.focus();
               }}
             />

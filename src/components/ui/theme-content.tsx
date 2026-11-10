@@ -20,8 +20,6 @@ export function ThemeContent({
   const mounted = useIsMounted();
   const { theme } = useTheme();
 
-  // During SSR and initial render, always use the default theme
-  // This prevents hydration mismatch
   const currentTheme = mounted ? theme : "dxkb-light";
   const content = getThemeContent(currentTheme || "dxkb-light", type);
 

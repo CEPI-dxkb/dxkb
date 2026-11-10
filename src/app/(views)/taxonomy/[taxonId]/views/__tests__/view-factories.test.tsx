@@ -60,15 +60,12 @@ function ResourceChildCollection({
   );
 }
 
-// The real Interactions shell renders its Table through the child collection's
-// own module path.
 vi.mock("@/components/views/resource-child-collection", () => ({
   ResourceChildCollection,
 }));
 
-// The factories reach their client roots through lazy-tab-roots; synchronous
-// stubs keep these tests on the props each factory passes. Interactions keeps
-// the real shell, so its Table's query is still asserted.
+// Synchronous lazy-tab-roots stubs keep these tests on each factory's props;
+// Interactions keeps the real shell.
 vi.mock("@/components/organisms/taxon-views/lazy-tab-roots", async () => ({
   LazyInteractionsSubviewShell: (
     await import("@/components/interactions/interactions-subview-shell")
@@ -271,10 +268,8 @@ describe("makeGenomesView", () => {
 
 describe("makeSequencesView", () => {
   it("renders the shared collection with the genome_sequence cross-core join query", () => {
-    // The query shape is the key discovery: genome_sequence has no
-    // taxon_lineage_ids field, so it must join to the genome core. Assert the
-    // join fragments — a test that only checked for "1234" would pass the
-    // known-bad eq(taxon_lineage_ids,1234) applied directly to genome_sequence.
+    // genome_sequence has no taxon_lineage_ids field, so it must join to the
+    // genome core; assert the join fragments, not just "1234".
     const SequencesView = makeSequencesView({ scope });
     const { getByTestId } = render(<SequencesView />);
     const panel = getByTestId("taxon-data-panel");
@@ -297,8 +292,8 @@ describe("makeSequencesView", () => {
 
 describe("makeAmrPhenotypesView", () => {
   it("scopes genome_amr through the genome join, as legacy's taxon AMR tab does", () => {
-    // genome_amr has a row taxon_id but no taxon_lineage_ids, so a lineage
-    // filter applied directly would miss every descendant taxon's phenotypes.
+    // genome_amr has no taxon_lineage_ids, so a direct lineage filter would
+    // miss descendants' phenotypes.
     const AmrPhenotypesView = makeAmrPhenotypesView({ scope });
     const { getByTestId } = render(<AmrPhenotypesView />);
     const panel = getByTestId("taxon-data-panel");
@@ -348,8 +343,8 @@ describe("makeFeaturesView", () => {
       "data-q",
       "and(eq(genome_id,*),genome(and(eq(taxon_lineage_ids,1234),ne(genome_status,Deprecated))))",
     );
-    // Legacy's taxon Features tab: PATRIC features until the user removes the
-    // Feature list's default (taxon 1763: 233,216,595 of 265,873,048).
+    // Legacy's taxon Features tab lists PATRIC features until the user removes
+    // the default.
     expect(panel).toHaveAttribute(
       "data-default-filters",
       JSON.stringify({ annotation: ["PATRIC"] }),

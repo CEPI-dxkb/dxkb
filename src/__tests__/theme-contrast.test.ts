@@ -18,7 +18,6 @@ const expectedThemes = [
   "bvbrc-dark",
 ];
 
-/** WCAG 2 AA for normal-size text: every secondary surface carries small text. */
 const minimumContrast = 4.5;
 
 interface ThemeBlock {
@@ -26,11 +25,6 @@ interface ThemeBlock {
   values: Map<string, string>;
 }
 
-/**
- * The innermost `selector { ... }` blocks of a stylesheet, with comments
- * dropped, each as its custom properties. A theme block holds only
- * declarations, so "innermost" finds it without a CSS parser.
- */
 function readBlocks(file: string): ThemeBlock[] {
   const css = readFileSync(join(repoRoot, file), "utf8").replace(
     /\/\*[\s\S]*?\*\//g,
@@ -54,7 +48,6 @@ function readBlocks(file: string): ThemeBlock[] {
 
 type Oklab = [number, number, number];
 
-/** An `oklch(L C H)` literal (L as a number or a percentage) in OKLab. */
 function oklchToOklab(value: string): Oklab {
   const match = /^oklch\(\s*([\d.]+)(%?)\s+([\d.]+)\s+([\d.]+)/.exec(value);
   if (!match) throw new Error(`Not an oklch() literal: ${value}`);
@@ -64,7 +57,6 @@ function oklchToOklab(value: string): Oklab {
   return [lightness, chroma * Math.cos(hue), chroma * Math.sin(hue)];
 }
 
-/** An OKLab color in sRGB, 0–1. */
 function oklabToSrgb([lightness, a, b]: Oklab): [number, number, number] {
   const l = (lightness + 0.3963377774 * a + 0.2158037573 * b) ** 3;
   const m = (lightness - 0.1055613458 * a - 0.0638541728 * b) ** 3;
@@ -74,7 +66,6 @@ function oklabToSrgb([lightness, a, b]: Oklab): [number, number, number] {
     -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s,
     -0.0041960863 * l - 0.7034186147 * m + 1.707614701 * s,
   ];
-  // Clipped to sRGB, as browsers paint an out-of-gamut color today.
   const [red, green, blue] = linear.map((channel) => {
     const clipped = Math.min(1, Math.max(0, channel));
     return clipped <= 0.0031308
@@ -84,18 +75,12 @@ function oklabToSrgb([lightness, a, b]: Oklab): [number, number, number] {
   return [red, green, blue];
 }
 
-/**
- * The custom properties an element sees: its own declarations, then what it
- * inherits. A `var()` resolves where it is declared, as in CSS, so a
- * `.service-surface` override can name a `--service-*` value that its theme
- * element derived from the theme's own tokens.
- */
+/** A `var()` resolves where it is declared, as in CSS. */
 interface Scope {
   values: Map<string, string>;
   parent?: Scope;
 }
 
-/** An `oklch()` literal, a `var()`, or a `color-mix(in oklab, …)` of them. */
 function resolveColor(value: string, scope: Scope): Oklab {
   const variable = /^var\((--[\w-]+)\)$/.exec(value);
   if (variable) return resolveVariable(variable[1], scope);
@@ -126,14 +111,12 @@ function relativeLuminance([red, green, blue]: [number, number, number]) {
 
 type Srgb = [number, number, number];
 
-/** `top` painted at `share` opacity over `bottom`, as a browser composites it (in sRGB). */
 function paintOver(top: Srgb, share: number, bottom: Srgb): Srgb {
   return top.map(
     (channel, index) => channel * share + bottom[index] * (1 - share),
   ) as Srgb;
 }
 
-/** The WCAG contrast ratio of two sRGB colors. */
 function srgbContrast(first: Srgb, second: Srgb): number {
   const [lighter, darker] = [first, second]
     .map(relativeLuminance)
@@ -141,7 +124,6 @@ function srgbContrast(first: Srgb, second: Srgb): number {
   return (lighter + 0.05) / (darker + 0.05);
 }
 
-/** The contrast of two custom properties as `scope` resolves them. */
 function contrast(scope: Scope, foreground: string, background: string): number {
   const srgb = (name: string) => oklabToSrgb(resolveVariable(name, scope));
   return srgbContrast(srgb(foreground), srgb(background));
@@ -153,7 +135,6 @@ const themeBlocks = allBlocks.filter((block) =>
   block.values.has("--secondary-hover"),
 );
 
-/** What every theme element derives from its own tokens (`--service-*`). */
 const derivedValues = allBlocks
   .filter((block) => block.selector === "[data-theme]")
   .flatMap((block) => [...block.values]);
@@ -168,11 +149,6 @@ function themeScope(block: ThemeBlock): Scope {
   return { values: new Map([...derivedValues, ...block.values]) };
 }
 
-/**
- * A theme inside the services layout: the `.service-surface` overrides in
- * `globals.css` that select this theme, by name or by its `-light`/`-dark`
- * family, in source order, over the theme's own tokens.
- */
 function serviceScope(block: ThemeBlock): Scope {
   const theme = themeOf(block) ?? "";
   const values = new Map<string, string>();
@@ -208,10 +184,7 @@ describe("theme contrast: secondary surfaces", () => {
   );
 });
 
-/**
- * Small muted text (field labels, breadcrumbs, descriptions) reads dim on a
- * dark surface well before it fails AA, so the dark themes hold it to AAA.
- */
+/** Small muted text reads dim on dark surfaces well before failing AA, so dark themes are held to AAA. */
 const darkMutedContrast = 7;
 
 const darkThemeBlocks = themeBlocks.filter((block) =>
@@ -227,8 +200,7 @@ describe("theme contrast: dark-theme text", () => {
     ]);
   });
 
-  // The services layout repaints the card in some themes (bvbrc-dark's takes
-  // a tint of its foreground), so its effective surfaces are checked too.
+  // The services layout repaints the card in some themes, so its effective surfaces are checked too.
   it.each(darkThemeBlocks.map((block) => [themeOf(block), block] as const))(
     "%s keeps muted text at 7:1 and links at 4.5:1 on its card and page",
     (_theme, block) => {
@@ -252,16 +224,7 @@ describe("theme contrast: dark-theme text", () => {
   );
 });
 
-/**
- * The Compare Region Viewer's segmented toggles and pin strip. Each toggle
- * (Method, Density) sets its unpressed option in `text-foreground/70` on a
- * `bg-muted` pill, and the density label and the pinned gene's genome use it
- * on the card or on the pin strip's muted wash over the card, where the
- * strip's links (`text-link`) sit too. `muted-foreground` on `muted` is under
- * 4.5:1 in the light themes and the Tabs recipe (`foreground/60`) 3.8:1 in
- * bvbrc-light, so the viewer uses 70%. The strip's unit tests pin both
- * classes to these shares.
- */
+/** Compare Region toggles use `text-foreground/70` because `muted-foreground` on `muted` is under 4.5:1 in the light themes; the strip's unit tests pin these classes. */
 const toggleTextShare = 0.7;
 // `bg-muted/30`: at 40% bvbrc-light's links on the wash were 4.47:1.
 const pinWashShare = 0.3;
@@ -272,7 +235,6 @@ describe("theme contrast: the Compare Region Viewer's toggles and pin strip", ()
     (theme, block) => {
       const scope = themeScope(block);
       const srgb = (name: string) => oklabToSrgb(resolveVariable(name, scope));
-      // Small dim text: AA in the light themes, the dark themes' 7:1 (above).
       const dimTextContrast = theme?.endsWith("-dark")
         ? darkMutedContrast
         : minimumContrast;
@@ -298,11 +260,7 @@ describe("theme contrast: the Compare Region Viewer's toggles and pin strip", ()
   );
 });
 
-/**
- * The Circular Viewer's position labels: 10 px SVG text in `muted-foreground`
- * (the `--tick-color` fallback) on the card. axe leaves SVG text `incomplete`,
- * so the e2e sweep never scores it; this holds every theme to AA instead.
- */
+/** Circular Viewer position labels are SVG text axe leaves `incomplete`, so this holds every theme to AA instead. */
 describe("theme contrast: the Circular Viewer's position labels", () => {
   it.each(themeBlocks.map((block) => [themeOf(block), block] as const))(
     "%s keeps muted-foreground at 4.5:1 on the card",

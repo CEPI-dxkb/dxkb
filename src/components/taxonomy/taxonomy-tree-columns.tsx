@@ -25,7 +25,6 @@ import { clsx } from "cn";
 
 const indentPx = 16;
 
-// Tree depth indent for the `pl-(--indent)` class.
 function indent(depth: number): string {
   return `${String(depth * indentPx)}px`;
 }
@@ -172,7 +171,6 @@ export const taxonomyColumns: ColumnDef<TaxonomyTableFeatures, TaxonRecord>[] =
       cell: ({ row }) => {
         const rank = row.original.taxon_rank;
         if (isPlaceholder(row.original) || !rank) return null;
-        // Rank colors come from the [data-rank] rules in globals.css.
         return (
           <Badge variant="outline" size="xs" data-rank={rank}>
             {rank}

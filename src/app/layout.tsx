@@ -67,8 +67,7 @@ export default async function RootLayout({
               position="top-right"
               offset={{ top: "4rem" }}
               duration={3000}
-              // A "\n" in a description is a line break (the genome group
-              // errors, the protected-folder list), not a space.
+              // A "\n" in a description is a line break, not a space.
               toastOptions={{ classNames: { description: "whitespace-pre-line" } }}
             />
             <ErrorToastDefaults />

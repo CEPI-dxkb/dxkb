@@ -155,7 +155,6 @@ describe("phylogeny services", () => {
   });
 
   it("says a tree download ran out of time instead of \"signal timed out\"", async () => {
-    // The budget is already spent, so the request fails as a timed-out one.
     vi.spyOn(AbortSignal, "timeout").mockReturnValue(
       AbortSignal.abort(new DOMException("x", "TimeoutError")),
     );

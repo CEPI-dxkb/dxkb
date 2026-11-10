@@ -61,10 +61,8 @@ vi.mock(
   }),
 );
 
-// The taxonomy tree view client-fetches via TanStack Query and renders inside
-// ResourceWorkspace (react-resizable-panels needs ResizeObserver, absent in jsdom). Its
-// behavior is covered by taxonomy-tree.test.tsx; here we only assert the page wires
-// it under tab=taxa-tree, so stub the factory to a plain marker.
+// react-resizable-panels needs ResizeObserver, absent in jsdom; stub the
+// factory.
 vi.mock("@/components/organisms/taxon-views/taxonomy-tree-view", () => ({
   makeTaxonomyTreeView: () =>
     function TaxonomyTreeView() {
@@ -72,10 +70,8 @@ vi.mock("@/components/organisms/taxon-views/taxonomy-tree-view", () => ({
     },
 }));
 
-// The sequences view renders ResourceChildCollection, whose real implementation needs
-// a TanStack Query provider and nests ResourceWorkspace; react-resizable-panels also
-// needs ResizeObserver, which jsdom lacks. The factory, collection, and workspace have
-// focused tests, so stub the factory here to keep this test on tab routing/wiring.
+// The real view needs a TanStack Query provider and ResizeObserver; stub the
+// factory to stay on tab routing.
 vi.mock("@/components/organisms/taxon-views/sequences", () => ({
   makeSequencesView: () =>
     function SequencesView() {
@@ -100,7 +96,6 @@ describe("TaxonomyPage", () => {
 
     render(node);
 
-    // The visible trail's heading, not the empty-trail sr-only fallback.
     expect(
       screen.getByRole("heading", { level: 1, name: "Brucella" }),
     ).not.toHaveClass("sr-only");
@@ -129,7 +124,6 @@ describe("TaxonomyPage", () => {
     render(node);
 
     expect(screen.getByTestId("sequences-view")).toBeInTheDocument();
-    // No placeholder — sequences is a real view now.
     expect(screen.queryByText(/This view is coming soon/)).toBeNull();
   });
 
@@ -142,7 +136,6 @@ describe("TaxonomyPage", () => {
 
     render(node);
 
-    // Present in the desktop rail, now rendered disabled rather than omitted.
     const interactionsButtons = screen.getAllByRole("button", {
       name: /Interactions/,
     });
@@ -317,7 +310,6 @@ describe("TaxonomyPage", () => {
 
     beforeEach(async () => {
       process.env.BVBRC_WEBSITE_API_URL = baseUrl;
-      // Route the lookup through the real fetch, so MSW plays the backend.
       const actual = await vi.importActual<
         typeof import("@/lib/services/organisms/taxonomy")
       >("@/lib/services/organisms/taxonomy");
@@ -346,7 +338,6 @@ describe("TaxonomyPage", () => {
       expect(
         within(alert).getByRole("heading", { name: "Taxon 1773 could not be loaded" }),
       ).toBeInTheDocument();
-      // The maintenance page's status and title, never its HTML.
       expect(alert).toHaveTextContent(/503/);
       expect(alert).toHaveTextContent(/Site Maintenance/);
       expect(alert).not.toHaveTextContent("<");
@@ -372,7 +363,6 @@ describe("TaxonomyPage", () => {
         }),
       );
 
-      // The cause, not undici's bare "fetch failed".
       const alert = screen.getByRole("alert");
       expect(alert).toHaveTextContent(
         /did not respond \(connection timed out after 10 s\)/,

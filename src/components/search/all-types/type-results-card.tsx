@@ -43,10 +43,8 @@ function ResultTitle({ row }: { row: ResultRow }) {
 }
 
 /**
- * One type's matches: a one-line header that folds the card, and a table of
- * its top rows with the type's own columns, expandable from five rows to ten.
- * The rows past five are laid out but collapsed (`visibility: collapse`): they
- * take no height but still size the columns, so showing them moves none.
+ * Rows past five are collapsed (`visibility: collapse`): they take no height
+ * but still size the columns, so showing them moves none.
  */
 export function TypeResultsCard({
   type,
@@ -87,7 +85,6 @@ export function TypeResultsCard({
         >
           {searchTypeIcon(type.id)}
         </span>
-        {/* The type's own list, searched for the same keyword. */}
         <h2 className="text-sm font-semibold">
           <Link
             href={type.listHref}

@@ -11,14 +11,10 @@ import {
 } from "@/lib/forms/tanstack-library-selection";
 import type { Library } from "@/types/services";
 
-/** Toast-like interface for library error reporting (avoids coupling to sonner in utils) */
 export interface ToastLike {
   error: (message: string, opts?: { description?: string }) => void;
 }
 
-/**
- * Handle library add error: show "Duplicate library" with description for known messages, else show message as-is.
- */
 export function handleLibraryError(message: string, toast: ToastLike): void {
   if (
     message === "This paired library has already been added" ||
@@ -30,10 +26,6 @@ export function handleLibraryError(message: string, toast: ToastLike): void {
   toast.error(message);
 }
 
-/**
- * Build the (read1, read2, id) => BuildLibraryResult function for paired library add.
- * Viral Assembly has no platform field.
- */
 export function getPairedLibraryBuildFn(): (
   read1: string,
   read2: string,
@@ -49,10 +41,6 @@ export function getPairedLibraryBuildFn(): (
   });
 }
 
-/**
- * Build the (read) => BuildLibraryResult function for single library add.
- * Viral Assembly has no platform field.
- */
 export function getSingleLibraryBuildFn(): (read: string) => BuildLibraryResult {
   return (read) => ({
     library: {
@@ -64,7 +52,6 @@ export function getSingleLibraryBuildFn(): (read: string) => BuildLibraryResult 
   });
 }
 
-/** Default duplicate matcher for single library: same path and type single. */
 export function singleLibraryDuplicateMatcher(
   library: Library,
   read: string,
@@ -72,12 +59,7 @@ export function singleLibraryDuplicateMatcher(
   return library.id === read && library.type === "single";
 }
 
-/**
- * Transform Viral Assembly form data to API parameters (ViralAssembly service),
- * with the keys legacy ViralAssembly.js `getValues` sends. IRMA sends its
- * module; Reference Guided sends `reference_type` and that reference instead.
- * Legacy API accepts one input per job: use first paired lib, first single lib, or first SRA.
- */
+/** Legacy API accepts one input per job: first paired lib, first single lib, or first SRA. */
 export function transformViralAssemblyParams(
   data: ViralAssemblyFormData,
 ): Record<string, unknown> {
@@ -99,7 +81,6 @@ export function transformViralAssemblyParams(
   params.output_path = data.output_path.trim();
   params.output_file = data.output_file.trim();
 
-  // Only include the library type that matches the selected input type
   if (data.input_type === "paired") {
     const firstPaired = data.paired_end_libs?.[0];
     if (firstPaired?.read1 != null && firstPaired.read2 != null) {
@@ -114,7 +95,6 @@ export function transformViralAssemblyParams(
       params.single_end_lib = { read: firstSingle.read };
     }
   } else {
-    // data.input_type === "srr_accession"
     const firstSrr = data.srr_ids?.[0];
     if (firstSrr != null) {
       params.sra_id = firstSrr;
@@ -136,11 +116,8 @@ type ViralAssemblyRerunValues = Partial<
 >;
 
 /**
- * The Parameters values a rerun job pre-fills. `reference_guided` (or legacy's
- * select value `reference-guided`) reopens Reference Guided, and `auto`, which
- * the app runs as IRMA, reopens IRMA. A `genome` or `auto` reference, which
- * this form doesn't offer, opens on GenBank with no accession. Anything else
- * unknown keeps the form's default.
+ * `auto` runs as IRMA; a `genome` or `auto` reference opens GenBank with no accession.
+ * Unknown values keep the form's default.
  */
 export function viralAssemblyRerunValues(
   data: Record<string, unknown>,

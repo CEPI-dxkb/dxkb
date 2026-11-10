@@ -10,7 +10,6 @@ import { Button } from "@/components/ui/button";
 interface ZoomableImageProps {
   src: string;
   alt: string;
-  /** Extra toolbar content rendered before the zoom controls. */
   toolbarLeading?: ReactNode;
 }
 

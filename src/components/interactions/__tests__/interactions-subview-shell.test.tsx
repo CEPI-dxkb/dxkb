@@ -3,9 +3,6 @@ import { render, screen, fireEvent } from "@testing-library/react";
 
 import { InteractionsSubviewShell } from "../interactions-subview-shell";
 
-// Table keeps its table-only state mounted across the Graph round-trip. A mount
-// counter verifies the component instance survives while keyword text is shared
-// separately by the shell.
 let tableMountCount = 0;
 vi.mock("@/components/views/resource-child-collection", () => ({
   ResourceChildCollection: ({
@@ -109,8 +106,6 @@ describe("InteractionsSubviewShell", () => {
 
     fireEvent.click(screen.getByRole("tab", { name: "Table" }));
 
-    // Still 1: base-ui's Tabs.Panel keepMounted keeps the same instance alive
-    // instead of unmounting on hide and remounting on reveal.
     expect(tableMountCount).toBe(1);
     expect(screen.getByTestId("table-panel").parentElement).not.toHaveAttribute("inert");
   });
@@ -121,9 +116,6 @@ describe("InteractionsSubviewShell", () => {
     );
     fireEvent.click(screen.getByRole("tab", { name: "Graph" }));
 
-    // Stripping in the Graph only (as it once did) left the Table querying the
-    // raw string, so the two views could scope differently before a keyword was
-    // even typed.
     expect(screen.getByTestId("table-panel")).toHaveAttribute(
       "data-rql",
       "eq(evidence,experimental)",
@@ -137,8 +129,6 @@ describe("InteractionsSubviewShell", () => {
   it("leaves the Table's keyword on the request rather than filtering the loaded page", () => {
     render(<InteractionsSubviewShell rql="eq(evidence,experimental)" />);
 
-    // Loaded mode filtered only the 200 rows already on screen while the Graph
-    // ran a real backend query, so the shared box meant two different things.
     expect(screen.getByTestId("table-panel")).not.toHaveAttribute(
       "data-keyword-mode",
     );
@@ -190,7 +180,6 @@ describe("InteractionsSubviewShell", () => {
       target: { value: "circular" },
     });
     fireEvent.click(screen.getByRole("tab", { name: "Table" }));
-    // The Graph panel unmounts while hidden, so the layout has to live above it.
     expect(screen.queryByTestId("graph-panel")).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("tab", { name: "Graph" }));
 

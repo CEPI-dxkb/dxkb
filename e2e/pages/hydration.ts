@@ -1,13 +1,9 @@
 import { expect, type Locator } from "@playwright/test";
 
 /**
- * Waits until React has hydrated every element `elements` matches (at least
- * one), shown by `handler` (`"onClick"`, `"onChange"`, ...) being attached.
- *
- * A server-rendered control is visible before React attaches its handlers,
- * and input in that window is lost: a click does nothing, and a typed value
- * is reset to the form's state as the control hydrates. React attaches a
- * hydrated element's props as `__reactProps$<id>`.
+ * Waits until React has attached `handler` (`"onClick"`, ...) on every
+ * matched element (`__reactProps$<id>`). A server-rendered control is visible
+ * earlier, and a click or typed value in that window is lost.
  */
 export async function expectHydrated(
   elements: Locator,

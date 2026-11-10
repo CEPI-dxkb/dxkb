@@ -8,7 +8,6 @@ import { StrainPage } from "../pages";
 
 test.use({ storageState: { cookies: [], origins: [] } });
 
-// Both strain fixture records carry this name; only their IDs differ.
 const strainName = "A/California/04/2009";
 
 test.describe("Strain view", () => {

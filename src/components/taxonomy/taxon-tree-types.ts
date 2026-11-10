@@ -1,5 +1,4 @@
-// Raw taxonomy doc as returned by the Data API /taxonomy/ resource.
-// Indexable so it satisfies InfoPanel's Record<string, unknown> selectedRow contract.
+// Raw taxonomy doc from the Data API /taxonomy/ resource; indexable to satisfy InfoPanel's Record<string, unknown> contract.
 export interface TaxonRecord extends Record<string, unknown> {
   taxon_id: string | number;
   taxon_name: string;
@@ -8,7 +7,6 @@ export interface TaxonRecord extends Record<string, unknown> {
   genomes?: number;
 }
 
-// Strain is the leaf rank — no expand toggle, never fetches children (legacy parity).
 export function isLeaf(record: TaxonRecord): boolean {
   return record.taxon_rank === "strain";
 }

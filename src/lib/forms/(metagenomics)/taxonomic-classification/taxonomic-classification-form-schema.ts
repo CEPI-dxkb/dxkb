@@ -2,16 +2,12 @@ import { z } from "zod";
 
 import { libraryWithSampleIdSchema, type LibraryWithSampleId } from "@/lib/forms/shared-schemas";
 
-// Sequencing type options
 export const sequencingTypeSchema = z.enum(["wgs", "16s"]);
 
-// Analysis type options (depends on sequencing type)
 export const analysisTypeSchema = z.enum(["microbiome", "pathogen", "default"]);
 
-// Database options (depends on sequencing type)
 export const databaseSchema = z.enum(["bvbrc", "standard", "SILVA", "Greengenes"]);
 
-// Host genome options for filtering
 export const hostGenomeSchema = z.enum([
   "no_host",
   "homo_sapiens",
@@ -26,18 +22,15 @@ export const hostGenomeSchema = z.enum([
   "sus_scrofa",
 ]);
 
-// Re-export shared library schema and type for use in this service
 export const librarySchema = libraryWithSampleIdSchema;
 export type LibraryItem = LibraryWithSampleId;
 
-// SRA library item (submitted as srr_libs with sample_id)
 export const srrLibItemSchema = z.object({
   srr_accession: z.string(),
   sample_id: z.string(),
   title: z.string().optional(),
 });
 
-// Confidence interval options
 export const confidenceIntervalOptions = [
   { value: "0", label: "0" },
   { value: "0.1", label: "0.1" },
@@ -52,15 +45,12 @@ export const confidenceIntervalOptions = [
   { value: "1", label: "1" },
 ] as const;
 
-// Main form schema
 export const taxonomicClassificationFormSchema = z
   .object({
-    // Read libraries
     paired_end_libs: z.array(librarySchema).optional(),
     single_end_libs: z.array(librarySchema).optional(),
     srr_libs: z.array(srrLibItemSchema).optional(),
 
-    // Parameters
     sequence_type: sequencingTypeSchema,
     analysis_type: analysisTypeSchema,
     database: databaseSchema,
@@ -69,17 +59,14 @@ export const taxonomicClassificationFormSchema = z
     save_classified_sequences: z.boolean(),
     save_unclassified_sequences: z.boolean(),
 
-    // Top-level sample identifiers (user-editable, separate from per-library sample_id)
     paired_sample_id: z.string().optional(),
     single_sample_id: z.string().optional(),
     srr_sample_id: z.string().optional(),
 
-    // Output configuration
     output_path: z.string().min(1, "Output folder is required"),
     output_file: z.string().min(1, "Output name is required"),
   })
   .superRefine((data, ctx) => {
-    // Validate that at least one library is provided
     const hasPaired = data.paired_end_libs && data.paired_end_libs.length > 0;
     const hasSingle = data.single_end_libs && data.single_end_libs.length > 0;
     const hasSrr = data.srr_libs && data.srr_libs.length > 0;
@@ -92,7 +79,6 @@ export const taxonomicClassificationFormSchema = z
       });
     }
 
-    // Validate analysis type based on sequence type
     if (data.sequence_type === "16s" && data.analysis_type !== "default") {
       ctx.addIssue({
         code: "custom",
@@ -109,7 +95,6 @@ export const taxonomicClassificationFormSchema = z
       });
     }
 
-    // Validate database based on sequence type
     const wgsDatabases = ["bvbrc", "standard"];
     const sixteenSDatabases = ["SILVA", "Greengenes"];
 
@@ -132,7 +117,6 @@ export const taxonomicClassificationFormSchema = z
 
 export type TaxonomicClassificationFormData = z.infer<typeof taxonomicClassificationFormSchema>;
 
-// UI options for dropdowns
 export const wgsAnalysisTypeOptions = [
   { value: "microbiome", label: "Microbiome Analysis" },
   { value: "pathogen", label: "Species Identification" },
@@ -166,7 +150,6 @@ export const hostGenomeOptions = [
   { value: "sus_scrofa", label: "Sus scrofa" },
 ] as const;
 
-// Default form values
 export const defaultTaxonomicClassificationFormValues: TaxonomicClassificationFormData = {
   paired_end_libs: [],
   single_end_libs: [],

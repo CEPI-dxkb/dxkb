@@ -48,7 +48,6 @@ it("follows the URL while it names the rendered tab", () => {
     "tab=genomes&collection_year=2025",
   );
 
-  // A filter change (router.push) and a nested table's History API write.
   setUrl("tab=genomes&collection_year=2024");
   rerender(tabContent("genomes"));
   expect(screen.getByRole("status")).toHaveTextContent(
@@ -65,14 +64,12 @@ it("keeps the last matching search while the URL names another tab", () => {
   setUrl("tab=genomes&collection_year=2025");
   const { rerender } = render(tabContent("genomes"));
 
-  // Back's stale frame: the destination URL, the leaving tab's content.
   setUrl("");
   rerender(tabContent("genomes"));
   expect(screen.getByRole("status")).toHaveTextContent(
     "tab=genomes&collection_year=2025",
   );
 
-  // The destination's content arrives and reads its own URL.
   rerender(tabContent(null));
   expect(screen.getByRole("status")).toBeEmptyDOMElement();
 });
@@ -91,16 +88,12 @@ it("follows a legacy ?view= URL once its content is rendered for no tab", () => 
   setUrl("tab=genomes&collection_year=2025");
   const { rerender } = render(tabContent("genomes"));
 
-  // Back to a legacy link to the same view: the stale frame holds the leaving
-  // search...
   setUrl("view=genomes");
   rerender(tabContent("genomes"));
   expect(screen.getByRole("status")).toHaveTextContent(
     "tab=genomes&collection_year=2025",
   );
 
-  // ...and the legacy page's content, rendered for its raw (absent) `tab`,
-  // reads the URL from then on, including a nested table's History API write.
   rerender(tabContent(null));
   expect(screen.getByRole("status")).toHaveTextContent("view=genomes");
   setUrl("view=genomes&collection_year=2024");

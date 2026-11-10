@@ -14,11 +14,7 @@ function extractTaxonomyDocs(data: unknown): TaxonomyDoc[] {
   return Array.isArray(response?.docs) ? (response.docs as TaxonomyDoc[]) : [];
 }
 
-/**
- * The outcome of looking a taxon name up by ID. A failed lookup (the
- * taxonomy service is down) is not "no such taxon": callers keep what they
- * already have and say the ID could not be verified.
- */
+/** A failed lookup (service down) is not "no such taxon": callers keep what they have. */
 export type TaxonNameLookup =
   | { status: "found"; name: string }
   | { status: "notFound" }
@@ -52,20 +48,16 @@ interface TaxonomyForm {
 }
 
 export interface TaxonomyLookupCallbacks {
-  /** The lookup found the taxon's name (already set as `scientific_name`). */
   onResolved?: (taxonName: string) => void;
-  /** The lookup could not run; `error` is its condensed reason. */
   onFailed?: (error: string) => void;
 }
 
-/** A rerun's taxonomy ID whose name lookup failed, and why. */
 export interface TaxonomyLookupFailure {
   taxonomyId: string;
   error: string;
 }
 
-// Keyed by the form object, so a failure belongs to one form on one visit
-// and is gone with it; a new visit has a new form.
+// Keyed by form object so a failure goes away with its form.
 const lookupFailures = new WeakMap<object, TaxonomyLookupFailure>();
 const lookupFailureListeners = new Set<() => void>();
 
@@ -85,11 +77,7 @@ function subscribeToLookupFailures(listener: () => void): () => void {
   };
 }
 
-/**
- * The failed lookup `applyTaxonomyIdWithLookup` last recorded for `form`, if
- * any. Show it only while the form still holds `taxonomyId`: once the user
- * picks another taxon, it no longer applies.
- */
+/** Show only while the form still holds `taxonomyId`. */
 export function useTaxonomyLookupFailure(
   form: object,
 ): TaxonomyLookupFailure | null {
@@ -100,24 +88,13 @@ export function useTaxonomyLookupFailure(
   );
 }
 
-/** "Could not verify taxonomy ID 83332: <reason>", for the field's note. */
 export function describeTaxonomyLookupFailure(
   failure: TaxonomyLookupFailure,
 ): string {
   return `Could not verify taxonomy ID ${failure.taxonomyId}: ${failure.error}`;
 }
 
-/**
- * Sets `taxonomy_id` immediately, then looks up the taxon name and sets
- * `scientific_name` when resolved. Callers restore whatever name the job
- * already carries before calling this, so a failed lookup leaves it in place
- * and is recorded for the form (`useTaxonomyLookupFailure`), so the field can
- * say the ID could not be verified. Services with extra post-resolution work
- * (e.g. deriving my_label from a prior output_file) pass `onResolved`.
- *
- * `form` is typed loose to accept any TanStack form whose value type includes
- * the `taxonomy_id` / `scientific_name` string fields.
- */
+/** Sets `taxonomy_id`, then resolves `scientific_name`; a failed lookup is recorded for the form. */
 export function applyTaxonomyIdWithLookup(
   taxonomyId: string,
   form: TaxonomyForm,

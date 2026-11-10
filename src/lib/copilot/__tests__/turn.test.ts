@@ -149,10 +149,8 @@ describe("appendAnswer", () => {
   it("skips only a chunk that repeats the whole answer", () => {
     expect(appendAnswer("Hello world", "Hello world")).toBe("Hello world");
     expect(appendAnswer("Hello", " world")).toBe("Hello world");
-    // A chunk matching only the end is real text.
     expect(appendAnswer("**bold**", "**")).toBe("**bold****");
     expect(appendAnswer("Hello world", "world")).toBe("Hello worldworld");
-    // A one-character chunk is always appended ("aa" streams as "a", "a").
     expect(appendAnswer("a", "a")).toBe("aa");
   });
 });

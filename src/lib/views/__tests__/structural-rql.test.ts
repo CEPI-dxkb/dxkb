@@ -100,10 +100,6 @@ describe("structuralFilterRql", () => {
   });
 
   it("skips a filter key whose selected-values array is empty", () => {
-    // parseCollectionState/canonicalizeCollectionState never produce this
-    // shape (a filter key is only ever added once it has a value), but the
-    // helper stays defensive for any hand-built CollectionState rather than
-    // emitting a malformed "or()" clause for zero predicates.
     const state: CollectionState = {
       ...emptyState,
       filters: { genome_status: [], genome_quality: ["Good"] },
@@ -112,10 +108,8 @@ describe("structuralFilterRql", () => {
   });
 
   it("never folds keyword or refine into the structural clause", () => {
-    // Keyword search is deliberately independent of structural filters — the
-    // collection query combines the two itself, so a composer that swallowed
-    // `keyword` would double-apply it. (Moved here from the deleted
-    // `collectionStateToRql`, the only other place that asserted it.)
+    // Keyword is independent of structural filters: the collection query
+    // combines the two itself, so swallowing it would double-apply it.
     const state: CollectionState = {
       ...emptyState,
       keyword: "coli",
@@ -134,10 +128,6 @@ describe("structuralFilterRql", () => {
       ...emptyState,
       filters: { genome_status: ["Complete"], unlisted_filter: ["x"] },
     };
-    // unlisted_filter has no fieldMap entry and mode is "drop", so it is
-    // omitted entirely rather than forwarded to eq() — where "unlisted_filter"
-    // is not even a registered genome field and would throw a
-    // DataApiValidationError in passthrough mode.
     expect(
       structuralFilterRql("genome", state, {
         fieldMap: { genome_status: "genome_status" },
@@ -163,10 +153,6 @@ describe("taxonLineageFieldMap is the one shared lineage remap", () => {
 
 describe("genome's allowlist stays total and authoritative", () => {
   it("drops a friendly filter name absent from its remap table", () => {
-    // parseGenomeCollectionState can never itself produce this shape (it
-    // only ever populates keys from genomeCollectionOptions.friendlyFilters),
-    // but genomeStructuralRql must fail closed for any CollectionState it is
-    // handed, including one assembled by hand or by future callers.
     const state: CollectionState = {
       ...emptyState,
       filters: { genome_status: ["Complete"], not_a_real_filter: ["x"] },
@@ -177,9 +163,6 @@ describe("genome's allowlist stays total and authoritative", () => {
 
 describe("genome's allowlist is derived from its friendly filters", () => {
   it("accepts every genomeCollectionOptions friendly filter", () => {
-    // The derivation is what keeps the "total and authoritative" remap table
-    // and `friendlyFilters` from drifting apart: a filter the URL accepts but
-    // the table omits would be dropped silently at the backend boundary.
     for (const name of genomeCollectionOptions.friendlyFilters ?? []) {
       const state: CollectionState = {
         ...emptyState,
@@ -193,10 +176,6 @@ describe("genome's allowlist is derived from its friendly filters", () => {
 
 describe("pass-through modules forward an unmapped filter name unchanged", () => {
   it("strain forwards a filter name outside its friendlyFilters allowlist", () => {
-    // Contrast with Genome above: strainStructuralRql has no "drop" mode, so
-    // any filter name reaching it becomes a backend field verbatim (aside
-    // from the one remapped taxon_id). Here "id" is a real strain field, so
-    // it composes into valid RQL instead of being rejected.
     const state: CollectionState = { ...emptyState, filters: { id: ["strain-row-1"] } };
     expect(strainStructuralRql(state)).toBe("eq(id,strain-row-1)");
   });
@@ -296,9 +275,6 @@ const cases: StructuralRqlCase[] = [
       taxonomyStructuralRql(
         parseTaxonomyCollectionState({ taxon_id: "2", taxon_rank: ["genus", "family"] }),
       ),
-    // Unlike every remapped resource above, taxonomy filters on itself:
-    // taxon_id is not remapped because "taxon_id" already is the taxonomy
-    // resource's own id field.
     expected: "and(eq(taxon_id,2),or(eq(taxon_rank,genus),eq(taxon_rank,family)))",
   },
   {

@@ -1,7 +1,5 @@
-// `server-only` throws unconditionally outside Next's bundler (it relies on a
-// webpack alias swap that only exists in the real build); this route reaches it
-// through `@/lib/data-api/server-policy`, so the guard is neutralized the same
-// way `src/lib/phylogeny/__tests__/dataset-store.test.ts` does.
+// `server-only` throws outside Next's bundler; neutralized as in
+// `src/lib/phylogeny/__tests__/dataset-store.test.ts`.
 vi.mock("server-only", () => ({}));
 
 import { http, HttpResponse } from "msw";
@@ -19,11 +17,7 @@ import { GET, POST } from "../route";
 
 const dataApiOrigin = "https://data.test";
 
-/**
- * Each test uses its own client IP so the shared in-memory rate-limit bucket
- * from one case never spills into the next — the same convention
- * `/api/taxonomy-tree/[operation]`'s spec uses.
- */
+// Each test uses its own client IP so the shared rate-limit bucket does not spill over.
 let nextIpOctet = 20;
 function freshIp(): string {
   nextIpOctet += 1;
@@ -70,12 +64,6 @@ function post(
   );
 }
 
-/**
- * Registers an upstream handler and records what the gateway actually sent.
- * A real MSW handler rather than a `fetch` stub: the request travels through
- * `ServerDataRepository`'s own header, Range and serialization code, so these
- * tests exercise the server boundary instead of a mock of it.
- */
 function captureUpstream(resource: string, respond: () => Response) {
   const seen: { authorization: string | null; body: string }[] = [];
   server.use(
@@ -90,13 +78,7 @@ function captureUpstream(resource: string, respond: () => Response) {
   return seen;
 }
 
-/**
- * A ReadableStream that only produces the next chunk when pulled, so tests
- * can prove a byte-capped reader gave up partway through instead of quietly
- * draining the whole thing first. `getPullCount` reports how many chunks were
- * actually produced; `wasCancelled` reports whether the consumer cancelled
- * the stream instead of reading it to completion.
- */
+/** A stream that produces a chunk only when pulled, so tests can prove a byte-capped reader gave up early. */
 function createLazyStream(chunkCount: number, chunkSize: number) {
   let pullCount = 0;
   let cancelled = false;
@@ -142,16 +124,7 @@ afterEach(() => {
   }
 });
 
-/**
- * The gateway's cache contract is its `Cache-Control` header. The upstream
- * `cache`/`next.revalidate` init is decided by the same `sharedCache` flag in
- * `resolveServerDataRepository` and asserted there (`server-policy.test.ts`,
- * through the repository's fetch seam) — Next's `next.revalidate` extension
- * does not survive the trip into a `Request`, so it is not observable from an
- * MSW handler. Consolidating the two made that split safe: one flag now drives
- * both, so the route's answer to a client cannot disagree with its request to
- * the upstream.
- */
+// The upstream `next.revalidate` init is asserted in `server-policy.test.ts`: it is not observable from an MSW handler.
 const sharedMemberCacheControl = `public, max-age=0, s-maxage=${String(anonymousMemberRevalidateSeconds)}`;
 
 describe("data gateway cache policy", () => {
@@ -172,13 +145,7 @@ describe("data gateway cache policy", () => {
     ]);
   });
 
-  // The policy decision this task settled. A collection URL carries filters,
-  // sort, page and keyword, so caching it would fill Next's data cache with
-  // near-unique entries at a low hit rate — unlike a member URL, which is
-  // keyed by one ID. An anonymous collection therefore gets the *private*
-  // header even though nothing about the caller is private. A test that
-  // passed under both policies would prove nothing, so this asserts the
-  // header for an anonymous caller specifically.
+  // An anonymous collection gets the private header: filtered URLs are near-unique, so caching them fills Next's data cache.
   it("does not share an anonymous collection response", async () => {
     captureUpstream("genome", () =>
       HttpResponse.json({ response: { numFound: 0, docs: [] } }),
@@ -216,11 +183,7 @@ describe("data gateway cache policy", () => {
     },
   );
 
-  // The second half of the disagreement this task closed: the page factory
-  // honoured `E2E_MOCK_ENABLED` and this route ignored it entirely, so the
-  // same anonymous member read was cached on one path and not the other during
-  // an E2E run. E2E responses are per-run fixture data and must never be
-  // shared across runs.
+  // E2E responses are per-run fixture data and must never be shared across runs.
   it("never shares a response during an E2E run, even an anonymous member one", async () => {
     process.env.E2E_MOCK_ENABLED = "1";
     captureUpstream("genome", () => HttpResponse.json([{ genome_id: "1.1" }]));
@@ -314,11 +277,8 @@ describe("data gateway admission and errors", () => {
 
     const response = await get("ppi", { operation: "collection" });
 
-    // A misconfigured deployment used to reach the client as "The data service
-    // request failed." from the catch-all, with nothing to act on. It now gets
-    // its own stable message and `not_configured` code — distinct enough to act
-    // on — while the env var name that names the actual fix goes to the
-    // operator's log instead of to every unauthenticated caller.
+    // A misconfigured deployment gets a stable `not_configured` message; the
+    // env var name goes only to the operator's log.
     expect(response.status).toBe(500);
     const body = await json<{ error: string; code: string }>(response);
     expect(body).toEqual({
@@ -336,12 +296,7 @@ describe("data gateway admission and errors", () => {
     for (let i = 0; i < 120; i++) {
       rateLimit(`data:${ip}:genome`, 120, 60_000);
     }
-    // A handler for the Data API origin, not a fetch stub: if the route
-    // incorrectly proceeds past the rate limiter, this proves it by recording
-    // the otherwise-unexpected upstream call. If it were missing entirely,
-    // the shared MSW server's strict mode would already fail an unhandled
-    // request to this origin — registering it here just makes the "backend
-    // was never reached" assertion explicit.
+    // Records the upstream call if the route wrongly proceeds past the rate limiter.
     const backendHit = vi.fn();
     server.use(
       http.all(`${dataApiOrigin}/*`, () => {
@@ -420,16 +375,14 @@ describe("data gateway POST", () => {
   });
 
   it("rejects a chunked body over the cap with no Content-Length header, without fully consuming it", async () => {
-    // 10 chunks of 5,000 bytes = 50,000 bytes, well over the 32,000 byte cap,
-    // and no Content-Length header at all (as with chunked transfer).
+    // 10 chunks of 5,000 bytes, over the 32,000 byte cap, with no Content-Length.
     const { stream, getPullCount, wasCancelled } = createLazyStream(10, 5_000);
 
     const response = await post({ rawBody: stream });
 
     expect(response.status).toBe(413);
     await expect(json(response)).resolves.toEqual(oversizedBodyContract);
-    // The reader gave up partway through and cancelled the stream instead of
-    // draining all 10 chunks.
+    // The reader cancelled partway instead of draining all 10 chunks.
     expect(getPullCount()).toBeLessThan(10);
     expect(wasCancelled()).toBe(true);
   });
@@ -443,7 +396,7 @@ describe("data gateway POST", () => {
     });
 
     const response = await post({
-      headers: { "content-length": "10" }, // lies — real body is 40,000 bytes
+      headers: { "content-length": "10" }, // lies: the real body is 40,000 bytes
       rawBody: stream,
     });
 
@@ -453,7 +406,6 @@ describe("data gateway POST", () => {
 
   it("checks the rate limit before reading the POST body", async () => {
     const ip = freshIp();
-    // Exhaust the same bucket `limited()` will look up for this IP + resource.
     for (let i = 0; i < 120; i++) {
       rateLimit(`data:${ip}:genome`, 120, 60_000);
     }

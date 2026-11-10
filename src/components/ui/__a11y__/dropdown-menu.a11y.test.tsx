@@ -20,8 +20,6 @@ import {
 } from "@/test-helpers/render-with-theme";
 
 describe("DropdownMenu — a11y primitive", () => {
-  // Menu popup is portalled to document.body. cleanup() unmounts the root and
-  // removes the portal node between renders.
   afterEach(() => cleanup());
 
   const states: { label: string; ui: React.ReactNode }[] = [

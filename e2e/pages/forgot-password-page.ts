@@ -1,10 +1,5 @@
 import { type Page, type Locator } from "@playwright/test";
 
-/**
- * Page object for the /forgot-password route. Wraps the form selectors and
- * common interactions (fill, submit, assert outcomes) so specs describe intent
- * rather than selector plumbing.
- */
 export class ForgotPasswordPage {
   readonly page: Page;
   readonly usernameOrEmailInput: Locator;
@@ -14,21 +9,17 @@ export class ForgotPasswordPage {
 
   constructor(page: Page) {
     this.page = page;
-    // The input has a placeholder "Enter your username or email"; fall back to
-    // the label "Username or email" (rendered by RequiredFormLabel) if needed.
-    // No `.first()` — both selectors target the same single input today, and
-    // strict-mode failure is the desired signal if a second match ever appears.
+    // No `.first()`: a strict-mode failure is the desired signal if a second
+    // match ever appears.
     this.usernameOrEmailInput = page
       .getByPlaceholder(/enter your username or email/i)
       .or(page.getByLabel(/username or email/i));
-    // Button label is "Send reset link" in the non-loading state.
     this.submitButton = page.getByRole("button", { name: /send reset link/i });
-    // CardTitle renders as <div data-slot="card-title">, not a heading element.
+    // CardTitle renders as a div, not a heading.
     this.successCardTitle = page.locator('[data-slot="card-title"]', {
       hasText: /check your email/i,
     });
-    // Scope to the shadcn Alert component; getByRole("alert") also matches
-    // Next.js's hidden #__next-route-announcer__ and triggers strict-mode failures.
+    // getByRole("alert") also matches Next's hidden #__next-route-announcer__.
     this.errorAlert = page.locator('[role="alert"][data-slot="alert"]');
   }
 

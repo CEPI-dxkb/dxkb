@@ -7,9 +7,8 @@ interface IframeViewerProps {
   allowScripts?: boolean;
 }
 
-// Chrome's built-in PDF viewer cannot render inside any sandboxed iframe,
-// regardless of which sandbox tokens are set. Omit sandbox entirely for PDFs
-// served from our own same-origin proxy — PDF binary content carries no JS risk.
+// Chrome's PDF viewer cannot render inside any sandboxed iframe, so PDFs from our
+// same-origin proxy omit sandbox entirely.
 function getSandbox(fileName: string, allowScripts: boolean): string | undefined {
   if (fileName.toLowerCase().endsWith(".pdf")) return undefined;
   return allowScripts ? "allow-scripts" : "allow-same-origin";

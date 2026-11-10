@@ -56,13 +56,12 @@ describe("selection ID ceilings", () => {
   it("takes the list and services ceilings from the Data API in(...) limit", () => {
     expect(selectionListMaxIds).toBe(maxRqlInValues);
     expect(selectionServicesMaxIds).toBe(maxRqlInValues);
-    // GROUP writes one workspace object instead, so it keeps the row ceiling's room.
     expect(selectionGroupMaxIds).toBe(selectionGroupMaxRows);
   });
 
   it("rejects a Strain selection that flattens past the services ID ceiling", () => {
-    // 40 segmented Strain rows are well inside the 100-row fetch bound, but each row
-    // carries 20 genomes, so the selection resolves to 800 genome IDs.
+    // Each Strain row carries 20 genomes, so 40 rows resolve to 800 IDs while
+    // staying within the row bound.
     const rows = Array.from({ length: 40 }, (_, row) => ({
       genome_ids: Array.from(
         { length: 20 },
@@ -78,8 +77,8 @@ describe("selection ID ceilings", () => {
   });
 
   it("accepts a selection whose flattened IDs de-duplicate back under the ceiling", () => {
-    // Every row lists the same 20 genomes (one strain seen through 40 rows), so the
-    // ceiling has to be measured after de-duplication, not on the raw fan-out.
+    // Every row lists the same genomes, so the ceiling is measured after
+    // de-duplication.
     const genomeIds = Array.from(
       { length: 20 },
       (_, i) => `11320.${String(i)}`,
@@ -93,7 +92,6 @@ describe("selection ID ceilings", () => {
   });
 
   it("counts both Interaction interactors when measuring the list ceiling", () => {
-    // 300 rows, two distinct interactors each, is 600 feature IDs for a 500-value in().
     const rows = Array.from({ length: 300 }, (_, i) => ({
       feature_id_a: `feature-a${String(i)}`,
       feature_id_b: `feature-b${String(i)}`,

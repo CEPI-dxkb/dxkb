@@ -19,12 +19,6 @@ import type { WorkspaceObject } from "@/lib/services/workspace/types";
 import type { TaxonomyItem } from "@/types";
 import type { BlastForm } from "./page";
 
-/**
- * `db_genome_list` holds genome IDs. As in BV-BRC's Homology app, a genome
- * name search adds genomes one at a time to a table the user can prune.
- * Names picked here are kept locally; IDs that arrive without one (a rerun)
- * are looked up, and shown as the bare ID if the lookup fails.
- */
 function GenomeListField({ form }: { form: BlastForm }) {
   const [knownNames, setKnownNames] = useState<Partial<Record<string, string>>>({});
   const genomeIds = useSelector(
@@ -39,11 +33,7 @@ function GenomeListField({ form }: { form: BlastForm }) {
     enabled: unnamedIds.length > 0,
     staleTime: Infinity,
   });
-  // Keep each lookup's answer (an ID it did not find keeps its bare ID), so
-  // removing a row, which changes unnamedIds and so the query key, does not
-  // blank the names already resolved while a new lookup runs or after it fails.
-  // It starts empty: a lookup already cached when the field mounts (a rerun
-  // opened again) must still fill knownNames.
+  // Starts empty so a lookup already cached at mount still fills it; keeps resolved names when a row removal changes the query key.
   const [keptLookup, setKeptLookup] = useState<typeof lookedUp>();
   if (lookedUp && lookedUp !== keptLookup) {
     setKeptLookup(lookedUp);
@@ -88,12 +78,6 @@ function GenomeListField({ form }: { form: BlastForm }) {
   );
 }
 
-/**
- * `db_taxon_list` holds Taxon IDs, not a workspace path, so it uses the taxon
- * autocomplete (as Genome Annotation and SARS-CoV-2 Genome Analysis do) bound to the
- * field's current value. A `WorkspaceObjectSelector` here left prefilled Taxon IDs
- * invisible and replaced them with a workspace path as soon as it was touched.
- */
 function TaxonListField({ form }: { form: BlastForm }) {
   const [pendingTaxon, setPendingTaxon] = useState<TaxonomyItem | null>(null);
   const taxonIds = useSelector(
@@ -214,10 +198,6 @@ export function DatabaseSelector({
         <ServiceRequiredLabel>
           {label}
         </ServiceRequiredLabel>
-        {/* Keyed so each picker source gets its own field and picker, not one
-            live field that swaps `name` and carries the picker's state across.
-            The "required" error on a return visit is kept away by
-            changeDatabase's clears, which do not validate (see page.tsx). */}
         <form.Field key={name} name={name}>
           {(field) => (
             <FieldItem>

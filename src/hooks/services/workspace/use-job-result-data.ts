@@ -19,10 +19,6 @@ interface UseJobResultDataOptions {
   enabled?: boolean;
 }
 
-/**
- * For a resolved job_result path, computes the dot-folder path and fetches its metadata (Workspace.get).
- * The view uses `useWorkspaceDirectory({ kind: "jobResult", ... })` to list the dot-folder contents.
- */
 export function useJobResultData({
   resolvedJobMeta,
   enabled = true,

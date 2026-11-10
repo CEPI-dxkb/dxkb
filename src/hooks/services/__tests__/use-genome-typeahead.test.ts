@@ -37,7 +37,7 @@ describe("shouldSearch", () => {
 
   it("treats dotted numeric as genome ID pattern", () => {
     expect(shouldSearch("1.1", 0)).toBe(true);
-    expect(shouldSearch("1.", 5)).toBe(false); // not matching numeric pattern — treated as text, length 2 < 5
+    expect(shouldSearch("1.", 5)).toBe(false);
   });
 });
 
@@ -101,7 +101,6 @@ describe("useGenomeTypeahead failed search", () => {
     );
     const { result } = renderHook(() => useGenomeTypeahead({ minQueryLength: 3 }));
 
-    // Too short to search as typed; the dropdown toggle lists every genome.
     act(() => {
       result.current.setQuery("My");
     });

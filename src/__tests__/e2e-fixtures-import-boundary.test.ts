@@ -3,20 +3,7 @@ import { join, relative, resolve, sep } from "node:path";
 
 const repoRoot = resolve(__dirname, "..", "..");
 
-/**
- * The complete set of directories allowed to import `src/lib/e2e-fixtures/*`.
- *
- * That module holds deterministic Playwright fixture DATA. It lives under
- * `src/` so the loopback mock route handler and the Vitest parity tests can
- * import it, but a client component importing it would ship fake genomes to
- * the browser. `server-only` is deliberately NOT the guard here: Playwright's
- * own Node process imports `e2e/fixtures/overrides/*`, which re-export these
- * records, and `server-only` would break that import chain.
- *
- * Keep this list identical to the `ignores` list on the `no-restricted-imports`
- * block in `eslint.config.mjs` — the last test below checks that, so ESLint
- * silently ceasing to match cannot go unnoticed.
- */
+/** Directories allowed to import `src/lib/e2e-fixtures/*`; keep identical to the `no-restricted-imports` ignores in eslint.config.mjs (checked below). */
 const allowedImporterDirectories = [
   "src/lib/e2e-fixtures",
   "src/app/api/e2e-mock",
@@ -26,7 +13,6 @@ const allowedImporterDirectories = [
 const scannedRoots = ["src", "e2e"] as const;
 const scannedExtensions = [".ts", ".tsx", ".mts"] as const;
 
-/** Any import specifier that resolves into the fixture module, alias or relative. */
 const fixtureImportPattern =
   /from\s+["'](?:@\/lib\/e2e-fixtures(?:\/[^"']*)?|(?:\.\.?\/)+(?:[^"']*\/)?lib\/e2e-fixtures(?:\/[^"']*)?)["']/;
 
@@ -70,11 +56,7 @@ describe("src/lib/e2e-fixtures import boundary", () => {
   });
 
   it("has at least one importer in every allowlisted consumer directory", () => {
-    // The other direction: an allowlist entry with no importer left behind is
-    // a hole in the boundary that nothing would notice closing. The fixture
-    // module's own directory is excluded because its files reach each other
-    // through sibling-relative specifiers (`./records`), which is not what
-    // this boundary is about.
+    // An allowlist entry with no importer left is a hole in the boundary.
     const consumerDirectories = allowedImporterDirectories.filter(
       (dir) => dir !== "src/lib/e2e-fixtures",
     );

@@ -1,10 +1,8 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { DataTable } from "../data-table";
 
-// The real useVirtualizer (no module mock). virtual-core 3.19 sizes its window
-// from the scroll element's clientHeight (3.17 read offsetHeight), which jsdom
-// reports as 0, so every element gets 240px here: ten 24px rows, plus the
-// overscan.
+// The real useVirtualizer: jsdom reports clientHeight 0, so virtual-core sizes
+// its window at 240px (ten 24px rows plus overscan).
 const clientHeight = Object.getOwnPropertyDescriptor(
   Element.prototype,
   "clientHeight",
@@ -53,7 +51,6 @@ describe("DataTable with the real virtualizer", () => {
 
     expect(screen.getByText("Strain 0")).toBeInTheDocument();
     expect(screen.getByText("Strain 9")).toBeInTheDocument();
-    // Windowed: the rows far below are not rendered.
     expect(screen.queryByText("Strain 99")).not.toBeInTheDocument();
   });
 

@@ -19,11 +19,6 @@ interface ProteinFeatureResourceCollectionProps {
   enableRowLinks?: boolean;
   initialState?: CollectionState;
   keywordMode?: "server" | "loaded" | "refine";
-  /**
-   * How a URL keyword reaches the Data API. The list page sends an exact
-   * `keyword(...)`, as legacy BV-BRC's list and the All Data Types search do;
-   * unset keeps the token-prefix default.
-   */
   serverKeywordMode?: "exact" | "prefix";
 }
 

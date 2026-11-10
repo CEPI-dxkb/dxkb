@@ -24,10 +24,9 @@ export default async function WorkspaceHomePage({ params }: WorkspaceHomePagePro
     redirect("/workspace/home");
   }
 
-  // A bare name carries no realm, and the browser would list it under the
-  // `@bvbrc` default. Send the current user's own bare name (an old link or
-  // bookmark) to the qualified owner, which is `@patricbrc.org` for legacy
-  // PATRIC accounts.
+  // A bare name carries no realm and would list under the `@bvbrc` default;
+  // redirect the current user's own bare name to the qualified owner
+  // (`@patricbrc.org` for legacy accounts).
   const owner = workspaceUsername(user);
   if (
     !username.includes("@") &&

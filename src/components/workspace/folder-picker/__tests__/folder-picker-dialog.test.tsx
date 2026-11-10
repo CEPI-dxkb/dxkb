@@ -25,7 +25,6 @@ vi.mock("sonner", () => ({ toast: { error: vi.fn(), success: vi.fn() } }));
 
 stubPickerBrowserApis();
 
-/** The value the info pane shows for a detail, e.g. "Where" → "Home". */
 function detail(term: string) {
   return screen.getByText(term, { selector: "dt" }).nextElementSibling
     ?.textContent;
@@ -111,10 +110,8 @@ describe("WorkspaceFolderPickerDialog opening and closing", () => {
     await reopen();
 
     await findOption("Home", "Alpha");
-    // The selection and the open columns reset ...
     expect(selectButton()).toHaveAccessibleName("Select “Home”");
     expect(columnLabels()).toEqual(["Home"]);
-    // ... while Show files and the widths the user set are kept.
     expect(
       screen.getByRole("button", { name: "Hide files", pressed: true }),
     ).toBeInTheDocument();
@@ -323,7 +320,6 @@ describe("WorkspaceFolderPickerDialog places", () => {
       "bob",
     );
     expect(screen.queryByText("readonly-ws")).not.toBeInTheDocument();
-    // Your own home is in the `/` listing too, but it isn't shared with you.
     expect(screen.queryByText("home")).not.toBeInTheDocument();
   });
 
@@ -362,7 +358,6 @@ describe("WorkspaceFolderPickerDialog places", () => {
       name: "Recently Used",
     });
 
-    // Stored order, not alphabetical; another user's entries are left out.
     expect(
       within(column)
         .getAllByRole("option")
@@ -393,13 +388,11 @@ describe("WorkspaceFolderPickerDialog places", () => {
     const { user, onSelect } = renderPicker();
     await findOption("Home", "Alpha");
 
-    // The favorites read fails (the navbar shares this read)...
     await user.click(place("Favorites"));
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "Couldn't load this folder.",
     );
 
-    // ...which says nothing about recent folders, kept in browser storage.
     await user.click(place("Recently Used"));
     const column = await screen.findByRole("listbox", {
       name: "Recently Used",
@@ -464,7 +457,6 @@ describe("WorkspaceFolderPickerDialog places", () => {
     await findOption("Home", "Alpha");
     await user.click(place("Favorites"));
 
-    // A favorite is only a path; its workspace's row says what the user may do.
     await user.click(await findOption("Favorites", /^Docs/));
     expect(
       await screen.findByText("You don't have write access to this folder."),
@@ -483,8 +475,6 @@ describe("WorkspaceFolderPickerDialog places", () => {
 
     expect(onSelect).toHaveBeenCalledWith(results, expect.anything());
   });
-  // `team-ws` and `locked-ws` are not in the `/` listing, so their favorites
-  // are stubs with no permission; their own listings carry it.
   const reports = "/dave@bvbrc/team-ws/Reports";
   const notes = "/erin@bvbrc/locked-ws/Notes";
   function renderFavorites(folders: string[]) {
@@ -523,7 +513,6 @@ describe("WorkspaceFolderPickerDialog places", () => {
 
     await user.click(await findOption("Favorites", /^Reports/));
     await findOption("Reports", "Q3");
-    // The exact name: no "(read-only)" once the listing has loaded.
     const row = await findOption("Favorites", "Reports");
     expect(selectButton()).toBeEnabled();
     await user.dblClick(row);
@@ -599,8 +588,6 @@ describe("WorkspaceFolderPickerDialog info pane", () => {
     ).toBeDisabled();
     expect(screen.getByRole("button", { name: "Upload here" })).toBeDisabled();
 
-    // While the Retry is in flight the folder is still unconfirmed: nothing
-    // is offered in it, and the pane makes no claim about writing there.
     repository.restoreListing(home);
     const gate = repository.holdListing(home);
     await user.click(screen.getByRole("button", { name: "Retry" }));
@@ -615,7 +602,6 @@ describe("WorkspaceFolderPickerDialog info pane", () => {
     expect(selectButton()).toBeDisabled();
     expect(screen.queryByText(/You can write here/)).not.toBeInTheDocument();
 
-    // Once the Retry loads it, the folder is described and can be chosen.
     gate.release();
 
     await waitFor(() => {
@@ -742,7 +728,6 @@ describe("WorkspaceFolderPickerDialog Show files and widths", () => {
 
     await user.click(await findOption("Home", "Alpha"));
 
-    // Widths belong to the column position, not to the folder it lists.
     expect(
       screen.getByRole("separator", { name: "Resize Alpha column" }),
     ).toHaveAttribute("aria-valuenow", "196");
@@ -755,7 +740,6 @@ describe("WorkspaceFolderPickerDialog Show files and widths", () => {
     expect(handle).toHaveAttribute("aria-valuenow", "320");
 
     handle.focus();
-    // The handle is on the pane's left edge, so → narrows it.
     await user.keyboard("{ArrowRight}");
     expect(handle).toHaveAttribute("aria-valuenow", "304");
     await user.keyboard("{ArrowLeft}{ArrowLeft}");

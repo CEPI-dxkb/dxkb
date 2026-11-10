@@ -10,16 +10,8 @@ import {
 import { ServiceFormPage } from "../../pages";
 
 /**
- * Service form controls whose look depends on computed CSS, hover and
- * layout, which jsdom cannot evaluate: the shared disabled fill and cursor
- * (on fields, buttons and Base UI's span radios), a scrolled select's rounded
- * corners,
- * hover that skips disabled buttons, the number input's whole-field hover and
- * per-arrow highlight, the read-library header row, the Genome Alignment
- * advanced options grid, and the Gene/Protein Tree selected table's one-line
- * paths and content-wide Type column. The class-level halves are pinned by Vitest
- * (`src/components/ui/__tests__/disabled-state.test.tsx`,
- * `src/__tests__/theme-disabled-state.test.ts`).
+ * Service form controls whose look depends on computed CSS, hover and layout, which
+ * jsdom cannot evaluate. The class-level halves are pinned by Vitest.
  */
 
 function style(locator: Locator, property: string): Promise<string> {
@@ -36,11 +28,8 @@ async function midline(locator: Locator): Promise<number> {
 }
 
 /**
- * Waits for a collapsible panel's height animation to end. While the panel is
- * still shorter than its content, a click inside it scrolls the clipped
- * content into view (Playwright scrolls every scrollable ancestor), so every
- * position in the panel reads shifted until the animation ends and the
- * scroll snaps back.
+ * Waits for a collapsible panel's height animation to end: until then, a click inside
+ * it scrolls the clipped content, shifting every position.
  */
 async function waitForPanelSettled(panel: Locator): Promise<void> {
   await expect
@@ -66,10 +55,7 @@ function resolvedColor(scope: Locator, customProperty: string): Promise<string> 
   }, customProperty);
 }
 
-/**
- * Turns transitions off, so a style read right after a hover sees the end
- * state rather than a color mid-fade (the fields and buttons `transition-all`).
- */
+/** Turns transitions off so a style read after a hover sees the end state. */
 async function freezeTransitions(page: Page): Promise<void> {
   await page.addStyleTag({
     content: "*, *::before, *::after { transition: none !important; }",
@@ -82,11 +68,9 @@ async function unhover(page: Page): Promise<void> {
 }
 
 /**
- * Where a one-line text box's first drawn and last characters land, against
- * the box's own edges, and how wide its font draws "…" and the glyph just
- * before the first drawn one. Characters cut off keep their layout positions
- * in Chromium, past the box's left edge; WebKit reports them as empty boxes
- * where the drawn text starts.
+ * Where a one-line text box's first drawn and last characters land against its edges.
+ * Chromium keeps cut-off characters' layout positions past the left edge; WebKit
+ * reports empty boxes.
  */
 function textEdges(locator: Locator) {
   return locator.evaluate((element) => {
@@ -123,7 +107,6 @@ function textEdges(locator: Locator) {
   });
 }
 
-/** The width of a cell's content, without its padding. */
 function contentWidth(locator: Locator): Promise<number> {
   return locator.evaluate((element) => {
     const range = document.createRange();
@@ -162,13 +145,11 @@ test.describe("service form controls", () => {
     await expect(outputName).toBeDisabled();
     const disabledFill = await style(outputName, "background-color");
     expect(disabledFill).toBe(await resolvedColor(card, "--disabled"));
-    // A step off the card, which a transparent fill used to melt into.
     expect(disabledFill).not.toBe(await style(card, "background-color"));
     expect(disabledFill).not.toBe(await style(myLabel, "background-color"));
     expect(await style(outputName, "cursor")).toBe("not-allowed");
     expect(await style(outputName, "opacity")).toBe("1");
 
-    // Taxonomy ID is editable now, so it has the editable fields' fill.
     await expect(taxonomyId).toBeEnabled();
     expect(await style(taxonomyId, "background-color")).toBe(
       await style(myLabel, "background-color"),
@@ -182,7 +163,6 @@ test.describe("service form controls", () => {
     await form.goto("/services/genome-alignment");
     await freezeTransitions(page);
 
-    // Disabled until two genomes are selected.
     const submit = page.getByRole("button", { name: "Submit" });
     await expect(submit).toBeDisabled();
     await unhover(page);
@@ -200,7 +180,6 @@ test.describe("service form controls", () => {
     const form = new ServiceFormPage(page, "Metagenomic Binning");
     await form.goto("/services/metagenomic-binning");
 
-    // MetaSPAdes needs exactly one paired library, so it starts disabled.
     const metaspades = page.getByRole("radio", { name: "MetaSPAdes" });
     const megahit = page.getByRole("radio", { name: "MEGAHIT" });
     await expect(metaspades).toBeDisabled();
@@ -236,18 +215,15 @@ test.describe("service form controls", () => {
     await expect(weightInput).toBeVisible();
     await waitForPanelSettled(panel);
 
-    // The switch shares the Weight input's midline, and the two labels a row.
     expect(Math.abs((await midline(toggle)) - (await midline(weightInput)))).toBeLessThanOrEqual(1);
     const before = await weightInput.boundingBox();
 
     await toggle.click();
     const seedLabel = page.getByText("Seed Weight", { exact: true });
     await expect(seedLabel).toBeVisible();
-    // The panel grows to fit the slider; measure once it has.
     await waitForPanelSettled(panel);
 
     expect(await weightInput.boundingBox()).toEqual(before);
-    // The value sits level with its label (the label's margin used to drop it).
     const seedValue = seedLabel.locator("xpath=following-sibling::span[1]");
     await expect(seedValue).toHaveText("15");
     expect(
@@ -269,8 +245,6 @@ test.describe("service form controls", () => {
     const list = popup.getByRole("listbox");
     await expect(list).toBeVisible();
 
-    // Scrolled to the end, the scroll-up strip sits over the popup's top edge.
-    // The popup does not clip it, so a square strip hid the rounded corners.
     await list.evaluate((element) => {
       element.scrollTop = element.scrollHeight;
     });
@@ -283,7 +257,6 @@ test.describe("service form controls", () => {
       await style(popup, "border-top-right-radius"),
     );
 
-    // And the scroll-down strip over the bottom edge, scrolled back to the top.
     await list.evaluate((element) => {
       element.scrollTop = 0;
     });
@@ -316,7 +289,6 @@ test.describe("service form controls", () => {
     const line = await midline(add);
     expect(Math.abs((await midline(label)) - line)).toBeLessThanOrEqual(1);
     expect(Math.abs((await midline(rule)) - line)).toBeLessThanOrEqual(1);
-    // The rule is drawn, not the near-invisible --border it was.
     expect(await style(rule, "background-color")).not.toBe(
       await style(page.locator("body"), "border-color"),
     );
@@ -330,7 +302,6 @@ test.describe("service form controls", () => {
     await freezeTransitions(page);
     await page.getByRole("button", { name: "Advanced Options" }).click();
 
-    // Racon Iterations: 0-4, starting at 2, so both arrows are enabled.
     const input = page.getByLabel("Racon Iterations").filter({ visible: true });
     const field = page
       .locator('[data-slot="number-input"]')
@@ -349,12 +320,10 @@ test.describe("service form controls", () => {
 
     await down.hover();
 
-    // The border darkens all the way round, arrows included.
     const hoverBorder = await style(input, "border-top-color");
     expect(hoverBorder).not.toBe(restBorder);
     expect(await style(up, "border-top-color")).toBe(hoverBorder);
     expect(await style(down, "border-top-color")).toBe(hoverBorder);
-    // Only the hovered arrow lights up, with the pointer.
     expect(await style(down, "background-color")).not.toBe(restArrowFill);
     expect(await style(down, "color")).not.toBe(restArrowGlyph);
     expect(await style(down, "cursor")).toBe("pointer");
@@ -395,11 +364,8 @@ test.describe("service form controls", () => {
     await expect(long).toHaveText(longPath);
     await expect(short).toHaveText(shortPath);
 
-    // The long path overflows yet its file name ends flush with the box, so
-    // the start is what is cut. Nothing but the ellipsis comes before the
-    // text (a `bdi` child left a gap there in WebKit), give or take the room
-    // too narrow for the next glyph: WebKit cuts whole glyphs and leaves that
-    // room at the box's edge, before the ellipsis (4px in CI's Linux build).
+    // WebKit cuts whole glyphs, leaving room too narrow for the next one before the
+    // ellipsis (4px in CI's Linux build).
     const cut = await textEdges(long);
     expect(cut.height).toBeLessThanOrEqual(cut.lineHeight + 1);
     expect(cut.overflows).toBe(true);
@@ -408,13 +374,11 @@ test.describe("service form controls", () => {
       cut.hiddenGlyph + 1,
     );
 
-    // A path that fits starts at the left edge, its leading "/" first.
     const whole = await textEdges(short);
     expect(whole.height).toBeLessThanOrEqual(whole.lineHeight + 1);
     expect(Math.abs(whole.firstLeft - whole.left)).toBeLessThanOrEqual(1);
     expect(whole.lastRight).toBeLessThan(whole.right);
 
-    // Type is its widest label plus the cell padding (p-2 a side), no more.
     const type = page.getByRole("columnheader", { name: "Type" });
     const label = page.getByRole("cell", {
       name: "DNA Unaligned FASTA",

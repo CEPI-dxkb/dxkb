@@ -25,7 +25,6 @@ export interface FastaTextareaProps {
   required?: boolean;
   showValidationStatus?: boolean;
   debounceMs?: number;
-  /** The form's own error for the field (e.g. "required"), shown when the FASTA itself has none. */
   fieldError?: string | null;
 }
 
@@ -39,7 +38,6 @@ export function FastaTextarea({
   className,
   disabled = false,
   required: _required = false,
-  // showValidationStatus = true,
   debounceMs = 500,
   fieldError,
 }: FastaTextareaProps) {
@@ -104,10 +102,8 @@ export function FastaTextarea({
         className={className}
       />
 
-      {/* One line, always present: the FASTA error, the form's error, the
-          valid count, or nothing. Every state renders the same plain text
-          in the same reserved height, so the card does not resize as the
-          state changes. */}
+      {/* Every state renders the same text in the same reserved height, so the
+          card does not resize as the state changes. */}
       <p
         role="status"
         className={cn(

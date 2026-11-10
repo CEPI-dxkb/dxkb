@@ -11,24 +11,15 @@ import { useWorkspaceRepository } from "@/contexts/workspace-repository-context"
 import { workspaceQueryKeys } from "@/lib/services/workspace/workspace-query-keys";
 
 export interface UseWorkspaceObjectSearchOptions {
-  /** Workspace owner (e.g. "alice" or "alice@bvbrc"). */
   username: string;
-  /** Subpath under the workspace root (default "/home/"). */
   path?: string;
-  /**
-   * Restrict search to these types. Sent to the server as the listing's type
-   * filter (an unfiltered recursive listing would return every job output
-   * file), so each distinct type set is its own query; fields with the same
-   * set share one.
-   */
+  /** Sent as the listing's type filter; each distinct type set is its own query. */
   types?: string[];
-  /** Whether the query should run. Defaults to true. */
   autoLoad?: boolean;
 }
 
 export interface UseWorkspaceObjectSearchReturn {
   items: WorkspaceItem[];
-  /** Legacy shape for migration. Will be removed with the old selector. */
   objects: WorkspaceObject[];
   filteredItems: WorkspaceItem[];
   filteredObjects: WorkspaceObject[];
@@ -63,11 +54,6 @@ export function assertUniqueWorkspaceObjectPaths(
   return items;
 }
 
-/**
- * Workspace object search hook used by `WorkspaceObjectSelector`. Hits the
- * repository so tests and stories can supply fixtures via
- * `WorkspaceRepositoryProvider`.
- */
 export function useWorkspaceObjectSearch({
   username,
   path = "/home/",
@@ -77,9 +63,7 @@ export function useWorkspaceObjectSearch({
   const repository = useWorkspaceRepository("authenticated");
   const [searchQuery, setSearchQuery] = useState("");
 
-  // No types, or an empty list, means every type, so both share the untyped
-  // query and send no filter: whichever field fetches fills the cache for
-  // the other, so the request must be the one the key names.
+  // No types or an empty list share the untyped query, so the request must send no filter.
   const typeFilter = types?.length ? types : undefined;
   const typesKey = typeFilter ? JSON.stringify([...typeFilter].sort()) : "";
 

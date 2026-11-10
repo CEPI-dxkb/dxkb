@@ -1,12 +1,5 @@
 "use client";
 
-/**
- * The Compare Region Viewer's track layers under the glyphs and around them:
- * row bands, contig baselines, the resting ribbons, the focus line and the
- * bp ruler, plus Compact's hovered-row tint. All but the tint take only the
- * model and the zoom, so a hover redraws none of them; the tint reads the
- * hovered row from `RowHoverContext`.
- */
 import { use } from "react";
 import { familyColor, focusFamilyColor } from "@/lib/compare-region/colors";
 import { rulerHeight } from "@/lib/compare-region/density";
@@ -37,16 +30,9 @@ interface LayerProps {
 }
 
 interface ReachingLayerProps extends LayerProps {
-  /** How far past the plot's edges to draw, px: 0 at rest, `panReach` while a drag pans. */
   reach: number;
 }
 
-/**
- * Resting ribbons for the neighbor families most genomes share, reaching
- * rarer families and firming up a little as the zoom grows. Comfortable draws
- * faint bands; Compact draws one 1.25 px center line per pair (faded when it
- * runs far sideways), so dense rows stay line work, not a wash of color.
- */
 export function RibbonLayer({
   model,
   matrix,
@@ -55,7 +41,6 @@ export function RibbonLayer({
 }: ReachingLayerProps) {
   const { spec } = model;
   const x = trackScale(model.layout.domain, matrix, plotWidth);
-  // The focus family needs none: its genes already stack on the focus line.
   const shown = restingRibbons(model, matrix.scaleX);
   if (spec.restingRibbons === "connectors") {
     const alpha = connectorAlpha(matrix.scaleX);
@@ -98,7 +83,6 @@ export function RibbonLayer({
   );
 }
 
-/** Each row's contig line through its genes, with a tick where the contig ends. */
 export function Baselines({ model, matrix, plotWidth }: LayerProps) {
   const x = trackScale(model.layout.domain, matrix, plotWidth);
   const tick = model.spec.contigTick;
@@ -136,11 +120,6 @@ export function Baselines({ model, matrix, plotWidth }: LayerProps) {
   );
 }
 
-/**
- * Zebra bands, the focus row's wash and the hairlines between rows, from `x`
- * across `width`. The wash is the focus genes' orange (a data color) at 5%
- * (4% in dark themes), so it follows them in every theme.
- */
 export function RowBands({
   frame,
   x,
@@ -183,7 +162,6 @@ export function RowBands({
   );
 }
 
-/** The row bands across the track (the label column draws its own). */
 export function TrackBands({
   frame,
   plotWidth,
@@ -194,11 +172,6 @@ export function TrackBands({
   return <RowBands frame={frame} x={0} width={plotWidth} />;
 }
 
-/**
- * Compact only: the hovered row's band, tinted. Drawn twice, under the
- * track's glyphs and under the label column's text (there with a thin edge
- * at the left), so one row reads straight across a long list.
- */
 export function RowTint({
   frame,
   x,
@@ -236,11 +209,6 @@ export function RowTint({
   );
 }
 
-/**
- * The dashed line at offset 0, where every row's pinned gene ends. It is the
- * focus family's own orange (a data color), so it always matches the focus
- * genes, whatever the theme.
- */
 export function FocusLine({
   model,
   matrix,
@@ -263,10 +231,8 @@ export function FocusLine({
   );
 }
 
-/** The ruler's tick labels, px (mono). */
 const rulerLabelSize = 11;
 
-/** The bp ruler, from the focus gene, following the zoom. Labels within 20 px of an edge hide. */
 export function RulerAxis({ model, matrix, plotWidth }: LayerProps) {
   const { major, minor } = rulerTicks(model.layout.domain, matrix, plotWidth);
   const axisY = rulerHeight - 6;

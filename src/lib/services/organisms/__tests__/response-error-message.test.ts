@@ -63,7 +63,6 @@ describe("organismResponseError", () => {
     label: "Isolation Country",
   };
 
-  /** A real fetch answered by `answer`, so the response has a URL. */
   async function answeredWith(answer: () => Response): Promise<Response> {
     server.use(http.get(`${baseUrl}/genome/`, answer));
     return fetch(`${baseUrl}/genome/`);
@@ -80,7 +79,6 @@ describe("organismResponseError", () => {
       status: 503,
       code: "service_unavailable",
       message: `Isolation Country: The BV-BRC data service is unavailable (HTTP 503 Service Unavailable: ${maintenanceSummary}).`,
-      // For the server log only.
       source: "genome isolation_country facet",
       host: "bvbrc.test",
     });
@@ -155,12 +153,10 @@ describe("organism loaders on a maintenance page", () => {
   const unavailable = `The BV-BRC data service is unavailable (HTTP 503 Service Unavailable: ${maintenanceSummary}).`;
 
   it.each([
-    // Unlabelled: the card or page showing the failure already names the data.
     ["fetchOrganismSummary", "", "summary_by_taxon", () => fetchOrganismSummary(562)],
     ["fetchOrganismTaxonomy", "", "taxonomy/562", () => fetchOrganismTaxonomy(562)],
     ["fetchOrganismGenera", "", "genome genus facet", () => fetchOrganismGenera(562)],
     ["fetchReferenceGenomes", "", "reference-genomes", () => fetchReferenceGenomes(562)],
-    // Labelled with the title of the chart that shows the failure.
     ["fetchOrganismMetadataFacets", "Isolation Country: ", "genome isolation_country facet", () =>
       fetchOrganismMetadataFacets(562, ["isolation_country"])],
     ["fetchTaxonomicDistribution", "Taxonomic Distribution: ", "taxonomic distribution genus", () =>

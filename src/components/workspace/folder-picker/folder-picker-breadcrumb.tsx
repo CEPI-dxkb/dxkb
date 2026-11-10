@@ -6,20 +6,11 @@ import { viewLabel, type PickerView } from "@/lib/services/workspace/picker-view
 import { cn } from "@/lib/utils";
 import { placeIcons } from "./folder-picker-utils";
 
-// tw-animate runs 150 ms by default. No `duration-*` here: in Tailwind v4 it
-// also sets `transition-duration`, which made the crumbs transition their
-// layout (min-width, flex-shrink) whenever they changed role.
+// No `duration-*` here: in Tailwind v4 it also sets `transition-duration`, which made
+// crumbs transition their layout whenever they changed role.
 const crumbEnterClass =
   "ease-out animate-in fade-in-0 slide-in-from-right-2 motion-reduce:animate-none";
 
-/**
- * The selection as a path from the place root; each crumb jumps back to that
- * folder (closing the columns past it). Picking files, the last crumb is the
- * selected file. Every folder shows; long names
- * truncate, with the full path on hover. A path too deep to fit even then
- * scrolls instead of running under the footer's buttons, kept at its end so
- * the current folder is always in view.
- */
 export function FolderPickerBreadcrumb({
   place,
   chain,
@@ -30,9 +21,7 @@ export function FolderPickerBreadcrumb({
 }: {
   place: PickerView;
   chain: string[];
-  /** A crumb's text, e.g. "Home" for the home folder. */
   label: (path: string) => string;
-  /** The trail's accessible name, e.g. "Selected folder". */
   navLabel: string;
   disabled: boolean;
   onJump: (depth: number) => void;
@@ -40,24 +29,18 @@ export function FolderPickerBreadcrumb({
   const PlaceIcon = placeIcons[place];
   const trailRef = useRef<HTMLElement>(null);
 
-  // The current folder is the last crumb. Before paint, so a new crumb never
-  // shows a frame scrolled out of view.
+  // Before paint, so a new crumb never shows a frame scrolled out of view.
   useLayoutEffect(() => {
     const trail = trailRef.current;
     if (trail) trail.scrollLeft = trail.scrollWidth;
   }, [place, chain]);
 
   return (
-    // -m-1/p-1 leave room inside the scroller for the crumbs' focus rings.
     <nav
       ref={trailRef}
       aria-label={navLabel}
       className="-m-1 no-scrollbar flex min-w-0 flex-1 items-center overflow-x-auto p-1"
     >
-      {/* A crumb that appears (going in, or moving to a sibling) fades in
-          from slightly to the right, like a new column does; going back, the
-          crumb that becomes current fades its colour in. Keyed by path, so
-          only the crumbs that changed animate. */}
       <ol className="flex min-w-0 items-center gap-0.5 text-sm">
         <li
           key={place}

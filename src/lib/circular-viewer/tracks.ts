@@ -1,8 +1,3 @@
-/**
- * The Circular Viewer's tracks: legacy `CircularViewerContainer`'s defaults
- * in its order (the first is the outermost ring), and the custom and upload
- * tracks `TrackController` added, with their colors and tooltips.
- */
 import type { CustomTrackQuery, PresetTrackId } from "./contract";
 import type { ScoreScale } from "./paths";
 import { userScorePoints, type GcMetric, type TrackItems } from "./track-items";
@@ -23,20 +18,16 @@ export interface CircularTrack {
   title: string;
   plot: TrackPlot;
   widthFraction: number;
-  /** Fill of sections and histograms, stroke of a line, tick color of the labels; null: the theme's. */
   foreground: string | null;
   /**
-   * In a dark theme, a lighter version of `foreground` (navy to periwinkle,
-   * black to gray): legacy's navy, black, blue and dark purple defaults fall
-   * below 3:1 (WCAG 1.4.11) on a dark card. The light theme and an exported
-   * figure keep `foreground`; picking a color clears it. Null: `foreground`
-   * in every theme.
+   * In a dark theme, a lighter `foreground`: the navy, black, blue and purple
+   * defaults fall below 3:1 on a dark card. The light theme and an exported
+   * figure keep `foreground`.
    */
   darkForeground: string | null;
   background: string | null;
   scale: ScoreScale | null;
   visible: boolean;
-  /** Legacy's reference (contig) track had no show/hide or remove button. */
   fixed: boolean;
   source: TrackSource;
 }
@@ -69,7 +60,6 @@ function gcTrack(metric: GcMetric, title: string, background: string, scale: Sco
     plot: "line",
     widthFraction: 0.1,
     foreground: "#000000",
-    // Drawn on its own light background, in every theme.
     darkForeground: null,
     background,
     scale,
@@ -119,11 +109,8 @@ export function defaultTracks(): CircularTrack[] {
   ];
 }
 
-/** Legacy `custom_colors`: blue, green, orange, pink, red, purple. */
 export const customTrackColors = ["#0000FF", "#008000", "#FFA500", "#FFC0CB", "#FF0000", "#800080"] as const;
-/** Lighter versions of the cycle colors under 3:1 on a dark card (blue, purple), for `darkForeground`. */
 const customDarkForegrounds: Readonly<Record<string, string>> = { "#0000FF": "#5C8DFF", "#800080": "#C08AF5" };
-/** Legacy `user_colors`, for uploaded tiles. */
 export const userTrackColors = ["#1E90FF", "#32CD32", "#FF6347", "#FF69B4", "#DC143C", "#8A2BE2"] as const;
 
 export function customTrack(index: number, query: CustomTrackQuery, name: string): CircularTrack {
@@ -143,7 +130,6 @@ export function customTrack(index: number, query: CustomTrackQuery, name: string
   };
 }
 
-/** Legacy `addUserTrack`'s widths and colors per plot type (a histogram's fill was its default blue). */
 const userLooks: Record<UserPlotType, { plot: TrackPlot; widthFraction: number; background: string | null }> = {
   tiles: { plot: "sections", widthFraction: 0.08, background: null },
   line: { plot: "line", widthFraction: 0.1, background: "#FFEFD5" },
@@ -172,8 +158,7 @@ export function userTrack(
     title: name.trim() || `User track ${String(index)}`,
     ...look,
     foreground,
-    // A line's black and a histogram's blue are drawn on their own light
-    // backgrounds (#FFEFD5, #FFFFE0), in every theme, where the theme's
+    // Drawn on their own light backgrounds in every theme, where the theme's
     // foreground would vanish in a dark one.
     darkForeground: null,
     scale: plot === "tiles" ? null : parsed.scale,
@@ -206,7 +191,6 @@ function round2(value: number): string {
   return String(Math.round(value * 100) / 100);
 }
 
-/** The tooltip legacy gave a track's title (`title_tooltip`), with the real GC window. */
 export function trackDescription(track: CircularTrack, gcWindowSize?: number): string | undefined {
   const { source } = track;
   switch (source.kind) {
@@ -233,7 +217,6 @@ export function trackDescription(track: CircularTrack, gcWindowSize?: number): s
   }
 }
 
-/** Legacy hid a heatmap's foreground swatch: its colors are its scores'. */
 export function canSetForeground(track: CircularTrack): boolean {
   return track.plot !== "heatmap";
 }

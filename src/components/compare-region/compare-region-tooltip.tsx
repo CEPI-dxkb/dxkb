@@ -1,14 +1,6 @@
 "use client";
 
-/**
- * The Compare Region Viewer's hover tooltip: the hovered feature's ID,
- * product, location, family (and how many genomes share it), identity to the
- * focus gene and genome. It hangs just below and right of the gene, not from
- * the pointer (`placeFeaturePopupElement`). Place it outside the figure's
- * scroller, so the scroller's overflow does not clip it. A click pins it as
- * the feature card (`compare-region-feature-card.tsx`), which opens with the
- * same lines in the same place.
- */
+/** Place it outside the figure's scroller, so the scroller's overflow does not clip it. */
 import type { ReactNode, Ref } from "react";
 import {
   familyReach,
@@ -25,18 +17,15 @@ import {
 import { cn } from "@/lib/utils";
 import { FeatureSwatch } from "./compare-region-glyphs";
 
-/** The tooltip's popover look, which the pinned card shares. */
 export const featureTooltipSurface =
   "rounded-lg border bg-popover p-3 text-xs text-popover-foreground shadow-lg";
 
 interface FeatureLinesProps {
   model: ChartModel;
   at: FeatureRef;
-  /** Buttons at the end of the ID line (the pinned card's Collapse/Expand and Close). */
   actions?: ReactNode;
 }
 
-/** The tooltip's lines for `at`: ID, product, location, family, identity and genome. */
 export function FeatureLines({ model, at, actions }: FeatureLinesProps) {
   const resolved = resolveFeature(model.layout, at);
   if (!resolved) return null;
@@ -94,9 +83,7 @@ export function FeatureLines({ model, at, actions }: FeatureLinesProps) {
 
 interface CompareRegionTooltipProps {
   model: ChartModel;
-  /** The hovered feature; nothing shows while it is undefined. */
   at: FeatureRef | undefined;
-  /** The chart's, to place the tooltip: it starts hidden (`data-offscreen`) until placed. */
   ref: Ref<HTMLDivElement>;
 }
 
@@ -108,8 +95,6 @@ export function CompareRegionTooltip({
   if (!at || !resolveFeature(model.layout, at)) return null;
   return (
     <div
-      // Each gene's tooltip is its own, which fades in where it opens
-      // (`starting:`) rather than jumping there from the last gene's.
       key={`${String(at.rowIndex)}:${String(at.featureIndex)}`}
       ref={ref}
       data-feature-tooltip=""

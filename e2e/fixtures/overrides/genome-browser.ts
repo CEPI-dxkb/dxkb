@@ -32,9 +32,8 @@ function span(requestUrl: string) {
 }
 
 /**
- * `/api/genome-browser/*` for the MERS fixture genome: one 30,119 bp sequence,
- * one PATRIC CDS at 1..100, no RefSeq features, and a deterministic sequence
- * so a zoomed-in spec can read bases.
+ * `/api/genome-browser/*` for the MERS fixture genome, with a deterministic
+ * sequence so a zoomed-in spec can read bases.
  */
 export const genomeBrowserScenarioOverrides: JsonOverride[] = [
   {

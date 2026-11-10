@@ -5,10 +5,8 @@ import { GraphNodeList } from "../graph-node-list";
 import { colors } from "@/lib/interactions/graph-theme";
 import type { GNode } from "@/lib/interactions/types";
 
-// cmdk needs two browser APIs jsdom omits: scrollIntoView (scrolls the active
-// item into view on selection) and ResizeObserver (its internal sizing). Stub
-// both so the keyboard flow runs. scrollIntoView is re-stubbed per-test where a
-// test asserts on it, so grab a stable default here.
+// cmdk needs scrollIntoView and ResizeObserver, which jsdom omits; stub both so the keyboard flow
+// runs.
 beforeAll(() => {
   Element.prototype.scrollIntoView = vi.fn();
   vi.stubGlobal(
@@ -27,8 +25,7 @@ beforeAll(() => {
   );
 });
 
-// Undo the global stubs so they don't leak to sibling files (clearMocks resets
-// neither stubGlobal nor prototype mutations).
+// Undo the global stubs (clearMocks resets neither stubGlobal nor prototype mutations).
 afterAll(() => {
   delete (Element.prototype as Partial<Element>).scrollIntoView;
   vi.unstubAllGlobals();
@@ -39,8 +36,6 @@ const nodes: GNode[] = [
   { id: "fig|2.2", gene: "recA", kind: "host" },
 ];
 
-// The dot paints `bg-(--dot-color)`, so its rendered color is whatever the row
-// puts in that custom property.
 function dotColorOf(row: HTMLElement): string {
   const dot = row.querySelector("span[aria-hidden]");
   if (!dot) throw new Error("row has no color dot");
@@ -120,9 +115,7 @@ describe("GraphNodeList", () => {
       .getByText("recA")
       .closest("[cmdk-item]") as HTMLElement;
 
-    // dnaA is selected -> amber, regardless of its microbial kind.
     expect(dotColorOf(selectedRow)).toBe(colors.selected);
-    // recA is unselected -> its host kind color.
     expect(dotColorOf(hostRow)).toBe(colors.host);
   });
 
@@ -179,11 +172,9 @@ describe("GraphNodeList", () => {
       .getByText("recA")
       .closest("[cmdk-item]") as HTMLElement;
 
-    // Hover tint lives on every row (cmdk's pointer-selection is disabled, so the
-    // built-in data-[selected] hover never fires — this explicit class is the
-    // only hover feedback).
+    // cmdk's pointer-selection is disabled, so this explicit hover class is the only hover
+    // feedback.
     expect(otherRow).toHaveClass("hover:bg-secondary/15");
-    // Selected row keeps its stronger, forced highlight so hover can't override it.
     expect(selectedRow).toHaveClass(
       "data-[app-selected=true]:bg-secondary/25!",
     );
@@ -201,11 +192,10 @@ describe("GraphNodeList", () => {
       />,
     );
 
-    // cmdk scrolls its own internal cursor into view on mount; clear that so the
-    // assertion isolates our selection-change effect, not cmdk's mount behavior.
+    // cmdk scrolls its own cursor into view on mount; clear that so the assertion isolates our
+    // selection effect.
     scrollSpy.mockClear();
 
-    // A canvas click flows in as a new selectedId → scroll that row into view.
     rerender(
       <GraphNodeList
         nodes={nodes}

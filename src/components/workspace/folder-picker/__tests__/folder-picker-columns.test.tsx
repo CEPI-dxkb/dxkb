@@ -19,7 +19,6 @@ vi.mock("sonner", () => ({ toast: { error: vi.fn(), success: vi.fn() } }));
 
 stubPickerBrowserApis();
 
-/** The column whose header (and resize handle) is labelled `label`. */
 function column(label: string) {
   const handle = screen.getByRole("separator", {
     name: `Resize ${label} column`,
@@ -29,7 +28,6 @@ function column(label: string) {
   return element;
 }
 
-/** The folder count in a column's header, or null while it shows none. */
 function headerCount(label: string) {
   return (
     within(column(label)).queryByText(/^\d+$/, { selector: "span" })
@@ -101,7 +99,6 @@ describe("WorkspaceFolderPickerDialog column states", () => {
     const gate = repository.holdListing(home);
     await user.click(within(alert).getByRole("button", { name: "Retry" }));
 
-    // The failure stays up while the retry is in flight.
     expect(
       await within(column("Home")).findByRole("button", { name: "Retrying…" }),
     ).toBeDisabled();
@@ -134,7 +131,6 @@ describe("WorkspaceFolderPickerDialog column states", () => {
         [`${home}/Docs`]: [
           { name: "a.txt", type: "txt" },
           { name: "b.csv", type: "csv" },
-          // Hidden items never show, so they are not offered either.
           { name: ".notes", type: "txt" },
         ],
       },

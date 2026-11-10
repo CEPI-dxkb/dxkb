@@ -23,9 +23,6 @@ import {
 
 import type { MsaSnpAnalysisFormData } from "../msa-snp-analysis-form-schema";
 
-// ---------------------------------------------------------------------------
-// getFastaFileTypeLabel
-// ---------------------------------------------------------------------------
 describe("getFastaFileTypeLabel", () => {
   it("returns 'Protein FASTA' for feature_protein_fasta", () => {
     expect(getFastaFileTypeLabel("feature_protein_fasta")).toBe("Protein FASTA");
@@ -48,9 +45,6 @@ describe("getFastaFileTypeLabel", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// getDisplayName
-// ---------------------------------------------------------------------------
 describe("getDisplayName", () => {
   it("returns the full name when it is 36 characters or fewer", () => {
     const name = "short-file-name.fasta";
@@ -72,17 +66,12 @@ describe("getDisplayName", () => {
   it("preserves the beginning and end of the name", () => {
     const name = "abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJ";
     const result = getDisplayName(name);
-    // First 16 chars (36/2 - 2 = 16)
     expect(result.startsWith("abcdefghijklmnop")).toBe(true);
-    // Last 20 chars (length - (36/2) + 2 = length - 16)
     expect(result.endsWith("ABCDEFGHIJ")).toBe(true);
     expect(result).toContain("...");
   });
 });
 
-// ---------------------------------------------------------------------------
-// checkDuplicateFastaFile
-// ---------------------------------------------------------------------------
 describe("checkDuplicateFastaFile", () => {
   const existingFiles = [
     { file: "/workspace/seq1.fasta", type: "feature_protein_fasta" as const },
@@ -114,9 +103,6 @@ describe("checkDuplicateFastaFile", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// checkFastaFileLimit
-// ---------------------------------------------------------------------------
 describe("checkFastaFileLimit", () => {
   it("always returns false (no limit currently enforced)", () => {
     expect(checkFastaFileLimit([])).toBe(false);
@@ -131,9 +117,6 @@ describe("checkFastaFileLimit", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// removeFastaFileAtIndex
-// ---------------------------------------------------------------------------
 describe("removeFastaFileAtIndex", () => {
   const files = [
     { file: "/workspace/a.fasta", type: "feature_protein_fasta" as const },
@@ -172,9 +155,6 @@ describe("removeFastaFileAtIndex", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// createFastaFileItem
-// ---------------------------------------------------------------------------
 describe("createFastaFileItem", () => {
   it("creates a file item with the given file and type", () => {
     const item = createFastaFileItem("/workspace/seq.fasta", "feature_protein_fasta");
@@ -216,9 +196,6 @@ describe("fastaFileFromObject", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// validateSequenceFasta
-// ---------------------------------------------------------------------------
 describe("validateSequenceFasta", () => {
   beforeEach(() => {
     vi.mocked(validateFasta).mockReturnValue({
@@ -292,9 +269,6 @@ describe("validateSequenceFasta", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// transformMsaSnpAnalysisParams
-// ---------------------------------------------------------------------------
 describe("transformMsaSnpAnalysisParams", () => {
   const baseData: MsaSnpAnalysisFormData = {
     input_status: "unaligned",
@@ -332,7 +306,6 @@ describe("transformMsaSnpAnalysisParams", () => {
     expect(result.output_file).toBe("my-output");
   });
 
-  // -- Unaligned: input_fasta --
   it("sets input_type to input_fasta and includes fasta_files", () => {
     const result = transformMsaSnpAnalysisParams(baseData);
     expect(result.input_type).toBe("input_fasta");
@@ -341,7 +314,6 @@ describe("transformMsaSnpAnalysisParams", () => {
     ]);
   });
 
-  // -- Unaligned: input_sequence --
   it("sets input_type to input_sequence and includes trimmed fasta_keyboard_input", () => {
     const data: MsaSnpAnalysisFormData = {
       ...baseData,
@@ -354,7 +326,6 @@ describe("transformMsaSnpAnalysisParams", () => {
     expect(result.fasta_keyboard_input).toBe(">seq1\nACGT");
   });
 
-  // -- Unaligned: input_feature_group --
   it("maps input_feature_group to input_group and wraps feature_groups in array", () => {
     const data: MsaSnpAnalysisFormData = {
       ...baseData,
@@ -381,7 +352,6 @@ describe("transformMsaSnpAnalysisParams", () => {
     expect(result).not.toHaveProperty("feature_groups");
   });
 
-  // -- Unaligned: input_genome_group --
   it("maps input_genome_group to input_genomegroup and includes select_genomegroup", () => {
     const data: MsaSnpAnalysisFormData = {
       ...baseData,
@@ -394,7 +364,6 @@ describe("transformMsaSnpAnalysisParams", () => {
     expect(result.select_genomegroup).toEqual(["group1", "group2"]);
   });
 
-  // -- Aligned --
   it("includes fasta_files when input_status is aligned", () => {
     const data: MsaSnpAnalysisFormData = {
       ...baseData,
@@ -423,7 +392,6 @@ describe("transformMsaSnpAnalysisParams", () => {
     expect(result).not.toHaveProperty("strategy_settings");
   });
 
-  // -- Reference --
   it("includes ref_type and ref_string when ref_string is provided", () => {
     const data: MsaSnpAnalysisFormData = {
       ...baseData,
@@ -441,7 +409,6 @@ describe("transformMsaSnpAnalysisParams", () => {
     expect(result).not.toHaveProperty("ref_string");
   });
 
-  // -- Strategy --
   it("includes strategy and strategy_settings for Mafft aligner", () => {
     const result = transformMsaSnpAnalysisParams(baseData);
     expect(result.strategy).toBe("auto");
@@ -459,7 +426,6 @@ describe("transformMsaSnpAnalysisParams", () => {
     expect(result).not.toHaveProperty("strategy_settings");
   });
 
-  // -- Alphabet detection --
   it("detects protein alphabet from fasta_files type", () => {
     const result = transformMsaSnpAnalysisParams(baseData);
     expect(result.alphabet).toBe("protein");

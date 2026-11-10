@@ -15,7 +15,6 @@ import type { JobListItem } from "@/types/workspace";
 import { formatDate } from "@/lib/services/workspace/helpers";
 import { formatUserFacingErrorMessage } from "@/lib/utils";
 
-/** `formatUserFacingErrorMessage` fallback for a failed stdout/stderr read. */
 const outputErrorFallback = "The job service did not return this output.";
 
 function CopyButton({ text }: { text: string }) {
@@ -61,8 +60,6 @@ function OutputSection({
   const [expanded, setExpanded] = useState(false);
   const output = useJobOutput(jobId, outputType, expanded);
   const { data, isLoading } = output;
-  // A Retry keeps the failure up ("Retrying…") instead of going back to
-  // "Loading…" until it answers.
   const outputRetry = useRetryKeepingError(output, `${jobId}:${outputType}`);
 
   return (

@@ -35,7 +35,6 @@ export function ServiceCardContent({
   );
 }
 
-/** A card's helper line in the service forms' compact 12px size. */
 export function ServiceCardDescription({
   className,
   ...props

@@ -59,8 +59,6 @@ describe("collection URL state", () => {
   });
 
   it("keeps keyword independent and gives explicit rql precedence over friendly filters", () => {
-    // What the composer then does with this state is
-    // `structuralFilterRql`'s contract, asserted in structural-rql.test.ts.
     const state = parseCollectionState(
       { keyword: "influenza", rql: "eq(public,true)", taxon_id: "11520" },
       options,
@@ -264,8 +262,6 @@ describe("collection URL state", () => {
 
 describe("replaceCollectionSearchParams", () => {
   it("preserves the caller-supplied page even when the query shape changes", () => {
-    // Unlike updateCollectionSearchParams, a full-state replacement must not
-    // reset pagination — the caller already owns the complete next state.
     const merged = replaceCollectionSearchParams(
       { page: "9", tab: "genomes" },
       { keyword: "flu", filters: {}, page: 5, sort: "relevance" },
@@ -433,9 +429,6 @@ describe("unionCollectionManagedParamNames", () => {
   });
 
   it("clears every participating view's stray state on a cross-tab transition while preserving unrelated params", () => {
-    // Mirrors what the organism landing shell does on a tab switch: compute
-    // the union across every tab's options, then delete those names from the
-    // current URL — regardless of which tab actually owns each value.
     const params = new URLSearchParams(
       "taxon_id=123&strain_status=active&pathogen_test_result=positive&refine=N034&tab=strains&utm_source=email",
     );
@@ -449,8 +442,8 @@ describe("unionCollectionManagedParamNames", () => {
 });
 
 describe("default filters", () => {
-  // Legacy BV-BRC grids select a removable default filter (FeatureList's
-  // annotation=PATRIC); `host` stands in for it here.
+  // `host` stands in for the removable default (legacy FeatureList's
+  // annotation=PATRIC).
   const withDefault = {
     ...options,
     defaultFilters: { host: ["human"] },
@@ -518,8 +511,6 @@ describe("default filters", () => {
     ).toBe("host=swine");
   });
 
-  // Legacy applies a grid default to every query, a link's included:
-  // FeatureList/?eq(genome_id,83332.12) lists that genome's PATRIC features.
   it("keeps a default beside an explicit rql, removable as without one", () => {
     const rql = "eq(public,true)";
     expect(parseCollectionState({ rql, taxon_id: "2" }, withDefault).filters).toEqual(
@@ -553,8 +544,7 @@ describe("default filters", () => {
         ).has("host"),
       ).toBe(false);
     }
-    // Only an operator's first argument names a field: not a longer field
-    // name, a keyword, or a value at the start of an in() list.
+    // Only an operator's first argument names a field.
     for (const rql of [
       "eq(host_name,swine)",
       "keyword(host)",
@@ -564,17 +554,15 @@ describe("default filters", () => {
         host: ["human"],
       });
     }
-    // Spaces the RQL parser accepts around the field still name it.
     expect(
       parseCollectionState({ rql: "eq( host ,swine)" }, withDefault).filters,
     ).toEqual({});
   });
 
-  // The rql hid the default rather than the user removing it, so dropping the
-  // rql brings the default back; only an explicit removal writes the marker.
+  // The rql hid the default rather than the user removing it; only an explicit
+  // removal writes the marker.
   it("reapplies a default once the rql that named its field is gone", () => {
     const shadowing = { rql: "eq(host,swine)", taxon_id: "2" };
-    // A facet click that clears the rql hands over filters without the default.
     expect(
       withUnshadowedDefaults(
         "eq(host,swine)",
@@ -582,8 +570,6 @@ describe("default filters", () => {
         withDefault,
       ).filters,
     ).toEqual({ taxon_id: ["3"], host: ["human"] });
-    // A wholesale replacement is taken as given: "Clear All Filters" passes
-    // empty filters and means the default too.
     expect(
       replaceCollectionSearchParams(
         shadowing,
@@ -594,7 +580,6 @@ describe("default filters", () => {
     expect(
       updateCollectionSearchParams(shadowing, { rql: null }, withDefault).toString(),
     ).toBe("");
-    // Swapping in an rql that no longer names the field reapplies it too.
     expect(
       updateCollectionSearchParams(
         shadowing,
@@ -602,7 +587,6 @@ describe("default filters", () => {
         withDefault,
       ).toString(),
     ).toBe("rql=eq%28public%2Ctrue%29");
-    // Removing the default in the same update still writes the marker.
     expect(
       updateCollectionSearchParams(
         shadowing,
@@ -610,7 +594,6 @@ describe("default filters", () => {
         withDefault,
       ).toString(),
     ).toBe("host=*");
-    // Without a shadowing rql there is nothing to restore.
     expect(
       withUnshadowedDefaults(
         "eq(public,true)",
@@ -675,8 +658,6 @@ describe("default filters", () => {
   });
 
   it("keeps independent scope filters in the facet-count state", () => {
-    // The Proteins search always adds `filter=protein`, a scope kept beside
-    // explicit state; only the default is left out of the counts.
     const scoped = {
       ...withDefault,
       independentFilters: ["taxon_id"],

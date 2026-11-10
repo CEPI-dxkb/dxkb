@@ -20,9 +20,7 @@ function assignGrid(g: Graph) {
   });
 }
 
-// Port of cytoscape.js's concentric layout (the legacy renderer's algorithm) -
-// graphology/Sigma has no equivalent. Highest-degree nodes are centred; lower
-// degree groups are placed on outer rings sized by chord-fit spacing.
+// Port of cytoscape.js's concentric layout (graphology/Sigma has no equivalent).
 function assignConcentric(g: Graph) {
   const nodesByDegree = g
     .nodes()
@@ -85,7 +83,6 @@ function bfsFrom(g: Graph, root: string, depth: Map<string, number>) {
   }
 }
 
-// Lazy one-pass barycenter sweep for the dagre-like layered layout.
 function orderRanksByBarycenter(ranks: number[], nodesByRank: Map<number, string[]>, g: Graph) {
   const positionInRank = new Map<string, number>();
   ranks.forEach((rank) => {

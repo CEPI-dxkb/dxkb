@@ -24,7 +24,6 @@ interface RpcBody {
   params: [{ objects: [string, string][] }];
 }
 
-/** `Workspace.create` answers after a short wait; the rest of the proxy is unused. */
 function createAnswers(answer: () => Response) {
   const created: string[] = [];
   server.use(

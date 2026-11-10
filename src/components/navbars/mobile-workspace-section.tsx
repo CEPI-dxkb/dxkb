@@ -21,11 +21,8 @@ import { formatUserFacingErrorMessage } from "@/lib/utils";
 
 interface MobileWorkspaceSectionProps {
   favoritePaths: string[];
-  /** The first favorites read is still in flight; shows skeletons. */
   favoritesLoading?: boolean;
-  /** Why the favorites failed to load; shown instead of hiding the section. */
   favoritesError?: unknown;
-  /** The favorites' Retry is in flight; its button reads "Retrying…". */
   favoritesRetrying?: boolean;
   onRetryFavorites?: () => void;
   isAuthenticated: boolean;

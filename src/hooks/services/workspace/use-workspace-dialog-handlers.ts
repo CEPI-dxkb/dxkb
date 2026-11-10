@@ -48,7 +48,6 @@ export function useWorkspaceDialogHandlers(options: UseWorkspaceDialogHandlersOp
   const { activeDialog } = state;
   const queryClient = useQueryClient();
 
-  // Check for non-empty folders when delete dialog opens.
   const deleteItems = activeDialog?.type === "delete" ? activeDialog.items : null;
   useEffect(() => {
     if (!deleteItems) return;
@@ -158,8 +157,7 @@ export function useWorkspaceDialogHandlers(options: UseWorkspaceDialogHandlersOp
       toast.success(namedObjectConfirmation("Created", "Folder", safeName));
     },
     onError: (err, safeName) => {
-      // The dialog also shows this inline; the toast covers a dialog the
-      // user closed while it was pending.
+      // The dialog also shows this inline; the toast covers a dialog closed while pending.
       toast.error("Couldn't create folder", {
         description: `${safeName}: ${workspaceErrorMessage(err, "The workspace service returned an error.")}`,
       });
@@ -287,8 +285,6 @@ export function useWorkspaceDialogHandlers(options: UseWorkspaceDialogHandlersOp
     copyMutation.mutate({ objects, isMove, firstDestName, destinationPath });
   };
 
-  // Both resolve when the folder exists and reject with the failure, so the
-  // dialog stays open (pending, then with the error inline) until it is done.
   const handleCreateFolder = async (folderName: string): Promise<void> => {
     const name = folderName.trim();
     if (!name) return;

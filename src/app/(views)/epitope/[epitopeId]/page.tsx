@@ -23,10 +23,8 @@ interface EpitopePageProps extends EpitopeMetadataProps {
 }
 
 async function loadEpitope(rawEpitopeId: string, source: RouteParamSource) {
-  // The two entry points receive this segment in different encodings, so
-  // each declares which it is. Decoding unconditionally made
-  // `generateMetadata` resolve a different record than the body for any id
-  // containing a literal percent escape. See `readRouteParam`.
+  // The two entry points receive this segment in different encodings, so each
+  // declares its `source` (see `readRouteParam`).
   const epitopeId = readRouteParam(rawEpitopeId, source);
   if (!isEpitopeId(epitopeId)) notFound();
   let epitope: Awaited<ReturnType<typeof getEpitope>>;
@@ -35,7 +33,6 @@ async function loadEpitope(rawEpitopeId: string, source: RouteParamSource) {
   } catch (error) {
     if (error instanceof DataApiError && [401, 403, 404].includes(error.status))
       notFound();
-    // An outage is rendered, not thrown: production would redact its message.
     const unavailable = recordUnavailableMessage(error);
     if (unavailable === null) throw error;
     if (source === "page") console.error(`epitope/${epitopeId}:`, error);

@@ -28,18 +28,12 @@ const answerSchema = z.object({
   answer: z.string().trim().min(1).max(4000),
 });
 
-/**
- * Largest request body: every attachment slot as a text file (base64 is 4/3
- * of the bytes it carries, and a tab- or newline-heavy text file can double
- * when JSON-escaped, so twice the file cap per slot), plus 2 MB for the
- * query, page context and plan.
- */
+/** Every attachment slot as a text file at twice the file cap (base64 plus JSON-escaping), plus 2 MB for the query, page context and plan. */
 const maxChatBodyBytes =
   maxCopilotAttachments * 2 * maxCopilotFileBytes + 2 * 1024 * 1024;
 
 const attachmentName = z.string().trim().min(1).max(255);
 
-/** Base64 is 4/3 of the bytes it carries, plus the `data:…;base64,` prefix. */
 function dataUrlLimit(bytes: number): number {
   return Math.ceil((bytes * 4) / 3) + 100;
 }
@@ -111,12 +105,7 @@ const chatRequestSchema = z
       maxCopilotAttachments,
   );
 
-/**
- * One chat turn: the gateway's `text/event-stream`, passed through as it
- * arrives. Only the whitelisted fields reach the gateway (`copilotTurnBody`),
- * which takes the user from the token. A client that disconnects closes the upstream request; the
- * gateway still finishes and saves the turn (Stop is the explicit cancel).
- */
+/** One chat turn: the gateway's `text/event-stream` passed through; a client disconnect closes the upstream request, but the gateway still saves the turn (Stop is the explicit cancel). */
 export const POST = withAuth(async (request, { token }) => {
   const body = await readCopilotJsonBody(request, maxChatBodyBytes);
   if ("error" in body) return body.error;

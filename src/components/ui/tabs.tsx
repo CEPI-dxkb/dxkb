@@ -53,10 +53,6 @@ function TabsList({
   );
 }
 
-// Local edits (keep when regenerating with `shadcn add --overwrite`): the
-// TabsTrigger `size` axis (`xs`: extra-small labels), merged after the base.
-// And the trigger drops `disabled:pointer-events-none`, so a natively
-// disabled tab shows the not-allowed cursor.
 const tabsTriggerSizes = cva("", {
   variants: {
     size: {

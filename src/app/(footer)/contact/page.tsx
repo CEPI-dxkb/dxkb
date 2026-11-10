@@ -6,7 +6,6 @@ const ContactUs = () => {
     <div>
       <FooterHeader title="Contact Us" />
 
-      {/* Contact Form Section */}
       <ContactForm />
     </div>
   )

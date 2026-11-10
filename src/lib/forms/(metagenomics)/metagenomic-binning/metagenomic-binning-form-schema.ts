@@ -2,20 +2,15 @@ import { z } from "zod";
 
 import { baseLibrarySchema, type BaseLibraryItem } from "@/lib/forms/shared-schemas";
 
-// Start with options
 export const startWithSchema = z.enum(["reads", "contigs"]);
 
-// Assembly strategy options (only for reads)
 export const assemblyStrategySchema = z.enum(["metaspades", "megahit", "auto"]);
 
-// Organisms of interest options
 export const organismSchema = z.enum(["bacteria", "viral", "both"]);
 
-// Re-export shared library schema and type for use in this service
 export const librarySchema = baseLibrarySchema;
 export type LibraryItem = BaseLibraryItem;
 
-// Constants
 export const minContigLengthDefault = 300;
 export const minContigLengthMin = 100;
 export const minContigLengthMax = 100000;
@@ -23,36 +18,28 @@ export const minContigCoverageDefault = 5;
 export const minContigCoverageMin = 0;
 export const minContigCoverageMax = 100000;
 
-// Main form schema
 export const metagenomicBinningFormSchema = z
   .object({
-    // Start with selection
     start_with: startWithSchema,
 
-    // Read libraries (when start_with is "reads")
     paired_end_libs: z.array(librarySchema).optional(),
     single_end_libs: z.array(librarySchema).optional(),
     srr_ids: z.array(z.string()).optional(),
 
-    // Contigs file (when start_with is "contigs")
     contigs: z.string().optional(),
 
-    // Parameters
     assembler: assemblyStrategySchema,
     organism: organismSchema,
 
-    // Output configuration
     output_path: z.string().min(1, "Output folder is required"),
     output_file: z.string().min(1, "Output name is required"),
     genome_group: z.string().optional(),
 
-    // Advanced parameters
     min_contig_len: z.number().min(minContigLengthMin).max(minContigLengthMax),
     min_contig_cov: z.number().min(minContigCoverageMin).max(minContigCoverageMax),
     disable_dangling: z.boolean().optional(),
   })
   .superRefine((data, ctx) => {
-    // Validate based on start_with selection
     if (data.start_with === "reads") {
       const hasPaired = data.paired_end_libs && data.paired_end_libs.length > 0;
       const hasSingle = data.single_end_libs && data.single_end_libs.length > 0;
@@ -80,7 +67,6 @@ export const metagenomicBinningFormSchema = z
 
 export type MetagenomicBinningFormData = z.infer<typeof metagenomicBinningFormSchema>;
 
-// Default form values
 export const defaultMetagenomicBinningFormValues: MetagenomicBinningFormData = {
   start_with: "reads",
   paired_end_libs: [],

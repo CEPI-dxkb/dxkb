@@ -7,24 +7,19 @@ import {
 const favoritesFile = "favorites.json";
 const preferencesDir = ".preferences";
 
-/**
- * Path to the favorites JSON file for a user (e.g. /user@bvbrc/home/.preferences/favorites.json).
- */
 export function getFavoritesFilePath(userId: string): string {
   const normalized = userId.startsWith("/") ? userId.slice(1) : userId;
   return `/${normalized}/home/${preferencesDir}/${favoritesFile}`;
 }
 
-/**
- * Path to the .preferences directory for a user (e.g. /user@bvbrc/home/.preferences).
- */
 export function getPreferencesDirPath(userId: string): string {
   const normalized = userId.startsWith("/") ? userId.slice(1) : userId;
   return `/${normalized}/home/${preferencesDir}`;
 }
 
 /**
- * Workspace.get result for one object: result[0][0] = [metadata, content] when not metadata_only.
+ * Workspace.get result for one object: result[0][0] = [metadata, content] when
+ * not metadata_only.
  */
 function parseGetFileContent(result: unknown): string | null {
   if (!Array.isArray(result) || result.length === 0) return null;
@@ -43,16 +38,14 @@ function parseFavoriteFolders(content: string): string[] {
       ? data.folders.filter((path): path is string => typeof path === "string")
       : [];
   } catch {
-    // An unreadable file holds nothing the app can show or keep.
     return [];
   }
 }
 
 /**
- * Load favorite folder paths from the user's favorites.json. Returns [] when
- * the file does not exist yet (or holds no folder list). Any other failure is
- * thrown: a failed read is not "no favorites", and `toggleFavorite` writes
- * the whole file back from what this returns.
+ * Loads favorite folder paths; returns [] when the file does not exist yet. Any
+ * other failure is thrown, since `toggleFavorite` writes the whole file back
+ * from what this returns.
  */
 export async function loadFavorites(userId: string): Promise<string[]> {
   if (!userId) return [];
@@ -74,9 +67,8 @@ export async function loadFavorites(userId: string): Promise<string[]> {
 }
 
 /**
- * Ensure the .preferences directory exists. If the Workspace says it does not
- * exist (get returns empty or a "not found" error), create the folder; any
- * other failure of the check is thrown rather than answered with a write.
+ * Creates the .preferences directory if the Workspace says it does not exist;
+ * any other failure of the check is thrown rather than answered with a write.
  */
 async function ensurePreferencesDir(userId: string): Promise<void> {
   const dirPath = getPreferencesDirPath(userId);
@@ -100,11 +92,8 @@ async function ensurePreferencesDir(userId: string): Promise<void> {
 }
 
 /**
- * Toggle a folder in favorites. Returns the new state: true = favorited, false = removed.
- *
- * The whole file is rewritten from the list just read, so a failed read
- * aborts before any write: writing then would replace every saved favorite
- * with the one folder being toggled.
+ * Toggles a folder in favorites; returns true when favorited. The whole file is
+ * rewritten from the list just read, so a failed read aborts before any write.
  */
 export async function toggleFavorite(
   userId: string,

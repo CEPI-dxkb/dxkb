@@ -4,13 +4,10 @@ import { CollectionToolbar } from "./collection-toolbar";
 import { ErrorAlert } from "./error-alert";
 import { ViewNavRail } from "./view-nav-rail";
 
-/** Taxonomy landing page with its data-view tabs (serology, strains, epitopes, ...). */
 export class TaxonPage {
   readonly page: Page;
   readonly viewNav: ViewNavRail;
-  /** The current tab's collection toolbar (keyword, Filters, Columns). */
   readonly toolbar: CollectionToolbar;
-  /** Links to other taxon pages (the lineage breadcrumb), which Next prefetches. */
   readonly taxonomyLinks: Locator;
 
   constructor(page: Page) {
@@ -20,7 +17,6 @@ export class TaxonPage {
     this.taxonomyLinks = page.locator('a[href^="/taxonomy/"]');
   }
 
-  /** Without a tab, the page opens on its default tab. */
   async goto(taxonId: string, tab?: string): Promise<void> {
     if (tab === undefined) {
       await this.page.goto(`/taxonomy/${taxonId}`);
@@ -30,22 +26,18 @@ export class TaxonPage {
     await expect(this.page).toHaveURL(new RegExp(`tab=${tab}`));
   }
 
-  /** The in-shell error a taxon page shows when its taxonomy lookup failed. */
   unavailable(taxonId: string): ErrorAlert {
     return new ErrorAlert(this.page, `Taxon ${taxonId} could not be loaded`);
   }
 
-  /** The tab's nav-sidebar button, e.g. "Serology", "Strains". */
   tabButton(name: string): Locator {
     return this.page.getByRole("button", { name });
   }
 
-  /** The "Showing X-Y of Z results" pagination summary. */
   resultsSummary(text: string): Locator {
     return this.page.getByText(text);
   }
 
-  /** A data cell by its rendered text, e.g. a row's sample identifier. */
   rowCell(text: string): Locator {
     return this.page.getByText(text);
   }

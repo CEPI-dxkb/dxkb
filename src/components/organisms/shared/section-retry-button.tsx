@@ -4,22 +4,13 @@ import { RefreshRetryButton } from "@/components/errors/retry-button";
 import { QueryRetryButton } from "@/components/views/query-retry-button";
 
 interface SectionRetryButtonProps {
-  /**
-   * Re-runs a load the browser owns (a query's `refetch`). Without it the
-   * route's server components are refreshed, which re-runs a section that
-   * failed while the page rendered.
-   */
+  /** Re-runs a browser-owned load; without it the route's server components are refreshed. */
   onRetry?: () => void;
   /** The caller's load is running again (`useRetryKeepingError`'s `retrying`). */
   isRetrying?: boolean;
 }
 
-/**
- * The Retry of a section or panel that failed to load. `SectionError` renders
- * it, so a server-rendered section gets a working Retry without becoming a
- * client component itself. Either way the button stays disabled while the
- * retry runs, so repeated clicks cannot queue more refetches or refreshes.
- */
+/** The Retry of a section that failed to load; disabled while it runs so clicks cannot queue more refetches. */
 export function SectionRetryButton({
   onRetry,
   isRetrying = false,

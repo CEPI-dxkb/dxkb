@@ -53,62 +53,43 @@ export default defineConfig(
       },
     },
     rules: {
-      // Custom classes defined in globals.css are valid — the plugin can't parse @apply-based class definitions
       "tailwindcss/no-custom-classname": "off",
-      // Too noisy — many legitimate arbitrary values have no preset equivalent (e.g. min(), vh+rem combos, percentages)
-      // "tailwindcss/no-arbitrary-value": "on",
     },
   },
   {
-    // @shadcn/lint design-system rules, configured as in the upstream adoption
-    // guide (https://github.com/shadcn-ui/lint/blob/main/docs/adoption.md).
-    // Components and theme are discovered from components.json (ui alias
-    // `@/components/ui`, theme `src/app/globals.css`), so no
-    // `settings.shadcn` is needed.
-    //
-    // Every rule is an error and the tree has no recorded exceptions.
+    // Every shadcn rule is an error with no recorded exceptions; components
+    // and theme are discovered from components.json.
     plugins: { shadcn },
     rules: {
       "shadcn/no-restyle": [
         "error",
         {
           allow: ["layout"],
-          // The rule applies one contract per component: the LAST entry whose
-          // pattern matches wins, and entries are not merged. Keep the
-          // patterns disjoint so each component matches exactly one entry.
-          // A wrapper that forwards className (e.g. ServiceCollapsibleTrigger)
-          // is checked against the contract of the component it wraps.
+          // The last matching entry wins and entries are not merged, so keep
+          // patterns disjoint; a wrapper that forwards className is checked
+          // against the component it wraps.
           contracts: [
-            // Padding is set per table cell.
             { pattern: "^TableCell$", allow: ["layout", "spacing"] },
-            // Header cells also take opacity, for drag feedback on a column
-            // being reordered.
+            // Header cells also take opacity for drag feedback.
             {
               pattern: "^TableHead$",
               allow: ["layout", "spacing", "opacity-*"],
             },
-            // Card padding and gap are set per card, as for its content.
             { pattern: "^Card(Content)?$", allow: ["layout", "spacing"] },
-            // CardHeader also allows `border-b`: card.tsx keys the header's
-            // own bottom padding off `[.border-b]` (upstream API).
+            // card.tsx keys the header's bottom padding off `[.border-b]`.
             {
               pattern: "^CardHeader$",
               allow: ["layout", "spacing", "border-b"],
             },
-            // A skeleton's size and shape mirror the content it stands in for.
             { pattern: "^Skeleton$", allow: ["layout", "shape", "spacing"] },
-            // Opacity hides and reveals a button in place (collapsed-panel
-            // swaps, hover reveals); `shadow-sm` lifts controls that float
-            // over a map canvas. Neither restyles the button.
+            // Opacity hides and reveals a button in place; `shadow-sm` lifts
+            // controls floating over a map canvas.
             {
               pattern: "^Button$",
               allow: ["layout", "opacity-*", "shadow-sm"],
             },
-            // Opacity reveals the handle on hover.
             { pattern: "^ResizableHandle$", allow: ["layout", "opacity-*"] },
-            // ui/collapsible.tsx gives the root, trigger and panel no classes
-            // of their own (unstyled Base UI primitives; the panel only adds
-            // a divider child), so callers style them.
+            // The unstyled Base UI collapsible parts take callers' classes.
             {
               pattern: "^Collapsible(Trigger|Content)?$",
               allow: [
@@ -130,8 +111,7 @@ export default defineConfig(
         "error",
         {
           contracts: [
-            // Sortable column headers take dnd-kit's runtime transition
-            // shorthand ("transform 200ms ease"), which no utility expresses.
+            // dnd-kit's runtime transition shorthand has no utility.
             { pattern: "^TableHead$", allow: ["transition"] },
           ],
         },
@@ -141,12 +121,10 @@ export default defineConfig(
         "error",
         {
           allow: [
-            // Styled by src/styles/archaeopteryx-theme.css, which
-            // organisms/taxon-views/phylogeny.tsx imports outside the theme's
-            // import graph.
+            // Styled by src/styles/archaeopteryx-theme.css, imported by
+            // phylogeny.tsx outside the theme's import graph.
             "archaeopteryx-dxkb",
-            // Selector hook for the e2e page objects (e2e/pages/*-page.ts);
-            // carries no styles.
+            // Selector hook for the e2e page objects; carries no styles.
             "welcome-search-card",
           ],
         },
@@ -154,11 +132,9 @@ export default defineConfig(
     },
   },
   {
-    // Components own their appearance and may need structural values such as
-    // `ring-[3px]`. no-raw-colors and no-inline-styles stay on here.
-    // services/form-ui holds the service form wrappers, which own the global
-    // `service-*` classes they apply to the parts they wrap. Classes callers
-    // pass to a wrapper are still checked against the wrapped part.
+    // Components own their appearance; services/form-ui wrappers own the
+    // global `service-*` classes, and callers' classes are still checked
+    // against the wrapped part.
     files: ["src/components/ui/**", "src/components/services/form-ui/**"],
     rules: {
       "shadcn/no-restyle": "off",
@@ -167,12 +143,8 @@ export default defineConfig(
     },
   },
   {
-    // Chart and map geometry is computed at runtime: cursor-anchored tooltip
-    // positions, bar extents, slice pop offsets and animation opacity, the
-    // map height, data-driven series colors. Only the properties that carry
-    // those values are allowed; any other inline property, and any style
-    // object the rule cannot read (a spread or a call), is still reported.
-    // Static values of these properties still belong in classes.
+    // Only properties carrying runtime geometry or series colors are allowed;
+    // anything else, and unreadable style objects, still report.
     files: [
       "src/components/organisms/metadata-distributions/**",
       "src/components/organisms/geo-distribution/**",
@@ -201,9 +173,8 @@ export default defineConfig(
     },
   },
   {
-    // The non-pill label in this file keeps `text-[12px]` rather than
-    // `text-xs` because it inherits its parent's unitless line-height ratio
-    // (17.14px here), which `text-xs` would replace with a fixed 16px.
+    // Keeps `text-[12px]` because `text-xs` would replace the inherited
+    // line-height ratio with a fixed 16px.
     files: [
       "src/components/organisms/metadata-distributions/_shared/chart-legend-pill.tsx",
     ],
@@ -215,7 +186,7 @@ export default defineConfig(
     },
   },
   {
-    // Tests pass placeholder class names (e.g. `cn("foo", "bar")`) on purpose.
+    // Tests pass placeholder class names on purpose.
     files: ["**/__tests__/**", "**/*.test.{ts,tsx}"],
     rules: {
       "shadcn/no-unknown-classes": "off",
@@ -231,8 +202,6 @@ export default defineConfig(
       },
     },
     rules: {
-      // note you must disable the base rule
-      // as it can report incorrect errors
       "no-unused-vars": "off",
       "@typescript-eslint/no-unused-vars": [
         "warn",
@@ -251,18 +220,11 @@ export default defineConfig(
     },
   },
   {
-    // `src/lib/e2e-fixtures/**` holds deterministic Playwright fixture DATA.
-    // It lives under `src/` so the loopback mock route and the Vitest parity
-    // tests can import it, but nothing in the shipped application may: a
-    // client component importing it would bundle fake genomes into the
-    // browser payload. `server-only` is deliberately NOT used — Playwright's
-    // own Node process legitimately imports the browser override bundles that
-    // re-export these records, and `server-only` would break that.
-    //
-    // The allowlist below is the complete set of legitimate importers, and
-    // `src/__tests__/e2e-fixtures-import-boundary.test.ts` pins it: that test
-    // fails if this list and the files that actually import the module ever
-    // disagree, in either direction.
+    // Fixture data may be imported only by the loopback, the Vitest parity
+    // tests and the e2e overrides, never the shipped app; `server-only` is
+    // not used because Playwright's own Node process imports it.
+    // `src/__tests__/e2e-fixtures-import-boundary.test.ts` pins this
+    // allowlist.
     files: ["src/**/*.{ts,tsx}", "e2e/**/*.{ts,tsx,mts}"],
     ignores: [
       "src/lib/e2e-fixtures/**",
@@ -278,12 +240,8 @@ export default defineConfig(
               group: [
                 "@/lib/e2e-fixtures",
                 "@/lib/e2e-fixtures/*",
-                // Directory glob, not two filenames: pinning `records` and
-                // `envelopes` by name left the relative-import form of any
-                // *third* fixture module unrestricted, so the zone enforced
-                // two filenames rather than the boundary the docs credit it
-                // with. Verified with a throwaway fixture module imported
-                // from e2e/pages/ both ways.
+                // A directory glob, so a relative import of any third fixture
+                // module is also restricted.
                 "**/e2e-fixtures/*",
               ],
               message:
@@ -295,11 +253,8 @@ export default defineConfig(
     },
   },
   {
-    // TanStack Virtual's useVirtualizer returns functions and refs that can't be
-    // safely memoized, so React Compiler skips these components. The "use no memo"
-    // directive is in place at each call site. Silencing
-    // the rule here keeps the signal useful elsewhere — a new file using an
-    // incompatible hook without mitigation will still warn.
+    // useVirtualizer returns functions that cannot be memoized; each call
+    // site carries "use no memo".
     files: [
       "src/components/shared/data-table.tsx",
       "src/components/shared/data-table-header.tsx",

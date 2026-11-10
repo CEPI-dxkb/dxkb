@@ -9,11 +9,6 @@ import { interactionColumns } from "@/lib/views/child-resources";
 
 import { ResourceChildCollection } from "../resource-child-collection";
 
-// The real path from a pager click to the table body: DataTable, ResourceCollection,
-// useResourceCollection and TanStack Query's cache. Whether the next page was
-// prefetched decides what the body shows while it loads, which the unit suites
-// cannot see because they stub DataTable or the hook. Only the chrome around the
-// table (action bars, dialogs) is stubbed.
 vi.mock("next/navigation", async () =>
   (await import("@/test-helpers/history-navigation")).historyNavigationMock({
     pathname: "/genome/1.1",
@@ -41,7 +36,6 @@ vi.stubGlobal("ResizeObserver", ResizeObserverStub);
 vi.stubGlobal("scrollTo", vi.fn());
 Element.prototype.scrollIntoView = vi.fn();
 
-// Four pages, so page 3 is one the prefetch (page 2, from page 1) never reaches.
 const total = resourceCollectionPageSize * 3 + 50;
 const requestedPages: number[] = [];
 let pageThree = Promise.withResolvers<undefined>();
@@ -80,7 +74,6 @@ afterEach(() => {
 });
 
 function renderInteractionsTable() {
-  // Its own client, so a test can wait for the background prefetch to settle.
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
@@ -120,8 +113,6 @@ describe("ResourceChildCollection paging to a page that is not loaded yet", () =
 
     await user.click(within(pager()).getByRole("button", { name: "3" }));
 
-    // Page 3 was never prefetched: the body shows the skeleton while it loads,
-    // and the previous total keeps the pager and the range readable.
     await waitFor(() => {
       expect(skeletons(container).length).toBeGreaterThan(0);
     });
@@ -142,7 +133,6 @@ describe("ResourceChildCollection paging to a page that is not loaded yet", () =
     await waitFor(() => {
       expect(requestedPages).toContain(2);
     });
-    // Let the prefetch land before paging to it.
     await waitFor(() => {
       expect(client.isFetching()).toBe(0);
     });

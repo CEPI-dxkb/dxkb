@@ -6,7 +6,6 @@ const serviceNameMap = new Map<string, string>(
   serviceNames.map((entry) => [entry.value, entry.displayName]),
 );
 
-/** Look up a human-readable display name for a service, falling back to regex formatting for unknown services. */
 export function formatServiceName(app: string): string {
   if (!app) return "";
   const known = serviceNameMap.get(app);
@@ -16,7 +15,6 @@ export function formatServiceName(app: string): string {
     .replace(/([A-Z]+)([A-Z][a-z])/g, "$1 $2");
 }
 
-/** The job's output name, read from the job or, failing that, its submitted parameters. */
 export function getOutputFile(job: JobListItem): string {
   return (
     job.output_file ?? ((job.parameters.output_file as string | undefined) ?? "")
@@ -30,10 +28,8 @@ export function getOutputName(job: JobListItem): string {
 }
 
 /**
- * Workspace URL of a job's result (`/workspace/<output_path>/<output_file>`),
- * or `undefined` when the job records no output location or is still active.
- * The location is set at submission, so a queued or running job has one before
- * any result exists there.
+ * `undefined` when the job records no output location or is still active (the location is set at
+ * submission, before any result exists).
  */
 export function getJobResultHref(job: JobListItem): string | undefined {
   if (activeJobStatuses.includes(job.status)) return undefined;

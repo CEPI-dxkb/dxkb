@@ -1,13 +1,7 @@
 /**
- * Browser side of the Taxa Tree boundary. Kept separate from
- * `./taxonomy-tree.ts` for the same reason `./client.ts` is kept separate from
- * `./repository.ts`: the server module pulls in the resource registry and
- * every Zod schema, none of which belongs in a client bundle.
- *
- * Both calls are same-origin and credentialed, so the upstream Data API URL
- * and the BV-BRC token stay server-side. No environment variable is read here;
- * a `NEXT_PUBLIC_*` base URL would be inlined at build time and could never be
- * redirected at runtime.
+ * Browser side of the Taxa Tree boundary, separate from `./taxonomy-tree.ts` so
+ * the resource registry and Zod schemas stay out of the client bundle.
+ * Calls are same-origin, so the upstream URL and token stay server-side.
  */
 import { httpFailure } from "./route-failure-client";
 
@@ -16,7 +10,6 @@ export const taxonomyTreeBasePath = "/api/taxonomy-tree";
 export class TaxonomyTreeRepository {
   constructor(private readonly basePath = taxonomyTreeBasePath) {}
 
-  /** Every child of one taxon node, already paged and validated server-side. */
   async children(
     parentId: number,
     signal?: AbortSignal,
@@ -42,9 +35,8 @@ export class TaxonomyTreeRepository {
   }
 
   /**
-   * Child counts for a batch of parents. Returns an empty map without a
-   * request when given no ids — the tree calls this with whatever collapsed
-   * nodes are on screen, which is legitimately none on first paint.
+   * Returns an empty map without a request when given no ids, which is
+   * legitimate on first paint.
    */
   async childCounts(
     parentIds: number[],

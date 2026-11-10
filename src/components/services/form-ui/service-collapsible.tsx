@@ -7,8 +7,8 @@ import {
 } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
 
-// Base UI also accepts a `(state) => string` className on these parts, which
-// `cn` cannot merge, so the wrappers take a string only.
+// Base UI also accepts a `(state) => string` className, which `cn` cannot
+// merge, so the wrappers take a string only.
 type StringClassName<T> = Omit<T, "className"> & { className?: string };
 
 export function ServiceCollapsible({
@@ -36,9 +36,8 @@ export function ServiceCollapsibleTrigger({
 }
 
 /**
- * The padding sits on an inner div, and `className` with it, so the panel's
- * open/close height animation runs all the way to 0 instead of stopping at
- * the padding and then vanishing.
+ * Padding sits on an inner div so the open/close height animation runs to 0
+ * instead of stopping at the padding.
  */
 export function ServiceCollapsibleContent({
   className,

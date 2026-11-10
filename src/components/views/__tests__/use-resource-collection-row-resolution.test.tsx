@@ -129,7 +129,6 @@ describe("useResourceCollectionRowResolution", () => {
   });
 
   it("waits for the current query's total before reading every matching row", async () => {
-    // A previous query's 50,000 rows are on screen; this query matches 2.
     const { data, exportAll } = repository();
     exportAll.mockResolvedValue({
       rows: [{ genome_id: "1" }, { genome_id: "2" }],
@@ -159,7 +158,6 @@ describe("useResourceCollectionRowResolution", () => {
   });
 
   it("applies the action limit to the current query's total, not a previous query's", async () => {
-    // A previous query's 1 row is on screen; this query matches 50.
     const { data, exportAll } = repository();
     const { result } = renderHook(() =>
       useResourceCollectionRowResolution(
@@ -197,8 +195,6 @@ describe("useResourceCollectionRowResolution", () => {
   });
 
   it("reads every matching row while the rows belong to a previous query", async () => {
-    // The Taxonomy and Bioset workflows size this read themselves, against the
-    // current query's total, before they call it.
     const { data, exportAll } = repository();
     exportAll.mockResolvedValue({ rows: [{ taxon_id: 561 }] });
     const { result } = renderHook(() =>
@@ -222,7 +218,6 @@ describe("useResourceCollectionRowResolution", () => {
       ),
     );
 
-    // The user's own IDs do not depend on which query's rows are on screen.
     await expect(
       result.current.resolveActionRows(["genome_id"], 10, "Copy"),
     ).resolves.toEqual([{ genome_id: "1" }]);
@@ -230,8 +225,6 @@ describe("useResourceCollectionRowResolution", () => {
   });
 
   it("refuses an all-matching read that returns more rows than the action allows", async () => {
-    // The count passed the limit, but it is the total on screen, which the data
-    // can outgrow during a same-query refresh or with none at all.
     const { data, exportAll } = repository();
     exportAll.mockResolvedValue({
       rows: [{ genome_id: "1" }, { genome_id: "2" }, { genome_id: "3" }],
@@ -274,8 +267,6 @@ describe("useResourceCollectionRowResolution", () => {
   });
 
   it("resolves an all-matching read that stops at the export cap when it read every match", async () => {
-    // The total on screen said fewer, but the cap alone does not mean rows were
-    // left out: a fresh count of the query decides.
     const { data, exportAll, collection } = repository();
     const rows = Array.from({ length: maxExportRows }, (_, index) => ({
       genome_id: String(index),
@@ -314,14 +305,12 @@ describe("useResourceCollectionRowResolution", () => {
       sort: { field: "genome_name", direction: "asc" },
     });
     expect(collection).not.toHaveBeenCalled();
-    // The total on screen is this query's, so nothing waits for another.
     expect(currentTotal).not.toHaveBeenCalled();
   });
 });
 
 describe("exceedsReadLimit", () => {
   it.each([
-    // [rows read, rows matching, limit, over]
     [3, 3, 2, true],
     [2, 2, 2, false],
     [3, 3, 10, false],

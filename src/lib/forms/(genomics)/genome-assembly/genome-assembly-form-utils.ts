@@ -18,9 +18,6 @@ export const genomeSizeUnitOptions = [
   { value: "K", label: "K" },
 ];
 
-/**
- * Transform genome assembly form data to the format expected by the backend service
- */
 export function transformGenomeAssemblyParams(data: GenomeAssemblyFormData) {
   const params: Record<string, unknown> = {
     recipe: data.recipe,
@@ -28,12 +25,10 @@ export function transformGenomeAssemblyParams(data: GenomeAssemblyFormData) {
     output_file: data.output_file,
   };
 
-  // Add library data
   if (data.paired_end_libs && data.paired_end_libs.length > 0) {
     params.paired_end_libs = data.paired_end_libs.map((lib) => {
       const libData: Record<string, unknown> = {};
 
-      // Copy all properties except internal ones (starting with _)
       Object.keys(lib).forEach((key) => {
         if (!key.startsWith("_")) {
           libData[key] = lib[key as keyof typeof lib];
@@ -62,12 +57,10 @@ export function transformGenomeAssemblyParams(data: GenomeAssemblyFormData) {
     params.srr_ids = data.srr_ids;
   }
 
-  // Add genome size if provided (required for Canu)
   if (data.genome_size !== undefined && data.genome_size > 0) {
     params.genome_size = data.genome_size;
   }
 
-  // Add advanced parameters if they are explicitly set
   if (data.trim !== undefined) {
     params.trim = data.trim;
   }
@@ -103,9 +96,6 @@ export function transformGenomeAssemblyParams(data: GenomeAssemblyFormData) {
   return params;
 }
 
-/**
- * Calculate genome size based on expected size and unit
- */
 export function calculateGenomeSize(
   expectedGenomeSize: number,
   genomeSizeUnit: "M" | "K",
@@ -119,11 +109,7 @@ export interface GenomeSizeDisplay {
   unit: "M" | "K";
 }
 
-/**
- * How the Estimated Genome Size field shows a size in bases: whole megabases
- * in M, anything else in K. The field holds whole numbers only, so a size that
- * is not a whole kilobase rounds to the nearest one.
- */
+/** Whole megabases show in M, anything else in K, rounded to the nearest whole kilobase. */
 export function genomeSizeDisplay(bases: number): GenomeSizeDisplay {
   if (bases % 1000000 === 0) return { count: bases / 1000000, unit: "M" };
   return { count: Math.round(bases / 1000), unit: "K" };
@@ -149,12 +135,8 @@ function rerunNumber(value: unknown): number | undefined {
 }
 
 /**
- * The Advanced Options a job ran with, as form values. Job parameters can
- * hold numbers as strings and flags as "true"/1, so both are read; an option
- * the job did not set (or set to something unreadable) is left out, keeping
- * the form's default. `genomeSize` is what the Estimated Genome Size field
- * shows; `values.genome_size` keeps the job's exact bases, so a size that is
- * not a whole kilobase resubmits unchanged rather than as the rounded display.
+ * The Advanced Options a job ran with, as form values.
+ * `values.genome_size` keeps the job's exact bases so a non-whole-kilobase size resubmits unchanged.
  */
 export function rerunGenomeAssemblyAdvancedOptions(
   data: Record<string, unknown>,

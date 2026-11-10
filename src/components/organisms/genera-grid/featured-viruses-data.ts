@@ -7,10 +7,8 @@ export interface FeaturedVirus {
   viewLabel?: string;
 }
 
-// Bacteriophages and Ebolavirus use bespoke multi-clause RQL filters (and()/in())
-// that no generic href builder covers — these raw /genome?rql= literals are
-// intentional, and target the genome list (viewLabel "genomes"). The remaining
-// entries are plain taxonomy links via taxonomyHref.
+// Bacteriophages and Ebolavirus use multi-clause RQL filters no generic href
+// builder covers, so their raw /genome?rql= literals are intentional.
 export const featuredViruses: FeaturedVirus[] = [
   {
     name: "Bacteriophages",

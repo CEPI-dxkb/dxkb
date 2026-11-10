@@ -7,24 +7,14 @@ import { ErrorPanel } from "./error-panel";
 import { RefreshRetryButton } from "./retry-button";
 
 interface RecordUnavailableProps {
-  /** The shell's eyebrow, as on the record's own page ("Genome View"). */
   viewLabel: string;
-  /** The record type, singular ("Genome"). */
   recordLabel: string;
   recordId: string;
-  /** The condensed cause, from `recordUnavailableMessage`. */
   message: string;
   collectionHref: string;
-  /** The list's name, plural ("Genomes"). */
   collectionLabel: string;
 }
 
-/**
- * A record page whose lookup failed because the data service is down. It
- * keeps the page's shell, a breadcrumb back to the list and the document
- * title, and states the cause with a Retry, where a thrown error would reach
- * the boundary with its message redacted.
- */
 export function RecordUnavailable({
   viewLabel,
   recordLabel,

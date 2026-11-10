@@ -8,7 +8,6 @@ import type {
 
 const maxRqlLength = 8_000;
 const maxDepth = 12;
-/** The Data API rejects an `in(...)` clause with more than this many values. */
 export const maxRqlInValues = 500;
 const operators = new Set([
   "and",
@@ -25,9 +24,7 @@ const operators = new Set([
 ]);
 const transportOperators = new Set(["select", "sort", "limit", "facet"]);
 const fieldOperators = new Set(["eq", "ne", "lt", "le", "gt", "ge", "in"]);
-// These resources join through their genome ID when filtering by genome metadata.
-// A resource whose genome ID field is not `genome_id` names it with `to(...)`:
-// a PPI row's A-side genome, and a strain's multi-valued `genome_ids`.
+// A resource whose genome ID field is not `genome_id` names it with `to(...)`.
 const genomeRelationshipTargets = new Map<
   DataResource,
   RqlGenomeRelationship["target"]
@@ -69,8 +66,8 @@ export interface RqlIn {
 export interface RqlKeyword {
   operator: "keyword";
   /**
-   * The search text the Data API matches, quotes included: unquoted words are
-   * ANDed in any order, and only a quoted span is a phrase or an exact token.
+   * Quotes included: unquoted words are ANDed in any order; only a quoted span
+   * is a phrase or exact token.
    */
   value: string;
 }
@@ -221,8 +218,8 @@ function parseExpression(
   if (operator === "keyword") {
     if (args.length !== 1)
       throw new DataApiValidationError("keyword requires one value.");
-    // Unlike a field value, a keyword's quotes are part of what it matches:
-    // keyword("Rv0001") is an exact token, keyword(Rv0001) is not.
+    // A keyword's quotes are part of what it matches: keyword("Rv0001") is an
+    // exact token, keyword(Rv0001) is not.
     return { operator, value: percentDecode(args[0]) };
   }
 
@@ -242,20 +239,13 @@ function parseExpression(
       throw new DataApiValidationError("in values must be parenthesized.");
     }
     const rawValues = args[1].slice(1, -1);
-    // `splitArguments` always returns at least one part (even for an empty
-    // string), so an empty argument list — in(field,()) — would otherwise be
-    // indistinguishable from a single quoted empty string — in(field,("")) —
-    // and pass the "at least one value" check below with a phantom "" value.
-    // Treat a blank (unquoted) interior as zero values; a quoted empty
-    // string still decodes to a real "" value, consistent with decodeValue()
-    // elsewhere in this file (e.g. eq(field,"") already yields "").
+    // `splitArguments` returns one part even for an empty string, so a blank
+    // unquoted interior counts as zero values; a quoted `""` still decodes to a
+    // real empty value.
     const values = rawValues.trim() === "" ? [] : splitArguments(rawValues);
-    // A blank slot embedded between commas — in(field,(1,,3)) — or a stray
-    // leading/trailing comma — in(field,(1,3,)) or in(field,(,1,3)) —
-    // survives splitArguments as an unquoted "" element instead of reducing
-    // the argument count, so it must be rejected the same way as a fully
-    // blank interior. A *quoted* empty string element is the two-character
-    // string `""`, not an empty string, so it is unaffected by this check.
+    // A blank slot between commas, or a stray leading/trailing comma, survives
+    // `splitArguments` as an unquoted "" and must be rejected; a quoted `""` is
+    // unaffected.
     if (
       values.length === 0 ||
       values.length > maxRqlInValues ||
@@ -313,19 +303,15 @@ function serializeValue(value: RqlValue, field?: ResourceField): string {
 }
 
 /**
- * A keyword's text, percent-encoded but never wrapped in quotes: quoting
- * `coli Salmonella` would turn the Data API's any-order match of both words
- * (1,933 genomes) into a phrase (29). Its own quotes travel as `%22`.
+ * Never wrapped in quotes: quoting `coli Salmonella` would turn the any-order
+ * match into a phrase. Its own quotes travel as `%22`.
  */
 function serializeKeyword(value: string): string {
   return `keyword(${value === "" ? '""' : percentEncode(value)})`;
 }
 
 /**
- * `in(<field>,(…))`, each value escaped for the field. `maxValues` is the
- * {@link maxRqlInValues} cap every parsed or client-built clause gets; the
- * download path passes its own (`maxSelectionDownloadRows`), because one
- * upstream POST body carries a 10,001-value list and a selection download
+ * The download path passes its own `maxValues`, because a selection download
  * must not be split into batches the file would have to be stitched from.
  */
 export function serializeInClause(
@@ -401,16 +387,10 @@ export function serializeRql(
 }
 
 /**
- * The clauses a `?keyword=` search sends, ANDed by the caller: the text read
- * by `keywordQuery` (words and quoted phrases, Solr's uppercase `AND`, `OR` and
- * `NOT`, its syntax characters as spaces), one `keyword(...)` per term.
- * Legacy BV-BRC's search box sends the same form (`searchToQuery`: "coli
- * Salmonella" becomes `and(keyword(coli),keyword(Salmonella))`, and a typed
- * `"DNA polymerase"` becomes `keyword("DNA polymerase")`, which the Data API
- * matches as a phrase). An unquoted word is exact or a token prefix (`word*`);
- * a quoted term is always exact, quotes included, as `%22`. A view that scopes
- * another collection by its keyword builds the clause here too, so both cover
- * the same records.
+ * An unquoted word is exact or a token prefix (`word*`); a quoted term is
+ * always exact, quotes included, as `%22`.
+ * Views that scope another collection by keyword build the clause here too, so
+ * both cover the same records.
  */
 export function keywordClauses(
   keyword: string,

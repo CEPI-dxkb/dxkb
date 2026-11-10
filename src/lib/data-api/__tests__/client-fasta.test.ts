@@ -4,11 +4,8 @@ import { DataRepository, DataRepositoryError } from "../client";
 import { maxFastaIds } from "../fasta";
 import { maxRequestBytes } from "../validation";
 
-// Its own file because `client.test.ts` replaces `global.fetch` and restores
-// the pre-MSW original after each case, which would leave these requests
-// unintercepted.
-// MSW rather than a `fetch` stub, because what matters is the request each batch puts
-// on the wire and how the bodies are joined.
+// Own file because `client.test.ts` replaces `global.fetch` and restores the
+// pre-MSW original, which would leave these requests unintercepted.
 describe("DataRepository.fasta", () => {
   function captureFasta(respond: (ids: string[]) => Response) {
     const bodies: { type: string; ids: string[] }[] = [];
@@ -36,8 +33,6 @@ describe("DataRepository.fasta", () => {
   });
 
   it("splits a long id list into capped batches and joins them record-aligned", async () => {
-    // The first part lacks a trailing newline: joined naively, its last
-    // sequence line would run into the second part's `>` header.
     const bodies = captureFasta((ids) =>
       new Response(ids[0] === "0" ? ">first\nACGT" : ">second\nTTTT\n"),
     );
@@ -80,8 +75,6 @@ describe("DataRepository.fasta", () => {
         return new Response(">a\nACGT\n");
       }),
     );
-    // Real feature ids run to 60-odd characters; at 500 per request these
-    // serialize past the cap.
     const ids = Array.from(
       { length: maxFastaIds },
       (_, index) =>

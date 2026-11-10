@@ -29,11 +29,6 @@ function Message({
   )
 }
 
-// Local edits (keep when regenerating with `shadcn add --overwrite`): the
-// avatar sits at the top of its message (`self-start`, no footer offset), so a
-// long answer is marked where it begins; MessageFooter takes `reveal="hover"`,
-// which hides its actions until the message is hovered or holds focus (always
-// shown on touch screens, which have no hover).
 function MessageAvatar({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div

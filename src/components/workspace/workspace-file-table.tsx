@@ -60,19 +60,12 @@ interface WorkspaceDataTableProps {
   ) => void;
   onItemDoubleClick?: (item: WorkspaceItem) => void;
   onClearSelection?: () => void;
-  /**
-   * Why the listing failed when nothing loaded. The body shows it, with
-   * Retry, in place of "This folder is empty".
-   */
   loadError?: WorkspaceTableLoadError | null;
 }
 
 export interface WorkspaceTableLoadError {
-  /** What failed, e.g. "Couldn't load this folder". */
   title: string;
-  /** The condensed reason. */
   message: string;
-  /** The Retry is in flight; the error stays until it answers. */
   retrying: boolean;
   onRetry: () => void;
 }
@@ -274,8 +267,6 @@ export const WorkspaceDataTable = forwardRef<
     return items.findIndex((i) => normalizePath(i.path) === normalizedFocus);
   };
 
-  // Folder opens (double-click, icon click, Enter) run in the same transition
-  // as the parent and leading rows, so the table shows it is updating.
   const openItem = onItemDoubleClick
     ? (item: WorkspaceItem) => {
         startTransition(() => {

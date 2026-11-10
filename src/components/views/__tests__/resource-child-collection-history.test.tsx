@@ -9,11 +9,6 @@ import { interactionColumns } from "@/lib/views/child-resources";
 
 import { ResourceChildCollection } from "../resource-child-collection";
 
-// The real path from a header click to the address bar: DataTable, TanStack
-// Table, ResourceCollection, useResourceCollection, the child's URL state and the
-// History API. A sort click reports a page reset and then the sort from one event,
-// which the unit suites cannot see because they stub DataTable. Only the chrome
-// around the table (action bars, dialogs) is stubbed.
 vi.mock("next/navigation", async () =>
   (await import("@/test-helpers/history-navigation")).historyNavigationMock({
     pathname: "/genome/1.1",
@@ -104,13 +99,11 @@ describe("ResourceChildCollection sort clicks in the address bar", () => {
       screen.getByRole("button", { name: /^Sort by interactor a$/i }),
     );
 
-    // Two reports came out of the one click (page reset, then sort); the visitor
-    // gets one Back step, landing on page 2 of the old sort, not a phantom
-    // "page 1, old sort" entry between them.
+    // One sort click reports a page reset and then the sort; the visitor still
+    // gets a single Back step.
     expect(pushState).toHaveBeenCalledOnce();
     expect(window.history.length).toBe(lengthBefore + 1);
     expect(window.location.search).toBe("?interactions.sort=interactor_a:asc");
-    // The next page is prefetched after it, so check for the request, not the order.
     await waitFor(() => {
       expect(requested).toContainEqual({ page: 1, sort: "interactor_a:asc" });
     });

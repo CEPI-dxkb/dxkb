@@ -5,9 +5,7 @@ import { layoutCompareRegion } from "../layout";
 import { scrollPlace, scrollTopFor } from "../scroll-place";
 
 const layout = layoutCompareRegion([focusRow, mirroredRow]);
-// Comfortable slots: row 0 30–84 (center 54), row 1 84–130 (center 106).
 const comfortable = measureFigure(layout, densitySpecs.comfortable);
-// Compact slots: row 0 30–64 (center 45), row 1 64–94 (center 79).
 const compact = measureFigure(layout, densitySpecs.compact);
 
 function at(scrollTop: number, scrollLeft = 0) {
@@ -65,7 +63,6 @@ describe("scrollPlace and scrollTopFor, pinned", () => {
   });
 
   it("never scrolls above the top", () => {
-    // Unclamped, these are -9 and -27.
     expect(scrollTopFor(scrollPlace(at(0), comfortable, 0), compact, 200)).toBe(
       0,
     );

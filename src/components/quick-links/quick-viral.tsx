@@ -25,7 +25,6 @@ const QuickViralLinks = () => {
               <ul className="space-y-2 text-sm">
                 <li className="flex justify-between">
                   <div className="flex items-center gap-2">
-                    {/* <Image src={GenomeIcon} alt="Genome" width={16} height={16} className="fill-accent"/> */}
                     <GenomeIcon className="size-4" />
                     <span>Complete Genomes</span>
                   </div>
@@ -33,7 +32,6 @@ const QuickViralLinks = () => {
                 </li>
                 <li className="flex justify-between">
                   <div className="flex items-center gap-2">
-                    {/* <Image src={PartialSeqIcon} alt="Partial Sequence" width={16} height={16} /> */}
                     <PartialSeqIcon className="size-4" />
                     <span>Partial Sequences</span>
                   </div>
@@ -41,7 +39,6 @@ const QuickViralLinks = () => {
                 </li>
                 <li className="flex justify-between">
                   <div className="flex items-center gap-2">
-                    {/* <Image src={SequenceIcon} alt="Sequence" width={16} height={16} /> */}
                     <SequenceIcon className="size-4" />
                     <span>Reference Sequences</span>
                   </div>
@@ -63,7 +60,6 @@ const QuickViralLinks = () => {
               <ul className="space-y-2 text-sm">
                 <li className="flex justify-between">
                   <div className="flex items-center gap-2">
-                    {/* <Image src={ProteinIcon} alt="Protein" width={16} height={16} /> */}
                     <ProteinIcon className="size-4" />
                     <span>Structural Proteins</span>
                   </div>
@@ -71,7 +67,6 @@ const QuickViralLinks = () => {
                 </li>
                 <li className="flex justify-between">
                   <div className="flex items-center gap-2">
-                    {/* <Image src={EnzymeIcon} alt="Enzyme" width={16} height={16} /> */}
                     <EnzymeIcon className="size-4" />
                     <span>Enzymes</span>
                   </div>

@@ -35,9 +35,7 @@ function render(rql = scopeRql, keyword = "") {
 }
 
 describe("useInteractions", () => {
-  // The graph used to read NEXT_PUBLIC_DATA_API itself. Leaving it unset proves
-  // the dataset now travels through the same-origin gateway, which owns the
-  // upstream URL, authentication and validation for the table as well.
+  // Leaving NEXT_PUBLIC_DATA_API unset proves the dataset travels through the same-origin gateway.
   beforeEach(() => {
     delete process.env.NEXT_PUBLIC_DATA_API;
   });
@@ -55,9 +53,7 @@ describe("useInteractions", () => {
       rql: scopeRql,
       keyword: "groEL dnaK",
       fields: [...interactionsGraphFields],
-      // One past the ceiling, so a full page is distinguishable from a cut-off one.
       limit: interactionsGraphRowLimit + 1,
-      // The Table's default sort, so a truncated window is the Table's first page(s).
       sort: { field: "id", direction: "asc" },
     });
     expect(result.current.data).toEqual({
@@ -159,9 +155,8 @@ describe("useInteractions", () => {
       ),
     );
 
-    // Rendering must not throw: the pre-gateway hook read the upstream URL in
-    // its own body, so a missing one unmounted the whole subview instead of
-    // rendering the standard query error state.
+    // Rendering must not throw: a missing upstream URL must produce the standard query error state,
+    // not unmount the subview.
     const { result } = render();
 
     await waitFor(() => { expect(result.current.isError).toBe(true); });

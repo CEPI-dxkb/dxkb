@@ -30,14 +30,6 @@ import { noServicesReason } from "@/components/search/search-action-policy";
 import { ResourceCollection } from "../resource-collection";
 import { createResourceCollectionResult } from "./fixtures/resource-collection-result";
 
-// The action surface every non-Taxonomy, non-Bioset resource exposes through
-// `CollectionSelectionActions`: which of COPY ROWS / SERVICES / GROUP / GENOMES /
-// FEATURES a resource owns, what its row selection resolves to, and why an
-// entry is disabled when the selection cannot reach it. Taxonomy and Bioset get their
-// own files because both need a network round-trip before they can navigate; every
-// other resource's action surface is exercised here, one resource at a time and then
-// again as a single cross-resource matrix.
-
 const { push, downloadResourceExport, useResourceCollection, collectionDownload } =
   vi.hoisted(() => ({
     push: vi.fn(),
@@ -96,13 +88,6 @@ vi.mock("../resource-filter-bar", async () =>
     await import("./fixtures/resource-collection-mocks")
   ).resourceFilterBarMock(),
 );
-// The `SearchActionBar` fake shared with every resource-collection*.test.tsx suite.
-// It calls the same `visibleSearchActions` / `isSearchActionDisabled` policy
-// production does (search-action-policy.ts), so a control this suite can query or
-// click is one the real bar would have rendered, in the same enabled state. The
-// cross-resource matrix below still asserts the full enabledActions/disabledActions
-// prop values directly (captured here as actionBarProps), independent of what this
-// fake renders.
 vi.mock("@/components/search/search-action-bar", async () =>
   (await import("./fixtures/resource-collection-mocks")).searchActionBarMock(
     (props) => {
@@ -195,7 +180,6 @@ beforeEach(() => {
 
 afterEach(() => vi.unstubAllGlobals());
 
-/** Open the rail's Download tile and pick `format`, as a user does. */
 async function downloadFromTile(
   user: ReturnType<typeof userEvent.setup>,
   format = "CSV",
@@ -204,7 +188,6 @@ async function downloadFromTile(
   await user.click(await screen.findByRole("button", { name: format }));
 }
 
-/** The request the tile handed the shell's download mutation for a selection. */
 function expectSelectionDownload(
   resource: DataResource,
   ids: string[],
@@ -261,7 +244,6 @@ describe("ResourceCollection sequence actions", () => {
 
     expect(actionBarProps).toMatchObject({
       searchType: "genome_sequence",
-      // FEATURES is enabled alongside the owned actions; FASTA and Browser are not.
       enabledActions: ["copyRows", "services", "group", "features"],
       disabledActions: undefined,
     });
@@ -477,8 +459,6 @@ describe("ResourceCollection selection actions", () => {
     );
     const exportAll = vi.spyOn(data, "exportAll");
     const currentTotal = Promise.withResolvers<number>();
-    // A previous query's 50,000 rows are on screen, over the SERVICES limit;
-    // this query matches 2.
     useResourceCollection.mockReturnValue(
       collectionResult({
         selection: {},
@@ -551,7 +531,6 @@ describe("ResourceCollection selection actions", () => {
     const user = userEvent.setup();
     const data = repository();
     const exportAll = vi.spyOn(data, "exportAll");
-    // A previous query's 2 rows are on screen; this query matches 50,000.
     useResourceCollection.mockReturnValue(
       collectionResult({
         selection: {},
@@ -731,8 +710,6 @@ describe("ResourceCollection selection actions", () => {
       disabledActions: { services: "No services available for this Sequence Feature" },
     });
 
-    // No service accepts this selection, so SERVICES is disabled with a reason
-    // instead of opening an empty chooser.
     expect(screen.getByRole("button", { name: "services" })).toBeDisabled();
     expect(selected).not.toHaveBeenCalled();
 
@@ -782,8 +759,6 @@ describe("ResourceCollection selection actions", () => {
       disabledActions: { services: "No services available for this Epitope" },
     });
 
-    // No service accepts this selection, so SERVICES is disabled with a reason
-    // instead of opening an empty chooser.
     expect(screen.getByRole("button", { name: "services" })).toBeDisabled();
     expect(selected).not.toHaveBeenCalled();
 
@@ -825,7 +800,6 @@ describe("ResourceCollection selection actions", () => {
 
     expect(actionBarProps).toMatchObject({
       searchType: "genome_feature",
-      // FASTA and ID MAP stay on their not-ready tooltip.
       enabledActions: ["copyRows", "services", "group"],
       disabledActions: undefined,
     });
@@ -875,8 +849,6 @@ describe("ResourceCollection selection actions", () => {
       disabledActions: { services: "No services available for this Domain or Motif" },
     });
 
-    // No service accepts this selection, so SERVICES is disabled with a reason
-    // instead of opening an empty chooser.
     expect(screen.getByRole("button", { name: "services" })).toBeDisabled();
     expect(selected).not.toHaveBeenCalled();
 
@@ -922,8 +894,6 @@ describe("ResourceCollection selection actions", () => {
       },
     });
 
-    // No service accepts this selection, so SERVICES is disabled with a reason
-    // instead of opening an empty chooser.
     expect(screen.getByRole("button", { name: "services" })).toBeDisabled();
     expect(selected).not.toHaveBeenCalled();
 
@@ -936,11 +906,6 @@ describe("ResourceCollection selection actions", () => {
 
   it("downloads the selected Protein Structures from the Download tile", async () => {
     const user = userEvent.setup();
-    // Plan item 21: this used to export through `repository()`, whose default
-    // resolves the module's Genome fixture (`row`, with `genome_name`/`genome_length`)
-    // regardless of the profile it is rendered under — a Protein Structure download
-    // asserting on a Genome row. The repository here resolves a row shaped like the
-    // rest of this suite's Protein Structure fixtures instead.
     const structureRow = { pdb_id: "1ABC", genome_id: "215590.7" };
     useResourceCollection.mockReturnValueOnce({
       ...collectionResult(),
@@ -963,7 +928,6 @@ describe("ResourceCollection selection actions", () => {
 
     await downloadFromTile(user);
     expectSelectionDownload("protein_structure", ["1ABC"]);
-    // The gateway builds the file; nothing is read or serialized in the page.
     expect(selected).not.toHaveBeenCalled();
     expect(downloadResourceExport).not.toHaveBeenCalled();
   });
@@ -996,11 +960,6 @@ describe("ResourceCollection selection actions", () => {
         structure: "A structure accession is required",
       },
     });
-    // Plan item 21: the real bar disables rather than removes these buttons
-    // (search-action-bar.tsx's `isDisabled`), so the fake renders them the same way —
-    // present, with the native `disabled` attribute. `toBeDisabled()` proves each
-    // destination is genuinely unreachable in the real UI's own terms, not just that a
-    // click happens to have no effect.
     expect(
       screen.getByRole("button", { name: "Genome action" }),
     ).toBeDisabled();
@@ -1039,10 +998,6 @@ describe("ResourceCollection selection actions", () => {
         group: "No genomes are associated with this strain",
       },
     });
-    // Plan item 21: both disabled ids are ones the fake gates on `enabledActions`, and
-    // the real bar disables rather than removes a gated-off button, so both are still
-    // present here — `toBeDisabled()` proves each is genuinely unreachable rather than
-    // merely unclicked.
     expect(
       screen.getByRole("button", { name: "Genomes action" }),
     ).toBeDisabled();
@@ -1071,16 +1026,12 @@ describe("ResourceCollection selection actions", () => {
       />,
     );
 
-    // Legacy leaves COPY ROWS out of the experiment container and runs no service
-    // from it, so SERVICES is the only owned action and it resolves nothing.
     expect(actionBarProps).toMatchObject({
       searchType: "experiment",
       enabledActions: ["services"],
       disabledActions: { services: "No services available for this Experiment" },
     });
 
-    // No service accepts this selection, so SERVICES is disabled with a reason
-    // instead of opening an empty chooser.
     expect(screen.getByRole("button", { name: "services" })).toBeDisabled();
     expect(selected).not.toHaveBeenCalled();
 
@@ -1120,8 +1071,6 @@ describe("ResourceCollection selection actions", () => {
       guideUrl: surveillanceCollectionProfile.guideUrl,
     });
 
-    // No service accepts this selection, so SERVICES is disabled with a reason
-    // instead of opening an empty chooser.
     expect(screen.getByRole("button", { name: "services" })).toBeDisabled();
     expect(selected).not.toHaveBeenCalled();
 
@@ -1161,8 +1110,6 @@ describe("ResourceCollection selection actions", () => {
       guideUrl: serologyCollectionProfile.guideUrl,
     });
 
-    // No service accepts this selection, so SERVICES is disabled with a reason
-    // instead of opening an empty chooser.
     expect(screen.getByRole("button", { name: "services" })).toBeDisabled();
     expect(selected).not.toHaveBeenCalled();
 
@@ -1171,17 +1118,6 @@ describe("ResourceCollection selection actions", () => {
   });
 });
 
-/**
- * The action surface each resource exposes, at the four selection states the bar
- * distinguishes: nothing selected, one row, several rows, and every matching row.
- * `useResourceCollectionActions` owns this table now, so adding a resource extends this
- * matrix instead of the shell's generic query, export and table code.
- *
- * Which entries a resource *owns* is a property of the resource, and `enabledActions`
- * / `disabledActions` are asserted for all four states of every resource so a config
- * entry cannot silently stop reaching the bar. The Download tile heads every one of
- * these rails at every selection size, so its request is asserted in all four states.
- */
 const actionMatrixFixtures: {
   resource: DataResource;
   label: string;
@@ -1189,7 +1125,6 @@ const actionMatrixFixtures: {
   rows: Record<string, unknown>[];
   enabledActions: string[];
   disabledActions?: Record<string, string | undefined>;
-  /** The singular SERVICES names in its reason, for a resource no service accepts. */
   noServices?: string;
 }[] = [
   {
@@ -1257,8 +1192,6 @@ const actionMatrixFixtures: {
     ],
     enabledActions: [...copyAndServicesSelectionActionIds],
     noServices: "Protein Structure",
-    // Present with no reason: the structure's members are all reachable, but the
-    // policy still reports on all three entries it owns.
     disabledActions: {
       genome: undefined,
       feature: undefined,
@@ -1329,7 +1262,6 @@ const actionMatrixFixtures: {
   },
 ];
 
-/** Rows matching the query, so an all-pages selection reports a count of its own. */
 const actionMatrixTotal = 7;
 
 describe.each(actionMatrixFixtures)(
@@ -1410,8 +1342,8 @@ describe.each(actionMatrixFixtures)(
           selectedCount: count,
           enabledActions,
         });
-        // Strict: the protein-structure policy reports keys with no reason, and
-        // `toEqual` would treat that object as equal to `undefined`.
+        // Strict: `toEqual` would treat the no-reason object as equal to
+        // `undefined`.
         expect(actionBarProps.disabledActions).toStrictEqual(
           noServices
             ? {
@@ -1421,9 +1353,6 @@ describe.each(actionMatrixFixtures)(
             : disabledActions,
         );
 
-        // Every resource heads its rail with the Download tile, at every selection
-        // size, and it hands the shell's mutation a request instead of reading
-        // rows itself. An all-pages selection downloads the query.
         await downloadFromTile(user);
         const [downloadResource, request] = collectionDownload.mock
           .lastCall as [DataResource, DownloadRequest];
@@ -1471,11 +1400,8 @@ describe("useResourceCollectionActions error integration", () => {
       />,
     );
 
-    // SERVICES is dispatched by CollectionSelectionActions, so its failure has to
-    // cross both the actions boundary and the shell to be seen at all.
     await user.click(screen.getByRole("button", { name: "services" }));
     expect(await screen.findByText("Could not complete action")).toBeVisible();
-    // The repository's own message reaches the user rather than a generic one.
     expect(screen.getByText("Data service is unavailable (503)")).toBeVisible();
     expect(screen.queryByTestId("selection-services")).not.toBeInTheDocument();
 

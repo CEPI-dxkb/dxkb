@@ -25,10 +25,8 @@ function TooltipTrigger({ ...props }: TooltipPrimitive.Trigger.Props) {
   return <TooltipPrimitive.Trigger data-slot="tooltip-trigger" {...props} />
 }
 
-// Local edit (keep when regenerating with `shadcn add --overwrite`): the text
-// is `text-primary-foreground`, the pair of the `bg-primary` surface, instead
-// of upstream's `text-background`, which is dark on the primary fill in dark
-// themes.
+// Local edit: `text-primary-foreground` pairs with the `bg-primary` surface;
+// upstream's `text-background` is dark on primary in dark themes.
 function TooltipContent({
   className,
   side = "top",

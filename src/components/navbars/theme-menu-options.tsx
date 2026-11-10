@@ -16,12 +16,6 @@ import {
   type ThemeMode,
 } from "@/styles/themes";
 
-/**
- * The theme picker's menu items: a Light/Dark toggle above one row per theme,
- * each with a small picture of the app in that theme. Rendered inside a
- * DropdownMenuContent (signed-out navbar button) or DropdownMenuSubContent
- * (the profile dropdown's Theme submenu).
- */
 export function ThemeMenuOptions() {
   const { theme, setTheme } = useTheme();
   const { base, mode } = parseTheme(theme);
@@ -65,10 +59,8 @@ export function ThemeMenuOptions() {
 }
 
 /**
- * A miniature page (navbar, side rail, a heading, text lines and an accent
- * chip) painted with a theme's own tokens: setting data-theme on the wrapper
- * scopes that theme's custom properties to it, so each preview shows its real
- * colors whatever theme the page is in.
+ * Setting data-theme on the wrapper scopes that theme's tokens to it, so each
+ * preview shows its real colors.
  */
 function ThemePreview({ theme }: { theme: string }) {
   return (

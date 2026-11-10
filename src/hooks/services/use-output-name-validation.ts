@@ -20,7 +20,6 @@ interface UseOutputNameValidationOptions {
 interface ValidationState {
   key: string;
   status: OutputNameValidationStatus;
-  /** Why the check could not run, condensed; set with status "error". */
   error?: string;
 }
 
@@ -42,7 +41,6 @@ export function useOutputNameValidation({
     key: "",
     status: "idle",
   });
-  // Bumped by `retry`, so the effect runs the check again for the same name.
   const [attempt, setAttempt] = useState(0);
   const [previousValidationKey, setPreviousValidationKey] =
     useState(validationKey);
@@ -102,18 +100,10 @@ export function useOutputNameValidation({
 
   return {
     status,
-    // Pending covers the debounce window; checking covers the lookup itself.
-    // Neither is a verdict, so they block submission (via onValidationChange)
-    // without marking the field invalid.
+    // Pending and checking are not verdicts: they block submission without marking the field invalid.
     isValidating: isPending || status === "checking",
     isInvalid: status === "taken" || status === "error",
-    /** The check's own failure, for "Unable to validate this name: …". */
     errorMessage,
-    /**
-     * Runs the check again after a failure (a workspace outage), which is
-     * otherwise rerun only by editing the name. Submit stays blocked until
-     * the new check answers.
-     */
     retry: () => {
       setValidation({ key: "", status: "idle" });
       setAttempt((current) => current + 1);

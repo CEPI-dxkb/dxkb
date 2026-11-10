@@ -102,7 +102,6 @@ describe("GET /api/workspace/view/[...path]", () => {
 
     expect(res.status).toBe(200);
     expect(res.headers.get("Content-Type")).toBe("application/json");
-    // Content-Length should not be set when upstream doesn't provide it
     expect(res.headers.has("Content-Length")).toBe(false);
   });
 

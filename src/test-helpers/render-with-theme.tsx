@@ -25,29 +25,17 @@ export interface AxeScanResult {
   warnings: axe.Result[];
 }
 
-/**
- * Set the document's data-theme attribute so the component receives the correct
- * CSS custom properties before rendering (avoids flash-of-wrong-theme in scans).
- */
 export function applyTheme(theme: Theme): void {
   document.documentElement.setAttribute("data-theme", theme);
   document.documentElement.classList.remove("dxkb-light", "dxkb-dark");
   document.documentElement.classList.add(theme);
 }
 
-/**
- * Render a component inside a themed container and return the rendered output.
- * Call `runAxeOnContainer` after awaiting any async content.
- */
 export async function renderWithTheme(ui: ReactNode, theme: Theme = "dxkb-light") {
   applyTheme(theme);
   return render(ui);
 }
 
-/**
- * Run axe against a container element with the standard a11y tag set and gate.
- * Returns `{ blocking, warnings }` — the caller asserts `blocking` is empty.
- */
 export async function runAxeOnContainer(
   container: Element,
   options: RunOptions = {},
@@ -61,9 +49,6 @@ export async function runAxeOnContainer(
   return { blocking, warnings };
 }
 
-/**
- * Format blocking violations for the assertion message.
- */
 export function formatBlockingViolations(violations: axe.Result[], context: string): string {
   const lines = violations.map((v) => {
     const targets = v.nodes

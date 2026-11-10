@@ -27,7 +27,6 @@ export function TaxonomyServiceChooser({
   const [error, setError] = useState<string | null>(null);
   const [lastOpen, setLastOpen] = useState(open);
 
-  // Each opening starts without the previous session's error.
   if (lastOpen !== open) {
     setLastOpen(open);
     setError(null);
@@ -45,9 +44,9 @@ export function TaxonomyServiceChooser({
         </DialogHeader>
         <Button
           onClick={() => {
-            // The launch is synchronous, so there is no tab to reserve — but a
-            // pop-up blocker can still refuse it, and closing the dialog then
-            // reported a success that never happened.
+            // The launch is synchronous, but a pop-up blocker can still refuse
+            // it; closing the dialog then would report a success that never
+            // happened.
             const launch = rerunJob(taxonomyBlastPrefill(taxonIds), "Homology");
             if (launch.status !== "opened") {
               setError(launch.message);

@@ -65,13 +65,7 @@ export function canonicalProteinStructureQuery(
     : `/protein-structure?${toQueryString(query)}`;
 }
 
-/**
- * Validate an already-decoded workspace path (Next's `searchParams` decode
- * query values once, before this ever runs — see `decoded params` note on
- * `parseProteinStructureMode`). Do not decode here: a literal `%2F` in a
- * filename would otherwise be turned into a real `/`, splitting one segment
- * into two and resolving a different file than the one named.
- */
+/** Validates an already-decoded workspace path; do not decode again, or a literal `%2F` in a filename would become a `/`. */
 function workspacePathError(path: string): string | undefined {
   if (!path.startsWith("/")) return "Workspace path must be absolute.";
   if (path.length > 1024) return "Workspace path is too long.";
@@ -85,14 +79,8 @@ function workspacePathError(path: string): string | undefined {
 }
 
 /**
- * `params` values come from a page's `searchParams` prop. Unlike a dynamic
- * route param, `searchParams` are decoded consistently at every entry point,
- * so treat every value here as the final decoded string — do not decode
- * again, or a literal `%25`/`%2F` in an accession or workspace path becomes a
- * different character than the one the user typed.
- *
- * A page component's `params` are the opposite case and DO need decoding —
- * see `readRouteParam` in `src/lib/views/route-params.ts`.
+ * `searchParams` values are already decoded; do not decode again, or a literal `%25`/`%2F` changes meaning.
+ * Page `params` are the opposite case and do need decoding (see `readRouteParam`).
  */
 export function parseProteinStructureMode(
   params: SearchParamsRecord,

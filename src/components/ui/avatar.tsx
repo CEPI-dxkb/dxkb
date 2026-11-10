@@ -39,8 +39,6 @@ function AvatarImage({ className, ...props }: AvatarPrimitive.Image.Props) {
   )
 }
 
-// Local edit (keep when regenerating with `shadcn add --overwrite`): the
-// AvatarFallback `variant` axis (`inverse`: on a bg-primary navbar).
 const avatarFallbackVariants = cva(
   "flex size-full items-center justify-center rounded-full bg-muted text-sm text-muted-foreground group-data-[size=sm]/avatar:text-xs",
   {

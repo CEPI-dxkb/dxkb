@@ -55,8 +55,6 @@ it("does not promote filter=false (legacy default-off sentinel)", () => {
 });
 
 it("maps a FeatureList's removed default (filter=false) to annotation=*", () => {
-  // Legacy writes #filter=false once its annotation=PATRIC default is removed;
-  // the server redirect keeps the hash (/view/FeatureList/ -> /feature).
   window.history.replaceState(null, "", "/feature");
   window.location.hash = "#view_tab=features&filter=false";
   render(<LegacyHashAdapter />);
@@ -75,8 +73,6 @@ it("keeps an annotation the Feature list URL already names", () => {
 });
 
 it("maps a removed default beside explicit RQL, which keeps the default", () => {
-  // /view/FeatureList/?eq(genome_id,83332.12)#filter=false: all 10,940 of the
-  // genome's features, not its 5,425 PATRIC ones.
   window.history.replaceState(null, "", "/feature?rql=eq(genome_id,83332.12)");
   window.location.hash = "#filter=false";
   render(<LegacyHashAdapter />);
@@ -101,8 +97,6 @@ it("adds no annotation marker beside RQL that picks an annotation", () => {
 });
 
 it("adds no annotation marker to a Proteins search, which has no default", () => {
-  // /view/ProteinList/?keyword(Dnak)#view_tab=proteins&filter=false: legacy's
-  // removal sends the same query, and DXKB's Proteins search has no default.
   window.history.replaceState(null, "", "/feature?keyword=Dnak&filter=protein");
   window.location.hash = "#view_tab=proteins&filter=false";
   render(<LegacyHashAdapter />);
@@ -124,8 +118,6 @@ it("adds no annotation marker to a quoted Proteins filter", () => {
 });
 
 it("maps a Genome page Features tab's removed default to features.annotation=*", () => {
-  // /view/Genome/83332.12#view_tab=features&filter=false lists all 10,940 of
-  // the genome's features.
   window.history.replaceState(null, "", "/genome/83332.12");
   window.location.hash = "#view_tab=features&filter=false";
   render(<LegacyHashAdapter />);
@@ -154,8 +146,6 @@ it("adds no marker for another Genome or Taxonomy page tab", () => {
 });
 
 it("maps a GenomeList Features tab's removed default to features.annotation=*", () => {
-  // Legacy GenomeList's Features tab with #filter=false sends keyword(Dnak)
-  // alone: 3,005,987 rows, against 2,122,831 with its PATRIC default.
   window.history.replaceState(null, "", "/genome?keyword=Dnak");
   window.location.hash = "#view_tab=features&filter=false";
   render(<LegacyHashAdapter />);
@@ -257,7 +247,8 @@ it("promotes a legacy Genome Browser hash into browser.* params", () => {
   window.location.hash =
     "#view_tab=browser&loc=470.36849.con.0001%3A1..111200&tracks=refseqs%2CPATRICGenes%2CRefSeqGenes&highlight=";
   render(<LegacyHashAdapter />);
-  // An empty `highlight=` (legacy writes one when nothing is highlighted) adds nothing.
+  // An empty `highlight=` (legacy writes one when nothing is highlighted) adds
+  // nothing.
   expect(mockReplace).toHaveBeenCalledWith(
     "/genome/470.36849?tab=browser&browser.loc=470.36849.con.0001:1..111200&browser.tracks=refseqs,PATRICGenes,RefSeqGenes",
   );

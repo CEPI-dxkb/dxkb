@@ -1,27 +1,19 @@
 import { expect, type Locator, type Page } from "@playwright/test";
 
-/** What the strip looked like on each animation frame after a key press. */
 export interface StripTrace {
-  /** `scrollLeft`, rounded, just before the key. */
   before: number;
-  /** `scrollLeft`, rounded: once after the commit, then one entry per frame. */
   scrollLeft: number[];
-  /** `scrollWidth`, rounded: the content width that sizes the scroll bar's thumb. */
   scrollWidth: number[];
-  /** Leaving-column copies on the overlay, right after the key. */
   ghostsDuring: number;
 }
 
 export interface FolderPickerDialogOptions {
-  /** The button that opens the picker; defaults to the Output Folder's Browse. */
   browseButton?: Locator;
 }
 
 /**
- * The Browse buttons of the workspace selectors whose input has this
- * placeholder, in page order. Several fields can share one ("Optional"), so
- * callers pick with `.nth(i)`. Visible ones only, so React's hidden staged
- * copy of a streamed selector cannot shift the order.
+ * Visible only, so React's hidden staged copy of a streamed selector cannot
+ * shift the order.
  */
 export function browseButtonFor(page: Page, placeholder: string): Locator {
   return page
@@ -31,7 +23,6 @@ export function browseButtonFor(page: Page, placeholder: string): Locator {
     .filter({ visible: true });
 }
 
-/** The inputs of those same selectors, in the same order (visible ones only). */
 export function selectorInputFor(page: Page, placeholder: string): Locator {
   return page
     .locator("[data-workspace-selector]")
@@ -39,13 +30,6 @@ export function selectorInputFor(page: Page, placeholder: string): Locator {
     .filter({ visible: true });
 }
 
-/**
- * Page object for the workspace folder picker (`WorkspaceFolderPickerDialog`),
- * opened from the Browse button of a service form's workspace field: the
- * Output Folder, or a file field. Rows, columns and panes are
- * reached by role and accessible name; the strip's scroll state is read in the
- * page, frame by frame, because that is where the motion lives.
- */
 export class FolderPickerDialog {
   readonly page: Page;
   readonly browseButton: Locator;
@@ -57,7 +41,6 @@ export class FolderPickerDialog {
   readonly cancelButton: Locator;
   readonly closeButton: Locator;
   readonly showFilesButton: Locator;
-  /** Copies of leaving columns, playing their exit on the overlay after the strip. */
   readonly exitCopies: Locator;
 
   constructor(
@@ -80,7 +63,6 @@ export class FolderPickerDialog {
     });
     this.cancelButton = this.dialog.getByRole("button", { name: "Cancel" });
     this.closeButton = this.dialog.getByRole("button", { name: "Close" });
-    // "Show files" when picking a folder, "Show other files" when picking a file.
     this.showFilesButton = this.dialog.getByRole("button", {
       name: /^(Show|Hide) (other )?files$/,
     });
@@ -93,12 +75,7 @@ export class FolderPickerDialog {
     await this.settled();
   }
 
-  /**
-   * Wait for the dialog's finite animations (its zoom-in, a column fading in)
-   * and the strip's scroll glide to finish, so measurements see the final
-   * layout. Loading skeletons pulse forever, so infinite animations are left
-   * out.
-   */
+  /** Loading skeletons pulse forever, so only finite animations are awaited. */
   async settled(): Promise<void> {
     await this.dialog.evaluate(async (dialog) => {
       await Promise.all(
@@ -125,7 +102,6 @@ export class FolderPickerDialog {
     await expect(this.dialog).toBeHidden();
   }
 
-  /** The listbox of a column, named after the folder (or place) it lists. */
   column(label: string): Locator {
     return this.dialog.getByRole("listbox", { name: label });
   }
@@ -137,17 +113,12 @@ export class FolderPickerDialog {
     });
   }
 
-  /**
-   * A file's row, found by its name alone: a file row's accessible name also
-   * carries the size shown beside the name.
-   */
   fileOption(column: string, name: string): Locator {
     return this.column(column)
       .getByRole("option")
       .filter({ has: this.page.getByText(name, { exact: true }) });
   }
 
-  /** The whole column at a position, header and rows. */
   columnAt(index: number): Locator {
     return this.strip.locator(`[data-picker-column="${String(index)}"]`);
   }
@@ -166,12 +137,10 @@ export class FolderPickerDialog {
     return this.breadcrumb.getByRole("button").allTextContents();
   }
 
-  /** Layout width in CSS pixels, unaffected by transforms such as the open zoom. */
   async width(locator: Locator): Promise<number> {
     return locator.evaluate((element) => (element as HTMLElement).offsetWidth);
   }
 
-  /** Drag a resize handle sideways by `dx` pixels with the mouse. */
   async dragHandle(handle: Locator, dx: number): Promise<void> {
     const box = await handle.boundingBox();
     if (!box) throw new Error("Resize handle has no layout box");
@@ -183,25 +152,16 @@ export class FolderPickerDialog {
     await this.page.mouse.up();
   }
 
-  /** The strip's scroll position now. */
   async scrollLeft(): Promise<number> {
     return this.strip.evaluate((strip) => Math.round(strip.scrollLeft));
   }
 
   /**
-   * Press `key` on the focused row and record the strip once React has
-   * committed (its layout effect sets up the motion, before anything paints),
-   * then on each of `frames` animation frames.
-   *
-   * The frames are stepped in the page, 16ms at a time, rather than drawn:
-   * headless WebKit on Linux can take longer than the whole 180ms glide to
-   * draw one real frame of this dialog, too few to see the glide. For the
-   * trace, `requestAnimationFrame` callbacks wait for the next step and
-   * `performance.now` reads the stepped time; both are put back afterwards.
-   * The columns' fades run on the document timeline instead, so they are
-   * finished at the commit: left running in real time, they would fall out of
-   * step with the glide (a column still sliding in widens the strip after the
-   * glide ends).
+   * The frames are stepped in the page 16ms at a time because headless WebKit
+   * on Linux can take longer than the 180ms glide to draw one real frame;
+   * `requestAnimationFrame` and `performance.now` are patched and restored.
+   * Column fades run on the document timeline, so they are finished at the
+   * commit.
    */
   async pressAndTrace(key: string, frames = 14): Promise<StripTrace> {
     await this.settled();
@@ -228,8 +188,7 @@ export class FolderPickerDialog {
           target.dispatchEvent(
             new KeyboardEvent("keydown", { key, bubbles: true }),
           );
-          // React flushes a keydown's update in a microtask; a task later the
-          // commit and its layout effect have run.
+          // React flushes a keydown's update in a microtask.
           await new Promise<void>((resolve) => {
             const channel = new MessageChannel();
             channel.port1.onmessage = () => {
@@ -256,8 +215,6 @@ export class FolderPickerDialog {
             const due = [...pending.values()];
             pending.clear();
             for (const callback of due) callback(now);
-            // Let promise work queued by the frame run, as it would between
-            // real frames.
             await Promise.resolve();
             trace.scrollLeft.push(Math.round(strip.scrollLeft));
             trace.scrollWidth.push(Math.round(strip.scrollWidth));
@@ -267,7 +224,6 @@ export class FolderPickerDialog {
           Reflect.deleteProperty(performance, "now");
           window.requestAnimationFrame = realRequestFrame;
           window.cancelAnimationFrame = realCancelFrame;
-          // Whatever the frames left waiting runs on real frames.
           for (const callback of pending.values()) {
             realRequestFrame(callback);
           }

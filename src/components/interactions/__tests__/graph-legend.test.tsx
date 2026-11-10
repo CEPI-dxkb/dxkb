@@ -46,8 +46,8 @@ describe("GraphLegend", () => {
 
   it("drives text off the theme foreground so labels stay legible in dark mode", () => {
     render(<GraphLegend />);
-    // Guards the dark-mode fix: without [&_text]:fill-foreground the SVG text
-    // defaults to black and vanishes on the dark canvas.
+    // Without [&_text]:fill-foreground the SVG text defaults to black and vanishes on the dark
+    // canvas.
     expect(screen.getByRole("img", { name: "Graph legend" })).toHaveClass(
       "[&_text]:fill-foreground",
     );

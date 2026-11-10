@@ -12,7 +12,6 @@ import { getRequiredEnv } from "./env";
 export interface JsonRpcClientOptions {
   /** Lower-case service phrase for failure messages: "the BV-BRC job service". */
   service?: string;
-  /** Budget for one round trip, body included. */
   timeoutMs?: number;
 }
 
@@ -59,7 +58,6 @@ export class JsonRpcClient {
     this.headers = {
       "Content-Type": "application/json",
       ...(authToken && {
-        // Authorization: authToken.startsWith("Bearer ") ? authToken : `Bearer ${authToken}`
         Authorization: authToken,
       }),
     };
@@ -78,14 +76,7 @@ export class JsonRpcClient {
     };
   }
 
-  /**
-   * One POST to the service, returning its parsed body. A BV-BRC JSON-RPC
-   * server reports an application error as an HTTP 500 carrying a JSON-RPC
-   * `error`, so a non-2xx body is read for one before the status is: the
-   * server's own message is a `JsonRpcError`, anything else (an HTML error
-   * page) an `UpstreamError` describing the status and page title. Network
-   * failures and a spent budget are `UpstreamError`s from `fetchUpstream`.
-   */
+  /** One POST returning the parsed body; a non-2xx body is read for a JSON-RPC `error` first, since BV-BRC reports app errors as HTTP 500. */
   private async post(body: unknown): Promise<unknown> {
     const response = await fetchUpstream(
       this.baseUrl,
@@ -102,7 +93,7 @@ export class JsonRpcClient {
       try {
         envelope = text ? JSON.parse(text) : null;
       } catch {
-        // Not JSON: described from the status and page below.
+        // non-JSON body
       }
       const rpcError = rpcErrorOf(envelope);
       if (rpcError) {
@@ -123,8 +114,7 @@ export class JsonRpcClient {
     const request = this.createRequest(method, params);
 
     try {
-      // Never log the request here: the headers carry the user's
-      // Authorization token and the params can hold job inputs.
+      // Never log the request: headers carry the Authorization token and params can hold job inputs.
       const jsonResponse = (await this.post(request)) as JsonRpcResponse<T>;
 
       if (jsonResponse.error) {
@@ -151,7 +141,6 @@ export class JsonRpcClient {
     }
   }
 
-  // Batch requests (if needed in the future)
   async batch<T = unknown>(
     requests: { method: string; params: unknown[] }[],
   ): Promise<T[]> {
@@ -190,7 +179,6 @@ export class JsonRpcClient {
     }
   }
 
-  // Update authentication token
   updateAuthToken(token: string): void {
     this.headers = {
       ...(this.headers as Record<string, string>),
@@ -198,13 +186,11 @@ export class JsonRpcClient {
     };
   }
 
-  // Remove authentication token
   removeAuthToken(): void {
     const { Authorization: _Authorization, ...headersWithoutAuth } = this.headers as Record<string, string>;
     this.headers = headersWithoutAuth;
   }
 
-  // Get authentication token
   getAuthToken(): string | undefined {
     return (this.headers as Record<string, string>).Authorization;
   }
@@ -222,7 +208,6 @@ export class JsonRpcError extends Error {
   }
 }
 
-// Factory function for creating BV-BRC API client
 export function createBvBrcClient(authToken?: string): JsonRpcClient {
   return new JsonRpcClient(getRequiredEnv("APP_SERVICE_URL"), authToken, {
     service: upstreamServices.jobService,
@@ -230,14 +215,12 @@ export function createBvBrcClient(authToken?: string): JsonRpcClient {
   });
 }
 
-// Common error codes for better error handling
 export const jsonRpcErrorCodes = {
   PARSE_ERROR: -32700,
   INVALID_REQUEST: -32600,
   METHOD_NOT_FOUND: -32601,
   INVALID_PARAMS: -32602,
   INTERNAL_ERROR: -32603,
-  // Custom application error codes
   UNAUTHORIZED: -32001,
   FORBIDDEN: -32002,
   NOT_FOUND: -32003,

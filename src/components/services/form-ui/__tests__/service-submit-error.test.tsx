@@ -15,7 +15,6 @@ vi.mock("sonner", () => ({
 
 const submitUrl = "*/api/services/app-service/submit";
 
-// Set by a test to make the form's own validation stop the next Submit.
 let submitBlocked = false;
 
 function ServiceForm({ serviceName }: { serviceName: string }) {
@@ -128,12 +127,11 @@ describe("ServiceSubmitError", () => {
     await user.click(screen.getByRole("button", { name: "Submit" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("bad params 1");
 
-    // The failure was about the inputs Reset just cleared.
     await user.click(screen.getByRole("button", { name: "Reset" }));
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
 
-    // Validation stops this Submit before any job is sent; the old failure
-    // must not come back with it.
+    // Validation stops this Submit before any job is sent; the old failure must
+    // not come back.
     submitBlocked = true;
     await user.click(screen.getByRole("button", { name: "Submit" }));
     await waitFor(() => {
@@ -142,7 +140,6 @@ describe("ServiceSubmitError", () => {
     expect(attempt).toBe(1);
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
 
-    // A submission after the Reset still reports its own failure.
     submitBlocked = false;
     await user.click(screen.getByRole("button", { name: "Submit" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("bad params 2");
@@ -190,7 +187,6 @@ describe("ServiceSubmitError", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent("bad params");
     firstVisit.unmount();
 
-    // The failed mutation is still cached; navigating elsewhere must not show it.
     expect(
       queryClient.getMutationCache().findAll({ status: "error" }),
     ).toHaveLength(1);

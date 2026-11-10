@@ -1,15 +1,6 @@
 /**
  * Server-side calls behind Similar Genome Finder: the MinHash distance search
  * and the genome details that name its hits.
- *
- * The Server Action (`similar-genome-finder/actions.ts`) and the
- * `/api/services/minhash` route both call these directly. The action used to
- * loop back over HTTP to this app's own API routes, which needed an extra
- * `INTERNAL_API_ORIGIN` setting and sent its name to the user when it was
- * missing.
- *
- * Network failures and spent budgets throw `UpstreamError` (from
- * `fetchUpstream`), with a message that names the service and host.
  */
 
 import { parse } from "csv-parse/sync";
@@ -23,8 +14,8 @@ import {
 } from "@/lib/api/upstream-failure";
 
 /**
- * A setting the search needs is missing. Its message names the variable, for
- * the server log only: callers show `userMessage` instead.
+ * A required setting is missing; its message names the variable for the server
+ * log only, so callers show `userMessage` instead.
  */
 export class MinhashConfigurationError extends Error {
   readonly userMessage =
@@ -36,7 +27,6 @@ export class MinhashConfigurationError extends Error {
   }
 }
 
-/** The MinHash service answered, but with an error of its own. */
 export class MinhashServiceError extends Error {
   readonly status: number;
 
@@ -53,7 +43,6 @@ function requireSetting(variable: string): string {
   return value;
 }
 
-/** The `error` a MinHash body carries, as text; null when it has none. */
 export function minhashBodyError(body: unknown): string | null {
   if (body == null || typeof body !== "object") return null;
   const err = (body as Record<string, unknown>).error;
@@ -70,10 +59,8 @@ export type MinhashServiceResponse =
   | { ok: false; status: number; body: Record<string, unknown> };
 
 /**
- * POSTs a JSON-RPC body to the MinHash service and returns its answer as the
- * `/api/services/minhash` route forwards it: the parsed JSON body, or, for a
- * non-OK answer, its status with the JSON error body (`{error, …}`) or an
- * `{error}` describing an HTML or empty one.
+ * POSTs a JSON-RPC body to the MinHash service; a non-OK answer returns its
+ * status with a JSON error body.
  */
 export async function callMinhashService(
   body: object,
@@ -96,7 +83,7 @@ export async function callMinhashService(
     try {
       parsed = text ? JSON.parse(text) : null;
     } catch {
-      // An HTML error page: described from its status and title below.
+      // non-JSON body
     }
     if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
       const data = parsed as Record<string, unknown>;
@@ -122,13 +109,7 @@ export async function callMinhashService(
   };
 }
 
-/**
- * Runs a MinHash search and returns its JSON-RPC result body. Throws
- * `MinhashServiceError` when the service answers with an error (non-OK, or an
- * `error` in an OK body), `UpstreamError` when it cannot be reached or does
- * not answer in time, and `MinhashConfigurationError` when the service URL is
- * not set.
- */
+/** Runs a MinHash search and returns its JSON-RPC result body. */
 export async function searchMinhash(
   payload: object,
   token: string,
@@ -176,9 +157,8 @@ function parseGenomeCsv(text: string): Record<string, string>[] {
 }
 
 /**
- * Genome records (`genome_id`, `genome_name`, `organism_name`, …) for the
- * given IDs from the BV-BRC genome API, every value as a string. Throws
- * `UpstreamError` when the API fails or does not answer in time.
+ * Genome records for the given IDs from the BV-BRC genome API, every value as a
+ * string.
  */
 export async function fetchMinhashGenomeDetails(
   genomeIds: string[],

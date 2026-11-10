@@ -14,7 +14,6 @@ describe("FASTA capabilities", () => {
     expect(isFastaResource("genome_sequence")).toBe(true);
     expect(isFastaResource("genome")).toBe(false);
     expect(isFastaResource("ppi")).toBe(false);
-    // A prototype key must not pass as a resource.
     expect(isFastaResource("toString")).toBe(false);
   });
 

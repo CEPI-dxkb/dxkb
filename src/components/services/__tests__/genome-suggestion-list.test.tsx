@@ -65,7 +65,7 @@ describe("GenomeSuggestionList", () => {
     );
 
     // `muted-foreground` is under 3:1 on the accent fill, so the highlighted
-    // row swaps it out and every row opts in to doing the same on hover.
+    // row swaps it out and every row does the same on hover.
     const highlightedLine = screen.getByText("224308.43");
     expect(highlightedLine).toHaveClass("text-accent-foreground");
     expect(highlightedLine).not.toHaveClass("text-muted-foreground");
@@ -96,18 +96,16 @@ describe("GenomeSuggestionList", () => {
       />,
     );
 
-    // tailwind-merge resolves conflicting background utilities last-wins, so
-    // the highlight class has to come after the caller's `bg-transparent`.
+    // tailwind-merge is last-wins, so the highlight class has to come after the
+    // caller's `bg-transparent`.
     const highlighted = screen.getByRole("button", {
       name: /Bacillus subtilis/i,
     });
     expect(highlighted).toHaveClass("bg-accent");
     expect(highlighted).not.toHaveClass("bg-transparent");
 
-    // Non-conflicting caller classes must still survive the reorder.
     expect(highlighted).toHaveClass("rounded-md", "border-0", "text-sm");
 
-    // Unhighlighted rows keep the caller's background.
     const other = screen.getByRole("button", { name: /Escherichia coli/i });
     expect(other).toHaveClass("bg-transparent");
     expect(other).not.toHaveClass("bg-accent");

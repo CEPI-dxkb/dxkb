@@ -23,9 +23,8 @@ export function UploadDialog({
     <Dialog
       open={open}
       onOpenChange={(next, details) => {
-        // No closing mid-upload (Esc, the backdrop): the panel tracks the
-        // upload and unmounts with the dialog, so a reopened one could start
-        // a second upload alongside it.
+        // No closing mid-upload: the panel tracks the upload and unmounts with the dialog,
+        // so a reopened one could start a second upload.
         if (!next && isUploading) {
           details.cancel();
           return;

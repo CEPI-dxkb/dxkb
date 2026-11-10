@@ -41,11 +41,9 @@ export function WorkspaceShell({
     setPanelExpanded,
   } = useWorkspacePanel();
   const [savedLayout, setSavedLayout] = useUiPreference("workspacePanelLayout");
-  // The group reads defaultLayout only when it mounts. Snapshotting keeps saved drags
-  // from feeding back into a mounted group, while each remount (folder navigation)
-  // starts from the latest saved split rather than the one from page load. A closed
-  // panel mounts closed, so the server HTML never paints it open at the saved width;
-  // opening goes through resize() below.
+  // The group reads defaultLayout only on mount; snapshotting keeps saved drags from
+  // feeding back while each remount starts from the latest split. A closed panel mounts
+  // closed so the server HTML never paints it open.
   const [initialLayout] = useState(panelExpanded ? savedLayout : closedLayout);
   const detailsPanelRef = useRef<PanelImperativeHandle>(null);
 
@@ -55,8 +53,8 @@ export function WorkspaceShell({
     if (!panelExpanded) {
       panel.collapse();
     } else if (panel.isCollapsed()) {
-      // resize, not expand(): expand() returns to the size before an *imperative*
-      // collapse, and falls back to minSize after the user drags the panel shut.
+      // resize, not expand(): expand() returns to the size before an imperative collapse
+      // and falls back to minSize after a user drag-close.
       panel.resize(`${String(savedLayout[workspacePanelIds.details])}%`);
     }
   }, [panelExpanded, savedLayout]);
@@ -137,8 +135,8 @@ export function WorkspaceShell({
       className="size-full min-h-0"
       defaultLayout={initialLayout}
       onLayoutChanged={(layout, meta) => {
-        // Mount, window resizes and imperative open/close are not the user's choice
-        // of width. Only a drag or keyboard resize is saved.
+        // Only a drag or keyboard resize is saved, not mount, window resizes or imperative
+        // open/close.
         if (!meta.isUserInteraction) return;
         const main = layout[workspacePanelIds.main] ?? 0;
         const details = layout[workspacePanelIds.details] ?? 0;

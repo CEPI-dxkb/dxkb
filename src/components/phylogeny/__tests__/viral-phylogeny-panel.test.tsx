@@ -27,11 +27,8 @@ import {
 
 import { ViralPhylogenyPanel } from "../viral-phylogeny-panel";
 
-// Segment suffixes matter: a row is keyed by (strain, segment), and a row's
-// own displayed name is its primary (first) choice — so when Archaeopteryx and
-// Auspice cover the same segment, "Auspice HA (HA)" never appears as row text,
-// only inside that peer button's aria-label. Locate rows by "XML HA (HA)" (the
-// primary choice) and buttons within them by aria-label.
+// A row's displayed name is its primary choice, so locate rows by "XML HA (HA)"
+// and peer buttons within them by aria-label.
 const family = {
   groups: [
     {
@@ -83,9 +80,6 @@ describe("ViralPhylogenyPanel", () => {
     });
     expect(available).not.toHaveTextContent("Not Available");
 
-    // NA has an Auspice tree that isn't in the inventory (unavailable, not
-    // simply absent), so its peer slot carries the "dataset is not available"
-    // tooltip rather than the "no tree for this segment" one.
     const missing = within(row("Missing NA (NA)")).getByTitle(
       "Auspice dataset is not available",
     );
@@ -213,8 +207,8 @@ describe("ViralPhylogenyPanel", () => {
     expect(screen.getByText("No published trees")).toBeInTheDocument();
   });
 
-  // TanStack resets a query without data to pending, error cleared, the moment
-  // it refetches; these drive the panel through that answer by hand.
+  // TanStack resets a query without data to pending the moment it refetches;
+  // these drive that by hand.
   it("keeps a family failure up, retrying, until Retry answers", () => {
     const refetch = vi.fn();
     const error = new Error(

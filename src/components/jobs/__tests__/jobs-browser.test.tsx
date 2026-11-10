@@ -99,7 +99,6 @@ describe("JobsBrowser load states", () => {
     const alert = await screen.findByRole("alert");
     expect(within(alert).getByText("Could not load jobs")).toBeInTheDocument();
     expect(within(alert).getByText(outageMessage)).toBeInTheDocument();
-    // Neither the table body nor the footer may read the failure as "no jobs".
     expect(screen.queryByText(/no jobs/i)).toBeNull();
     expect(screen.queryByText(/showing/i)).toBeNull();
     expect(screen.queryByRole("region", { name: "Jobs list" })).toBeNull();
@@ -107,8 +106,6 @@ describe("JobsBrowser load states", () => {
     failing = false;
     await userEvent.click(within(alert).getByRole("button", { name: "Retry" }));
 
-    // The error stays up, saying it is retrying, until the answer arrives:
-    // no skeleton, and no "Loading jobs…" or count in the footer.
     expect(
       await within(alert).findByRole("button", { name: "Retrying…" }),
     ).toBeDisabled();
@@ -144,7 +141,6 @@ describe("JobsBrowser load states", () => {
     await userEvent.click(within(alert).getByRole("button", { name: "Retry" }));
     await within(alert).findByRole("button", { name: "Retrying…" });
 
-    // Archived is part of the list query: the kept error is not its error.
     await userEvent.click(screen.getByRole("checkbox", { name: /archived/i }));
 
     expect(await screen.findByText("Loading jobs…")).toBeInTheDocument();
@@ -175,7 +171,6 @@ describe("JobsBrowser load states", () => {
     expect(screen.getByText("my assembly")).toBeInTheDocument();
     expect(screen.queryByText("Could not load jobs")).toBeNull();
 
-    // Its Retry keeps the rows and shows that it is working.
     let releaseRetry: () => void = () => undefined;
     server.use(
       http.post(listUrl, async () => {
@@ -258,7 +253,6 @@ describe("JobsBrowser load states", () => {
     failing = true;
     await act(() => queryClient.refetchQueries({ queryKey: ["jobs-summary"] }));
 
-    // The last counts stay, and a note says they may be stale and why.
     const note = await screen.findByText(
       (_, element) =>
         element?.getAttribute("role") === "status" &&
@@ -315,7 +309,6 @@ describe("JobsBrowser load states", () => {
   });
 });
 
-/** A response the test answers when it chooses, to hold a refetch in flight. */
 function heldResponse() {
   let release: (response: Response) => void = () => undefined;
   const response = new Promise<Response>((resolve) => {
@@ -340,7 +333,6 @@ describe("JobsBrowser background polls during an outage", () => {
     const alert = await screen.findByRole("alert");
     expect(alert).toHaveTextContent(outageMessage);
 
-    // A poll, not a Retry: TanStack puts the data-less query back to pending.
     const held = heldResponse();
     poll = held;
     act(() => {
@@ -355,12 +347,10 @@ describe("JobsBrowser background polls during an outage", () => {
 
     expect(screen.getByText("Could not load jobs")).toBeInTheDocument();
     expect(screen.getByText(outageMessage)).toBeInTheDocument();
-    // Nobody pressed Retry, so it does not claim to be retrying.
     expect(screen.getByRole("button", { name: "Retry" })).toBeEnabled();
     expect(screen.queryByText("Loading jobs…")).toBeNull();
     expect(screen.queryByRole("region", { name: "Jobs list" })).toBeNull();
 
-    // The poll's own answer replaces the kept error.
     act(() => {
       held.release(HttpResponse.json({ jobs: [job], totalTasks: 1 }));
     });
@@ -390,7 +380,6 @@ describe("JobsBrowser background polls during an outage", () => {
     expect(await screen.findByText("Could not load jobs")).toBeInTheDocument();
     expect(screen.queryByText("page one job")).toBeNull();
 
-    // A back-off poll of page 2 would show page 1's rows as placeholder data.
     secondPage = heldResponse();
     act(() => {
       void queryClient.refetchQueries({ queryKey: ["jobs-filtered", 25] });
@@ -405,7 +394,6 @@ describe("JobsBrowser background polls during an outage", () => {
     expect(screen.queryByText("page one job")).toBeNull();
     expect(screen.queryByText(/showing/i)).toBeNull();
 
-    // Back to page 1, then to page 2 again while its refetch is still held.
     await userEvent.click(screen.getByRole("button", { name: "Page 1" }));
     expect(await screen.findByText("page one job")).toBeInTheDocument();
     expect(screen.queryByText("Could not load jobs")).toBeNull();

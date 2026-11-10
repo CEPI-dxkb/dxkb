@@ -6,10 +6,6 @@ interface JobSummaryBody {
   include_archived?: boolean;
 }
 
-/**
- * Combined task + app summary endpoint
- * POST /api/services/app-service/jobs/summary
- */
 export const POST = withAuth(async (request: NextRequest, { token }) => {
   const body = (await request.json()) as JobSummaryBody;
   const { include_archived = false } = body;

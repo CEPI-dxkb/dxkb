@@ -23,7 +23,6 @@ import { toast } from "sonner";
 
 const archiveTypeOptions = [{ value: "zip", label: "zip" }];
 
-/** Characters not allowed in archive file name (legacy validation). */
 const invalidArchiveNameChars = /[~`!#$%^&*+=[\]\\';,/{}|":<>?]/g;
 
 export interface DownloadOptionsDialogProps {
@@ -33,10 +32,7 @@ export interface DownloadOptionsDialogProps {
   defaultArchiveName?: string;
 }
 
-// State lives inside the form, not the dialog wrapper, so closing the dialog
-// unmounts this subtree (base-ui Dialog uses keepMounted={false} by default)
-// and state is destroyed. Reopening remounts with fresh state — no explicit
-// prop→state sync needed.
+// State lives inside the form so closing the dialog unmounts it and a reopen starts fresh.
 function DownloadOptionsForm({
   paths,
   defaultArchiveName,

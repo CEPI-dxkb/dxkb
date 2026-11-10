@@ -1,13 +1,9 @@
 import { createLucideIcon } from "lucide-react";
 
 /**
- * Lucide's `circle-play` with the ring opened into a spinning arc, the way
- * `loader-circle` spins, while the play triangle stays still. Marks a job that
- * is running right now; static `CirclePlay` stands in where nothing is.
- *
- * The arc is the 10px ring with the same ~72° gap `loader-circle` leaves in its
- * 9px one. `origin-center` resolves against the SVG viewBox, so it turns
- * around (12, 12). The global reduced-motion rule in `globals.css` stops it.
+ * Lucide's `circle-play` with the ring opened into a spinning arc while the triangle stays still.
+ * `origin-center` resolves against the viewBox, so it turns around (12, 12); the reduced-motion
+ * rule in `globals.css` stops it.
  */
 export const CirclePlaySpinner = createLucideIcon({
   name: "circle-play-spinner",

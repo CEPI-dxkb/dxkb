@@ -18,7 +18,6 @@ const themeSources = {
   "bvbrc-dark": read("src/styles/themes/bvbrc-theme.css"),
 };
 
-/** The declarations of `[data-theme="<theme>"] { ... }`. */
 function themeBlock(css: string, theme: string): string {
   const match = new RegExp(
     `\\[data-theme=["']${theme}["']\\]\\s*\\{([^{}]*)\\}`,
@@ -27,10 +26,7 @@ function themeBlock(css: string, theme: string): string {
   return match?.[1] ?? "";
 }
 
-// The browser half (the fill a disabled field shows, the cursor, a disabled
-// button keeping its fill on hover) runs in
-// e2e/tests/services/service-form-controls.spec.ts, under the default theme
-// only; these pin what every theme and the build need.
+// The browser half is in e2e/tests/services/service-form-controls.spec.ts; these pin what every theme and the build need.
 describe("disabled state: theme tokens", () => {
   it.each(Object.entries(themeSources))(
     "%s declares --disabled as a literal color",
@@ -38,8 +34,7 @@ describe("disabled state: theme tokens", () => {
       const value = /--disabled:\s*([^;]+);/.exec(themeBlock(css, theme))?.[1];
 
       expect(value, `${theme} has no --disabled`).toBeDefined();
-      // A color-mix() of var()s here would split the block in the build and
-      // strip the lab() values after it (see theme-token-order.test.ts).
+      // A color-mix() of var()s here would split the block in the build (see theme-token-order.test.ts).
       expect(value).toMatch(/^oklch\(/);
       expect(value).not.toMatch(/var\(|color-mix\(/);
     },
@@ -61,8 +56,7 @@ describe("disabled state: theme tokens", () => {
 describe("disabled state: cursor and hover", () => {
   it("shows the not-allowed cursor on every :disabled element from the base layer", () => {
     const base = /@layer base\s*\{([\s\S]*?)\n\}/.exec(globals)?.[1];
-    // In the base layer, so a call-site utility (`disabled:cursor-default`
-    // on a non-sortable header) still wins.
+    // In the base layer, so a call-site utility still wins.
     expect(base).toMatch(/:disabled\s*\{\s*cursor:\s*not-allowed;\s*\}/);
   });
 

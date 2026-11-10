@@ -25,11 +25,7 @@ describe("metagenomicBinningFormSchema", () => {
   });
 
   it("safeParse rejects start_with=reads with no libraries even when output fields are filled", () => {
-    // Build a payload that's otherwise valid — non-empty output_path/output_file, valid
-    // assembler/organism — and then strip every library source so the only outstanding
-    // issue is the superRefine "missing libraries" rule. Using the default object would
-    // also trigger output_path / output_file min-length errors and obscure which rule
-    // actually rejected the payload.
+    // Strip every library source so only the "missing libraries" refinement fails.
     const result = metagenomicBinningFormSchema.safeParse({
       ...validPayload,
       paired_end_libs: [],

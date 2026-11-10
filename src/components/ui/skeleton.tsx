@@ -2,8 +2,6 @@ import { cva, type VariantProps } from "class-variance-authority"
 
 import { cn } from "@/lib/utils"
 
-// Local edit: variants. inverse: a light pulse on a dark or brand surface
-// (the statistics band).
 const skeletonVariants = cva("animate-pulse rounded-md bg-muted", {
   variants: {
     variant: {

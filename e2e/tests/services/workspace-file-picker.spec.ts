@@ -22,10 +22,8 @@ import {
 } from "../../pages";
 
 /**
- * Workspace file fields open the column picker from their Browse button.
- * Vitest covers the picker's file rules and both selector callback modes; this
- * spec covers each service's real form (portals, cards, hidden sections) and
- * the chosen file reaching the submitted job.
+ * Workspace file fields open the column picker from Browse; covers each service's real
+ * form (portals, cards, hidden sections) and the file reaching the submitted job.
  */
 
 const file = (
@@ -73,9 +71,8 @@ function taxonomyOverride(docs: object[]): JsonOverride {
 const fluGenomeIds = ["11320.1001", "11320.1002"];
 
 /**
- * What MSA & SNP reads to check a pick before it enters the form: the genome
- * group's content and its genomes' viral metadata, and the start of the FASTA
- * file (at least two protein records, `minSequences`).
+ * What MSA & SNP reads to check a pick before it enters the form: the genome group's
+ * content, its genomes' viral metadata and the start of the FASTA file.
  */
 const msaPickOverrides: JsonOverride[] = [
   workspaceObjectContentOverride(
@@ -110,7 +107,6 @@ const msaPickOverrides: JsonOverride[] = [
 /** Requests a service's form makes on load or on a pick, beyond the workspace. */
 const serviceOverrides: Partial<Record<string, JsonOverride[]>> = {
   "msa-snp-analysis": msaPickOverrides,
-  // The taxon fields look SARS-CoV-2 up on load.
   "sars-cov2-genome-analysis": [taxonomyOverride([])],
 };
 
@@ -191,7 +187,6 @@ const readTrio = (slug: string): FileFieldCase[] => [
 ];
 
 const fileFieldCases: FileFieldCase[] = [
-  // blast: nothing on load (FASTA text, precomputed database).
   { slug: "blast", placeholder: "Select a FASTA file to search...", reveal: { radio: "Select FASTA file" }, folder: "Inputs", file: "genes.fna" },
   { slug: "blast", placeholder: "Select a feature group to search...", reveal: { radio: "Select feature group" }, folder: "Inputs", file: "HA features" },
   { slug: "blast", placeholder: "Select a genome group...", reveal: { select: "Database Source", option: "Search within selected genome group" }, folder: "Inputs", file: "Flu genomes" },
@@ -312,14 +307,11 @@ test.describe("file picker: every service field", () => {
       }
       await picker.fileOption(field.folder, field.file).dblclick();
       await expect(picker.dialog).toBeHidden();
-      // Immediate and staged fields both show the chosen name.
       const input = selectorInputFor(page, field.placeholder).nth(
         field.index ?? 0,
       );
       await expect(input).toHaveValue(field.file);
       await expect(browse).toBeFocused();
-      // The pick is accepted. MSA & SNP checks its group and FASTA picks
-      // first, and a rejected pick stays on screen in the error state.
       await expect(
         page.getByText(/^(Validating genome group|Checking FASTA file)\.\.\.$/),
       ).toHaveCount(0);
@@ -383,7 +375,6 @@ test.describe("file picker: the chosen file reaches the job", () => {
         name: "Add paired read library to selected libraries",
       })
       .click();
-    // Both fields are controlled by the form's state, which Add clears.
     await expect(selectorInputFor(page, reads1)).toHaveValue("");
     await expect(selectorInputFor(page, reads2)).toHaveValue("");
 
@@ -415,7 +406,6 @@ test.describe("file picker: the chosen file reaches the job", () => {
       "/services/genome-annotation?rerun_key=e2e-annotation-rerun",
       {
         submits: "GenomeAnnotation",
-        // Rerun looks the taxon's name up from its ID.
         extra: [
           taxonomyOverride([{ taxon_id: 562, taxon_name: "Escherichia coli" }]),
         ],
@@ -454,7 +444,6 @@ test.describe("file picker: the chosen file reaches the job", () => {
   }) => {
     await openService(page, "proteome-comparison");
     const placeholder = "Select protein FASTA file (Optional)";
-    // The second one is the comparison genomes' (the first is the reference).
     const picker = new FolderPickerDialog(page, "Select a File", {
       browseButton: browseButtonFor(page, placeholder).nth(1),
     });
@@ -479,16 +468,14 @@ test.describe("file picker: upload, then pick", () => {
     await picker.open();
     await picker.option("Home", "Inputs").click();
     await picker.dialog.getByRole("button", { name: "Upload here" }).click();
-    // The type the field asks for is chosen already. (The trigger's text also
-    // holds its arrow, so read the value.)
+    // The trigger's text also holds its arrow, so read the value.
     await expect(
       picker.dialog
         .getByRole("combobox", { name: "Upload type" })
         .locator('[data-slot="select-value"]'),
     ).toHaveText("Reads");
 
-    // Hold the multipart POST until it has been sent. Routes registered later
-    // run first, so this one wins over the default mock.
+    // Routes registered later run first, so this one wins over the default mock.
     const uploadHeld = Promise.withResolvers<undefined>();
     await page.route(/\/api\/services\/workspace\/upload/, async (route) => {
       await uploadHeld.promise;

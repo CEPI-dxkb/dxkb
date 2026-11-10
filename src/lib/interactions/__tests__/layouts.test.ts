@@ -3,8 +3,8 @@ import Graph from "graphology";
 import { connectedComponents, runGraphLayout } from "../layouts";
 import type { LayoutName } from "../types";
 
-// cose-bilkent packing math must be isolated from real force-directed physics
-// to make the giant component's pre-layout centroid predictable.
+// Isolate cose-bilkent packing math from real force-directed physics so the giant component's
+// pre-layout centroid is predictable.
 vi.mock("graphology-layout-forceatlas2", () => ({ default: { assign: vi.fn() } }));
 
 function makeGraph() {
@@ -21,13 +21,11 @@ function makeGraph() {
 
 function makeSkewedComponentsGraph() {
   const g = new Graph({ multi: true });
-  // Giant component: pre-translation centroid (100, 0), 90th-percentile spread 10.
   g.addNode("gA", { x: 90, y: 0 });
   g.addNode("gB", { x: 110, y: 0 });
   g.addNode("gC", { x: 100, y: 0 });
   g.addEdgeWithKey("gA-gB", "gA", "gB");
   g.addEdgeWithKey("gB-gC", "gB", "gC");
-  // Disconnected pair, far from the giant component's pre-translation centroid.
   g.addNode("r1", { x: 0, y: 0 });
   g.addNode("r2", { x: 2, y: 0 });
   g.addEdgeWithKey("r1-r2", "r1", "r2");
@@ -79,10 +77,8 @@ describe("interaction graph layouts", () => {
 
     runGraphLayout(g, "cose-bilkent");
 
-    // Giant component (gA/gB/gC) has true post-translation radius 10. A correct
-    // packing ring keeps the small cluster within a small multiple of that. The
-    // pre-fix bug measured ring radius from the giant's stale pre-translation
-    // centroid, inflating it ~10x (to ~174) instead of the correct ~16.
+    // The small cluster must stay within a small multiple of the giant's true post-translation
+    // radius (10); measuring from the stale pre-translation centroid inflated it ~10x.
     const r1 = g.getNodeAttributes("r1");
     const r2 = g.getNodeAttributes("r2");
     const centroidDist = Math.hypot(

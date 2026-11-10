@@ -86,7 +86,6 @@ describe("fetchOrganismMetadataFacets", () => {
     expect(error).toMatchObject({
       message:
         "Isolation Country: The BV-BRC data service is unavailable (HTTP 503 Service Unavailable: Site Maintenance).",
-      // The field name is for the server log only.
       source: "genome isolation_country facet",
     });
     expect((error as Error).message).not.toContain("isolation_country");

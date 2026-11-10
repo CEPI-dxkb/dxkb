@@ -11,11 +11,7 @@ interface JobsSummaryData {
 const activeStatuses = ["running", "in-progress", "queued", "pending"];
 
 interface UseJobsSummaryOptions {
-  /**
-   * Poll on the usual schedule (default). `false` fetches once and then only
-   * on demand (`refetch`), for a caller whose polls are likely to fail, such
-   * as the header pill while the session could not be verified.
-   */
+  /** `false` fetches once, then only on demand (`refetch`). */
   poll?: boolean;
 }
 
@@ -24,17 +20,12 @@ function unwrapCounts(raw: unknown): Record<string, number> {
   return ((Array.isArray(raw) ? raw[0] : raw) ?? {}) as Record<string, number>;
 }
 
-/**
- * Polling policy shared by the full summary and the pill's task summary:
- * back-off after failed polls, 5 s until the first data, 3 s while any job is
- * active, otherwise 30 s. `poll: false` fetches only on demand.
- */
+/** Shared by the full summary and the pill's task summary. */
 export function jobsSummaryRefetchInterval(poll: boolean) {
   return (query: {
     state: Pick<QueryState<{ taskSummary: Record<string, number> }>, "status" | "errorUpdateCount" | "data">;
   }) => {
-    // Called first even when not polling, so the back-off keeps its
-    // record of the last success for when polling resumes.
+    // Called first even when not polling, so the back-off keeps its last-success record.
     const backoff = errorBackoffPollInterval(query);
     if (!poll) return false;
     if (backoff !== undefined) return backoff;
@@ -46,11 +37,7 @@ export function jobsSummaryRefetchInterval(poll: boolean) {
   };
 }
 
-/**
- * Task counts only, for the header pill: `/jobs/task-summary` makes one
- * AppService call where `/jobs/summary` makes two. Its key keeps the
- * `["jobs-summary"]` prefix so the existing invalidations refresh it.
- */
+/** Task counts only (one AppService call); keeps the `["jobs-summary"]` key prefix so existing invalidations refresh it. */
 export function useJobsTaskSummary(
   includeArchived: boolean,
   { poll = true }: UseJobsSummaryOptions = {},

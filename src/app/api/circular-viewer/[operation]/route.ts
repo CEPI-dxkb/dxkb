@@ -24,20 +24,9 @@ import {
 import { rateLimitedResponse } from "@/lib/data-api/route-guards";
 import { resolveServerDataRepository } from "@/lib/data-api/server-policy";
 
-/**
- * Same-origin boundary for the Circular Viewer, apart from `/api/data/[resource]`
- * for the Genome Browser's reason: whole-genome track reads (up to 25,000
- * features) and GC computed from whole sequences fit neither the gateway's
- * 200-row page nor its generic validation. Contract in
- * `src/lib/circular-viewer/server.ts`; see `docs/architecture.md` →
- * "Circular Viewer route contract".
- */
+/** Same-origin boundary for the Circular Viewer; whole-genome track reads and GC over whole sequences fit neither the gateway's 200-row page nor its generic validation. */
 
-/**
- * Per client IP per minute. Opening the tab costs one `contigs`, seven
- * `track` and one `gc`; custom tracks are typed one at a time; `gc` reads
- * every sequence whole, so it gets the least.
- */
+/** Per client IP per minute; `gc` reads every sequence whole, so it gets the least. */
 const rateLimits: Record<CircularViewerOperation, number> = {
   contigs: 60,
   track: 120,
@@ -45,7 +34,6 @@ const rateLimits: Record<CircularViewerOperation, number> = {
   gc: 20,
 };
 
-/** `"query"`: every answer depends on the caller's token (private genomes). */
 async function dataRepository(): Promise<ServerDataRepository> {
   const { repository } = await resolveServerDataRepository({
     readScope: "query",
@@ -57,7 +45,6 @@ async function dataRepository(): Promise<ServerDataRepository> {
   return repository;
 }
 
-/** Parameters are validated before the repository is resolved, so a bad request is a 400 even unconfigured. */
 async function readOperation(
   operation: CircularViewerOperation,
   request: NextRequest,
@@ -96,7 +83,6 @@ async function answer(
   context: { params: Promise<{ operation: string }> },
 ): Promise<NextResponse> {
   const { operation } = await context.params;
-  // Allowlist before the rate-limit key, so a garbage segment cannot mint a bucket.
   if (!isCircularViewerOperation(operation)) {
     return NextResponse.json(
       { error: `Unsupported circular viewer operation: ${operation}`, code: "not_found" },
@@ -118,7 +104,6 @@ async function answer(
   }
 }
 
-/** Every answer, a failure as much as a success, depends on the caller's cookie. */
 export async function GET(
   request: NextRequest,
   context: { params: Promise<{ operation: string }> },

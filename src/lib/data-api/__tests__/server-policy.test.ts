@@ -1,7 +1,5 @@
-// `server-only` throws unconditionally outside Next's bundler (it relies on a
-// webpack alias swap that only exists in the real build); every test file that
-// imports a module gated by it neutralizes the guard the same way
-// `src/lib/phylogeny/__tests__/dataset-store.test.ts` does.
+// `server-only` throws outside Next's bundler, so this mock neutralizes the
+// guard.
 vi.mock("server-only", () => ({}));
 
 import { setTestSession, testCookieStore } from "@/test-helpers/api-route-helpers";
@@ -67,9 +65,6 @@ async function resolve(readScope: DataApiReadScope) {
 }
 
 describe("readScopeForOperation", () => {
-  // `member` is the only operation whose URL is keyed by a single identifier,
-  // so it is the only one whose key space is bounded enough to be worth
-  // caching. Everything else carries caller-specific predicates.
   it.each<[DataApiRequest["operation"], DataApiReadScope]>([
     ["member", "member"],
     ["collection", "query"],
@@ -96,12 +91,6 @@ describe("resolveServerDataRepository cache policy", () => {
     expect(authorization).toBeNull();
   });
 
-  // The behaviour change this task landed. The page factory used to cache
-  // anonymous *collections* for 300 seconds while the gateway did not; both
-  // now agree that they are never cached. A collection URL carries filters,
-  // sort, page, and keyword, so `force-cache` would fill Next's data cache
-  // with near-unique entries at a low hit rate. A test that passed under both
-  // policies would prove nothing, so this asserts the cache mode directly.
   it("does not cache an anonymous query read, even though it is anonymous", async () => {
     const { sharedCache, init, authorization } = await resolve("query");
 
@@ -123,11 +112,6 @@ describe("resolveServerDataRepository cache policy", () => {
     },
   );
 
-  // The other half of the disagreement: the factory honoured
-  // `E2E_MOCK_ENABLED` and the gateway ignored it entirely, so the same
-  // anonymous member read was cached on one path and not the other during an
-  // E2E run. An E2E response is per-run fixture data and must never be shared
-  // across runs.
   it.each<DataApiReadScope>(["member", "query"])(
     "bypasses cache for an anonymous %s read during an E2E run",
     async (readScope) => {
@@ -258,10 +242,8 @@ describe("resolveServerDataRepository missing configuration", () => {
     expect(consoleError).not.toHaveBeenCalled();
   });
 
-  // The base-URL check runs before `readSession()` on purpose, so a genuine
-  // configuration failure never depends on a session lookup succeeding first.
-  // With the cookie store broken *and* the base URL missing, the reported
-  // failure must still be the configuration one.
+  // The base-URL check precedes `readSession()`: with both failing, the
+  // configuration error must be the one reported.
   it("reports missing configuration before attempting a session lookup", async () => {
     testCookieStore.get.mockImplementation(() => {
       throw new Error("Cookie store unavailable in this rendering mode");
@@ -276,10 +258,8 @@ describe("resolveServerDataRepository missing configuration", () => {
     expect(testCookieStore.get).not.toHaveBeenCalled();
   });
 
-  // The complement: with a valid configuration, a cookie-store failure is a
-  // different problem and must propagate untouched rather than being relabeled
-  // as a deployment issue. `protein-structure-view/server.ts` narrows on the
-  // `not_configured` code and depends on this.
+  // A cookie-store failure with valid configuration must propagate untouched;
+  // `protein-structure-view/server.ts` depends on this.
   it("propagates a session lookup failure instead of relabeling it", async () => {
     process.env.DATA_API_URL = "https://data.example";
     const cookieStoreError = new Error(

@@ -7,11 +7,8 @@ import {
 } from "../mocks/backends";
 
 /**
- * Self-tests for applyBackendMocks. Exercises precedence rules (overrides > HAR > strict),
- * strict-mode enforcement on backend hosts, and non-backend fallthrough for Next assets.
- *
- * Uses in-page fetch via page.evaluate so requests flow through page.route() (page.request
- * bypasses routing).
+ * Self-tests for applyBackendMocks: override/HAR/strict precedence and non-backend
+ * fallthrough. Uses in-page fetch so requests flow through page.route().
  */
 
 interface FetchResult {
@@ -20,8 +17,7 @@ interface FetchResult {
   body: unknown;
 }
 
-// Narrow, serializable subset of RequestInit — Playwright's page.evaluate requires args to be
-// JSON-safe, and the full RequestInit type (Headers, AbortSignal) is not.
+// Playwright's page.evaluate needs JSON-safe args, which the full RequestInit is not.
 interface SerializableRequestInit {
   method?: string;
   body?: string;
@@ -55,8 +51,6 @@ async function inPageFetch(
 
 test.describe("applyBackendMocks", () => {
   test.beforeEach(async ({ page }) => {
-    // Blank page so window.fetch is available. strict:true allow-list: about:blank triggers no
-    // backend request, so strict won't fire here.
     await page.goto("about:blank");
   });
 
@@ -72,7 +66,6 @@ test.describe("applyBackendMocks", () => {
       },
     ];
     await applyBackendMocks(page, { overrides, strict: false });
-    // Need a real origin for fetch — navigate to baseURL so fetch can hit /api paths.
     await page.goto(baseURL ?? "/");
     const result = await inPageFetch(page, "/api/services/taxonomy");
     expect(result.status).toBe(200);
@@ -113,10 +106,8 @@ test.describe("applyBackendMocks", () => {
     await applyBackendMocks(page, { overrides: [], strict: true });
     await page.goto(baseURL ?? "/");
     const result = await inPageFetch(page, "/api/services/unmocked-endpoint");
-    // Strict mode calls route.abort("failed") which surfaces as a fetch network error in the page.
     expect(result.ok).toBe(false);
     expect(result.status).toBe(0);
-    // The guard also records the leak. Other independently rendered page APIs may be recorded.
     const leaks = getUnmockedBackendRequests(page);
     expect(
       leaks.some((r) => r.includes("/api/services/unmocked-endpoint")),
@@ -130,8 +121,6 @@ test.describe("applyBackendMocks", () => {
     page,
   }) => {
     await applyBackendMocks(page, { overrides: [], strict: true });
-    // Stay on about:blank — no browser requests means nothing for strict to record.
-    // This exercises the empty-leak path in isolation from any app hydration fetches.
     expect(getUnmockedBackendRequests(page)).toEqual([]);
     expect(() => {
       verifyNoUnmockedBackendRequests(page);
@@ -144,8 +133,6 @@ test.describe("applyBackendMocks", () => {
   }) => {
     await applyBackendMocks(page, { overrides: [], strict: true });
     const response = await page.goto(baseURL ?? "/");
-    // The document response itself is served by Next, not a backend — goto must succeed even
-    // though downstream /api calls from hydration get aborted by strict.
     expect(response?.ok()).toBe(true);
   });
 
@@ -163,8 +150,6 @@ test.describe("applyBackendMocks", () => {
     const result = await inPageFetch(page, "/api/services/genome/search");
     expect(result.status).toBe(200);
     expect(result.body).toEqual({ genomes: [] });
-    // The override target was handled, so that URL was never recorded as a leak.
-    // (Other app-internal /api calls may get recorded; we only assert about the override target.)
     expect(
       getUnmockedBackendRequests(page).filter((r) =>
         r.includes("/api/services/genome/search"),
@@ -191,7 +176,6 @@ test.describe("applyBackendMocks", () => {
     page,
     baseURL,
   }) => {
-    // Simulates JSON-RPC dispatch: one endpoint, many methods. matchBody lets us fan out by payload.
     const overrides: JsonOverride[] = [
       {
         url: "/api/services/workspace",

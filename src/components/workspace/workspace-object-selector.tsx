@@ -26,24 +26,17 @@ interface WorkspaceObjectSelectorProps {
   className?: string;
   path?: string;
   types?: ValidWorkspaceObjectTypes | ValidWorkspaceObjectTypes[];
-  /** Optional preset that supplies `types`; if set, takes precedence over `types`. */
   preset?: WorkspaceSelectorPreset;
   value?: string;
   filter?: (object: WorkspaceObject) => boolean;
-  /** Draws the field in its error state (`aria-invalid`). */
   invalid?: boolean;
-  /** Offers a Browse button that opens the workspace picker. Defaults to true. */
   browse?: boolean;
-  /** Title of the picker that Browse opens. */
   browseTitle?: string;
   disabled?: boolean;
   /**
-   * Waits to run the workspace search (a recursive listing of the whole
-   * `path` tree) until the user focuses, types in, or opens the field, rather
-   * than on mount. Defaults to true: a service form has several of these
-   * fields, most keep their default value or are filled through Browse, and
-   * listing on mount sent one hanging `Workspace.ls` per field during an
-   * outage. Pass false only where the list must be ready before any input.
+   * Delays the recursive workspace search until the field is focused, typed in or
+   * opened. Defaults to true: listing on mount sent one hanging `Workspace.ls` per
+   * field during an outage.
    */
   searchOnInteraction?: boolean;
 }
@@ -80,7 +73,6 @@ function useWorkspaceObjectSelector({
     top: number;
     left: number;
     width: number;
-    /** When openUpward, bottom (from viewport bottom) so dropdown is anchored above input and shrinks from top */
     bottom?: number;
   } | null>(null);
   const inputRef = React.useRef<HTMLDivElement>(null);
@@ -88,7 +80,6 @@ function useWorkspaceObjectSelector({
   const dropdownRef = React.useRef<HTMLDivElement | null>(null);
   const itemRefs = React.useRef<(HTMLButtonElement | null)[]>([]);
 
-  // Effective types come from either the preset or the explicit `types` prop.
   const effectiveTypes: ValidWorkspaceObjectTypes[] | undefined = preset
     ? [...resolveSelectorPreset(preset)]
     : types
@@ -120,7 +111,6 @@ function useWorkspaceObjectSelector({
       ? pickerTargetFor(resolvedTypes)
       : null;
 
-  // Use the repository-backed object search hook
   const {
     objects,
     filteredObjects,
@@ -148,7 +138,6 @@ function useWorkspaceObjectSelector({
     object: WorkspaceObject,
     immediateSelect = false,
   ) => {
-    // Populate the input field
     const objectName = object.name || "";
     setSearchQuery(objectName);
     selectedObjectRef.current = object;
@@ -157,18 +146,14 @@ function useWorkspaceObjectSelector({
     setShowDropdown(false);
     setHighlightedIndex(-1);
 
-    // If immediateSelect is true or onObjectSelect is provided without onSelectedObjectChange,
-    // call onObjectSelect immediately (for OutputFolder use case)
     if (immediateSelect || (onObjectSelect && !onSelectedObjectChange)) {
       onObjectSelect?.(object);
-      // Keep the display name but clear search query for controlled mode
       setSearchQuery("");
       selectedObjectRef.current = null;
       onSelectedObjectChange?.(null);
     }
   };
 
-  /** The picker's choice goes the same way as a clicked suggestion. */
   const handleBrowseSelect = (path: string, item: WorkspaceItem | null) => {
     handleObjectClick(
       item
@@ -201,7 +186,6 @@ function useWorkspaceObjectSelector({
     setHighlightedIndex(-1);
   };
 
-  // Handle click outside to close dropdown
   React.useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (
@@ -228,7 +212,6 @@ function useWorkspaceObjectSelector({
     itemRefs.current = [];
   }, [filteredObjects, objects, isManualTrigger, showDropdown]);
 
-  // Scroll highlighted item into view
   React.useEffect(() => {
     if (highlightedIndex >= 0 && itemRefs.current[highlightedIndex]) {
       itemRefs.current[highlightedIndex]?.scrollIntoView({
@@ -238,7 +221,6 @@ function useWorkspaceObjectSelector({
     }
   }, [highlightedIndex]);
 
-  // Calculate dropdown position and rect for portal (so it isn't clipped by Card overflow)
   const updateDropdownLayout = React.useEffectEvent(() => {
     if (!showDropdown || !inputRef.current) return;
     const rect = inputRef.current.getBoundingClientRect();
@@ -248,13 +230,11 @@ function useWorkspaceObjectSelector({
     const preferredHeight = 640;
     const minHeight = 288;
     const gap = 4;
-    // Cap height when opening upward so dropdown stays near the trigger instead of at viewport top
     const maxHeightUpward = 360;
 
     let openUpward = false;
     let maxHeight = preferredHeight;
 
-    // Prefer opening downward when there's any reasonable space below so dropdown stays next to trigger
     if (spaceBelow >= minHeight) {
       openUpward = false;
       maxHeight = Math.min(spaceBelow - gap - 20, preferredHeight);
@@ -279,7 +259,6 @@ function useWorkspaceObjectSelector({
 
   React.useEffect(() => {
     if (showDropdown && inputRef.current) {
-      // Defer so layout is measured after DOM update (avoids wrong position when opening)
       const raf = requestAnimationFrame(() => {
         updateDropdownLayout();
       });
@@ -290,7 +269,6 @@ function useWorkspaceObjectSelector({
     setDropdownRect(null);
   }, [showDropdown]);
 
-  // Update portal position on scroll/resize so dropdown stays aligned
   React.useEffect(() => {
     if (!showDropdown) return;
     const handleUpdate = () => {
@@ -304,28 +282,23 @@ function useWorkspaceObjectSelector({
     };
   }, [showDropdown]);
 
-  // Use filtered objects from hook, with manual trigger override.
   const candidateObjects = isManualTrigger ? objects : filteredObjects;
   const displayObjects = filter
     ? candidateObjects.filter(filter)
     : candidateObjects;
 
-  // Track previous value to avoid unnecessary updates
   const previousValueRef = React.useRef<string | undefined>(value);
-  // Track which value we've already resolved (found or derived) so we don't
-  // re-run derivation on every objects-list refresh or displayName change.
+  // Track which value is already resolved so derivation does not rerun on every objects
+  // refresh or displayName change.
   const resolvedValueRef = React.useRef<string | undefined>(undefined);
 
-  // Find object by path when value is provided to display its name and set selected object
   React.useEffect(() => {
     const valueChanged = previousValueRef.current !== value;
     if (valueChanged) previousValueRef.current = value;
 
-    // A search not yet run (`searchOnInteraction`) has no list to look the
-    // value up in, so its name comes from the path straight away.
+    // A search not yet run has no list to look the value up in, so its name comes from the
+    // path.
     if (value && (objects.length > 0 || !searchEnabled)) {
-      // Only update if value changed or this value hasn't been resolved yet
-      // (handles the case where objects load after the initial render)
       if (valueChanged || resolvedValueRef.current !== value) {
         resolvedValueRef.current = value;
         const foundObject = objects.find((obj) => obj.path === value);
@@ -334,8 +307,6 @@ function useWorkspaceObjectSelector({
             setDisplayName(foundObject.name || "");
             selectedObjectRef.current = foundObject;
           } else {
-            // Object not in the loaded list (e.g. a subfolder not fetched at this level).
-            // Derive a display name from the last path segment.
             const derivedName = value.split("/").filter(Boolean).pop() ?? value;
             setDisplayName(derivedName);
             selectedObjectRef.current = null;
@@ -344,11 +315,9 @@ function useWorkspaceObjectSelector({
         });
       }
     } else if (!value && valueChanged) {
-      // Clear display name and selected object when value is cleared. Typing
-      // drops the selection first (`onInputChange`), so a parent that clears
-      // `value` in response must not also wipe the text being typed: only a
-      // clear from outside, with an object still selected (a form reset),
-      // empties the search box.
+      // Typing drops the selection first, so a parent that clears `value` in response must
+      // not also wipe the text being typed; only an outside clear (a form reset) empties
+      // the search box.
       const clearedByTyping = selectedObjectRef.current === null;
       resolvedValueRef.current = undefined;
       queueMicrotask(() => {
@@ -363,8 +332,8 @@ function useWorkspaceObjectSelector({
     if (!showDropdown || displayObjects.length === 0) {
       if (event.key === "Enter" && selectedObjectRef.current) {
         event.preventDefault();
-        // A caller without onObjectSelect already holds the pick as its value
-        // (direct commit): Enter has nothing to commit, so it must not clear it.
+        // A caller without onObjectSelect already holds the pick as its value, so Enter
+        // has nothing to commit and must not clear it.
         if (!onObjectSelect) return;
         onObjectSelect(selectedObjectRef.current);
         setSearchQuery("");

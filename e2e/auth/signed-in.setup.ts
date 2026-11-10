@@ -7,7 +7,8 @@ import { resolveSignedInStatePath } from "./storage-state";
 setup(
   "seed mocked session cookies",
   async ({ context, baseURL }, testInfo) => {
-    // Both Playwright configs testMatch this file, so the destination depends on
+    // Both Playwright configs testMatch this file, so the destination depends
+    // on
     // which config is running it — see e2e/auth/storage-state.ts.
     const authFile = path.resolve(
       process.cwd(),

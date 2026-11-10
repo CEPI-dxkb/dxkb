@@ -1,7 +1,6 @@
 import { expect, type Locator, type Page } from "@playwright/test";
 import { copilotName } from "@/lib/copilot/name";
 
-/** The edges and corners a floating window can be resized from. */
 export type CopilotResizeDirection =
   | "n"
   | "s"
@@ -13,21 +12,15 @@ export type CopilotResizeDirection =
   | "sw";
 
 /**
- * Page object for the BV-BRC Copilot: the navbar launcher, the three surfaces
- * (side panel, floating window, full page), the options menu, the composer, the
- * transcript, the floating window's resize handles, and the clarification,
- * execution and plan cards. Cards and the composer live inside `panel`, which
- * is the open Copilot dialog whichever surface shows it. Backend mocks and
- * request capture stay in the spec.
+ * Page object for the BV-BRC Copilot. Cards and the composer live inside
+ * `panel`, the open Copilot dialog whichever surface shows it; backend mocks
+ * stay in the spec.
  */
 export class CopilotPage {
   readonly page: Page;
 
-  // Surfaces
   readonly launcher: Locator;
-  /** The open Copilot dialog: the side panel or the floating window. */
   readonly panel: Locator;
-  /** The floating window only; it is a non-modal dialog. */
   readonly floating: Locator;
   readonly newChatDialog: Locator;
   readonly sideSheet: Locator;
@@ -36,29 +29,24 @@ export class CopilotPage {
   readonly emptyChatList: Locator;
   readonly emptyState: Locator;
 
-  // Options menu
   readonly optionsButton: Locator;
   readonly menu: Locator;
   readonly closeButton: Locator;
 
-  // Composer
   readonly composer: Locator;
   readonly sendButton: Locator;
   readonly fileInput: Locator;
   readonly attachedFiles: Locator;
   readonly executeNotice: Locator;
 
-  // Transcript
   readonly whatIDidTrigger: Locator;
   readonly goodAnswerButton: Locator;
 
-  // Clarification card
   readonly clarificationIntro: Locator;
   readonly sendAnswersButton: Locator;
-  /** The inline validation alert, found by its text (Next's route announcer is an alert too). */
+  /** Found by its text: Next's route announcer is an alert too. */
   readonly missingAnswerAlert: Locator;
 
-  // Execution card
   readonly preparedNotice: Locator;
   readonly submitQuestion: Locator;
   readonly submitButton: Locator;
@@ -67,7 +55,6 @@ export class CopilotPage {
   readonly changePrompt: Locator;
   readonly changeBox: Locator;
 
-  // Plan card
   readonly draftBadge: Locator;
   readonly runPlanButton: Locator;
   readonly continuePlanButton: Locator;
@@ -140,28 +127,22 @@ export class CopilotPage {
     this.planStepQuestion = panel.getByText("Execute plan step:");
   }
 
-  /** Load a page (any route that shows the navbar launcher). */
   async goto(path = "/jobs"): Promise<void> {
     await this.page.goto(path);
   }
 
-  /** Click the navbar launcher. */
   async open(): Promise<void> {
     await this.launcher.click();
   }
 
-  /** Load `path` and open the Copilot from the navbar. */
   async gotoAndOpen(path = "/jobs"): Promise<void> {
     await this.goto(path);
     await this.open();
   }
 
-  /** The full-page chat. */
   async openFullPage(): Promise<void> {
     await this.goto("/copilot");
   }
-
-  // Options menu
 
   async openOptions(): Promise<void> {
     await this.optionsButton.click();
@@ -177,7 +158,7 @@ export class CopilotPage {
     await this.page.getByRole("menuitem", { name: "Side panel" }).click();
   }
 
-  /** Wait for the side panel's closing animation and menu to clear, so a press cannot land on the backdrop. */
+  /** Waits so a press cannot land on the backdrop. */
   async waitForFloatingSettled(): Promise<void> {
     await expect(this.floating).toBeVisible();
     await expect(this.sideSheetOverlay).toHaveCount(0);
@@ -188,13 +169,10 @@ export class CopilotPage {
     await this.page.keyboard.press("Escape");
   }
 
-  // Composer
-
   suggestion(text: string): Locator {
     return this.panel.getByRole("button", { name: text });
   }
 
-  /** Type into the composer and press Enter. */
   async ask(text: string): Promise<void> {
     await this.composer.fill(text);
     await this.composer.press("Enter");
@@ -216,8 +194,6 @@ export class CopilotPage {
     await this.fileInput.setInputFiles(file);
   }
 
-  // Transcript
-
   answerText(text: string): Locator {
     return this.panel.getByText(text);
   }
@@ -225,8 +201,6 @@ export class CopilotPage {
   get boldAnswer(): Locator {
     return this.panel.getByRole("strong");
   }
-
-  // Resize
 
   resizeHandle(direction: CopilotResizeDirection): Locator {
     return this.floating.locator(`[data-resize-handle="${direction}"]`);
@@ -243,7 +217,6 @@ export class CopilotPage {
     return box;
   }
 
-  /** Press on a handle's centre and drag it by (dx, dy). */
   async dragHandle(
     direction: CopilotResizeDirection,
     dx: number,
@@ -259,8 +232,6 @@ export class CopilotPage {
     await this.page.mouse.up();
   }
 
-  // Clarification card
-
   async answerQuestion(label: string, text: string): Promise<void> {
     await this.panel
       .getByRole("textbox", { name: `Your answer to: ${label}` })
@@ -271,8 +242,6 @@ export class CopilotPage {
     return this.panel.getByRole("button", { name: label });
   }
 
-  // Execution card
-
   async decline(): Promise<void> {
     await this.declineButton.click();
   }
@@ -281,8 +250,6 @@ export class CopilotPage {
     await this.changeBox.fill(text);
     await this.changeBox.press("Enter");
   }
-
-  // Plan card
 
   planHeading(title: string): Locator {
     return this.panel.getByRole("heading", { name: title });

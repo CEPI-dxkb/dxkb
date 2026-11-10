@@ -29,12 +29,10 @@ const data = new Map<string, TrackData>([
   }] } }],
 ]);
 
-/** Moves the pointer onto a ring, `turn` of the way round clockwise from 12 o'clock (a quarter is 3 o'clock, inside the first half of the genome). */
 function hoverRing(trackId: string, turn = 0.25) {
   const svg = screen.getByRole("img", { name: "Circular view of genome 1.1" });
   const ring = svg.querySelector(`[data-track="${trackId}"]`);
   const middle = (Number(ring?.getAttribute("data-inner-radius")) + Number(ring?.getAttribute("data-outer-radius"))) / 2;
-  // The figure's center is (200, 200).
   const angle = turn * 2 * Math.PI;
   fireEvent.pointerMove(svg, { clientX: 200 + middle * Math.sin(angle), clientY: 200 - middle * Math.cos(angle) });
   return svg;
@@ -80,7 +78,6 @@ describe("CircularViewerFigure", () => {
 
     rerender(<CircularViewerFigure genomeId="1.1" layout={layout} tracks={tracks} data={data} svgRef={createRef()} />);
     const mask = ring()?.querySelector("mask");
-    // Four passes, each later and more opaque, for a soft edge.
     const passes = [...(mask?.querySelectorAll("circle.animate-circular-track-sweep") ?? [])];
     expect(passes.map((pass) => pass.getAttribute("opacity"))).toEqual(["0.25", String(1 / 3), "0.5", "1"]);
     expect(passes.map((pass) => (pass as SVGCircleElement).style.getPropertyValue("--sweep-delay"))).toEqual([
@@ -88,21 +85,18 @@ describe("CircularViewerFigure", () => {
     ]);
     const sweep = passes.at(-1);
     expect(sweep).toHaveAttribute("pathLength", "1");
-    // The marks show through the mask, which uncovers the whole ring.
     const masked = ring()?.querySelector(`g[mask="url(#${mask?.id ?? ""})"]`);
     expect(masked?.querySelector("path")).toHaveAttribute("fill", "#307D32");
     expect(Number(sweep?.getAttribute("r")) * 2).toBeGreaterThan(Number(ring()?.getAttribute("data-outer-radius")));
 
     if (!sweep) throw new Error("no sweep circle");
     // jsdom has no AnimationEvent, so React listens for the prefixed event name.
-    // An earlier pass ending leaves the mask; the last one's removes it.
     fireEvent(passes[0], new Event("webkitAnimationEnd", { bubbles: true }));
     expect(ring()?.querySelector("mask")).not.toBeNull();
     fireEvent(sweep, new Event("webkitAnimationEnd", { bubbles: true }));
     expect(ring()?.querySelector("mask")).toBeNull();
     expect(ring()?.querySelector("g[mask]")).toBeNull();
 
-    // A new color redraws the marks without sweeping them again.
     const recolored = tracks.map((track) => ({ ...track, foreground: "#123456" }));
     rerender(<CircularViewerFigure genomeId="1.1" layout={layout} tracks={recolored} data={data} svgRef={createRef()} />);
     expect(ring()?.querySelector("mask")).toBeNull();
@@ -110,7 +104,6 @@ describe("CircularViewerFigure", () => {
   });
 
   it("exports a ring caught mid-sweep whole, without its sweep mask", async () => {
-    // Export is enabled once the requests settle, which can be before the sweep ends.
     const svgRef = createRef<SVGSVGElement>();
     render(<CircularViewerFigure genomeId="1.1" layout={layout} tracks={tracks} data={data} svgRef={svgRef} />);
     const svg = svgRef.current;
@@ -137,7 +130,6 @@ describe("CircularViewerFigure", () => {
     expect(ring()).not.toHaveAttribute("class");
     expect(ring()).not.toHaveAttribute("display");
 
-    // Hidden at once: the transition keeps it drawn while it fades.
     rerender(<CircularViewerFigure genomeId="1.1" layout={layout} tracks={hidden} data={data} svgRef={createRef()} />);
     expect(ring()).toHaveClass("animate-circular-track-toggle");
     expect(ring()).toHaveAttribute("display", "none");
@@ -182,7 +174,6 @@ describe("CircularViewerFigure", () => {
 
     beforeEach(() => {
       sizeSpies.push(
-        // The cap is written before the box is measured: a box wider than it is drawn at it.
         vi.spyOn(HTMLElement.prototype, "offsetWidth", "get").mockImplementation(function (this: HTMLElement) {
           const cap = /(\d+(?:\.\d+)?)px\)$/.exec(this.style.getPropertyValue("--tip-max-w"));
           return cap ? Math.min(sizes.width, Number(cap[1])) : Number.POSITIVE_INFINITY;
@@ -263,7 +254,6 @@ describe("CircularViewerFigure from the keyboard", () => {
     await user.tab();
     await user.keyboard(`{ArrowRight}${key}`);
     const dialog = screen.getByRole("dialog");
-    // The dialog takes focus once it is drawn.
     await waitFor(() => {
       expect(dialog).toContainElement(document.activeElement as HTMLElement);
     });
@@ -277,8 +267,6 @@ describe("CircularViewerFigure from the keyboard", () => {
     expect(figure()).toHaveFocus();
     expect(figure()).toHaveAttribute("aria-roledescription", "circular genome figure");
     expect(figure()).toHaveAccessibleDescription(/Arrow keys move between items/);
-    // The image inside stays as it was, for export and locators, and is not a tab stop;
-    // its name is not the wrapper's, so it is not read out twice.
     const svg = screen.getByRole("img", { name: "Circular view of genome 1.1" });
     expect(figure()).not.toHaveAccessibleName("Circular view of genome 1.1");
     expect(svg).not.toHaveAttribute("tabindex");
@@ -365,7 +353,6 @@ describe("CircularViewerFigure from the keyboard", () => {
     const svg = screen.getByRole("img", { name: "Circular view of genome 1.1" });
     const ring = svg.querySelector('[data-track="cds-forward"]');
     const radius = (Number(ring?.getAttribute("data-inner-radius")) + Number(ring?.getAttribute("data-outer-radius"))) / 2;
-    // fig|1.1.peg.3 (601..700) sits about 65% of the way round, clockwise from 12 o'clock.
     const angle = 0.65 * 2 * Math.PI;
     await user.pointer({
       keys: "[MouseLeft]",
@@ -400,7 +387,6 @@ describe("CircularViewerFigure from the keyboard", () => {
 
   describe("one source of truth for the item shown", () => {
     const svg = () => screen.getByRole("img", { name: "Circular view of genome 1.1" });
-    // fig|1.1.peg.3 (601..700) sits 65% of the way round.
     const hoverPeg3 = () => hoverRing("cds-forward", 0.65);
     const ui = (t: typeof strandTracks, d: typeof strandData) => (
       <CircularViewerFigure genomeId="1.1" layout={layout} tracks={t} data={d} svgRef={createRef()} />

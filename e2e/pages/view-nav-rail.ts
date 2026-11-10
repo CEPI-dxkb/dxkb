@@ -2,8 +2,8 @@ import { type Locator, type Page } from "@playwright/test";
 import { expectHydrated } from "./hydration";
 
 /**
- * The collapsible left view rail (`landing-nav.tsx`) shared by organism landing
- * pages and entity views. The toggle's accessible name flips with its state.
+ * The collapsible left view rail (`landing-nav.tsx`); the toggle's accessible
+ * name flips with its state.
  */
 export class ViewNavRail {
   readonly collapseButton: Locator;
@@ -24,10 +24,8 @@ export class ViewNavRail {
   }
 
   /**
-   * The rail has hydrated, so the page's router is live and a click on a tab will be handled.
-   * For a server-rendered view (the overview) with no client-loaded content to wait on. React
-   * attaches a hydrated element's props as `__reactProps$<id>`, so this waits for every rail
-   * button's `onClick` to be there.
+   * For server-rendered views with no client-loaded content to wait on: waits
+   * for every rail button's `onClick` (`__reactProps$<id>`).
    */
   async waitForHydration(): Promise<void> {
     await expectHydrated(
@@ -38,8 +36,8 @@ export class ViewNavRail {
   }
 
   /**
-   * Returns as soon as the click lands, without waiting for the rail to redraw:
-   * the preference has to survive a navigation issued straight after the click.
+   * Returns as soon as the click lands, so the preference must survive a
+   * navigation issued straight after.
    */
   async collapse(): Promise<void> {
     await this.collapseButton.click();

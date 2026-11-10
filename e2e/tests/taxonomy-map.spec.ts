@@ -13,9 +13,8 @@ test.describe("taxonomy geographic distribution map", () => {
   test("renders the US choropleth, drills into a state, and lazy-loads the world view", async ({ page }) => {
     await page.goto("/taxonomy/234");
 
-    // Card heading and toolbar are visible.
-    // Use [data-slot='card'] instead of 'section' because 'section' matches nested
-    // layout ancestors that also contain this heading, causing strict-mode violations.
+    // Use [data-slot='card']: 'section' matches nested layout ancestors that contain
+    // this heading (strict-mode violation).
     const mapSection = page
       .locator("[data-slot='card']")
       .filter({ has: page.getByRole("heading", { level: 2, name: "Geographic Distribution" }) });
@@ -23,45 +22,38 @@ test.describe("taxonomy geographic distribution map", () => {
     await expect(mapSection.getByRole("button", { name: "World" })).toBeVisible();
     await expect(mapSection.getByRole("button", { name: "United States" })).toBeVisible();
 
-    // The map SVG renders with state paths
     const svg = mapSection.getByRole("img", { name: "Genome distribution map" });
     await expect(svg).toBeVisible();
     const statePaths = svg.locator("path");
     await expect(statePaths.first()).toBeAttached();
-    // us-atlas states-10m.json includes the 50 states + DC + territories.
-    // Lower bound only: a topology data update should not invalidate this test.
+    // Lower bound only, so a topology data update does not invalidate this.
     await expect.poll(async () => statePaths.count(), { timeout: 10_000 }).toBeGreaterThan(50);
     const baselineCount = await statePaths.count();
 
-    // Drill into Wyoming via the dropdown (most resilient to TopoJSON path ordering).
-    // Switch to State view first so the combobox becomes interactive.
+    // Select via the dropdown (resilient to TopoJSON path ordering); switch to State
+    // view first so the combobox is interactive.
     await mapSection.getByRole("button", { name: "State", exact: true }).click();
     await mapSection.getByRole("combobox").click();
     await page.getByRole("option", { name: "Wyoming" }).click();
 
-    // County paths loaded — count differs from the US-states baseline
     await expect(svg.locator("path")).not.toHaveCount(baselineCount);
 
-    // Exit drill-down by switching back to United States view
     await mapSection.getByRole("button", { name: "United States" }).click();
     await expect(svg.locator("path")).toHaveCount(baselineCount);
 
-    // Switch to the World view — triggers lazy-load of countries-110m.json.
-    // Register the waiter before the click to avoid a race where Firefox serves
-    // the local static file before waitForResponse is attached.
+    // Register the waiter before the click: Firefox can serve the local static file
+    // before waitForResponse attaches.
     const countriesResponse = page.waitForResponse((response) =>
       response.url().endsWith("/maps/countries-110m.json"),
     );
     await mapSection.getByRole("button", { name: "World" }).click();
     await countriesResponse;
-    // World choropleth has many country paths
     await expect(svg.locator("path").first()).toBeAttached();
     const worldPathCount = await svg.locator("path").count();
     expect(worldPathCount).toBeGreaterThan(100);
   });
 
   test("lazy-loads the counties topology only when a state is selected", async ({ page }) => {
-    // Track which topo files the browser requests over the page's lifetime.
     const fetchedTopos: string[] = [];
     page.on("response", (response) => {
       const url = response.url();
@@ -74,15 +66,12 @@ test.describe("taxonomy geographic distribution map", () => {
       .filter({ has: page.getByRole("heading", { level: 2, name: "Geographic Distribution" }) });
     await expect(mapSection.getByRole("img", { name: "Genome distribution map" })).toBeVisible();
 
-    // After initial render: states-10m.json must be fetched. The much larger
-    // counties-10m.json must NOT be fetched until a state is selected.
+    // counties-10m.json must not be fetched until a state is selected.
     await expect.poll(() => fetchedTopos.some((url) => url.endsWith("/maps/states-10m.json"))).toBe(true);
     expect(fetchedTopos.some((url) => url.endsWith("/maps/counties-10m.json"))).toBe(false);
 
-    // Drill into a state — should trigger the counties fetch.
-    // Switch to State view first so the combobox becomes interactive.
-    // Use expect.poll on the already-registered response listener instead of waitForResponse
-    // to avoid a race where the local static file responds before the waiter is attached.
+    // expect.poll on the registered listener avoids the waitForResponse race with the
+    // local static file.
     await mapSection.getByRole("button", { name: "State", exact: true }).click();
     await mapSection.getByRole("combobox").click();
     await page.getByRole("option", { name: "Wyoming" }).click();
@@ -95,8 +84,7 @@ test.describe("taxonomy geographic distribution map", () => {
   test("breadcrumb shows BV-BRC's ranked lineage with /taxonomy/<id> links", async ({ page }) => {
     await page.goto("/taxonomy/234");
 
-    // BV-BRC's Taxon View keeps phylum … species only: no "cellular
-    // organisms" root and no "Bacteria" domain (lineage-crumbs.ts).
+    // BV-BRC's Taxon View keeps phylum … species only (lineage-crumbs.ts).
     const heading = page.getByRole("heading", { level: 1, name: "Brucella" });
     await expect(heading).toBeVisible();
     const trail = heading.locator("..");

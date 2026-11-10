@@ -13,11 +13,6 @@ interface UseGenomeGroupOptionsReturn {
   error: string | null;
 }
 
-/**
- * Reactively fetches genome summaries from a genome group path via TanStack Query.
- * Internally calls getGenomeIdsFromGroup then fetchGenomesByIds.
- * Returns [] when disabled or groupPath is empty; handles abort automatically.
- */
 export function useGenomeGroupOptions(
   groupPath: string | undefined,
   enabled = true,

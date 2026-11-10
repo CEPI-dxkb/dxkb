@@ -66,7 +66,7 @@ describe("FASTA Validation", () => {
       const fasta = ">seq1\nATCG";
       const result = validateFasta(fasta, "aa");
 
-      expect(result.valid).toBe(true); // Should be valid as protein
+      expect(result.valid).toBe(true);
       expect(result.status).toBe("valid_dna");
     });
 
@@ -109,7 +109,7 @@ describe("FASTA Validation", () => {
     });
 
     it("should handle invalid FASTA format", () => {
-      const fasta = "ATCG"; // Missing '>'
+      const fasta = "ATCG";
       const result = validateFasta(fasta, "dna");
 
       expect(result.valid).toBe(false);
@@ -117,9 +117,7 @@ describe("FASTA Validation", () => {
     });
 
     it("should add header to trimFasta when missing and replace=true", () => {
-      // Note: replace=true adds a header to trimFasta but the original input
-      // is still validated — a single bare sequence line is "too_short" for
-      // the validator (it expects at least a header + sequence line).
+      // replace=true adds a header to trimFasta but the original input is still validated, and a bare sequence line is too_short.
       const fasta = "ATCG";
       const result = validateFasta(fasta, "dna", { replace: true });
 

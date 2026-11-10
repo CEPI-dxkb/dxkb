@@ -44,29 +44,9 @@ export interface CircularViewerFigureProps {
   layout: GenomeLayout;
   tracks: readonly CircularTrack[];
   data: ReadonlyMap<string, TrackData>;
-  /** The figure's `<svg>`, for Export SVG. */
   svgRef: Ref<SVGSVGElement>;
 }
 
-/**
- * The figure: every track's ring, the hover tooltip and red highlight, and
- * the details dialog a click pins.
- *
- * The keyboard: the figure is one tab stop, since its marks are a few paths
- * (one per color), not elements to focus. The tab stop is a wrapper with the
- * `application` role around the `img` svg, so a screen reader in browse mode
- * passes it the arrow keys. A cursor names an item
- * (`@/lib/circular-viewer/keyboard`): ← and → move along its ring, Home and
- * End to the ring's ends, ↑ and ↓ to the nearest item on the next ring out
- * or in; Enter or Space opens its details, Escape hides it. Focus from the
- * keyboard shows the cursor's item as a hover does (highlight and tooltip)
- * and a live region reads it out; focus a press gave shows nothing more. A
- * click moves the cursor to the clicked item, and closing the dialog gives
- * focus back to the wrapper. The pointer's item is looked up from its stored
- * point on every render, so a hidden, removed or redrawn track never leaves a
- * stale tooltip; a pointer hit takes over from the keyboard cursor until the
- * next navigation key.
- */
 export function CircularViewerFigure({
   genomeId,
   layout,
@@ -77,9 +57,8 @@ export function CircularViewerFigure({
   const { parentRef, width, height } = useParentSize({
     debounceTime: 50,
   });
-  // Memoized explicitly: a hover re-renders this component, and the drawings
-  // hold every mark's path. The cache keeps each unchanged track's drawing
-  // when another changes (a color picker commits on every frame of a drag).
+  // A hover re-renders this component and the drawings hold every mark's path;
+  // the cache keeps unchanged tracks' drawings when another changes.
   const [drawingCache] = useState(createDrawingCache);
   const drawings = useMemo(
     () =>
@@ -100,18 +79,12 @@ export function CircularViewerFigure({
     hideTooltip,
   } = useTooltip();
   const [pinned, setPinned] = useState<FigureHit | null>(null);
-  /** The keyboard's item, kept across a blur so Tab comes back to it. */
   const [cursor, setCursor] = useState<FigureCursor | null>(null);
-  /** Whether the cursor's item shows: the keyboard focused the figure, and Escape has not hidden it. */
   const [cursorShown, setCursorShown] = useState(false);
-  /** Whether the last input was a press, not a key: a focus it gives the figure shows no item. */
   const pressedLast = useRef(false);
-  /** The figure's tab stop, which gets focus back when the dialog closes. */
   const figureRef = useRef<HTMLDivElement>(null);
   const hintId = useId();
 
-  // On the document, so a focus can tell a press from a key wherever either
-  // happened (a press on the dialog's Close hands focus back to the figure).
   useEffect(() => {
     const press = () => {
       pressedLast.current = true;
@@ -129,10 +102,8 @@ export function CircularViewerFigure({
 
   const keyTarget =
     cursorShown && cursor ? cursorTarget(drawings, cursor) : null;
-  // The pointer's item is looked up from its stored point on every render, not
-  // kept from the move: a hidden, removed or reloaded track, a resize or a
-  // narrowed ring then changes what is under the point, and the tooltip and
-  // highlight follow.
+  // Looked up from its stored point on every render so a hidden, removed or
+  // redrawn track never leaves a stale tooltip.
   const pointerLeft = tooltipLeft ?? 0;
   const pointerTop = tooltipTop ?? 0;
   const pointerHit = tooltipOpen
@@ -163,8 +134,8 @@ export function CircularViewerFigure({
 
   return (
     <div ref={parentRef} className="absolute inset-0">
-      {/* The tab stop and the keys live on an operable wrapper, not the image:
-          screen readers in browse mode hand arrow keys only to a widget. */}
+      {/* The tab stop and keys live on an operable wrapper, since screen readers
+         in browse mode hand arrow keys only to a widget. */}
       <div
         ref={figureRef}
         role="application"
@@ -186,9 +157,8 @@ export function CircularViewerFigure({
           setCursorShown(false);
         }}
         onKeyDown={(event) => {
-          // The open details dialog owns the keys, also before its focus
-          // lands (Base UI moves it on the next frame): its Escape must not
-          // also hide the item it gives focus back to.
+          // Base UI moves focus on the next frame; its Escape must not also
+          // hide the item it gives focus back to.
           if (pinned) return;
           if (event.altKey || event.ctrlKey || event.metaKey) return;
           const step = itemStepKeys[event.key];
@@ -197,7 +167,6 @@ export function CircularViewerFigure({
             event.preventDefault();
             hideTooltip();
             setCursorShown(true);
-            // A hidden item comes back where it was before a key moves it.
             if (keyTarget || !cursor || !cursorTarget(drawings, cursor)) {
               const next = stepCursor(drawings, cursor, step);
               if (next) setCursor(next);
@@ -223,7 +192,6 @@ export function CircularViewerFigure({
             onPointerMove={(event) => {
               const at = hitAt(event);
               if (at) {
-                // The pointer takes over from the keyboard's item until the next navigation key.
                 setCursorShown(false);
                 showTooltip({ tooltipLeft: at.x, tooltipTop: at.y });
               } else hideTooltip();
@@ -238,7 +206,6 @@ export function CircularViewerFigure({
               const at = hitAt(event);
               if (at) {
                 hideTooltip();
-                // The keyboard goes on from the clicked item once the dialog closes.
                 const clicked = cursorFor(drawings, at.hit);
                 if (clicked) setCursor(clicked);
                 setPinned(at.hit);
@@ -285,8 +252,8 @@ export function CircularViewerFigure({
           setPinned(null);
         }}
         returnFocus={() => {
-          // After the dialog's commit: React drops a focus event fired during one,
-          // and the figure's onFocus is what shows the keyboard's item again.
+          // React drops a focus event fired during a commit; the figure's
+          // onFocus is what shows the keyboard's item again.
           queueMicrotask(() => {
             figureRef.current?.focus({ preventScroll: true });
           });

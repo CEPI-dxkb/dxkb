@@ -7,21 +7,13 @@ import {
 } from "./folder-picker-motion";
 
 interface ColumnStripMotionInput {
-  /** The scrolling strip, owned by the dialog (its initial focus reads it). */
   stripRef: RefObject<HTMLDivElement | null>;
   place: PickerView;
-  /** Index of the newest column: the number of selected folders. */
   lastIndex: number;
   currentIndex: number;
-  /** The deepest selected folder; a change means a new column opened. */
   lastPath: string;
 }
 
-/**
- * Column open/close motion for the strip: the content and overlay refs to
- * attach, and `prepareTransition`, which every navigation calls first to
- * snapshot the strip as it is on screen.
- */
 export function useColumnStripMotion({
   stripRef,
   place,
@@ -33,7 +25,6 @@ export function useColumnStripMotion({
   const overlayRef = useRef<HTMLDivElement>(null);
   const snapshotRef = useRef<ColumnsSnapshot | null>(null);
 
-  /** Record the strip as it is on screen; every navigation calls this first. */
   const prepareTransition = () => {
     const strip = stripRef.current;
     const overlay = overlayRef.current;
@@ -43,8 +34,6 @@ export function useColumnStripMotion({
         : null;
   };
 
-  // Keep the newest column fully in view, without scrolling the column that
-  // holds the selection off the left edge, then animate from the snapshot.
   // A layout effect, so the new layout never paints before its animation.
   useLayoutEffect(() => {
     const strip = stripRef.current;

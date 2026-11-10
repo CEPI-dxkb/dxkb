@@ -251,8 +251,8 @@ export async function verifyEmailToken(
   }
   const result = await verifyIdentityEmailToken(verificationToken, username);
   if (!result.error) {
-    // A cached `email_verified: false` would keep the verify prompts up for
-    // the rest of its 30 s.
+    // A cached `email_verified: false` would keep the verify prompts up for 30
+    // s.
     const current = await readSession();
     if (current) forgetProfile(current.token);
   }
@@ -282,21 +282,19 @@ export async function changePassword(
   return result;
 }
 
-// The current-user lookup runs in the root layout before any byte of every page
-// is sent, so a hung profile service must not hold navigation for the 15 s an
-// interactive sign-in is allowed.
+// The lookup runs in the root layout before any byte is sent, so a hung profile
+// service must not hold navigation for the 15 s an interactive sign-in is
+// allowed.
 const currentUserLookupTimeoutMs = 5_000;
 
-// The profile service could not answer, as opposed to answering that the session
-// is not valid (401/403, or no such user).
 const transientProfileFailures: readonly AuthErrorCode[] = [
   "service_unavailable",
   "network",
   "rate_limited",
 ];
 
-// A 408 (Request Timeout) is a transient answer too, but the shared
-// `codeForStatus` files it under `validation` with the other 4xx answers.
+// A 408 is transient too, but `codeForStatus` files it under `validation` with
+// the other 4xx.
 function isTransientProfileFailure(error: AuthError): boolean {
   return transientProfileFailures.includes(error.code) || error.status === 408;
 }
@@ -333,15 +331,11 @@ function buildUnverifiedUser(
 }
 
 /**
- * The signed-in user, or null when signed out. Only a definitive answer from the
- * profile service (401/403, or no such user) signs the user out; when it cannot
- * answer, the user stays signed in from the session cookies alone with
- * `sessionUnverified` set. Cookies are never cleared here, as with the rule in
- * `respondWithUpstreamFailure`.
- *
- * A successful answer is held for 30 s across requests (`profile-cache.ts`); a
- * failure never is, so the next render asks the service again. An answer whose
- * token was forgotten while it was in flight is returned but not stored.
+ * Only a definitive answer (401/403, or no such user) signs the user out; when
+ * the service cannot answer, the user stays signed in from the cookies with
+ * `sessionUnverified` set.
+ * Failures are never cached, and an answer whose token was forgotten in flight
+ * is returned but not stored.
  */
 async function readCurrentUser(): Promise<AuthUser | null> {
   const current = await readSession();

@@ -1,10 +1,6 @@
 import type { DataFieldMap } from "./types";
 
-// Sequence Features (SFVT tab). This is the `sequence_feature` core — one row
-// per feature, scoped by taxon_id (see the SFVT view factory). NOT the
-// `sequence_feature_vt` core, which stores one row per variant-type occurrence
-// (~2.2M rows, no taxon field) and inflated the tab count 350x.
-// Columns mirror legacy SFVTGrid.
+// The `sequence_feature` core (one row per feature, scoped by taxon_id), not `sequence_feature_vt`, which has no taxon field and inflated the tab count 350x.
 export const sequenceFeatureFields = {
   id: {
     label: "Record ID",

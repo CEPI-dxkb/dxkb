@@ -11,7 +11,7 @@ import { copilotName } from "@/lib/copilot/name";
 const question = "Find complete Mpox virus genomes collected since 2022";
 const answer = "I found **12** complete Mpox genomes.";
 
-/** One streamed turn as the gateway sends it, passed through by the route. */
+/** One streamed turn as the gateway sends it. */
 const turnFrames = [
   ": connected\n\n",
   'event: started\ndata: {"job_id":"e2e-job"}\n\n',
@@ -20,10 +20,7 @@ const turnFrames = [
   'event: done\ndata: {"job_id":"e2e-job"}\n\n',
 ].join("");
 
-/**
- * The chat stream, and the stored session that reads back empty until the
- * question was sent and with the saved turn after.
- */
+/** The chat stream and the stored session, empty until the question is sent. */
 function chatOverrides(): { overrides: JsonOverride[]; sent: unknown[] } {
   const sent: unknown[] = [];
   const overrides: JsonOverride[] = [
@@ -119,10 +116,8 @@ function storedMessage(fields: Record<string, unknown>) {
 }
 
 /**
- * A chat holding a two-step plan, with the gateway's side simulated: each
- * step turn reports the step running and done (the first also submits a job),
- * and the stored plan follows, as the gateway stores step updates and plan
- * saves. Records the turns and plan saves the page sends.
+ * A chat holding a two-step plan with the gateway's side simulated; records turns and
+ * plan saves.
  */
 function planChat() {
   const turns: Record<string, unknown>[] = [];
@@ -214,10 +209,7 @@ const preparedJob = {
   arguments: { app_name: "GenomeAssembly2" },
 };
 
-/**
- * A chat whose last answer carries `card`; records every chat turn and
- * execution answer the page sends.
- */
+/** A chat whose last answer carries `card`; records chat turns and execution answers. */
 function cardChat(card: { card_type: string; card_payload: unknown }) {
   const turns: Record<string, unknown>[] = [];
   const declines: unknown[] = [];
@@ -276,7 +268,6 @@ test.describe("Copilot", () => {
     await copilot.gotoAndOpen();
     await expect(copilot.emptyState).toBeVisible();
 
-    // A suggestion fills the box; Enter sends it.
     await copilot.suggestion(question).click();
     await expect(copilot.composer).toHaveValue(question);
     await copilot.composer.press("Enter");
@@ -307,7 +298,6 @@ test.describe("Copilot", () => {
     await copilot.moveToFloating();
 
     await expect(copilot.panel.getByText("I found")).toBeVisible();
-    // Non-modal: the page behind stays usable.
     await expect(copilot.closeButton).toBeVisible();
     await copilot.pressEscape();
     await expect(copilot.panel).toBeHidden();
@@ -332,18 +322,15 @@ test.describe("Copilot", () => {
     const copilot = new CopilotPage(page);
     await copilot.gotoAndOpen();
     await copilot.moveToFloating();
-    // The side panel animates closed after the switch, and its backdrop
-    // covers the page until it is gone; a press before that lands on it.
+    // The side panel animates closed and its backdrop covers the page until it is gone.
     await copilot.waitForFloatingSettled();
     const before = await copilot.floatingBox();
 
-    // Left edge out by 60: wider, right edge fixed.
     await copilot.dragHandle("w", -60, 0);
     const wider = await copilot.floatingBox();
     expect(wider.width).toBeCloseTo(before.width + 60, 0);
     expect(wider.x + wider.width).toBeCloseTo(before.x + before.width, 0);
 
-    // Bottom-right corner in by (40, 50): narrower and shorter, top-left fixed.
     await copilot.dragHandle("se", -40, -50);
     const smaller = await copilot.floatingBox();
     expect(smaller.width).toBeCloseTo(before.width + 20, 0);
@@ -368,7 +355,6 @@ test.describe("Copilot", () => {
     await copilot.gotoAndOpen();
 
     await expect(copilot.clarificationIntro).toBeVisible();
-    // A required question must be answered first.
     await copilot.sendAnswersButton.click();
     await expect(copilot.missingAnswerAlert).toHaveText("Please answer: Which assembler?");
 
@@ -470,11 +456,9 @@ test.describe("Copilot", () => {
     await expect(copilot.draftBadge).toBeVisible();
     await copilot.runPlanButton.click();
 
-    // Step 1 runs, submits a job, and the plan waits for it.
     await expect(copilot.continuePlanButton).toBeVisible();
     await expect(copilot.answerText("The job finished.")).toBeVisible();
     await expect(copilot.answerText("Step 1 done")).toBeVisible();
-    // A step's question is not shown as the user's.
     await expect(copilot.planStepQuestion).toHaveCount(0);
 
     await copilot.continuePlanButton.click();
@@ -491,7 +475,6 @@ test.describe("Copilot", () => {
         planStep: expect.objectContaining({ stepIndex: 1 }),
       }),
     ]);
-    // The completed status is saved just after the last step reads back done.
     await expect.poll(() => chat.saves.length).toBe(4);
     expect(chat.saves.map((plan) => plan.status)).toEqual([
       "executing",
@@ -499,7 +482,6 @@ test.describe("Copilot", () => {
       "executing",
       "completed",
     ]);
-    // The wait was saved after step 1, and cleared by Continue.
     expect(chat.saves[1]).toHaveProperty("_waitingForWorkflows", { "sub-1": { status: "active" } });
     expect(chat.saves[2]).not.toHaveProperty("_waitingForWorkflows");
   });
@@ -511,7 +493,6 @@ test.describe("Copilot", () => {
     await copilot.gotoAndOpen();
 
     await copilot.editPlanButton.click();
-    // Step 2 depends on step 1, so it cannot move above it.
     await expect(copilot.moveStepUp(2)).toBeDisabled();
 
     await copilot.stepBox(2).fill("Annotate with RASTtk");
@@ -561,7 +542,6 @@ test.describe("Copilot", () => {
     await expect(copilot.chatList).toBeVisible();
     await expect(copilot.emptyChatList).toBeVisible();
     await expect(copilot.emptyState).toBeVisible();
-    // The navbar button is hidden on the full page.
     await expect(copilot.launcher).toBeHidden();
   });
 });

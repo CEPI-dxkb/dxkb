@@ -89,8 +89,7 @@ describe("genome browser URL state", () => {
   });
 
   it("keeps only the first region when the view straddles sequences", () => {
-    // JBrowse joins the visible regions with spaces; `ctg1:9000..10000 ctg2`
-    // would name no sequence on reload, so the URL carries one whole region.
+    // A multi-sequence location would name no sequence on reload, so the URL carries one whole region.
     expect(
       viewUrlState({
         coarseVisibleLocStrings: "ctg1:9,000..10,000 ctg2:1..500",
@@ -182,7 +181,6 @@ describe("writeGenomeBrowserUrlState", () => {
     expect(pushState).not.toHaveBeenCalled();
     expect(replaceState).toHaveBeenCalledOnce();
     expect(window.history.length).toBe(historyLength);
-    // `:` and `,` stay literal (`toQueryString`), not `%3A` and `%2C`.
     expect(`${window.location.pathname}${window.location.search}${window.location.hash}`).toBe(
       "/genome/1.1?tab=genome-browser&browser.loc=A:5..9&browser.tracks=refseqs,PATRICGenes&browser.highlight=A:6..7#notes",
     );

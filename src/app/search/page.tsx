@@ -10,7 +10,6 @@ import {
 import type { SearchParamsRecord } from "@/lib/views/rql";
 import { encodeQueryComponent } from "@/lib/url";
 
-/** Overview with nothing to search for yet. */
 function SearchPrompt() {
   return (
     <div className="p-6 text-sm text-muted-foreground">
@@ -19,12 +18,6 @@ function SearchPrompt() {
   );
 }
 
-/**
- * A legacy `type=` value this app has no view for (Sequences, AMR Phenotypes,
- * Specialty Genes, Pathways, Subsystems, Antibiotics, or a typo). The
- * all-data-types results are the only honest destination we can offer for the
- * phrase that was searched.
- */
 function UnsupportedSearchType({
   searchtype,
   keyword,
@@ -58,12 +51,8 @@ export default async function GlobalSearch({
   const params = await searchParams;
   const keyword = firstSearchParamValue(params.q);
   const query = normalizeLegacyKeyword(keyword);
-  // Nothing to search for once read as a search (only syntax, `""`, `OR`).
   if (keywordQuery(query).length === 0) return <SearchPrompt />;
 
-  // Now that we have the entire query formatted properly, let's figure out where
-  // to send it. Every legacy type resolves through the descriptors, so marking a
-  // descriptor canonical is all it takes to redirect its legacy URL.
   const target = resolveLegacySearch(params, query);
   switch (target.kind) {
     case "redirect":
@@ -81,9 +70,7 @@ export default async function GlobalSearch({
         />
       );
     default: {
-      // The whole point of this module is that the branch table is total, and
-      // neither `noImplicitReturns` nor an explicit return type is in force
-      // here — so a fifth target kind would otherwise compile and return
+      // No `noImplicitReturns`, so a fifth target kind would otherwise return
       // `undefined` from a page component.
       const unhandled: never = target;
       throw new Error(`Unhandled search target: ${JSON.stringify(unhandled)}`);

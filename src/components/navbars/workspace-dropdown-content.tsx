@@ -33,8 +33,6 @@ export function WorkspaceDropdownContent({
     staleTime: 2 * 60 * 1000,
   });
   const favoritePaths = favorites.data ?? [];
-  // A Retry keeps the failure up ("Retrying…") instead of going back to the
-  // skeletons until it answers.
   const favoritesRetry = useRetryKeepingError(favorites, wsUsername);
 
   const recentFolders = useRecentWorkspaceFolders(
@@ -45,9 +43,7 @@ export function WorkspaceDropdownContent({
 
   return (
     <div className="p-2 lg:w-125">
-      {/* Top: static sections in 2 columns */}
       <div className="grid grid-cols-2 gap-2">
-        {/* Left column: Workspaces */}
         <div>
           <SectionHeader>{workspaces.title}</SectionHeader>
           {workspaces.items.map((item) => (
@@ -59,7 +55,6 @@ export function WorkspaceDropdownContent({
           ))}
         </div>
 
-        {/* Right column: Data */}
         <div>
           <SectionHeader>{data.title}</SectionHeader>
           {data.items.map((item) => (
@@ -72,7 +67,6 @@ export function WorkspaceDropdownContent({
         </div>
       </div>
 
-      {/* Bottom: dynamic sections (authenticated only) */}
       {isAuthenticated &&
         (favoritePaths.length > 0 ||
           recentFolders.length > 0 ||
@@ -80,7 +74,6 @@ export function WorkspaceDropdownContent({
           favoritesRetry.error != null) && (
           <div className="mt-1 pt-1">
             <div className="grid grid-cols-2 gap-2">
-              {/* Favorite Folders */}
               <div>
                 <SectionHeader>
                   Favorite Folders{" "}
@@ -122,7 +115,6 @@ export function WorkspaceDropdownContent({
                 )}
               </div>
 
-              {/* Recently Visited Folders */}
               <div>
                 <SectionHeader>Recently Visited Folders</SectionHeader>
                 {recentFolders.length > 0 ? (

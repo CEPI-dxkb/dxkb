@@ -21,14 +21,7 @@ export const featureCollectionOptions: CollectionStateOptions = {
   independentFilters: ["filter"],
 };
 
-/**
- * Legacy BV-BRC FeatureGrid's and ProteinGrid's row order while no column is
- * sorted (`p3/widget/FeatureGrid.js` `queryOptions`:
- * `sort(+genome_name,+accession,+start)`), which marks no column as sorted.
- * Every Features and Proteins table reads its rows in it, except where a
- * keyword search opened the list: legacy's global search adds
- * `#defaultSort=-score`, so those keep the backend's relevance order.
- */
+/** Legacy FeatureGrid/ProteinGrid row order when no column is sorted; keyword searches keep the backend's relevance order. */
 export const featureGridDefaultOrder: DataSort = {
   field: "genome_name",
   direction: "asc",
@@ -38,20 +31,10 @@ export const featureGridDefaultOrder: DataSort = {
   ],
 };
 
-/**
- * Legacy BV-BRC FeatureList's grid default (`p3/layer/grids.js`:
- * `defaultFilter: "and(eq(annotation,%22PATRIC%22))"`), which it shows as a
- * selected, removable facet value. Legacy's Genome list, Genome page and
- * Taxonomy page Features tabs carry it too, and so do DXKB's.
- */
+/** Legacy FeatureList's default filter, shown as a removable facet value; DXKB's Features tabs carry it too. */
 export const featureListDefaultFilters = { annotation: ["PATRIC"] } as const;
 
-/**
- * The `/feature` list's URL schema: the shared one plus legacy's PATRIC default
- * (except for the Proteins search, `featureListOptionsFor`), which also stays
- * beside an explicit `rql` that does not pick an annotation, as legacy
- * FeatureList applies it to a link's query. The taxon Features tab uses it too.
- */
+/** The `/feature` URL schema: the shared one plus the PATRIC default, which stays beside an `rql` that picks no annotation. */
 export const featureListCollectionOptions: CollectionStateOptions = {
   ...featureCollectionOptions,
   defaultFilters: featureListDefaultFilters,
@@ -62,8 +45,6 @@ export function parseFeatureCollectionState(
   options: CollectionStateOptions = featureCollectionOptions,
 ): CollectionState {
   const parsed = parseCollectionState(params, options);
-  // Which filters stay beside the rql is read from the validated form, as the
-  // query will send it (`filtersBesideRql`).
   const state = parsed.rql
     ? parseCollectionState(
         { ...params, rql: validateRql("genome_feature", parsed.rql) },
@@ -87,24 +68,13 @@ function isProteinSearch(state: CollectionState): boolean {
   );
 }
 
-/**
- * The Feature list's download formats: Protein FASTA only while it is the
- * Proteins search (`filter=protein`), else the resource default.
- */
 export function featureDownloadSpec(
   state: CollectionState,
 ): CollectionDownloadSpec {
   return isProteinSearch(state) ? proteinDownloadSpec : {};
 }
 
-/**
- * The `/feature` list's URL schema for one parsed request. The Proteins search
- * (`filter=protein`: the Proteins search type and legacy ProteinList links)
- * gets the shared schema, without the PATRIC default: its `proteinFeatureRql`
- * already pins `eq(annotation,PATRIC)`, so removing a PATRIC chip there would
- * change nothing. Legacy ProteinList's removal (`#filter=false`) sends the
- * same query as well (2,122,451 rows for Dnak).
- */
+/** The Proteins search (`filter=protein`) gets the shared schema without the PATRIC default, since `proteinFeatureRql` already pins it. */
 export function featureListOptionsFor(
   state: CollectionState,
 ): CollectionStateOptions {
@@ -113,7 +83,6 @@ export function featureListOptionsFor(
     : featureListCollectionOptions;
 }
 
-/** Parse a `/feature` list URL under its schema (`featureListOptionsFor`). */
 export function parseFeatureListState(
   params: SearchParamsRecord,
 ): CollectionState {
@@ -127,12 +96,6 @@ export function parseFeatureListState(
     : parseFeatureCollectionState(params, options);
 }
 
-/**
- * The Feature filters' clauses. Every filter the state holds applies: parsing
- * has already dropped the ones an explicit `rql` replaces, and kept beside it
- * the `/feature` list's PATRIC default unless that rql picks an annotation
- * (`filtersBesideRql`).
- */
 export function featureStructuralRql(
   state: CollectionState,
 ): string | undefined {

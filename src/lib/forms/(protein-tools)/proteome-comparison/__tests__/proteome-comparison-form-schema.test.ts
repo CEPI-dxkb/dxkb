@@ -69,8 +69,7 @@ describe("proteomeComparisonFormSchema", () => {
       ),
     });
 
-    // One genome plus a group of eight is the full nine; one more is over,
-    // although the list holds only two rows.
+    // A genome group counts each of its genomes, so nine is the limit although the list holds two rows.
     expect(
       proteomeComparisonFormSchema.safeParse({
         ...validPayload,

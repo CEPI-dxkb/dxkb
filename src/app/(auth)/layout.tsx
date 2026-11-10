@@ -1,8 +1,8 @@
 import Navbar from "@/components/navbars/navbar";
 import Footer from "@/components/footers/footer";
 
-// Each page sends a signed-in user away itself (`redirectSignedInUser`), because
-// only a page receives `searchParams` and can honour `?redirect=`.
+// Each page redirects signed-in users itself, since only a page receives
+// `searchParams` for `?redirect=`.
 export default function AuthLayout({
   children,
 }: {

@@ -1,21 +1,8 @@
 /**
- * One-shot seeder for the BV-BRC test account used by the journey recorders.
- *
- * Drives the running production app (default `http://127.0.0.1:3010`, override
- * with `E2E_RECORD_BASE_URL`) with the credentials in `.env.e2e` and creates
- * the fixtures that `workspace-viewer` and `workspace-upload` depend on:
- *
- *   home/
- *     e2e-fixtures/
- *       readme.txt        (uploaded with a small ASCII payload)
- *     .e2e-records/       (empty folder for upload-driver writes)
- *
- * Idempotent: if a folder or file already exists, the corresponding step is
- * skipped rather than failing the run. Safe to re-run after partial seeding.
- *
- * Usage (with `pnpm build && pnpm start` already running on port 3010):
- *
- *     pnpm tsx e2e/scripts/seed-account.ts
+ * Idempotent seeder for the journey recorders' test account: creates
+ * `home/e2e-fixtures/readme.txt` and an empty `home/.e2e-records/` through
+ * the running production app (`E2E_RECORD_BASE_URL`, default
+ * http://127.0.0.1:3010). Usage: `pnpm tsx e2e/scripts/seed-account.ts`.
  */
 
 import { chromium } from "@playwright/test";
@@ -64,9 +51,8 @@ async function ensureFolder(
     .getByRole("navigation", { name: /workspace path/i })
     .waitFor({ state: "visible", timeout: 30_000 });
 
-  // Show-hidden so dot-prefix folders (`.e2e-records`) are visible to the
-  // existence check. The toolbar button toggles between "Show hidden" and
-  // "Hide hidden"; click it only if currently in the "Show" state.
+  // Show hidden files so dot-prefix folders are visible to the existence
+  // check; the toolbar button toggles, so click it only in the "Show" state.
   const showHidden = page.getByRole("button", { name: /^show hidden$/i });
   if (await showHidden.isVisible().catch(() => false)) {
     await showHidden.click();
@@ -87,7 +73,6 @@ async function ensureFolder(
   await dialog.getByPlaceholder("My Folder").fill(folderName);
   await dialog.getByRole("button", { name: /^create folder$/i }).click();
   await dialog.waitFor({ state: "hidden", timeout: 30_000 });
-  // The folder may not appear until Workspace.ls refetches.
   await existingRow.first().waitFor({ state: "visible", timeout: 30_000 });
 }
 

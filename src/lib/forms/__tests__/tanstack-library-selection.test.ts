@@ -235,7 +235,6 @@ describe("useTanstackLibrarySelection", () => {
       const config = createHookConfig();
       const { result } = renderHook(() => useTanstackLibrarySelection(config));
 
-      // Add first library
       act(() => {
         result.current.addPairedLibrary({
           read1: "/ws/r1.fq",
@@ -246,7 +245,6 @@ describe("useTanstackLibrarySelection", () => {
         });
       });
 
-      // Try to add duplicate
       act(() => {
         result.current.addPairedLibrary({
           read1: "/ws/r1.fq",

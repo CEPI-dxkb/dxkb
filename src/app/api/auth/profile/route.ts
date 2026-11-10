@@ -98,8 +98,8 @@ export const POST = withAuth(
     }
     const result = await updateProfile(userId, token, upstreamPatches);
     if (result.error) return respondWithUpstreamFailure(result.error);
-    // The `router.refresh()` that follows a save re-renders the root layout,
-    // whose `getCurrentUser()` must read the new profile, not the cached one.
+    // The `router.refresh()` after a save re-renders the root layout, whose
+    // `getCurrentUser()` must read the new profile.
     forgetProfile(token);
     return respondWithAck(result);
   },

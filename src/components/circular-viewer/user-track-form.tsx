@@ -33,7 +33,7 @@ type UserTrackRead =
   | { ok: false; message: string };
 
 // Module-level because a `finally`, or a ternary inside `try`, makes the React
-// Compiler skip the component. Never throws: a failure is the `message`.
+// Compiler skip the component.
 async function readUserTrack(
   file: File,
   plot: UserPlotType,
@@ -73,13 +73,11 @@ function clearFileInput(input: HTMLInputElement | null, file: File): void {
   if (input?.files?.[0] === file) input.value = "";
 }
 
-/** Legacy `TrackController`'s "Upload your own data" section. */
 export function UserTrackForm({
   onAdd,
   sequenceLengths,
 }: {
   onAdd: (plot: UserPlotType, parsed: ParsedUserTrack, fileName: string, name: string) => void;
-  /** The drawn sequences' (contigs') lengths by accession; undefined until they have loaded. */
   sequenceLengths: ReadonlyMap<string, number> | undefined;
 }) {
   const id = useId();
@@ -95,16 +93,14 @@ export function UserTrackForm({
       toast.error("User file format error: the file is larger than 20 MB.");
       return;
     }
-    // What this read submits: the success path clears only these. The name can
-    // change while the read runs and is then kept; Choose file is disabled
-    // meanwhile, so the file guard is a safeguard.
+    // The name can change while the read runs and is then kept; Choose file is disabled meanwhile.
     const submittedFile = file;
     const submittedName = name;
     setReading(true);
     const result = await readUserTrack(submittedFile, plot, sequenceLengths);
     if (result.ok) {
-      // No `finally` here (it makes the React Compiler skip this component):
-      // the catch handles anything `onAdd` or the toasts throw, so
+      // No `finally` (it makes the React Compiler skip this component): the
+      // catch handles anything `onAdd` or the toasts throw, so
       // `setReading(false)` below still runs.
       try {
         const { parsed, offSequence, pastEnd } = result;
@@ -139,7 +135,6 @@ export function UserTrackForm({
         void add();
       }}
     >
-      {/* A heading or label sits 8px above its control; fields are 12px apart. */}
       <div className="space-y-2">
         <div className="flex h-6 items-center gap-1">
           <h2 id={`${id}-title`} className="text-base font-semibold">Upload your own data</h2>
@@ -184,9 +179,8 @@ export function UserTrackForm({
           </SelectContent>
         </Select>
       </div>
-      {/* A button for the browser's file picker: the native control's "Choose
-          File" reads as plain text on the card. The input stays in the form,
-          hidden, and the button opens it; the name beside it says what is chosen. */}
+      {/* The native control's "Choose File" reads as plain text on the card; the
+         input stays in the form, hidden, and this button opens it. */}
       <div className="space-y-2">
         <Label id={`${id}-file-label`} htmlFor={`${id}-file-button`}>
           Data file
@@ -229,8 +223,6 @@ export function UserTrackForm({
       </div>
       <div className="space-y-2">
         <Label htmlFor={`${id}-name`}>Track name (optional)</Label>
-        {/* The service forms' inline add button (`ServiceAddButton`'s look), but a
-            submit: Enter in a field adds the track too. */}
         <div className="flex gap-2">
           <Input
             id={`${id}-name`}

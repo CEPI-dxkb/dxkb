@@ -10,7 +10,6 @@ import type { ParsedUserTrack, UserPlotType } from "./user-track";
 
 export interface TrackState {
   tracks: readonly CircularTrack[];
-  /** Legacy numbered custom and user tracks from 1 and never reused a number. */
   customCount: number;
   userCount: number;
 }

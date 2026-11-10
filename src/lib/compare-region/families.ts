@@ -1,10 +1,3 @@
-/**
- * Gene families across the Compare Region Viewer's rows: which features share
- * a family, how many genomes each family reaches, and the ribbons that join
- * same-family genes in adjacent rows. With the layout, frame and density they
- * make the `ChartModel` every figure layer draws from, built once per answer
- * and density.
- */
 import type { CompareRegionFeature, CompareRegionRow } from "./contract";
 import type { DensitySpec } from "./density";
 import { measureFigure, type FigureFrame } from "./figure-frame";
@@ -14,7 +7,6 @@ import {
   type PlacedFeature,
 } from "./layout";
 
-/** A feature, by its row's and its own index in the layout. */
 export interface FeatureRef {
   rowIndex: number;
   featureIndex: number;
@@ -35,7 +27,6 @@ export function resolveFeature(
   return placed && item ? { row: placed.row, feature: item.feature } : null;
 }
 
-/** Two same-family genes in adjacent rows (or, for a bridge, the nearest rows that have the family). */
 export interface Ribbon {
   family: number;
   upper: FeatureRef;
@@ -43,11 +34,8 @@ export interface Ribbon {
 }
 
 export interface FamilyIndex {
-  /** Every feature of a family, over all rows. */
   members: Map<number, FeatureRef[]>;
-  /** How many rows (genomes) a family appears in. */
   rowCount: Map<number, number>;
-  /** Ribbons, all (the focus family's last) and by family. */
   ribbons: Ribbon[];
   ribbonsByFamily: Map<number, Ribbon[]>;
 }
@@ -57,9 +45,8 @@ function centerOf(item: PlacedFeature): number {
 }
 
 /**
- * Ribbons join every same-family pair across each gap. A family with many
- * copies (transposases) in either row of a gap links each upper copy to its
- * nearest lower one instead, so a gap never holds more ribbons than genes.
+ * A family with many copies (transposases) in either row links each upper copy
+ * to its nearest lower one, so a gap never holds more ribbons than genes.
  */
 export function indexFamilies(layout: CompareRegionLayout): FamilyIndex {
   const members = new Map<number, FeatureRef[]>();
@@ -136,11 +123,6 @@ export function indexFamilies(layout: CompareRegionLayout): FamilyIndex {
   return { members, rowCount, ribbons, ribbonsByFamily };
 }
 
-/**
- * For the family trace: ribbons that bridge the genomes lacking `family`,
- * from each row that has it to the next row down that has it again (nearest
- * members), so the family's path reads through the whole figure.
- */
 export function bridgeRibbons(
   layout: CompareRegionLayout,
   families: FamilyIndex,
@@ -173,7 +155,6 @@ export function bridgeRibbons(
   return bridges;
 }
 
-/** A family seen in one genome only: drawn faded, so conserved families carry the figure. Never the focus family. */
 export function isLoner(
   families: FamilyIndex,
   feature: CompareRegionFeature,
@@ -184,7 +165,6 @@ export function isLoner(
   );
 }
 
-/** "in 3 of 10 genomes"; null for a feature with no family. */
 export function familyReach(
   families: FamilyIndex,
   feature: CompareRegionFeature,
@@ -195,7 +175,6 @@ export function familyReach(
   return `in ${String(count)} of ${String(rowTotal)} genomes`;
 }
 
-/** Everything the figure draws from, computed once per answer and density. */
 export interface ChartModel {
   layout: CompareRegionLayout;
   frame: FigureFrame;
@@ -216,7 +195,6 @@ export function buildChartModel(
   };
 }
 
-/** Whether `a` and `b` are the same gene (neither missing). */
 export function isSameFeature(
   a: FeatureRef | null | undefined,
   b: FeatureRef | null | undefined,
@@ -226,7 +204,6 @@ export function isSameFeature(
   );
 }
 
-/** The members of the focus gene's family (the hovered, else the pinned, gene); just the gene when it has none. */
 export function focusMembers(
   model: ChartModel,
   focus: FeatureRef | undefined,

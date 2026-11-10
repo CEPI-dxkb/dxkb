@@ -14,10 +14,7 @@ interface RouteParams {
 
 const bodySchema = z.object({ plan: copilotPlanSchema });
 
-/**
- * Saves a plan (`{plan}`, the whole plan object): edited steps, or its status
- * as it runs. The plan in the body must be the one the path names.
- */
+/** Saves the whole plan object; the plan in the body must be the one the path names. */
 export const PUT = withAuth<RouteParams>(
   async (request: NextRequest, { token, params }) => {
     const { sessionId, planId } = await params;

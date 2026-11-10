@@ -2,9 +2,6 @@ import type { GEdge, GNode, GraphSelection } from "@/lib/interactions/types";
 
 interface GraphDetailPanelProps {
   selection: GraphSelection;
-  // Edges touching the selected node, so a keyboard user can reach an edge
-  // (and its details) without clicking one on the canvas. Empty unless a single
-  // node is selected.
   incidentEdges: GEdge[];
   nodesById: Map<string, GNode>;
   onSelectEdge: (edge: GEdge) => void;

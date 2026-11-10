@@ -16,11 +16,8 @@ function isCoreTier(violation: Violation): boolean {
 }
 
 /**
- * Gate classifier (single source of truth — plan §gate).
- *
- *   block if:  (tier == core  && impact in {moderate, serious, critical})
- *           || (any tier      && impact == critical)
- *   warn  otherwise
+ * Blocks when tier is core and impact is moderate or worse, or when impact is
+ * critical in any tier; otherwise warns.
  */
 export function classify(violation: Violation): GateDecision {
   const impact = violation.impact as Impact | null | undefined;

@@ -7,7 +7,6 @@ interface RouteParams {
   params: Promise<{ jobId: string }>;
 }
 
-/** Stops a running turn by the job id its `started` event named. */
 export const POST = withAuth<RouteParams>(
   async (_request: NextRequest, { token, params }) => {
     const { jobId } = await params;

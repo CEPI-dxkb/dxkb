@@ -1,17 +1,5 @@
 "use client";
 
-/**
- * The Compare Region Viewer's family trace. The hovered (else the pinned)
- * gene's family is redrawn over a veil across the track, and the label
- * column marks the rows that hold it. The hovered gene reaches these
- * overlays through `HoverContext` and the pinned one through `PinContext`,
- * and Compact's hovered row reaches its tint through `RowHoverContext`, so
- * the layers under them never re-render on a hover (and what reads only the
- * pin, such as the selection strip, does not either). A new family's trace
- * fades in as the last one fades out (`traceFade`), and the veil and the
- * label column's marks fade with it, so moving from gene to gene never
- * flashes. Every overlay is marked `data-overlay`, which the export drops.
- */
 import {
   use,
   useState,
@@ -36,7 +24,6 @@ import { HoverContext, PinContext } from "./compare-region-contexts";
 import { GlyphMark } from "./compare-region-glyphs";
 import { ribbonPaths } from "./compare-region-ribbon-paths";
 
-/** The gene the trace follows: the hovered one, else the pinned one. */
 function useTraceFocus(): {
   hovered: FeatureRef | undefined;
   selected: FeatureRef | null;
@@ -47,17 +34,8 @@ function useTraceFocus(): {
   return { hovered, selected, focus: hovered ?? selected ?? undefined };
 }
 
-/**
- * How the trace's parts fade in and out: quick enough to keep up with the
- * pointer, long enough that a new family does not flash in.
- */
 const traceFade = "transition-opacity duration-150 ease-out";
 
-/**
- * A trace's identity: the family it follows, or a gene of no family. Every
- * gene of a family draws the same trace, so moving between them changes
- * nothing. Null while nothing is traced.
- */
 function traceKey(
   model: ChartModel,
   focus: FeatureRef | undefined,
@@ -72,19 +50,11 @@ function traceKey(
 
 interface TraceSlots {
   key: string | null;
-  /** A gene of the trace `key` names (the one traced when it came). */
   focus: FeatureRef | undefined;
-  /** The trace before it, fading out until its fade ends. */
   leaving: FeatureRef | undefined;
-  /** Which of the two slots draws the current trace; the other fades out. */
   current: 0 | 1;
 }
 
-/**
- * The two slots the trace crossfades between: on a new trace, the slot that
- * was fading out takes it and fades in, and the current one fades out with
- * the trace it holds. The current slot always draws the live focus.
- */
 function useTraceSlots(model: ChartModel, focus: FeatureRef | undefined) {
   const key = traceKey(model, focus);
   const [slots, setSlots] = useState<TraceSlots>({
@@ -94,7 +64,6 @@ function useTraceSlots(model: ChartModel, focus: FeatureRef | undefined) {
     current: 0,
   });
   let now = slots;
-  // Set while rendering (React re-renders at once, before committing).
   if (slots.key !== key) {
     now = {
       key,
@@ -109,7 +78,6 @@ function useTraceSlots(model: ChartModel, focus: FeatureRef | undefined) {
   return {
     drawn,
     current: now.current,
-    /** The leaving slot's fade ended: it draws nothing until the next trace. */
     onLeft: (event: TransitionEvent<SVGGElement>) => {
       if (event.target !== event.currentTarget) return;
       setSlots((previous) =>
@@ -129,7 +97,6 @@ interface RingProps {
   className: string;
 }
 
-/** A ring just outside a glyph: the pinned gene's, or the hovered one's. */
 function Ring({ model, at, x, strokeWidth, className }: RingProps) {
   const item = model.layout.rows.at(at.rowIndex)?.features.at(at.featureIndex);
   const rowFrame = model.frame.rows.at(at.rowIndex);
@@ -158,7 +125,6 @@ function Ring({ model, at, x, strokeWidth, className }: RingProps) {
 
 interface TraceProps {
   model: ChartModel;
-  /** A gene of the traced family. */
   at: FeatureRef;
   x: (offset: number) => number;
   plotWidth: number;
@@ -166,10 +132,6 @@ interface TraceProps {
   measure: TextMeasure;
 }
 
-/**
- * One family's trace: every ribbon of the family (plus bridges over the
- * genomes without it), and its glyphs on top.
- */
 function Trace({ model, at, x, plotWidth, reach, measure }: TraceProps) {
   const members = focusMembers(model, at);
   const family =
@@ -225,11 +187,7 @@ function Trace({ model, at, x, plotWidth, reach, measure }: TraceProps) {
   );
 }
 
-/**
- * The card-colored veil over the track while a family is traced, which the
- * trace is drawn over. It covers the plot, so it stays put while a drag
- * slides the trace (`PannedLayers`).
- */
+/** It covers the plot, so it stays put while a drag slides the trace (`PannedLayers`). */
 export function TraceVeil({
   model,
   plotWidth,
@@ -257,17 +215,10 @@ interface HighlightLayerProps {
   model: ChartModel;
   matrix: TrackMatrix;
   plotWidth: number;
-  /** How far past the plot's edges the trace is drawn, px: 0 at rest, `panReach` while a drag pans. */
   reach: number;
   measure: TextMeasure;
 }
 
-/**
- * The family trace over the veil (`TraceVeil`): the family's trace in one of
- * two slots (the last family's fading out in the other), and the pin and
- * hover rings. Never a pointer target, so hovering still reaches the glyphs
- * below.
- */
 export function HighlightLayer({
   model,
   matrix,
@@ -283,7 +234,6 @@ export function HighlightLayer({
     <g pointerEvents="none" data-overlay="">
       {drawn.map((at, slot) => (
         <g
-          // The slot stays put while its trace changes, so its opacity fades.
           key={slot}
           data-trace-slot=""
           className={cn(
@@ -315,7 +265,6 @@ export function HighlightLayer({
       )}
       {hovered && (
         <Ring
-          // A new gene's ring fades in rather than jumping there.
           key={`${String(hovered.rowIndex)}:${String(hovered.featureIndex)}`}
           model={model}
           at={hovered}
@@ -328,11 +277,6 @@ export function HighlightLayer({
   );
 }
 
-/**
- * While a family is traced (the hovered gene's, else the pinned one's): rows
- * without it fade, rows with it get a family-colored edge. Both marks stay
- * drawn on every row, transparent while unused, so they fade in and out.
- */
 export function LabelHighlight({
   model,
   labelWidth,

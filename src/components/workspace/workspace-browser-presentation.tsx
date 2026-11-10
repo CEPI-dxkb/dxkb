@@ -30,7 +30,6 @@ export function WorkspaceBrowserLoading({
   path: string;
   username: string;
   viewMode: "home" | "shared";
-  /** The saved sort, so the skeleton header matches the table that replaces it. */
   sort: WorkspaceSortConfig;
 }) {
   return (
@@ -56,7 +55,6 @@ export function WorkspaceBrowserLoading({
 
 type WorkspaceBrowserView = WorkspaceBrowserPresentationProps["view"];
 
-/** Names what failed by where the user is, not by which view mode is showing it. */
 function loadErrorTitle(view: WorkspaceBrowserView, path: string): string {
   const atRoot = path.split("/").filter(Boolean).length === 0;
   if (view.kind === "jobResult") return "Couldn't load these job results";
@@ -75,7 +73,6 @@ interface WorkspaceBrowserPresentationProps {
   notFoundDialog: ReactNode;
   path: string;
   username: string;
-  /** Items in the folder; undefined while nothing has loaded. */
   itemCount: number | undefined;
   currentUsername: string;
   workspaceRootUsername?: string;
@@ -92,13 +89,9 @@ interface WorkspaceBrowserPresentationProps {
     onUpload?: () => void;
     onNewWorkspace?: () => void;
   };
-  /** Why the folder could not be shown (listing or path lookup), or null. */
   error: Error | null;
-  /** True when the listing has items to show despite `error` (a failed refetch). */
   hasLoadedItems: boolean;
-  /** A Retry or Refresh is in flight while `error` stays on screen. */
   retrying: boolean;
-  /** Refetches what failed: the path lookup and the listing. */
   onRetry: () => void;
   view:
     | { kind: "home" }
@@ -176,8 +169,6 @@ export function WorkspaceBrowserPresentation({
   const errorMessage = error
     ? workspaceErrorMessage(error, "The workspace service returned an error.")
     : "";
-  // Nothing loaded: the table shows the error where its rows would be.
-  // Rows from an earlier load: they stay, with the error above them.
   const tableLoadError =
     error && !hasLoadedItems
       ? { title: errorTitle, message: errorMessage, retrying, onRetry }

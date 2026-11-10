@@ -369,7 +369,6 @@ describe("OutputFolder name validation", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Retry name check" }));
 
-    // Back to checking: the error and its Retry give way to the status line.
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     expect(screen.getByRole("status")).toHaveTextContent(
       "Checking name availability...",

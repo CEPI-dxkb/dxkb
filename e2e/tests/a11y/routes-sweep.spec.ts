@@ -42,15 +42,11 @@ const baselineMap: BaselineMap = generatedBaseline;
 
 const genomeBrowserSelector = '[data-testid="genome-browser"]';
 
-/** The Compare Region tab's card: its command bar, selection strip and figure. */
 const compareRegionCardSelector = 'section[aria-label="Compare regions"]';
 
 /**
- * The `color-contrast` violations of a page scan, cut down to the nodes
- * inside `selector`. The page scan already checks every node in the card, so
- * the card's contrast is read from it rather than from a second axe pass: on
- * CI WebKit each pass costs 5–7 s, and a second pass per theme and state took
- * the test past its 60 s budget.
+ * The `color-contrast` violations of a page scan, filtered to nodes inside `selector`,
+ * so no second axe pass runs (each costs 5–7 s on CI WebKit).
  */
 async function contrastInside(
   page: Page,
@@ -64,9 +60,8 @@ async function contrastInside(
       ({ root, targets }) => {
         const container = document.querySelector(root);
         return targets.map((target) => {
-          // A node in the top document has a one-selector target; one in an
-          // iframe or a shadow root has more (or a nested array), and the
-          // card has neither.
+          // A top-document node has a one-selector target; iframe or shadow-root nodes
+          // have more.
           if (target.length !== 1 || typeof target[0] !== "string") {
             return false;
           }
@@ -85,12 +80,8 @@ async function contrastInside(
 }
 
 /**
- * No `color-contrast` violation inside the Compare Region card, asserted
- * outright rather than left to the baseline: the wildcard baseline's
- * `color-contrast` allowance (DXKBCORE-174) is for host pages and once masked
- * the card's unpressed toggle options at 3.7:1. The page around the card (its
- * feature title among it) stays with the baseline. It reads the page scan's
- * own results, so it costs no axe pass of its own.
+ * Asserts no `color-contrast` violation inside the Compare Region card, outright rather
+ * than via the wildcard baseline.
  */
 async function expectCompareRegionContrast(
   page: Page,
@@ -111,13 +102,8 @@ async function expectCompareRegionContrast(
 }
 
 /**
- * No `color-contrast` violation inside the Circular Viewer panel (its track
- * sidebar and figure), asserted outright for the Compare Region card's reason:
- * the wildcard baseline's `color-contrast` allowance (DXKBCORE-174) is for
- * host pages, and once hid the panel's muted "None found" labels at 4.42:1
- * when the panel sat on the page background instead of a card. It covers the
- * HTML only: axe leaves SVG text `incomplete` (`imgNode`), so the figure's 10 px
- * position labels are checked through their token in `theme-contrast.test.ts`.
+ * Asserts no HTML `color-contrast` violation in the Circular Viewer panel; axe leaves
+ * SVG text incomplete, so position labels are covered by `theme-contrast.test.ts`.
  */
 async function expectCircularViewerContrast(
   page: Page,
@@ -135,27 +121,10 @@ async function expectCircularViewerContrast(
 }
 
 /**
- * Scan a Genome Browser tab in both themes: the host page with the browser
- * excluded (full ruleset, no disables), then the embedded JBrowse 5 subtree.
- *
- * A theme switch remounts JBrowse with the new theme's palette
- * (`use-applied-theme.ts`), so each theme first waits for the new engine to be
- * painted with the new tokens and to report ready; axe would otherwise scan the
- * skeleton, or the previous theme's chrome. `color-contrast` stays enforced on
- * the subtree, and is asserted to be empty outright rather than left to the
- * baseline (whose wildcard allowance would mask it): JBrowse's colors are the
- * theme mapping's (`jbrowse/theme.ts`), so a contrast failure there is ours to
- * fix.
- *
- * Two rules are disabled for the subtree only, for JBrowse 5.0.0-beta.20's own
- * icon-only controls, which this app cannot name without patching the
- * dependency. Both are critical-impact, which the baseline mechanism refuses by
- * design (see canBaseline in e2e/a11y/baseline.ts), so they are disabled here
- * with their upstream cause named rather than silently suppressed.
- *
- * The assertions are callbacks rather than scan-key strings so that each caller
- * passes its keys to `assertNoBlockingViolations` as string literals, the only
- * form `extractScannedKeys` (e2e/a11y/scan-keys.ts) counts as scanned.
+ * Scans a Genome Browser tab in both themes: the host page with the browser excluded,
+ * then the JBrowse subtree. Assertions are callbacks so callers pass scan keys to
+ * `assertNoBlockingViolations` as string literals, the only form `extractScannedKeys`
+ * counts.
  */
 async function scanGenomeBrowserTab(
   page: Page,
@@ -177,20 +146,13 @@ async function scanGenomeBrowserTab(
     const browserViolations = await scanPage(page, {
       include: genomeBrowserSelector,
       disableRules: [
-        // @jbrowse/plugin-linear-genome-view's header: the view menu's
-        // hamburger (`CascadingMenuButton`, Header.js) and the zoom menu's
-        // kebab (`CascadingMenuButton`, HeaderZoomControls.js) are icon-only
-        // MUI IconButtons with no aria-label.
+        // JBrowse 5.0.0-beta.20's icon-only MUI header buttons (view menu, zoom menu)
+        // have no aria-label.
         "button-name",
-        // The header's zoom slider (`SingleSlider` from @jbrowse/core/ui,
-        // HeaderZoomControls.js) renders an MUI Slider whose hidden range
-        // input has no accessible name.
+        // The header zoom slider's hidden range input has no accessible name.
         "label",
       ],
     });
-    // Asserted before and apart from the baseline: the wildcard baseline's
-    // `color-contrast` allowance (DXKBCORE-174) is for host pages and would
-    // mask a regression inside JBrowse, whose colors are the theme mapping's.
     const contrast = browserViolations.filter(
       (violation) => violation.id === "color-contrast",
     );
@@ -239,7 +201,6 @@ function assertNoBlockingViolations(
   ).toEqual([]);
 }
 
-/** WCAG 1.4.10 reflow: whether the document scrolls sideways at the current viewport. */
 async function hasHorizontalScroll(page: Page): Promise<boolean> {
   return page.evaluate(
     () =>
@@ -284,18 +245,14 @@ test.describe("a11y route sweep", () => {
         overrides: buildOverrides(target.route),
       });
       await page.goto(target.path);
-      // Generic readiness (load state, fonts, skeleton detach) is awaitSettled's
-      // job; the target's composed prepare hook adds only page-specific waits.
       await awaitSettled(page, target.route.settle);
       await target.prepare?.(page);
 
-      // Dual-theme axe scan (light → dark).
       await forEachTheme(page, async (theme) => {
         const violations = await scanPage(page);
         assertNoBlockingViolations(violations, target.name, theme);
       });
 
-      // WCAG 1.4.10 reflow: no horizontal scroll at 320px viewport width.
       await page.setViewportSize({ width: 320, height: 568 });
       const scrolls = await hasHorizontalScroll(page);
       if (isReflowSkipped(reflowSkip, target.name)) {
@@ -316,8 +273,6 @@ test.describe("a11y route sweep", () => {
 });
 
 test.describe("a11y component surfaces", () => {
-  // Taxonomy metadata-distributions: component-scoped regression guard.
-  // Full-page taxonomy scan runs in the broad sweep above.
   test("taxonomy metadata-distributions has no regression in fixed WCAG rules", async ({
     page,
     context,
@@ -328,7 +283,6 @@ test.describe("a11y component surfaces", () => {
     });
     await page.goto("/taxonomy/234");
 
-    // The section's <h2> renders synchronously; chart cards stream in after.
     await page
       .getByRole("heading", { level: 2, name: /Metadata Distributions/ })
       .waitFor({ timeout: 10_000 });
@@ -338,12 +292,11 @@ test.describe("a11y component surfaces", () => {
       include: '[data-testid="metadata-distributions"]',
     });
 
-    // Regression guard: lock four WCAG rules fixed in DXKBCORE-133.
     const lockedRules = new Set([
-      "label-content-name-mismatch", // WCAG 2.5.3 — ChartLegendPill accessible name
-      "aria-toggle-field-name", // WCAG 4.1.2 — aria-pressed legend toggles
-      "non-text-contrast", // WCAG 1.4.11 — swatch 3:1-contrast border
-      "heading-order", // WCAG 1.3.1 — chart card titles promoted to h3
+      "label-content-name-mismatch",
+      "aria-toggle-field-name",
+      "non-text-contrast",
+      "heading-order",
     ]);
     const regressions = violations.filter((v) => lockedRules.has(v.id));
     expect(
@@ -358,7 +311,6 @@ test.describe("a11y component surfaces", () => {
             .join("\n")}`,
     ).toEqual([]);
 
-    // Standard gate for any other violations in the scoped region.
     assertNoBlockingViolations(
       violations,
       "taxonomy-metadata-distributions",
@@ -366,8 +318,6 @@ test.describe("a11y component surfaces", () => {
     );
   });
 
-  // Command palette interaction state — migrated to deep-tier.spec.ts in Phase 3.
-  // Kept here during Phase 2 transition so coverage doesn't regress.
   test("command palette (open) has no blocking a11y violations", async ({
     page,
   }) => {
@@ -387,18 +337,15 @@ test.describe("a11y component surfaces", () => {
     const commandPaletteDialog = page.getByRole("dialog", {
       name: /command palette/i,
     });
-    // WebKit on Linux CI intercepts Ctrl+K via its built-in Emacs-style "delete to
-    // end of line" shortcut before the keydown reaches the page. Retry with Meta+K
-    // (the app listens for event.metaKey || event.ctrlKey) as a fallback.
+    // WebKit on Linux CI swallows Ctrl+K as an Emacs shortcut; retry with Meta+K.
     try {
       await commandPaletteDialog.waitFor({ state: "visible", timeout: 3_000 });
     } catch {
       await page.keyboard.press("Meta+K");
       await commandPaletteDialog.waitFor({ state: "visible", timeout: 10_000 });
     }
-    // The cmdk popover renders into a portal; on WebKit the theme CSS variables
-    // can momentarily lag behind the dialog's visibility, causing false-positive
-    // color-contrast violations. Waiting for input auto-focus confirms full mount.
+    // On WebKit the theme CSS variables can lag behind dialog visibility, causing false
+    // color-contrast hits; input auto-focus confirms full mount.
     await expect(page.locator('[data-slot="command-input"]')).toBeFocused({
       timeout: 5_000,
     });
@@ -407,13 +354,8 @@ test.describe("a11y component surfaces", () => {
     assertNoBlockingViolations(violations, "command-palette", "dxkb-light");
   });
 
-  // Auspice phylogeny viewer — the themed iframe.
-  //
-  // Lives here rather than in the routes[] sweep because the viewer needs
-  // charon + map-tile mocks that buildOverrides() cannot express, and because
-  // the tree only mounts after two clicks. Axe traverses same-origin iframes,
-  // so this scans the Auspice DOM itself; upstream Auspice violations that are
-  // not ours to fix land in the baseline like any other.
+  // Lives here, not in routes[], because the viewer needs charon and map-tile mocks
+  // that buildOverrides() cannot express.
   test("auspice viewer has no blocking a11y violations", async ({
     page,
     context,
@@ -454,7 +396,6 @@ test.describe("a11y component surfaces", () => {
         ...a11yBackendOverrides,
       ],
     });
-    // The basemap is the one outbound host the viewer needs.
     await mockAuspiceBasemap(page);
 
     await page.goto("/taxonomy/2955291?tab=phylogeny");
@@ -462,8 +403,6 @@ test.describe("a11y component surfaces", () => {
       .getByRole("heading", { name: "Available phylogenetic trees" })
       .waitFor();
 
-    // The picker/results pane itself has no other scan coverage — only the
-    // opened viewer below is scanned. Cover both themes before navigating away.
     await forEachTheme(page, async (theme) => {
       const violations = await scanPage(page);
       assertNoBlockingViolations(violations, "auspice-picker", theme);
@@ -483,32 +422,23 @@ test.describe("a11y component surfaces", () => {
     // Without WebGL (headless Firefox in CI) Auspice renders no map panel.
     if (await hasWebGl(page)) await viewer.locator("#map").waitFor();
 
-    // The bridge mirrors the host theme into the iframe, so scanning per theme
-    // exercises both token sets inside Auspice too. color-contrast stays
-    // enforced — it is the rule the theming work is accountable for.
+    // The bridge mirrors the host theme into the iframe, so each theme scan exercises
+    // both token sets.
     const auspiceFrameSelector = 'iframe[title*="Auspice"]';
     await forEachTheme(page, async (theme) => {
-      // DXKB-owned host chrome (back button, tab bar, etc.) around the iframe —
-      // scanned with the full ruleset, no disables.
       const hostViolations = await scanPage(page, {
         exclude: [auspiceFrameSelector],
       });
       assertNoBlockingViolations(hostViolations, "auspice-viewer-host", theme);
 
-      // The Auspice iframe itself. Two rules are disabled here, scoped to just
-      // this subtree, for pre-existing defects in the unforked Auspice bundle —
-      // not introduced by DXKB and not fixable without patching the dependency.
-      // Both are critical-impact, which the baseline mechanism refuses by
-      // design (see canBaseline in e2e/a11y/baseline.ts), so they are disabled
-      // here with their upstream cause named rather than silently suppressed.
+      // Two rules are disabled for this subtree only, for upstream Auspice defects;
+      // both are critical-impact, which the baseline refuses.
       const iframeViolations = await scanPage(page, {
         include: auspiceFrameSelector,
         disableRules: [
-          // react-select renders a hidden `dummyInput` with role=combobox and no
-          // accessible name (7 nodes, one per sidebar dropdown).
+          // react-select's hidden dummyInput has role=combobox and no accessible name.
           "label",
-          // Auspice's own "zoom to selected" / "zoom to root" toolbar buttons
-          // inside #PhylogenyCard ship without discernible text.
+          // Auspice's zoom toolbar buttons have no discernible text.
           "button-name",
         ],
       });
@@ -520,13 +450,8 @@ test.describe("a11y component surfaces", () => {
     });
   });
 
-  // Genome Browser tab — the embedded JBrowse 5 view
-  // (src/components/genome-browser/).
-  //
-  // Lives here rather than in the routes[] sweep for two reasons: one page.tsx
-  // can be claimed by a single entry (`coverage.meta.spec.ts`), and the Genome
-  // and Feature pages are already accounted for by their own entries; and the
-  // JBrowse subtree needs the scoped scan described at scanGenomeBrowserTab.
+  // Lives here because one page.tsx can be claimed by a single entry
+  // (coverage.meta.spec.ts).
   test("genome browser tab has no blocking a11y violations", async ({
     page,
     context,
@@ -545,12 +470,6 @@ test.describe("a11y component surfaces", () => {
     );
   });
 
-  // Circular Viewer tab (src/components/circular-viewer/), here for the Genome
-  // Browser's first reason: the Genome page is already claimed by its own entry.
-  // The whole page is scanned, full ruleset: the figure is the app's own SVG,
-  // whose text axe leaves incomplete; the panel's HTML contrast is asserted
-  // outright (expectCircularViewerContrast) and the position labels' token by
-  // theme-contrast.test.ts.
   test("circular viewer tab has no blocking a11y violations", async ({
     page,
     context,
@@ -562,8 +481,7 @@ test.describe("a11y component surfaces", () => {
     const viewer = new CircularViewerPanelPage(page);
     await viewer.goto(circularViewerFixture.genomeId);
     await awaitSettled(page);
-    // Every default track settled, so the rows (and so the scanned nodes) do
-    // not depend on which answers are still in flight.
+    // Every default track settled, so scanned nodes do not depend on in-flight answers.
     await viewer.expectDefaultTracksSettled();
     await forEachTheme(page, async (theme) => {
       assertNoBlockingViolations(await scanPage(page), "circular-viewer", theme);
@@ -589,12 +507,6 @@ test.describe("a11y component surfaces", () => {
     );
   });
 
-  // Compare Region tab — the Compare Region Viewer
-  // (src/components/compare-region/), drawn from the ten-genome fixture that
-  // a11yBackendOverrides answers `/api/compare-region` with. It lives here for
-  // the Genome Browser tabs' first reason: the Feature page's page.tsx is
-  // claimed by the "feature" entry. The whole page is scanned, full ruleset:
-  // the figure is the app's own SVG, so nothing in it is disabled.
   test("feature compare region tab has no blocking a11y violations", async ({
     page,
     context,
@@ -613,11 +525,8 @@ test.describe("a11y component surfaces", () => {
       await expectCompareRegionContrast(page, violations, theme);
     });
 
-    // A pinned gene turns the hint row into the pin strip (its own text and
-    // links on a muted wash), so that state is scanned too.
     await compare.glyph(0, 0).click();
     await expect(compare.openFeature).toBeVisible();
-    // The card with the gene's record, not its "no record" notice.
     await expect(
       compare.featureCard.getByText("AFFC01000001", { exact: true }),
     ).toBeVisible();
@@ -631,12 +540,8 @@ test.describe("a11y component surfaces", () => {
       await expectCompareRegionContrast(page, violations, `pinned, ${theme}`);
     });
 
-    // WCAG 1.4.10 reflow, as the routes sweep checks every route. The figure
-    // keeps a minimum width (Comfortable's narrowest label column beside
-    // `minPlotWidth`) and scrolls inside its own scroller, so the page must
-    // not scroll at 320px once the panel has measured the narrower card. A
-    // phone's figure is at that minimum already, so wait for the width, not a
-    // change of it.
+    // The figure scrolls inside its own scroller at its minimum width, so wait for the
+    // panel to measure the narrower card.
     const narrowFigure =
       plotWidthFor(densitySpecs.comfortable, 320) +
       labelWidthFor(densitySpecs.comfortable, 320);

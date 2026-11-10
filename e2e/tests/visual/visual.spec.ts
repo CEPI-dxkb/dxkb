@@ -37,7 +37,8 @@ test.describe("visual regression", () => {
   test("workspace browser matches snapshot", async ({ page }) => {
     await page.goto("/workspace");
     await page.waitForURL(/\/workspace\/[^/]+\/home/, { timeout: 10_000 });
-    // Wait for the WorkspaceBrowser toolbar to hydrate so Firefox doesn't snapshot the pre-hydration navbar-only state.
+    // Wait for the WorkspaceBrowser toolbar so Firefox does not snapshot the
+    // pre-hydration state.
     await page.getByPlaceholder(/Search files/).waitFor({ timeout: 10_000 });
     await page.waitForLoadState("networkidle");
     await expect(page).toHaveScreenshot("workspace.png", { fullPage: true });

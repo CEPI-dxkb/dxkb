@@ -20,7 +20,6 @@ import { HelpCircle } from "lucide-react";
 
 const nameTakenMessage =
   "An object with this name already exists in the selected folder.";
-/** "Unable to validate this name: <reason>.", shown beside a Retry. */
 function validationErrorMessage(reason: string | null): string {
   const detail = reason?.trim().replace(/\.$/, "");
   return detail
@@ -41,7 +40,6 @@ interface OutputFolderProps {
   variant?: "default" | "name";
   outputFolderPath?: string;
   onValidationChange?: (valid: boolean) => void;
-  /** Draws the field in its error state, for an error shown beside it. */
   invalid?: boolean;
 }
 

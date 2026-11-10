@@ -26,7 +26,6 @@ describe("useKeptQueryError", () => {
     });
     expect(result.current).toBe(outage);
 
-    // TanStack clears the error of a query with no data when it refetches.
     rerender({ error: null, hasData: false, identity: "page-2" });
     expect(result.current).toBe(outage);
   });

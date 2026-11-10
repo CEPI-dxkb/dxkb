@@ -1,13 +1,4 @@
-/**
- * `next/navigation` for a component whose URL state is written with the History API.
- * Next keeps `useSearchParams` in step with `pushState`/`replaceState`; jsdom does
- * not, so this wraps both (once per suite, when the mock is first loaded) and
- * re-renders the subscribers whenever either runs. Reset the address with
- * `history.replaceState` in `beforeEach`: the URL outlives a test.
- *
- * Call it from inside the `vi.mock` factory, like the other mock builders:
- * `vi.mock("next/navigation", async () => (await import("@/test-helpers/history-navigation")).historyNavigationMock())`.
- */
+/** `next/navigation` mock for History-API URL state, which jsdom does not keep in step with `useSearchParams`; call inside the `vi.mock` factory and reset the address in `beforeEach`. */
 export async function historyNavigationMock({
   pathname = "/",
 }: { pathname?: string } = {}) {

@@ -1,8 +1,3 @@
-/**
- * FASTA validation utilities ported from legacy JavaScript code
- * Based on AppBase.js and Homology.js validation logic
- */
-
 export interface FastaValidationResult {
   valid: boolean;
   status: string;
@@ -27,14 +22,10 @@ const defaultOptions: Required<FastaValidationOptions> = {
 
 const nucleotideAlphabet = /^[ACGTURYSWKMBDHVN-]+$/i;
 
-/**
- * Cleans FASTA text by removing unnecessary whitespace
- */
 export function cleanFasta(fastaText: string): string {
   let newFasta = "";
   let records = fastaText.trim();
 
-  // Normalize line endings
   records = records.replace(/[\r\n]/g, "\n");
   records = records.replace(/\r|\f/g, "\n");
   records = records.replace(/^\s*[\r\n]/gm, "");
@@ -54,9 +45,6 @@ export function cleanFasta(fastaText: string): string {
   return newFasta;
 }
 
-/**
- * Checks if a sequence is DNA by analyzing the character composition
- */
 export function isDNA(sequenceText: string): boolean {
   const st = sequenceText.toLowerCase();
   let count = 0;
@@ -77,9 +65,6 @@ export function isDNA(sequenceText: string): boolean {
   return false;
 }
 
-/**
- * Validates FASTA text based on sequence type requirements
- */
 export function validateFasta(
   fastaText: string,
   seqType: "aa" | "dna" = "aa",
@@ -95,21 +80,17 @@ export function validateFasta(
     trimFasta: "",
   };
 
-  // Check text length limit
   if (!opts.ignoreMaxFastaTextLimit && fastaText.length > opts.maxFastaText) {
     result.status = "too_long";
     result.message = "The text input is too large. Save the data to a file.";
     return result;
   }
 
-  // Clean the FASTA text
   const records = cleanFasta(fastaText);
   result.trimFasta = records;
 
-  // Remove leading empty lines
   const cleanRecords = records.replace(/^\s*[\r\n]/gm, "");
 
-  // Check if FASTA starts with '>' or needs to be prefixed
   if (cleanRecords !== "" && cleanRecords[0] !== ">" && !opts.replace) {
     result.status = "invalid_start";
     result.message =
@@ -122,14 +103,12 @@ export function validateFasta(
 
   const arr = cleanRecords.split("\n");
 
-  // Check for empty input
   if (arr.length === 0 || arr[0] === "") {
     result.status = "empty";
     result.message = "";
     return result;
   }
 
-  // Check minimum FASTA structure
   if (arr[0][0] !== ">" || arr.length <= 1) {
     result.status = "too_short";
     result.message =
@@ -137,7 +116,7 @@ export function validateFasta(
     return result;
   }
 
-  let nextseq = 0; // Tracks sequence/identifier balance
+  let nextseq = 0;
   let protein = false;
   let numseq = 0;
 
@@ -157,10 +136,8 @@ export function validateFasta(
       return result;
     }
 
-    // Check if sequence is DNA or protein
     if (!protein && !isDNA(arr[i])) protein = true;
 
-    // Validate sequence characters (extended amino acid alphabet)
     if (!/^[ABCDEFGHIJKLMNOPQRSTUVWXYZ\-\n]+$/i.test(arr[i].toUpperCase())) {
       result.status = "invalid_letters";
       result.message = `The sequences must have valid letters. Check line: ${String(i + 1)}.`;
@@ -168,7 +145,6 @@ export function validateFasta(
     }
   }
 
-  // Check for missing sequences or extra identifiers
   if (nextseq) {
     result.status = "missing_seqs";
     result.message =
@@ -176,7 +152,6 @@ export function validateFasta(
     return result;
   }
 
-  // All validations passed
   result.valid = true;
   result.status = seqType === "dna" || !protein ? "valid_dna" : "valid_protein";
   result.numseq = numseq;
@@ -212,14 +187,10 @@ export function validateProteinFasta(
   return result;
 }
 
-/**
- * Validates FASTA for BLAST programs based on program type
- */
 export function validateFastaForBlast(
   fastaText: string,
   inputType: "blastn" | "blastp" | "blastx" | "tblastn",
 ): FastaValidationResult {
-  // Determine expected sequence type based on BLAST program
   let expectedSeqType: "aa" | "dna";
 
   switch (inputType) {

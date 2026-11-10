@@ -1,12 +1,5 @@
 "use client";
 
-/**
- * The Feature View's Compare Region tab: the command bar and the figure in
- * one card. It runs the comparison the URL's settings name, shows its status
- * (loading, failed with a Retry, a group that needs a session, nothing found)
- * in place of the figure, and keeps the figure's density as a device
- * preference.
- */
 import { useQuery } from "@tanstack/react-query";
 import { useParentSize } from "@visx/responsive";
 import type { ReactNode } from "react";
@@ -39,18 +32,14 @@ import { exportSvgFigure } from "@/lib/svg-figure-export";
 import type { ZoomControls } from "./compare-region-zoom-controls";
 import { useCompareRegionSettings } from "./use-compare-region-settings";
 
-/** What a signed-out group comparison can do instead: sign in, or compare public genomes. */
 const signInHint = `Sign in, or choose "${compareRegionFilterLabels.reference}" or "${compareRegionFilterLabels.all}" under Genomes.`;
 
 interface CompareRegionBodyProps {
   applied: CompareRegionSettings;
-  /** A request is in flight. */
   busy: boolean;
   signedIn: boolean;
-  /** Shown under the bar in place of the figure (loading, failed, nothing found); null with rows to draw. */
   status: ReactNode;
   rows: readonly CompareRegionRow[] | undefined;
-  /** The card's width, px; 0 until it is measured. */
   width: number;
   density: CompareRegionDensity;
   onDensityChange: (density: CompareRegionDensity) => void;
@@ -58,13 +47,8 @@ interface CompareRegionBodyProps {
 }
 
 /**
- * The card's content for one query: the command bar over its settings draft,
- * then the status or the figure. The panel keys it by the query identity, so
- * a new query (Update, back/forward) starts a fresh draft from the settings
- * it applied, and a new answer starts unzoomed and unselected. The draft
- * lives here, not in the bar, because the bar moves from beside the status
- * into the figure (which hands it the zoom) when the answer arrives, as after
- * a Retry.
+ * The draft lives here, not in the bar, because the bar moves from beside the
+ * status into the figure when the answer arrives.
  */
 function CompareRegionBody({
   applied,
@@ -116,7 +100,6 @@ function CompareRegionBody({
 }
 
 export interface CompareRegionPanelProps {
-  /** The focus gene's BRC ID (`patric_id`, `fig|…`). */
   patricId: string;
 }
 
@@ -124,20 +107,15 @@ export function CompareRegionPanel({ patricId }: CompareRegionPanelProps) {
   const searchParams = useTabContentSearchParams();
   const applied = parseCompareRegionUrlState(searchParams);
   const query = { peg: patricId, ...applied };
-  // One string per request: it keys the card's content (the settings draft
-  // and the chart, so a new answer starts unzoomed and unselected) and the
-  // retry's identity.
   const queryIdentity = JSON.stringify(query);
   const result = useQuery({
     queryKey: compareRegionQueryKeys.rows(query),
-    // No `signal`: TanStack aborts a query that read it when its last
-    // observer unmounts (a tab switch), while the service call it started
-    // keeps running on the server. Returning would then queue a second
-    // request behind it; without the signal it re-joins the one in flight.
+    // No `signal`: TanStack aborts a query that read it when its last observer
+    // unmounts while the service call keeps running, so a retry would queue a
+    // second request behind it.
     queryFn: () => loadCompareRegion(query),
-    // A request takes seconds to a minute and the service takes one at a
-    // time: keep answers for the visit, and let the user retry rather than
-    // retrying for them.
+    // The service takes one request at a time: keep answers for the visit and
+    // let the user retry rather than retrying for them.
     staleTime: Number.POSITIVE_INFINITY,
     gcTime: 30 * 60_000,
     retry: false,
@@ -201,12 +179,9 @@ export function CompareRegionPanel({ patricId }: CompareRegionPanelProps) {
   }
 
   return (
-    // The tab fills the view shell's region, which runs under the page's right
-    // padding (`-mr-*`) and does not scroll: the padding gives the card back
-    // that inset, and the card scrolls the figure itself. The card fills the
-    // region down to the page's bottom edge, as the data tables do, so it has
-    // no padding under it and no bottom border or corners. `min-w-0`: the
-    // figure's floor must not widen the card (and so its measured width).
+    // The region runs under the page's right padding (`-mr-*`), so the card
+    // gives that inset back; `min-w-0` keeps the figure's floor from widening
+    // the card.
     <div className="flex min-h-0 min-w-0 flex-1 flex-col pt-3 pr-2 sm:pr-3 lg:pr-4">
       <section
         ref={parentRef}

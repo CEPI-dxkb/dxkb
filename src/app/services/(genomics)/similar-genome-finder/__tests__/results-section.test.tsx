@@ -41,8 +41,6 @@ vi.mock("@tanstack/react-virtual", () => ({
 const minhashUrl = "https://p3.theseed.test/services/minhash_service";
 const websiteApi = "https://www.bv-brc.test/api";
 
-// The real Server Action runs in the test, so its MinHash and genome calls
-// reach MSW exactly as they leave the server.
 function Harness() {
   const controller = useSimilarGenomeFinderForm();
   return (

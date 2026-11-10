@@ -18,8 +18,7 @@ import {
   LazyViralPhylogenyPanel,
 } from "../lazy-tab-roots";
 
-// Each stub shows the props it was given, so a test can see that the wrapper
-// reached the real module path (not the barrel) and passed its props through.
+// Each stub shows its props, to confirm the wrapper reached the real module path, not the barrel.
 function CollectionStub({
   testId,
   baseRql,

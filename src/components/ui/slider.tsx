@@ -5,18 +5,9 @@ import { Slider as SliderPrimitive } from "@base-ui/react/slider";
 
 import { cn } from "@/lib/utils";
 
-// Local edits (keep when regenerating with `shadcn add --overwrite`): a
-// disabled slider shows the not-allowed cursor (`data-disabled:` on the
-// control; the thumb has no `disabled:pointer-events-none`). And the
-// orientation variants key on `data-[orientation=...]`. Base UI sets
-// `data-orientation` and no `data-horizontal`, so upstream's
-// `data-horizontal:h-1` never matched and the track rendered 0px tall. The
-// look follows the form controls: a `bg-muted-foreground/40` track, and a
-// `size-4 border-muted-foreground bg-background` thumb whose ring clears the
-// 3:1 non-text contrast WCAG 1.4.11 asks of a control's boundary (upstream's
-// `bg-muted` track is 1.16:1 against the service card). `getAriaValueText`
-// goes to each thumb, where Base UI reads it, so a slider whose position is
-// not its value (the Compare Region zoom's log scale) can say what it means.
+// Local edit: Base UI sets `data-orientation` only, so upstream's
+// `data-horizontal:` variants never matched.
+// The track and thumb colors clear the 3:1 non-text contrast of WCAG 1.4.11.
 function Slider({
   className,
   defaultValue,

@@ -83,7 +83,6 @@ describe("fetchSerotypeDistribution", () => {
 
     const result = await fetchSerotypeDistribution(1);
 
-    // serovars ranked by total: Sv1=30, Sv3=8, Sv2=5
     expect(result.serovars).toEqual(["Sv1", "Sv3", "Sv2"]);
     expect(result.years).toEqual([
       { year: 2023, Sv1: 10, Sv2: 5, Sv3: 0 },
@@ -92,7 +91,6 @@ describe("fetchSerotypeDistribution", () => {
   });
 
   it("filters to last 10 years based on max year in data", async () => {
-    // years 2010..2025 — max is 2025, so only 2016..2025 should appear
     const rows = Array.from({ length: 16 }, (_, i) => ({
       value: 2010 + i,
       pivot: [{ value: "Sv1", count: i + 1 }],
@@ -114,10 +112,9 @@ describe("fetchSerotypeDistribution", () => {
   });
 
   it("limits serovars to top 10 by total count", async () => {
-    // 12 distinct serovars
     const pivot = Array.from({ length: 12 }, (_, i) => ({
       value: `Sv${String(i + 1)}`,
-      count: 12 - i, // Sv1=12, Sv2=11, ... Sv12=1
+      count: 12 - i,
     }));
 
     server.use(

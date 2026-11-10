@@ -16,16 +16,10 @@ function RadioGroup({ className, ...props }: RadioGroupPrimitive.Props) {
   )
 }
 
-// Local edit (keep when regenerating with `shadcn add --overwrite`): the
-// circle uses `border-muted-foreground bg-background` instead of upstream's
-// `border-input`, as Checkbox does. The light theme's `--input` is nearly
-// white, so an unselected circle disappeared against the card. muted-foreground
-// keeps the border above the 3:1 non-text contrast WCAG 1.4.11 asks of a
-// control's boundary. An unselected, enabled and valid circle darkens its
-// border to `foreground` on hover, so the radio shows it reacts to the pointer.
-// The radio is a <span> (Base UI's input is a hidden 1px one), which `:disabled`
-// never matches, so its not-allowed cursor and its dimming key on
-// `data-disabled:`.
+// Local edit: the unselected border is `muted-foreground` because the light
+// theme's `--input` is nearly white (WCAG 1.4.11 needs 3:1).
+// The radio is a <span>, which `:disabled` never matches, so its cursor and
+// dimming key on `data-disabled:`.
 function RadioGroupItem({ className, ...props }: RadioPrimitive.Root.Props) {
   return (
     <RadioPrimitive.Root

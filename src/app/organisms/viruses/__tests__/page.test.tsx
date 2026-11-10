@@ -4,8 +4,6 @@ import VirusesPage from "../page";
 
 const { fetchTaxonomy } = vi.hoisted(() => ({ fetchTaxonomy: vi.fn() }));
 
-// The static fallback itself is covered with MSW in
-// src/app/organisms/__tests__/landing-outage.test.tsx.
 vi.mock("@/lib/services/organisms/taxonomy", () => ({
   fetchLandingRootTaxonomy: (taxonId: number) => fetchTaxonomy(taxonId) as unknown,
 }));
@@ -27,8 +25,8 @@ function GenomeResourceCollection({ baseRql }: CollectionProps) {
   return <div>{`genome:${baseRql}`}</div>;
 }
 
-// The tabs load their client roots through lazy-tab-roots, by each root's own
-// module path, so the stubs replace those paths and the tests wait for them.
+// Tabs load client roots through lazy-tab-roots by module path, so the stubs
+// replace those paths and tests wait for them.
 vi.mock("@/components/views/feature-resource-collection", () => ({
   FeatureResourceCollection,
 }));

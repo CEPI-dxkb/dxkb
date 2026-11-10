@@ -7,10 +7,8 @@ import {
   ViewErrorBoundary,
 } from "@/components/errors/view-error-boundary";
 
-// Only for an error in the root layout itself (the session or preference
-// lookup), which takes the providers down with it. It replaces the whole
-// document, so it renders its own <html> and <body> and nothing that needs a
-// provider (the navbar reads auth and query state).
+// Replaces the whole document, so it renders its own <html> and <body> and
+// nothing that needs a provider.
 export default function GlobalError(props: RouteErrorProps) {
   return (
     <html lang="en">

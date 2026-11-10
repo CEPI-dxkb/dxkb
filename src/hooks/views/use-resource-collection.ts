@@ -17,11 +17,7 @@ import { noop } from "@/lib/utils";
 import { resourceCollectionPageSize } from "./collection-state";
 export type ResourceRow = Record<string, unknown>;
 export type ResourceFacets = Partial<Record<string, FacetBucket[]>>;
-/**
- * A counted facet's counts: none yet (`loading`), the previous scope's while
- * this one's load (`stale`), or settled (`ready`): this scope's, or none
- * because its read failed.
- */
+/** `stale`: the previous scope's counts while this one's load. */
 export type FacetStatus = "loading" | "stale" | "ready";
 
 export interface UseResourceCollectionOptions {
@@ -30,38 +26,20 @@ export interface UseResourceCollectionOptions {
   idField: string;
   fields: readonly string[];
   detailFields?: readonly string[];
-  /**
-   * The facets to count, which is exactly the set requested; empty requests
-   * none. `ResourceCollection` passes only what its filter panel shows.
-   */
   facetFields?: readonly string[];
-  /**
-   * Fetch the page after the current one in the background. Required so the
-   * default lives in one place: `ResourceCollection`, the only caller.
-   */
   prefetchNextPage: boolean;
   structuralRql?: string;
-  /**
-   * The structural RQL one field's counts are read over, when it differs from
-   * the rows': `ResourceCollection` leaves that field's own filter out, so a
-   * facet lists every value it could add (multi-select faceting). Omitted:
-   * counts use `structuralRql`.
-   */
+  /** `ResourceCollection` leaves the field's own filter out (multi-select faceting); omitted uses `structuralRql`. */
   facetStructuralRql?: (field: string) => string | undefined;
   serverKeywordMode?: "exact" | "prefix";
-  /**
-   * The order rows are read in while no column is sorted (`"unsorted"`), such
-   * as a legacy grid's default order. No column shows it as its sort, as
-   * legacy's do not. Unset leaves the order to the backend.
-   */
+  /** Row order while no column is sorted; not shown as a column sort. */
   unsortedOrder?: DataSort;
   state: CollectionState;
   onStateChange: (state: CollectionState) => void;
 }
 
 const emptyFacets: ResourceFacets = {};
-// One instance, so a field counted with no buckets keeps its identity across
-// renders and `shownFacets` settles.
+// One instance so a field with no buckets keeps its identity across renders.
 const noBuckets: FacetBucket[] = [];
 
 function facetStatusOf(
@@ -71,7 +49,6 @@ function facetStatusOf(
 ): FacetStatus {
   if (fresh) return "ready";
   if (shown) return "stale";
-  // A failed read with nothing to show has settled: its error says why.
   return pending ? "loading" : "ready";
 }
 
@@ -135,14 +112,7 @@ export function useResourceCollection<Row extends ResourceRow>({
       unsortedOrder,
     ],
   );
-  // Facet counts depend on the scope, not on the page or sort, and they are the
-  // expensive part of a collection read (Genome's 38 facets are ~10 s of an
-  // ~11 s request). Their own queries mean paging, sorting and the next-page
-  // prefetch fetch rows only, and the table does not wait for the counts.
-  // One query per field, so turning one facet on reads that field alone and a
-  // Retry re-reads only the failed ones; the reads of one scope started
-  // together (every unfiltered field) share one request, which the server
-  // counts in parallel (`facetCountQueryOptions`).
+  // Facet counts are the slow part of a collection read, so each field has its own query; paging and sorting fetch rows only.
   const facetQueryOptions = (field: string) => ({
     ...facetCountQueryOptions(
       repository,
@@ -159,10 +129,7 @@ export function useResourceCollection<Row extends ResourceRow>({
       },
       field,
     ),
-    // Counts change with the scope only and are the slow part of a read, so a
-    // remount inside this window (a tab switch and back) reuses them. A new
-    // scope is a new observer per field, which `keepPreviousData` never sees;
-    // `shownFacets` below keeps the previous counts on screen instead.
+    // A new scope is a new observer per field, which `keepPreviousData` never sees; `shownFacets` keeps the previous counts on screen.
     staleTime: 30_000,
   });
 
@@ -172,16 +139,12 @@ export function useResourceCollection<Row extends ResourceRow>({
   const facetQueries = useQueries({
     queries: facetFields.map((field) => facetQueryOptions(field)),
   });
-  // This scope's counts, for the fields whose read has answered. A field the
-  // upstream returns no buckets for was counted and has none.
   const freshFacets: ResourceFacets = {};
   facetFields.forEach((field, index) => {
     const data = facetQueries[index]?.data;
     if (data) freshFacets[field] = data.facets[field] ?? noBuckets;
   });
-  // The counts on screen: this scope's where they have landed, otherwise the
-  // ones shown for that field before (the previous scope's) while its read is
-  // pending. A failed read drops them: they are not this scope's counts.
+  // Pending fields keep the previous scope's counts; a failed read drops them.
   const [shownFacets, setShownFacets] = useState<ResourceFacets>(emptyFacets);
   const facets: ResourceFacets = {};
   facetFields.forEach((field, index) => {
@@ -198,7 +161,6 @@ export function useResourceCollection<Row extends ResourceRow>({
     setShownFacets(facetKeys.length === 0 ? emptyFacets : facets);
   const facetsError =
     facetQueries.find((facetQuery) => facetQuery.error)?.error ?? null;
-  // Per field: no counts yet, the previous scope's on screen, or this scope's.
   const facetStatuses: Partial<Record<string, FacetStatus>> = {};
   facetFields.forEach((field, index) => {
     facetStatuses[field] = facetStatusOf(
@@ -242,9 +204,6 @@ export function useResourceCollection<Row extends ResourceRow>({
     }),
     enabled: activeId !== null,
   });
-  // The loaded page already holds the selected row's columns, so the panel
-  // shows it at once and the member read fills in the detail-only fields when
-  // it returns. A row selected on another page has no stand-in and waits.
   const pageRow =
     activeId === null
       ? undefined
@@ -256,12 +215,7 @@ export function useResourceCollection<Row extends ResourceRow>({
 
   return {
     activeId,
-    /**
-     * This query's total: the cached one, or, while the rows on screen are a
-     * previous query's placeholder, its own read's once that lands. It joins
-     * the read in flight rather than sending another, and rejects with
-     * `CancelledError` when the query is replaced before the read lands.
-     */
+    /** Rejects with `CancelledError` when the query is replaced before the read lands. */
     currentTotal: async () =>
       (
         await queryClient.query({
@@ -271,34 +225,24 @@ export function useResourceCollection<Row extends ResourceRow>({
       ).total,
     detail: detailQuery.data?.row ?? pageRow ?? null,
     detailError: detailQuery.error,
-    // The settled object while nothing changed, so consumers see one identity.
     facets: facetsChanged ? facets : shownFacets,
     facetsError,
     facetStatuses,
     isAllPagesSelected,
-    // Nothing to show yet: the member read is pending and no loaded row stands in.
     isDetailLoading: detailQuery.isLoading && pageRow === undefined,
-    // A shown facet has no counts to show yet, not even a previous scope's.
     isFacetsLoading: facetFields.some(
       (field) => facetStatuses[field] === "loading",
     ),
-    // A shown facet's counts on screen belong to the previous scope.
     isFacetsRefreshing: facetFields.some(
       (field) => facetStatuses[field] === "stale",
     ),
     isInitialLoading: query.isLoading,
     isRefreshing: query.isFetching && !query.isLoading,
-    // The rows and total on screen belong to a previous query (another page,
-    // sort or scope) while this one loads; a same-query refresh is not this.
     isPlaceholderData: query.isPlaceholderData,
-    // The rows on screen belong to another page (a page that was not
-    // prefetched is still loading), so the table shows its loading skeleton
-    // rather than rows the user has paged away from. Their total still sizes the
-    // pager. A same-page change (sort, filter, keyword) keeps them on screen.
+    // A page that was not prefetched shows the skeleton, not rows the user paged away from; a same-page change keeps them.
     isPageLoading: query.isPlaceholderData && query.data.page !== state.page,
     error: query.error,
     refetch: query.refetch,
-    /** Re-reads the failed facets, or every shown facet when none failed. */
     refetchFacets: async () => {
       const failed = facetQueries.filter((facetQuery) => facetQuery.error);
       await Promise.all(
@@ -307,11 +251,6 @@ export function useResourceCollection<Row extends ResourceRow>({
         ),
       );
     },
-    /**
-     * Starts reading these facets' counts for the current scope before they
-     * are shown (the pointer is on Filters), so opening the menu joins reads
-     * already in flight. Fresh counts are not read again.
-     */
     prefetchFacets: (fields: readonly string[]) => {
       for (const field of fields)
         void queryClient.query(facetQueryOptions(field)).catch(noop);

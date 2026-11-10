@@ -16,18 +16,10 @@ const columnIds = metaCatsGroupsGridColumns.map((column) => column.id);
 
 interface MetaCatsGroupsGridProps {
   rows: AutoGroupItem[];
-  /** Keyed by BRC ID (`patric_id`), as BV-BRC's grid selects rows. */
   rowSelection: RowSelectionState;
   onRowSelectionChange: (selection: RowSelectionState) => void;
 }
 
-/**
- * Auto Grouping's Groups Grid on the shared DataTable (sorting, paging,
- * column menu, resizing, CSV/TXT export). DataTable leaves sorting and paging
- * to its owner, so this sorts all the rows and hands it one page. Exports
- * cover every row (or every selected row) in the current sort, not just the
- * page on screen.
- */
 export function MetaCatsGroupsGrid({
   rows,
   rowSelection,
@@ -41,7 +33,6 @@ export function MetaCatsGroupsGrid({
     1,
     Math.ceil(sortedRows.length / metaCatsGroupsGridPageSize),
   );
-  // Deleting rows can leave the stored page past the last one.
   const page = Math.min(pageIndex, pageCount - 1);
   const pageRows = sortedRows.slice(
     page * metaCatsGroupsGridPageSize,
@@ -52,7 +43,6 @@ export function MetaCatsGroupsGrid({
     .map((row) => row.patric_id);
 
   return (
-    // DataTable fills its parent, so the grid gets a fixed height to scroll in.
     <div className="flex h-96 flex-col">
       <DataTable
         id="meta-cats-groups-grid"
@@ -68,7 +58,6 @@ export function MetaCatsGroupsGrid({
         onSortingChange={setSorting}
         rowSelection={rowSelection}
         onRowSelectionChange={onRowSelectionChange}
-        // Every row is already here: a selection is just the rows checked.
         crossPageSelection={false}
         selectedIds={selectedIds}
         totalSelectedCount={selectedIds.length}

@@ -1,15 +1,4 @@
-/*
- * Utilities the shadcn chat components (`ui/message-scroller.tsx`, and
- * `Marker` content that shows streaming status) use, copied from the `shadcn`
- * package's `tailwind.css` (shadcn 4.23.0). Only these two are copied:
- * importing that file whole would also bring its own `data-open`/`data-closed`
- * custom variants and accordion keyframes, which globals.css already defines.
- *
- * - `scroll-fade-b`: fades the bottom edge of a scroll container while there
- *   is more content below (scroll-driven where supported).
- * - `shimmer`: animated highlight across text ("Thinking…"). Under reduced
- *   motion it renders as plain text.
- */
+/* Copied from shadcn 4.23.0 `tailwind.css`; importing it whole would duplicate variants and keyframes globals.css defines. */
 
 @property --scroll-fade-b {
   syntax: "<length-percentage>";

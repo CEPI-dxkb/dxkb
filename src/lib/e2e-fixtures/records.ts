@@ -1,28 +1,6 @@
 /**
- * Canonical E2E fixture records — the single source of truth for deterministic
- * domain data used by the mock transport layers:
- *
- *   - Browser-side:  e2e/fixtures/overrides/* (via `applyBackendMocks`)
- *   - Server-side:   src/app/api/e2e-mock/[...path]/route.ts (loopback mock)
- *
- * Most records are shared by both, which is the point. A few are reached
- * through one transport only — the BV-BRC *website* tables below are
- * server-rendered, the PPI rows are browser-fetched — and they live here
- * anyway so "what a fixture of this kind looks like" stays one fact, and so
- * the schema and cross-table checks in `__tests__/records.test.ts` cover them
- * too. Each record's own comment names the endpoint it answers.
- *
- * Both layers are required because Playwright's `page.route()` cannot see
- * server-side fetches (Server Components, route handlers forwarding to
- * backend URLs rewritten by `.env.e2e.test`). Before this module existed, each
- * layer hand-rolled its own copy of these records and they drifted (e.g.
- * epitope `host_name` was an array in one file and a string in the other).
- *
- * Deliberately dependency-free: no imports from `src/` app code, no zod, no
- * envelope/transport fields. Plain typed data only, so it can be parsed
- * directly by the production Zod schemas in `src/lib/data-api/schemas.ts`
- * (see `src/lib/e2e-fixtures/__tests__/records.test.ts`) and wrapped by
- * `src/lib/e2e-fixtures/envelopes.ts` for each transport.
+ * Canonical E2E fixture records, shared by the browser-side overrides and the server-side loopback mock.
+ * Dependency-free plain typed data, so the production Zod schemas can parse it (see `__tests__/records.test.ts`).
  */
 
 export interface TaxonomyFixtureRecord {
@@ -94,7 +72,6 @@ export const genomeRecord: GenomeFixtureRecord = {
   ],
 };
 
-/** A bacterial genome for tabs the viral fixture cannot open (the Circular Viewer). */
 export const bacterialGenomeRecord: GenomeFixtureRecord = {
   genome_id: "83332.12",
   genome_name: "Mycobacterium tuberculosis H37Rv",
@@ -276,12 +253,7 @@ export interface EpitopeFixtureRecord {
   taxon_lineage_ids: number[];
   protein_name: string;
   protein_accession: string;
-  /**
-   * Array-valued on the wire — `epitope.host_name` is registry-declared
-   * multi-valued (see the `multipleFields.epitope` set in
-   * src/lib/data-api/resources.ts). A prior drift had the server-side loopback
-   * mock serving this as a bare string; this is the corrected, real-API shape.
-   */
+  /** Array-valued on the wire: `epitope.host_name` is multi-valued in the registry. */
   host_name: string[];
   total_assays: number;
   assay_results: string[];
@@ -318,7 +290,6 @@ export interface EpitopeAssayFixtureRecord {
   assay_method: string;
   assay_group: string;
   assay_result: string;
-  /** Single-valued on the wire — epitope_assay.host_name is NOT registry-multivalued. */
   host_name: string;
   pmid: string;
   title: string;
@@ -606,24 +577,11 @@ export interface GenomeAmrFixtureRecord {
   genome_name: string;
   antibiotic: string;
   resistant_phenotype: string;
-  /**
-   * Array-valued on the wire; declared by `multipleFields.genome_amr` in
-   * src/lib/data-api/resources.ts, like `pmid` below.
-   */
+  /** Array-valued on the wire (`multipleFields.genome_amr`). */
   evidence: string[];
-  /**
-   * Array-valued on the wire — `genome_amr.pmid` is registry-declared
-   * multi-valued (the `multipleFields.genome_amr` set in
-   * src/lib/data-api/resources.ts, surfaced as `cardinality: "multiple"`),
-   * which is what makes the column unsortable. The test reads that
-   * declaration rather than restating it here.
-   */
+  /** Array-valued on the wire, which is what makes the column unsortable. */
   pmid: string[];
-  /**
-   * String-valued deliberately: `measurement_value` and
-   * `testing_standard_year` are left to `inferType`'s string default so the
-   * gateway does not reject non-numeric facet values such as ">=" ranges.
-   */
+  /** String-valued so `inferType`'s string default lets the gateway accept non-numeric facet values such as ">=". */
   measurement_value: string;
   measurement_sign: string;
   measurement_unit: string;
@@ -633,17 +591,7 @@ export interface GenomeAmrFixtureRecord {
   computational_method: string;
 }
 
-/**
- * No transport serves this row yet — nothing in the suite requests
- * `data/genome_amr` rows, and the AMR landing chart is fed by a facet-pivot
- * fixture, not by rows. It exists as the concrete row Task 19 could not
- * supply when it registered the resource: `__tests__/records.test.ts` reads
- * `getResourceDefinition("genome_amr")` and asserts this row against the
- * registry's own derived `cardinality` and `type`, so editing either side
- * alone fails. It says nothing about what the live BV-BRC core returns — no
- * test may reach a live backend. Wire it into a transport when a caller
- * appears.
- */
+/** No transport serves this row yet; `records.test.ts` checks it against the registry's derived `cardinality` and `type`. */
 export const genomeAmrRecord: GenomeAmrFixtureRecord = {
   id: "genome-amr-backend-901",
   taxon_id: 234,
@@ -685,17 +633,9 @@ export interface PpiFixtureRecord {
   score: number;
 }
 
-/**
- * The total the loopback reports for an unnarrowed `ppi` count
- * (`e2eDeterministicCounts.ppi`). The browser layer does NOT read this: it
- * reports `rows.length` for whatever a spec asked it to build, because a
- * browser override answers a request the spec itself scoped. This constant
- * lives here so the server-side number has a name and a home next to the row
- * builder, not because the two layers share it.
- */
+/** The total the loopback reports for an unnarrowed `ppi` count; the browser layer reports `rows.length` instead. */
 export const brucellaPpiTotal = 4358;
 
-/** Build `count` synthetic Brucella melitensis (taxon 234) PPI rows. */
 export function buildBrucellaPpiRecords(count: number): PpiFixtureRecord[] {
   return Array.from({ length: count }, (_, index) => ({
     id: `ppi-${String(index).padStart(4, "0")}`,
@@ -721,34 +661,18 @@ export function buildBrucellaPpiRecords(count: number): PpiFixtureRecord[] {
   }));
 }
 
-/**
- * BV-BRC *website* API taxonomy shape — `GET {BVBRC_WEBSITE_API_URL}/taxonomy/<id>`,
- * consumed by `fetchOrganismTaxonomy` in
- * src/lib/services/organisms/taxonomy.ts. Deliberately NOT the same shape as
- * {@link TaxonomyFixtureRecord}, which models the Data API `taxonomy` core
- * (`/api/data/taxonomy`): the website endpoint answers a single object with
- * numeric ids and no `other_names`/`parent_id`/`description`, and the two
- * transports really do differ here. Keeping both shapes named separately is
- * what stops a fixture from being "fixed" into the wrong one.
- */
+/** BV-BRC website API taxonomy shape (`/taxonomy/<id>`), deliberately unlike the Data API `taxonomy` record: one object, numeric ids, no `other_names`/`parent_id`/`description`. */
 export interface OrganismTaxonomyFixtureRecord {
   taxon_id: number;
   taxon_name: string;
   lineage_names: string[];
   lineage_ids: number[];
-  /** NCBI rank per lineage entry, index-aligned (BV-BRC `lineage_ranks`). */
   lineage_ranks: string[];
   taxon_rank: string;
   genomes: number;
 }
 
-/**
- * BV-BRC *website* API summary shape — `GET
- * {BVBRC_WEBSITE_API_URL}/data/summary_by_taxon/<id>`, consumed by
- * `fetchOrganismSummary` in src/lib/services/organisms/summary.ts. The
- * SCREAMING keys (`CDS`, `PDB`) are the real wire names, not a naming-rule
- * violation — `fetchOrganismSummary` reads `payload.CDS` / `payload.PDB`.
- */
+/** Website API summary shape; `CDS` and `PDB` are the real wire names. */
 export interface OrganismSummaryFixtureRecord {
   count: number;
   unique_family: number;
@@ -824,12 +748,6 @@ export const brucellaOrganismTaxonomyRecord: OrganismTaxonomyFixtureRecord = {
   genomes: brucellaGenomeCount,
 };
 
-/**
- * Mycobacterium (NCBI taxon 1763) — the second taxon the a11y suite scans.
- * It exists so `/taxonomy/1763` renders a real organism landing page instead
- * of the framework error boundary `fetchOrganismTaxonomy` raised when the
- * loopback answered that endpoint with an empty object.
- */
 export const mycobacteriumOrganismTaxonomyRecord: OrganismTaxonomyFixtureRecord =
   {
     taxon_id: 1763,
@@ -859,11 +777,7 @@ export const mycobacteriumOrganismTaxonomyRecord: OrganismTaxonomyFixtureRecord 
     genomes: mycobacteriumGenomeCount,
   };
 
-/**
- * Influenza A virus — lineage includes "Orthomyxoviridae" so `hasStrains` is
- * true. Used by the strains-tab e2e tests, which need a taxon whose Strains
- * tab is enabled.
- */
+/** Lineage includes "Orthomyxoviridae" so `hasStrains` is true. */
 export const influenzaAOrganismTaxonomyRecord: OrganismTaxonomyFixtureRecord = {
   taxon_id: 11520,
   taxon_name: "Influenza A virus",
@@ -894,11 +808,7 @@ export const influenzaAOrganismTaxonomyRecord: OrganismTaxonomyFixtureRecord = {
   genomes: influenzaAGenomeCount,
 };
 
-/**
- * Alphainfluenzavirus influenzae — lineage includes
- * "Alphainfluenzavirus influenzae" so `hasSerology` is true. Used by the
- * serology-tab e2e test.
- */
+/** Lineage includes "Alphainfluenzavirus influenzae" so `hasSerology` is true. */
 export const alphainfluenzavirusInfluenzaeOrganismTaxonomyRecord: OrganismTaxonomyFixtureRecord =
   {
     taxon_id: 2955291,
@@ -935,7 +845,6 @@ export const alphainfluenzavirusInfluenzaeOrganismTaxonomyRecord: OrganismTaxono
     genomes: alphainfluenzavirusInfluenzaeGenomeCount,
   };
 
-/** Caliciviridae — virus family used by the domains-and-motifs e2e tests. */
 export const caliciviridaeOrganismTaxonomyRecord: OrganismTaxonomyFixtureRecord =
   {
     taxon_id: 11974,
@@ -963,12 +872,6 @@ export const caliciviridaeOrganismTaxonomyRecord: OrganismTaxonomyFixtureRecord 
     genomes: caliciviridaeGenomeCount,
   };
 
-/**
- * Every taxon the BV-BRC website mock knows, keyed by taxon id as it appears
- * in the URL path. One table so "which taxa exist" is a single fact rather
- * than a chain of `if (endpoint === ...)` branches, and so the summary table
- * below can be checked against it.
- */
 export const organismTaxonomyRecords: Record<
   string,
   OrganismTaxonomyFixtureRecord
@@ -1064,13 +967,7 @@ export const alphainfluenzavirusInfluenzaeSummaryRecord: OrganismSummaryFixtureR
     PDB: 1204,
   };
 
-/**
- * Summary counters keyed by the same taxon ids as
- * {@link organismTaxonomyRecords}. The two tables are kept 1:1 — a taxon the
- * landing page can resolve must also have a summary, because the page fetches
- * both — and `count` always equals that taxon's `genomes`. Both invariants are
- * pinned in src/lib/e2e-fixtures/__tests__/records.test.ts.
- */
+/** Kept 1:1 with {@link organismTaxonomyRecords}, and `count` equals that taxon's `genomes` (both pinned in `records.test.ts`). */
 export const organismSummaryRecords: Record<
   string,
   OrganismSummaryFixtureRecord
@@ -1085,12 +982,7 @@ export const organismSummaryRecords: Record<
   "2955291": alphainfluenzavirusInfluenzaeSummaryRecord,
 };
 
-/**
- * The Taxonomy header's "(N Genomes)" — `fetchTaxonGenomeCount`'s `numFound`:
- * the taxon's lineage less Deprecated genomes, so each sits below the summary
- * `count`, which includes them. Kept 1:1 with {@link organismSummaryRecords};
- * both invariants are pinned in src/lib/e2e-fixtures/__tests__/records.test.ts.
- */
+/** `numFound` for the header's "(N Genomes)": the lineage less Deprecated genomes, so below the summary `count`. Kept 1:1 with {@link organismSummaryRecords}. */
 export const taxonGenomeCounts: Record<string, number> = {
   "2": 1_334_871,
   "234": 1896,
@@ -1102,13 +994,7 @@ export const taxonGenomeCounts: Record<string, number> = {
   "2955291": 1_875_903,
 };
 
-/**
- * Lookups rather than bare indexing: the tables above are
- * `Record<string, …>`, and this project does not enable
- * `noUncheckedIndexedAccess`, so `table[id]` types as present even for a taxon
- * that is not. These return `undefined` honestly so callers must decide what
- * an unknown taxon means.
- */
+/** Lookups return `undefined` for an unknown taxon; `table[id]` would type as present because `noUncheckedIndexedAccess` is off. */
 export function findOrganismTaxonomyRecord(
   taxonId: string,
 ): OrganismTaxonomyFixtureRecord | undefined {

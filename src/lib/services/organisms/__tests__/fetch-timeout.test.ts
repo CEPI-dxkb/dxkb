@@ -39,7 +39,7 @@ function stallEveryRequest() {
 
 beforeEach(() => {
   process.env.BVBRC_WEBSITE_API_URL = baseUrl;
-  // Keep the production budget in the message but let the signal fire fast.
+  // Keeps the production budget in the message but lets the signal fire fast.
   vi.spyOn(AbortSignal, "timeout").mockImplementation(() => realTimeout(20));
 });
 
@@ -49,8 +49,6 @@ afterEach(() => {
 });
 
 describe("organism fetch timeout", () => {
-  // A loader whose card names its section ("Data summary could not be
-  // loaded") leaves the label out; the endpoint is only for the log.
   it.each([
     ["fetchOrganismSolrJson", genusFacet, () =>
       fetchOrganismSolrJson(`${baseUrl}/genome/`, genusFacet)],
@@ -72,8 +70,8 @@ describe("organism fetch timeout", () => {
     },
   );
 
-  // MSW does not tie the request signal to a mocked body, so reproduce what
-  // undici does on a mid-body abort: error the stream with the signal reason.
+  // MSW does not tie the request signal to a mocked body, so error the stream
+  // with the signal reason as undici does on a mid-body abort.
   function abortedBody(error: Error): Response {
     return new Response(
       new ReadableStream<Uint8Array>({
@@ -129,7 +127,6 @@ describe("organism fetch timeout", () => {
       const error: unknown = await load().catch((caught: unknown) => caught);
 
       expect(error).toBeInstanceOf(UpstreamError);
-      // The host is for the server log, never the message.
       expect(error).toMatchObject({
         status: 504,
         code: "upstream_timeout",

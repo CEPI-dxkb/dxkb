@@ -4,11 +4,7 @@ interface ChartStatusMessageProps {
   errorMessage?: string;
 }
 
-/**
- * A chart whose facet failed while the rest of the grid loaded. The section
- * itself rendered, so `withSectionError` adds no Retry; this one refreshes the
- * route, which re-runs the failed facet.
- */
+/** A chart whose facet failed while the rest loaded; its Retry refreshes the route to re-run the facet. */
 export function ChartStatusMessage({ errorMessage }: ChartStatusMessageProps) {
   return (
     <div role="alert" className="flex flex-col items-start gap-2">

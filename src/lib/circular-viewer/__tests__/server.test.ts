@@ -22,7 +22,6 @@ import {
   toCircularFeature,
 } from "../server";
 
-/** The `patric_id`s an `in(patric_id,(…))` clause names, decoded and unquoted. */
 function patricIdsIn(clause: string): string[] {
   const list = /in\(patric_id,\(([^)]*)\)\)/.exec(clause)?.[1] ?? "";
   return list === "" ? [] : list.split(",").map((value) => decodeURIComponent(value).replace(/^"|"$/g, ""));
@@ -31,12 +30,9 @@ function patricIdsIn(clause: string): string[] {
 function fakeRepository(answers: {
   ranged?: Record<string, Record<string, unknown>[]>;
   selected?: (ids: string[]) => Record<string, unknown>[];
-  /** `genome_feature`'s answer to a ranged read by `patric_id`. */
   byPatricId?: (patricIds: string[]) => Record<string, unknown>[];
-  /** Answers every ranged read in full, as an upstream that ignored `Range` would. */
   ignoreRange?: boolean;
 }) {
-  // Pages by the range it is asked for, as the Data API does: `end` is exclusive.
   const rangedRows = vi.fn((resource: string, clause: string, start: number, end: number) => {
     // A read past ten windows is a paging loop: fail it rather than hang the run.
     if (start >= 10 * maxTrackFeatures) {
@@ -70,7 +66,6 @@ const row = (featureId: string, start: number) => ({
 
 const patricId = (index: number) => `fig|1.1.peg.${String(index)}`;
 
-/** `genome_feature`'s feature for each `patric_id`, placed by the id's number. */
 const featuresByPatricId = (ids: string[]) =>
   ids.map((id) => ({ ...row(`F-${id}`, Number(id.split(".").pop()) + 1), patric_id: id }));
 
@@ -178,7 +173,6 @@ describe("circular viewer reads", () => {
 
   it("reads each specialty gene's feature once, 500 ids per request", async () => {
     const spRows = Array.from({ length: 501 }, (_, index) => ({ id: `r${String(index)}`, feature_id: `F${String(index)}` }));
-    // A second source listing the first gene again.
     spRows.push({ id: "dup", feature_id: "F0" });
     const { repository, execute } = fakeRepository({
       ranged: { sp_gene: spRows },
@@ -193,7 +187,6 @@ describe("circular viewer reads", () => {
   });
 
   it("pages sp_gene past a full window whose rows name fewer genes than the limit", async () => {
-    // Two sources list each gene: 25,001 rows name 12,501 genes.
     const spRows = Array.from({ length: maxTrackFeatures + 1 }, (_, index) => {
       const gene = Math.floor(index / 2);
       return { id: `r${String(index)}`, patric_id: patricId(gene), feature_id: `F${String(gene)}` };
@@ -234,7 +227,6 @@ describe("circular viewer reads", () => {
   });
 
   it("stops paging sp_gene at a window that adds no gene, even when the upstream ignores the range", async () => {
-    // Every read answers the same 25,000 rows, naming 12,500 genes.
     const spRows = Array.from({ length: maxTrackFeatures }, (_, index) => {
       const gene = Math.floor(index / 2);
       return { id: `r${String(index)}`, patric_id: patricId(gene), feature_id: `F${String(gene)}` };
@@ -251,7 +243,6 @@ describe("circular viewer reads", () => {
   });
 
   it("pages sp_gene past full windows that one gene's sources fill, to the genes after it", async () => {
-    // Gene 0 fills the first two windows; genes 1 to 10 follow in a third.
     const spRows = [
       ...Array.from({ length: 2 * maxTrackFeatures }, (_, index) => ({
         id: `r${String(index)}`,
@@ -279,7 +270,6 @@ describe("circular viewer reads", () => {
   });
 
   it("marks sp_gene truncated when a full window of rows without an id names no new gene", async () => {
-    // Nothing shows the second window advancing, so the gene after it is not reached.
     const spRows = [
       ...Array.from({ length: 2 * maxTrackFeatures }, () => ({ patric_id: patricId(0), feature_id: "F0" })),
       { patric_id: patricId(1), feature_id: "F1" },
@@ -295,7 +285,6 @@ describe("circular viewer reads", () => {
   });
 
   it("keeps the first 25,000 features when the genes' patric_ids name more, and marks them truncated", async () => {
-    // 25,000 genes, each patric_id naming two features.
     const spRows = Array.from({ length: maxTrackFeatures }, (_, index) => ({
       id: `card${String(index)}`,
       patric_id: patricId(index),
@@ -318,7 +307,6 @@ describe("circular viewer reads", () => {
   });
 
   it("draws a gene sp_gene lists only by patric_id, reading 100 ids per request", async () => {
-    // CARD and NDARO rows name the gene by patric_id alone.
     const spRows = Array.from({ length: 101 }, (_, index) => ({ id: `card${String(index)}`, patric_id: patricId(index) }));
     const { repository, rangedRows, execute } = fakeRepository({
       ranged: { sp_gene: spRows },
@@ -355,7 +343,6 @@ describe("circular viewer reads", () => {
     const { repository, rangedRows, execute } = fakeRepository({
       ranged: {
         sp_gene: [
-          // CARD's row without the feature_id comes first, so the gene learns it from the next row.
           { id: "a", patric_id: patricId(1) },
           { id: "b", patric_id: patricId(1), feature_id: "F1" },
           { id: "c", patric_id: patricId(2), feature_id: "F2" },

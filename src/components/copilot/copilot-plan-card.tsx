@@ -44,30 +44,18 @@ import {
 } from "@/lib/copilot/plan";
 import type { CopilotWorkflowWatch } from "@/lib/copilot/types";
 
-/**
- * What a plan card can do; provided by the panel that sends turns. Only the
- * newest plan in a chat runs or changes.
- */
 export interface CopilotPlanActions {
   currentPlanId: string | null;
-  /** A turn is running (here, or in another tab): nothing starts now. */
   busy: boolean;
-  /** Step updates from the turn running now. */
   liveUpdates: CopilotPlanStepUpdate[];
-  /** The jobs the chat's gateway watches, when read. */
   watches: CopilotWorkflowWatch[] | undefined;
   isPaused: (planId: string) => boolean;
-  /** Approve a draft and run it from the first step. */
   run: (plan: CopilotPlan) => void;
-  /** Run the next step (Continue, Resume, after the jobs finished). */
   continuePlan: (plan: CopilotPlan) => void;
-  /** Stop after the step that is running. */
   pause: (plan: CopilotPlan) => void;
   retryStep: (plan: CopilotPlan, stepIndex: number) => void;
   skipStep: (plan: CopilotPlan, stepIndex: number) => void;
-  /** Ask for a new plan for the same request. */
   regenerate: (messageId: string) => void;
-  /** Save edited steps; resolves to whether they were saved. */
   saveSteps: (plan: CopilotPlan, steps: CopilotPlanStep[]) => Promise<boolean>;
 }
 
@@ -116,11 +104,7 @@ function clip(text: string, length: number): string {
   return text.length > length ? `${text.slice(0, length).trimEnd()}…` : text;
 }
 
-/**
- * Whether the jobs a plan waits for are done: every one the gateway watches
- * has ended. A job it does not list is taken as still running (Continue now
- * stays offered either way).
- */
+/** A job the gateway does not list counts as still running. */
 function jobsFinished(
   submissionIds: string[],
   watches: CopilotWorkflowWatch[] | undefined,
@@ -178,7 +162,6 @@ function StepRow({
   );
 }
 
-/** "Runs after step 1" / "Runs after steps 1, 3", by current position. */
 function RunsAfter({
   step,
   steps,
@@ -198,7 +181,6 @@ function RunsAfter({
   );
 }
 
-/** Editing the steps not run yet: text, agent, order; add and delete. */
 function PlanEditor({
   plan,
   busy,
@@ -206,7 +188,6 @@ function PlanEditor({
   onSave,
 }: {
   plan: CopilotPlan;
-  /** A step is running: the steps cannot be saved now. */
   busy: boolean;
   onCancel: () => void;
   onSave: (steps: CopilotPlanStep[]) => Promise<boolean>;
@@ -215,7 +196,6 @@ function PlanEditor({
   const [saving, setSaving] = useState(false);
   const [moved, setMoved] = useState(false);
   const editable = (step: CopilotPlanStep) => step.status === "pending";
-  // Steps that already ran stay first and fixed.
   const firstEditable = steps.findIndex(editable);
   const invalid = steps.some((step) => editable(step) && step.description.trim() === "");
 
@@ -402,12 +382,6 @@ function PlanEditor({
   );
 }
 
-/**
- * A multi-step plan. Draft: Run plan, Edit, Regenerate. Running: the steps
- * update as they go, and Pause stops it after the running step. A failed step
- * can be retried or skipped; jobs a step submitted are waited for, then the
- * plan continues on request.
- */
 export function PlanCardView({
   messageId,
   plan: stored,
@@ -415,7 +389,6 @@ export function PlanCardView({
 }: {
   messageId: string;
   plan: CopilotPlan;
-  /** Shown inside the answer being written: no actions yet. */
   live?: boolean;
 }) {
   const actions = useContext(PlanActionsContext);

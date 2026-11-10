@@ -24,7 +24,7 @@ describe("useUiPreference", () => {
       }),
       { wrapper: createUiPreferencesWrapper() },
     );
-    cookieSpy.mockClear(); // drop the one-time legacy-cookie expiry from mount
+    cookieSpy.mockClear();
 
     act(() => {
       result.current.first[1]((current) => !current);
@@ -97,13 +97,11 @@ describe("useUiPreference", () => {
       () => useUiPreference("viewNavCollapsed"),
       { wrapper: createUiPreferencesWrapper() },
     );
-    // Neither a re-render nor a preference update may expire it again.
     rerender();
     act(() => {
       result.current[1](true);
     });
 
-    // Count only the legacy expiry; the update above writes its own cookie.
     const legacyWrites = cookieSpy.mock.calls.filter(([value]) =>
       value.startsWith("workspace-panel-layout="),
     );

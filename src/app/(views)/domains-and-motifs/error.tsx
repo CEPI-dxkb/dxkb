@@ -5,9 +5,8 @@ import {
   ViewErrorBoundary,
 } from "@/components/errors/view-error-boundary";
 
-// This view fetches its data on the client, so an error that reaches the
-// boundary is a client render failure whose message can carry request
-// details; it shows fixed copy (and the digest, when there is one) instead.
+// Shows fixed copy, since a client-side failure message can carry request
+// details.
 export default function DomainsAndMotifsError(props: RouteErrorProps) {
   return (
     <ViewErrorBoundary

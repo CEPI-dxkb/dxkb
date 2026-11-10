@@ -7,10 +7,6 @@ interface WorkspaceFolderPageProps {
   params: Promise<{ username: string; folder: string; path?: string[] }>;
 }
 
-/**
- * /workspace/[username]/[folder]/[[...path]] -> shared folder contents.
- * [username] is the folder owner (e.g. jimdavis@patricbrc.org), path is owner/folder/...
- */
 export default async function WorkspaceFolderPage({
   params,
 }: WorkspaceFolderPageProps) {

@@ -1,8 +1,3 @@
-/**
- * Type presets for `WorkspaceObjectSelector`. Service pages should use these
- * instead of passing raw type arrays.
- */
-
 import type { ValidWorkspaceObjectTypes } from "@/lib/services/workspace/types";
 
 export const workspaceSelectorPresets = {

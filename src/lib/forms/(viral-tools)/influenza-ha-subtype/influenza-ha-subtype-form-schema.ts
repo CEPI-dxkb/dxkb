@@ -45,7 +45,6 @@ export const influenzaHaSubtypeFormSchema = z
         });
       }
     } else {
-      // data.input_source === "feature_group"
       if (!data.input_feature_group.trim()) {
         ctx.addIssue({
           code: "custom",

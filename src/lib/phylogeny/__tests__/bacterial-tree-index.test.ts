@@ -66,8 +66,7 @@ describe("bacterialTreeFilename", () => {
           }),
       ),
     );
-    // Substring match: whether statusText survives the interceptor is not
-    // this module's concern, the status code is.
+    // Whether statusText survives the interceptor is not this module's concern; the status code is.
     await expect(bacterialTreeFilename(562)).rejects.toMatchObject({
       name: "UpstreamError",
       status: 503,
@@ -155,25 +154,21 @@ describe("bacterialTreeFilename", () => {
     );
     now.mockReturnValue(25 * 60 * 60 * 1000);
 
-    // Concurrent lookups share one refresh and one failure log.
     await Promise.all([
       bacterialTreeFilename(562),
       bacterialTreeFilename(562),
       bacterialTreeFilename(562),
     ]);
-    // The failure is logged only after the in-flight refresh has settled.
     await vi.waitFor(() => {
       expect(logged).toHaveBeenCalledTimes(1);
     });
     expect(badRefreshes).toBe(1);
     await expect(bacterialTreeFilename(562)).resolves.toBe("old.phyloxml");
-    // Within the retry delay the failing upstream is left alone.
     await bacterialTreeFilename(562);
     expect(badRefreshes).toBe(1);
     expect(logged).toHaveBeenCalledTimes(1);
     expect(downloads).toBe(1);
 
-    // The window was not restarted, so once the delay passes it tries again.
     now.mockReturnValue(25 * 60 * 60 * 1000 + 5 * 60 * 1000);
     await expect(bacterialTreeFilename(562)).resolves.toBe("old.phyloxml");
     await vi.waitFor(() => {

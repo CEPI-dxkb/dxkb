@@ -121,7 +121,6 @@ describe("Feature member route", () => {
       params: Promise.resolve({ featureId: feature.feature_id }),
       searchParams: Promise.resolve({}),
     });
-    // The lineage streams in behind a Suspense boundary; let it land.
     await act(async () => {
       render(page);
       await new Promise((resolve) => setTimeout(resolve, 0));
@@ -177,8 +176,8 @@ describe("Feature member route", () => {
   });
 
   it("shows the feature without waiting for its lineage", async () => {
-    // A stalled taxonomy lookup runs to the Data API's 20 s budget; the
-    // record has loaded by then, so only the breadcrumb's taxa wait for it.
+    // A stalled taxonomy lookup only delays the breadcrumb's taxa; the record
+    // has loaded.
     mocks.getTaxonomy.mockReturnValue(new Promise(() => undefined));
     render(
       await FeaturePage({
@@ -275,12 +274,8 @@ describe("Feature member route", () => {
   });
 
   it("resolves one identifier from both entry points for a percent-bearing ID", async () => {
-    // The two entry points receive DIFFERENT encodings of the same segment:
-    // the page component gets `encodeURIComponent(id)`, `generateMetadata`
-    // gets the matcher's decoded `id`. `loadFeature` used to decode both, so
-    // an id containing a literal percent escape resolved to a different
-    // record in the title than in the body. Feeding both the same string
-    // cannot catch that — each gets what Next actually gives it.
+    // The page receives `encodeURIComponent(id)` and `generateMetadata` the
+    // decoded `id`; feed each its real encoding.
     const percentId = "fig|1282460.2049.peg.1%2F5";
     mocks.getFeature.mockResolvedValue({
       feature: { ...feature, patric_id: percentId },
@@ -349,7 +344,6 @@ describe("Feature member route", () => {
 
   it("permanently redirects a PATRIC ID lookup to feature_id", async () => {
     mocks.getFeature.mockResolvedValue({ feature, usedAlternateId: true });
-    // The exact target: no query, so no trailing "?".
     await expect(
       FeaturePage({
         params: Promise.resolve({ featureId: feature.patric_id }),

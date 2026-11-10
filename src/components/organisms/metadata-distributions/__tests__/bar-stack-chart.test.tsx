@@ -63,7 +63,6 @@ describe("BarStackChart", () => {
     const sv2Pill = screen.getByRole("button", { name: "Sv2" });
     fireEvent.mouseEnter(sv2Pill);
 
-    // The active pill gets a distinct styling class
     expect(sv2Pill).toHaveAttribute("data-active", "true");
   });
 
@@ -94,7 +93,6 @@ describe("BarStackChart", () => {
     fireEvent.click(sv1Pill);
     fireEvent.mouseLeave(sv1Pill);
 
-    // Locked — stays active after mouse leaves
     expect(sv1Pill).toHaveAttribute("data-active", "true");
   });
 

@@ -17,23 +17,14 @@ interface CompoundSampleLoadOptions<TFound extends FoundLookup> {
   ) => Promise<TFound | { status: "not-found" }>;
 }
 
-/**
- * A compound-sample page's record, or, when the data service is down, the
- * condensed reason (`recordUnavailableMessage`) for the page to render inside
- * its shell.
- */
 export type CompoundSampleLoad<TFound extends FoundLookup> =
   | { sampleId: string; result: TFound }
   | { sampleId: string; unavailable: string };
 
 /**
- * Resolve a compound-sample route's record from its raw `params.sampleId`.
- *
- * `source` says which entry point read `params.sampleId`, because Next
- * delivers the two different encodings of it — see `readRouteParam` in
- * `./route-params.ts` for the mechanism and the Next-internals citation. The
- * returned `sampleId` is the real identifier; use it for titles, canonical
- * hrefs and child props, never the raw param.
+ * `source` says which entry point read `params.sampleId` (see
+ * `readRouteParam`). Use the returned `sampleId`, never the raw param, for
+ * titles, hrefs and child props.
  */
 export async function loadCompoundSamplePage<TFound extends FoundLookup>(
   rawSampleId: string,
@@ -54,11 +45,9 @@ export async function loadCompoundSamplePage<TFound extends FoundLookup>(
 }
 
 /**
- * `loadCompoundSamplePage` for a page that renders an outage instead of
- * throwing it: production replaces a thrown server error's message with a
- * digest, so the boundary could only say that something failed. A 404 or a
- * missing record is still `notFound()`, and any error that is not an outage
- * (`recordUnavailableMessage` returns null) is still thrown.
+ * Production replaces a thrown server error's message with a digest, so an
+ * outage is rendered instead of thrown; a 404 is still `notFound()` and a
+ * non-outage error is still thrown.
  */
 export async function loadCompoundSampleState<TFound extends FoundLookup>(
   rawSampleId: string,

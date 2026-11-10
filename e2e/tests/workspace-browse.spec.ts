@@ -167,10 +167,8 @@ test.describe("workspace browse", () => {
       ).toBe(true);
       await expect(page).toHaveURL(/\/home$/);
 
-      // The click also opens the details panel, which narrows the table pane.
-      // The breadcrumbs and toolbar above the table must keep their height,
-      // or the rows slide down under the pointer and the second click of a
-      // double-click lands on the row above.
+      // The click opens the details panel, narrowing the table; breadcrumbs and toolbar
+      // must keep their height or rows slide under the pointer mid-double-click.
       await expect(page.getByTitle("Hide panel")).toBeVisible();
       await expect.poll(() => workspace.panels.detailsWidth()).toBeGreaterThan(0);
       expect((await row.boundingBox())?.y).toBe(before?.y);
@@ -248,11 +246,6 @@ test.describe("workspace browse", () => {
 
       await fileRow.dblclick();
 
-      // Both clicks land on the file and each is a plain select, so it ends
-      // selected. This used to expect "false": the first click opened the
-      // details panel, the toolbar wrapped and pushed the rows down, and the
-      // second click selected (and double-clicked into) "Datasets" above it,
-      // with the URL check racing that navigation.
       await expect(page).toHaveURL(/\/home$/);
       await expect(fileRow).toHaveAttribute("aria-selected", "true");
       await expect(workspace.rowByName("Datasets").first()).toHaveAttribute(
@@ -289,9 +282,6 @@ test.describe("workspace browse", () => {
   test("favorites loaded from favorites.json are visible on the home listing", async ({
     page,
   }) => {
-    // When favorites contain a folder path, its row gets a star indicator. We just assert the
-    // favorite-named folder is present — validating the favorites.json override actually reaches
-    // the browser and doesn't crash the UI.
     await applyBackendMocks(page, {
       overrides: [
         ...buildWorkspaceOverrides({
@@ -304,25 +294,17 @@ test.describe("workspace browse", () => {
     await workspace.goto();
 
     await expect(workspace.rowByName("Datasets").first()).toBeVisible();
-    // The username cookie is the same user as the mocked owner, so the row renders normally.
     expect(e2eUsername).toBe("e2e-test-user@patricbrc.org");
   });
 
   test("toggling FAVORITE on a folder POSTs the updated favorites.json", async ({
     page,
   }) => {
-    // Starts with no favorites, then drives the action-bar FAVORITE button and asserts that
-    // Workspace.create persists the toggled folder path. This is the end-to-end persistence
-    // contract — a UI that lights up the star locally but never calls the API would fail here.
     await applyBackendMocks(page, {
       overrides: [
-        // The favorites toggle fires Workspace.create against favorites.json AND a
-        // follow-up Workspace.get to re-read it. The helper's createOverride matches
-        // both creates (the .preferences dir bootstrap and the favorites.json write),
-        // and getOverride matches the favorites.json read by path. The .preferences
-        // dir existence check (Workspace.get on the dir path) falls through to
-        // getNotFoundOverride's 500, which ensurePreferencesDir handles by creating
-        // the dir. No permissive catch-all needed.
+        // Toggling favorites creates favorites.json and re-reads it; the .preferences
+        // dir check falls through to getNotFoundOverride's 500, which
+        // ensurePreferencesDir handles by creating the dir.
         ...buildWorkspaceOverrides(),
         ...journeyOverrides,
       ],
@@ -330,13 +312,11 @@ test.describe("workspace browse", () => {
     const workspace = new WorkspacePage(page);
     await workspace.goto();
 
-    // Select the Datasets folder so the FAVORITE action becomes valid (favorite is folder-only).
     await workspace.rowByName("Datasets").first().click();
 
     const favoritesFilePath = `${e2eHomePath}/.preferences/favorites.json`;
-    // Wait specifically for the Workspace.create that writes favorites.json — toggleFavorite
-    // also calls Workspace.create to ensure the .preferences dir exists, and we don't want to
-    // race-match that earlier call.
+    // toggleFavorite also calls Workspace.create for the .preferences dir; wait for the
+    // favorites.json write.
     const writeRequest = page.waitForRequest((req) => {
       if (
         !req.url().endsWith("/api/services/workspace") ||
@@ -366,16 +346,12 @@ test.describe("workspace browse", () => {
     };
     const objects = body.params?.[0]?.objects ?? [];
     const tuple = objects[0] as [string, string, unknown, string];
-    // The 4th tuple slot is the JSON body; it must contain the toggled folder path.
     const content = JSON.parse(tuple[3]) as { folders?: string[] };
     expect(content.folders).toContain(`${e2eHomePath}/Datasets`);
     expect(body.params?.[0]?.overwrite).toBe(1);
   });
 });
 
-// Drives the browse journey against post-auth traffic recorded in
-// `workspace-browse.har`. See `harOverridesFor` for why this spec must not
-// layer `journeyOverrides` or a broad, unscoped aggregate on top of replay.
 test.describe("workspace browse via recorded HAR replay", () => {
   test("renders the recorded workspace listing", async ({ page }) => {
     await applyBackendMocks(page, {
@@ -392,11 +368,6 @@ test.describe("workspace browse via recorded HAR replay", () => {
     const workspace = new WorkspacePage(page);
     await expect(workspace.breadcrumbs).toBeVisible();
 
-    // These four folders all appear in the recorded `Workspace.ls` response
-    // (`workspace-browse.har` entry 5). If the HAR replay actually fed the
-    // workspace browser, the rows render; if the override fell through to
-    // the permissive catchall (`{result:[[]]}`), the listing would be empty
-    // and these assertions would time out.
     for (const name of [
       "Experiment Groups",
       "Genome Groups",

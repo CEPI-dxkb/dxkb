@@ -2,25 +2,15 @@ import { LazyResourceChildCollection } from "./lazy-tab-roots";
 import { sequenceFeatureColumns } from "@/lib/views/child-resources";
 import type { TaxonViewScope } from "./scope";
 
-// SFVT reads the `sequence_feature` core, which has a taxon_id field, and scopes
-// with eq(taxon_id,…) — same as legacy SFVTGrid. Features are stored only at the
-// curated species taxon_id (sub-species/strain leaves have zero rows), so a page
-// taxon must resolve to its curated species id.
-//
-// Most curated taxa map to themselves — those come from `sfvtTaxonIds` in
-// getCuratedLists() automatically. Only add an entry to `sfvtTaxonIdRemap` when
-// the landing taxon id differs from the species id where features are stored.
-// Verified counts (2026-07-17) via eq(taxon_id,<mapped>): Dengue 7630,
-// Monkeypox 1781, Influenza A 5696.
+// SFVT scopes with eq(taxon_id,…); features exist only at the curated species
+// taxon_id, so a page taxon must resolve to it. Only add a `sfvtTaxonIdRemap` entry
+// when the landing taxon id differs from the species id where features are stored.
 export const sfvtTaxonIdRemap: Record<number, number> = {
-  2955291: 11320, // Alphainfluenzavirus influenzae → Influenza A virus species
+  2955291: 11320,
 };
 
-// Match against the full lineage (not just taxonId) so a species/strain under a
-// curated taxon resolves to its ancestor's mapped id — mirrors how `hasSfvt`
-// gates on lineageIds. Curated membership is required before applying an explicit
-// remap; otherwise the curation policy could remove a cohort without hiding it.
-// First lineage hit wins.
+// Matched against the full lineage; curated membership is required before an explicit
+// remap, or curation could remove a cohort without hiding it. First hit wins.
 export function resolveSfvtTaxonId(
   lineageIds: readonly number[],
   sfvtTaxonIds: ReadonlySet<number>,
@@ -42,15 +32,13 @@ export function makeSfvtView({
     const lineages = scope.kind === "composite"
       ? scope.roots.map((root) => root.lineageIds)
       : [scope.taxon.lineageIds];
-    // Match hasSfvt's aggregate-root exception for the all-viruses scope.
     const taxonIds =
       scope.kind === "composite" && scope.roots.some((root) => root.taxonId === 10239)
         ? [...sfvtTaxonIds].map((id) => sfvtTaxonIdRemap[id] ?? id)
         : lineages
             .map((lineageIds) => resolveSfvtTaxonId(lineageIds, sfvtTaxonIds))
             .filter((id): id is number => id !== null);
-    // The tab gate normally guarantees at least one ID. Keep the guard so gate
-    // and curation drift cannot render the entire sequence_feature resource.
+    // Guard against gate and curation drift rendering the entire sequence_feature resource.
     if (taxonIds.length === 0) return null;
     const query = taxonIds.length === 1
       ? `eq(taxon_id,${String(taxonIds[0])})`

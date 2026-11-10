@@ -25,7 +25,6 @@ function wrapper({ children }: { children: React.ReactNode }) {
   return <ServiceDebuggingProvider>{children}</ServiceDebuggingProvider>;
 }
 
-// Renders a child that exposes the debugging setters via onReady.
 function DebugToggler({ onReady }: { onReady: (setters: DebugSetters) => void }) {
   const { setIsDebugMode, setContainerBuildId } = useServiceDebugging();
   React.useEffect(() => {

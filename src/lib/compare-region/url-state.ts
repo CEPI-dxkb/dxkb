@@ -1,10 +1,6 @@
 /**
- * The Compare Region Viewer's URL state: `compare.size`, `compare.genomes`,
- * `compare.method`, `compare.filter` and `compare.group` (the workspace path
- * a group filter compares against). `compare.` is a
- * `childCollectionUrlKeys` entry, so switching tabs clears these like any
- * tab-owned param. Defaults are omitted. Written with `replaceState` when the
- * user presses Update: a new setting is not a new page.
+ * `compare.` is a `childCollectionUrlKeys` entry, so switching tabs clears
+ * these like any tab-owned param.
  */
 import { replaceQuery, toQueryString } from "@/lib/url";
 import { featureHref } from "@/lib/views/hrefs";
@@ -24,7 +20,6 @@ const urlParams: Record<keyof CompareRegionSettings, string> = {
 
 const settingNames = Object.keys(urlParams) as (keyof CompareRegionSettings)[];
 
-/** The settings a URL carries; all defaults when any value is not offered. */
 export function parseCompareRegionUrlState(
   params: Pick<URLSearchParams, "get">,
 ): CompareRegionSettings {
@@ -51,11 +46,6 @@ export function writeCompareRegionUrlState(settings: CompareRegionSettings): voi
   });
 }
 
-/**
- * The Compare Region tab of `fid`'s Feature View, with `settings` (those that
- * differ from the defaults): the selection strip's "Compare regions" link, so
- * the next gene is compared the same way.
- */
 export function compareRegionHref(
   fid: string,
   settings: CompareRegionSettings,

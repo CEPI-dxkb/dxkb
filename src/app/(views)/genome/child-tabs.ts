@@ -20,15 +20,8 @@ interface GenomeChildCollection {
 }
 
 /**
- * Child resources shared by the Genome collection and Genome member tabs. Only the
- * RQL scope and keyword mode differ between the two pages, so resource identity,
- * label, id field, sort, columns and URL param prefix are defined once here. Each
- * `urlKey` is unique so two tabs never read one another's page or sort.
- *
- * `genome_feature`, `protein_feature` and `protein_structure` deliberately carry no
- * columns — ResourceChildCollection substitutes the resource's own collection profile
- * (columns, detail fields, facets and row links) and ignores any columns prop for
- * those three.
+ * `genome_feature`, `protein_feature` and `protein_structure` carry no columns:
+ * ResourceChildCollection substitutes the resource's own collection profile.
  */
 export const genomeChildCollections = {
   sequences: {
@@ -39,8 +32,8 @@ export const genomeChildCollections = {
     defaultSort: "sequence_id:asc",
     columns: genomeSequenceColumns,
   },
-  // Legacy FeatureGrid's and ProteinGrid's order, which marks no column as
-  // sorted: a genome's features run along each sequence from position 1.
+  // Legacy order: features run along each sequence from position 1, with no
+  // sorted column.
   features: {
     urlKey: "features",
     resource: "genome_feature",

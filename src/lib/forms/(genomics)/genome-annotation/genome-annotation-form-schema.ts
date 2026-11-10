@@ -1,6 +1,5 @@
 import { z } from "zod";
 
-// Base schema for genome annotation form
 export const baseGenomeAnnotationSchema = z.object({
   contigs: z.string().min(1, "Contigs must be provided"),
   recipe: z.enum(["default", "viral", "viral-lowvan", "phage"], {
@@ -13,7 +12,6 @@ export const baseGenomeAnnotationSchema = z.object({
   output_path: z.string().min(1, "Output path is required"),
 });
 
-// Complete form schema with refined validation for required taxonomy fields
 export const completeGenomeAnnotationSchema =
   baseGenomeAnnotationSchema.superRefine((data, ctx) => {
     if (data.scientific_name === null) {
@@ -32,12 +30,10 @@ export const completeGenomeAnnotationSchema =
     }
   });
 
-// Type inference for the complete form schema
 export type GenomeAnnotationFormData = z.infer<
   typeof completeGenomeAnnotationSchema
 >;
 
-// Default form values
 export const defaultGenomeAnnotationFormValues: GenomeAnnotationFormData = {
   contigs: "",
   recipe: "default",

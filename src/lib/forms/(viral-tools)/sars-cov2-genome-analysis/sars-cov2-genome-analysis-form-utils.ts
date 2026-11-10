@@ -6,14 +6,10 @@ import type { BuildLibraryResult } from "@/lib/forms/tanstack-library-selection"
 import { getPairedLibraryName, getSingleLibraryName } from "@/lib/forms/tanstack-library-selection";
 import type { Library } from "@/types/services";
 
-/** Toast-like interface for library error reporting (avoids coupling to sonner in utils) */
 export interface ToastLike {
   error: (message: string, opts?: { description?: string }) => void;
 }
 
-/**
- * Handle library add error: show "Duplicate library" with description for known messages, else show message as-is.
- */
 export function handleLibraryError(message: string, toast: ToastLike): void {
   if (
     message === "This paired library has already been added" ||
@@ -25,9 +21,6 @@ export function handleLibraryError(message: string, toast: ToastLike): void {
   toast.error(message);
 }
 
-/**
- * Build the (read1, read2, id) => BuildLibraryResult function for paired library add.
- */
 export function getPairedLibraryBuildFn(
   platform: SarsCov2Platform
 ): (read1: string, read2: string, id: string) => BuildLibraryResult {
@@ -42,9 +35,6 @@ export function getPairedLibraryBuildFn(
   });
 }
 
-/**
- * Build the (read) => BuildLibraryResult function for single library add.
- */
 export function getSingleLibraryBuildFn(
   platform: SarsCov2Platform | null
 ): (read: string) => BuildLibraryResult {
@@ -64,21 +54,14 @@ export function getSingleLibraryBuildFn(
   };
 }
 
-/** Default duplicate matcher for single library: same path and type single. */
 export function singleLibraryDuplicateMatcher(library: Library, read: string): boolean {
   return library.id === read && library.type === "single";
 }
 
-/**
- * Sanitize taxonomy name for output name (legacy: replace / ( ) | : with empty string)
- */
 export function sanitizeTaxonomyForOutputName(name: string): string {
   return name.replace(/\(|\)|\||\/|:/g, "").trim();
 }
 
-/**
- * Compute output name from scientific name + my label (legacy updateOutputName behavior)
- */
 export function computeOutputName(scientificName: string, myLabel: string): string {
   const parts: string[] = [];
   if (scientificName.trim()) {
@@ -90,9 +73,6 @@ export function computeOutputName(scientificName: string, myLabel: string): stri
   return parts.join(" ") || "";
 }
 
-/**
- * Transform SARS-CoV-2 Genome Analysis form data to API parameters (ComprehensiveSARS2Analysis)
- */
 export function transformSarsCov2GenomeAnalysisParams(
   data: SarsCov2GenomeAnalysisFormData
 ): Record<string, unknown> {

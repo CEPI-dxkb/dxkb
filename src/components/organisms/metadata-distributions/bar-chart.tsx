@@ -58,8 +58,6 @@ export function BarChart({
 
   const yTicks = yScale.ticks(4);
   const step = labelStep(yearData.length);
-  // A literal style object with static keys: the lint rule allows the
-  // runtime left/right/top, but not a style computed by a call.
   const tooltipPosition = chartTooltipStyle(
     tooltipLeft ?? 0,
     tooltipTop ?? 0,
@@ -106,9 +104,7 @@ export function BarChart({
                       fill="var(--chart-1)"
                       rx={2}
                       tabIndex={0}
-                      // SVG <rect> has no implicit ARIA role; graphics-symbol permits
-                      // aria-label without tripping axe aria-prohibited-attr on WebKit/Firefox.
-                      // A linked bar is a link, followed with Enter.
+                      // SVG <rect> has no implicit ARIA role; graphics-symbol permits aria-label without axe aria-prohibited-attr.
                       role={d.href ? "link" : "graphics-symbol"}
                       aria-label={label}
                       onKeyDown={linkKeyDown(d.href)}

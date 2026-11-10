@@ -27,9 +27,8 @@
   }
 }
 
-/* A Circular Viewer ring's marks as its data arrives: the mask circle they
-   show through is drawn clockwise from 12 o'clock (`pathLength` 1, so a dash
-   offset of 1 hides all of it and 0 none). */
+/* Mask circle drawn clockwise from 12 o'clock (`pathLength` 1, so dash offset 1
+   hides all of it). */
 @keyframes circular-track-sweep {
   from {
     stroke-dashoffset: 1;
@@ -39,7 +38,6 @@
   }
 }
 
-/* A Circular Viewer ring its eye button shows again. */
 @keyframes circular-track-fade-in {
   from {
     opacity: 0;
@@ -49,12 +47,8 @@
 @plugin "tailwindcss-animate";
 @custom-variant dark (&:is([data-theme$="-dark"] *));
 
-/* `hover:` skips disabled controls. Once they receive the pointer (for the
-   not-allowed cursor, see `:disabled` in the base layer), a disabled button
-   would otherwise take its variant's hover fill and look clickable. Same
-   media query as Tailwind's own; `:where()` keeps the specificity of a
-   plain `:hover`, so the variant's order against `aria-*` / `data-*` states
-   does not change. */
+/* Skips disabled controls so a disabled button does not take its variant's
+   hover fill; `:where()` keeps plain `:hover` specificity. */
 @custom-variant hover {
   @media (hover: hover) {
     &:hover:where(:not(:disabled)) {
@@ -63,7 +57,6 @@
   }
 }
 
-/* From shadcn's tailwind.css, which src/components/ui/command.tsx expects. */
 @utility no-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
@@ -73,12 +66,9 @@
   }
 }
 
-/* `truncate` that cuts the start ("…/folder/file.fa"), for a path whose end
-   matters most. An RTL box puts the overflow and ellipsis on the left; the
-   left-to-right marks keep the path itself LTR (without them its leading "/"
-   moves to the end). They are generated content, so copying the text skips
-   them, and they stand in for a `bdi` child, which leaves a gap after the
-   ellipsis in WebKit. Text that fits stays on the left. */
+/* Cuts the start of the text using an RTL box; the left-to-right marks keep the
+   path LTR and replace a `bdi` child, which leaves a gap after the ellipsis in
+   WebKit. */
 @utility truncate-start {
   overflow: hidden;
   text-overflow: ellipsis;
@@ -92,9 +82,6 @@
   }
 }
 
-/* Chart motion (metadata distributions). Each is a list of per-property
-   transitions or a keyframe shorthand, which the transition and animate
-   scales cannot express. */
 @utility animate-donut-legend-up {
   animation: donut-legend-up 0.4s 0.4s ease-out both;
 }
@@ -108,12 +95,9 @@
   }
 }
 
-/* A Circular Viewer ring its eye button hides or shows. The ring's `display`
-   attribute changes at once. Hiding is a transition, which `allow-discrete`
-   holds drawn until the fade ends (longhands, so a browser without
-   `transition-behavior` still hides it, at once). Showing is an animation,
-   which starts as the ring is displayed again: WebKit applies no
-   `@starting-style` to an SVG element. */
+/* Hiding is a transition (`allow-discrete` keeps the ring drawn until the fade
+   ends); showing is an animation, because WebKit applies no `@starting-style`
+   to an SVG element. */
 @utility animate-circular-track-toggle {
   transition-property: opacity, display;
   transition-duration: 200ms;
@@ -145,13 +129,9 @@
     opacity 160ms ease;
 }
 
-/* Transitions get no time at all rather than a token 0.01ms. Every element's
-   `transition-property` starts as `all`, so any nonzero duration here turned a
-   transition on for every property of every element: one theme switch started
-   about 6000 of them, and until the browser next drew, getComputedStyle (and
-   with it axe) still read the old theme's colors. CI's WebKit took over a
-   second to get there. Animations keep their 0.01ms, so `animationend` still
-   fires; one runs only where an `animation-name` is set. */
+/* Transitions get no time (not a token 0.01ms): any nonzero duration turns on a
+   transition for every property of every element, which left axe reading the
+   old theme's colors after a switch. */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -173,26 +153,14 @@
   --color-popover-foreground: var(--popover-foreground);
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
-  /* The hover fill of a primary surface (the default Button). Each theme
-     pulls --primary 15% toward its foreground (light) or background (dark),
-     so the fill darkens on hover and primary-foreground keeps its contrast,
-     where primary/80 would lighten it (3.03:1 in violet-light). Each theme
-     block declares --primary-hover last: Tailwind nests an
-     `@supports (color: color-mix(...))` after a color-mix() of var()s, and
-     the build then splits the block there and drops the `lab()` values of
-     every declaration after the split, leaving only their sRGB hex
-     fallbacks. src/__tests__/theme-token-order.test.ts enforces the order
-     in all six blocks. */
+  /* Each theme block must declare --primary-hover last: Tailwind nests an
+     `@supports` after a color-mix() of var()s and the build drops the `lab()`
+     values after the split. theme-token-order.test.ts enforces it. */
   --color-primary-hover: var(--primary-hover);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
-  /* The hover fill of a secondary surface (secondary and cta buttons,
-     secondary and count badges, the menu-item hover). Each theme moves
-     --secondary away from its secondary-foreground, so the text keeps at
-     least 4.5:1, where secondary/80 blends toward the page and lightened it
-     under near-white text (3.03:1 in bvbrc-light). A literal per theme, not
-     a color-mix(): see --color-primary-hover. src/__tests__/theme-contrast
-     .test.ts checks both fills in all six blocks. */
+  /* A literal per theme (not a color-mix(), see --color-primary-hover) that
+     keeps secondary-foreground at 4.5:1; theme-contrast.test.ts checks it. */
   --color-secondary-hover: var(--secondary-hover);
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
@@ -200,11 +168,6 @@
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
-  /* Status and emphasis colors. First-pass values are Tailwind palette
-     shades (light/dark): success green-600/green-400, warning
-     amber-700/amber-400, info blue-700/blue-400, link blue-600/blue-400,
-     highlight amber-400. Dark uses the 400 shade, as --destructive does, so
-     text on dark tints stays legible. Retheme them per theme with design. */
   --color-success: var(--success);
   --color-warning: var(--warning);
   --color-info: var(--info);
@@ -212,12 +175,7 @@
   --color-highlight: var(--highlight);
   --color-border: var(--border);
   --color-input: var(--input);
-  /* The fill of every disabled field (inputs, textareas, select triggers,
-     input groups), so a field you cannot edit reads the same everywhere.
-     Each theme sets a literal a step off both its card and its page: about
-     7% of the way to the foreground in light themes, 12% in dark ones
-     (where fields are darker than the card, so it sits above the card). A
-     literal rather than a color-mix(): see --color-primary-hover. */
+  /* A literal per theme, not a color-mix(): see --color-primary-hover. */
   --color-disabled: var(--disabled);
   --color-ring: var(--ring);
   --color-chart-1: var(--chart-1);
@@ -243,8 +201,7 @@
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
 
-  /* Sub-xs sizes. Font-size only (no paired line-height), so they render
-     exactly like the text-[11px] / text-[10px] classes they replace. */
+  /* Font-size only, no paired line-height. */
   --text-2xs: 0.6875rem;
   --text-3xs: 0.625rem;
 }
@@ -295,8 +252,8 @@
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
   --secondary-hover: oklch(0.758 0.155 37.18);
-  /* Keep last: see --color-primary-hover in globals.css;
-     src/__tests__/theme-token-order.test.ts fails if anything follows it. */
+  /* Keep last: see --color-primary-hover; theme-token-order.test.ts fails if
+     anything follows it. */
   --primary-hover: color-mix(in oklab, var(--primary) 85%, var(--foreground));
 }
 
@@ -312,17 +269,12 @@
   --primary: oklch(45.57% 0.137 266.75);
   --primary-foreground: oklch(0.985 0 0);
   --secondary: oklch(71.57% 0.182 37.18);
-  /* Dark text: the dark theme keeps the light-theme orange fill, where white
-     text is 2.6:1 and dark text 6.6:1. */
   --secondary-foreground: oklch(0.205 0 0);
   --muted: oklch(0.269 0 0);
-  /* Lifted from shadcn's 0.708 (6.9:1 on the card), at which the small
-     uppercase field labels and breadcrumbs read dim; 0.78 is 9.0:1 and still
-     sits well below the foreground. src/__tests__/theme-contrast.test.ts
+  /* Lifted from 0.708 so small labels do not read dim; theme-contrast.test.ts
      holds every dark theme's muted text to 7:1. */
   --muted-foreground: oklch(0.78 0 0);
   --accent: oklch(84.57% 0.167 84.87);
-  /* Dark text: the dark theme keeps the pale light-theme accent fill. */
   --accent-foreground: oklch(0.205 0 0);
   --destructive: oklch(0.704 0.191 22.216);
   --success: oklch(0.792 0.209 151.711);
@@ -353,27 +305,19 @@
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
   --secondary-hover: oklch(0.758 0.155 37.18);
-  /* Keep last: see --color-primary-hover in globals.css;
-     src/__tests__/theme-token-order.test.ts fails if anything follows it. */
+  /* Keep last: see --color-primary-hover; theme-token-order.test.ts fails if
+     anything follows it. */
   --primary-hover: color-mix(in oklab, var(--primary) 85%, var(--background));
 }
 
-/* The interaction graph's canvas surface (sigma-canvas.tsx), tinted like the
-   inputs beside it. A plain custom property, because the value is read at
-   runtime rather than through a utility. */
+/* A plain custom property because the value is read at runtime, not through a
+   utility. */
 [data-theme] {
   --graph-surface: color-mix(in oklab, var(--input) 30%, var(--card));
 }
 
-/* The geographic distribution map's color steps (geo-distribution/
-   color-scale.ts), one OKLCH ramp per accent at the accent's hue, with
-   lightness 0.09 apart so neighboring steps stay distinct (OKLab distance at
-   least 0.09). Light to dark on a light theme; a dark theme flips it, so few
-   genomes sit near the surface and the most stand out. "No data" is a neutral
-   gray midway between the second and third steps' lightness, set apart from
-   them by its lack of hue and from the map's surface by its lightness (at
-   least 0.08 from each). `color-scale.test.ts` checks every ramp's lightness
-   steps. */
+/* Light to dark on a light theme, flipped on a dark one, with lightness steps
+   0.09 apart (checked by `color-scale.test.ts`). */
 [data-geo-accent] {
   --geo-no-data: oklch(0.785 0 0);
 }
@@ -475,11 +419,8 @@
     @apply bg-background text-foreground antialiased;
   }
 
-  /* Every disabled control shows the not-allowed cursor. The ui controls no
-     longer set `disabled:pointer-events-none`, which hid any cursor, since a
-     natively disabled control ignores clicks without it. In the base layer,
-     so a utility at a call site (a non-sortable column header's
-     `disabled:cursor-default`) still wins. */
+  /* In the base layer so a call-site utility such as `disabled:cursor-default`
+     still wins. */
   :disabled {
     cursor: not-allowed;
   }
@@ -489,11 +430,9 @@
     font-family: var(--font-mono);
   }
 
-  /* JBrowse 5's embedded Genome Browser (src/components/genome-browser/).
-     MUI's ScopedCssBaseline wrapper sits between the component root and its
-     bounded grid without a height, so `height: "100%"` would let the view
-     spill its box; and preflight's `a { color: inherit }` leaves the feature
-     dialog's "Open Feature View" link looking like plain text. */
+  /* MUI's ScopedCssBaseline sits between the root and the bounded grid without
+     a height, so `height: "100%"` would spill; preflight's link color reset
+     makes the feature dialog's link look like plain text. */
   [data-slot="genome-browser"] .MuiScopedCssBaseline-root {
     height: 100%;
   }
@@ -503,7 +442,6 @@
   }
 }
 
-/* Themed scrollbars: use --muted-foreground so they match light/dark theme */
 .scrollbar-themed {
   scrollbar-width: thin;
   scrollbar-color: color-mix(in oklch, var(--muted-foreground) 25%, transparent)
@@ -576,7 +514,6 @@
   @apply bg-primary/20 rounded-md px-2 py-1 transition-all duration-200;
 }
 
-/* FAQ Page Styles */
 .section-content {
   @apply mb-12 grid grid-cols-[200px_1fr] gap-8;
 }
@@ -601,7 +538,6 @@
   @apply text-muted-foreground px-4 pt-2 pb-4;
 }
 
-/* Shared Card Grid Layout Styles */
 .card-container {
   @apply container mx-auto my-12 w-[90%] max-w-7xl space-y-12 py-8;
 }
@@ -622,7 +558,6 @@
   @apply grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4;
 }
 
-/* Shared Card Component Styles */
 .card-base {
   @apply bg-card border-border/50 flex h-full w-full flex-col overflow-hidden rounded-lg border shadow-sm transition-all duration-300 hover:shadow-md;
 }
@@ -691,22 +626,11 @@
   @apply bg-secondary/20;
 }
 
-/* The services layout's main area stacks three surfaces, darkest to
-   lightest, so every control stands out from what it sits on: the page, the
-   section cards, then the fields (`--background`, which the service-card-*
-   field classes below paint). The light themes' cards share the fields'
-   white, so there `--card` takes a tint of the foreground; anything portaled
-   to the body (dialogs, popovers) keeps the theme's card. Dark themes already
-   step up from page to card, so they only drop the page to `--background`.
-
-   The light themes' muted-foreground, link, destructive and warning text
-   only just clears 4.5:1 on white, so on the tinted surfaces each is pulled
-   a quarter of the way to the foreground (at least 4.68:1 on the page in
-   every light theme). Success text is lighter still (2.65-2.93:1 on the
-   card), so it is pulled 40% of the way: 5.04-6.87:1 on the card, and the
-   valid field border (`border-success`) clears 3:1 with it. The values are
-   derived here, on the theme element, because a custom property cannot mix
-   its own value where it is redefined. */
+/* Three surfaces, darkest to lightest: page, section cards, fields
+   (`--background`). Light themes' text colors are pulled toward the foreground
+   on the tinted surfaces to clear 4.5:1; the values are derived on the theme
+   element because a custom property cannot mix its own value where it is
+   redefined. */
 [data-theme] {
   --service-page: color-mix(in oklab, var(--foreground) 10%, var(--background));
   --service-card: color-mix(in oklab, var(--foreground) 4%, var(--background));
@@ -727,11 +651,8 @@
   --success: var(--service-success);
 }
 
-/* bvbrc-light's --background is a gray (oklch .9612), so its "white" fields
-   were gray and stood only 1.08:1 off the card. Inside the services layout
-   the fields' tier is white, as in the other light themes (1.21:1). The page
-   and card tiers do not move, because --service-page and --service-card are
-   derived on the theme element from the theme's own gray. */
+/* bvbrc-light's --background is gray, so the fields' tier is set to white here,
+   as in the other light themes. */
 [data-theme="bvbrc-light"] .service-surface {
   --background: oklch(1 0 0);
 }
@@ -740,9 +661,8 @@
   background-color: var(--background);
 }
 
-/* bvbrc-dark's --card equals its --background, so page, card and field were
-   one flat color. Its card takes the same 4% foreground tint as the light
-   themes' cards and so steps 1.10:1 above the page, as dxkb-dark's does. */
+/* bvbrc-dark's --card equals its --background, so its card takes the same 4%
+   foreground tint as the light themes' cards. */
 [data-theme="bvbrc-dark"] .service-surface {
   --card: var(--service-card);
 }
@@ -799,9 +719,8 @@
   @apply grid grid-cols-1 gap-4 md:grid-cols-2;
 }
 
-/* A radio sits 12px before its label, as BLAST's radios do. `gap` rather
-   than `space-x-2`: the margin stacked on a call site's own `gap-2` (16px)
-   and alone gave 8px. */
+/* `gap` rather than `space-x-2`: the margin stacked on a call site's own
+   `gap-2`. */
 .service-radio-group-item {
   @apply flex items-center justify-start gap-3;
 }
@@ -810,13 +729,8 @@
   @apply cursor-pointer;
 }
 
-/* The label of an enabled radio or checkbox shows the pointer, as the control
-   does: clicking either one toggles it, but a <label> has the default cursor
-   and the call sites (BLAST, similar-genome-finder, metagenomic-binning, ...)
-   left it that way. Base UI renders a control as a <span role> followed by a
-   hidden <input>, and the label is a later sibling of both, hence `~`. A
-   disabled control's label keeps the default cursor. No service page wraps a
-   control in its label. */
+/* The label is a later sibling of both the `<span role>` control and its hidden
+   `<input>`, hence `~`; a disabled control's label keeps the default cursor. */
 .service-surface
   :is([data-slot="radio-group-item"], [data-slot="checkbox"]):not([data-disabled], [aria-disabled="true"])
   ~ label {
@@ -831,10 +745,8 @@
   @apply flex items-center gap-2 text-lg font-semibold;
 }
 
-/* A read-library header (ServiceLibraryHeader): the label, a rule to the
-   add button, and the button. The rule is a `foreground/25` tint rather than
-   --border, which stood about 1.1:1 off the services card and all but
-   vanished; a 1px line needs more weight than the collapsible's border. */
+/* A `foreground/25` tint rather than --border, which all but vanishes on the
+   services card. */
 .service-library-header {
   @apply flex items-center gap-4;
 }
@@ -843,10 +755,6 @@
   @apply bg-foreground/25 h-px flex-1;
 }
 
-/* A collapsible section (Advanced Options and the like) reads as a control
-   rather than a field: its trigger is a full-width neutral bar, grayer than
-   the card so it cannot pass for a white input, which deepens on hover; the
-   panel opens below it on the card surface. */
 .service-collapsible-container {
   @apply bg-card border-foreground/15 w-full rounded-md border shadow-xs;
 }
@@ -855,7 +763,6 @@
   @apply flex w-full flex-row justify-between;
 }
 
-/* Smooth open/close animation for Base UI Collapsible Panel */
 [data-slot="collapsible-content"] {
   height: var(--collapsible-panel-height);
   overflow: hidden;
@@ -871,11 +778,9 @@
   @apply w-full space-y-4 p-4;
 }
 
-/* The bar's fill is a 6% foreground tint rather than `bg-muted/60`: muted
-   equals the card in violet-light and bvbrc-dark (1.00 and 1.01:1), where
-   the tint keeps at least 1.12:1 in every theme. `text-sm` is set here, not
-   inherited from a Card, so the free-standing triggers (viral-genome-tree,
-   gene-protein-tree) are 14px and 44px tall like the rest instead of 16/48. */
+/* A 6% foreground tint rather than `bg-muted/60` (muted equals the card in
+   violet-light and bvbrc-dark); `text-sm` is set here so free-standing triggers
+   are 14px and 44px tall like the rest. */
 .service-collapsible-trigger {
   @apply bg-foreground/6 hover:bg-foreground/10 focus-visible:ring-ring/50 flex w-full cursor-pointer items-center gap-1 rounded-md px-4 py-3 text-sm font-medium transition-colors outline-none focus-visible:ring-3 data-panel-open:rounded-b-none;
 }
@@ -884,10 +789,7 @@
   @apply h-full space-y-6;
 }
 
-/* Cells align to the top, so an error message grows only its own cell
-   instead of stretching the row and pushing the neighbour's input down. No
-   side inset: the labels line up with the collapsible trigger's text and
-   with the panels that do not use the grid. */
+/* Cells align to the top so an error grows only its own cell. */
 .service-card-content-grid {
   @apply grid grid-cols-1 items-start gap-4 md:grid-cols-2;
 }
@@ -896,10 +798,8 @@
   @apply space-y-0;
 }
 
-/* Side by side, the fields align to the top, so an error under one no
-   longer stretches its sibling and pushes that field's input down. Only from
-   `sm:`, because in the stacked column `items-start` would shrink a child
-   that lacks `w-full` to its content width. */
+/* Only from `sm:`, because in the stacked column `items-start` would shrink a
+   child that lacks `w-full`. */
 .service-card-row {
   @apply flex w-full flex-col gap-4 sm:flex-row sm:items-start md:gap-6;
 }
@@ -916,9 +816,6 @@
   @apply mt-4 flex flex-row justify-end gap-4;
 }
 
-/* The service fields' placeholders (input, number input, textarea, select)
-   sit darker than muted-foreground, so the hint stays readable on a white
-   field, while the typed value keeps the full foreground. */
 .service-card-input {
   @apply bg-background placeholder:text-foreground/75 w-full flex-1 text-sm transition-all duration-300;
 }
@@ -943,10 +840,8 @@
   @apply mb-2 block text-sm font-medium;
 }
 
-/* ServiceRequiredLabel: the label text and its "*" marker 4px apart.
-   `.service-card-label`'s unlayered `block` overrode Label's `flex`, so the
-   `required` variant's `gap-1` no longer applied and the marker touched the
-   text. This rule comes after it, so it wins at the same specificity. */
+/* `.service-card-label`'s unlayered `block` overrides Label's `flex`, so this
+   rule (later, same specificity) restores the `required` variant's gap. */
 .service-card-label-required {
   display: flex;
   align-items: center;
@@ -957,26 +852,18 @@
   @apply text-foreground/70 mb-2 block text-sm font-normal;
 }
 
-/* An invalid field's sub-label turns red, as its label does. The unlayered
-   `text-foreground/70` above beat FieldLabel's
-   `data-[error=true]:text-destructive` utility. */
+/* The unlayered `text-foreground/70` above would beat FieldLabel's
+   `data-[error=true]:text-destructive`. */
 .service-card-sublabel[data-error="true"] {
   color: var(--destructive);
 }
 
-/* A label that is a direct child of a field container already gets 8px
-   from the container's `gap-2`, so its own `mb-2` doubled the space to 16px
-   where every other label sits 8px above its field. Labels nested in a
-   header row (label plus tooltip) are not direct children and keep `mb-2`.
-   A read-library header centers its label on the row (with the rule and the
-   add button), where the margin lifted the label 4px off their midline. */
+/* A direct-child label already gets 8px from the container's `gap-2`, so `mb-2`
+   would double it; labels nested in a header row keep it. */
 :is([data-slot="form-item"], .service-card-row-item, .service-card-content-col, .service-library-header) > :is(.service-card-label, .service-card-sublabel) {
   margin-bottom: 0;
 }
 
-/* The "?" help icon is muted at rest and takes the full foreground on hover
-   (its own, or its trigger button's when the icon sits inside one), so it
-   reads as interactive, as the fields around it do. */
 .service-card-tooltip-icon {
   @apply text-muted-foreground h-4 w-4 transition-colors;
 }
@@ -986,12 +873,8 @@
   color: var(--foreground);
 }
 
-/* Transitions name the color and ring properties only. `transition-all`
-   also animated height and width, so every step of a drag on the resize
-   handle (and every line field-sizing added while typing) eased in over
-   300ms and the box trailed the pointer. The placeholder is prose, so it
-   drops the mono face the sequence itself uses and reads like the other
-   fields' placeholders. */
+/* Only color and ring transition: `transition-all` also animated height and
+   width, so the box trailed the pointer during a resize drag. */
 .service-card-textarea {
   @apply bg-background placeholder:text-foreground/75 placeholder:font-sans max-h-96 min-h-48 overflow-y-auto font-mono text-sm transition-[color,background-color,border-color,box-shadow] duration-300;
   overflow-x: auto;
@@ -1001,42 +884,31 @@
   white-space: pre-wrap;
 }
 
-/* No width here: ServiceSelectTrigger adds `w-full min-w-0` as utilities.
-   An unlayered `w-full` beat every call-site width (the genome-size unit's
-   `w-20` grew to 584px and squeezed its input to 0px), while a utility lets
-   tailwind-merge keep the call site's. `min-w-0` lets the trigger shrink in
-   a narrow column, so a long value line-clamps and the chip stays inside
-   the card. */
+/* No width here: an unlayered `w-full` would beat every call-site width, so
+   ServiceSelectTrigger adds `w-full min-w-0` as utilities that tailwind-merge
+   can override. */
 .service-card-select-trigger {
   @apply bg-background data-placeholder:text-foreground/75 transition-all duration-300;
 }
 
-/* Hovering a service field darkens its border and keeps its white fill.
-   The fill has no room to move between the field's white and the card's
-   tint (see .service-surface), and the gray fill the hover used to take
-   made the hovered field blend into the card. Focused, invalid, valid and
-   disabled fields keep their own border color. */
+/* The fill has no room to move between the field's white and the card's tint,
+   so hover darkens only the border; focused, invalid, valid and disabled fields
+   keep their own border color. */
 .service-card-input:hover:not(:focus-visible, :disabled, [aria-invalid="true"], .border-destructive, .border-success),
 .service-card-textarea:hover:not(:focus-visible, :disabled, [aria-invalid="true"], .border-success),
 .service-card-select-trigger:hover:not(:focus-visible, :disabled, [aria-invalid="true"]) {
   border-color: color-mix(in oklab, var(--muted-foreground) 70%, transparent);
 }
 
-/* A number input's stepper arrows are part of its field, so hovering any of
-   it (the input or an arrow) darkens the border all the way round, arrows
-   included; hovering the input alone used to stop the highlight at the
-   arrows' seam. Skipped while the input is focused, disabled or invalid,
-   which keep their own border, as above. */
+/* Hovering the input or an arrow darkens the border all the way round; skipped
+   while focused, disabled or invalid. */
 [data-slot="number-input"]:has(> .service-card-input):hover:not(:has(> .service-card-input:is(:focus-visible, :disabled, [aria-invalid="true"], .border-destructive, .border-success)))
   :is(.service-card-input, [data-slot="button"]) {
   border-color: color-mix(in oklab, var(--muted-foreground) 70%, transparent);
 }
 
-/* A disabled service field drops its white fill (the tier of the fields you
-   can edit) for the shared --disabled fill, a step off the card, so it no
-   longer melts into the card as the transparent fill it had did. This rule
-   is unlayered because the white `bg-background` above is too. Full opacity
-   with muted-foreground text keeps the value readable; the border stays. */
+/* Unlayered because the white `bg-background` above is too; muted-foreground
+   text keeps the value readable. */
 .service-card-input:disabled,
 .service-card-textarea:disabled,
 .service-card-select-trigger:disabled {
@@ -1045,19 +917,15 @@
   color: var(--muted-foreground);
 }
 
-/* A disabled select's chevron chip (the trigger's `aria-hidden` span; the
-   plain chevron is an svg) goes muted too. With the trigger at full opacity,
-   the primary chip kept its active look (solid primary in the dark themes)
-   and still deepened on hover; this unlayered rule also beats the chip's
-   `group-hover` utilities, so it no longer reacts. */
+/* Unlayered so it also beats the chip's `group-hover` utilities, so a disabled
+   chip no longer reacts. */
 .service-card-select-trigger:disabled > span[aria-hidden="true"] {
   background-color: color-mix(in oklab, var(--muted-foreground) 15%, transparent);
   color: var(--muted-foreground);
 }
 
-/* Outline buttons (Reset, the folder browser) hover the same way in the
-   light services layout. Their own hover fill, --muted, is the tinted page's
-   color, so a hovered Reset button vanished into the page. */
+/* Their own hover fill, --muted, is the tinted page's color, so a hovered Reset
+   button would vanish. */
 [data-theme$="-light"] .service-surface [data-slot="button"][data-variant="outline"]:hover:not(:disabled, :focus-visible) {
   background-color: var(--background);
   border-color: color-mix(in oklab, var(--muted-foreground) 70%, transparent);
@@ -1091,7 +959,6 @@
   @apply mx-auto w-full max-w-2xl px-4 py-8;
 }
 
-/* Accordion Animations (Base UI: data-open / data-closed, --accordion-panel-height) */
 [data-slot="accordion-content"] {
   overflow: hidden;
 }
@@ -1129,18 +996,9 @@
   z-index: 10;
 }
 
-/* Taxonomy rank badges (the Rank column of the taxonomy tree). This is the one
-   place to theme ranks: the Badge sets data-rank={rank} and these rules color
-   it. They sit outside any @layer so they beat the outline variant's
-   border-border / text-foreground utilities. Each rank tints the badge with
-   one of the theme's categorical chart-* colors and keeps foreground text, so
-   the label holds its contrast whatever the chart color's lightness. The
-   slots are picked so a rank's hue sits well apart from the ranks above and
-   below it in every theme's chart palette; a sub-, super- or infra- rank
-   shares its parent's hue. Only "no rank" is neutral gray. A rank with no rule
-   of its own (BV-BRC's `clade`, or one added later) takes chart-5, which no
-   named rank uses; that default must stay first.
-   src/__tests__/rank-badge-colors.test.ts keeps gray to "no rank". */
+/* Unlayered to beat the outline variant's utilities. A rank with no rule takes
+   chart-5, which no named rank uses, so that default must stay first;
+   rank-badge-colors.test.ts keeps gray to "no rank". */
 [data-slot="badge"][data-rank] {
   @apply border-chart-5/50 bg-chart-5/15 text-foreground;
 }
@@ -1198,8 +1056,7 @@
   @apply border-chart-7/50 bg-chart-7/15 text-foreground;
 }
 
-/* Species groups sit between genus and species in the tree, so they take a
-   hue apart from both; it repeats order's, three levels up. */
+/* Hue apart from genus and species; repeats order's. */
 [data-slot="badge"][data-rank="species group"],
 [data-slot="badge"][data-rank="species subgroup"] {
   @apply border-chart-4/50 bg-chart-4/15 text-foreground;

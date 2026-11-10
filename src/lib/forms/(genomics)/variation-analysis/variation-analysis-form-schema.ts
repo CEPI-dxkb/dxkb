@@ -2,26 +2,22 @@ import { z } from "zod";
 
 const outputNameInvalidChars = /[\\/]/;
 
-// Library types for variation analysis (same as genome assembly)
 export const variationLibrarySchema = z.object({
   _id: z.string(),
   _type: z.enum(["paired", "single", "srr_accession"]),
-  read: z.string().optional(), // for single
-  read1: z.string().optional(), // for paired
-  read2: z.string().optional(), // for paired
+  read: z.string().optional(),
+  read1: z.string().optional(),
+  read2: z.string().optional(),
 });
 
 export type VariationLibraryItem = z.infer<typeof variationLibrarySchema>;
 
-// Main form schema
 export const variationAnalysisFormSchema = z
   .object({
-    // Libraries (required at least one)
     paired_end_libs: z.array(variationLibrarySchema).optional(),
     single_end_libs: z.array(variationLibrarySchema).optional(),
     srr_ids: z.array(z.string()).optional(),
 
-    // Required parameters
     reference_genome_id: z.string().min(1, "Target genome is required"),
     mapper: z.enum(["BWA-mem", "BWA-mem-strict", "Bowtie2", "LAST", "minimap2"], {
       error: "Aligner must be selected",
@@ -39,7 +35,6 @@ export const variationAnalysisFormSchema = z
   })
   .refine(
     (data) => {
-      // At least one library source must be provided
       const hasPaired = data.paired_end_libs && data.paired_end_libs.length > 0;
       const hasSingle = data.single_end_libs && data.single_end_libs.length > 0;
       const hasSrr = data.srr_ids && data.srr_ids.length > 0;
@@ -53,7 +48,6 @@ export const variationAnalysisFormSchema = z
 
 export type VariationAnalysisFormData = z.infer<typeof variationAnalysisFormSchema>;
 
-// Default form values
 export const defaultVariationAnalysisFormValues: VariationAnalysisFormData = {
   paired_end_libs: [],
   single_end_libs: [],

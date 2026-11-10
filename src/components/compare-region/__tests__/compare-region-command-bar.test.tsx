@@ -12,9 +12,7 @@ import type { ZoomControls } from "../compare-region-zoom-controls";
 import { useCompareRegionSettings } from "../use-compare-region-settings";
 
 // The real selector reads the session and searches the workspace (MSW is
-// strict). The stub is an input the bar's "Genome group" / "Feature group"
-// label names through `id`, and typing a path picks it. Like the real one,
-// it keeps its own text, which only a fresh mount starts over.
+// strict); this stub keeps its own text, which only a fresh mount starts over.
 vi.mock("@/components/workspace/workspace-object-selector", async () => {
   const { useState } = await vi.importActual<typeof import("react")>("react");
   return {
@@ -55,7 +53,6 @@ interface BarProps extends Partial<Omit<CommandBarProps, "settings">> {
   onApply?: (settings: CompareRegionSettings) => void;
 }
 
-/** The bar over the real draft hook, as the panel will mount it. */
 function Bar({
   applied = defaultCompareRegionSettings,
   onApply = () => undefined,
@@ -76,10 +73,7 @@ function Bar({
   );
 }
 
-/**
- * Renders the bar, then lets Base UI's slider thumb measure itself (it does
- * so in a microtask after mount) inside act.
- */
+/** Lets Base UI's slider thumb measure itself (a microtask after mount) inside act. */
 async function renderBar(props: BarProps = {}) {
   const result = render(<Bar {...props} />);
   await act(() => Promise.resolve());
@@ -131,7 +125,7 @@ describe("CommandBar", () => {
   it("sets the unpressed method in text that reads at 4.5:1 on the muted pill", async () => {
     await renderBar();
     // `muted-foreground` on `muted` is 3.7:1 in the light themes;
-    // `foreground/70` clears 4.5:1 in all six (theme-contrast.test.ts).
+    // `foreground/70` clears 4.5:1 in all six.
     const unpressed = screen.getByRole("button", { name: "PLfam" });
     expect(unpressed).toHaveClass("text-foreground/70", "hover:text-foreground");
     expect(unpressed).not.toHaveClass("text-muted-foreground");
@@ -157,7 +151,6 @@ describe("CommandBar", () => {
   it("cannot apply a group source while signed out, only a public one", async () => {
     const user = userEvent.setup();
     const onApply = vi.fn<(settings: CompareRegionSettings) => void>();
-    // A group URL opened signed out (or the session ran out).
     await renderBar({
       signedIn: false,
       onApply,
@@ -226,7 +219,6 @@ describe("CommandBar", () => {
       await screen.findByRole("menuitemradio", { name: "Selected feature group" }),
     );
 
-    // A fresh selector: the genome group's text does not carry over.
     const picker = await screen.findByLabelText("Feature group");
     expect(picker).toHaveAttribute("placeholder", "Choose a feature group…");
     expect(picker).toHaveValue("");
@@ -235,7 +227,6 @@ describe("CommandBar", () => {
       "Genomes: Selected feature group",
     );
 
-    // Back again, the genome group's selector opens on its own pick.
     await user.click(genomesTrigger());
     await user.click(
       await screen.findByRole("menuitemradio", { name: "Selected genome group" }),
@@ -270,7 +261,7 @@ describe("CommandBar", () => {
       expect(screen.getByRole("button", { name })).toBeDisabled();
     }
     // Base UI hides an edge-aligned thumb until it is measured, which jsdom
-    // never does, and a hidden element computes no name: find the only slider.
+    // never does: find the only slider.
     expect(screen.getByRole("slider", { hidden: true })).toBeDisabled();
   });
 
@@ -328,7 +319,6 @@ describe("CommandBar", () => {
       slider.focus();
     });
 
-    // The slider's 0–100 runs over log(zoom): 100 is 20×, 0 is 1×, from 2×.
     await user.keyboard("{End}");
     expect(zoom.zoomBy).toHaveBeenLastCalledWith(20 ** (100 / 100) / 2);
     await user.keyboard("{Home}");
@@ -344,7 +334,6 @@ describe("CommandBar", () => {
     };
     const { rerender } = await renderBar({ applied });
     expect(genomesTrigger()).toHaveAccessibleName("Genomes: Genome group: G1");
-    // A change first, so Update is disabled by `busy` and not for want of one.
     await user.click(screen.getByRole("combobox", { name: "Number of genomes" }));
     await user.click(await screen.findByRole("option", { name: "20 genomes" }));
     expect(screen.getByRole("button", { name: "Update" })).toBeEnabled();

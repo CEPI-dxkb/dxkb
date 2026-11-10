@@ -37,11 +37,9 @@ export type CopilotTurnExtra = Omit<
   CopilotSendOptions,
   "sessionId" | "query" | "model" | "pageContext" | "storedCount"
 > & {
-  /** The model for this question only (one that reads its images). */
   model?: string;
 };
 
-/** The newest plan in a session; only it runs or changes. */
 export function newestCopilotPlan(
   detail: CopilotSessionDetail | undefined,
 ): { messageId: string; plan: CopilotPlan } | null {
@@ -55,17 +53,12 @@ export function newestCopilotPlan(
   return null;
 }
 
-/** The most step turns one run sends: the editor's cap on a plan's steps. */
 const maxPlanTurns = 30;
 
-/** Why a send did not start while another turn holds this tab. */
 const copilotBusyMessage =
   `${copilotName} is still finishing the last answer. Try again in a moment.`;
 
-/**
- * What became of a question the user typed. `message` says why it was not
- * sent, when that is known (a plan step reply's failures toast their own).
- */
+/** `message` says why it was not sent, when known. */
 export interface CopilotQuestionResult {
   sent: boolean;
   message: string | null;
@@ -75,11 +68,6 @@ function errorText(error: unknown): string | undefined {
   return error instanceof Error ? error.message : undefined;
 }
 
-/**
- * Sending turns for a panel, and what its cards do. A running plan keeps
- * going when the panel closes or changes surface: everything here reads the
- * session from the query cache, not from the render that started it.
- */
 export function useCopilotActions({
   copilot,
   sessionId,
@@ -95,12 +83,10 @@ export function useCopilotActions({
   const storedSession = (id: string) =>
     queryClient.getQueryData<CopilotSessionDetail>(copilotQueryKeys.session(id));
 
-  /** Reads the open session again without waiting for it. */
   const reloadInBackground = () => {
     if (sessionId) void reloadCopilotSession(queryClient, sessionId);
   };
 
-  /** Sends a turn in the open session. */
   const sendTurn = async (
     query: string,
     extra: CopilotTurnExtra = {},
@@ -122,29 +108,20 @@ export function useCopilotActions({
       ...options,
     });
     if (result.status === "busy") {
-      // Another turn here holds the tab, or the last one is still being read
-      // back; nothing about the stored session changed.
       toast.info(copilotBusyMessage);
     } else if (result.status === "refused") {
-      // The stored session shows what actually happened (a card another tab
-      // answered, a turn already running).
       reloadInBackground();
     }
     return result;
   };
 
-  /** The stored plan, as the session in the cache has it now. */
   const storedPlan = (planId: string): CopilotPlan | null => {
     if (!sessionId) return null;
     const newest = newestCopilotPlan(storedSession(sessionId));
     return newest?.plan.planId === planId ? newest.plan : null;
   };
 
-  /**
-   * Saves a plan and reloads the session. False (with a toast) unless both
-   * worked: callers decide from the stored plan, which a failed reload leaves
-   * as it was before the save.
-   */
+  /** False (with a toast) unless the save and the reload both worked. */
   const savePlan = async (
     plan: CopilotPlan,
     changes: Parameters<typeof copilotPlanObject>[1],
@@ -167,12 +144,7 @@ export function useCopilotActions({
     return true;
   };
 
-  /**
-   * Saves the jobs a turn submitted for a plan as what the plan waits for.
-   * Resolves to whether the turn submitted any: the plan then stops, saved
-   * or not (a failed save toasts, and the card offers to go on), and can be
-   * continued once the jobs finish.
-   */
+  /** Resolves to whether the turn submitted any jobs; the plan then stops even if saving them failed. */
   const waitForSubmittedJobs = async (
     planId: string,
     turn: CopilotTurn,
@@ -191,15 +163,8 @@ export function useCopilotActions({
   };
 
   /**
-   * Runs plan steps from `stepIndex` until the plan stops: a step fails,
-   * asks, waits for approval or for jobs, reports no result, the user pauses
-   * it, every step is done, or `maxPlanTurns` turns were sent. `first` replaces the first step's hidden
-   * question (a reply to the step's question, shown as the user's message).
-   * Resolves, when the plan stops, to whether its first step was sent at all.
-   *
-   * The next step is carried by id, so a plan edited in another tab between
-   * turns cannot shift which step runs, and each turn is decided from the
-   * session `send` read back after it.
+   * Resolves to whether the first step was sent. The next step is carried by id, so a plan edited
+   * in another tab cannot shift which step runs.
    */
   const runPlan = async (
     planId: string,
@@ -212,8 +177,6 @@ export function useCopilotActions({
     for (let turn = 0; turn < maxPlanTurns; turn += 1) {
       const plan = storedPlan(planId);
       if (!plan) return sent;
-      // The caller's index is read from this same stored plan; later steps
-      // are found by id, as the plan may have changed during the turn.
       const index =
         turn === 0
           ? stepIndex >= 0 && stepIndex < plan.steps.length
@@ -221,9 +184,8 @@ export function useCopilotActions({
             : -1
           : plan.steps.findIndex((candidate) => candidate.stepId === nextStepId);
       if (index === -1) return sent;
-      // Only the first turn may re-run a step (a retry, or a reply to its
-      // question). A later one that resolves to a settled step means its id
-      // is not unique, and the step would run again.
+      // Only the first turn may re-run a step; a later one resolving to a settled step means its id
+      // is not unique.
       if (turn > 0 && plan.steps[index].status !== "pending") return sent;
       const sentStepId = plan.steps[index].stepId;
       const result = await sendTurn(step?.query ?? planStepQuery(plan, index), {
@@ -241,7 +203,6 @@ export function useCopilotActions({
       if (result.status !== "sent") return sent;
       sent = true;
       if (result.ended !== "done") return sent;
-      // The stored plan is still the one from before the step.
       if (result.reloadError !== null) {
         toast.error("The plan stopped: the chat could not be reloaded", {
           description: result.reloadError,
@@ -272,7 +233,6 @@ export function useCopilotActions({
     return sent;
   };
 
-  /** Goes on with a plan from wherever it stopped, if it can. */
   const continueStored = async (planId: string) => {
     let plan = storedPlan(planId);
     if (!plan) return;
@@ -289,7 +249,6 @@ export function useCopilotActions({
     if (state.kind === "ready") await runPlan(planId, state.stepIndex);
   };
 
-  /** The question a card's answer belongs to: the user message before it. */
   const questionBefore = (messageId: string): string => {
     const messages = (sessionId && storedSession(sessionId)?.messages) || [];
     const index = messages.findIndex((message) => message.id === messageId);
@@ -301,7 +260,6 @@ export function useCopilotActions({
     );
   };
 
-  /** Shows a card as answered before the stored session says so. */
   const markAnswered = (messageId: string, answered: Record<string, unknown>) => {
     if (!sessionId) return;
     queryClient.setQueryData<CopilotSessionDetail>(
@@ -327,10 +285,6 @@ export function useCopilotActions({
     );
   };
 
-  /**
-   * The plan step waiting for a typed reply (it asked a question), or null.
-   * A reply in the box then re-runs that step with it.
-   */
   const stepAwaitingReply = (): { planId: string; stepIndex: number } | null => {
     if (!sessionId) return null;
     const newest = newestCopilotPlan(storedSession(sessionId));
@@ -342,7 +296,6 @@ export function useCopilotActions({
       : null;
   };
 
-  /** Sends what the user typed: a question, or a plan step's reply. */
   const sendQuestion = async (
     query: string,
     extra: CopilotTurnExtra = {},
@@ -403,14 +356,12 @@ export function useCopilotActions({
       });
       if (result.status !== "sent") return false;
       if (result.ended !== "done") {
-        // The stored card says whether the gateway took the answer.
         reloadInBackground();
         return false;
       }
       markAnswered(messageId, { answer: "yes" });
       if (result.reloadError !== null) {
-        // The cached plan is from before the turn; going on from it could
-        // start the wrong step.
+        // The cached plan predates the turn; going on from it could start the wrong step.
         if (card.planId) {
           toast.error("The plan stopped: the chat could not be reloaded", {
             description: result.reloadError,
@@ -419,8 +370,7 @@ export function useCopilotActions({
         return true;
       }
       if (card.planId) {
-        // Jobs the approval submitted: the plan waits for them, as after a
-        // step that submitted jobs (going on would clear that wait).
+        // Jobs the approval submitted: the plan waits for them (going on would clear that wait).
         if (await waitForSubmittedJobs(card.planId, result.turn)) return true;
         if (!chat.isPlanPaused(card.planId)) void continueStored(card.planId);
       }

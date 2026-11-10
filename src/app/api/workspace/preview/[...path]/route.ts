@@ -6,20 +6,10 @@ import {
   workspaceFileHeaders,
 } from "../../resolve-download";
 
-const defaultMaxBytes = 2 * 1024 * 1024; // 2 MB default
-const maxBytesCap = 10 * 1024 * 1024; // 10 MB server-enforced cap (matches client previewMaxBytes)
+const defaultMaxBytes = 2 * 1024 * 1024;
+const maxBytesCap = 10 * 1024 * 1024; // matches client previewMaxBytes
 
-/**
- * Workspace file preview proxy route.
- * Like the view route, but reads only the first N bytes (rounded down to the
- * last newline) so that large files never blow up the client.
- *
- * Query params:
- *   ?maxBytes=N  — requested byte limit (default 2 MB, capped at 10 MB)
- *
- * Response headers:
- *   X-Truncated: true  — set when the response was truncated
- */
+/** Like the view route, but reads only the first `?maxBytes=N` bytes (rounded down to the last newline) and sets `X-Truncated: true` when cut. */
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ path?: string[] }> },
@@ -39,7 +29,6 @@ export async function GET(
 
     const { shockResponse, filename, contentType } = result;
 
-    // Check if the file is small enough to return in full
     const contentLength = shockResponse.headers.get("Content-Length");
     const fileSize = contentLength ? Number(contentLength) : null;
 
@@ -52,7 +41,6 @@ export async function GET(
       return new NextResponse(shockResponse.body, { status: 200, headers });
     }
 
-    // Large file — read only the first maxBytes, rounding down to the last newline
     const reader = shockResponse.body?.getReader();
     if (!reader) {
       return NextResponse.json(
@@ -92,15 +80,13 @@ export async function GET(
       });
     }
 
-    // Blob combines the chunks without mutating a response buffer in this GET handler.
     const combined = new Uint8Array(
       await new Blob(chunks as BlobPart[]).arrayBuffer(),
     );
 
-    // If truncated, round down to the last newline for clean line breaks
     let finalBytes = combined;
     if (truncated) {
-      const newlineCode = 0x0a; // \n
+      const newlineCode = 0x0a;
       let lastNewline = -1;
       for (let i = combined.length - 1; i >= 0; i--) {
         if (combined[i] === newlineCode) {

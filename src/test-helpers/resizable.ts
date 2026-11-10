@@ -1,13 +1,6 @@
 import { act, fireEvent } from "@testing-library/react";
 
-/**
- * jsdom has no layout engine. Stub ResizeObserver and give every element a non-zero
- * size so the real react-resizable-panels layout arithmetic runs. Call once per file.
- *
- * The library sizes a group as the sum of its panels' stubbed sizes, so a two-panel
- * group is 2 × `size`. Pick `size` so no panel's minSize/maxSize clamps the split
- * you assert.
- */
+/** jsdom has no layout: stub ResizeObserver and element sizes so the real panel arithmetic runs; a group is 2 × `size`, so pick one no minSize/maxSize clamps. */
 export function stubResizableGeometry(size = 500) {
   const original = {
     width: Object.getOwnPropertyDescriptor(HTMLElement.prototype, "offsetWidth"),
@@ -34,17 +27,13 @@ export function stubResizableGeometry(size = 500) {
   });
 }
 
-/**
- * The split the group actually rendered: inline flex-grow per panel, in DOM order.
- * Pass `root` to read markup that is not mounted, such as `renderToString` output.
- */
+/** The inline flex-grow per panel in DOM order; pass `root` for markup that is not mounted. */
 export function panelShares(root: ParentNode = document) {
   return [...root.querySelectorAll("[data-panel]")].map(
     (panel) => (panel as HTMLElement).style.flexGrow,
   );
 }
 
-/** A real, user-attributed resize through the separator's own keyboard handler (5% per step). */
 export function pressOnSeparator(key: string, index = 0) {
   const separator = document.querySelectorAll("[data-slot='resizable-handle']")[
     index

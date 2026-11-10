@@ -37,10 +37,7 @@ describe("readUiPreferences", () => {
   });
 });
 
-// The root layout (a Server Component) reaches definitions.ts via server.ts ->
-// schemas.ts, and only provider.tsx imports cookie.ts. A value exported from a "use client" module reaches server code as a client reference, so
-// the cookie read came back undefined on every request. That regression otherwise
-// shows up only as a three-minute webServer timeout in e2e.
+// A "use client" module's exports reach server code as client references, so definitions.ts and cookie.ts must stay directive-free.
 describe("preference modules server code imports", () => {
   it("keeps the client directive out of definitions.ts and cookie.ts", () => {
     expect(hasUseClientDirective("definitions.ts")).toBe(false);

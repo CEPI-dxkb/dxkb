@@ -71,8 +71,6 @@ describe("typed RQL", () => {
   });
 
   it("validates the Strain Genome relationship target", () => {
-    // A strain lists its genomes in the multi-valued genome_ids; the Data API
-    // answers a bare genome(...) on strain with HTTP 400.
     expect(
       validateRql(
         "strain",
@@ -169,19 +167,16 @@ describe("typed RQL", () => {
       expect(() => parseRql("genome", rql)).toThrow(/1 to 500 values/);
     });
 
-    // splitArguments("") returns [""] (it always emits at least one part),
-    // so an empty in(...) argument list used to be indistinguishable from a
-    // single empty-string value and would pass the "at least one value"
-    // check below with a phantom "" entry.
+    // `splitArguments("")` returns [""], so an empty in(...) must not pass the
+    // "at least one value" check with a phantom empty value.
     it("rejects an empty argument list on a string field", () => {
       expect(() => parseRql("genome", "in(genome_id,())")).toThrow(
         /1 to 500 values/,
       );
     });
 
-    // On a numeric field the same phantom "" value was worse: coerceValue
-    // calls Number(""), which is 0 (not NaN), so in(genome_length,()) used
-    // to silently become in(genome_length,(0)) instead of being rejected.
+    // `coerceValue` turns the phantom "" into 0 (Number("")), so it would
+    // silently become in(genome_length,(0)).
     it("rejects an empty argument list on a numeric field", () => {
       expect(() => parseRql("genome", "in(genome_length,())")).toThrow(
         /1 to 500 values/,
@@ -194,19 +189,14 @@ describe("typed RQL", () => {
       );
     });
 
-    // A blank slot embedded between commas survives splitArguments as an
-    // unquoted "" element rather than reducing the argument count, so the
-    // "at least one value" length check alone can't catch it — a 3-element
-    // list with a hole in the middle still has length 3.
+    // A blank slot between commas survives splitArguments as an unquoted ""
+    // element, so the length check alone cannot catch it.
     it("rejects an embedded blank element on a string field", () => {
       expect(() => parseRql("genome", "in(genome_id,(1.1,,2.2))")).toThrow(
         /1 to 500 values/,
       );
     });
 
-    // The numeric case the brief calls out explicitly: without this check,
-    // coerceValue's Number("") for the phantom blank slot is 0 (not NaN), so
-    // in(genome_length,(1,,3)) would silently become [1, 0, 3].
     it("rejects an embedded blank element on a numeric field", () => {
       expect(() => parseRql("genome", "in(genome_length,(1,,3))")).toThrow(
         /1 to 500 values/,
@@ -225,11 +215,8 @@ describe("typed RQL", () => {
       );
     });
 
-    // Documented contract: a *quoted* empty string is a deliberate value,
-    // not an empty list — consistent with decodeValue() elsewhere in this
-    // parser, where eq(field,"") already decodes to the empty string rather
-    // than being rejected. Only a bare, unquoted empty interior means "no
-    // values".
+    // A quoted empty string is a deliberate value, not an empty list, as in
+    // decodeValue().
     it("treats a quoted empty string as one explicit value, not an empty list", () => {
       expect(parseRql("genome", 'in(genome_id,(""))')).toEqual({
         operator: "in",
@@ -238,9 +225,6 @@ describe("typed RQL", () => {
       });
     });
 
-    // The embedded-blank rejection above must not over-reject: a quoted
-    // empty string mixed in with real values is a 2-character `""` token,
-    // never the bare "" the rejection targets, so it survives untouched.
     it("keeps a quoted empty string when mixed with other values", () => {
       expect(parseRql("genome", 'in(genome_id,(1.1,"",2.2))')).toEqual({
         operator: "in",
@@ -274,8 +258,6 @@ describe("typed RQL", () => {
 
 describe("keywordClauses", () => {
   it("sends one clause per word, as legacy BV-BRC's search box does", () => {
-    // Legacy's searchToQuery turns "coli Salmonella" into
-    // and(keyword(coli),keyword(Salmonella)): every word, in any order.
     expect(keywordClauses(" coli  Salmonella ", "exact")).toEqual([
       "keyword(coli)",
       "keyword(Salmonella)",
@@ -288,8 +270,6 @@ describe("keywordClauses", () => {
   });
 
   it("keeps a quoted word's quotes through RQL validation", () => {
-    // keyword("Rv0001") matches 4 features where keyword(Rv0001) matches
-    // 341,272, so the quotes must reach the Data API.
     expect(keywordClauses('"Rv0001"', "exact")).toEqual([
       "keyword(%22Rv0001%22)",
     ]);
@@ -298,9 +278,6 @@ describe("keywordClauses", () => {
     );
   });
 
-  // Legacy's search box sends a typed "DNA polymerase" as one quoted clause,
-  // keyword("DNA polymerase"): 17 genomes, where the quote characters split
-  // onto two words find none.
   it.each([
     ["a quoted phrase", '"DNA polymerase"', "exact", ["keyword(%22DNA%20polymerase%22)"]],
     [
@@ -333,8 +310,6 @@ describe("keywordClauses", () => {
     expect(keywordClauses(keyword, mode)).toEqual(expected);
   });
 
-  // `keywordQuery` reads the operators and the syntax; each of these sent one
-  // clause per word would be a Solr SyntaxError.
   it.each([
     [
       "Solr's NOT",
@@ -362,11 +337,7 @@ describe("keywordClauses", () => {
 });
 
 describe("validateRql keyword values", () => {
-  // The Data API matches keyword() text as written: unquoted words are ANDed
-  // in any order (keyword(coli Salmonella) finds 1,933 genomes, like
-  // and(keyword(coli),keyword(Salmonella))), and only quotes make a phrase
-  // (29 genomes) or an exact token (keyword("Rv0001"): 4 features against
-  // 341,272). Validation must keep that text, not re-quote or unquote it.
+  // Validation must keep keyword text as written, not re-quote or unquote it.
   it.each([
     ["unquoted words", "keyword(coli Salmonella)", "keyword(coli%20Salmonella)"],
     [

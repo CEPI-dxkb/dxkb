@@ -94,7 +94,6 @@ describe("AppService", () => {
   });
 
   describe("fetchJobOutput", () => {
-    // Not the production host: the output endpoint must follow APP_SERVICE_URL.
     const appServiceUrl = "https://app.example.test/services/app_service";
 
     beforeEach(() => {
@@ -211,8 +210,7 @@ describe("AppService", () => {
       );
     });
 
-    // MSW does not tie the request signal to a mocked body, so the stream
-    // errors the way undici's does when the budget fires or the socket drops.
+    // MSW does not tie the request signal to a mocked body, so the stream errors like undici's when the budget fires.
     function cutShort(error: Error): HttpResponse<ReadableStream> {
       return new HttpResponse(
         new ReadableStream({

@@ -4,33 +4,18 @@ import { downloadNonceCookie, type DownloadRequest } from "./downloads";
 import type { DataResource } from "./types";
 
 /**
- * The native download path: a hidden form POSTs the request to the same-origin
- * gateway into a hidden iframe, so the browser's download manager streams the
- * attachment straight to disk, as legacy BV-BRC does, and no `Blob` holds a
- * multi-gigabyte file in the tab. `DataRepository.download()` is the buffered
- * path for everything up to `maxBufferedDownloadRows` that is not whole
- * contigs; `useCollectionDownload` picks between the two (`usesNativeDownload`).
- *
- * A form cannot read its response, so two side channels report back:
- *
- * - **Started.** The gateway echoes the request's random nonce in the
- *   `dxkb-download` cookie on its success headers. The cookie appearing means
- *   the browser has the file; it is polled every 500 ms.
- * - **Failed.** An error is answered as text into the same-origin iframe,
- *   where its `{error}` message is read back and thrown, so the caller can
- *   show the server's own words. A `rate_limited` answer is submitted again,
- *   with a fresh nonce, after the `retryAfterMs` the gateway copies into the
- *   body from its `Retry-After` (`retryRateLimited`, as the buffered path).
- *
- * Neither arriving within 30 s is not an error: a slow upstream may still
- * start the file, so the promise resolves quietly and the iframe stays.
+ * Native download: a hidden form POSTs to the gateway into a hidden iframe, so
+ * the browser streams the file to disk.
+ * A form cannot read its response, so the `dxkb-download` nonce cookie signals
+ * start and an error answered as text into the iframe signals failure.
+ * Neither arriving within 30 s is not an error: a slow upstream may still start
+ * the file, so the promise resolves quietly.
  */
 
 export interface NativeDownloadOptions {
   basePath?: string;
   pollIntervalMs?: number;
   timeoutMs?: number;
-  /** How long the iframe outlives a download the browser has taken. */
   cleanupDelayMs?: number;
 }
 
@@ -52,8 +37,8 @@ function clearNonceCookie(): void {
 }
 
 /**
- * The error the gateway wrote into the iframe, or `null` while it holds
- * nothing (the initial `about:blank` document also fires `load`).
+ * The initial `about:blank` document also fires `load`, so `null` means the
+ * iframe holds nothing.
  */
 function iframeError(iframe: HTMLIFrameElement): Error | null {
   const text = (iframe.contentDocument?.body.textContent ?? "").trim();
@@ -85,11 +70,6 @@ function iframeError(iframe: HTMLIFrameElement): Error | null {
   return new Error(text.slice(0, 500));
 }
 
-/**
- * Submit `request` as a native form POST. Resolves once the browser has taken
- * the file (or after the quiet timeout), and rejects with the gateway's
- * message when it answers an error; a throttled request is retried first.
- */
 export function startNativeDownload(
   resource: DataResource,
   request: DownloadRequest,
@@ -98,7 +78,6 @@ export function startNativeDownload(
   return retryRateLimited(() => submitOnce(resource, request, options));
 }
 
-/** One attempt: its own nonce, form and iframe. */
 function submitOnce(
   resource: DataResource,
   request: DownloadRequest,
@@ -150,7 +129,7 @@ function submitOnce(
       if (outcome === "started") {
         clearNonceCookie();
         // The download manager owns the transfer by now, but give it time
-        // before the frame that started it goes.
+        // before the frame goes.
         setTimeout(() => {
           iframe.remove();
         }, cleanupDelayMs);

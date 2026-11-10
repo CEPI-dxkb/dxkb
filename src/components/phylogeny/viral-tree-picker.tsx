@@ -68,8 +68,6 @@ export function ViralTreePicker({
     ...new Map(trees.map((tree) => [tree.groupKey, tree.groupTitle])).entries(),
   ];
   const availableViewers = [...new Set(trees.map((tree) => tree.viewer))];
-  // Full segment list so options stay put; unavailable ones are disabled below
-  // rather than disappearing.
   const segments = sortedSegments(trees);
   const visible = filterViralTrees(trees, filters);
   const counts = viralFacetCounts(trees, filters);
@@ -100,8 +98,7 @@ export function ViralTreePicker({
           Choose a strain, viewer, and genome segment.
         </p>
       </div>
-      {/* lg: each column scrolls independently so Filters stay pinned; below lg
-          the stacked layout scrolls as one column. */}
+      {/* lg: each column scrolls independently so Filters stay pinned. */}
       <div className="grid min-h-0 flex-1 grid-cols-1 overflow-auto lg:grid-cols-[260px_1fr] lg:overflow-hidden">
         <aside className="border-b bg-background p-4 lg:min-h-0 lg:overflow-y-auto lg:border-r lg:border-b-0">
           <Collapsible defaultOpen>
@@ -116,9 +113,8 @@ export function ViralTreePicker({
                 <legend className="mb-3 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
                   Strain
                 </legend>
-                {/* grid-cols-1 pins the column to the sidebar width; without it
-                    the auto column sizes to the longest strain name and pushes
-                    the count out of view. */}
+                {/* grid-cols-1 pins the column to the sidebar width; otherwise the
+                    auto column sizes to the longest strain name. */}
                 <RadioGroup
                   className="grid-cols-1"
                   value={filters.strain ?? "all"}
@@ -137,9 +133,8 @@ export function ViralTreePicker({
                       {counts.allStrains}
                     </span>
                   </Label>
-                  {/* Never disabled: `strains` is derived from `trees`, so every
-                      row has at least one tree, and leaving strain unconstrained
-                      means picking a viewer can't lock the user out of a strain. */}
+                  {/* Never disabled: leaving strain unconstrained means picking a
+                      viewer cannot lock the user out of a strain. */}
                   {strains.map(([key, title]) => (
                     <Label key={key}>
                       <RadioGroupItem value={key} />

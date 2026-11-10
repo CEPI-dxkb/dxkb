@@ -1,21 +1,13 @@
 import { WorkspaceMethod } from "./types";
 import { parseTupleToRawObject } from "./adapters/parsers";
 
-/**
- * Base client for making JSON-RPC requests to the Workspace API
- */
 export class WorkspaceApiClient {
   protected baseUrl: string;
 
   constructor(_authToken?: string) {
-    // Use our internal API endpoint that handles authentication via cookies
     this.baseUrl = "/api/services/workspace";
   }
 
-  /**
-   * Make a generic JSON-RPC request to the Workspace API.
-   * @param options.silent - When true, do not log errors (e.g. when caller handles missing/expected failures).
-   */
   async makeRequest<T = unknown>(
     method: WorkspaceMethod,
     params: unknown[],
@@ -27,7 +19,7 @@ export class WorkspaceApiClient {
 
       const response = await fetch(this.baseUrl, {
         method: "POST",
-        credentials: "include", // Include auth cookies
+        credentials: "include",
         headers: {
           "Content-Type": "application/json",
         },
@@ -56,7 +48,6 @@ export class WorkspaceApiClient {
       };
       if (!silent) console.log(`Workspace API response for ${method}:`, result);
 
-      // Handle JSON-RPC response format
       if (result.error) {
         const rpcError = result.error;
         const err = new Error(rpcError.message || "API error") as Error & {
@@ -68,7 +59,6 @@ export class WorkspaceApiClient {
 
       if (!silent) console.log("RESULT", result);
 
-      // Workspace.list_permissions returns a map path -> [user, perm][]
       if (method === "Workspace.list_permissions") {
         const permResult = result.result;
         if (!permResult || !permResult[0]) {
@@ -77,10 +67,9 @@ export class WorkspaceApiClient {
         return permResult[0] as T;
       }
 
-      // Methods that return result.result as-is (array or nested array).
-      // Must include any method called via makeRequest that does not return
-      // Workspace.ls-style path-keyed listing; otherwise they fall through to
-      // the ls path and get incorrectly processed with metaListToObj.
+      // Methods that return result.result as-is. Any method called via
+      // makeRequest that is not Workspace.ls-style must be listed, or it is
+      // wrongly processed with metaListToObj.
       const rawResultMethods = new Set<WorkspaceMethod>([
         "Workspace.get",
         "Workspace.get_download_url",
@@ -100,27 +89,22 @@ export class WorkspaceApiClient {
         return (result.result ?? []) as T;
       }
 
-      // Replicate the original logic for processing results (Workspace.ls)
       const lsResult = result.result;
       if (!lsResult || !lsResult[0]) {
         return [] as T;
       }
 
-      // For Workspace.ls, we need to find the specific path that was requested
-      // The original code uses the exact path from the request
       let targetPath: string | null = null;
       let res: unknown[] = [];
 
       const lsMap = lsResult[0] as Record<string, unknown[] | undefined>;
       if (method === "Workspace.ls" && (params[0] as { paths?: string[] }).paths) {
-        // Find the path that was requested in the parameters
         const requestedPath = (params[0] as { paths: string[] }).paths[0];
         if (lsMap[requestedPath]) {
           targetPath = requestedPath;
           res = lsMap[requestedPath];
         }
       } else {
-        // For other methods, use the first available path
         targetPath = Object.keys(lsMap)[0] ?? null;
         if (targetPath) {
           res = lsMap[targetPath] ?? [];
@@ -131,14 +115,12 @@ export class WorkspaceApiClient {
         return [] as T;
       }
 
-      // Map results using metaListToObj (same as original)
       res = res.map((r: unknown) => {
         return parseTupleToRawObject(r as unknown[]);
       });
 
-      // Hidden files/folders (names starting with .) are not filtered here;
-      // the workspace browser UI filters them by default and shows them when
-      // the user toggles "Show hidden".
+      // Hidden files/folders are not filtered here; the browser UI filters them
+      // unless "Show hidden" is on.
       if (!silent) console.log("PROCESSED RESULTS!!!", res);
       return res as T;
     } catch (error) {
@@ -154,17 +136,15 @@ export class WorkspaceApiClient {
     }
   }
 
-  // No-op overrides: WorkspaceApiClient authenticates via cookies, not header tokens.
+  // No-op overrides: this client authenticates via cookies, not header tokens.
   updateAuthToken(_token: string): void { return; }
   removeAuthToken(): void { return; }
 }
 
-// Factory function for creating workspace API client
 export function createWorkspaceApiClient(
   authToken?: string,
 ): WorkspaceApiClient {
   return new WorkspaceApiClient(authToken);
 }
 
-// Default client instance (can be configured with auth token later)
 export const workspaceApi = createWorkspaceApiClient();

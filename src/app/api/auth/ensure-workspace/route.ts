@@ -13,14 +13,8 @@ import { createServerWorkspaceRpc } from "@/lib/services/workspace/server-rpc";
 import { getDefaultRealm } from "@/lib/services/workspace/realm";
 import { workspaceErrorMessage } from "@/lib/services/workspace/workspace-errors";
 
-/** The reason shown when the Workspace's own reply carries no text. */
 const setupFailed = "the workspace service returned an error";
 
-/**
- * The answer when the home could not be checked: an outage keeps its
- * 502/503/504 and the cause; a Workspace error that does not mean "home is
- * missing" (a maintenance page, a JSON-RPC fault) is a 502 with its message.
- */
 function checkFailedResponse(error: unknown): NextResponse {
   const failure = describeUpstreamFailure(error, upstreamServices.workspace);
   if (failure) {
@@ -39,11 +33,7 @@ function checkFailedResponse(error: unknown): NextResponse {
   );
 }
 
-/**
- * Some folders could not be created: report it, never as success. The
- * reasons are the Workspace's raw replies ("_ERROR_Quota exceeded_ERROR_"),
- * which the log keeps; the response carries their condensed text.
- */
+/** The log keeps the Workspace's raw replies; the response carries their condensed text. */
 function incompleteResponse(result: EnsureUserWorkspaceResult): NextResponse {
   const failures = Object.fromEntries(
     Object.entries(result.failures).map(([path, reason]) => [

@@ -12,10 +12,6 @@ interface UseFeatureGroupOptionsReturn {
   error: string | null;
 }
 
-/**
- * Reactively fetches features from a feature group path via TanStack Query.
- * Returns [] when disabled or path is empty; handles abort automatically.
- */
 export function useFeatureGroupOptions(
   featureGroupPath: string | undefined,
   enabled = true,

@@ -1,63 +1,12 @@
-/**
- * The pure half of the metadata-link boundary: href classification,
- * `{placeholder}` template resolution and the shared link class string, with
- * no JSX and no React import.
- *
- * Rendering lives in the sibling `./metadata-link` module and in DataTable's
- * table-specific wrapper. These surfaces, the detail panel, and the four entity
- * overviews that render links (`genome`, `feature`, `epitope`, `experiment`)
- * share one security and routing decision instead of each re-deriving a scheme
- * check.
- */
-
-/**
- * Shared visual treatment for the detail panel's metadata-driven links —
- * scalar, array and button alike — so internal and external destinations look
- * identical regardless of which shape produced them. Not repo-wide: the
- * collection table styles the same `DataField.link` templates through its own
- * `valueHref` path with a different class string, though it classifies them
- * through {@link classifyHref} like every other surface.
- */
 export const metadataLinkClassName =
   "text-primary underline hover:text-primary/80 dark:text-link dark:hover:text-foreground";
 
-/** Three-way outcome of {@link classifyHref}. */
 export type HrefClassification = "internal" | "external" | "unsafe";
 
 /**
- * The shared security and routing boundary for the surfaces named above, and
- * the one a new link surface should adopt rather than reinventing its own
- * scheme check. Its reach is *not* repo-wide, so do not read it as a guarantee
- * that every rendered `DataField.link` has been classified:
- *
- * - **Routes through here.** `./info-panel.tsx` renders no `<Link>`, `<a>` or
- *   `href` of its own — every link it produces goes through `MetadataLink` /
- *   `MetadataLinkButton`, so its scalar, array and button fields are all
- *   covered. The four link-rendering entity overviews likewise use only
- *   `MetadataLink`.
- * - **Collection tables.** `src/components/shared/data-table.tsx` resolves and
- *   classifies every `valueHref` through this policy. This keeps metadata links
- *   consistent between table, detail-panel, and overview surfaces.
- *
- * The three classification outcomes:
- *
- * - `"internal"` — an unambiguous same-origin path. Requires `startsWith("/")`
- *   *and* excludes network-path `//host` and `/\\host` strings: browsers resolve
- *   both as absolute, cross-origin URLs despite the missing scheme, so a bare
- *   `startsWith("/")` check would misclassify them as same-origin.
- * - `"external"` — an absolute `http(s)` URL, the only scheme this boundary
- *   opens safely, in a new `noopener`-isolated tab.
- * - `"unsafe"` — anything else: a bare `//host`, a non-http(s) scheme
- *   (`javascript:`, `mailto:`, `data:`, ...), or a string that is neither a
- *   path nor a URL. No current `DataField.link` template can reach this today
- *   — every scheme-bearing prefix is a developer-authored literal, and
- *   {@link resolveLink} always `encodeURIComponent`s the row-supplied
- *   `{placeholder}` segments, so row data cannot inject a `//` or
- *   `javascript:` prefix — but that is a property of today's data, not of this
- *   contract, so it must not guess. **Rendering nothing is the deliberate
- *   choice for `"unsafe"`**: an unclassified anchor (no `target`, no `rel`
- *   isolation, and — worse — a scheme a browser might execute) is strictly
- *   more dangerous than no anchor.
+ * `internal` rejects `//host` and `/\\host` (browsers resolve them
+ * cross-origin); `unsafe` renders nothing rather than an anchor without
+ * `target`/`rel` isolation.
  */
 export function classifyHref(href: string): HrefClassification {
   if (/^https?:\/\//i.test(href)) return "external";
@@ -67,7 +16,6 @@ export function classifyHref(href: string): HrefClassification {
   return "unsafe";
 }
 
-/** Whether a raw row value can be substituted into a link template. */
 export function isLinkValue(
   value: unknown,
 ): value is string | number | boolean {
@@ -79,12 +27,8 @@ export function isLinkValue(
 }
 
 /**
- * Fill a `{placeholder}` template from the row. `{value}` is a sentinel that never
- * matches a real row key, so it always falls through to the field's own value;
- * `{genome_id}`-style placeholders match a real row field directly (row-aware).
- *
- * Returns `undefined` — rejecting the link — when any placeholder has no resolvable
- * primitive value, rather than emitting a URL with a missing or literal `{...}` segment.
+ * `{value}` falls through to the field's own value; returns `undefined` when
+ * any placeholder has no primitive value.
  */
 export function resolveLink(
   template: string,
@@ -99,12 +43,8 @@ export function resolveLink(
     if (primitive === undefined || String(primitive) === "") return undefined;
     resolvedSegments.set(key, encodeURIComponent(String(primitive)));
   }
-  // Substitute from the resolved map rather than re-scanning the template.
-  // A second regex pass would have to answer "what if this key is missing?"
-  // with a fallback that cannot be reached — the loop above either resolved
-  // every distinct placeholder or already rejected the whole template. Every
-  // segment is `encodeURIComponent` output, so it can contain neither `{`
-  // nor `}` and cannot form a placeholder for a later pass to substitute.
+  // Every segment is `encodeURIComponent` output, so it cannot form a
+  // placeholder for a later pass to substitute.
   let resolved = template;
   for (const [key, segment] of resolvedSegments) {
     resolved = resolved.replaceAll(`{${key}}`, () => segment);

@@ -1,4 +1,3 @@
-/* Temporary debug helper — add .debug-outlines to <html> to visualize bounding boxes */
 .debug-outlines * {
   outline: 1px solid rgba(255,0,128,0.15) !important;
   box-shadow: inset 0 0 0 1px rgba(0,0,0,0.02) !important;
@@ -11,7 +10,3 @@
 .debug-outlines .debug-no-outline * {
   outline: none !important;
 }
-
-/* Usage: open devtools console and run
-   document.documentElement.classList.toggle('debug-outlines')
-   to toggle visual debugging. */

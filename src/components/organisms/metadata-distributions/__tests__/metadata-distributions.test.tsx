@@ -32,8 +32,7 @@ vi.mock("../amr-bar-stack-chart", () => ({
   },
 }));
 
-// Render the charts synchronously: the lazy wrappers are covered by
-// lazy-charts.test.tsx.
+// Render the charts synchronously; the lazy wrappers are covered by lazy-charts.test.tsx.
 vi.mock("../lazy-charts", async () => {
   const [amr, bar, donut] = await Promise.all([
     import("../amr-bar-stack-chart"),
@@ -141,9 +140,7 @@ describe("MetadataDistributions", () => {
     );
 
     expect(screen.getByText("Taxonomic Distribution")).toBeInTheDocument();
-    // Sentinel must be stripped before hitting the facets API
     expect(fetchOrganismMetadataFacets).toHaveBeenCalledWith(42, ["host_common_name"]);
-    // No duplicate — the fallback render at the end is suppressed when sentinel is present
     expect(screen.getAllByText("Taxonomic Distribution")).toHaveLength(1);
   });
 
@@ -307,7 +304,6 @@ describe("MetadataDistributions", () => {
       fireEvent.keyDown(screen.getByRole("link", { name }), { key: "Enter" });
       expect(push).toHaveBeenLastCalledWith(href);
     }
-    // Neither a blank bucket nor an empty year has genomes to list.
     expect(screen.queryByRole("link", { name: "Unspecified: 5" })).toBeNull();
     expect(screen.queryByRole("link", { name: "2015: 0" })).toBeNull();
   });
@@ -354,13 +350,11 @@ describe("MetadataDistributions", () => {
     expect(alert).toHaveTextContent(
       "Could not load: Host Distribution: The BV-BRC data service is unavailable (HTTP 503 Service Unavailable: Site Maintenance).",
     );
-    // The section rendered, so its own Retry never appears: the chart's
-    // refreshes the route, re-running the failed facet.
+    // The section rendered, so Retry is the chart's own, which refreshes the route.
     fireEvent.click(within(alert).getByRole("button", { name: "Retry" }));
     await waitFor(() => {
       expect(refresh).toHaveBeenCalledTimes(1);
     });
-    // The field name stays in the server log, for an operator.
     expect(warnSpy).toHaveBeenCalledWith(
       expect.stringContaining("genome host_common_name facet fetch failed"),
     );

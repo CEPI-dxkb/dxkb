@@ -1,13 +1,6 @@
 import { use, useEffect, useState } from "react";
 
-/**
- * A stand-in for a slow Next navigation. Render `Suspender` inside a
- * `<Suspense>` boundary (a suspend outside a transition needs one) and have
- * the mocked `router.push` call `arm()`: when that runs inside a
- * transition, `Suspender` suspends forever, so the transition (and the
- * component's `useTransition` pending flag) stays pending, which jsdom's
- * instant `push` mock never does on its own.
- */
+/** Stand-in for a slow Next navigation: call `arm()` from the mocked `router.push` inside `<Suspense>` so the transition stays pending. */
 export function createPendingNavigation() {
   const neverSettles = new Promise<never>(() => undefined);
   const armRef: { current: (() => void) | null } = { current: null };

@@ -25,7 +25,6 @@ interface FeaturePageProps {
   searchParams: Promise<SearchParamsRecord>;
 }
 
-/** `?…` for the query the request carried, or "" for none. */
 function querySuffix(query: SearchParamsRecord): string {
   const params = new URLSearchParams();
   for (const [name, value] of Object.entries(query)) {
@@ -43,10 +42,8 @@ async function loadFeature(
   source: RouteParamSource,
   query: SearchParamsRecord,
 ) {
-  // The two entry points receive this segment in different encodings, so
-  // each declares which it is. Decoding unconditionally made
-  // `generateMetadata` resolve a different record than the body for any id
-  // containing a literal percent escape. See `readRouteParam`.
+  // The two entry points receive this segment in different encodings, so each
+  // declares its `source` (see `readRouteParam`).
   const featureId = readRouteParam(rawFeatureId, source);
   if (!isFeatureId(featureId)) notFound();
   let result: FeatureLookup;
@@ -58,7 +55,6 @@ async function loadFeature(
       [401, 403, 404, 409].includes(error.status)
     )
       notFound();
-    // An outage is rendered, not thrown: production would redact its message.
     const unavailable = recordUnavailableMessage(error);
     if (unavailable === null) throw error;
     if (source === "page") console.error(`feature/${featureId}:`, error);
@@ -66,8 +62,7 @@ async function loadFeature(
   }
   if (!result.feature) notFound();
   if (result.usedAlternateId && result.feature.feature_id !== featureId) {
-    // Keep the query: a BRC-ID link into a tab (the Compare Region Viewer's
-    // "Compare regions around this gene") must land on that tab.
+    // Keep the query so a BRC-ID link into a tab lands on that tab.
     permanentRedirect(
       `${featureHref(result.feature.feature_id)}${querySuffix(query)}`,
     );
@@ -118,7 +113,6 @@ export default async function FeaturePage({
   return (
     <FeatureMember
       feature={feature}
-      // The feature record names only its taxon; its lineage is the taxonomy record's.
       lineage={loadLineageCrumbs(String(feature.taxon_id ?? ""), `feature/${feature.feature_id}`)}
       activeTab={activeTab}
     />

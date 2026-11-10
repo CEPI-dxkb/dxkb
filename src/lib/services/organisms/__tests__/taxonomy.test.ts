@@ -66,8 +66,6 @@ describe("fetchOrganismTaxonomy", () => {
     const error: unknown = await fetchOrganismTaxonomy(2).catch((caught: unknown) => caught);
 
     expect(error).toBeInstanceOf(UpstreamError);
-    // The page names the taxon, so the message carries no label, and the
-    // endpoint is only for the log.
     expect(error).toMatchObject({
       status: 503,
       code: "service_unavailable",
@@ -153,7 +151,6 @@ describe("fetchOrganismTaxonomy", () => {
           taxon_rank: "species",
           lineage_ids: [131567, 2, 561, 562],
           lineage_names: ["cellular organisms", "Bacteria", "Escherichia", "Escherichia coli"],
-          // A malformed entry keeps its slot so later ranks stay on their taxa.
           lineage_ranks: ["cellular root", null, "genus", "species"],
           genomes: 1,
         }),

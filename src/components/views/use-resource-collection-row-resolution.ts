@@ -31,32 +31,24 @@ interface UseResourceCollectionRowResolutionOptions<
   hasLoadedKeyword: boolean;
   /**
    * The rows and total on screen belong to a previous query while this one
-   * loads, so an all-matching action waits for this query's own total
-   * (`currentTotal`) rather than being sized by the wrong one. A background
-   * refresh of the same query is not this; its total is this query's latest
-   * count, and `exceedsReadLimit` checks the read itself.
+   * loads, so all-matching actions wait for `currentTotal`.
    */
   isPlaceholderData: boolean;
   /**
-   * This query's total once its read lands (`useResourceCollection`). Rejects
-   * with `CancelledError` when the query is replaced first, which the actions
-   * drop: the user has moved on from the results they acted on.
+   * Rejects with `CancelledError` when the query is replaced first, which the
+   * actions drop.
    */
   currentTotal: () => Promise<number>;
 }
 
-/** The rows an all-matching read returned, and how many rows match its query. */
 export interface MatchingRowsRead {
   rows: Record<string, unknown>[];
   total: number;
 }
 
 /**
- * Read every row matching a query, up to the export cap. A read under the cap holds
- * every match. One that stops at the cap holds every match or only the first
- * `maxExportRows` of them, and the total on screen cannot tell which (a same-query
- * refresh keeps it, and the data can outgrow it with no refresh at all), so that
- * query is counted again.
+ * A read that stops at the cap cannot tell, from the total on screen, whether
+ * it holds every match, so that query is counted again.
  */
 export async function readAllMatchingRows(
   repository: DataRepository,
@@ -76,11 +68,6 @@ export async function readAllMatchingRows(
   return { rows, total };
 }
 
-/**
- * Whether an all-matching read is over `maxRows` although the total on screen, which
- * sized it, was not: it returned more than `maxRows` rows, or more rows match its
- * query than it could read.
- */
 export function exceedsReadLimit(
   { rows, total }: MatchingRowsRead,
   maxRows: number,
@@ -159,9 +146,6 @@ export function useResourceCollectionRowResolution<Row extends DataTableRow>({
     });
   };
 
-  // Scoped by the current query, whichever query's rows are on screen; each
-  // caller applies its own size limit to `currentTotal` first while they are a
-  // previous query's.
   const resolveAllMatchingRows = (fields: readonly string[]) =>
     readAllMatchingRows(repository, resource, idField, {
       rql,
@@ -181,8 +165,6 @@ export function useResourceCollectionRowResolution<Row extends DataTableRow>({
       new Error(
         `${actionLabel} supports at most ${maxRows.toLocaleString()} ${label}. Narrow the selection and try again.`,
       );
-    // For every matching row the count is the total on screen, which is a
-    // previous query's while this one loads, so the limit waits for this query's.
     const count =
       isAllMatching && isPlaceholderData
         ? await currentTotal()

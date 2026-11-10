@@ -7,9 +7,6 @@ export const genomeAnnotationRecipes = [
   { value: "phage", label: "Bacteriophages" },
 ];
 
-/**
- * Transform genome annotation form data to API parameters
- */
 export function transformGenomeAnnotationParams(
   data: GenomeAnnotationFormData,
 ): Record<string, unknown> {
@@ -24,9 +21,6 @@ export function transformGenomeAnnotationParams(
   };
 }
 
-/**
- * Create genome annotation form values with overrides
- */
 export function createGenomeAnnotationFormValues(
   currentValues: GenomeAnnotationFormData,
   overrides: Partial<GenomeAnnotationFormData>,
@@ -37,9 +31,6 @@ export function createGenomeAnnotationFormValues(
   };
 }
 
-/**
- * Generate output file name based on taxonomy name and user label
- */
 export function generateOutputFileName(
   scientificName: string | null,
   myLabel: string,
@@ -47,7 +38,6 @@ export function generateOutputFileName(
   const parts: string[] = [];
 
   if (scientificName) {
-    // Extract the last part of the scientific name (genus/species)
     const nameParts = scientificName.split(" ");
     if (nameParts.length > 0) {
       parts.push(nameParts[nameParts.length - 1].replace(/[()|/:]/g, ""));
@@ -61,9 +51,6 @@ export function generateOutputFileName(
   return parts.join(" ");
 }
 
-/**
- * Validate that my label doesn't contain slashes
- */
 export function validateMyLabel(myLabel: string): {
   isValid: boolean;
   message: string;

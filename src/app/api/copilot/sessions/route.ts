@@ -8,14 +8,12 @@ import {
 import type { CopilotSessionsResponse } from "@/lib/copilot/types";
 import { answerCopilot, copilotNoStore } from "@/lib/copilot/route-errors";
 
-/** A non-negative integer query value, or `fallback` when absent or invalid. */
 function pageValue(raw: string | null, fallback: number): number {
   if (raw === null || !/^\d+$/.test(raw)) return fallback;
   const value = Number(raw);
   return Number.isSafeInteger(value) ? value : Number.MAX_SAFE_INTEGER;
 }
 
-/** One page (`?limit=&offset=`) of the caller's Copilot sessions, newest first. */
 export const GET = withAuth(async (request, { token }) => {
   const params = request.nextUrl.searchParams;
   const limit = Math.min(

@@ -1,10 +1,6 @@
 /**
- * Browser side of `/api/genome-browser/[operation]`, kept apart from
- * `./server.ts` so no Data API registry or Zod schema reaches a client bundle.
- * Used by the Genome Browser panel (regions, through TanStack Query) and by the
- * JBrowse adapters, which run on the main thread and so share these caches:
- * the regions the panel loaded are the ones JBrowse's `getRegions` returns,
- * without a second request.
+ * Browser side of `/api/genome-browser/[operation]`, kept apart from `./server.ts` so no Data API registry or Zod schema reaches a client bundle.
+ * The panel and the JBrowse adapters share these caches, so regions the panel loaded are what `getRegions` returns.
  */
 import { registerAccountCacheClear } from "@/lib/account-caches";
 import { httpFailure } from "@/lib/data-api/route-failure-client";
@@ -50,22 +46,12 @@ async function getJson<T>(
 const regionsCache = new BoundedCache<Promise<GenomeBrowserRegion[]>>({
   maxWeight: 20,
 });
-/** 300 chunks of 100 kb: a whole large bacterial chromosome per track. */
 const featureChunks = new BoundedCache<Promise<GenomeBrowserFeature[]>>({
   maxWeight: 300,
 });
-/** 250 chunks of 20 kb: 5 Mb of sequence. */
 const sequenceChunks = new BoundedCache<Promise<string>>({ maxWeight: 250 });
 
-/**
- * Account-change invalidation. These caches live in this module, so
- * `queryClient.clear()` does not reach them and the next account in the same
- * page would be answered with the previous one's private-genome reads. Run by
- * `clearAccountCaches()` (registered below, when this module loads), which
- * every place that clears the query cache for a sign-in, sign-up,
- * impersonation or sign-out calls beside it. Tests call it too, since the
- * caches outlive a test.
- */
+/** Account-change invalidation: these caches sit outside `queryClient.clear()`'s reach, so `clearAccountCaches()` (registered on load) clears them; tests call it too. */
 export function clearGenomeBrowserCaches(): void {
   regionsCache.clear();
   featureChunks.clear();

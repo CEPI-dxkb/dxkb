@@ -26,7 +26,6 @@ function StepIcon({ status }: { status: CopilotStep["status"] }) {
   return <Spinner role="presentation" aria-label={undefined} />;
 }
 
-/** The step list behind "What I did". */
 function StepList({ steps }: { steps: CopilotStep[] }) {
   return (
     <ol className="mt-1 flex flex-col gap-1.5 border-l-2 border-primary/25 pl-3">
@@ -52,7 +51,6 @@ function StepList({ steps }: { steps: CopilotStep[] }) {
   );
 }
 
-/** "What I did (n steps)", collapsed under an answer. */
 export function CopilotSteps({
   steps,
   defaultOpen = false,
@@ -77,10 +75,6 @@ export function CopilotSteps({
   );
 }
 
-/**
- * The live status of a running turn: a waiting notice while queued, then the
- * latest step's label. Announced politely as it changes.
- */
 export function CopilotLiveStatus({
   label,
   queuedMessage,

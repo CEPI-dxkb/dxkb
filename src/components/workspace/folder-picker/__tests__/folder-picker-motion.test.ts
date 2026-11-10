@@ -4,8 +4,8 @@ import {
   type ColumnsSnapshot,
 } from "@/components/workspace/folder-picker/folder-picker-motion";
 
-// jsdom has no layout, no Web Animations API and no matchMedia, so the strip's
-// geometry, `animate` and the animation frames are all driven by hand here.
+// jsdom has no layout, Web Animations API or matchMedia, so the strip's geometry,
+// `animate` and animation frames are driven by hand.
 
 interface PlayedAnimation {
   target: Element;
@@ -59,7 +59,6 @@ afterEach(() => {
   document.body.replaceChildren();
 });
 
-/** Run the pending animation frames with timestamp `at` (ms). */
 function runFrame(at: number) {
   clock = at;
   const pending = [...frames.values()];
@@ -71,11 +70,6 @@ function rect(left: number, top: number, width: number, height: number) {
   return DOMRect.fromRect({ x: left, y: top, width, height });
 }
 
-/**
- * A strip like the picker's: `content` holds the columns, the overlay hosts
- * leaving columns. While the tween sets an inline width on the content, the
- * strip's scroll range follows it, as it does in a browser.
- */
 function createStrip(naturalWidth: number) {
   const strip = document.createElement("div");
   const content = document.createElement("div");
@@ -177,7 +171,6 @@ describe("playColumnTransition", () => {
     const { strip, content, overlay, scrollTo } = createStrip(900);
     addColumn(content, "home:");
     addColumn(content, "home:/Alpha");
-    // Wherever the user scrolled it to.
     strip.scrollLeft = 40;
     const snapshot = snapshotOf(strip, overlay, 1);
 
@@ -272,7 +265,6 @@ describe("playColumnTransition", () => {
       depth: 1,
     });
 
-    // Painted from where it was: the old width, the old position.
     expect(scrollTo).not.toHaveBeenCalled();
     expect(content.style.width).toBe("800px");
     expect(content.style.overflow).toBe("clip");
@@ -287,7 +279,6 @@ describe("playColumnTransition", () => {
         width: parseFloat(content.style.width),
       });
     }
-    // Halfway in time, easeOutCubic is 87.5% of the way there.
     expect(samples[2]).toEqual({ left: 175, width: 975 });
     for (let index = 1; index < samples.length; index += 1) {
       expect(samples[index].left).toBeGreaterThan(samples[index - 1].left);
@@ -317,7 +308,6 @@ describe("playColumnTransition", () => {
       depth: 1,
     });
 
-    // A frame's timestamp can predate the glide's start.
     runFrame(clock - 16);
 
     expect(strip.scrollLeft).toBe(0);
@@ -373,7 +363,6 @@ describe("playColumnTransition", () => {
     const running = [...frames.keys()][0];
     runFrame(clock + 60);
 
-    // Mid-glide, the user goes one folder deeper.
     const second = snapshotOf(strip, overlay, 1);
     addColumn(content, "home:/Alpha/Beta");
     setNaturalWidth(1200);
@@ -389,9 +378,6 @@ describe("playColumnTransition", () => {
 
     expect(cancelFrame).toHaveBeenCalledWith(running + 1);
     expect(frames.size).toBe(1);
-    // It measured the new range without the old glide's inline width, so the
-    // width keeps growing toward the real end (1200) instead of holding at
-    // the interrupted width (about 941) and snapping at the finish.
     const restart = clock;
     runFrame(restart + 90);
     expect(parseFloat(content.style.width)).toBeGreaterThan(1150);
@@ -485,7 +471,6 @@ describe("playColumnTransition", () => {
       height: "390px",
       margin: "0px",
     });
-    // It drifts with the columns (they move 200px right) as it fades.
     const exit = played.find((entry) => entry.target === ghost);
     expect(exit).toMatchObject({
       keyframes: [
@@ -516,7 +501,6 @@ describe("playColumnTransition", () => {
     });
     const ghost = overlay.children[0];
 
-    // A move within the column lets the exit play on.
     playColumnTransition({
       strip,
       content,
@@ -528,7 +512,6 @@ describe("playColumnTransition", () => {
     });
     expect([...overlay.children]).toEqual([ghost]);
 
-    // Going straight back in, the copy would fade over the returning column.
     const outside = snapshotOf(strip, overlay, 0);
     addColumn(content, "home:/Alpha", rect(340, 50, 180, 400));
     playColumnTransition({

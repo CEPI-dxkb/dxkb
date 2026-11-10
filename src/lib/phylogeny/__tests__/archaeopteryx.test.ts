@@ -42,8 +42,7 @@ const treeXml = `<?xml version="1.0" encoding="UTF-8"?>
   </phylogeny>
 </phyloxml>`;
 
-// jsdom implements neither SVG geometry nor text measurement, both of which
-// the viewer reads while it lays out and zooms the tree.
+// jsdom implements neither SVG geometry nor text measurement, which the viewer reads while laying out.
 function stubSvgGeometry() {
   const restores: (() => void)[] = [];
   const define = (
@@ -78,9 +77,7 @@ function stubSvgGeometry() {
       return textWidth(this);
     },
   });
-  // 3.28 measures label and branch-mark fonts on a canvas 2D context
-  // (`branchFontMetrics` does not guard a null context, unlike its legend
-  // measuring); jsdom has no canvas, so give it a fixed-width one.
+  // 3.28 measures fonts on a canvas 2D context without guarding null; jsdom has no canvas, so give it a fixed-width one.
   define(HTMLCanvasElement.prototype, "getContext", {
     value() {
       return {
@@ -167,8 +164,7 @@ describe("createViewerConfig", () => {
       enableSubtreeDeletion: false,
     });
     expect(bacterial).not.toHaveProperty("initialVisualization");
-    // Retired in archaeopteryx 3.25 (the Metadata chooser replaces it), and
-    // scheduled to throw.
+    // Retired in archaeopteryx 3.25 and scheduled to throw.
     expect(bacterial).not.toHaveProperty("nodeLabels");
   });
 });
@@ -203,7 +199,6 @@ describe("viewer theme", () => {
     const host = document.getElementById("host") as HTMLElement;
     const panel = host.querySelector(".aptx-panel") as HTMLElement;
     const toggle = host.querySelector(".aptx-theme-btn") as HTMLElement;
-    // Like the real switch, the first press from the OS default goes light.
     const themes = ["aptx-light", "aptx-dark"];
     const click = vi.fn(() => {
       const next = themes[click.mock.calls.length - 1] ?? "aptx-light";
@@ -240,8 +235,7 @@ describe("mountArchaeopteryx with the real viewer", () => {
   });
 
   afterEach(() => {
-    // The viewer keeps its body-level tooltip across launches, so each test
-    // must unmount before the next one clears the page.
+    // The viewer keeps its body-level tooltip across launches, so unmount before the next test clears the page.
     for (const viewer of mounted.reverse()) viewer.destroy();
     mounted = [];
     document.body.innerHTML = "";
@@ -260,7 +254,6 @@ describe("mountArchaeopteryx with the real viewer", () => {
         selectable: options.selectable ?? true,
         collapseControlPanel: false,
       }),
-      // jsdom lays out nothing, so give the tree a fixed canvas.
       enableDynamicSizing: false,
       displayWidth: 800,
       displayHeight: 600,
@@ -282,12 +275,9 @@ describe("mountArchaeopteryx with the real viewer", () => {
       (label) => label.textContent,
     );
     expect(labels).toEqual(expect.arrayContaining(["Node Name", "Metadata"]));
-    // The launch config must carry no key the viewer deprecates.
     const warnings = vi.mocked(console.warn).mock.calls.flat().join("\n");
     expect(warnings).not.toMatch(/deprecat|retired|nodeLabels/i);
-    // 3.28 lists the formats in a menu the Download button opens; PNG and PDF
-    // are only offered when the page-level canvg/jspdf/svg2pdf.js globals
-    // loaded, so this also guards the export libraries.
+    // PNG and PDF are only offered when the page-level canvg/jspdf/svg2pdf.js globals loaded, so this also guards the export libraries.
     expect(
       Array.from(
         host.querySelectorAll(".aptx-panel label, .aptx-panel span"),
@@ -425,9 +415,7 @@ describe("mountArchaeopteryx with the real viewer", () => {
 
     expect(host.childElementCount).toBe(0);
     expect(document.querySelector(".aptx-tip, .aptx-node-menu")).toBeNull();
-    // Upstream never removes its search-suggestion scroll handler, but it is
-    // one module-level function the DOM registers once and a no-op without
-    // open suggestions.
+    // Upstream never removes its search-suggestion scroll handler, but it is one module-level function registered once.
     expect(removed).toEqual(
       expect.arrayContaining(added.filter(([type]) => type !== "scroll")),
     );

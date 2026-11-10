@@ -8,8 +8,7 @@ import { canonicalDatasetId } from "@/lib/phylogeny/nextstrain-dataset";
 
 export const runtime = "nodejs";
 
-// Each remote probe is a 30s outbound HEAD to BV-BRC; cap distinct ids and
-// bound concurrency so a request with many ids can't exhaust connections.
+// Each remote probe is a 30s outbound HEAD, so cap distinct ids and concurrency.
 const maxProbedDatasetIds = 20;
 const probeConcurrency = 5;
 

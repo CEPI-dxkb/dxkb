@@ -3,7 +3,6 @@ import type { UserTrackItem } from "./user-track";
 
 export type GcMetric = "content" | "skew";
 
-/** A scored window, 0-based half-open: GC windows and scored uploads. */
 export interface ScorePoint {
   accession: string;
   start: number;
@@ -11,7 +10,6 @@ export interface ScorePoint {
   score: number;
 }
 
-/** A track's data once loaded, whatever its source. */
 export type TrackItems =
   | { kind: "contigs"; contigs: readonly CircularContig[] }
   | { kind: "features"; features: readonly CircularFeature[]; truncated: boolean }

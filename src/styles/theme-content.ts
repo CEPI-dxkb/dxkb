@@ -1,11 +1,9 @@
-// Define theme-to-folder mapping for content
 const themeContentMapping: Record<string, string> = {
   violet: "generic",
   dxkb: "dxkb",
   bvbrc: "bvbrc",
 };
 
-// Content types available for each theme
 export type ContentType =
   | "welcome-title"
   | "welcome-subtitle"
@@ -14,7 +12,6 @@ export type ContentType =
   | "funding-title"
   | "funding-statement";
 
-// Define content for each theme
 const themeContent: Partial<Record<string, Record<ContentType, string>>> = {
   generic: {
     "welcome-title": "Welcome to the XKnowledge Base",
@@ -52,17 +49,11 @@ const themeContent: Partial<Record<string, Record<ContentType, string>>> = {
   },
 };
 
-/**
- * Get the content folder for a given theme
- */
 export function getContentFolder(theme: string): string {
   const themeBase = theme.split("-", 1)[0] ?? "dxkb";
   return themeContentMapping[themeBase] ?? "dxkb";
 }
 
-/**
- * Get content for a given theme and content type
- */
 export function getThemeContent(
   theme: string,
   contentType: ContentType,

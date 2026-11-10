@@ -122,8 +122,8 @@ describe("GraphActionBar", () => {
   });
 
   it("shows the human-readable layout label on the trigger, not the raw value", () => {
-    // Guards the items={layoutLabels} fix: without it, base-ui's Select.Value
-    // renders the raw value ("forceatlas2") instead of the mapped label.
+    // Without items={layoutLabels}, base-ui's Select.Value renders the raw value ("forceatlas2")
+    // instead of the label.
     render(
       <GraphActionBar
         layout="forceatlas2"

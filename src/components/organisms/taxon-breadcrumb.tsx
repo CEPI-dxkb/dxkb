@@ -20,14 +20,7 @@ function Eyebrow() {
   );
 }
 
-/**
- * BV-BRC's Taxon View header (`buildHeaderContent`, `Taxonomy.js`): the
- * ranked ancestors (see `taxonViewHeader`), then the taxon itself as the
- * heading. A taxon where neither an ancestor nor the taxon itself has a shown
- * rank (a root, domain, kingdom or realm, or a clade or unranked group above
- * the first phylum) has no crumbs there, so its heading is kept for assistive
- * technology only. A record that is merely malformed keeps a visible heading.
- */
+/** BV-BRC's Taxon View header: ranked ancestors, then the taxon as the heading, which is kept for assistive technology only when there are no crumbs. */
 export function TaxonBreadcrumb({
   taxon,
   displayName,

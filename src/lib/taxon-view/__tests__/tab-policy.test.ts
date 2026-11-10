@@ -119,9 +119,7 @@ describe("resolveTabs — doc §5 truth table (conditional tabs only)", () => {
   });
 
   it("cellular organisms (131567) — bacterial cluster without phylogeny", () => {
-    // The root's scope holds bacteria, but its own lineage has no "Bacteria",
-    // so the Phylogeny view would open the viral viewer on a tree that does
-    // not exist.
+    // The root's scope holds bacteria but its own lineage has no "Bacteria", so Phylogeny would open the viral viewer on a missing tree.
     const result = condEnabled(tax({ taxonId: 131567, taxonRank: "no rank", lineageNames: ["cellular organisms"], lineageIds: [131567] }));
     expect(result).toEqual(["amr-phenotypes", "interactions"]);
   });

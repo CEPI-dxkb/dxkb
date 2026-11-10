@@ -56,7 +56,6 @@ describe("api/e2e-mock outages — session", () => {
   it("answers every call to a named service with the maintenance page", async () => {
     const token = outageSessionToken(userId, { workspace: "maintenance" });
 
-    // A method the healthy dispatch serves, and one it would reject.
     await expectMaintenancePage(
       await POST(rpc("workspace", "Workspace.ls", token), ctx("workspace")),
     );
@@ -191,7 +190,6 @@ describe("api/e2e-mock outages — records", () => {
   });
 
   it("matches whole terms only", async () => {
-    // The outage taxon id inside the outage genome id, and inside a longer one.
     for (const query of [`eq(taxon_id,1${taxonId})`, `eq(genome_id,${genomeId}0)`]) {
       const response = await GET(
         mockNextRequest({ url: `${loopback}/data/genome/?${query}` }),

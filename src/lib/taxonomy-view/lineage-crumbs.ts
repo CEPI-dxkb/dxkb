@@ -1,20 +1,11 @@
 import { isTaxonId, type TaxonomyViewRecord } from "./schema";
 
-/** One taxon in a record's lineage breadcrumb. */
 export interface LineageCrumb {
   taxonId: string;
   name: string;
 }
 
-/**
- * The ranks BV-BRC names in its breadcrumbs, verbatim (`visibleRanks` in
- * `buildHeaderContent`, `p3/widget/viewer/Taxonomy.js`, `Genome.js`,
- * `Feature.js`, `Protein.js`). Roots, realms, kingdoms, sub-, super- and
- * infra-ranks, clades and unranked groups are left out. NCBI has since
- * renamed superkingdom to domain, so on current records the trail never
- * names Bacteria, Eukaryota or Viruses; that is BV-BRC's output too, so the
- * list is not "fixed" here.
- */
+/** The ranks BV-BRC shows in breadcrumbs, verbatim; after NCBI's superkingdom-to-domain rename the trail never names Bacteria, Eukaryota or Viruses. */
 export const breadcrumbRanks: ReadonlySet<string> = new Set([
   "superkingdom",
   "phylum",
@@ -25,13 +16,7 @@ export const breadcrumbRanks: ReadonlySet<string> = new Set([
   "species",
 ]);
 
-/**
- * BV-BRC's `visibleIndexes`: the lineage positions a breadcrumb shows, root
- * first. A repeated rank maps to its first position, as `indexOf` does there.
- * `withLeaf` is the Taxon View's extra step: the taxon itself (the last
- * position) is appended when its own rank is not shown, but only when some
- * rank was, because BV-BRC compares `undefined < lastIndex`, which is false.
- */
+/** BV-BRC's `visibleIndexes`, root first; `withLeaf` appends the taxon itself when its rank is hidden but another is shown. */
 export function breadcrumbIndexes(
   ranks: readonly string[],
   { withLeaf }: { withLeaf: boolean },
@@ -52,10 +37,7 @@ function asList(value: string | number | (string | number)[] | undefined) {
   return (Array.isArray(value) ? value : [value]).map(String);
 }
 
-/**
- * The crumbs at `indexes`. A taxon without a usable id or name is skipped
- * rather than rendered as a dead link (`taxonomyHref` rejects a bad id).
- */
+/** Taxa without a usable id or name are skipped rather than rendered as dead links. */
 function crumbsAt(
   indexes: readonly number[],
   ids: readonly string[],
@@ -68,11 +50,7 @@ function crumbsAt(
   });
 }
 
-/**
- * Whether the parallel lineage arrays line up. When one is short (a malformed
- * record, or a parse that dropped a bad id or name but kept every rank) each
- * later rank would land on the wrong taxon, so callers show nothing instead.
- */
+/** A short lineage array would put later ranks on the wrong taxa, so callers show nothing. */
 function aligned(
   ids: readonly unknown[],
   names: readonly unknown[],
@@ -81,14 +59,7 @@ function aligned(
   return ids.length === ranks.length && names.length === ranks.length;
 }
 
-/**
- * A record's lineage as BV-BRC's Genome and Feature Views show it: the
- * shown ranks above the record, root first, never the record's own taxon
- * when it is unranked (a strain shows its species). A genome or feature
- * record names only its lineage, not the ranks, so this reads the taxonomy
- * record of its taxon. A lineage whose ids, names and ranks differ in length
- * shows no crumbs.
- */
+/** A record's lineage crumbs as BV-BRC's Genome and Feature Views show them; misaligned arrays yield none. */
 export function lineageCrumbs(
   taxon: Pick<TaxonomyViewRecord, "lineage_ids" | "lineage_names" | "lineage_ranks">,
 ): LineageCrumb[] {
@@ -99,30 +70,19 @@ export function lineageCrumbs(
   return crumbsAt(breadcrumbIndexes(ranks, { withLeaf: false }), ids, names);
 }
 
-/** The parallel lineage arrays of a taxonomy record (`OrganismTaxonomy`). */
 export interface TaxonLineage {
   lineageIds: readonly (number | string)[];
   lineageNames: readonly string[];
   lineageRanks?: readonly string[];
 }
 
-/** The Taxon View's shown positions, or null when the arrays do not line up. */
 function taxonViewIndexes(taxon: TaxonLineage): number[] | null {
   const ranks = taxon.lineageRanks ?? [];
   if (!aligned(taxon.lineageIds, taxon.lineageNames, ranks)) return null;
   return breadcrumbIndexes(ranks, { withLeaf: true });
 }
 
-/**
- * A taxon's lineage as BV-BRC's Taxon View shows it: the record-view crumbs,
- * then the taxon itself when its rank is not shown. The last crumb is
- * usually the current taxon, but a blank or invalid leaf id or name drops it,
- * so `taxonViewHeader` checks before treating it as such. Empty whenever
- * neither an ancestor nor the taxon itself has a shown rank (a root, domain,
- * kingdom or realm, or a clade or unranked group above the first phylum),
- * where BV-BRC's trail is empty too. A lineage whose ids, names and ranks
- * differ in length shows no crumbs rather than crumbs on the wrong taxa.
- */
+/** Taxon View crumbs; a blank or invalid leaf id or name drops the taxon, so `taxonViewHeader` checks the last crumb. */
 export function taxonViewCrumbs(taxon: TaxonLineage): LineageCrumb[] {
   const indexes = taxonViewIndexes(taxon);
   if (!indexes) return [];
@@ -133,15 +93,7 @@ export function taxonViewCrumbs(taxon: TaxonLineage): LineageCrumb[] {
   );
 }
 
-/**
- * The Taxon View header's parts: the crumbs that link above the heading, and
- * whether the heading is for assistive technology only. The taxon's own crumb
- * is left out of `ancestors` only when the last crumb really is that taxon;
- * otherwise (a blank leaf name, a leaf id of 0, a lineage ending at the
- * parent) every crumb is an ancestor. The heading is hidden only where BV-BRC
- * shows no trail for a lineage that has ranks; a record without ranks or with
- * misaligned arrays is malformed, not a root, and keeps a visible heading.
- */
+/** Header parts: crumbs above the heading and whether the heading is screen-reader-only. */
 export function taxonViewHeader(
   taxon: TaxonLineage & { taxonId: number | string },
 ): { ancestors: LineageCrumb[]; headingHidden: boolean } {

@@ -71,10 +71,6 @@ function normalizeNewlines(sequence: string) {
   return sequence.replace(/\r\n?/g, "\n");
 }
 
-/**
- * Sanitizes FASTA sequence - matches legacy sanitizeFastaSequence behavior
- * Removes spaces from sequence lines, preserves headers
- */
 export function sanitizePrimerDesignSequence(sequence: string): string {
   if (!sequence) {
     return "";
@@ -147,10 +143,7 @@ export function getSequenceForSubmission(sequence: string): string {
   return lines.join("");
 }
 
-/**
- * Removes nucleotide characters (a, g, c, t, n) from a string
- * Used to test whether a line with '>' is a header or a sequence
- */
+/** Tests whether a line with '>' is a header or a sequence. */
 function removeNucleotides(val: string): string {
   const nucleotideList = ["a", "c", "t", "g", "n"];
   let result = val.toLowerCase();
@@ -160,25 +153,15 @@ function removeNucleotides(val: string): string {
   return result;
 }
 
-/**
- * Checks if sequence contains invalid characters
- * Matches legacy isInvalidSequence behavior:
- * - Only allows a, g, c, t, n (not extended IUPAC codes)
- * - Removes markers before checking
- * - Skips header lines (starting with '>')
- */
 function isInvalidSequence(val: string): boolean {
   const splitSeq = val.toLowerCase().split("\n");
   for (const line of splitSeq) {
     const trimmed = line.trim();
     if (trimmed.charAt(0) === ">") {
-      continue; // Skip header lines
+      continue;
     }
-    // Remove valid nucleotides (a, g, c, t, n)
     let cleaned = trimmed.replace(nucleotideRegex, "");
-    // Remove markers
     cleaned = cleaned.replace(markerRegex, "");
-    // If anything remains, it's invalid
     if (cleaned.length > 0) {
       return true;
     }
@@ -186,11 +169,6 @@ function isInvalidSequence(val: string): boolean {
   return false;
 }
 
-/**
- * Checks if sequence has only one FASTA record
- * Matches legacy hasSingleFastaSequence behavior:
- * - Only counts headers that have non-nucleotide content (real headers)
- */
 function hasSingleFastaSequence(sequence: string): boolean {
   let headerCount = 0;
   const splitSeq = sequence.toLowerCase().split("\n");
@@ -212,12 +190,6 @@ function hasSingleFastaSequence(sequence: string): boolean {
 export function validatePrimerDesignSequence(
   sequence: string,
 ): PrimerSequenceValidationResult {
-  // Match legacy onChangeSequence validation order:
-  // 1. Check if empty
-  // 2. Check if invalid sequence
-  // 3. Check if multiple FASTA sequences
-  // 4. Otherwise valid
-
   if (!sequence || !sequence.trim()) {
     return {
       isValid: false,
@@ -250,7 +222,6 @@ export function validatePrimerDesignSequence(
     };
   }
 
-  // All checks passed - sequence is valid
   const sanitized = sanitizePrimerDesignSequence(sequence);
   return {
     isValid: true,
@@ -260,9 +231,7 @@ export function validatePrimerDesignSequence(
   };
 }
 
-// The app spec lists "workplace_fasta", but App-PrimerDesign.pl only reads a
-// workspace file for "workspace_fasta" and fails on anything else. DXKB used to
-// send the misspelling, so reruns of those jobs open as a workspace FASTA.
+// App-PrimerDesign.pl only reads a workspace file for "workspace_fasta", not the spec's "workplace_fasta".
 export function primerDesignRerunInputType(
   value: unknown,
 ): PrimerDesignFormData["input_type"] | undefined {

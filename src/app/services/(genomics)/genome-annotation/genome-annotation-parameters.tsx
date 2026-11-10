@@ -184,8 +184,6 @@ export function GenomeAnnotationParameters({
                         : null
                     }
                     onChange={(item) => {
-                      // Typing an ID and picking a match fills the name, as
-                      // picking a name fills the ID; the two clear together.
                       const name = item?.taxon_name || null;
                       field.handleChange(item ? String(item.taxon_id) : null);
                       form.setFieldValue("scientific_name", name);

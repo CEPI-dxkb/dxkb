@@ -10,7 +10,6 @@ interface Box {
   height: number;
 }
 
-/** An element whose box (and scroll box) the placement reads. */
 function boxed<T extends HTMLElement | SVGElement>(
   element: T,
   box: Box,
@@ -36,10 +35,6 @@ function boxed<T extends HTMLElement | SVGElement>(
   return element;
 }
 
-/**
- * A 1,000 × 800 chart whose figure starts 100 px down, right of a 200 px
- * label column, with one glyph (row 0, feature 1) and a 320 × 200 popup.
- */
 function chart(glyph: Partial<Box> = {}) {
   const root = boxed(document.createElement("div"), {
     left: 0,
@@ -85,7 +80,6 @@ function place(
 describe("placeFeaturePopupElement", () => {
   it("hangs the popup just below and right of its glyph", () => {
     const parts = chart();
-    // The glyph spans 400–500 across, 300–316 down; 470 px of room below.
     expect(place(parts)).toEqual({ x: "506px", y: "322px", maxHeight: "470px" });
     expect(parts.popup).not.toHaveAttribute("data-offscreen");
   });
@@ -97,7 +91,6 @@ describe("placeFeaturePopupElement", () => {
   });
 
   it("goes above a glyph near the chart's bottom", () => {
-    // 70 px below, 586 above: its bottom 6 px over the glyph.
     expect(place(chart({ top: 700 }))).toEqual({
       x: "506px",
       y: "494px",
@@ -107,7 +100,6 @@ describe("placeFeaturePopupElement", () => {
 
   it("gives a card whose details scroll the roomier side, where neither fits it", () => {
     const parts = chart({ top: 450 });
-    // Its details are 600 px tall in a 100 px box: 700 px in all.
     const details = boxed(
       document.createElement("div"),
       { left: 0, top: 0, width: 320, height: 100 },
@@ -115,7 +107,6 @@ describe("placeFeaturePopupElement", () => {
     );
     details.setAttribute("data-popup-scroller", "");
     parts.popup.append(details);
-    // 320 px below, 336 above, both short of the card's 360.
     expect(place(parts)).toEqual({
       x: "506px",
       y: "244px",

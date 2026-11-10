@@ -18,8 +18,8 @@ export default async function GenomeCollectionPage({
 }: GenomeCollectionPageProps) {
   const params = await searchParams;
   const state = parseGenomeCollectionState(params);
-  // Server-rendered, and only for the Overview tab, so no other tab's paging or
-  // sorting refetches the overview's charts.
+  // Server-rendered and only for the Overview tab, so other tabs' paging or
+  // sorting does not refetch the charts.
   const overviewScope = genomeOverviewScope(state);
   const overview =
     firstSearchParam(params, "tab") === "overview" && overviewScope ? (

@@ -1,5 +1,4 @@
-// `server-only` throws outside Next's bundler; this route reaches it through
-// `@/lib/data-api/server-policy` (same neutralization as the Taxa Tree test).
+// `server-only` throws outside Next's bundler (same neutralization as the Taxa Tree test).
 vi.mock("server-only", () => ({}));
 
 import { http, HttpResponse } from "msw";
@@ -14,7 +13,6 @@ import {
 import { genomeBrowserSequenceCache } from "@/lib/genome-browser/server";
 import { GET } from "../route";
 
-/** One client IP per call, so the shared rate-limit buckets never spill over. */
 let nextIpOctet = 10;
 
 function call(operation: string, query: string, clientIp?: string) {
@@ -30,7 +28,6 @@ function call(operation: string, query: string, clientIp?: string) {
   );
 }
 
-/** Every answer, success or failure, depends on the caller's cookie. */
 function expectPrivateNoStore(response: Response) {
   expect(response.headers.get("Cache-Control")).toBe("private, no-store");
   expect(response.headers.get("Vary")).toBe("Cookie");
@@ -143,8 +140,7 @@ describe("genome browser route", () => {
 });
 
 describe("genome browser rate limits", () => {
-  // Validation fails before any upstream call, so each allowed request spends
-  // the bucket without touching the backend.
+  // Validation fails before any upstream call, so allowed requests spend the bucket without touching the backend.
   it.each([
     ["regions", 60, "198.51.100.7"],
     ["sequence", 60, "198.51.100.21"],
@@ -185,7 +181,6 @@ describe("genome browser sequence loads", () => {
     );
     const read = (refName: string) =>
       call("sequence", `genomeId=1.1&refName=${refName}&start=0&end=4`);
-    // Four distinct contigs fill the cap; a fifth is refused at once.
     const loading = ["A", "B", "C", "D"].map(read);
     const refused = await read("E");
     expect(refused.status).toBe(503);
@@ -238,15 +233,13 @@ describe("genome browser sequence cache scope", () => {
     expect(await readAs(null)).toBe("gggg");
     expect(upstreamTokens).toEqual(["token-a", "token-b", "anonymous"]);
 
-    // The same caller again is a cache hit; no further upstream read.
     expect(await readAs("token-a")).toBe("aaaa");
     expect(await readAs(null)).toBe("gggg");
     expect(upstreamTokens).toHaveLength(3);
   });
 
   it("never answers a cached contig to another token claiming the same user id", async () => {
-    // `bvbrc_user_id` is a plain cookie nothing ties to `bvbrc_token`, so a
-    // caller can claim any user id. A hit must need the token upstream accepted.
+    // `bvbrc_user_id` is a plain cookie a caller can forge, so a hit must need the token upstream accepted.
     expect(await readAs("token-a", "victim@patricbrc.org")).toBe("aaaa");
     expect(await readAs("token-b", "victim@patricbrc.org")).toBe("cccc");
     expect(upstreamTokens).toEqual(["token-a", "token-b"]);

@@ -63,12 +63,7 @@ export default function HASubtypeNumberingPage() {
             The HA Subtype Numbering Conversion service allows you to renumber
             Influenza HA sequences according to a cross-subtype numbering scheme
             proposed by Burke and Smith in{" "}
-            {/* `inline!`: the header's link rule is inline-flex, which sets a
-                link that wraps onto its own block and strands the "." after
-                it; the rule is unlayered, so only `!` beats it. `underline`:
-                the link sits in running text at about 1:1 against it, so
-                color alone does not mark it (WCAG 1.4.1), and the header
-                rule underlines only on hover. */}
+            {/* `inline!` beats the header's unlayered inline-flex link rule; `underline` because color alone does not mark a link in running text (WCAG 1.4.1). */}
             <a
               href="https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4100033/"
               target="_blank"
@@ -95,7 +90,6 @@ export default function HASubtypeNumberingPage() {
         }}
         className="grid grid-cols-1 gap-6 md:grid-cols-12"
       >
-        {/* Input Sequence Card */}
         <div className="md:col-span-12">
           <Card>
             <ServiceCardHeader>
@@ -156,12 +150,9 @@ export default function HASubtypeNumberingPage() {
               {inputSource === "fasta_data" && (
                 <form.Field name="input_fasta_data">
                   {(field) => {
-                    // The FASTA's own message, or the form's when the FASTA has
-                    // none, so the "required" error does not stack under it.
                     const error =
                       fastaValidationMessage || fieldErrorMessage(field);
                     const hasError = Boolean(error);
-                    // The valid cue holds only for the text that passed.
                     const isValidated =
                       !hasError &&
                       validatedFasta !== "" &&
@@ -181,9 +172,6 @@ export default function HASubtypeNumberingPage() {
                           aria-invalid={hasError || undefined}
                           variant={isValidated ? "valid" : undefined}
                         />
-                        {/* One line, always present, as under BLAST's
-                            textarea: the error, the valid count, or nothing,
-                            in a reserved height so the card does not resize. */}
                         <p
                           role="status"
                           className={cn(
@@ -242,7 +230,6 @@ export default function HASubtypeNumberingPage() {
           </Card>
         </div>
 
-        {/* Parameters Card: Conversion scheme + Output */}
         <div className="md:col-span-12">
           <Card>
             <ServiceCardHeader>
@@ -262,8 +249,6 @@ export default function HASubtypeNumberingPage() {
                     <ServiceLabel>
                       Conversion Sequence Numbering Scheme
                     </ServiceLabel>
-                    {/* No scheme is chosen by default, so "Select at least
-                        one" is a common error; the box shows it too. */}
                     <div
                       className={cn(
                         "grid grid-cols-2 gap-2 rounded-md border bg-background p-4 md:grid-cols-4",
@@ -337,7 +322,6 @@ export default function HASubtypeNumberingPage() {
           </Card>
         </div>
 
-        {/* Form Controls */}
         <div className="md:col-span-12">
           <ServiceFormFooter
             form={form}

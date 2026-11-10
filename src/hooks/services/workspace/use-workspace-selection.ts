@@ -19,7 +19,6 @@ export interface UseWorkspaceSelectionReturn {
   selectedItems: WorkspaceItem[];
   anchorPath: string | null;
   selectedPaths: string[];
-  /** Last selected item, or null when nothing is selected. */
   primaryItem: WorkspaceItem | null;
   handleSelectItem: (
     item: WorkspaceItem,
@@ -98,9 +97,7 @@ export function useWorkspaceSelection({
     }
   };
 
-  // Rows memoize on this handler, so its identity must not change per selection.
-  // The ref holds the latest closure; it is set in a layout effect, never during render
-  // (a deferred-search commit does not flush passive effects before the next input).
+  // Rows memoize on this handler, so its identity must stay stable. The ref is set in a layout effect, never during render.
   const selectItemRef = useRef(selectItem);
   useLayoutEffect(() => {
     selectItemRef.current = selectItem;
@@ -112,8 +109,7 @@ export function useWorkspaceSelection({
     [],
   );
 
-  // Explicit memo: `useWorkspaceNavigation`'s handlers depend on it, and rows
-  // key their handlers on those, so it must stay stable without the compiler.
+  // Explicit memo: row handlers key on it, so it must stay stable without the compiler.
   const clearSelection = useCallback(() => {
     if (panelExpansionTimer.current) {
       clearTimeout(panelExpansionTimer.current);

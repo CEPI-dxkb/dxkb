@@ -260,8 +260,6 @@ describe("RatingButtons", () => {
     await waitFor(() => {
       expect(toastError).toHaveBeenCalledTimes(2);
     });
-    // Neither save reached the server: the stored rating (none) comes back,
-    // not Good, which the newer click's snapshot held.
     expect(ratingOf(queryClient, "A")).toBeNull();
   });
 });

@@ -50,7 +50,6 @@ async function body(response: Response): Promise<unknown> {
   return response.json();
 }
 
-/** An error reply whose body stalls until the budget ends the read. */
 function bodyTimesOut(): HttpResponse<ReadableStream> {
   const stream = new ReadableStream({
     start(controller) {

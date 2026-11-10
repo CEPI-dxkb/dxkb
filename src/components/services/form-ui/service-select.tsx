@@ -4,11 +4,9 @@ import { SelectContent, SelectTrigger } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 
 /**
- * A select trigger with the pickers' primary chevron chip. It fills its
- * column by default; the width is a utility (`w-full`), not part of
- * `.service-card-select-trigger`, so a call-site width such as `w-20` wins
- * through tailwind-merge, and `min-w-0` lets a long value line-clamp in a
- * narrow column instead of pushing the chip out of view.
+ * `w-full` is a utility, not part of `.service-card-select-trigger`, so a
+ * call-site width wins through tailwind-merge; `min-w-0` lets a long value
+ * line-clamp.
  */
 export function ServiceSelectTrigger({
   className,

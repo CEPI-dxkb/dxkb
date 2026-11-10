@@ -16,9 +16,7 @@ import {
   type Frame,
 } from "../support/tab-history";
 
-// Back from a paged member tab must keep the page on the frame the tab is
-// still on screen with the overview's URL. Why that frame exists, and why only
-// a browser shows it, is in e2e/support/tab-history.ts.
+// The stale-frame rationale is in e2e/support/tab-history.ts.
 
 test.use({ storageState: { cookies: [], origins: [] } });
 
@@ -28,8 +26,6 @@ test.describe("Back and Forward from a paged member tab", () => {
   const featureTotal = 450;
   const readPage = (read: URL) => read.searchParams.get("page") ?? "1";
 
-  // Three rows per page, named for the page they were read for, out of enough
-  // features for a second page to exist.
   const pagedFeatureOverride: JsonOverride = {
     url: /\/api\/data\/genome_feature(?:\?|$)/,
     method: "GET",
@@ -80,7 +76,6 @@ test.describe("Back and Forward from a paged member tab", () => {
     });
     await expect(page).toHaveURL(`/genome/${genomeId}`);
     await expect(genome.heading).toBeVisible();
-    // A stale frame of the Features tab must still show page 2.
     const staleFrames = frames.filter(
       (frame) => frame.search === "" && frame.current === "Features",
     );

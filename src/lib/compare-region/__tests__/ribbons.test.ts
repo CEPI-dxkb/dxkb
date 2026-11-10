@@ -102,7 +102,6 @@ describe("connectorFade", () => {
 });
 
 describe("restingRibbons", () => {
-  /** Ten genomes: family 20 in the first five, family 30 in the next four. */
   const rows = Array.from({ length: 10 }, (_, index): CompareRegionRow => {
     const id = `${String(index + 1)}.1`;
     const features: CompareRegionFeature[] = [
@@ -222,7 +221,6 @@ describe("ribbonPath and connectorPath", () => {
     );
   });
 
-  /** Family 3 moved: 100–400 in the focus row, 1500–1800 below it. */
   const movedRows: CompareRegionRow[] = [
     focusRow,
     {
@@ -309,7 +307,6 @@ describe("ribbonPath and connectorPath", () => {
   );
 
   it("draws a ribbon off the plot within the reach a drag draws past it", () => {
-    // 600 px left: the focus genes span −297 to −196, inside a 674 px reach.
     const away = trackScale(
       model.layout.domain,
       { scaleX: 1, translateX: -600 },

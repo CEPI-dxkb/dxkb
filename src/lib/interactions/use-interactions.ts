@@ -13,18 +13,12 @@ import {
 import { ppiGraphRecordSchema, type PpiRecord } from "./schema";
 
 /**
- * Rows the graph will draw for one query.
- *
- * Sigma's WebGL renderer and the force layouts stop being usable well before
- * this, so the bound is the graph's own rather than the Data API's aggregate
- * `maxExportRows` ceiling. The pre-gateway implementation capped at the same
- * number through a bare `Range: items=0-5000` header, which gave the UI no way
- * to tell a complete result from a truncated one — the query below asks for one
- * row past the ceiling so it can report the overflow instead of hiding it.
+ * Sigma's WebGL renderer and force layouts stop being usable well before the Data API's
+ * `maxExportRows`; the query asks for one row past this so it can report overflow instead of hiding
+ * it.
  */
 export const interactionsGraphRowLimit = 5_000;
 
-/** The fields `toGraph` reads. Mirrors the legacy graph projection. */
 export const interactionsGraphFields = [
   "id",
   "interactor_a",
@@ -54,18 +48,12 @@ const repository = new DataRepository();
 
 export interface InteractionsGraphData {
   rows: PpiRecord[];
-  /** The query matched more rows than `interactionsGraphRowLimit` can draw. */
   isTruncated: boolean;
 }
 
 /**
- * The graph's Data API request.
- *
- * `rql` and `keyword` are the whole predicate, and they are exactly the pair the
- * Interactions table sends for the same scope — the shell hands both views the
- * same two values, and the gateway turns `keyword` into the same clauses either
- * way, so one input cannot mean two datasets. `fields` and `limit` only shape
- * the response. Exported so tests can compare the two views' predicates.
+ * `rql` and `keyword` are exactly the pair the Interactions table sends for the same scope, so one
+ * input cannot mean two datasets. Exported so tests can compare the two views' predicates.
  */
 export function interactionsGraphRequest(
   rql: string,
@@ -76,19 +64,15 @@ export function interactionsGraphRequest(
     keyword: keyword || undefined,
     fields: [...interactionsGraphFields],
     limit: interactionsGraphRowLimit + 1,
-    // Matches the Table's default sort, so "the first N interactions" names the
-    // same N rows the Table would page through, and a refetch of a truncated
-    // result returns the same window rather than an arbitrary new one.
+    // Matches the Table's default sort, so a truncated result is the Table's first rows and a
+    // refetch returns the same window.
     sort: { field: "id", direction: "asc" },
   };
 }
 
 /**
- * Load the graph's dataset through the Data API gateway, which owns
- * authentication, RQL validation, rate limiting and the error contract. Missing
- * configuration and every request failure therefore arrive as a rejected query
- * rather than a throw out of this hook, so consumers render their error state
- * instead of unmounting the tree.
+ * Missing configuration and every request failure arrive as a rejected query rather than a throw,
+ * so consumers render their error state instead of unmounting the tree.
  */
 export function useInteractions(rql: string, keyword: string) {
   const request = interactionsGraphRequest(rql, keyword);
@@ -99,8 +83,8 @@ export function useInteractions(rql: string, keyword: string) {
       const result = await repository.export("ppi", request, signal);
       const parsed = graphRowsSchema.safeParse(result.rows);
       if (!parsed.success) {
-        // Same shape and code as the gateway's own row-validation failure, so a
-        // malformed row reads like every other standard data error.
+        // Same shape and code as the gateway's row-validation failure, so a malformed row reads
+        // like any standard data error.
         const issue = parsed.error.issues[0];
         const path = issue.path.join(".");
         throw new DataRepositoryError(

@@ -14,9 +14,6 @@ import {
   removeComparisonItemById,
 } from "../proteome-comparison-form-utils";
 
-// ---------------------------------------------------------------------------
-// getProteomeComparisonDisplayName
-// ---------------------------------------------------------------------------
 describe("getProteomeComparisonDisplayName", () => {
   it("returns short names unchanged", () => {
     expect(getProteomeComparisonDisplayName("short")).toBe("short");
@@ -35,14 +32,14 @@ describe("getProteomeComparisonDisplayName", () => {
   });
 
   it("truncates using a custom maxLength", () => {
-    const name = "abcdefghijklmnopqrst"; // 20 chars
+    const name = "abcdefghijklmnopqrst";
     const result = getProteomeComparisonDisplayName(name, 10);
     expect(result).toContain("...");
     expect(result.length).toBeLessThan(name.length);
   });
 
   it("preserves start and end of truncated names", () => {
-    const name = "ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890ABCDEF"; // >36
+    const name = "ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890ABCDEF";
     const result = getProteomeComparisonDisplayName(name);
     expect(result.startsWith("ABCDEF")).toBe(true);
     expect(result.endsWith("ABCDEF")).toBe(true);
@@ -50,9 +47,6 @@ describe("getProteomeComparisonDisplayName", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// createGenomeComparisonItem
-// ---------------------------------------------------------------------------
 describe("createGenomeComparisonItem", () => {
   it("returns an item with genome type and correct fields", () => {
     const item = createGenomeComparisonItem("123.456", "E. coli");
@@ -73,9 +67,6 @@ describe("createGenomeComparisonItem", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// createFastaComparisonItem
-// ---------------------------------------------------------------------------
 describe("createFastaComparisonItem", () => {
   it("returns an item with fasta type and name from last path segment", () => {
     const item = createFastaComparisonItem("/workspace/user/my-file.fasta");
@@ -95,9 +86,6 @@ describe("createFastaComparisonItem", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// createFeatureGroupComparisonItem
-// ---------------------------------------------------------------------------
 describe("createFeatureGroupComparisonItem", () => {
   it("returns an item with feature_group type and name from last path segment", () => {
     const item = createFeatureGroupComparisonItem("/workspace/user/my-group");
@@ -112,9 +100,6 @@ describe("createFeatureGroupComparisonItem", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// createGenomeGroupComparisonItem
-// ---------------------------------------------------------------------------
 describe("createGenomeGroupComparisonItem", () => {
   it("returns an item with genome_group type, name, and genome_ids", () => {
     const ids = ["g1", "g2", "g3"];
@@ -136,9 +121,6 @@ describe("createGenomeGroupComparisonItem", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// isDuplicateComparisonItem
-// ---------------------------------------------------------------------------
 describe("isDuplicateComparisonItem", () => {
   const existingItems = [
     { id: "1", name: "G1", genome_id: "100.1", type: "genome" as const },
@@ -181,9 +163,6 @@ describe("isDuplicateComparisonItem", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// getComparisonItemTypeLabel
-// ---------------------------------------------------------------------------
 describe("getComparisonItemTypeLabel", () => {
   it("returns 'Genome' for genome type", () => {
     expect(getComparisonItemTypeLabel("genome")).toBe("Genome");
@@ -206,9 +185,6 @@ describe("getComparisonItemTypeLabel", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// countTotalComparisonGenomes
-// ---------------------------------------------------------------------------
 describe("countTotalComparisonGenomes", () => {
   it("returns 0 for an empty array", () => {
     expect(countTotalComparisonGenomes([])).toBe(0);
@@ -256,14 +232,10 @@ describe("countTotalComparisonGenomes", () => {
       },
       { id: "3", name: "f.fasta", path: "/ws/f.fasta", type: "fasta" as const },
     ];
-    // 1 + 2 + 1 = 4
     expect(countTotalComparisonGenomes(items)).toBe(4);
   });
 });
 
-// ---------------------------------------------------------------------------
-// transformProteomeComparisonParams
-// ---------------------------------------------------------------------------
 describe("transformProteomeComparisonParams", () => {
   const baseData = {
     ref_source_type: "genome" as const,
@@ -365,8 +337,6 @@ describe("transformProteomeComparisonParams", () => {
       ],
     };
     const result = transformProteomeComparisonParams(data);
-    // genome_ids = ["comp-1"], user_genomes = ["/ws/ref.fasta"]
-    // reference is first in user_genomes => index = genome_ids.length + 1 = 2
     expect(result.genome_ids).toEqual(["comp-1"]);
     expect(result.user_genomes).toEqual(["/ws/ref.fasta"]);
     expect(result.reference_genome_index).toBe(2);
@@ -384,8 +354,6 @@ describe("transformProteomeComparisonParams", () => {
       ],
     };
     const result = transformProteomeComparisonParams(data);
-    // genome_ids = ["comp-1"], user_genomes = ["/ws/f.fasta"], feature_groups = ["/ws/ref-fg"]
-    // reference index = genome_ids.length + user_genomes.length + 1 = 1 + 1 + 1 = 3
     expect(result.reference_genome_index).toBe(3);
   });
 
@@ -417,9 +385,6 @@ describe("transformProteomeComparisonParams", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// validateGenomeGroupAddition
-// ---------------------------------------------------------------------------
 describe("validateGenomeGroupAddition", () => {
   it("returns valid when total does not exceed max", () => {
     const items = [
@@ -433,7 +398,6 @@ describe("validateGenomeGroupAddition", () => {
     const items = [
       { id: "1", name: "G1", genome_id: "100.1", type: "genome" as const },
     ];
-    // current = 1, adding 4, max = 5
     const result = validateGenomeGroupAddition(items, ["a", "b", "c", "d"], 5);
     expect(result).toEqual({ valid: true });
   });
@@ -460,7 +424,6 @@ describe("validateGenomeGroupAddition", () => {
         genome_ids: ["x", "y", "z"],
       },
     ];
-    // current count = 3, adding 2, max = 4
     const result = validateGenomeGroupAddition(items, ["a", "b"], 4);
     expect(result.valid).toBe(false);
     expect(result.message).toContain("Current: 3");
@@ -472,9 +435,6 @@ describe("validateGenomeGroupAddition", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// removeComparisonItemById
-// ---------------------------------------------------------------------------
 describe("removeComparisonItemById", () => {
   const items = [
     { id: "aaa", name: "G1", genome_id: "100.1", type: "genome" as const },

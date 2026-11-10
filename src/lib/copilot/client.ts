@@ -1,8 +1,6 @@
 /**
- * Browser side of `/api/copilot/*`, kept apart from `./server.ts` so no zod
- * schema or gateway URL reaches a client bundle. Answers are cached by
- * TanStack Query only, so `queryClient.clear()` on an account change covers
- * them: there is no module-level cache to register with `account-caches`.
+ * Kept apart from `./server.ts` so no zod schema or gateway URL reaches a client bundle. Answers
+ * are cached by TanStack Query only, so `queryClient.clear()` covers them.
  */
 import type {
   CopilotBlockedAction,
@@ -26,11 +24,7 @@ export const copilotQueryKeys = {
     [...copilotQueryKeys.all, "workflow-watches", sessionId] as const,
 };
 
-/**
- * A failed `/api/copilot/*` call. The message is the route's `error`, used
- * verbatim; `status` lets the app-wide retry policy skip an outage, and
- * `copilotCode` is the gateway's own code (`TURN_IN_FLIGHT`, …).
- */
+/** `status` lets the app-wide retry policy skip an outage; `copilotCode` is the gateway's own code. */
 export class CopilotClientError extends Error {
   readonly status: number;
   readonly copilotCode: string | null;
@@ -62,7 +56,6 @@ export async function copilotFailure(
   );
 }
 
-/** The session is not this user's to open (archived, or another account's). */
 export function isCopilotSessionGone(error: unknown): boolean {
   return (
     error instanceof CopilotClientError &&
@@ -133,7 +126,6 @@ export async function setCopilotExecutionMode(
   await send(sessionPath(sessionId), "PATCH", { executionMode });
 }
 
-/** "No" on an execution card: nothing runs; the card records the answer. */
 export async function declineCopilotExecution(
   sessionId: string,
   actions: CopilotBlockedAction[],
@@ -141,7 +133,6 @@ export async function declineCopilotExecution(
   await send(`${sessionPath(sessionId)}/execution-answer`, "POST", { actions });
 }
 
-/** Saves a plan: its edited steps, or its status as it runs. */
 export async function saveCopilotPlan(
   sessionId: string,
   planId: string,
@@ -194,9 +185,8 @@ export async function rateCopilotMessage(
 }
 
 /**
- * Stops a running turn: by its job id once the stream named it, otherwise by
- * session. A session stop that finds no turn yet (the request may still be on
- * its way to the gateway) is tried once more after a second.
+ * Stops by job id once the stream named it, otherwise by session; a session stop that finds no turn
+ * yet is retried once after a second.
  */
 export async function stopCopilotTurn(
   sessionId: string,
@@ -217,7 +207,6 @@ export async function stopCopilotTurn(
     await wait(1000);
     await send(`${sessionPath(sessionId)}/stop`, "POST").catch(
       (retryError: unknown) => {
-        // Still nothing running: the turn already ended.
         if (
           !(retryError instanceof CopilotClientError) ||
           retryError.copilotCode !== "NO_TURN"
@@ -229,7 +218,6 @@ export async function stopCopilotTurn(
   }
 }
 
-/** Opens a chat turn and returns its event stream. */
 export async function openCopilotChat(
   request: CopilotChatRequest,
   signal: AbortSignal,

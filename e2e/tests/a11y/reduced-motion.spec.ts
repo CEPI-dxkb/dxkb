@@ -1,10 +1,6 @@
 /**
- * WCAG 2.3.3 / prefers-reduced-motion — asserts the app honours
- * `prefers-reduced-motion: reduce` and suppresses CSS transitions/animations.
- *
- * The a11y playwright config already sets `contextOptions.reducedMotion: "reduce"`
- * globally so every page load runs with the media query active. These tests
- * verify the CSS actually respects that setting on a known animated surface.
+ * Asserts `prefers-reduced-motion: reduce` (WCAG 2.3.3) suppresses CSS transitions and
+ * animations.
  */
 import { test, expect, applyBackendMocks } from "../../mocks/backends";
 import {
@@ -13,8 +9,7 @@ import {
   a11yBackendOverrides,
 } from "../../fixtures/overrides";
 
-// Minimum duration (ms) below which we consider a transition "suppressed".
-// CSS transitions with duration === 0 are interpreted as "no animation".
+// Transitions at or below this duration (ms) count as suppressed.
 const suppressedDurationMs = 50;
 
 async function getMotionDurations(
@@ -51,8 +46,6 @@ test.describe("prefers-reduced-motion", () => {
     await page.waitForURL(/\/workspace\/[^/]+\/home/, { timeout: 10_000 });
     await page.waitForLoadState("networkidle");
 
-    // The contextOptions.reducedMotion: "reduce" in playwright.a11y.config.ts sets
-    // the media query at the browser-context level before this page loads.
     const mediaReducedMotion = await page.evaluate(
       () => window.matchMedia("(prefers-reduced-motion: reduce)").matches,
     );
@@ -61,7 +54,6 @@ test.describe("prefers-reduced-motion", () => {
       "reducedMotion context option should activate the media query",
     ).toBe(true);
 
-    // Verify the workspace sidebar does not have long CSS transitions.
     const sidebarDurations = await getMotionDurations(
       page,
       "aside, nav, [data-sidebar]",
@@ -94,7 +86,6 @@ test.describe("prefers-reduced-motion", () => {
       "reducedMotion context option should activate the media query",
     ).toBe(true);
 
-    // Check main content wrapper for transition-duration and animation-duration overrides.
     const mainDurations = await getMotionDurations(
       page,
       "main, [class*='hero'], [class*='animate']",

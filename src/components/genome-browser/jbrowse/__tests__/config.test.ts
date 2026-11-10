@@ -31,7 +31,6 @@ describe("buildGenomeBrowserConfig", () => {
       ["PATRICGenes", "PATRIC Annotation", { type: "BvbrcFeatureAdapter", genomeId: "470.36849", annotation: "PATRIC" }],
       ["RefSeqGenes", "RefSeq Annotation", { type: "BvbrcFeatureAdapter", genomeId: "470.36849", annotation: "RefSeq" }],
     ]);
-    // JBrowse 5: colors are display-level slots; the v4 `renderer` block is retired.
     expect(config.tracks[0]?.displays).toEqual([
       {
         type: "LinearBasicDisplay",

@@ -1,7 +1,3 @@
-// The all-data-types search (`/search?type=everything&q=…`): one Data API
-// request for every DXKB type's match count and top rows, and the rows turned
-// into what the result tables show.
-
 import { queryOptions } from "@tanstack/react-query";
 
 import { allTermSearchTypes, searchHref } from "@/constants/search-info";
@@ -33,27 +29,18 @@ export {
   typeSearchQuery,
 } from "./all-types-query";
 
-/**
- * The same-origin route that runs the search (`src/app/api/data/search`), so
- * it gets the server's upstream budget, failure mapping and the user's token
- * rather than a browser connection straight to the Data API.
- */
+/** Same-origin route, so the search gets the server's upstream budget, failure mapping and the user's token. */
 export const allTypesSearchPath = "/api/data/search";
 
 export type SearchDoc = Record<string, unknown>;
 
-/**
- * Unvalidated JSON, so every level can be missing: one malformed type must
- * not take the other types' results down with it.
- */
+/** Unvalidated JSON: one malformed type must not take down the others. */
 interface SolrResponse {
   result?: { response?: { docs?: SearchDoc[]; numFound: number } };
 }
 
-/** The Data API's answer, keyed by type. A type it could not search is absent. */
 export type TypeMatches = Partial<Record<string, SolrResponse>>;
 
-/** The route's `{error, code}` answer as a `DataRepositoryError`, its message kept. */
 async function searchResponseError(
   response: Response,
 ): Promise<DataRepositoryError> {
@@ -71,12 +58,7 @@ async function searchResponseError(
   );
 }
 
-/**
- * Every DXKB type's top matches for `keyword`, in one request through the
- * search route. A failure keeps the route's own message (which names the
- * upstream cause: "The BV-BRC data service … did not respond …"); a request
- * that never reached the route says so rather than a bare "Failed to fetch".
- */
+/** Failures keep the route's own message; a request that never reached the route says so rather than "Failed to fetch". */
 export async function fetchTypeMatches(
   keyword: string,
   signal?: AbortSignal,
@@ -111,39 +93,31 @@ export interface RowFact {
   value: string;
 }
 
-/** One result row, as every type's table shows it. */
 export interface ResultRow {
   key: string;
   title: string;
-  /** Sequences read better in mono. */
   monoTitle: boolean;
-  /** The row's context column (see `TypeResults.contextLabel`). */
   context: string;
   facts: RowFact[];
   id: string;
   href: string | null;
 }
 
-/** One DXKB type's matches. */
 export interface TypeResults {
   id: string;
   label: string;
   count: number;
-  /** The type's own list, searched for the same keyword. */
   listHref: string;
-  /** The heading of the rows' context column. */
   contextLabel: string;
   rows: ResultRow[];
 }
 
-/** The top Taxa match, which the page header leads with. */
 export interface TaxonMatch {
   name: string;
   taxonId: string;
   href: string | null;
   genomes: number;
   rank: string;
-  /** The two ranks above it, nearest last. */
   parents: string[];
 }
 
@@ -206,7 +180,6 @@ export function formatCount(count: number): string {
   return countFormat.format(count);
 }
 
-/** "2.2M": a count where space is short (the Data types rail). */
 export function formatCompact(count: number): string {
   return compactFormat.format(count);
 }
@@ -239,7 +212,6 @@ function describe(id: string, doc: SearchDoc, index: number): ResultRow {
         ...base,
         key: taxonId || base.key,
         title: text(doc.taxon_name),
-        // The nearest three ranks between the root and the taxon itself.
         context: lineageNames(doc).slice(1, -1).slice(-3).join(" › "),
         facts: facts([
           ["Rank", text(doc.taxon_rank)],
@@ -309,7 +281,6 @@ function describe(id: string, doc: SearchDoc, index: number): ResultRow {
       };
     }
     case "protein_feature": {
-      // The feature the domain sits on, as the Domains and Motifs list links.
       const featureId = featureIdFromRow(doc);
       return {
         ...base,
@@ -391,8 +362,6 @@ function describe(id: string, doc: SearchDoc, index: number): ResultRow {
           ["Result", first(doc.pathogen_test_result)],
         ]),
         id: sampleId ?? "",
-        // A sample tested more than one way is one row per test type; with no
-        // single type, the member page asks which.
         href: sampleId
           ? surveillanceHref(
               sampleId,
@@ -407,7 +376,6 @@ function describe(id: string, doc: SearchDoc, index: number): ResultRow {
       return {
         ...base,
         key: text(doc.id) || base.key,
-        // Serology records name no strain or pathogen; the sample is the name.
         title: sampleId ?? "",
         context: join([
           text(doc.host_common_name),
@@ -456,7 +424,6 @@ function describe(id: string, doc: SearchDoc, index: number): ResultRow {
 export function describeRows(id: string, docs: SearchDoc[]): ResultRow[] {
   return docs.map((doc, index) => {
     const row = describe(id, doc, index);
-    // A row missing its type's title fields still needs a name to click.
     return row.title ? row : { ...row, title: row.id || "Untitled" };
   });
 }
@@ -476,7 +443,6 @@ function taxonMatchOf(doc: SearchDoc | undefined): TaxonMatch | null {
   };
 }
 
-/** Every DXKB type's matches, in DXKB order, zero-count types included. */
 export function toAllTypesResults(
   matches: TypeMatches | undefined,
   keyword: string,
@@ -509,7 +475,6 @@ const allTypesSearchKeys = {
 
 const completeSearchStaleMs = 10 * 60_000;
 
-/** Whether every DXKB type answered; a type the Data API could not search is absent. */
 export function isCompleteTypeMatches(matches: TypeMatches | undefined): boolean {
   return (
     matches !== undefined &&
@@ -517,24 +482,15 @@ export function isCompleteTypeMatches(matches: TypeMatches | undefined): boolean
   );
 }
 
-/**
- * Every type's count and top rows for `keyword` (normalized text), as
- * `account` (the signed-in user's id, or `"anonymous"`) sees them: the search
- * sends the session token, so private records are in the answer and the cache
- * is kept per account.
- */
+/** Cached per `account` because the search sends the session token, so private records appear in the answer. */
 export function allTypesSearchQueryOptions(keyword: string, account: string) {
   return queryOptions({
     queryKey: allTypesSearchKeys.overview(account, keyword),
     queryFn: ({ signal }) => fetchTypeMatches(keyword, signal),
-    // Text without terms (blank, `""`, a lone `OR`, only syntax) is no search:
-    // it would build an empty and(), which the Data API rejects.
+    // Text without terms would build an empty and(), which the Data API rejects.
     enabled: isSearchableKeyword(keyword),
     retry: false,
-    // A 6-13 s backend search whose results change slowly: Back within 30 min is
-    // instant. A new private record may take up to 10 min to appear in a cached
-    // search. An answer missing a type (that type's search failed, so it shows
-    // zero matches) is stale at once, so returning to it searches again.
+    // Slow backend search with slowly changing results; an answer missing a type is stale at once, so it searches again.
     staleTime: (query) =>
       isCompleteTypeMatches(query.state.data) ? completeSearchStaleMs : 0,
     gcTime: 30 * 60_000,

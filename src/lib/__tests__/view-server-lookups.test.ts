@@ -1,8 +1,4 @@
-// `server-only` throws unconditionally outside Next's bundler (it relies on a
-// webpack alias swap that only exists in the real build); every module under
-// test here reaches it through `@/lib/data-api/server-repository`, so the guard
-// is neutralized the same way `src/lib/phylogeny/__tests__/dataset-store.test.ts`
-// does.
+// `server-only` throws outside Next's bundler; neutralize it as dataset-store.test.ts does.
 vi.mock("server-only", () => ({}));
 
 import { http, HttpResponse } from "msw";
@@ -17,10 +13,6 @@ import { getStrain } from "@/lib/strain-view/server";
 
 const dataApiOrigin = "https://data.example";
 
-/**
- * Records every upstream request the lookup made, so the alternate-ID cases
- * below can assert which identifier field went into the RQL predicate.
- */
 function upstream(resource: string, rows: unknown[]): { urls: string[] } {
   const urls: string[] = [];
   server.use(
@@ -49,19 +41,7 @@ afterEach(() => {
   }
 });
 
-/**
- * Which schema rejects a malformed row.
- *
- * - `"view"` — the row satisfies the looser resource schema in
- *   `data-api/schemas.ts`, so the repository hands it back and the *wrapper's*
- *   own `*ViewRecordSchema.parse` is what throws. That is the body under test.
- * - `"resource"` — the resource schema already declares the same field just as
- *   tightly, so `parseRows` rejects the row first and the wrapper never sees
- *   it. `epitope` is the one entry in this table where that is true: its view
- *   schema is field-for-field no stricter than `epitopeRecordSchema`, so there
- *   is no row that reaches its `.parse` and fails. Asserting the 502 here
- *   records that fact instead of pretending the wrapper rejected it.
- */
+/** Which schema rejects a malformed row: `"view"` means the wrapper's own `*ViewRecordSchema.parse` throws, `"resource"` means `parseRows` rejects first (epitope's view schema is no stricter than `epitopeRecordSchema`). */
 type MalformedLayer = "view" | "resource";
 
 interface LookupCase {
@@ -71,7 +51,6 @@ interface LookupCase {
   lookup: (id: string) => Promise<unknown>;
   validRow: Record<string, unknown>;
   expected: unknown;
-  /** What the lookup returns when the upstream matched no rows. */
   empty: unknown;
   malformedRow: Record<string, unknown>;
   malformedLayer: MalformedLayer;
@@ -86,8 +65,7 @@ const lookupCases: LookupCase[] = [
     validRow: { genome_id: "83332.12", genome_name: "Mycobacterium" },
     expected: { genome_id: "83332.12", genome_name: "Mycobacterium" },
     empty: null,
-    // `genomeRecordSchema` accepts any non-empty `genome_id`; the view schema
-    // additionally requires the `<taxon>.<assembly>` form, `/^\d+\.\d+$/`.
+    // The resource schema accepts any non-empty `genome_id`; the view schema requires `<taxon>.<assembly>`.
     malformedRow: { genome_id: "not-a-genome-id" },
     malformedLayer: "view",
   },
@@ -102,8 +80,7 @@ const lookupCases: LookupCase[] = [
       usedAlternateId: false,
     },
     empty: { feature: null, usedAlternateId: false },
-    // `genomeFeatureRecordSchema` does not declare `taxon_lineage_names` at
-    // all, so a loose object passes it; the view schema types it string-or-list.
+    // `genomeFeatureRecordSchema` does not declare `taxon_lineage_names`, so a loose object passes it.
     malformedRow: { feature_id: "f1", taxon_lineage_names: 42 },
     malformedLayer: "view",
   },
@@ -126,8 +103,7 @@ const lookupCases: LookupCase[] = [
     validRow: { exp_id: "1234", study_name: "A study" },
     expected: { exp_id: "1234", study_name: "A study" },
     empty: null,
-    // `experimentRecordSchema` declares only the identifier and taxonomy
-    // fields, so a numeric `study_name` reaches the view schema.
+    // `experimentRecordSchema` declares only identifier and taxonomy fields, so a numeric `study_name` reaches the view schema.
     malformedRow: { exp_id: "1234", study_name: 42 },
     malformedLayer: "view",
   },
@@ -145,8 +121,7 @@ const lookupCases: LookupCase[] = [
       strain: "A/China",
     },
     empty: null,
-    // `strainRecordSchema` declares only the identifier, name, accession and
-    // taxonomy fields, so a numeric `subtype` reaches the view schema.
+    // `strainRecordSchema` declares only identifier, name, accession and taxonomy fields, so a numeric `subtype` reaches the view schema.
     malformedRow: { id: "strain-1", subtype: 42 },
     malformedLayer: "view",
   },
@@ -191,10 +166,7 @@ describe.each(lookupCases)(
       }
     });
 
-    // Each wrapper lets the factory's configuration error propagate untouched,
-    // so Next redacts the message in production while still logging it
-    // server-side. Only `protein-structure-view/server.ts` catches it, and it
-    // has its own spec.
+    // Each wrapper lets the factory's configuration error propagate; only `protein-structure-view/server.ts` catches it, and it has its own spec.
     it("propagates the factory's not_configured error when no base URL is set", async () => {
       delete process.env.DATA_API_URL;
 
@@ -222,12 +194,6 @@ describe.each(lookupCases)(
   },
 );
 
-/**
- * `resources.ts` declares `patric_id` as `genome_feature`'s alternate
- * identifier, and `getFeature` is the only wrapper that uses one: a `fig|…`
- * identifier has to be looked up by `patric_id` instead of `feature_id`, and
- * the caller is told which happened so the page can canonicalize its URL.
- */
 describe("getFeature alternate identifier", () => {
   const figId = "fig|83332.12.peg.1";
 
@@ -257,8 +223,7 @@ describe("getFeature alternate identifier", () => {
     expect(urls[0]).toContain("eq(feature_id");
   });
 
-  // The flag is about the *identifier that was used*, not about whether a row
-  // came back — the page needs it to redirect even when the lookup misses.
+  // The flag reports the identifier used, not whether a row came back; the page needs it to redirect even when the lookup misses.
   it("still reports the alternate ID when a fig| lookup matches nothing", async () => {
     upstream("genome_feature", []);
 

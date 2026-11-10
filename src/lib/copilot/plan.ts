@@ -1,15 +1,6 @@
 /**
- * Multi-step plans from the planning agent (`bvbrc-agents/agents/
- * planning_agent/models.py`). The plan is stored on its answer
- * (`message.plan`); the gateway updates each step's status from the
- * `plan_step_*` events of the turn that ran it.
- *
- * The browser drives a plan, as BV-BRC's does: each step is one chat turn
- * (`plan_action: "execute_next"`), and when one completes the client starts
- * the next. A plan stops on its own when a step fails, asks a question, waits
- * for job approval, or submitted a job to wait for. The plan's own status
- * (`draft` → `executing` → `completed`) and the jobs it waits for are saved
- * by the client (`/plan/:id/edit`).
+ * The browser drives a plan: each step is one chat turn (`plan_action: "execute_next"`) and the
+ * client starts the next when one completes.
  */
 import { isRecord, text } from "./steps";
 
@@ -32,7 +23,6 @@ const stepStatuses = new Set<CopilotPlanStepStatus>([
   "awaiting_approval",
 ]);
 
-/** Agents a step can go to (the planning agent's list). */
 export const copilotPlanAgents = [
   "data",
   "service",
@@ -56,16 +46,12 @@ export interface CopilotPlan {
   planId: string;
   title: string;
   description: string | null;
-  /** `draft` until approved; `executing`; `completed`. */
   status: string;
   steps: CopilotPlanStep[];
-  /** Job submissions a step started that the plan waits for. */
   waitingFor: string[];
-  /** The stored plan object, sent back when the plan runs or is saved. */
   raw: Record<string, unknown>;
 }
 
-/** Where the client keeps the jobs a plan waits for (BV-BRC's field). */
 const waitingKey = "_waitingForWorkflows";
 
 function readWaiting(raw: Record<string, unknown>): string[] {
@@ -111,7 +97,6 @@ export function readCopilotPlan(payload: unknown): CopilotPlan | null {
   };
 }
 
-/** A step's change as a running turn reports it (`plan_step_*` events). */
 export interface CopilotPlanStepUpdate {
   planId: string;
   stepId: string | null;
@@ -119,7 +104,6 @@ export interface CopilotPlanStepUpdate {
   status: CopilotPlanStepStatus | null;
   resultSummary: string | null;
   errorMessage: string | null;
-  /** `plan_workflow_submitted`: jobs the step started. */
   submissionIds: string[];
 }
 
@@ -135,10 +119,6 @@ function stepIndexOf(plan: CopilotPlan, update: CopilotPlanStepUpdate): number {
     : -1;
 }
 
-/**
- * The plan with a running turn's step updates applied, as the gateway will
- * store them (a completed step is not set back to running).
- */
 export function applyPlanUpdates(
   plan: CopilotPlan,
   updates: CopilotPlanStepUpdate[],
@@ -167,7 +147,6 @@ export function applyPlanUpdates(
   return { ...plan, steps, waitingFor, status: plan.status === "draft" ? "executing" : plan.status };
 }
 
-/** Steps that ended one way or another. */
 function isSettled(step: CopilotPlanStep): boolean {
   return (
     step.status === "completed" ||
@@ -177,23 +156,15 @@ function isSettled(step: CopilotPlanStep): boolean {
 }
 
 export type CopilotPlanState =
-  /** Not approved yet. */
   | { kind: "draft" }
-  /** This step runs next. */
   | { kind: "ready"; stepIndex: number }
-  /** A step waits for the user: its question, or its jobs' approval. */
   | { kind: "waitingForUser"; stepIndex: number }
-  /** A step stopped before it finished (Stop, or a dropped connection). */
   | { kind: "interrupted"; stepIndex: number }
   | { kind: "failed"; stepIndex: number }
-  /** Jobs a step submitted are still running. */
   | { kind: "waitingForJobs"; submissionIds: string[] }
   | { kind: "completed" };
 
-/**
- * What a stored plan does next, read when no turn is running. A step still
- * `running` then was interrupted.
- */
+/** A step still `running` when no turn is running was interrupted. */
 export function copilotPlanState(plan: CopilotPlan): CopilotPlanState {
   if (plan.status === "draft") return { kind: "draft" };
   const find = (status: CopilotPlanStepStatus) =>
@@ -213,7 +184,6 @@ export function copilotPlanState(plan: CopilotPlan): CopilotPlanState {
   return plan.steps.every(isSettled) ? { kind: "completed" } : { kind: "ready", stepIndex: 0 };
 }
 
-/** The stored plan object with `changes` and the given steps written in. */
 export function copilotPlanObject(
   plan: CopilotPlan,
   changes: { status?: string; steps?: CopilotPlanStep[]; waitingFor?: string[] } = {},
@@ -238,13 +208,11 @@ export function copilotPlanObject(
       step_id: step.stepId,
       description: step.description,
       agent: step.agent,
-      // A deleted step is no longer something to wait for.
       depends_on: step.dependsOn.filter((id) => ids.has(id)),
       status: step.status,
     })),
   };
   const waitingFor = changes.waitingFor ?? plan.waitingFor;
-  // Present only while the plan waits (a cleared wait drops the field).
   next[waitingKey] =
     waitingFor.length > 0
       ? Object.fromEntries(waitingFor.map((id) => [id, { status: "active" }]))
@@ -252,7 +220,6 @@ export function copilotPlanObject(
   return next;
 }
 
-/** The plan with one step's status changed. */
 export function withStepStatus(
   plan: CopilotPlan,
   stepIndex: number,
@@ -266,7 +233,6 @@ export function withStepStatus(
   };
 }
 
-/** The (hidden) question of a step turn; BV-BRC's wording. */
 export function planStepQuery(plan: CopilotPlan, stepIndex: number): string {
   const step =
     stepIndex >= 0 && stepIndex < plan.steps.length
@@ -275,7 +241,6 @@ export function planStepQuery(plan: CopilotPlan, stepIndex: number): string {
   return `Execute plan step: ${step?.description || `step ${String(stepIndex + 1)}`}`;
 }
 
-/** Whether `step` depends on `other`, so it has to run after it. */
 export function mustRunAfter(
   step: CopilotPlanStep,
   other: CopilotPlanStep,
@@ -284,10 +249,8 @@ export function mustRunAfter(
 }
 
 /**
- * The edited steps with each step that is not pending taken from `live`, so
- * an edit made while a step ran does not overwrite its status. Null when the
- * plan moved on under the edit: a step pending in the edit is no longer
- * pending in `live`, or a live step that is not pending is missing from it.
+ * Null when the plan moved on under the edit: a step pending in the edit is no longer pending in
+ * `live`, or a live non-pending step is missing.
  */
 export function mergeEditedSteps(
   live: CopilotPlan,
@@ -311,7 +274,6 @@ export function mergeEditedSteps(
   return merged;
 }
 
-/** A new step id, unused in the plan. */
 export function newPlanStepId(plan: { steps: { stepId: string }[] }): string {
   const ids = new Set(plan.steps.map((step) => step.stepId));
   let number = plan.steps.length + 1;

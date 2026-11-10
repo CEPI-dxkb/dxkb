@@ -35,9 +35,8 @@ describe("FeatureCollection", () => {
     collectionProps.current = null;
   });
 
-  // Legacy BV-BRC scopes neither list to recent genomes, and that scope is a
-  // cross-collection `genome()` join: 40–120 s on a keyword search and 44 s
-  // on the bare list, against a few seconds and 18 s without it.
+  // Legacy scopes neither list to recent genomes: that cross-collection
+  // `genome()` join takes 40-120 s.
   it.each([
     ["the bare list", bareState],
     ["a keyword search", { ...bareState, keyword: "Dnak" }],
@@ -65,7 +64,6 @@ describe("FeatureCollection", () => {
     ["a link's rql", { ...bareState, rql: "eq(genome_id,83332.12)" }],
     ["a refinement", { ...bareState, refine: "gyrase" }],
     ["a Proteins list", { ...bareState, filters: { filter: ["protein"] } }],
-    // Text without terms searches for nothing, so these are bare lists too.
     ["a blank keyword", { ...bareState, keyword: "   " }],
     ["a keyword of only syntax", { ...bareState, keyword: '""' }],
   ])("orders %s as legacy's grid does", (_name, state) => {
@@ -97,8 +95,8 @@ describe("FeatureCollection", () => {
   });
 
   it("writes no removed-default marker on a Proteins search's URL", () => {
-    // The Proteins search has no PATRIC default (`featureListOptionsFor`), so
-    // its URL writes must not record one as removed (annotation=*).
+    // The Proteins search has no PATRIC default, so URL writes must not record
+    // one as removed.
     render(
       <FeatureCollection
         initialState={{ ...bareState, filters: { filter: ["protein"] } }}

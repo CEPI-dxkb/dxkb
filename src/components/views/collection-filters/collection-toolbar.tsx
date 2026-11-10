@@ -30,12 +30,6 @@ import { useFacetActions } from "./use-facet-actions";
 const customQueryExplanation =
   "The link carries a hand-written query the filters cannot show. Clear all removes it.";
 
-/**
- * A resource collection's one-row toolbar:
- * keyword · Filters (n) · active filter pills · Clear all · Columns.
- * Filters and every pill open the facets' checklists; nothing above the table
- * grows as filters are added (pills that do not fit go behind "+N").
- */
 export function CollectionToolbar(props: CollectionToolbarProps) {
   const customQueryDescriptionId = useId();
   const {
@@ -69,12 +63,7 @@ export function CollectionToolbar(props: CollectionToolbarProps) {
     definitions.find((definition) => definition.field === field)?.label ??
     field;
   const hasFilter = (field: string) => (filters[field]?.length ?? 0) > 0;
-  // The pill whose popover is open stays on the row after its last value is
-  // unticked, so the popover keeps its anchor.
   const [heldField, setHeldField] = useState<string | null>(null);
-  // Every facet the resource offers, then any filtered field no facet names
-  // (a link's filter), so every filter is reachable. A held link filter stays
-  // too, though unticking its last value drops it from `filters`.
   const linkFields = new Set(
     [...Object.keys(filters).filter(hasFilter), heldField].filter(
       (field): field is string => field !== null && !isDefined(field),
@@ -124,13 +113,9 @@ export function CollectionToolbar(props: CollectionToolbarProps) {
     };
   };
 
-  // Counts belong to the scope, so any counted facet showing the previous
-  // scope's means a refresh is in flight.
   const refreshing = [...pinnedFields, ...peekedFields].some(
     (field) => facetStatus(field) === "stale",
   );
-  // Opening a menu counts the pinned facets and the active ones; the More
-  // group waits until it is unfolded.
   const countActiveFacets = () => {
     facetActions.peek(activeFields);
   };
@@ -138,9 +123,6 @@ export function CollectionToolbar(props: CollectionToolbarProps) {
   const facetsErrorMessage =
     facetsError && `Could not load filter values: ${facetsError}`;
 
-  // Narrower than @2xl (a phone, or a squeezed panel) the keyword box takes
-  // its own row and the rest wraps beneath it, so every control stays
-  // reachable; ResourceWorkspace clips anything wider than the pane.
   return (
     <div className="@container mb-1 shrink-0">
       <div
@@ -261,9 +243,8 @@ export function CollectionToolbar(props: CollectionToolbarProps) {
 
         {hasExplicitRql && (
           <>
-            {/* Base UI tooltips set no aria-describedby, so screen readers get
-                the explanation once, through the hidden span, not from the
-                portalled tooltip. */}
+            {/* Base UI tooltips set no aria-describedby, so screen readers
+               get the explanation once, through the hidden span. */}
             <Tooltip>
               <TooltipTrigger
                 render={
@@ -309,8 +290,6 @@ export function CollectionToolbar(props: CollectionToolbarProps) {
           />
         )}
 
-        {/* Off-screen copies of every row pill (and the "+N" pill) at their
-            natural width, so the overflow can be computed. */}
         <div
           ref={measureRef}
           inert

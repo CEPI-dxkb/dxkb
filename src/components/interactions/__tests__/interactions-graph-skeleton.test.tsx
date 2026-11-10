@@ -7,7 +7,6 @@ describe("InteractionsGraphSkeleton", () => {
   it("shows a loading spinner and copy where the canvas will render", () => {
     render(<InteractionsGraphSkeleton layout={defaultLayout} onLayoutChange={vi.fn()} />);
 
-    // Spinner carries the sole role=status loading announcement.
     expect(screen.getByRole("status")).toBeInTheDocument();
     expect(screen.getByText("Loading interactions…")).toBeInTheDocument();
   });
@@ -23,7 +22,6 @@ describe("InteractionsGraphSkeleton", () => {
       <InteractionsGraphSkeleton layout={defaultLayout} onLayoutChange={vi.fn()} />,
     );
 
-    // 12 rows, each a round dot skeleton + a text bar skeleton.
     const dots = container.querySelectorAll('[data-slot="skeleton"].rounded-full');
     expect(dots).toHaveLength(12);
   });

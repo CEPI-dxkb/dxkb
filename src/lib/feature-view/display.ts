@@ -1,13 +1,7 @@
 import type { FastaTypeFor } from "@/lib/data-api/fasta";
 import type { FeatureViewRecord } from "./schema";
 
-/**
- * The identifier a person recognizes a feature by. `feature_id`
- * (`PATRIC.644340.17.JAEUGC010000001.CDS.12314.12580.rev`) is the Solr key —
- * it addresses the page but is never how a user names a gene — so it is the
- * last resort, for a record that carries none of the public identifiers. A
- * blank identifier counts as absent, or it would title the page with nothing.
- */
+/** The identifier users recognize a feature by; `feature_id` (the Solr key) is the last resort. Blank counts as absent. */
 export function featureDisplayName(feature: FeatureViewRecord): string {
   return (
     [feature.patric_id, feature.refseq_locus_tag, feature.protein_id].find(
@@ -16,12 +10,7 @@ export function featureDisplayName(feature: FeatureViewRecord): string {
   );
 }
 
-/**
- * What BV-BRC's Feature View prints in bold under its breadcrumb, in its
- * order: BRC ID, RefSeq locus tag, gene, product. `name` is the page's name
- * (the heading), so a record with no BRC ID leads with what stands in for one;
- * `details` are the rest, minus blanks.
- */
+/** BV-BRC's Feature View lines under the breadcrumb: BRC ID, RefSeq locus tag, gene, product; `name` is the heading, `details` the non-blank rest. */
 export function featureHeaderParts(feature: FeatureViewRecord): {
   name: string;
   details: string[];
@@ -37,11 +26,7 @@ function hasLength(value: FeatureViewRecord["na_length"]): boolean {
   return Number(value) > 0;
 }
 
-/**
- * The FASTA flavours this feature can actually produce. Offering a protein
- * download for an RNA or other untranslated feature would only ever return an
- * empty file, so it is offered when the record has an amino-acid sequence.
- */
+/** FASTA flavours the feature can produce; protein only when the record has an amino-acid sequence. */
 export function featureFastaTypes(
   feature: FeatureViewRecord,
 ): FastaTypeFor<"genome_feature">[] {

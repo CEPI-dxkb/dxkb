@@ -63,7 +63,6 @@ export class EpitopePage {
     await expect(this.page.getByText("No results")).toBeVisible();
   }
 
-  /** Tick one value of a facet in the toolbar's Filters menu. */
   async selectFacet(label: string, value: string): Promise<void> {
     await this.toolbar.pickFacetValue(label, value);
   }

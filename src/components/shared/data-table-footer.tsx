@@ -48,11 +48,9 @@ export function DataTableFooter({
   isAllPagesSelected,
   totalSelectedCount,
 }: DataTableFooterProps) {
-  // Extracted out of useDataTableContent, which carries "use no memo". The
-  // compiler otherwise keys the pager on `table` identity alone (it emits
-  // `if ($[n] !== table) { t = table.getCanPreviousPage(); }`), and the table
-  // instance is only unstable by accident (see the useTable call in
-  // data-table.tsx) — memoize the options there and Prev/Next freeze.
+  // Extracted out of useDataTableContent ("use no memo"): the compiler would
+  // otherwise key this on `table` identity alone, which is only unstable by
+  // accident (see the useTable call in data-table.tsx).
   "use no memo";
 
   const { pageIndex, pageSize } = table.state.pagination;
@@ -67,9 +65,8 @@ export function DataTableFooter({
     ? totalItems
     : (totalSelectedCount ?? Object.keys(table.state.rowSelection).length);
   const uniquePages = getVisiblePages(pageIndex, table.getPageCount());
-  // Loading with nothing counted yet is the first read, not an empty result:
-  // "Showing 0-0 of 0 results" under the skeleton read as no matches. A page
-  // change keeps the known total, so its range still shows.
+  // Loading with nothing counted yet is a first read, not an empty result, so
+  // "Showing 0-0 of 0 results" is withheld.
   const isCounting = isLoading && totalItems === 0;
 
   return (
@@ -117,7 +114,6 @@ export function DataTableFooter({
                   onClick={() => {
                     table.setPageIndex(page);
                   }}
-                  // The pager variant styles the current page off aria-current.
                   variant="pager"
                   size="pager"
                   aria-current={pageIndex === page ? "page" : undefined}

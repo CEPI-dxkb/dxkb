@@ -63,7 +63,6 @@ describe("CollectionDownloadAction", () => {
       "title",
       "Select rows in the table first",
     );
-    // Compact counts.
     expect(screen.getByRole("radio", { name: /^All/ }).closest("label")).toHaveTextContent(
       "All2.1M",
     );
@@ -102,7 +101,6 @@ describe("CollectionDownloadAction", () => {
     await user.click(screen.getByRole("button", { name: "Protein FASTA" }));
     expect(lastRequest(onDownload)).toEqual({
       format: "protein-fasta",
-      // In selection order.
       scope: { kind: "selected", ids: ["F.2", "F.1"] },
       sort: { field: "patric_id", direction: "asc" },
       fields: undefined,
@@ -171,7 +169,6 @@ describe("CollectionDownloadAction", () => {
     render(<CollectionDownloadAction {...props()} />);
     await open(user);
 
-    // 2.1M matching rows: over Excel's sheet and the all-results FASTA cap.
     const excel = screen.getByRole("button", { name: /^Excel/ });
     expect(excel).toBeDisabled();
     expect(excel).toHaveTextContent("Over Excel's 1,048,576-row limit");
@@ -218,8 +215,6 @@ describe("CollectionDownloadAction", () => {
     expect(screen.getByRole("button", { name: /^Text/ })).toHaveTextContent(
       "Counting matching rows…",
     );
-    // No count it does not have yet: not "All 2.1M" from a previous query,
-    // nor "All 0" on the first read.
     expect(
       screen.getByRole("radio", { name: /^All/ }).closest("label"),
     ).toHaveTextContent(/^All…$/);
@@ -435,7 +430,6 @@ describe("CollectionDownloadAction", () => {
       act(() => {
         second();
       });
-      // Past the first download's 1.8 s, which no longer clears the mark.
       act(() => {
         vi.advanceTimersByTime(1_000);
       });
@@ -477,7 +471,6 @@ describe("CollectionDownloadAction", () => {
     const group = await screen.findByRole("radiogroup", {
       name: "Rows to download",
     });
-    // The scope, the format rows and the switch are all reachable.
     await waitFor(() => {
       expect(group.contains(document.activeElement)).toBe(true);
     });

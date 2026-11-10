@@ -27,8 +27,6 @@ vi.mock("@/components/workspace/workspace-object-selector", () => ({
   WorkspaceObjectSelector: () => null,
 }));
 
-// Shows the value each OutputFolder holds, so the test can read the generated
-// output name.
 vi.mock("@/components/services/output-folder", () => ({
   default: ({ variant, value }: { variant?: string; value?: string }) => (
     <input
@@ -48,8 +46,6 @@ const anthracis = {
 
 describe("Genome Annotation taxonomy fields", () => {
   beforeEach(() => {
-    // Both selectors search the same proxy: the ID selector with
-    // `q=taxon_id:<id>`, the name selector with its own name query.
     server.use(
       http.get("*/api/services/taxonomy", ({ request }) => {
         const query = new URL(request.url).searchParams.get("q") ?? "";
@@ -67,7 +63,6 @@ describe("Genome Annotation taxonomy fields", () => {
     await user.type(screen.getByPlaceholderText("My identifier123"), "run1");
 
     const taxonId = screen.getByLabelText("Taxonomy ID");
-    // Editable, not the read-only "Select a taxon name first" box it was.
     expect(taxonId).toBeEnabled();
     expect(taxonId).not.toHaveAttribute("readonly");
     expect(taxonId).toHaveAttribute("placeholder", "NCBI Taxonomy ID");

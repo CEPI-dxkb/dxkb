@@ -43,8 +43,7 @@
   --sidebar-border: oklch(0.92 0.004 286.32);
   --sidebar-ring: oklch(0.606 0.25 292.717);
   --secondary-hover: oklch(0.972 0.001 286.38);
-  /* Keep last: see --color-primary-hover in globals.css;
-     src/__tests__/theme-token-order.test.ts fails if anything follows it. */
+  /* Keep last: theme-token-order.test.ts enforces it. */
   --primary-hover: color-mix(in oklab, var(--primary) 85%, var(--foreground));
 }
 
@@ -61,7 +60,6 @@
   --secondary: oklch(0.274 0.006 286.033);
   --secondary-foreground: oklch(0.969 0.016 293.756);
   --muted: oklch(0.274 0.006 286.033);
-  /* Lifted for small muted text: see dxkb-dark in globals.css. */
   --muted-foreground: oklch(0.775 0.015 286.067);
   --accent: oklch(32.865% 0.08836 327.333);
   --accent-foreground: oklch(76.44% 0.19814 324.74);
@@ -94,7 +92,6 @@
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.541 0.281 293.009);
   --secondary-hover: oklch(0.254 0.006 286.01);
-  /* Keep last: see --color-primary-hover in globals.css;
-     src/__tests__/theme-token-order.test.ts fails if anything follows it. */
+  /* Keep last: theme-token-order.test.ts enforces it. */
   --primary-hover: color-mix(in oklab, var(--primary) 85%, var(--background));
 }

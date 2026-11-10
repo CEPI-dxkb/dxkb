@@ -54,14 +54,10 @@ import { pickDirectoryMode } from "./workspace-directory-mode";
 type PublicWorkspaceLevel = "root" | "user" | "path";
 
 interface WorkspaceBrowserProps {
-  /** "home" = current user's home; "shared" = shared-with-me / shared folder view; "public" = public browsing */
   mode: WorkspaceViewMode;
-  /** Username from URL segment (e.g. workspace/chrescobar/home) */
   username: string;
   path: string;
-  /** URL for the workspace guide (env WORKSPACE_GUIDE_URL). Passed from server. */
   workspaceGuideUrl: string;
-  /** Pre-fetched permissions map to seed the permissions query. */
   initialPermissions?: ListPermissionsResult;
 }
 
@@ -109,8 +105,8 @@ function useWorkspaceBrowser({
     staleTime: 2 * 60 * 1000,
   });
 
-  // Remembered per device and shared by every folder: this component is keyed by
-  // path, so local state here would reset on each folder change.
+  // Shared by every folder per device; this component is keyed by path, so local state
+  // would reset on each folder change.
   const [sort, setSort] = useUiPreference("workspaceSort");
   const [showHiddenFiles, setShowHiddenFiles] = useUiPreference(
     "workspaceShowHiddenFiles",
@@ -153,8 +149,6 @@ function useWorkspaceBrowser({
     username,
     path,
     fullPath,
-    // The shared root lists `/{owner}`, so it needs the realm-qualified root,
-    // not the short username.
     currentUser: myWorkspaceRoot,
     isJobResultView,
     isAtSharedRoot,
@@ -162,9 +156,8 @@ function useWorkspaceBrowser({
     publicLevel,
     jobDotPath: dotPath,
   });
-  // Only a path the Workspace says is missing stops the listing. A lookup
-  // that failed for another reason (an outage) says nothing about the folder,
-  // so the listing still runs and reports its own result.
+  // Only a path the Workspace says is missing stops the listing; a lookup that failed for
+  // another reason (an outage) says nothing about the folder.
   const resolveMissing = isWorkspaceObjectMissing(resolveQuery.error);
   const enabled = !!directoryMode && !resolveMissing;
 
@@ -190,14 +183,12 @@ function useWorkspaceBrowser({
   const items = enabled ? rawItems : [];
   const listingError = enabled ? error : null;
   const listingSucceeded = enabled && hasLoaded && !listingError;
-  // What the page reports: the listing's failure, else (when the listing did
-  // not load either) the path lookup's.
   const loadError =
     listingError ?? (listingSucceeded ? null : resolveQuery.error) ?? null;
 
   const isOwnHome = mode === "home" && isUrlCurrentUser;
-  // A failed listing is not an empty home: during an outage this fired the
-  // setup writes (and reported them as success) on every visit.
+  // A failed listing is not an empty home; treating it as one fires the setup writes on
+  // every visit during an outage.
   const homeAppearsEmpty =
     isOwnHome && path === "" && listingSucceeded && items.length === 0;
   const { retrySetup } = useEnsureUserWorkspace({
@@ -258,8 +249,7 @@ function useWorkspaceBrowser({
       myWorkspaceRoot,
     });
 
-  // Remember a folder only once it opened as one: not a path that failed to
-  // load, and not a file path (the home root needs no lookup).
+  // Remember a folder only once it opened as one, not a failed path or a file path.
   const resolvedAsFolder =
     path === "" || isFolderType(resolveQuery.data?.type);
   const openedAsFolder = listingSucceeded && resolvedAsFolder;
@@ -349,8 +339,6 @@ function useWorkspaceBrowser({
     router,
   ]);
 
-  // "Folder not found" only when the Workspace said so (404, "not found",
-  // "lacks permission"); an outage shows its own error with Retry instead.
   const pathNotFound =
     !isPublic &&
     !!path &&
@@ -361,13 +349,12 @@ function useWorkspaceBrowser({
   const retryLoad = () => {
     if (resolveQuery.isError || isJobResultView) void resolveQuery.refetch();
     refetch();
-    // A home setup that failed runs again, but only if the home still looks
-    // missing; during an outage this sends nothing.
+    // A failed home setup reruns only if the home still looks missing; during an outage
+    // this sends nothing.
     retrySetup();
   };
-  // Retry and Refresh keep the failure on screen ("Retrying…") until the
-  // refetch answers, instead of the skeletons a query without data falls
-  // back to. Keyed by location, so navigating away drops the kept error.
+  // Retry and Refresh keep the failure on screen until the refetch answers, instead of the
+  // skeletons a query without data falls back to.
   const retry = useRetryKeepingError(
     {
       error: loadError,
@@ -384,8 +371,6 @@ function useWorkspaceBrowser({
       `/workspace/${encodeWorkspaceSegment(myWorkspaceRoot)}/home`,
     );
   };
-
-  // --- Early returns ---
 
   if (
     !isPublic &&

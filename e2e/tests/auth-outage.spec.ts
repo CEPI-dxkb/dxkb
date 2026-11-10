@@ -8,11 +8,6 @@ import {
 } from "../fixtures/overrides";
 import { JobsListPage } from "../pages";
 
-// The session's profile lookup reaches a user service in an outage
-// (src/lib/e2e-fixtures/outages.ts), as the BV-BRC user service was during the
-// 2026-10-19 maintenance window: the loopback answers it with a 503
-// maintenance page, or never answers at all.
-
 function sessionNotice(page: Page) {
   return page.getByRole("status", { name: /couldn.t verify your account/i });
 }
@@ -60,7 +55,6 @@ test.describe("profile service outage", () => {
     test("keeps the user signed in once the lookup's budget runs out", async ({
       page,
     }) => {
-      // Every render waits out the lookup's 5 s budget before it answers.
       test.slow();
       await new JobsListPage(page).goto();
 

@@ -1,12 +1,10 @@
 import type { BoundedCache } from "./bounded-cache";
 
-/** Consecutive chunk indexes, both ends inclusive. */
 export interface ChunkSpan {
   first: number;
   last: number;
 }
 
-/** Indexes of the fixed-size chunks a half-open range `[start, end)` touches. */
 export function chunkIndexes(
   start: number,
   end: number,
@@ -18,7 +16,6 @@ export function chunkIndexes(
   return Array.from({ length: last - first + 1 }, (_, index) => first + index);
 }
 
-/** Groups ascending chunk indexes into runs of at most `maxChunks`. */
 export function coalesceChunks(
   indexes: readonly number[],
   maxChunks: number,
@@ -40,9 +37,7 @@ export function coalesceChunks(
 }
 
 export interface LoadChunksOptions<Result, Chunk> {
-  /** Promises, so concurrent reads of one chunk share its request. */
   cache: BoundedCache<Promise<Chunk>>;
-  /** Names the series (genome, track, sequence); the chunk index is appended. */
   key: string;
   chunkSize: number;
   maxChunksPerRequest: number;
@@ -52,12 +47,7 @@ export interface LoadChunksOptions<Result, Chunk> {
   sliceChunk: (result: Result, chunkStart: number, chunkEnd: number) => Chunk;
 }
 
-/**
- * The chunks covering `[start, end)`, in order. Cached chunks are reused; the
- * missing ones are fetched in as few requests as the limit allows. A failed
- * request is evicted so the next read retries it, and its error (the route's
- * own message) reaches every waiting reader unchanged.
- */
+/** A failed request is evicted so the next read retries it, and the route's own error reaches every waiting reader unchanged. */
 export async function loadChunks<Result, Chunk>(
   options: LoadChunksOptions<Result, Chunk>,
 ): Promise<Chunk[]> {

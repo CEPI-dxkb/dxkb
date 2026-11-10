@@ -23,11 +23,7 @@ export function testGene(
   };
 }
 
-/**
- * The focus gene's row: plus strand, centered at 1000 over a 2 kb window.
- * Its features are, by index (the layout keeps this order): 0 the upstream
- * gene, 1 the focus gene, 2 the focus gene's BLAST hit (lane 1).
- */
+/** The focus gene's row: plus strand, centered at 1000 over a 2 kb window. Features by index: 0 upstream gene, 1 focus gene, 2 its BLAST hit (lane 1). */
 export const focusRow: CompareRegionRow = {
   genomeId: "1.1",
   genomeName: "Escherichia coli str. K-12 substr. MG1655",
@@ -58,10 +54,7 @@ export const focusRow: CompareRegionRow = {
   ],
 };
 
-/**
- * A homolog on the minus strand, so its row is mirrored. Its window runs past
- * the end of its contig.
- */
+/** A minus-strand homolog (mirrored row) whose window runs past the end of its contig. */
 export const mirroredRow: CompareRegionRow = {
   genomeId: "2.1",
   genomeName: "Salmonella enterica",

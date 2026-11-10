@@ -2,10 +2,6 @@ import { z } from "zod";
 
 import type { ProfilePatch, UserProfile } from "@/lib/auth/types";
 
-// ============================================================================
-// Profile form
-// ============================================================================
-
 export const profileFormSchema = z.object({
   email: z.email("Invalid email address"),
   first_name: z.string().min(1, "First name is required"),
@@ -17,10 +13,6 @@ export const profileFormSchema = z.object({
 });
 
 export type ProfileFormData = z.infer<typeof profileFormSchema>;
-
-// ============================================================================
-// Password form
-// ============================================================================
 
 export const passwordFormSchema = z
   .object({
@@ -39,10 +31,6 @@ export const passwordFormSchema = z
 
 export type PasswordFormData = z.input<typeof passwordFormSchema>;
 
-// ============================================================================
-// Patch builder
-// ============================================================================
-
 const editableProfileFields = [
   "email",
   "first_name",
@@ -53,7 +41,6 @@ const editableProfileFields = [
   "interests",
 ] as const;
 
-/** Compare original and updated profile values, returning only changed fields as JSON Patch ops. */
 export function buildProfilePatches(
   original: UserProfile,
   updated: ProfileFormData,

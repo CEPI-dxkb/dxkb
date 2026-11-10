@@ -22,23 +22,19 @@ import {
 } from "./facet-values";
 import type { FacetStatus } from "./types";
 
-/** One facet as the toolbar's pills and menus show it. */
 export interface FacetView {
   field: string;
   label: string;
   values: readonly string[];
   status: FacetStatus;
-  /** No facet names the field (a filter from the link), so nothing counts it. */
   notCounted: boolean;
   options: FacetValueOption[];
 }
 
-/** Gap between pills, in px; matches `gap-1.5` on the track. */
+/** In px; matches `gap-1.5` on the track. */
 const pillGap = 6;
-/** Narrowest a pill may be squeezed to (its value truncated), in px. */
 const minSqueezedPill = 112;
 
-/** The pill's look at its natural width, for measuring. */
 export function PillFace({ label, values }: Pick<FacetView, "label" | "values">) {
   if (values.length === 0) {
     return (
@@ -66,7 +62,6 @@ export function PillFace({ label, values }: Pick<FacetView, "label" | "values">)
   );
 }
 
-/** "+N": the filters that did not fit on the row. */
 export function MorePillFace({ count }: { count: number }) {
   return (
     <span className="inline-flex h-8 items-center gap-0.5 rounded-md border border-input bg-background px-2.5 text-xs font-medium whitespace-nowrap text-foreground tabular-nums shadow-xs hover:bg-foreground/5">
@@ -75,12 +70,6 @@ export function MorePillFace({ count }: { count: number }) {
   );
 }
 
-/**
- * An applied filter on the row: "Genome Status: Complete +1", which opens the
- * facet's checklist, and an × that clears the field. The pill whose popover is
- * open stays on the row (as a dashed pill) even after its last value is
- * unticked, so the popover keeps its anchor.
- */
 export function ActiveFilterPill({
   view,
   refreshing,
@@ -146,14 +135,12 @@ export function ActiveFilterPill({
     </>
   );
 
-  // One wrapper in both states, so the popover stays mounted (and open) when
-  // the last value is unticked.
+  // One wrapper in both states, so the popover stays mounted when the last
+  // value is unticked.
   return (
     <div
       className={cn(
         "inline-flex",
-        // An active pill may shrink (its value truncates) when it is the only
-        // one that fits; a held empty pill keeps its width.
         active
           ? "h-8 max-w-80 min-w-0 shrink items-stretch rounded-md border border-input bg-background text-xs shadow-xs has-focus-visible:border-ring has-focus-visible:ring-3 has-focus-visible:ring-ring/50"
           : "shrink-0",
@@ -208,11 +195,8 @@ export function ActiveFilterPill({
 }
 
 /**
- * Which pills go behind "+N", from a hidden row of every pill at its natural
- * width (`data-measure-field`, with `data-measure-held` on the one whose
- * popover is open, which always stays). Recomputed when the track resizes or
- * a pill changes. When nothing else fits, the first pill still shows with its
- * value truncated, rather than a bare "+N".
+ * Pills behind "+N" are computed from a hidden row of every pill at natural
+ * width; the pill whose popover is open always stays.
  */
 export function usePillOverflow(
   trackRef: RefObject<HTMLDivElement | null>,

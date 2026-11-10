@@ -3,11 +3,8 @@ export interface Library {
   name: string;
   type: "paired" | "single" | "sra";
   files?: string[];
-  /** Optional sample identifier; used by services that submit sample_id per library (e.g. Taxonomic Classification) */
   sampleId?: string;
-  /** Optional sample date (e.g. MM/DD/YYYY); used by services that submit sample_level_date per library (e.g. SARS-CoV-2 Wastewater) */
   sampleLevelDate?: string;
-  /** Optional study title from SRA API; included in srr_libs when present */
   title?: string;
   platform?: string;
   interleaved?: boolean;
@@ -120,8 +117,6 @@ export const blastDatabaseTypes = [
   { value: 'frn', label: 'RNAs (NT)' }
 ];
 
-// BLAST Database Type Mapping based on search program and database source
-// Mapping: GSNT = fna (Genome sequences), GNT = ffn (Genes), RNT = frn (RNAs), AA = faa (Proteins)
 export const blastDatabaseTypeMap: Record<
   string, // blast_program
   Record<string, string[]> // db_source -> available db_types

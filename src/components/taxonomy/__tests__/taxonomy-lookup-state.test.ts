@@ -45,8 +45,7 @@ describe("taxonomyLookupState", () => {
   });
 
   it("shows a Retry of a failed search that kept data as loading, not the stale error", () => {
-    // TanStack keeps a query that has data in "error" while it refetches,
-    // so isLoading stays false.
+    // TanStack keeps a query that has data in "error" while it refetches, so isLoading stays false.
     const state = taxonomyLookupState(
       lookupQuery({ isError: true, isFetching: true, error: outage }),
     );
@@ -69,10 +68,8 @@ describe("taxonomyLookupState", () => {
       call += 1;
       if (call === 1) return Promise.resolve(["Escherichia coli"]);
       if (call === 2) return Promise.reject(outage);
-      // The Retry stays in flight, so its state can be read.
       return new Promise<string[]>(() => undefined);
     };
-    // Built during render, as the selectors build it.
     const { result } = renderHook(
       () => {
         const query = useQuery({ queryKey: ["taxonomy-lookup"], queryFn });

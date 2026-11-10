@@ -19,22 +19,7 @@ import {
   maxSearchKeywordLength,
 } from "@/lib/search/all-types-query";
 
-/**
- * The all-data-types search (`/search?type=everything`): `POST {keyword}`,
- * answered with every DXKB type's top matches from the Data API's one
- * multi-query request, keyed by type.
- *
- * It used to run in the browser, straight against
- * `p3.theseed.org/services/data_api/query/`: no budget (a down host took
- * Chrome's ~75 s TCP timeout to fail, as "Failed to fetch") and the response
- * body dropped. Through `ServerDataRepository.multiQuery` it shares the
- * gateway's budget, failure mapping, token and HTTPS guard, and its
- * `{error, code}` answers.
- *
- * The caller names only the keyword; the per-type queries are built here
- * (`allTypesSearchQueries`), so no caller-written RQL reaches the Data API
- * with the caller's token.
- */
+/** All-data-types search: `POST {keyword}` answered with every type's top matches; the per-type queries are built here so no caller-written RQL reaches the Data API with the caller's token. */
 const rateLimitMax = 120;
 const rateLimitWindowMs = 60_000;
 

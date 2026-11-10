@@ -9,9 +9,8 @@ import { formatUserFacingErrorMessage } from "@/lib/utils";
 const startFailureCopy = "The Genome Browser failed to start.";
 
 /**
- * JBrowse's own messages are shown, but a React-internal failure inside its
- * tree reaches production as "Minified React error #…", which tells the user
- * nothing: `routeErrorMessage` swaps that for the fallback copy.
+ * `routeErrorMessage` swaps React's minified-error text for the fallback copy;
+ * JBrowse's own messages are shown.
  */
 function startFailureMessage(error: unknown): string {
   return error instanceof Error
@@ -20,18 +19,14 @@ function startFailureMessage(error: unknown): string {
 }
 
 interface GenomeBrowserErrorBoundaryState {
-  /** Separate from `error`, since a child may throw `undefined` itself. */
   hasError: boolean;
   error: unknown;
-  /** Bumped by Retry; keys the children so the engine is built afresh. */
   attempt: number;
 }
 
 /**
- * JBrowse 5's `useCreateViewState` rethrows a failed engine build from render
- * ("A build that throws rethrows from render, for an error boundary to
- * catch"). This keeps that failure inside the tab, with JBrowse's own message,
- * instead of letting the route's `error.tsx` replace the whole page.
+ * JBrowse 5's `useCreateViewState` rethrows a failed engine build from render;
+ * this keeps it inside the tab.
  */
 export class GenomeBrowserErrorBoundary extends Component<
   { children: ReactNode },

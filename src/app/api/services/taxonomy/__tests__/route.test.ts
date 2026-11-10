@@ -43,7 +43,6 @@ describe("GET /api/services/taxonomy", () => {
     const res = await GET(req, {});
 
     expect(res.status).toBe(200);
-    // No 401 even though no auth mock
   });
 
   it("forwards query params to upstream API", async () => {
@@ -174,7 +173,6 @@ describe("GET /api/services/taxonomy", () => {
     });
     const res = await GET(req, {});
 
-    // A network failure is an unreachable upstream, not a server bug.
     expect(res.status).toBe(502);
     expect(await json(res)).toEqual(
       expect.objectContaining({ error: expect.any(String) as unknown }),

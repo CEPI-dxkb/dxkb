@@ -24,7 +24,6 @@ function nameField() {
   return screen.queryByRole("textbox", { name: "New folder name" });
 }
 
-/** Opens the inline new-folder row, in Alpha unless `folder` is null (Home). */
 async function startNewFolder(
   repository: PickerTestRepository = makePickerRepository(),
   folder: string | null = "Alpha",
@@ -43,11 +42,6 @@ async function startNewFolder(
   return { ...rendered, input };
 }
 
-/**
- * Let a held folder creation finish, then give what follows it (refetching
- * the listings it invalidated, then the picker's own update) a turn to run.
- * The in-memory backend answers within microtasks.
- */
 async function finishCreation(repository: PickerTestRepository, gate: Gate) {
   gate.release();
   await waitFor(() => {
@@ -124,7 +118,6 @@ describe("WorkspaceFolderPickerDialog new folder", () => {
     expect(repository.calls).not.toContainEqual(
       expect.objectContaining({ method: "createFolder" }),
     );
-    // Focus goes back to the columns, on the selection.
     await waitFor(async () => {
       expect(await findOption("Home", "Alpha")).toHaveFocus();
     });

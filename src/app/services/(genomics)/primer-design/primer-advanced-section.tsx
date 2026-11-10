@@ -126,8 +126,7 @@ export function PrimerAdvancedSection({
           <form.Field name="PRIMER_NUM_RETURN">
             {(field) => (
               <FieldItem className="md:col-span-2">
-                {/* `mb-0!`: a label beside its help icon would otherwise keep
-                    `mb-2` on top of the field's `gap-2` (16px to the input). */}
+                {/* `mb-0!`: otherwise the label keeps `mb-2` on top of the field's `gap-2`. */}
                 <div className="flex items-center gap-2">
                   <ServiceFieldLabel field={field} className="mb-0!">
                     Number to Return

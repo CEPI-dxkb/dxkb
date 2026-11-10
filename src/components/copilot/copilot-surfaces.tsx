@@ -14,8 +14,7 @@ function PanelLoading() {
   );
 }
 
-// The chat (markdown, scroller) loads on first open, so it is not in the
-// bundle of every route that shows the navbar button.
+// The chat (markdown, scroller) loads on first open, keeping it out of every route's bundle.
 const CopilotPanel = dynamic(
   () => import("./copilot-panel").then((module) => module.CopilotPanel),
   { ssr: false, loading: PanelLoading },
@@ -49,10 +48,6 @@ function CopilotSheet({ open, onClose }: { open: boolean; onClose: () => void })
   );
 }
 
-/**
- * The side panel or the floating window, whichever is open. Mounted once in
- * the root layout; the full page renders its own panel.
- */
 export function CopilotSurfaces() {
   const { available, openSurface, close } = useCopilot();
   if (!available) return null;

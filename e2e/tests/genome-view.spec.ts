@@ -40,9 +40,8 @@ test.describe("Genome view", () => {
       }),
     ).toHaveCount(0);
 
-    // The tab filters the rows it has loaded once the keyword box's debounce
-    // commits, and a new keyword clears the selection, so a row checked before
-    // then is unchecked again. The other Genome leaving shows the commit.
+    // The tab filters its loaded rows once the keyword box's debounce commits, and a
+    // new keyword clears the selection.
     await keyword.fill("MERS");
     await expect(unmatchedRow).toHaveCount(0);
     await expect(page).toHaveURL(/\/taxonomy\/11974\?tab=genomes$/);
@@ -238,12 +237,7 @@ test.describe("Genome view", () => {
     page,
   }) => {
     const genome = new GenomeMemberPage(page);
-    // The overview is the entry that a second Back must reach. Features is then opened
-    // by URL: its rows load client-side, which proves hydration before any tab click.
     await genome.goto("1282460.2049");
-    // The fixture has one page of features, so this exercises the sort. The table
-    // starts in legacy FeatureGrid's order (genome name, accession, start), which
-    // marks no column as sorted.
     expect(
       await genome.rowsReadSort("genome_feature", () =>
         genome.goto("1282460.2049", "features"),
@@ -255,7 +249,6 @@ test.describe("Genome view", () => {
     await genome.expectSortHighlight(null, "BRC ID");
 
     const entriesBeforeSort = await genome.historyLength();
-    // A picked column's sort is sent alone, and its header shows it at once.
     expect(
       await genome.rowsReadSort("genome_feature", () =>
         genome.sortBy("Product"),
@@ -268,7 +261,6 @@ test.describe("Genome view", () => {
     await genome.expectSort("Product", "ascending");
     await genome.expectSort("BRC ID", "none");
     await genome.expectSortHighlight("Product", "BRC ID");
-    // A sort click also resets the page, which used to add a second entry.
     await expect
       .poll(() => genome.historyLength())
       .toBe(entriesBeforeSort + 1);
@@ -281,16 +273,12 @@ test.describe("Genome view", () => {
     await genome.expectSort("Product", "ascending");
     await genome.expectSort("BRC ID", "none");
 
-    // One Back undoes the sort and lands on the features tab as it was before the click.
     await page.goBack();
     await genome.expectUrlParams({ tab: "features", "features.sort": null });
     await expect(page).toHaveURL(/\/genome\/1282460\.2049\?tab=features$/);
     await genome.expectSort("Product", "none");
-    // The reload orphaned the older entries, so each step below loads a fresh document.
     await genome.expectRow(/replicase polyprotein/);
     await genome.settle();
-    // A second Back leaves the tab. A leftover duplicate entry would stop on the
-    // features URL again instead of reaching the overview.
     await page.goBack();
     await expect(page).toHaveURL(/\/genome\/1282460\.2049$/);
     await expect(genome.heading).toBeVisible();
@@ -305,12 +293,10 @@ test.describe("Genome view", () => {
       tab: "features",
       "features.sort": "product:asc",
     });
-    // The restored table has loaded, so the page has hydrated and a tab click will be handled.
     await genome.expectRow(/replicase polyprotein/);
     await genome.expectSort("Product", "ascending");
     await genome.settle();
 
-    // Another tab must not inherit the Features table's sort.
     await genome.openTab("Sequences");
     await expect(page).toHaveURL(/\/genome\/1282460\.2049\?tab=sequences$/);
     await genome.expectRow(/JX869059/);

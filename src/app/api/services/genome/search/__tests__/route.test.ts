@@ -135,7 +135,6 @@ describe("GET /api/services/genome/search", () => {
       }),
     );
 
-    // Default limit
     const req1 = mockNextRequest({
       url: "http://localhost:3019/api/services/genome/search",
       searchParams: { q: "test" },
@@ -143,7 +142,6 @@ describe("GET /api/services/genome/search", () => {
     await GET(req1, {});
     expect(capturedUrls[0]).toContain("limit(25)");
 
-    // Below min
     const req2 = mockNextRequest({
       url: "http://localhost:3019/api/services/genome/search",
       searchParams: { q: "test", limit: "0" },
@@ -151,7 +149,6 @@ describe("GET /api/services/genome/search", () => {
     await GET(req2, {});
     expect(capturedUrls[1]).toContain("limit(1)");
 
-    // Above max
     const req3 = mockNextRequest({
       url: "http://localhost:3019/api/services/genome/search",
       searchParams: { q: "test", limit: "100" },

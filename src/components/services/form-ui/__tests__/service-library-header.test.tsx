@@ -15,7 +15,7 @@ describe("ServiceLibraryHeader", () => {
     const header = container.firstElementChild;
     expect(header).toHaveClass("service-library-header");
     // A direct child of the header, so globals.css drops its `mb-2` and the
-    // label shares the row's midline with the rule and the button.
+    // label shares the row's midline.
     const label = screen.getByText("Paired Read Library");
     expect(label).toHaveClass("service-card-label");
     expect(label.parentElement).toBe(header);

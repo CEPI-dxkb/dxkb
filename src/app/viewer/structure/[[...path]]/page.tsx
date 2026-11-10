@@ -20,11 +20,9 @@ const fullLayout: MolstarLayoutSpec = {
 };
 
 export default function StructureViewerPage({ params }: StructurePageProps) {
-  // A page component's catch-all param arrives percent-encoded PER SEGMENT —
-  // `getParamValue()` maps `encodeURIComponent` over the array before user
-  // code sees it. `readRouteParamSegments` undoes exactly that; its doc
-  // comment carries the Next-internals citation and explains why
-  // `generateMetadata` and route handlers must NOT do the same.
+  // A catch-all param arrives percent-encoded per segment;
+  // `readRouteParamSegments` undoes it (`generateMetadata` and route handlers
+  // must not).
   const { path } = use(params);
   const filePath = readRouteParamSegments(path ?? [], "page").join("/");
   const source = filePath ? buildWorkspaceStructureSource(filePath) : undefined;
@@ -64,8 +62,7 @@ export default function StructureViewerPage({ params }: StructurePageProps) {
       <Separator />
 
       <div className="relative min-h-0 flex-1">
-        {/* `isolate`, like the default container, keeps Mol*'s z-1000+
-            overlays and toasts below the navbar's z-50 portalled popups. */}
+        {/* `isolate` keeps Mol*'s z-1000+ overlays below the navbar's z-50 popups. */}
         <StructureSourceViewer
           source={source}
           layout={fullLayout}

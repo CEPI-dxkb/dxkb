@@ -6,10 +6,6 @@ interface RouteParams {
   params: Promise<{ id: string }>;
 }
 
-/**
- * Kill a job
- * POST /api/services/app-service/jobs/[id]/kill
- */
 export const POST = withAuth<RouteParams>(
   async (request: NextRequest, { token, params }) => {
     const { id: jobId } = await params;
@@ -21,10 +17,8 @@ export const POST = withAuth<RouteParams>(
       );
     }
 
-    // Create app service
     const appService = createAppService(token);
 
-    // Kill the job
     const result = await appService.killJob({ job_id: jobId });
 
     return NextResponse.json(result);

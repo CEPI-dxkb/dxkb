@@ -8,7 +8,6 @@ import { OrganismLandingPage } from "../../pages/organism-landing-page";
 
 test.use({ storageState: { cookies: [], origins: [] } });
 
-// Mobile-only tests: the floating pill nav replaces the desktop rail below `lg` (1024px).
 test.describe("bacteria organism landing page — mobile pill nav", () => {
   test.use({ viewport: { width: 390, height: 844 } });
 
@@ -26,34 +25,28 @@ test.describe("bacteria organism landing page — mobile pill nav", () => {
     await expect(pill).toBeVisible();
 
     const scrollRegion = page.getByTestId("landing-scroll-region");
-    // Scroll past the 60px floor — pill should hide (opacity: 0 after transition)
     await scrollRegion.evaluate((element) => { element.scrollTo({ top: 300, behavior: "instant" }); });
     const pillWrapper = page.locator("div.fixed.bottom-4");
     await expect(pillWrapper).toHaveCSS("opacity", "0", { timeout: 2000 });
 
-    // Scroll back up — pill should reveal
     await scrollRegion.evaluate((element) => { element.scrollTo({ top: 0, behavior: "instant" }); });
     await expect(pillWrapper).toHaveCSS("opacity", "1", { timeout: 2000 });
   });
 
   test("pill still hides on scroll-down after the view sheet is opened and closed (regression: focus-within override)", async ({ page }) => {
-    // Regression: CSS :focus-within fired when the dialog restored focus to the trigger on
-    // close, overriding the scroll-hide transform with higher CSS specificity. The pill stayed
-    // visible regardless of scroll position after any sheet open/close cycle.
+    // Focus restored to the trigger on close must not override the scroll-hide
+    // transform via :focus-within.
     const landing = new OrganismLandingPage(page);
     await landing.goto("bacteria");
 
     const pill = page.getByRole("button", { name: /Views:/ });
     await expect(pill).toBeVisible();
 
-    // Open the sheet, then close it by clicking the X button (focus is restored to the trigger
-    // programmatically — this is where the old focus-within bug fired)
     await pill.click();
     await expect(page.getByRole("dialog")).toBeVisible();
     await page.getByRole("button", { name: "Close" }).click();
     await expect(page.getByRole("dialog")).not.toBeVisible();
 
-    // Scroll down — pill must still hide even though trigger now has focus
     await page.getByTestId("landing-scroll-region").evaluate((element) => {
       element.scrollTo({ top: 300, behavior: "instant" });
     });

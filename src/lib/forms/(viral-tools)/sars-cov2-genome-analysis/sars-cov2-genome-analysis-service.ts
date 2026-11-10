@@ -10,10 +10,7 @@ import {
   transformSarsCov2GenomeAnalysisParams,
 } from "./sars-cov2-genome-analysis-form-utils";
 
-/**
- * The label the user typed for a previous job: its output name is
- * "<sanitized taxon name> <label>" (see `computeOutputName`).
- */
+/** The user's label from a previous job's output name ("<sanitized taxon name> <label>"). */
 function labelFromOutputName(outputFile: string, taxonName: string): string {
   const prefix = `${sanitizeTaxonomyForOutputName(taxonName)} `;
   return outputFile.startsWith(prefix)
@@ -22,12 +19,8 @@ function labelFromOutputName(outputFile: string, taxonName: string): string {
 }
 
 /**
- * The taxon name a rerun can restore without a lookup. A job's
- * `scientific_name` is usually its output name (`transformParams` sends the
- * output name in both), so it counts only when it differs from the output
- * name. Otherwise it is that name less the job's `my_label` (the sanitized
- * taxon name, which a successful lookup replaces), or the form's default
- * taxon, when the job used it.
+ * The taxon name a rerun can restore without a lookup: `scientific_name` when it differs from the
+ * output name, else the output name less `my_label`, or the form's default taxon.
  */
 function knownTaxonName(
   rerunData: Record<string, unknown>,
@@ -87,8 +80,7 @@ export const sarsCov2GenomeAnalysisService =
           if (label) form.setFieldValue("my_label", label);
         };
 
-        // Restore the name and label from the job up front, so they do not
-        // wait on (or vanish with) the taxonomy lookup.
+        // Restore name and label up front so they do not wait on the taxonomy lookup.
         const knownName = knownTaxonName(rerunData, taxonomyId, outputFile);
         if (knownName) {
           form.setFieldValue("scientific_name", knownName);

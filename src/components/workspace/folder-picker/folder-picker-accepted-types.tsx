@@ -12,11 +12,6 @@ import {
   pickerTypePhrase,
 } from "@/lib/services/workspace/picker-views";
 
-/**
- * "Accepts Contigs or Reads files." A list too long to read in a sentence
- * (the Copilot's "any file") is a "52 file types" button whose popover lists
- * them alphabetically, so the instructions above it stay short.
- */
 export function FolderPickerAcceptedTypes({
   types,
 }: {

@@ -7,7 +7,6 @@ export const msaSNPAnalysisAligners = [
   { value: "Muscle", label: "Muscle" },
 ];
 
-// Utility functions
 export function getFastaFileTypeLabel(type: string): string {
   if (type === "feature_protein_fasta") return "Protein FASTA";
   if (type === "feature_dna_fasta") return "DNA FASTA";
@@ -24,9 +23,6 @@ export function getDisplayName(name: string): string {
   )}`;
 }
 
-/**
- * Check if a FASTA file with the given path and type already exists
- */
 export function checkDuplicateFastaFile(
   fastaFiles: FastaFileItem[],
   file: string,
@@ -35,17 +31,10 @@ export function checkDuplicateFastaFile(
   return fastaFiles.some((f) => f.file === file && f.type === type);
 }
 
-/**
- * Check if the FASTA file limit has been reached
- */
 export function checkFastaFileLimit(_fastaFiles: FastaFileItem[]): boolean {
-  // No specific limit, but we can add one if needed
   return false;
 }
 
-/**
- * Remove a FASTA file at the given index
- */
 export function removeFastaFileAtIndex(
   fastaFiles: FastaFileItem[],
   index: number,
@@ -53,9 +42,6 @@ export function removeFastaFileAtIndex(
   return fastaFiles.filter((_, i) => i !== index);
 }
 
-/**
- * Create a new FASTA file item
- */
 export function createFastaFileItem(
   file: string,
   type: FastaFileItem["type"],
@@ -63,11 +49,7 @@ export function createFastaFileItem(
   return { file, type };
 }
 
-/**
- * The `fasta_files` item for a picked workspace file, typed by its workspace
- * type as legacy MSA does. The picker offers only the kind's two types, so
- * anything but protein is DNA.
- */
+/** Anything but protein is DNA: the picker offers only the kind's two types. */
 export function fastaFileFromObject(
   { path, type }: { path: string; type: string },
   kind: "feature" | "aligned",
@@ -79,10 +61,6 @@ export function fastaFileFromObject(
   );
 }
 
-/**
- * Validate FASTA text input for sequences
- * Returns validation result with minimum sequence count check
- */
 export function validateSequenceFasta(
   fastaText: string,
   hasReference = false,
@@ -91,7 +69,7 @@ export function validateSequenceFasta(
     ? MsaSnpAnalysisSchema.minSequencesWithRef
     : MsaSnpAnalysisSchema.minSequences;
 
-  const result = validateFasta(fastaText, "aa"); // Default to protein, will auto-detect
+  const result = validateFasta(fastaText, "aa");
 
   return {
     ...result,
@@ -99,14 +77,10 @@ export function validateSequenceFasta(
   };
 }
 
-/**
- * Validate FASTA text input for reference sequence
- * Must be exactly one sequence
- */
 export function validateReferenceFasta(
   fastaText: string,
 ): FastaValidationResult & { isSingleSequence: boolean } {
-  const result = validateFasta(fastaText, "aa"); // Default to protein, will auto-detect
+  const result = validateFasta(fastaText, "aa");
 
   return {
     ...result,
@@ -114,9 +88,6 @@ export function validateReferenceFasta(
   };
 }
 
-/**
- * Transform MSA SNP Analysis form data to API parameters
- */
 export function transformMsaSnpAnalysisParams(
   data: MsaSnpAnalysisFormData,
 ): Record<string, unknown> {
@@ -126,17 +97,14 @@ export function transformMsaSnpAnalysisParams(
     output_file: data.output_file.trim(),
   };
 
-  // Add input type and related fields for unaligned sequences
   if (data.input_status === "unaligned" && data.input_type) {
-    // An aligned file is not realigned (App-MSA skips the aligner), so only
-    // unaligned input names one, as in legacy, where the field is hidden.
+    // An aligned file is not realigned, so only unaligned input names an aligner.
     params.aligner = data.aligner;
     if (data.aligner === "Mafft" && data.strategy) {
       // Legacy API expects both strategy and strategy_settings
       params.strategy = data.strategy;
       params.strategy_settings = data.strategy;
     }
-    // Map new internal values to legacy API parameter names
     if (data.input_type === "input_feature_group") {
       params.input_type = "input_group";
       if (data.feature_groups && data.feature_groups.trim() !== "") {
@@ -152,36 +120,30 @@ export function transformMsaSnpAnalysisParams(
         params.select_genomegroup = data.select_genomegroup;
       }
     } else {
-      // For other input types, use as-is
       params.input_type = data.input_type;
       if (data.input_type === "input_fasta") {
         if (data.fasta_files && data.fasta_files.length > 0) {
           params.fasta_files = data.fasta_files;
         }
       } else {
-        // data.input_type === "input_sequence"
         if (data.fasta_keyboard_input) {
           params.fasta_keyboard_input = data.fasta_keyboard_input.trim();
         }
       }
     }
   } else {
-    // data.input_status === "aligned" — only fasta_files is needed
     if (data.fasta_files && data.fasta_files.length > 0) {
       params.fasta_files = data.fasta_files;
     }
   }
 
-  // Add reference information
   params.ref_type = data.ref_type;
   if (data.ref_string && data.ref_string.trim() !== "") {
     params.ref_string = data.ref_string.trim();
   }
 
-  // Set alphabet if not already set (for aligned sequences or when auto-detected)
-  // This fallback should NOT override alphabet for feature groups (already set above)
+  // Must not override the alphabet already set for feature groups.
   if (!params.alphabet) {
-    // Try to detect from fasta_files if available
     if (data.fasta_files && data.fasta_files.length > 0) {
       const firstFile = data.fasta_files[0];
       if (firstFile.type.includes("protein")) {
@@ -190,11 +152,9 @@ export function transformMsaSnpAnalysisParams(
         params.alphabet = "dna";
       }
     } else if (data.fasta_keyboard_input) {
-      // Auto-detect from keyboard input
       const validation = validateFasta(data.fasta_keyboard_input, "aa");
       params.alphabet = validation.status === "valid_protein" ? "protein" : "dna";
     } else {
-      // Default to dna only if no other source
       params.alphabet = "dna";
     }
   }

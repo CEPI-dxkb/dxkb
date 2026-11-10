@@ -29,24 +29,16 @@ function SelectValue({ className, ...props }: SelectPrimitive.Value.Props) {
   )
 }
 
-// Local edits (keep when regenerating with `shadcn add --overwrite`): the disabled look
-// shared by every field (here the trigger): the `bg-disabled` fill and muted text at full
-// opacity, with the not-allowed cursor (no `disabled:pointer-events-none`).
-// And the `variant`, `density` and `icon` axes, and the `group/select-trigger` the
-// chip icon keys on. `size` still drives `data-size` (and with it the trigger
-// height and the `sm` corner radius); `density` only changes the text size and
-// the value-to-chevron gap, so a compact trigger keeps whichever height its
-// `size` gives it.
+// Local edit: the disabled look (`bg-disabled` fill, not-allowed cursor, no
+// `disabled:pointer-events-none`) shared by every field.
 const selectTriggerVariants = cva(
   "group/select-trigger flex w-fit items-center justify-between gap-1.5 rounded-lg border border-input bg-transparent py-2 pr-2 pl-2.5 text-sm whitespace-nowrap transition-colors outline-none select-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:bg-disabled disabled:text-muted-foreground aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 data-placeholder:text-muted-foreground data-[size=default]:h-8 data-[size=sm]:h-7 data-[size=sm]:rounded-[min(var(--radius-md),10px)] *:data-[slot=select-value]:line-clamp-1 *:data-[slot=select-value]:flex *:data-[slot=select-value]:items-center *:data-[slot=select-value]:gap-1.5 dark:bg-input/30 dark:hover:bg-input/50 dark:disabled:bg-disabled dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
   {
     variants: {
       variant: {
         default: "",
-        // Leading part of a joined control whose wrapper draws the outline
-        // (search bar: type select + query input). `-lg` is the tall form; it
-        // overrides the `data-[size=default]:h-8` of the base, which a plain
-        // `h-*` loses to on specificity, and matches `segment-end-lg` on Input.
+        // `-lg` overrides the base `data-[size=default]:h-8`, which a plain
+        // `h-*` loses to on specificity.
         "segment-start":
           "rounded-l-md rounded-r-none border-0 border-r border-input bg-background text-sm text-foreground shadow-none focus-visible:ring-0",
         "segment-start-lg":
@@ -54,9 +46,7 @@ const selectTriggerVariants = cva(
       },
       density: {
         default: "",
-        // Extra-small text in toolbars and footers.
         compact: "text-xs",
-        // Extra-small text with the tighter value-to-chevron gap.
         "compact-tight": "gap-1 text-xs",
       },
     },
@@ -67,10 +57,6 @@ const selectTriggerVariants = cva(
   }
 )
 
-// `chip` draws the chevron in the primary-tinted chip of the service-form
-// pickers' suggestions toggle (Button `soft`), deepening while the trigger is
-// hovered and turning over while the list is open, so a select and a picker
-// offer the same dropdown control.
 const selectIconChipClassName =
   "pointer-events-none flex h-4 w-5.5 shrink-0 items-center justify-center rounded-lg bg-primary/15 text-primary transition-colors group-hover/select-trigger:bg-primary/25 dark:bg-primary dark:text-primary-foreground dark:group-hover/select-trigger:bg-primary/80"
 
@@ -149,8 +135,6 @@ function SelectContent({
   )
 }
 
-// Local edit: the `variant` axis (`section` heads a group of options with a
-// rule under it).
 const selectLabelVariants = cva("px-1.5 py-1 text-xs text-muted-foreground", {
   variants: {
     variant: {
@@ -213,11 +197,8 @@ function SelectSeparator({
   )
 }
 
-// Local edit: the scroll arrows take the popup's corner radius
-// (`rounded-*-[inherit]`). The popup does not clip them to its rounded
-// corners, so a square arrow strip painted over the corners and their ring,
-// and the popup looked cut off at the top once scrolled down (or at the bottom
-// before).
+// The popup does not clip the scroll arrows to its rounded corners, so they
+// take its radius.
 function SelectScrollUpButton({
   className,
   ...props

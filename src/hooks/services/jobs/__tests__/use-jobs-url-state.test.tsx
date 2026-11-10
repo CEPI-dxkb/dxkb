@@ -44,7 +44,6 @@ describe("useJobsUrlState", () => {
     result.current[1]({ search: "eco" }, { history: "coalesce" });
     result.current[1]({ search: "ecoli" }, { history: "coalesce" });
 
-    // The status entry survives: the search pushes once, then extends its own entry.
     expect(pushState.mock.calls.map(([, , url]) => url)).toStrictEqual([
       "/jobs?status=completed&page=3",
       "/jobs?status=completed&q=eco&page=3",
@@ -73,7 +72,6 @@ describe("useJobsUrlState", () => {
     const { result } = renderHook(() => useJobsUrlState());
     result.current[1]({ search: "eco" }, { history: "coalesce" });
 
-    // Back (or a link) lands on an entry this search did not write.
     window.history.replaceState(null, "", "/jobs?status=failed&page=3");
     const pushState = vi.spyOn(window.history, "pushState");
     const replaceState = vi.spyOn(window.history, "replaceState");
@@ -91,7 +89,6 @@ describe("useJobsUrlState", () => {
     const pushState = vi.spyOn(window.history, "pushState");
     const replaceState = vi.spyOn(window.history, "replaceState");
     const { result } = renderHook(() => useJobsUrlState());
-    // The current page number, and a date cleared when none is applied.
     result.current[1]({ page: 3 });
     result.current[1]({ dateFrom: undefined, dateTo: undefined });
     result.current[1]({ status: "failed" }, { history: "coalesce" });
@@ -125,7 +122,6 @@ describe("useJobsUrlState", () => {
     window.history.replaceState(null, "", "/jobs?status=failed&q=eco&page=3");
     const { result } = renderHook(() => useJobsUrlState());
     result.current[1]({ search: "ecoli" }, { history: "coalesce" });
-    // Editing back to the landing value leaves this entry at the landing address.
     result.current[1]({ search: "eco" }, { history: "coalesce" });
 
     await new Promise((resolve) => {
@@ -138,7 +134,6 @@ describe("useJobsUrlState", () => {
     const replaceState = vi.spyOn(window.history, "replaceState");
     result.current[1]({ search: "ecol" }, { history: "coalesce" });
 
-    // The landing entry is not the search's own, so it keeps its state.
     expect(pushState).toHaveBeenCalledExactlyOnceWith(
       null,
       "",
@@ -172,8 +167,7 @@ describe("useJobsUrlState", () => {
   });
 
   it("keeps both of two writes made in one tick", () => {
-    // The hook's own render still holds the URL from before either write, as
-    // it does while Next applies a History API write inside a transition.
+    // The hook's render still holds the URL from before either write, as while Next applies a write in a transition.
     const { result } = renderHook(() => useJobsUrlState());
     result.current[1]({ status: "completed" });
     result.current[1]({ search: "ecoli" }, { history: "coalesce" });

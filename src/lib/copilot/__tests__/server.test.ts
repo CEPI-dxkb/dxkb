@@ -20,8 +20,8 @@ beforeEach(() => {
 });
 
 describe("Copilot gateway requests", () => {
-  // Cloudflare in front of the gateway answers Node's default user agent with
-  // a "Just a moment..." challenge (HTTP 403), so every call must override it.
+  // Cloudflare answers Node's default user agent with a 403 "Just a moment..." challenge, so every
+  // call must override it.
   it("send the BV-BRC server user agent from every fetch helper", async () => {
     const seen: { path: string; userAgent: string | null }[] = [];
     server.use(

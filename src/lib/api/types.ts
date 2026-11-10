@@ -1,10 +1,10 @@
 export type ApiErrorCode =
   | "session_expired" // app session guard 401
   | "unauthenticated" // upstream/auth service 401
-  | "forbidden" // 403
-  | "not_found" // 404
-  | "validation" // 400
-  | "upstream" // 502 / 5xx
+  | "forbidden"
+  | "not_found"
+  | "validation"
+  | "upstream"
   | "unknown";
 
 export interface ApiError {

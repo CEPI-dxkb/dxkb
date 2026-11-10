@@ -72,6 +72,35 @@ describe("Genome view contracts", () => {
     ).toBeUndefined();
   });
 
+  it("keeps a pick on every facet the filters panel offers", () => {
+    // The panel lists `genomeCollectionProfile.facets`; a facet missing from
+    // `friendlyFilters` is dropped when the pick is written to the URL, so its
+    // value highlights and then clears (Segment, Subtype, the clades, …).
+    const facets = genomeCollectionProfile.facets ?? [];
+    expect(facets.length).toBeGreaterThan(0);
+    for (const { field } of facets) {
+      // A closed-value facet (Public: `true`/`false`) drops any other value,
+      // so pick one of its own.
+      const value = genomeCollectionOptions.filterValues?.[field]?.[0] ?? "x";
+      const params = updateCollectionSearchParams(
+        { keyword: "influenza" },
+        { filters: { [field]: [value] } },
+        genomeCollectionOptions,
+      );
+      expect({ field, values: params.getAll(field) }).toEqual({
+        field,
+        values: [value],
+      });
+    }
+  });
+
+  it("queries a facet's (empty) bucket as the empty string", () => {
+    // `eq(h5_clade,"")` counts exactly the bucket's 9,352 viral genomes.
+    const state = parseGenomeCollectionState({ h5_clade: "" });
+    expect(state.filters).toEqual({ h5_clade: [""] });
+    expect(genomeStructuralRql(state)).toBe('eq(h5_clade,"")');
+  });
+
   it("accepts dotted numeric IDs only", () => {
     expect(isGenomeId("83332.12")).toBe(true);
     expect(isGenomeId("83332")).toBe(false);

@@ -45,6 +45,26 @@ test.describe("public routes (no auth)", () => {
     });
   }
 
+  // Overscrolling past either edge (macOS rubber-banding) shows the canvas,
+  // which paints the root element's background. A page that ends in the site
+  // footer gives the root the footer's fill, so the bounce is not a white band.
+  test("a page with the site footer paints the root in the footer's fill", async ({
+    page,
+  }) => {
+    const fill = (element: Element) => getComputedStyle(element).backgroundColor;
+    for (const path of ["/", "/about"]) {
+      await page.goto(path);
+      const footer = page.locator("[data-site-footer]");
+      await expect(footer).toHaveCount(1);
+      const footerFill = await footer.evaluate(fill);
+      expect(await page.locator("html").evaluate(fill), path).toBe(footerFill);
+      // The body keeps the page background over its own box.
+      expect(await page.locator("body").evaluate(fill), path).not.toBe(
+        footerFill,
+      );
+    }
+  });
+
   test("footer pages render: /about, /contact, /faq", async ({ page }) => {
     for (const path of ["/about", "/contact", "/faq"]) {
       await page.goto(path);

@@ -142,6 +142,23 @@ test.describe("Genome view", () => {
     );
   });
 
+  // The footer pages paint the root in the footer's fill for overscroll
+  // (public.spec.ts); a data view, which has no footer, must not.
+  test("leaves the root unpainted on a view without the site footer", async ({
+    page,
+  }) => {
+    await page.goto("/genome?keyword=MERS");
+    await expect(
+      page.getByRole("heading", { level: 1, name: "Genomes" }),
+    ).toBeVisible();
+    await expect(page.locator("[data-site-footer]")).toHaveCount(0);
+    expect(
+      await page
+        .locator("html")
+        .evaluate((element) => getComputedStyle(element).backgroundColor),
+    ).toBe("rgba(0, 0, 0, 0)");
+  });
+
   test("canonicalizes invalid collection position without rendering an error", async ({
     page,
   }) => {

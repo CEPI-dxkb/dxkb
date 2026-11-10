@@ -34,6 +34,34 @@ describe("typed RQL", () => {
     );
   });
 
+  it("quotes a string value with a colon, which Solr reads as a field separator", () => {
+    // Unquoted, the Data API builds `culture_collection:FDA:FDAARGOS_855` and
+    // answers HTTP 400; quoted, it matches the value.
+    expect(eq("genome", "culture_collection", "FDA:FDAARGOS_855")).toBe(
+      'eq(culture_collection,"FDA%3AFDAARGOS_855")',
+    );
+    expect(
+      validateRql("genome", 'eq(culture_collection,"FDA%3AFDAARGOS_855")'),
+    ).toBe('eq(culture_collection,"FDA%3AFDAARGOS_855")');
+    expect(
+      serializeRql("genome", {
+        operator: "in",
+        field: "culture_collection",
+        values: ["ATCC:VR-1679", "FDA:FDAARGOS_855"],
+      }),
+    ).toBe(
+      'in(culture_collection,("ATCC%3AVR-1679","FDA%3AFDAARGOS_855"))',
+    );
+    // A date keeps its unquoted form; only string values change.
+    expect(
+      serializeRql("genome", {
+        operator: "gt",
+        field: "completion_date",
+        value: "2020-01-01T00:00:00Z",
+      }),
+    ).toBe("gt(completion_date,2020-01-01T00%3A00%3A00Z)");
+  });
+
   it("serializes nested expressions", () => {
     expect(
       serializeRql("epitope", {
@@ -260,14 +288,22 @@ describe("typed RQL", () => {
       }
     });
 
-    it("rejects empty values for fields whose policy forbids quoting", () => {
-      expect(() =>
-        serializeRql("serology", {
-          operator: "in",
-          field: "test_type",
-          values: [""],
-        }),
-      ).toThrow(/cannot be serialized for an unquoted field/);
+    it("writes an empty value as \"\" even for a field that is never quoted", () => {
+      // "" has no unquoted form: the Data API answers `eq(test_type,)` with
+      // HTTP 400 and `eq(test_type,"")` with the records whose value is
+      // empty, a facet's "(empty)" bucket. A non-empty value stays unquoted.
+      for (const expression of [
+        { operator: "in", field: "test_type", values: [""] },
+        { operator: "in", field: "test_type", values: ["ELISA", ""] },
+      ] satisfies RqlIn[]) {
+        const serialized = serializeRql("serology", expression);
+        expect(parseRql("serology", serialized)).toEqual(expression);
+        expect(validateRql("serology", serialized)).toBe(serialized);
+      }
+      expect(eq("serology", "test_type", "")).toBe('eq(test_type,"")');
+      expect(eq("serology", "test_type", "ELISA/NP")).toBe(
+        "eq(test_type,ELISA%2FNP)",
+      );
     });
   });
 });

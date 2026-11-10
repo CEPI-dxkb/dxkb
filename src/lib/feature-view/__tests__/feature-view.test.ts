@@ -202,6 +202,27 @@ describe("Feature list URL schema", () => {
     ).toBe("eq(feature_type,CDS)");
   });
 
+  it("sends a picked Public value to the rows and download query", () => {
+    const state = parseFeatureListState({ keyword: "Dnak", public: "false" });
+    expect(featureStructuralRql(state)).toBe(
+      "and(eq(annotation,PATRIC),eq(public,false))",
+    );
+
+    const proteins = parseFeatureListState({
+      keyword: "Dnak",
+      filter: "protein",
+      public: ["true", "false"],
+    });
+    expect(featureStructuralRql(proteins)).toBe(
+      `and(or(eq(public,true),eq(public,false)),${proteinFeatureRql})`,
+    );
+  });
+
+  it("never sends a Public value the Data API would reject", () => {
+    const state = parseFeatureListState({ keyword: "Dnak", public: "yes" });
+    expect(featureStructuralRql(state)).toBe("eq(annotation,PATRIC)");
+  });
+
   it("replaces the default with a chosen annotation", () => {
     expect(
       parseFeatureCollectionState(

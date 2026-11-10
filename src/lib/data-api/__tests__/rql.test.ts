@@ -52,6 +52,15 @@ describe("typed RQL", () => {
     ).toBe(
       'in(culture_collection,("ATCC%3AVR-1679","FDA%3AFDAARGOS_855"))',
     );
+    // Even on a field that is never quoted: quoting changes what Serology's
+    // `test_type` matches (unquoted "HI/H5" 6,147 rows, quoted 4,169), so its
+    // whitespace stays bare, but a bare colon is always HTTP 400.
+    expect(eq("serology", "test_type", "HI:H5")).toBe(
+      'eq(test_type,"HI%3AH5")',
+    );
+    expect(eq("serology", "test_type", "HI/H5 titer")).toBe(
+      "eq(test_type,HI%2FH5%20titer)",
+    );
     // A date keeps its unquoted form; only string values change.
     expect(
       serializeRql("genome", {

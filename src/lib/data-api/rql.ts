@@ -304,11 +304,12 @@ function serializeValue(value: RqlValue, field?: ResourceField): string {
   const encoded = percentEncode(value);
   // The Data API decodes the value into a Solr query, where a bare `:` reads as
   // a field separator (`culture_collection:FDA:FDAARGOS_855`, HTTP 400), so a
-  // string with one is quoted too. Dates and numbers keep their bare form.
+  // string with one is quoted, even on a never-quoted field: its bare form
+  // cannot match anything. Dates and numbers keep their bare form.
   const quote =
     field?.quote === "always" ||
-    (field?.quote !== "never" &&
-      (/\s/.test(value) || (field?.type === "string" && value.includes(":"))));
+    (field?.type === "string" && value.includes(":")) ||
+    (field?.quote !== "never" && /\s/.test(value));
   return quote ? `"${encoded}"` : encoded;
 }
 

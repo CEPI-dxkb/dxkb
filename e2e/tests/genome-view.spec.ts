@@ -6,7 +6,7 @@ import {
   genomeSequenceScenarioOverrides,
   taxonGenomesScenarioOverrides,
 } from "../fixtures/overrides";
-import { CollectionToolbar, GenomeMemberPage } from "../pages";
+import { CollectionToolbar, GenomeMemberPage, SiteChrome } from "../pages";
 
 const genomeViewOverrides = [
   ...taxonGenomesScenarioOverrides,
@@ -139,6 +139,18 @@ test.describe("Genome view", () => {
     await expect(page).toHaveURL(
       "/feature?keyword=replicase&refine=polyprotein",
     );
+  });
+
+  // The footer pages paint the root in the footer's fill for overscroll
+  // (public.spec.ts); a data view, which has no footer, must not.
+  test("leaves the root unpainted on a view without the site footer", async ({
+    page,
+  }) => {
+    await page.goto("/genome?keyword=MERS");
+    await expect(
+      page.getByRole("heading", { level: 1, name: "Genomes" }),
+    ).toBeVisible();
+    await new SiteChrome(page).expectOverscrollUnpainted();
   });
 
   test("canonicalizes invalid collection position without rendering an error", async ({

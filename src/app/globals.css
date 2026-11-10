@@ -419,6 +419,12 @@
     @apply bg-background text-foreground antialiased;
   }
 
+  /* Overscroll bounce shows the root background; a footer page paints it
+     `primary` so the bounce continues the footer and navbar fill. */
+  html:has([data-site-footer]) {
+    @apply bg-primary;
+  }
+
   /* In the base layer so a call-site utility such as `disabled:cursor-default`
      still wins. */
   :disabled {

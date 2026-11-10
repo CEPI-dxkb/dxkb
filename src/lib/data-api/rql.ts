@@ -288,17 +288,18 @@ function percentEncode(value: string): string {
 
 function serializeValue(value: RqlValue, field?: ResourceField): string {
   if (typeof value !== "string") return String(value);
-  if (value === "") {
-    if (field?.quote === "never") {
-      throw new DataApiValidationError(
-        "Empty strings cannot be serialized for an unquoted field.",
-      );
-    }
-    return '""';
-  }
+  // "" has no unquoted form (`eq(test_type,)` is HTTP 400), so even a field
+  // that is never quoted writes it as `""`: a facet's "(empty)" bucket.
+  if (value === "") return '""';
   const encoded = percentEncode(value);
+  // The Data API decodes the value into a Solr query, where a bare `:` reads as
+  // a field separator (`culture_collection:FDA:FDAARGOS_855`, HTTP 400), so a
+  // string with one is quoted, even on a never-quoted field: its bare form
+  // cannot match anything. Dates and numbers keep their bare form.
   const quote =
-    field?.quote === "always" || (field?.quote !== "never" && /\s/.test(value));
+    field?.quote === "always" ||
+    (field?.type === "string" && value.includes(":")) ||
+    (field?.quote !== "never" && /\s/.test(value));
   return quote ? `"${encoded}"` : encoded;
 }
 

@@ -260,6 +260,51 @@ describe("collection URL state", () => {
   });
 });
 
+describe("the empty facet value", () => {
+  // A facet's "(empty)" bucket is the value "": records whose field is the
+  // empty string. The Data API selects it with `eq(<field>,"")`, so a pick on
+  // it is a filter like any other, written to the URL as `host=`.
+  it("keeps an empty value from the URL", () => {
+    expect(parseCollectionState({ host: "" }, options).filters).toEqual({
+      host: [""],
+    });
+    expect(
+      parseCollectionState({ host: ["", "human"] }, options).filters,
+    ).toEqual({ host: ["", "human"] });
+  });
+
+  it("writes a pick on the empty value to the URL and reads it back", () => {
+    const params = updateCollectionSearchParams(
+      {},
+      { filters: { host: [""] } },
+      options,
+    );
+    expect(params.toString()).toBe("host=");
+    expect(
+      parseCollectionState(toSearchParamsRecord(params), options).filters,
+    ).toEqual({ host: [""] });
+  });
+
+  it("drops the empty value with the rest when the filter is cleared", () => {
+    expect(
+      updateCollectionSearchParams(
+        { host: ["", "human"] },
+        { filters: { host: null } },
+        options,
+      ).toString(),
+    ).toBe("");
+  });
+
+  it("still keeps an empty value out of a closed value set", () => {
+    const closed = {
+      ...options,
+      friendlyFilters: ["public"],
+      filterValues: { public: ["true", "false"] },
+    } satisfies CollectionStateOptions<"relevance" | "name" | "date">;
+    expect(parseCollectionState({ public: "" }, closed).filters).toEqual({});
+  });
+});
+
 describe("replaceCollectionSearchParams", () => {
   it("preserves the caller-supplied page even when the query shape changes", () => {
     const merged = replaceCollectionSearchParams(

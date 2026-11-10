@@ -23,7 +23,8 @@ function MessageScrollerProvider(
 // transcript is scrolled down (the primitive sets `data-scrollable="start …"`),
 // a faint shadow fades in along the top edge, under the panel header; and
 // MessageScrollerContent spaces messages `gap-4` (the stock `gap-6` left
-// wide gaps between turns in a side panel).
+// wide gaps between turns in a side panel) and ends with the same `pb-4`, so
+// the last message's actions do not sit on the composer's border.
 function MessageScroller({
   className,
   ...props
@@ -63,7 +64,7 @@ function MessageScrollerContent({
   return (
     <MessageScrollerPrimitive.Content
       data-slot="message-scroller-content"
-      className={cn("flex h-max min-h-full flex-col gap-4", className)}
+      className={cn("flex h-max min-h-full flex-col gap-4 pb-4", className)}
       {...props}
     />
   )

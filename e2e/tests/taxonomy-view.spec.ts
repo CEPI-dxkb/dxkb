@@ -80,13 +80,7 @@ test.describe("Taxonomy collection", () => {
     await taxonomyPage.expectStaleRows(false);
     await taxonomyPage.expectServiceOptions();
     await expect(page.getByText("Could not complete action")).toHaveCount(0);
-
-    // SERVICES was disabled while the IDs resolved, which moved focus to the body;
-    // closing the chooser hands it back to SERVICES.
-    await page.keyboard.press("Escape");
-    await expect(
-      page.getByRole("button", { name: "SERVICES", exact: true }),
-    ).toBeFocused();
+    await taxonomyPage.expectEscapeReturnsFocusToServices();
   });
 
   test("redirects legacy Taxa search URLs", async ({ page }) => {

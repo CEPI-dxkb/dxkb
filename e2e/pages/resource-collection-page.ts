@@ -123,6 +123,25 @@ export class ResourceCollectionPage {
     return this.page.getByRole("button", { name: label, exact: true });
   }
 
+  /** The dialog an action tile opens, named by its title. */
+  actionDialog(name: string) {
+    return this.page.getByRole("dialog", { name });
+  }
+
+  /**
+   * Opens `tile`'s dialog, closes it with Escape and checks that focus is back
+   * on the tile. GROUP and SERVICES are disabled while the selection's IDs
+   * resolve, which moves focus to the body before their dialog opens.
+   */
+  async expectEscapeReturnsFocusToTile(tile: string, dialog: string) {
+    await this.actionTile(tile).click();
+    const opened = this.actionDialog(dialog);
+    await expect(opened).toBeVisible();
+    await this.page.keyboard.press("Escape");
+    await expect(opened).toBeHidden();
+    await expect(this.actionTile(tile)).toBeFocused();
+  }
+
   /** The action rail's Download tile; its name ends in the selection badge. */
   downloadTile() {
     return this.page.getByRole("button", { name: /^DOWNLOAD/ });

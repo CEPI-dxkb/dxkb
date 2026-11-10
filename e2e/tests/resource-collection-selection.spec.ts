@@ -87,9 +87,8 @@ test("the header checkbox follows the page selection and the all-results selecti
 test.describe("signed in", () => {
   test.use({ storageState: e2eSignedInStatePath });
 
-  // GROUP and SERVICES are disabled while the selection's IDs resolve, which moves
-  // focus to the body before their dialog opens. Closing the dialog has to hand
-  // focus back to the tile rather than leave it on the body.
+  // Closing an action dialog hands focus back to the tile that opened it, not
+  // the body (see expectEscapeReturnsFocusToTile).
   for (const { tile, dialog } of [
     { tile: "GROUP", dialog: "Add Genomes to Group" },
     { tile: "SERVICES", dialog: "Use selected Genomes in a service" },
@@ -115,12 +114,7 @@ test.describe("signed in", () => {
       await collection.goto("influenza");
       await collection.rowCheckbox(firstRow.genome_id).check();
 
-      await collection.actionTile(tile).click();
-      const opened = page.getByRole("dialog", { name: dialog });
-      await expect(opened).toBeVisible();
-      await page.keyboard.press("Escape");
-      await expect(opened).toBeHidden();
-      await expect(collection.actionTile(tile)).toBeFocused();
+      await collection.expectEscapeReturnsFocusToTile(tile, dialog);
     });
   }
 });

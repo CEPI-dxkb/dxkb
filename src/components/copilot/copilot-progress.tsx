@@ -29,7 +29,7 @@ function StepIcon({ status }: { status: CopilotStep["status"] }) {
 /** The step list behind "What I did". */
 function StepList({ steps }: { steps: CopilotStep[] }) {
   return (
-    <ol className="mt-1 flex flex-col gap-1.5 border-l pl-3">
+    <ol className="mt-1 flex flex-col gap-1.5 border-l-2 border-primary/25 pl-3">
       {steps.map((step) => (
         <li key={step.stepId}>
           <Marker>

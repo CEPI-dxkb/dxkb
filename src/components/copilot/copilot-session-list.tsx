@@ -105,7 +105,7 @@ function SessionRow({
 }) {
   const updated = when(session.lastModified ?? session.createdAt);
   return (
-    <li className="group flex items-center gap-1 rounded-md pr-1 hover:bg-muted aria-current:bg-muted" aria-current={current}>
+    <li className="group flex items-center gap-1 rounded-md pr-1 transition-colors duration-150 ease-out hover:bg-muted aria-current:bg-muted" aria-current={current}>
       <button
         type="button"
         className="flex min-w-0 flex-1 items-start gap-2 rounded-md px-2 py-1.5 text-left outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -128,7 +128,7 @@ function SessionRow({
       <DropdownMenu>
         <DropdownMenuTrigger
           render={
-            <Button variant="ghost" size="icon-xs" aria-label={`Options for ${session.title}`}>
+            <Button variant="ghost-row" size="icon-sm" aria-label={`Options for ${session.title}`}>
               <MoreHorizontal aria-hidden />
             </Button>
           }

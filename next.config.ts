@@ -30,16 +30,22 @@ interface WebpackConfig {
 // (`X-Forwarded-Host: <public host>`); as a safety net, this deployment's own
 // public host, from `APP_BASE_URL` (the origin it already declares to the
 // BV-BRC services, `getAppBaseUrl`), is always accepted. Next loads `.env`
-// before this file, and the list is baked in at build time.
+// before this file, and the list is baked in at build time (the standalone
+// server serializes this config), so `APP_BASE_URL` must be set where
+// `next build` runs, not only where the server starts. Only an http(s) value
+// counts, as in `getAppBaseUrl`: `allowedOrigins` compares hosts alone, so
+// `ftp://other.example` would otherwise admit `other.example`.
 function appBaseHost(): string[] {
   const configured = process.env.APP_BASE_URL;
   if (!configured) return [];
+  let url: URL;
   try {
-    return [new URL(configured).host];
+    url = new URL(configured);
   } catch {
     // `getAppBaseUrl` reports a malformed value where it is used.
     return [];
   }
+  return url.protocol === "http:" || url.protocol === "https:" ? [url.host] : [];
 }
 
 const nextConfig: NextConfig = {

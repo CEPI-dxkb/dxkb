@@ -41,7 +41,7 @@ Fill in `.env.local` with the appropriate values:
 | `USER_REGISTER_URL`       | BV-BRC Registration Service URL                                        |
 | `USER_VERIFICATION_URL`   | BV-BRC Email Verification Service URL                                  |
 | `USER_PASSWORD_RESET_URL` | BV-BRC Password Reset Service URL                                      |
-| `APP_BASE_URL`            | This tier's public origin, declared on sign-up and jobs (required)     |
+| `APP_BASE_URL`            | This tier's public origin, declared on sign-up and jobs, and the Server Action host allowlist (required at build and run time) |
 | `APP_SERVICE_URL`         | BV-BRC AppService — JSON-RPC endpoint for job submission               |
 | `DATA_SERVICE_URL`        | BV-BRC Data Service URL                                                |
 | `NEXT_PUBLIC_DATA_API`    | Public-facing data API endpoint                                        |

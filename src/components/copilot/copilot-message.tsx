@@ -192,6 +192,10 @@ function RatingButtons({
       return { save };
     },
     onSuccess: (_data, rating) => {
+      // One toast per message however fast the clicks: the id replaces it.
+      if (rating !== 0) {
+        toast.success("Thanks for the feedback", { id: `copilot-rating-${message.id}` });
+      }
       const running = ratingSaves.get(message.id);
       if (running) running.confirmed = rating;
     },
@@ -246,10 +250,18 @@ function RatingButtons({
   );
 }
 
+/**
+ * A model id without its provider prefix ("Qwen/Qwen3.6-35B-A3B" reads
+ * "Qwen3.6-35B-A3B"); the full id stays in the label's title.
+ */
+export function shortModelName(model: string): string {
+  return model.slice(model.lastIndexOf("/") + 1) || model;
+}
+
 function AssistantAvatar() {
   return (
     <MessageAvatar>
-      <span className="flex size-8 items-center justify-center text-muted-foreground">
+      <span className="flex size-8 items-center justify-center bg-primary/10 text-primary dark:bg-primary/25 dark:text-link">
         <Bot className="size-4" aria-hidden />
       </span>
     </MessageAvatar>
@@ -295,12 +307,15 @@ export function CopilotUserMessage({
   answers = [],
   attachments = [],
   onRetry,
+  latest = true,
 }: {
   content: string;
   /** Answers to an agent's questions, shown instead of `content`. */
   answers?: CopilotClarificationAnswer[];
   attachments?: CopilotAttachmentInfo[];
   onRetry?: () => void;
+  /** The newest question keeps its actions shown; older ones show on hover. */
+  latest?: boolean;
 }) {
   return (
     <Message align="end">
@@ -324,7 +339,7 @@ export function CopilotUserMessage({
             )}
           </BubbleContent>
         </Bubble>
-        <MessageFooter>
+        <MessageFooter reveal={latest ? "always" : "hover"}>
           {answers.length === 0 && <CopyButton text={content} />}
           {onRetry && (
             <Button
@@ -348,11 +363,17 @@ export function CopilotAssistantMessage({
   sessionId,
   message,
   interactive = false,
+  latest = true,
+  showModel = true,
 }: {
   sessionId: string;
   message: CopilotMessage;
   /** Its card takes answers (the newest answer, with nothing after it). */
   interactive?: boolean;
+  /** The newest answer keeps its actions shown; older ones show on hover. */
+  latest?: boolean;
+  /** Name the model (the transcript names it only where it changes). */
+  showModel?: boolean;
 }) {
   return (
     <Message>
@@ -373,13 +394,15 @@ export function CopilotAssistantMessage({
             </div>
           </BubbleContent>
         </Bubble>
-        <MessageFooter>
+        <MessageFooter reveal={latest ? "always" : "hover"}>
           {message.content && <CopyButton text={message.content} />}
           {message.persisted && !message.systemInitiated && (
             <RatingButtons sessionId={sessionId} message={message} />
           )}
-          {message.model && (
-            <span className="ml-1 truncate text-2xs font-normal">{message.model}</span>
+          {message.model && showModel && (
+            <span className="ml-1 truncate text-2xs font-normal" title={message.model}>
+              {shortModelName(message.model)}
+            </span>
           )}
         </MessageFooter>
       </MessageContent>

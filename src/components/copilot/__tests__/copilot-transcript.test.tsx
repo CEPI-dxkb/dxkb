@@ -264,3 +264,77 @@ describe("CopilotTranscript scrolling", () => {
     expect(viewport.scrollTop).toBe(4 * itemHeight - 64);
   });
 });
+
+describe("CopilotTranscript answer footers", () => {
+  function message(
+    id: string,
+    role: "user" | "assistant",
+    model: string | null = null,
+  ) {
+    return {
+      id,
+      role,
+      content: `Text ${id}`,
+      timestamp: null,
+      model,
+      steps: [],
+      card: null,
+      rating: null,
+      persisted: true,
+      systemInitiated: false,
+      isClarification: false,
+      clarificationAnswers: [],
+      attachments: [],
+    } satisfies CopilotSessionDetail["messages"][number];
+  }
+
+  function renderMessages(messages: CopilotSessionDetail["messages"]) {
+    render(
+      <CopilotTranscript
+        sessionId="s1"
+        detail={{ ...detail, messages }}
+        loading={false}
+        loadError={null}
+        onRetryLoad={vi.fn()}
+        onReload={vi.fn()}
+        active={null}
+        error={null}
+        onRetry={vi.fn()}
+        onSuggestion={vi.fn()}
+      />,
+      { wrapper: createQueryClientWrapper() },
+    );
+  }
+
+  it("names the model without its provider, only where it changes", () => {
+    renderMessages([
+      message("m1", "user"),
+      message("m2", "assistant", "Qwen/Qwen3.6-35B-A3B"),
+      message("m3", "user"),
+      message("m4", "assistant", "Qwen/Qwen3.6-35B-A3B"),
+      message("m5", "user"),
+      message("m6", "assistant", "Qwen3.8-27B"),
+    ]);
+
+    const labels = screen.getAllByText(/^Qwen3/);
+    expect(labels.map((label) => label.textContent)).toEqual([
+      "Qwen3.6-35B-A3B",
+      "Qwen3.8-27B",
+    ]);
+    expect(labels[0]).toHaveAttribute("title", "Qwen/Qwen3.6-35B-A3B");
+  });
+
+  it("keeps only the newest question's and answer's actions shown", () => {
+    renderMessages([
+      message("m1", "user"),
+      message("m2", "assistant"),
+      message("m3", "user"),
+      message("m4", "assistant"),
+    ]);
+
+    const reveals = Array.from(
+      document.querySelectorAll('[data-slot="message-footer"]'),
+    ).map((footer) => footer.getAttribute("data-reveal"));
+    expect(reveals).toEqual(["hover", "hover", "always", "always"]);
+  });
+});

@@ -76,6 +76,13 @@ export const buttonVariants = cva(
         // row itself stays still.
         "ghost-secondary":
           "text-foreground/75 hover:bg-secondary/20 hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:hover:bg-secondary/30",
+        // A row action on a list row that itself turns bg-muted on hover or
+        // when current (the Copilot chat list's options menu). The ghost
+        // hover is bg-muted too, so it vanished there: this one rests as a
+        // near-foreground glyph and takes a foreground wash that stays
+        // visible over the muted row, held while its menu is open.
+        "ghost-row":
+          "text-foreground/75 hover:bg-foreground/10 hover:text-foreground aria-expanded:bg-foreground/10 aria-expanded:text-foreground dark:hover:bg-foreground/15 dark:aria-expanded:bg-foreground/15",
         // Primary-tinted chip, solid in dark themes (the dropdown toggles in
         // the service-form pickers).
         soft: "bg-primary/15 text-primary transition-colors hover:bg-primary/25 dark:bg-primary dark:text-primary-foreground dark:hover:bg-primary/80",

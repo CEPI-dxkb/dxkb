@@ -29,12 +29,17 @@ function Message({
   )
 }
 
+// Local edits (keep when regenerating with `shadcn add --overwrite`): the
+// avatar sits at the top of its message (`self-start`, no footer offset), so a
+// long answer is marked where it begins; MessageFooter takes `reveal="hover"`,
+// which hides its actions until the message is hovered or holds focus (always
+// shown on touch screens, which have no hover).
 function MessageAvatar({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="message-avatar"
       className={cn(
-        "flex w-fit min-w-8 shrink-0 items-center justify-center self-end overflow-hidden rounded-full bg-muted group-has-data-[slot=message-footer]/message:-translate-y-8",
+        "flex w-fit min-w-8 shrink-0 items-center justify-center self-start overflow-hidden rounded-full bg-muted",
         className
       )}
       {...props}
@@ -68,12 +73,17 @@ function MessageHeader({ className, ...props }: React.ComponentProps<"div">) {
   )
 }
 
-function MessageFooter({ className, ...props }: React.ComponentProps<"div">) {
+function MessageFooter({
+  className,
+  reveal = "always",
+  ...props
+}: React.ComponentProps<"div"> & { reveal?: "always" | "hover" }) {
   return (
     <div
       data-slot="message-footer"
+      data-reveal={reveal}
       className={cn(
-        "flex max-w-full min-w-0 items-center px-3 text-xs font-medium text-muted-foreground group-has-data-[variant=ghost]/message:px-0 group-data-[align=end]/message:justify-end",
+        "flex max-w-full min-w-0 items-center px-3 text-xs font-medium text-muted-foreground transition-opacity duration-150 ease-out group-has-data-[variant=ghost]/message:px-0 group-data-[align=end]/message:justify-end data-[reveal=hover]:opacity-0 group-focus-within/message:data-[reveal=hover]:opacity-100 group-hover/message:data-[reveal=hover]:opacity-100 pointer-coarse:data-[reveal=hover]:opacity-100",
         className
       )}
       {...props}

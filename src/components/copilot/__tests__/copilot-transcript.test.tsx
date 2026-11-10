@@ -121,6 +121,10 @@ describe("CopilotTranscript scrolling", () => {
   const itemHeight = 200;
   const viewportHeight = 300;
   const scrollTops = new WeakMap<Element, number>();
+  // jsdom may not define Element#scrollTo, so vi.spyOn cannot track it: the
+  // stub is assigned here and the original (or its absence) put back after
+  // each test, so later tests do not inherit a scroll backed by scrollTops.
+  let originalScrollTo: PropertyDescriptor | undefined;
 
   function message(id: string, role: "user" | "assistant", content: string) {
     return {
@@ -182,6 +186,10 @@ describe("CopilotTranscript scrolling", () => {
         scrollTops.set(this, value);
       },
     );
+    originalScrollTo = Object.getOwnPropertyDescriptor(
+      Element.prototype,
+      "scrollTo",
+    );
     Element.prototype.scrollTo = function (
       this: Element,
       options?: ScrollToOptions | number,
@@ -194,6 +202,12 @@ describe("CopilotTranscript scrolling", () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
+    if (originalScrollTo) {
+      Object.defineProperty(Element.prototype, "scrollTo", originalScrollTo);
+    } else {
+      // @ts-expect-error -- removing the stub jsdom never defined
+      delete Element.prototype.scrollTo;
+    }
   });
 
   it("stays on the new question when a finished turn is replaced by its saved copy", async () => {

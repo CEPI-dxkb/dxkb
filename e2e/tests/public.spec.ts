@@ -3,7 +3,7 @@ import {
   workspaceOverrides,
   emptyBackendFallbackOverrides,
 } from "../fixtures/overrides";
-import { SignInPage } from "../pages";
+import { SignInPage, SiteChrome } from "../pages";
 
 test.use({ storageState: { cookies: [], origins: [] } });
 
@@ -44,6 +44,21 @@ test.describe("public routes (no auth)", () => {
       await new SignInPage(page).gotoProtected(path);
     });
   }
+
+  // Overscrolling past either edge (macOS rubber-banding) shows the canvas,
+  // which paints the root element's background. A page that ends in the site
+  // footer gives the root the footer's fill, so the bounce is not a white band.
+  test("a page with the site footer paints the root in the footer's fill", async ({
+    page,
+  }) => {
+    const chrome = new SiteChrome(page);
+    for (const path of ["/", "/about"]) {
+      await test.step(path, async () => {
+        await page.goto(path);
+        await chrome.expectOverscrollInFooterFill();
+      });
+    }
+  });
 
   test("footer pages render: /about, /contact, /faq", async ({ page }) => {
     for (const path of ["/about", "/contact", "/faq"]) {

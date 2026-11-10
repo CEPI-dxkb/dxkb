@@ -35,6 +35,11 @@ function facetCounts(fields: readonly string[]) {
   const counts: Record<string, { value: string; count: number }[]> = {
     genome_status: [{ value: "Complete", count: 5 }],
     genus: [{ value: "Alphainfluenzavirus", count: 5 }],
+    segment: [
+      { value: "4", count: 5 },
+      { value: "", count: 3 },
+    ],
+    culture_collection: [{ value: "FDA:FDAARGOS_855", count: 2 }],
   };
   return Object.fromEntries(fields.map((field) => [field, counts[field] ?? []]));
 }
@@ -292,6 +297,66 @@ test.describe("resource collection facet counts", () => {
         read.searchParams.get("rql")?.includes("genome_status"),
       ),
     ).toBe(false);
+  });
+
+  test("keeps a pick on a facet the URL used to drop, on its (empty) bucket, and on a value with a colon", async ({
+    page,
+  }) => {
+    const collection = await openGenomeCollection(page);
+    const { toolbar } = collection;
+    await routeFacetReads(page);
+    const queries: string[] = [];
+    page.on("request", (request: Request) => {
+      const url = new URL(request.url());
+      if (url.pathname === "/api/data/genome") {
+        queries.push(url.searchParams.get("rql") ?? "");
+      }
+    });
+
+    await collection.goto("influenza");
+    // Segment is a facet Genome's URL state did not accept, so a pick on it
+    // highlighted and then cleared. Its "(empty)" bucket is the value "".
+    await toolbar.pickFacetValue("Segment", "(empty)");
+    await expect(page).toHaveURL(/[?&]segment=(?:&|$)/);
+    await expect(toolbar.filtersButton()).toHaveAccessibleName(
+      "Filters, 1 active",
+    );
+    await expect
+      .poll(() => queries.some((rql) => rql.includes('eq(segment,"")')))
+      .toBe(true);
+    await expect(
+      toolbar.facetValueOption("Segment", "(empty)", 3),
+    ).toHaveAttribute("aria-selected", "true");
+
+    // A bare colon is a Solr field separator (HTTP 400), so the value is quoted.
+    await toolbar.pickFacetValue("Culture Collection", "FDA:FDAARGOS_855");
+    await expect(page).toHaveURL(
+      /[?&]culture_collection=FDA:FDAARGOS_855(?:&|$)/,
+    );
+    await expect(toolbar.filtersButton()).toHaveAccessibleName(
+      "Filters, 2 active",
+    );
+    await expect
+      .poll(() =>
+        queries.some((rql) =>
+          rql.includes('eq(culture_collection,"FDA%3AFDAARGOS_855")'),
+        ),
+      )
+      .toBe(true);
+
+    await toolbar.closeFilters();
+    await expect(toolbar.activeFilterPill("Segment")).toHaveAccessibleName(
+      "Segment: (empty). Edit filter",
+    );
+    await expect(
+      toolbar.activeFilterPill("Culture Collection"),
+    ).toHaveAccessibleName("Culture Collection: FDA:FDAARGOS_855. Edit filter");
+
+    // Both survive a reload: the URL holds them.
+    await page.reload();
+    await expect(toolbar.filtersButton()).toHaveAccessibleName(
+      "Filters, 2 active",
+    );
   });
 
   test("shows why the counts could not be loaded, keeps the rows, and retries the counts alone", async ({

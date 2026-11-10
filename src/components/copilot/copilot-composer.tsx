@@ -9,7 +9,8 @@ import {
   Square,
   X,
 } from "lucide-react";
-import { useEffect, useRef, useState, type KeyboardEvent } from "react";
+import dynamic from "next/dynamic";
+import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
 import {
   InputGroup,
   InputGroupAddon,
@@ -17,6 +18,11 @@ import {
   InputGroupTextarea,
 } from "@/components/ui/input-group";
 import { WorkspaceFolderPickerDialog } from "@/components/workspace/folder-picker/folder-picker-dialog-lazy";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import {
   copilotAttachmentAccept,
   maxCopilotAttachments,
@@ -159,28 +165,41 @@ function ModeToggle({
   onChange: (mode: CopilotExecutionMode) => void;
   disabled: boolean;
 }) {
+  const hintId = useId();
   return (
     <div
       role="radiogroup"
       aria-label={`${copilotName} mode`}
       className="flex items-center rounded-md border p-0.5"
     >
+      {/* A tooltip, not a title: a title shows late, and never on touch. */}
       {modes.map((mode) => (
-        <InputGroupButton
-          key={mode.value}
-          type="button"
-          role="radio"
-          aria-checked={value === mode.value}
-          title={mode.hint}
-          size="xs"
-          variant={value === mode.value ? "secondary" : "ghost"}
-          disabled={disabled}
-          onClick={() => {
-            onChange(mode.value);
-          }}
-        >
-          {mode.label}
-        </InputGroupButton>
+        <Tooltip key={mode.value}>
+          <TooltipTrigger
+            render={
+              <InputGroupButton
+                type="button"
+                role="radio"
+                aria-checked={value === mode.value}
+                aria-describedby={`${hintId}-${mode.value}`}
+                size="xs"
+                variant={value === mode.value ? "secondary" : "ghost"}
+                disabled={disabled}
+                onClick={() => {
+                  onChange(mode.value);
+                }}
+              >
+                {mode.label}
+              </InputGroupButton>
+            }
+          />
+          <TooltipContent>{mode.hint}</TooltipContent>
+        </Tooltip>
+      ))}
+      {modes.map((mode) => (
+        <span key={mode.value} id={`${hintId}-${mode.value}`} hidden>
+          {mode.hint}
+        </span>
       ))}
     </div>
   );
@@ -360,7 +379,8 @@ export function CopilotComposer({
             onChange={onExecutionModeChange}
             disabled={running || disabled}
           />
-          <span className="text-2xs text-muted-foreground max-sm:hidden">
+          {/* Only while the box is in use: at rest it is toolbar noise. */}
+          <span className="hidden text-2xs text-muted-foreground sm:group-focus-within/input-group:inline">
             Shift+Enter for a new line
           </span>
           {running ? (

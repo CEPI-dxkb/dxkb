@@ -474,6 +474,16 @@
     @apply bg-background text-foreground antialiased;
   }
 
+  /* Overscrolling past either edge (macOS rubber-banding) shows the canvas,
+     which paints the root's background, or the body's when the root has none:
+     `background`. A page that ends in the site footer gives the root the
+     `primary` fill the footer and the navbar share, so the bounce continues
+     the bar at both edges. The body then paints `background` on its own
+     `min-h-screen` box, so the page itself looks the same. */
+  html:has([data-site-footer]) {
+    @apply bg-primary;
+  }
+
   /* Every disabled control shows the not-allowed cursor. The ui controls no
      longer set `disabled:pointer-events-none`, which hid any cursor, since a
      natively disabled control ignores clicks without it. In the base layer,

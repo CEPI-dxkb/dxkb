@@ -40,7 +40,7 @@ const copilotSuggestions = [
 function EmptyState({ onSuggestion }: { onSuggestion: (text: string) => void }) {
   return (
     <div className="flex flex-col items-center gap-4 px-4 py-10 text-center">
-      <span className="flex size-10 items-center justify-center rounded-full bg-muted text-muted-foreground">
+      <span className="flex size-10 items-center justify-center rounded-full bg-primary/10 text-primary dark:bg-primary/25 dark:text-link">
         <Bot className="size-5" aria-hidden />
       </span>
       <div className="space-y-1">
@@ -136,6 +136,27 @@ export function CopilotTranscript({
   // Only the newest message's card takes answers, and only while nothing is
   // running: the gateway checks a reply against the cards it stored.
   const last = messages.at(-1);
+  // Only the newest question is a scroll anchor. When a turn ends, its two
+  // live items give way to their saved copies (same item count, new
+  // elements), and the scroller then jumps to the first anchor it has not
+  // scrolled to yet: with every question an anchor, that is the chat's first
+  // one, so an existing chat would jump back to the top.
+  const lastQuestionId = messages.findLast(
+    (message) => message.role === "user",
+  )?.id;
+  // An answer names its model only where the model changes from the answer
+  // before it, and only the newest question and answer keep their actions
+  // shown (older ones show them on hover or focus).
+  const modelShownIds = new Set<string>();
+  let previousModel: string | undefined;
+  for (const message of messages) {
+    if (message.role !== "assistant" || !message.model) continue;
+    if (message.model !== previousModel) modelShownIds.add(message.id);
+    previousModel = message.model;
+  }
+  const lastAnswerId = messages.findLast(
+    (message) => message.role === "assistant",
+  )?.id;
   const answerableId =
     !turn && !busyElsewhere && last?.role === "assistant" && last.card
       ? last.id
@@ -154,7 +175,7 @@ export function CopilotTranscript({
               <MessageScrollerItem
                 key={message.id}
                 messageId={message.id}
-                scrollAnchor={message.role === "user"}
+                scrollAnchor={message.id === lastQuestionId}
               >
                 <div className="px-4 pt-2">
                   {message.role === "user" ? (
@@ -162,6 +183,7 @@ export function CopilotTranscript({
                       content={message.content}
                       answers={message.clarificationAnswers}
                       attachments={message.attachments}
+                      latest={!turn && message.id === lastQuestionId}
                       onRetry={
                         message.isClarification ||
                         running ||
@@ -177,6 +199,8 @@ export function CopilotTranscript({
                       sessionId={sessionId}
                       message={message}
                       interactive={message.id === answerableId}
+                      latest={!turn && message.id === lastAnswerId}
+                      showModel={modelShownIds.has(message.id)}
                     />
                   )}
                 </div>

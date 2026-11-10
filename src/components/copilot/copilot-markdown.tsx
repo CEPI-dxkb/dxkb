@@ -107,7 +107,7 @@ const components: Components = {
   h3: ({ node: _node, ...props }) => <h5 className="mt-3 mb-1 text-sm font-semibold" {...props} />,
   h4: ({ node: _node, ...props }) => <h6 className="mt-3 mb-1 text-sm font-medium" {...props} />,
   blockquote: ({ node: _node, ...props }) => (
-    <blockquote className="my-2 border-l-2 pl-3 text-muted-foreground" {...props} />
+    <blockquote className="my-2 border-l-2 border-primary/40 pl-3 text-muted-foreground" {...props} />
   ),
   hr: () => <hr className="my-3 border-border" />,
   pre: ({ node: _node, ...props }) => <CodeBlock {...props} />,

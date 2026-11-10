@@ -73,12 +73,15 @@ function optionalValue(
   return value || undefined;
 }
 
+/**
+ * A friendly filter's values from the URL. The empty string is kept: it is a
+ * facet's "(empty)" bucket (`host=`), which the Data API selects with
+ * `eq(host,"")`.
+ */
 function values(params: SearchParamsRecord, name: string): string[] {
   const value = params[name];
   return [
-    ...new Set(
-      (Array.isArray(value) ? value : value ? [value] : []).filter(Boolean),
-    ),
+    ...new Set(Array.isArray(value) ? value : value === undefined ? [] : [value]),
   ];
 }
 
@@ -245,9 +248,10 @@ export function canonicalizeCollectionState<Sort extends string>(
 
   for (const name of options.friendlyFilters ?? []) {
     if (!applied.has(name)) continue;
+    // "" stays: it is the "(empty)" bucket (see `values`).
     const selected = allowedValues(
       name,
-      [...new Set(state.filters[name] ?? [])].filter(Boolean),
+      [...new Set(state.filters[name] ?? [])],
       options,
     );
     if (selected.length > 0) filters[name] = selected;

@@ -143,7 +143,7 @@ export function CopilotPanelHeader({
         {showHistory ? "Back" : "Chats"}
       </Button>
       <Bot
-        className="ml-1 size-4 shrink-0 text-muted-foreground"
+        className="ml-1 size-4 shrink-0 text-primary dark:text-link"
         aria-hidden
       />
       <h2
@@ -151,7 +151,7 @@ export function CopilotPanelHeader({
         className="min-w-0 flex-1 truncate text-sm font-medium"
       >
         {showHistory ? "Your chats" : title}
-        <span className="ml-2 rounded bg-muted px-1.5 py-0.5 text-3xs font-medium text-muted-foreground uppercase">
+        <span className="ml-2 rounded bg-primary/10 px-1.5 py-0.5 text-3xs font-medium text-primary uppercase dark:bg-primary/25 dark:text-link">
           Beta
         </span>
       </h2>

@@ -33,9 +33,9 @@ export default function SettingsPage() {
   const profileRetry = useRetryKeepingError({
     error,
     isFetching,
-    // The root layout's `getCurrentUser()` feeds `<AuthBoundary>`, which a
-    // client refetch does not reach, so a successful Retry re-renders the
-    // server components.
+    // `<AuthBoundary>` is fed by the root layout's `getCurrentUser()`, which a
+    // client refetch does not reach, so when the session was unverified a
+    // successful Retry re-renders the server components.
     refetch: async () => {
       const result = await refetch();
       if (isSessionUnverified && result.isSuccess) router.refresh();

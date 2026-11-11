@@ -28,7 +28,7 @@ const answerSchema = z.object({
   answer: z.string().trim().min(1).max(4000),
 });
 
-/** Every attachment slot as a text file at twice the file cap (base64 plus JSON-escaping), plus 2 MB for the query, page context and plan. */
+/** Every attachment slot as a text file at twice the file cap (JSON-escaping can double raw text), plus 2 MB for the query, page context and plan. */
 const maxChatBodyBytes =
   maxCopilotAttachments * 2 * maxCopilotFileBytes + 2 * 1024 * 1024;
 

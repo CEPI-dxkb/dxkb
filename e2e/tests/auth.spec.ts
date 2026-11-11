@@ -108,9 +108,8 @@ test.describe("auth (signed out)", () => {
     await signIn.expectInlineError(/invalid username or password/i);
   });
 
-  // The pending state only renders when the button subscribes to the form
-  // store; with the React Compiler on, reading form.state in render never
-  // updates. Vitest does not run the compiler, so this is covered here.
+  // Vitest does not run the React Compiler, which breaks reading form.state in render;
+  // the button must subscribe to the form store.
   test("disables the sign-in button while the request is pending", async ({
     page,
   }) => {
@@ -136,7 +135,6 @@ test.describe("auth (signed out)", () => {
 
     const pendingButton = page.getByRole("button", { name: /signing in/i });
     await expect(pendingButton).toBeDisabled();
-    // Implicit (Enter) submission is blocked while the submit button is disabled.
     await signIn.passwordInput.press("Enter");
 
     responseGate.resolve(undefined);

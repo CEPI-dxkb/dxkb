@@ -10,17 +10,14 @@ import {
 import { Button } from "@/components/ui/button";
 
 /**
- * The text field of an `<Autocomplete>` in a service form: a service input
- * with the pickers' chevron chip at its end, which opens the suggestions as
- * the workspace pickers' toggle does. The props go to the input; the root
- * owns its value.
+ * A service input with the pickers' chevron chip at its end; props go to the
+ * input and the root owns its value.
  */
 export function ServiceAutocompleteInput({
   className,
   triggerLabel = "Show suggestions",
   ...props
 }: React.ComponentProps<typeof AutocompleteInput> & {
-  /** The chevron button's accessible name. */
   triggerLabel?: string;
 }) {
   return (

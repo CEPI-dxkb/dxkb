@@ -28,8 +28,6 @@ import { isFastaResource, supportsFastaType } from "../fasta";
 import { dataResources, maxRequestBytes, type DataResource } from "../types";
 
 describe("download formats per resource", () => {
-  // The BV-BRC inventory (plan §1.2) as data: every resource offers the table
-  // formats, and these three add sequences.
   const sequenceMatrix: Partial<Record<DataResource, DownloadFormatId[]>> = {
     genome: ["dna-fasta"],
     genome_feature: ["dna-fasta", "protein-fasta"],
@@ -65,7 +63,6 @@ describe("download formats per resource", () => {
       sort: "sequence_id",
       note: "Contigs of each genome",
     });
-    // A prototype key must not pass as a resource.
     expect(sequenceDownloadFor("toString" as DataResource)).toBeUndefined();
   });
 
@@ -289,7 +286,6 @@ describe("download transport choice", () => {
     expect(
       usesNativeDownload("genome_sequence", request(one, 1, "dna-fasta")),
     ).toBe(true);
-    // A genome's table, and a feature's own sequence, stay small.
     expect(usesNativeDownload("genome", request(one, 1, "csv"))).toBe(false);
     expect(
       usesNativeDownload(

@@ -1,9 +1,6 @@
 /**
- * Error reading for the browser side of same-origin Data API routes. A route's
- * `{error, code}` body carries the specific failure; it is used verbatim so a
- * specific diagnosis is never replaced by a generic one, falling back to the
- * status line only when there is no JSON body (an aborted response, a proxy
- * error page).
+ * A route's `{error, code}` body is used verbatim so a specific diagnosis is
+ * never replaced by a generic one; the status line is the fallback.
  */
 async function failureDetail(response: Response): Promise<string> {
   const payload: unknown = await response.json().catch(() => null);
@@ -17,8 +14,8 @@ async function failureDetail(response: Response): Promise<string> {
 }
 
 /**
- * A non-OK answer as an error carrying its HTTP `status`, so the app-wide
- * retry policy skips an immediate retry of an upstream outage (502–504).
+ * Carries `status` so the app-wide retry policy skips an immediate retry of an
+ * upstream outage (502-504).
  */
 export async function httpFailure(
   response: Response,

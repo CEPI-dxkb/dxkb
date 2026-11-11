@@ -106,7 +106,6 @@ describe("WorkspaceItemDetails", () => {
     );
     const section = screen.getByTestId("collapsible-section");
     expect(section).toBeInTheDocument();
-    // The custom type should appear as a select option
     expect(screen.getByText("custom_rare_type")).toBeInTheDocument();
   });
 

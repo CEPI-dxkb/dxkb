@@ -2,7 +2,6 @@ import { NextRequest } from "next/server";
 import { config, proxy } from "../proxy";
 import { viewSegments } from "@/lib/views/view-registry";
 
-/** Helper to build a NextRequest with optional cookies */
 function buildRequest(
   pathname: string,
   cookies?: Record<string, string>,
@@ -19,7 +18,6 @@ function buildRequest(
   return request;
 }
 
-/** Parse the Location header into a URL, failing the test if missing */
 function getRedirectLocation(response: Response): URL {
   const location = response.headers.get("location");
   expect(location).toBeTruthy();
@@ -203,9 +201,7 @@ describe("proxy", () => {
       expect(loc.pathname).toBe("/genome");
       expect(loc.searchParams.get("rql")).toBe("eq(taxon_id,1763)");
     });
-    // Next.js re-serializes the query before the proxy runs, so a raw legacy
-    // `?eq(genome_status,Complete)` arrives form-encoded. These inputs use that
-    // normalized form; the tests above use the raw form a hand-built request keeps.
+    // Next.js re-serializes the query before the proxy runs, so legacy `?eq(...)` arrives form-encoded; these inputs use that form.
     it("redirects a normalized list query without double-encoding the RQL", () => {
       const request = buildRequest(
         "/view/GenomeList?eq%28genome_status%2CComplete%29=",
@@ -239,7 +235,6 @@ describe("proxy", () => {
       expect(loc.search).toBe("?keyword=Dnak");
     });
     it("redirects legacy's multi-word search to a keyword search", () => {
-      // Legacy's search box: "coli Salmonella" -> and(keyword(coli),keyword(Salmonella)).
       const request = buildRequest(
         "/view/GenomeList/?and(keyword(coli),keyword(Salmonella))",
       );
@@ -248,8 +243,6 @@ describe("proxy", () => {
       expect(loc.search).toBe("?keyword=coli+Salmonella");
     });
     it("redirects a legacy quoted phrase to a keyword search", () => {
-      // `?keyword=` sends the quoted phrase whole, and the Feature list then
-      // applies its PATRIC default, as legacy's does (16,285,620 rows).
       const request = buildRequest(
         "/view/FeatureList/?keyword(%22DNA%20polymerase%22)",
       );
@@ -278,10 +271,7 @@ describe("proxy", () => {
     });
   });
 
-  // The matcher must stay a static literal (Next.js cannot compute it from
-  // viewSegments at runtime), so it is hand-mirrored in proxy.ts. This guard fails
-  // when a new registry entry is added without its matcher line — preventing the
-  // ?view=→?tab= rewrite from silently skipping the new segment.
+  // The matcher must be a static literal hand-mirrored in proxy.ts; this fails when a registry entry lacks its matcher line.
   it("matches /copilot paths", () => {
     expect(config.matcher).toContain("/copilot/:path*");
   });

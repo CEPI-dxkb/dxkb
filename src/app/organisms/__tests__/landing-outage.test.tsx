@@ -19,8 +19,6 @@ vi.mock("next/navigation", () => ({
   usePathname: () => "/organisms",
   useSearchParams: () => new URLSearchParams(),
 }));
-// The real views render async server sections; this test is about whether the
-// page reaches them, so it records what they were built from.
 vi.mock("@/components/organisms/taxon-views", () => ({
   buildTaxonViews: (options: unknown) => buildViews(options) as unknown,
 }));

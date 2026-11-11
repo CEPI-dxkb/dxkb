@@ -1,16 +1,10 @@
-// Centralized internal-URL construction for (views) routes. Keep path shape and
-// query encoding here so callers do not hand-build strings (and re-derive encoding
-// rules) at each site.
-
 import { maxRqlInValues } from "@/lib/data-api/rql";
 import { encodePathSegment, encodeQueryComponent } from "@/lib/url";
 import { escapeRqlValue } from "./rql";
 
 /**
- * Build an `in(field,(...))` clause from a selection's raw ID values, trimming and
- * de-duplicating first. Returns `null` when nothing usable is left, or when the set
- * exceeds the Data API's `in(...)` ceiling — the destination would reject the query,
- * and truncating would silently drop rows the user selected.
+ * Returns `null` when nothing usable is left or the set exceeds the Data API's
+ * `in(...)` ceiling, since truncating would silently drop selected rows.
  */
 function idListRql(
   field: string,
@@ -23,14 +17,12 @@ function idListRql(
   return `in(${field},(${ids.join(",")}))`;
 }
 
-/** Internal taxonomy singular route, e.g. `/taxonomy/561`. */
 export function taxonomyHref(taxonId: number | string): string {
   const id = String(taxonId);
   if (!/^(?=.*[1-9])\d+$/.test(id)) throw new Error(`Invalid Taxon ID: ${id}`);
   return `/taxonomy/${encodePathSegment(id)}`;
 }
 
-/** Return a navigable Genome ID from an API row, if present. */
 export function genomeIdFromRow(
   row: Record<string, unknown> | null,
 ): string | null {
@@ -40,12 +32,10 @@ export function genomeIdFromRow(
     : null;
 }
 
-/** Internal genome singular route, e.g. `/genome/83332.12`. */
 export function genomeHref(genomeId: number | string): string {
   return `/genome/${encodePathSegment(String(genomeId))}`;
 }
 
-/** Return the canonical Genome list for the supplied genome IDs. */
 export function genomesHrefFromIds(
   values: readonly (string | number)[],
 ): string | null {
@@ -53,10 +43,6 @@ export function genomesHrefFromIds(
   return rql ? genomeListHref({ rql }) : null;
 }
 
-/**
- * Internal genome list route, optionally pre-filtered by a keyword and/or RQL string.
- * Both are sent when present; the data layer combines them as additive clauses.
- */
 export function genomeListHref(opts?: {
   keyword?: string;
   rql?: string;
@@ -67,7 +53,6 @@ export function genomeListHref(opts?: {
   return params.length ? `/genome?${params.join("&")}` : "/genome";
 }
 
-/** Return the canonical Feature ID from an API row, falling back for legacy search payloads. */
 export function featureIdFromRow(
   row: Record<string, unknown> | null,
 ): string | null {
@@ -77,15 +62,10 @@ export function featureIdFromRow(
     : null;
 }
 
-/** Internal Feature member route. */
 export function featureHref(featureId: number | string): string {
   return `/feature/${encodePathSegment(String(featureId))}`;
 }
 
-/**
- * Feature list route for an explicit ID set — the Interactions tab's FEATURES action,
- * which pools both interactors of every selected row. Mirrors `genomesHrefFromIds`.
- */
 export function featuresHrefFromIds(
   values: readonly (string | number)[],
 ): string | null {
@@ -93,11 +73,6 @@ export function featuresHrefFromIds(
   return rql ? featureListHref({ rql }) : null;
 }
 
-/**
- * Canonical Feature list route. Both keyword and RQL are sent when present;
- * the data layer combines them as additive clauses. `filter` is independent
- * and appended whenever supplied.
- */
 export function featureListHref(opts?: {
   keyword?: string;
   rql?: string;
@@ -110,7 +85,6 @@ export function featureListHref(opts?: {
   return params.length ? `/feature?${params.join("&")}` : "/feature";
 }
 
-/** Return a navigable Epitope ID from an API row, if present. */
 export function epitopeIdFromRow(
   row: Record<string, unknown> | null,
 ): string | null {
@@ -120,12 +94,10 @@ export function epitopeIdFromRow(
     : null;
 }
 
-/** Internal Epitope member route. */
 export function epitopeHref(epitopeId: number | string): string {
   return `/epitope/${encodePathSegment(String(epitopeId))}`;
 }
 
-/** Return a navigable Strain record ID from an API row, if present. */
 export function strainIdFromRow(
   row: Record<string, unknown> | null,
 ): string | null {
@@ -136,15 +108,13 @@ export function strainIdFromRow(
 }
 
 /**
- * Internal Strain member route. Keyed by the record `id`, not the strain name:
- * names are phrase-matched (`A/China` also matches `A/China/27/2017`) and
- * carry `/`, so only the ID addresses one record.
+ * Keyed by the record `id`, not the name: names are phrase-matched (`A/China`
+ * also matches `A/China/27/2017`) and carry `/`.
  */
 export function strainHref(strainId: number | string): string {
   return `/strain/${encodePathSegment(String(strainId))}`;
 }
 
-/** Return a canonical Experiment ID from an API row, if present. */
 export function experimentIdFromRow(
   row: Record<string, unknown> | null,
 ): string | null {
@@ -154,23 +124,20 @@ export function experimentIdFromRow(
     : null;
 }
 
-/** Internal Experiment member route. */
 export function experimentHref(experimentId: number | string): string {
   return `/experiment/${encodePathSegment(String(experimentId))}`;
 }
 
-/** Legacy Bioset Results view; no canonical V2 result-analysis route exists yet. */
+/** Legacy Bioset Results view; no canonical V2 route exists yet. */
 export function biosetResultsHref(experimentIds: readonly string[]): string {
   const ids = [...new Set(experimentIds)].map(encodeURIComponent).join(",");
   return `https://www.bv-brc.org/view/BiosetResult/?in(exp_id,(${ids}))`;
 }
 
-/** Internal Protein Structure route using the canonical accession query. */
 export function proteinStructureHref(accession: number | string): string {
   return `/protein-structure?accession=${encodeQueryComponent(String(accession))}`;
 }
 
-/** Return a public Surveillance sample identifier from an API row, if present. */
 export function surveillanceIdFromRow(
   row: Record<string, unknown> | null,
 ): string | null {
@@ -181,7 +148,6 @@ export function surveillanceIdFromRow(
     : null;
 }
 
-/** Internal Surveillance member route with an optional compound discriminator. */
 export function surveillanceHref(
   sampleIdentifier: number | string,
   pathogenTestType?: string,
@@ -192,7 +158,6 @@ export function surveillanceHref(
     : path;
 }
 
-/** Return a public Serology sample identifier from an API row, if present. */
 export function serologyIdFromRow(
   row: Record<string, unknown> | null,
 ): string | null {
@@ -203,7 +168,6 @@ export function serologyIdFromRow(
     : null;
 }
 
-/** Internal Serology member route with an optional scalar discriminator. */
 export function serologyHref(
   sampleIdentifier: number | string,
   testType?: string,

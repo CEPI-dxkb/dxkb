@@ -11,9 +11,6 @@ interface UseWorkspacePathResolveOptions {
   enabled?: boolean;
 }
 
-/**
- * Resolves a single workspace path via Workspace.get and returns the parsed object (type, name, path, job metadata when job_result).
- */
 export function useWorkspacePathResolve({
   fullPath,
   enabled = true,

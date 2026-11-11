@@ -22,7 +22,6 @@ import {
 
 const sessionPageSize = 20;
 
-/** The gateway's chat models. They change rarely; kept for the visit. */
 export function useCopilotModels(enabled: boolean) {
   return useQuery({
     queryKey: copilotQueryKeys.models(),
@@ -32,7 +31,6 @@ export function useCopilotModels(enabled: boolean) {
   });
 }
 
-/** The user's sessions, newest first, 20 at a time. */
 export function useCopilotSessions(enabled: boolean) {
   return useInfiniteQuery({
     queryKey: copilotQueryKeys.sessions(),
@@ -47,7 +45,6 @@ export function useCopilotSessions(enabled: boolean) {
   });
 }
 
-/** The query for one session's messages, shared by its readers. */
 export function copilotSessionQueryOptions(sessionId: string) {
   return queryOptions({
     queryKey: copilotQueryKeys.session(sessionId),
@@ -55,21 +52,14 @@ export function copilotSessionQueryOptions(sessionId: string) {
   });
 }
 
-/**
- * Reads a session from the gateway now, whether or not anything shows it,
- * and resolves `null` once a fetch that started after this call (its own, or
- * one it joined) has delivered data to the cache, or the failure's message.
- * A fetch already in flight is cancelled first: it may have started before
- * the turn ended, and joining it would return the old messages.
- */
+/** Resolves `null` once a fetch started after this call has delivered data, else the failure's message. An in-flight fetch is cancelled first since joining it could return old messages. */
 export async function reloadCopilotSession(
   queryClient: QueryClient,
   sessionId: string,
 ): Promise<string | null> {
   const options = copilotSessionQueryOptions(sessionId);
   const queryHash = hashKey(options.queryKey);
-  // Only a fetch's own write counts: `setQueryData` (a rating's optimistic
-  // update) is `manual`, and a cancel's revert dispatches no success at all.
+  // Only a fetch's own write counts, not `setQueryData` (`manual`) or a cancel's revert.
   let delivered = false;
   // A call, so the loop's check is not narrowed to the `false` above.
   const hasDelivered = () => delivered;
@@ -85,10 +75,7 @@ export async function reloadCopilotSession(
   });
   try {
     await queryClient.cancelQueries({ queryKey: options.queryKey, exact: true });
-    // A cancel (a later reload's, or a rating's) reverts this fetch, which
-    // then resolves with the old data, or throws `CancelledError` when there
-    // was none. Join the fetch that replaced it, or start one, until a fetch
-    // has delivered.
+    // A cancel reverts this fetch (old data or `CancelledError`); join the replacing fetch until one delivers.
     while (!hasDelivered()) {
       try {
         await queryClient.query({ ...options, staleTime: 0 });
@@ -98,16 +85,13 @@ export async function reloadCopilotSession(
     }
     return null;
   } catch (cause) {
-    // A `CopilotClientError` carries the route's message verbatim.
     return cause instanceof Error ? cause.message : "Could not reload the chat.";
   } finally {
     unsubscribe();
   }
 }
 
-// Per cache: how many fetches have delivered each session's data since the
-// count started. One listener per cache counts from the first read, so a
-// reader that subscribes later still sees deliveries made in between.
+// Per cache: deliveries per session. One listener counts from the first read so late subscribers see earlier deliveries.
 const sessionDeliveryCounts = new WeakMap<QueryCache, Map<string, number>>();
 const sessionKeyPrefix = copilotQueryKeys.session("").slice(0, 2);
 
@@ -117,8 +101,7 @@ function sessionDeliveries(cache: QueryCache): Map<string, number> {
   const counts = new Map<string, number>();
   sessionDeliveryCounts.set(cache, counts);
   cache.subscribe((event) => {
-    // The same filter as `reloadCopilotSession`: a fetch's own write, not
-    // `setQueryData` (`manual`) and not a cancel's revert (no success).
+    // Same filter as `reloadCopilotSession`.
     if (
       event.type === "updated" &&
       event.action.type === "success" &&
@@ -131,11 +114,7 @@ function sessionDeliveries(cache: QueryCache): Map<string, number> {
   return counts;
 }
 
-/**
- * How many fetches have delivered this session's data to the cache so far.
- * Only a later, larger count means newer data arrived; the number itself
- * means nothing.
- */
+/** Only a later, larger count means newer data arrived. */
 export function copilotSessionDeliveries(
   queryClient: QueryClient,
   sessionId: string,
@@ -147,7 +126,6 @@ export function copilotSessionDeliveries(
   );
 }
 
-/** `copilotSessionDeliveries`, re-read whenever the session's query changes. */
 export function useCopilotSessionDeliveries(sessionId: string | null): number {
   const queryClient = useQueryClient();
   const cache = queryClient.getQueryCache();
@@ -164,11 +142,7 @@ export function useCopilotSessionDeliveries(sessionId: string | null): number {
   );
 }
 
-/**
- * One session's messages. While the gateway reports a turn running in it and
- * this tab is not streaming that turn (it was started elsewhere, or the
- * stream dropped), the session is polled every 3 s until the turn ends.
- */
+/** Polled every 3 s while the gateway reports a turn running that this tab is not streaming. */
 export function useCopilotSession(
   sessionId: string | null,
   options: { enabled: boolean; streaming: boolean },
@@ -181,14 +155,8 @@ export function useCopilotSession(
   });
 }
 
-/** How often jobs a chat waits for are checked (BV-BRC's interval). */
 export const copilotWatchPollMs = 30_000;
 
-/**
- * The jobs the gateway watches for a session. Read when the chat opens and
- * after each turn; while one is still running, every 30 s. When one ends the
- * gateway writes a completion message into the chat (see `CopilotPanel`).
- */
 export function useCopilotWorkflowWatches(sessionId: string | null, enabled: boolean) {
   return useQuery({
     queryKey: copilotQueryKeys.workflowWatches(sessionId ?? ""),

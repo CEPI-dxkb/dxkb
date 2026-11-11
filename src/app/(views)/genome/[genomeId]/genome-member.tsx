@@ -35,10 +35,6 @@ interface CrumbTrailProps {
   lineage: readonly LineageCrumb[];
 }
 
-/**
- * BV-BRC's Genome View header: the taxon lineage, root first (see
- * `lineageCrumbs`), then the genome's name in bold.
- */
 function CrumbTrail({ genome, lineage }: CrumbTrailProps) {
   return (
     <div className="flex flex-wrap items-baseline gap-x-1 text-sm">
@@ -71,9 +67,8 @@ function LineageCrumbTrail({
 }
 
 /**
- * The lineage is a second lookup (the genome record names its lineage but
- * not the ranks), so it streams in: until it lands the breadcrumb holds the
- * genome's name alone.
+ * The lineage is a second lookup, so it streams in; the breadcrumb holds the
+ * genome name alone until it lands.
  */
 function breadcrumbs(
   genome: GenomeViewRecord,
@@ -105,7 +100,6 @@ export function GenomeMember({
   activeTab,
 }: {
   genome: GenomeViewRecord;
-  /** The taxa leading the breadcrumb, root first (see `lineageCrumbs`). */
   lineage: Promise<readonly LineageCrumb[]>;
   activeTab: GenomeTab;
 }) {
@@ -134,8 +128,6 @@ export function GenomeMember({
       />
     );
   } else if (activeTab === "features") {
-    // Legacy's Genome Features tab: the Feature list's removable
-    // annotation=PATRIC default (5,425 of genome 83332.12's 10,940 features).
     content = (
       <ResourceChildCollection
         {...genomeChildCollections.features}

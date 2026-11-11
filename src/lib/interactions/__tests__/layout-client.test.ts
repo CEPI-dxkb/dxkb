@@ -9,7 +9,6 @@ import type {
 type MessageListener = (event: MessageEvent<GraphLayoutResponse>) => void;
 type ErrorListener = (event: Event) => void;
 
-/** A stand-in worker: records what it was sent and lets a test answer. */
 class FakeWorker implements GraphLayoutWorker {
   posted: { message: GraphLayoutRequest; transfer: Transferable[] }[] = [];
   terminate = vi.fn();
@@ -42,7 +41,6 @@ class FakeWorker implements GraphLayoutWorker {
 }
 
 function makeRequest(): GraphLayoutRequest {
-  // Two nodes, one edge: small enough to lay out on the main thread in a test.
   return { nodeCount: 2, edges: new Uint32Array([0, 1]), layout: "grid" };
 }
 
@@ -142,7 +140,6 @@ describe("requestGraphLayout", () => {
     worker.fail();
 
     const positions = await result;
-    // grid: node 0 at the origin, node 1 beside it.
     expect(Array.from(positions)).toEqual([0, 0, 1, 0]);
     expect(worker.terminate).toHaveBeenCalledTimes(1);
     expect(warn).toHaveBeenCalledTimes(1);

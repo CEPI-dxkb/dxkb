@@ -1,19 +1,11 @@
-/**
- * The Compare Region Viewer's x axis under the zoom: bp offsets (from each
- * row's pinned gene) to track pixels, the offsets the track shows, the ruler's
- * ticks and the focus line's position. Zooming only changes the x scale, so
- * these take the layout's domain and the zoom's horizontal matrix.
- */
 import { scaleLinear } from "@visx/scale";
 import { formatBp } from "./genome-labels";
 
-/** The horizontal part of `@visx/zoom`'s transform matrix. */
 export interface TrackMatrix {
   scaleX: number;
   translateX: number;
 }
 
-/** Offset (bp) to track pixels under the zoom. */
 export function trackScale(
   domain: [number, number],
   matrix: TrackMatrix,
@@ -24,7 +16,6 @@ export function trackScale(
   return (offset: number) => matrix.translateX + (offset - d0) * k;
 }
 
-/** The offsets (bp) the track shows under the zoom. */
 export function visibleDomain(
   domain: [number, number],
   matrix: TrackMatrix,
@@ -39,13 +30,11 @@ export function visibleDomain(
 }
 
 export interface RulerTick {
-  /** bp from the focus gene. */
   offset: number;
   x: number;
   label: string;
 }
 
-/** "+2 kb", "−1.5 kb" (a true minus sign); under half a kilobase a step, whole bases ("+250 bp"). */
 function formatOffset(offset: number, step: number): string {
   if (Math.abs(offset) < 1e-6) return "0";
   const sign = offset > 0 ? "+" : "−";
@@ -54,11 +43,6 @@ function formatOffset(offset: number, step: number): string {
   return `${sign}${(size / 1000).toFixed(step >= 1000 ? 0 : 1)} kb`;
 }
 
-/**
- * Major ticks (labelled, relative to the focus gene; about one per 110 px,
- * at least two) and minor ticks at a fifth of their step (at most 400), under
- * the zoom.
- */
 export function rulerTicks(
   domain: [number, number],
   matrix: TrackMatrix,
@@ -84,7 +68,6 @@ export function rulerTicks(
   return { major, minor };
 }
 
-/** The focus line's x: offset 0, the point every row is aligned on. */
 export function focusLineX(
   domain: [number, number],
   matrix: TrackMatrix,

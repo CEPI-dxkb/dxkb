@@ -1,19 +1,7 @@
 /**
- * Remove quotes that cannot act as phrase delimiters, and close the phrase left
- * open at the end of the text.
- *
- * WHY: legacy's parser (`searchToQuery`) treats every `\"` as a delimiter, and
- * its opening-quote branch *assigns* instead of appending, so a quote in the
- * middle of a token discards everything before it; a quote left open reaches
- * Solr, which rejects it. `?keyword=` reads its terms with `keywordTerms`
- * instead, which splits at an embedded quote and closes an open one; quotes
- * that cannot delimit a phrase are removed here so the text says what it
- * searches, and the last phrase left open is closed as `keywordTerms` would
- * close it, the phrase being typed.
- *
- * A phrase opener must begin a token and its closer must end one. Pairing those
- * delimiters individually preserves valid phrases even when another quote is
- * embedded or unmatched.
+ * Removes quotes that cannot delimit a phrase and closes an open final phrase,
+ * as `keywordTerms` does. Legacy's parser assigns on an opening quote, so a
+ * mid-token quote discards the text before it.
  */
 function normalizeStrayQuotes(query: string): string {
   const openingQuotes: number[] = [];
@@ -42,7 +30,6 @@ function normalizeStrayQuotes(query: string): string {
     }
   }
 
-  // The last opener left open, when no phrase follows it, runs to the end.
   const openPhrase = openingQuotes.at(-1);
   const closesAtEnd =
     openPhrase !== undefined &&
@@ -58,18 +45,9 @@ function normalizeStrayQuotes(query: string): string {
   return closesAtEnd ? `${normalized.trimEnd()}"` : normalized;
 }
 
-/**
- * Legacy's parser (`searchToQuery`) reads `and`, `or` and `not` in any case as
- * operators, but only before another word; `?keyword=` reads Solr's uppercase
- * ones (`keywordQuery`). Quoted spans are matched first so their words stay.
- */
+/** Quoted spans are matched first so their words stay. */
 const operatorWordPattern = /"[^"]*"|(?<=^|\s)(and|or|not)(?=\s+\S)/gi;
 
-/**
- * Normalize text typed into the search bar the way legacy BV-BRC's search box
- * (`GlobalSearch.processQuery`) does, as the `?keyword=` text that searches
- * what alpha's search box searches.
- */
 export function normalizeLegacyKeyword(keyword: string): string {
   let query = keyword.replace(/^\s+|\s+$/g, "");
 
@@ -79,8 +57,8 @@ export function normalizeLegacyKeyword(keyword: string): string {
     .replace(/\(-\)/g, " ")
     .replace(/,|\+|-|=|<|>|\\|\//g, " ");
 
-  // Runs after the substitutions above so that punctuation already turned into
-  // whitespace counts as a token boundary rather than as a token character.
+  // Runs after the substitutions above so punctuation turned into whitespace
+  // counts as a token boundary.
   query = normalizeStrayQuotes(query);
 
   if (query.charAt(0) === '"' && query.match(/\(|\)|\[|\]|\{|\}/)) {
@@ -89,8 +67,8 @@ export function normalizeLegacyKeyword(keyword: string): string {
 
   if (query.charAt(0) !== '"' || query.match(/\(|\)|\[|\]|\{|\}/)) {
     const keywords = query.split(/\s|\(|\)|\[|\]|\{|\}/);
-    // Legacy also quotes an identifier inside a phrase (`kinase "EC 2.1.1.1
-    // enzyme"`), which breaks the phrase apart; words inside one are skipped.
+    // Words inside a phrase are skipped: quoting an identifier there would
+    // break the phrase apart.
     let inPhrase = false;
     for (let index = 0; index < keywords.length; index++) {
       const word = keywords[index];

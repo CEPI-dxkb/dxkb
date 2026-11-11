@@ -10,10 +10,8 @@ const viewer = vi.hoisted(() => ({
   renders: 0,
 }));
 
-// The real viewer instantiates Mol*, which needs WebGL. Capture the props the
-// route composes instead — this suite is about what the page hands the viewer,
-// not about rendering a structure. Mol* itself is covered by
-// structure-source-viewer.test.tsx and use-molstar-plugin's own suite.
+// The real viewer instantiates Mol*, which needs WebGL; capture the props the
+// route composes instead.
 vi.mock(
   "@/components/workspace/file-viewer/viewers/structure-source-viewer",
   () => ({
@@ -39,11 +37,9 @@ beforeEach(() => {
 });
 
 /**
- * `page.tsx` reads `params` through `use()`. React resolves an
- * already-fulfilled thenable synchronously — `status: "fulfilled"` plus
- * `value` is the shape it checks — which is how Next hands a client page its
- * params through the RSC payload, and lets these assertions run without a
- * Suspense boundary.
+ * `page.tsx` reads `params` through `use()`, which resolves a fulfilled
+ * thenable (`status: "fulfilled"` plus `value`) synchronously, so no Suspense
+ * boundary is needed.
  */
 function renderPage(path?: string[]) {
   const value = { path };
@@ -75,25 +71,21 @@ describe("/viewer/structure/[[...path]] route composition", () => {
     renderPage(["alice%40bvbrc", "home", "model.cif"]);
     expect(screen.getByTestId("structure-viewer")).toBeInTheDocument();
 
-    // The standalone route's whole reason to exist: `regionState: "full"` opens
-    // every Mol* region, where the in-workspace file preview passes "hidden".
-    // Asserted as a whole object so a third layout key cannot appear unnoticed.
+    // `regionState: "full"` is the standalone route's reason to exist (the
+    // workspace preview passes "hidden"); asserted whole so a third key cannot
+    // appear unnoticed.
     expect(viewer.layout).toEqual({ showControls: true, regionState: "full" });
     // `isolate` keeps Mol*'s z-1000+ overlays below the navbar's popups.
     expect(viewer.containerClassName).toBe("isolate size-full");
   });
 
   it("decodes the per-segment encoding Next gives a page component", () => {
-    // Next's route matcher decodes each matched segment, then
-    // `getParamValue()` maps `encodeURIComponent` back over the array before a
-    // page component sees it. For a workspace file really named "model 1.cif"
-    // under "alice@bvbrc", the page therefore receives these.
+    // Next hands page components each segment percent-encoded, so a file named
+    // "model 1.cif" under "alice@bvbrc" arrives encoded.
     renderPage(["alice%40bvbrc", "home", "model%201.cif"]);
 
-    // Decoded once by `readRouteParamSegments(…, "page")`, then re-encoded once
-    // by `buildWorkspaceStructureSource`. Forwarding `params` raw would
-    // double-encode: "alice%2540bvbrc" in the URL and a literal "model%201.cif"
-    // as the label.
+    // Decoded once, then re-encoded once; forwarding `params` raw would
+    // double-encode.
     expect(viewer.source).toEqual({
       url: "/api/workspace/view/alice%40bvbrc/home/model%201.cif",
       format: "mmcif",
@@ -104,9 +96,8 @@ describe("/viewer/structure/[[...path]] route composition", () => {
   });
 
   it("keeps a literal %2F in a filename as text, not an extra path segment", () => {
-    // A file named "weird%2Ffile.pdb" arrives as "weird%252Ffile.pdb". Decoding
-    // exactly once recovers the real name; decoding twice would turn it into a
-    // request for ".../weird/file.pdb".
+    // Decoding exactly once recovers the real name; decoding twice would
+    // request ".../weird/file.pdb".
     renderPage(["alice%40bvbrc", "home", "weird%252Ffile.pdb"]);
 
     expect(viewer.source).toEqual({

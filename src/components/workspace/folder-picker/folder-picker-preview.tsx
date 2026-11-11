@@ -1,13 +1,5 @@
 "use client";
 
-/**
- * The folder picker's info pane, pinned to the right of the columns: either
- * the selected folder's details (write access, New folder / Upload here), the
- * selected file's when picking files, or, in their place, the upload form for
- * that folder. The details fade in whenever the selection changes, whichever
- * way the user moved, so going into a folder and back out look the same.
- */
-
 import { useEffect, useRef, type ReactNode } from "react";
 import {
   ArrowLeft,
@@ -57,10 +49,6 @@ const placeHints: Record<PickerView, string> = {
   recent: "Folders you used recently, newest first.",
 };
 
-/**
- * Picking files, read-only workspaces are fair game (the choice is read, not
- * written to), so Shared and Public say that instead.
- */
 const filePlaceHints: Record<PickerView, string> = {
   ...placeHints,
   shared: "Workspaces other people shared with you, including read-only ones.",
@@ -72,20 +60,12 @@ function plural(count: number, noun: string): string {
 }
 
 interface FolderPickerInfoProps {
-  /** What the picker chooses; picking files, a folder is only browsed. */
   target?: PickerTarget;
   place: PickerView;
-  /** The selected folder; `null` when a listing (not a folder) is open. */
   path: string | null;
   homePath: string;
-  /** The selected folder's row, when its column has loaded. */
   item: WorkspaceItem | null;
-  /** The selected folder's own listing; `error` when it failed. */
   contents: { items: WorkspaceItem[]; isLoading: boolean; error?: Error | null };
-  /**
-   * A listing the pane relies on failed (the folder's own, or the one holding
-   * its row): the pane says so in place of claiming write access.
-   */
   listingError?: Error | null;
   commit: { canCommit: boolean; reason: string | null };
   canChange: boolean;
@@ -130,7 +110,6 @@ export function FolderPickerInfo({
   const isPickingFiles = target.kind === "object";
   const isHome = path === homePath;
   const isWorkspaceRoot = pathSegments(path).length === 2;
-  // Picking files, a job result opens as its hidden (dot) folder.
   const isJobFolder = isPickingFiles && lastSegment(path).startsWith(".");
   const FolderIcon: LucideIcon = isHome
     ? House
@@ -144,7 +123,6 @@ export function FolderPickerInfo({
   const name = pickerPathLabel(path, homePath, target);
   const owner = formatOwner(item?.ownerId ?? pathSegments(path).at(0) ?? "");
   const created = item?.createdAt ? formatDate(item.createdAt) : null;
-  // Hidden items the columns leave out don't count here either.
   const children = contents.items.filter(
     (child) =>
       !isHiddenPickerItem({
@@ -163,9 +141,6 @@ export function FolderPickerInfo({
         key={path}
         className="scrollbar-themed flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-3 duration-150 animate-in fade-in-0 md:gap-4 md:p-4"
       >
-        {/* Stacked under the columns on a narrow screen, the pane keeps only
-            what decides the choice: whether it can be written to, and the
-            actions. The footer already names the folder. */}
         <div className="hidden flex-col items-center gap-2 pt-2 text-center md:flex">
           <div className="flex size-20 items-center justify-center rounded-2xl bg-highlight/10">
             <FolderIcon aria-hidden className="size-11 text-highlight" />
@@ -194,10 +169,6 @@ export function FolderPickerInfo({
           />
         </dl>
 
-        {/* A failed read leaves both contents and write access unknown, so
-            the pane claims neither. Picking files, a folder is never the
-            choice, so its reason ("Pick a file: Contigs.") is guidance rather
-            than an error. */}
         {listingError ? (
           <CommitNote
             commit={{
@@ -260,7 +231,6 @@ interface FilePickerInfoProps {
   commit: { canCommit: boolean; reason: string | null };
 }
 
-/** The selected file's details, in place of a folder's, when picking files. */
 export function FilePickerInfo({ item, place, commit }: FilePickerInfoProps) {
   const path = normalizePath(item.path);
   return (
@@ -299,7 +269,6 @@ export function FilePickerInfo({ item, place, commit }: FilePickerInfoProps) {
   );
 }
 
-/** Whether the selection can be chosen: `okText`, or the reason it can't. */
 function CommitNote({
   commit,
   okText,
@@ -355,11 +324,9 @@ function PaneFrame({
 }
 
 interface FolderPickerUploadProps {
-  /** What the picker chooses; picking files, a job folder drops its dot. */
   target?: PickerTarget;
   targetPath: string;
   homePath: string;
-  /** The upload type the form starts with, e.g. the type being picked. */
   initialUploadType?: string;
   isUploading: boolean;
   onBack: () => void;
@@ -367,7 +334,6 @@ interface FolderPickerUploadProps {
   onUploadingChange: (uploading: boolean) => void;
 }
 
-/** The upload form for the selected folder, in place of the preview. */
 export function FolderPickerUpload({
   target = folderTarget,
   targetPath,
@@ -406,8 +372,7 @@ export function FolderPickerUpload({
         </>
       }
     >
-      {/* The panel's footer bleeds by -mx-4 -mb-4 (it was built for a p-4
-          dialog), so this p-4 wrapper gives it the room. */}
+      {/* The panel's footer bleeds by -mx-4 -mb-4, so this p-4 wrapper gives it room. */}
       <div className="flex min-h-0 flex-1 flex-col p-4">
         <WorkspaceUploadPanel
           targetPath={targetPath}

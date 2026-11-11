@@ -9,8 +9,6 @@ import {
   type OrganismRequest,
 } from "./utils";
 
-// Unlabelled: the card showing a failure names it ("Top genera could not be
-// loaded").
 const generaRequest: OrganismRequest = { source: "genome genus facet" };
 
 export async function fetchOrganismGenera(

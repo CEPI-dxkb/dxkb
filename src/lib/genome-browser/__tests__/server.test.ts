@@ -25,7 +25,6 @@ function params(query: Record<string, string>) {
   return new URLSearchParams(query);
 }
 
-/** Answers every `genome_sequence` read with contig `A` as `sequence`, counting the reads. */
 function serveSequence(sequence: string) {
   const upstream = { reads: 0 };
   server.use(
@@ -44,7 +43,6 @@ const newCache = (options: { maxChars?: number; maxLoads?: number } = {}) =>
     maxLoads: options.maxLoads ?? 4,
   });
 
-/** Reads `[start, end)` of genome 1.1's contig `A`. */
 const readSlice = (cache: SequenceCache, start: number, end: number, scope = "user-1") =>
   readSequence(repository(), { genomeId: "1.1", refName: "A", start, end }, { cache, scope });
 
@@ -255,7 +253,6 @@ describe("genome browser reads", () => {
   });
 });
 
-/** A promise and the functions that settle it, for holding a load open. */
 function deferred<T>() {
   let resolve: (value: T) => void = () => undefined;
   let reject: (reason: unknown) => void = () => undefined;
@@ -270,8 +267,7 @@ describe("genome browser sequence cache", () => {
   it("shares one upstream request between concurrent reads of one contig", async () => {
     const upstream = serveSequence("acgtacgtac");
     const cache = newCache({ maxLoads: 1 });
-    // One load slot: the second and third reads must wait on the first one's
-    // load rather than claim a slot of their own.
+    // One load slot: the second and third reads must wait on the first load.
     await expect(
       Promise.all([readSlice(cache, 0, 2), readSlice(cache, 2, 4), readSlice(cache, 4, 6)]),
     ).resolves.toEqual([
@@ -288,7 +284,6 @@ describe("genome browser sequence cache", () => {
       cache.get("k", () => Promise.reject(new Error("upstream down"))),
     ).rejects.toThrow("upstream down");
     await expect(cache.get("k", () => Promise.resolve("acgt"))).resolves.toBe("acgt");
-    // The retry's sequence is cached.
     await expect(cache.get("k", () => Promise.resolve("other"))).resolves.toBe("acgt");
   });
 
@@ -298,7 +293,6 @@ describe("genome browser sequence cache", () => {
     const second = deferred<string | null>();
     const a = cache.get("a", () => first.promise);
     const b = cache.get("b", () => second.promise);
-    // The same contig again shares the load in flight: no third slot.
     const aAgain = cache.get("a", () => Promise.reject(new Error("not called")));
 
     await expect(cache.get("c", () => Promise.resolve("cccc"))).rejects.toMatchObject({

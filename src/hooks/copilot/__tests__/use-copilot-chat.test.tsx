@@ -42,10 +42,6 @@ function storedSession(id = sessionId) {
   });
 }
 
-/**
- * A turn that starts as job `j7`, then sends an answer chunk every 5 ms until
- * the request is aborted or the reader cancels it.
- */
 function endlessTurn() {
   const encoder = new TextEncoder();
   let tick: ReturnType<typeof setInterval> | undefined;
@@ -79,7 +75,6 @@ function endlessTurn() {
   };
 }
 
-/** The real pairing: the panel's session query plus the chat hook. */
 function renderChat(account: string | null = "user-a") {
   return renderHook(
     ({ account: current }: { account: string | null }) => {
@@ -112,7 +107,6 @@ describe("useCopilotChat", () => {
       http.post("*/api/copilot/chat", () => sse(...doneFrames)),
       http.get("*/api/copilot/sessions/:id", async () => {
         sessionGets();
-        // The read after the turn waits until the test has looked.
         if (sessionGets.mock.calls.length > 1) await reloadGate;
         return storedSession();
       }),
@@ -133,7 +127,6 @@ describe("useCopilotChat", () => {
     await waitFor(() => {
       expect(sessionGets).toHaveBeenCalledTimes(2);
     });
-    // The live turn stays until the stored copy is back.
     expect(result.current.active?.turn.status).toBe("done");
 
     releaseReload();
@@ -212,12 +205,6 @@ describe("useCopilotChat", () => {
       'event: final_response\ndata: {"chunk":"Partial"}\n\n',
     ];
 
-    /**
-     * The panel's pairing: the session query polls only while the chat's
-     * turn is not active. The stored session reports a job running, so the
-     * poll is observable; the read after the turn fails until `failing` is
-     * turned off.
-     */
     function renderPanelChat() {
       const state = { failing: false, dropped: true };
       const sessionGets = vi.fn();
@@ -274,7 +261,6 @@ describe("useCopilotChat", () => {
         outcome = await result.current.send(sendOptions);
       });
 
-      // The result reports what the stream did; the shown turn has ended.
       expect(outcome).toEqual(
         expect.objectContaining({
           status: "sent",
@@ -295,7 +281,6 @@ describe("useCopilotChat", () => {
       expect(nextRefetchInterval(queryClient, copilotQueryKeys.session(sessionId))).toBe(
         3000,
       );
-      // Stop has no run to stop.
       await act(async () => {
         await result.current.stop();
       });
@@ -346,14 +331,12 @@ describe("useCopilotChat", () => {
       expect(result.current.active?.turn.status).toBe("disconnected");
       const sessionKey = copilotQueryKeys.session(sessionId);
 
-      // A read that fails again changes nothing.
       await act(async () => {
         await queryClient.refetchQueries({ queryKey: sessionKey });
       });
       expect(result.current.active?.turn.status).toBe("disconnected");
       expect(result.current.error).toEqual(expect.objectContaining({ kind: "reload" }));
 
-      // The poll (or a refetch on focus) brings the saved conversation.
       state.failing = false;
       await act(async () => {
         await queryClient.refetchQueries({ queryKey: sessionKey });
@@ -361,8 +344,6 @@ describe("useCopilotChat", () => {
       expect(result.current.active).toBeNull();
       expect(result.current.error).toBeNull();
 
-      // Nothing hidden is left behind: Reload failing in another session
-      // still reports its own error.
       state.failing = true;
       await act(async () => {
         await result.current.reload(otherSessionId);
@@ -386,8 +367,6 @@ describe("useCopilotChat", () => {
       });
       expect(result.current.active?.turn.status).toBe("disconnected");
 
-      // A rating or a card answer writes the cached session by hand; that is
-      // not the saved conversation.
       act(() => {
         queryClient.setQueryData(copilotQueryKeys.session(sessionId), {
           sessionId,
@@ -555,8 +534,6 @@ describe("useCopilotChat", () => {
       const handlers = stopHandlers();
       const { result, sending } = await startStoppedTurn(handlers);
 
-      // The first frame after Stop ended the stream; nothing reloads while
-      // the stop request is pending.
       await advance(200);
       expect(handlers.aborted).toHaveBeenCalledWith("j7");
       expect(handlers.sessionGets).toHaveBeenCalledTimes(1);
@@ -611,7 +588,6 @@ describe("useCopilotChat", () => {
       const sessionGets = vi.fn();
       const sessionStops = vi.fn();
       server.use(
-        // Never answers: only the abort after Stop ends the request.
         http.post("*/api/copilot/chat", ({ request }) =>
           new Promise<Response>((_resolve, reject) => {
             request.signal.addEventListener("abort", () => {
@@ -640,7 +616,6 @@ describe("useCopilotChat", () => {
       act(() => {
         void result.current.stop();
       });
-      // No job id yet: the stop goes by session.
       await advance(10);
       expect(sessionStops).toHaveBeenCalledTimes(1);
       expect(result.current.active?.turn.status).toBe("stopped");
@@ -666,7 +641,6 @@ describe("useCopilotChat", () => {
       const sessionGets = vi.fn();
       const aborted = vi.fn();
       server.use(
-        // The connection drops with the turn still running.
         http.post("*/api/copilot/chat", () =>
           sse(
             'event: started\ndata: {"job_id":"j9"}\n\n',
@@ -692,7 +666,6 @@ describe("useCopilotChat", () => {
         sending = result.current.send(sendOptions);
       });
       await advance(50);
-      // The stream ended, and the run is reading the session back.
       expect(sessionGets).toHaveBeenCalledTimes(2);
       expect(result.current.active?.turn.status).toBe("running");
 

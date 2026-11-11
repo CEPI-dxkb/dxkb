@@ -27,7 +27,6 @@ import {
 import { CopilotLiveStatus } from "./copilot-progress";
 import { copilotName } from "@/lib/copilot/name";
 
-/** Starting points shown in an empty chat; picking one fills the box. */
 const copilotSuggestions = [
   "Find complete Mpox virus genomes collected since 2022",
   "Which antimicrobial resistance genes are common in Klebsiella pneumoniae?",
@@ -84,11 +83,8 @@ export interface CopilotTranscriptProps {
   detail: CopilotSessionDetail | undefined;
   loading: boolean;
   loadError: Error | null;
-  /** Loads the chat again after `loadError`. */
   onRetryLoad: () => void;
-  /** Reads the session back after a `reload` error. */
   onReload: () => void;
-  /** This tab's running turn, when it belongs to this session. */
   active: CopilotActiveTurn | null;
   error: CopilotChatError | null;
   onRetry: (query: string) => void;
@@ -129,24 +125,17 @@ export function CopilotTranscript({
   const messages = active ? stored.slice(0, active.baseCount) : stored;
   const turn = active?.turn ?? null;
   const running = isCopilotTurnActive(turn);
-  // A turn started in another tab, or one whose stream dropped: the session
-  // is polled until it ends.
+  // A turn started in another tab, or one whose stream dropped: poll the session until it ends.
   const busyElsewhere = !active && Boolean(detail?.activeJobId);
   const sessionError = error?.sessionId === sessionId ? error : null;
-  // Only the newest message's card takes answers, and only while nothing is
-  // running: the gateway checks a reply against the cards it stored.
+  // The gateway checks a reply against the cards it stored, so only the newest card takes answers,
+  // and only while nothing runs.
   const last = messages.at(-1);
-  // Only the newest question is a scroll anchor. When a turn ends, its two
-  // live items give way to their saved copies (same item count, new
-  // elements), and the scroller then jumps to the first anchor it has not
-  // scrolled to yet: with every question an anchor, that is the chat's first
-  // one, so an existing chat would jump back to the top.
+  // Only the newest question is a scroll anchor: when a turn ends its live items are replaced by
+  // saved copies, and the scroller would otherwise jump to the chat's first anchor.
   const lastQuestionId = messages.findLast(
     (message) => message.role === "user",
   )?.id;
-  // An answer names its model only where the model changes from the answer
-  // before it, and only the newest question and answer keep their actions
-  // shown (older ones show them on hover or focus).
   const modelShownIds = new Set<string>();
   let previousModel: string | undefined;
   for (const message of messages) {

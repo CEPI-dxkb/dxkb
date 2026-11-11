@@ -34,7 +34,6 @@ function workspaceObject(path: string, type = "genome_group"): WorkspaceObject {
   };
 }
 
-/** A `Workspace.get` metadata tuple, as the workspace service returns it. */
 function metadataTuple(path: string) {
   const name = path.split("/").pop() ?? path;
   return [
@@ -65,7 +64,6 @@ function deferred() {
   return { promise, resolve };
 }
 
-/** Answers `Workspace.get` for any group with `content` as its data. */
 function serveWorkspaceGet(content: unknown, gate?: Promise<void>) {
   server.use(
     http.post("*/api/services/workspace", async ({ request }) => {
@@ -89,7 +87,6 @@ function viralGenome(genomeId: string): ViralGenomeValidationResult {
   };
 }
 
-/** Answers validate-viral with valid viral metadata for every requested id. */
 function serveViralValidation(gate?: Promise<void>) {
   const requestedIds: string[][] = [];
   server.use(
@@ -111,7 +108,6 @@ function serveValidationResults(results: ViralGenomeValidationResult[]) {
   );
 }
 
-/** Records whether validate-viral was called; it must not be for an empty group. */
 function watchValidation() {
   const calls = { count: 0 };
   server.use(
@@ -154,17 +150,13 @@ function fillToLimit(result: ControllerResult) {
   );
 }
 
-/**
- * Runs the add to completion. The handler is called as `void handleAddGenomeGroup()`,
- * so a rejection would be unhandled: every path must resolve.
- */
+/** The handler is called as `void`, so every path must resolve. */
 async function addGenomeGroup(result: ControllerResult) {
   await act(async () => {
     await expect(result.current.handleAddGenomeGroup()).resolves.toBeUndefined();
   });
 }
 
-/** Starts an add without awaiting it, for tests that act while it is in flight. */
 function startAddGenomeGroup(result: ControllerResult) {
   let pending: Promise<void> = Promise.resolve();
   act(() => {
@@ -417,7 +409,6 @@ describe("useViralGenomeTree genome group add", () => {
     });
 
     it("shows the upstream workspace message from the proxy's error shape", async () => {
-      // What src/app/api/services/workspace/route.ts returns when BV-BRC fails.
       server.use(
         http.post("*/api/services/workspace", () =>
           HttpResponse.json(

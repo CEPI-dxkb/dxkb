@@ -34,7 +34,6 @@ vi.mock("@/components/services/output-folder", () => ({
   default: () => null,
 }));
 
-// A button per picker that selects that picker's fixed path.
 vi.mock("@/components/workspace/workspace-object-selector", () => ({
   WorkspaceObjectSelector: ({
     preset,
@@ -119,14 +118,12 @@ async function pickAndAddGroup(user: ReturnType<typeof userEvent.setup>) {
   await user.click(addButton("Add genome group"));
 }
 
-/** The selected-sequences table row whose path is `path`. */
 async function findSelectedRow(path: string) {
   const row = (await screen.findByText(path)).closest("tr");
   if (!row) throw new Error(`No selected-sequences row for ${path}`);
   return row;
 }
 
-/** The genome group button is back on its plus icon and can be used again. */
 async function expectGroupButtonSettled() {
   await waitFor(() => {
     expect(addButton("Add genome group")).toBeEnabled();
@@ -237,8 +234,7 @@ describe("ViralGenomeTreePage add inputs", () => {
 
     await pickAndAddGroup(user);
 
-    // The Type cell; the narrow layout's copy under the path is hidden by a
-    // container query jsdom does not apply.
+    // The narrow layout's copy is hidden by a container query jsdom does not apply.
     expect(
       within(await findSelectedRow(groupPath)).getByRole("cell", {
         name: "Genome Group",
@@ -251,12 +247,9 @@ describe("ViralGenomeTreePage add inputs", () => {
       }),
     );
     expect(toast.error).not.toHaveBeenCalled();
-    // The picker was cleared, so the button waits for a new selection.
     expect(addButton("Add genome group")).toBeDisabled();
   });
 
-  // The hook test pins the stale-response guard by awaiting the add itself;
-  // this one checks that the page's Reset button reaches it.
   it("drops a group that is still validating when Reset is pressed", async () => {
     const gate = deferred();
     let responded = false;

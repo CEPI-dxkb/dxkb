@@ -13,21 +13,13 @@ interface UseServiceFormSubmissionOptions {
   onSuccess?: () => void;
 }
 
-/**
- * First element of every service-submit mutation key. The full key is
- * `[serviceSubmitMutationKey, serviceName]`, so `<ServiceSubmitError>` can
- * find the page's submission in the mutation cache by prefix.
- */
+/** First element of every service-submit mutation key, so `<ServiceSubmitError>` finds the submission by prefix. */
 export const serviceSubmitMutationKey = "service-submit";
 
-/** What a failed submission shows: inline by the Submit row and in a toast. */
 export interface ServiceSubmitError {
   title: string;
   message: string;
-  /**
-   * The job service never answered (504), so the job may still have been
-   * queued. The UI offers a way to check Jobs before submitting again.
-   */
+  /** The job service never answered (504), so the job may still have been queued. */
   mayHaveBeenQueued: boolean;
 }
 
@@ -50,7 +42,6 @@ export function useServiceFormSubmission(
 ): {
   submit: (params: Record<string, unknown>) => Promise<void>;
   isSubmitting: boolean;
-  /** The last submission's failure; cleared when the next submit starts. */
   submitError: ServiceSubmitError | null;
 } {
   const { serviceName, displayName, onSuccess } = options;
@@ -83,12 +74,9 @@ export function useServiceFormSubmission(
     },
     onError: (error) => {
       console.error(`Failed to submit ${displayName} job:`, error);
-      // The same condensed text as the inline <ServiceSubmitError>.
       const { title, message, mayHaveBeenQueued } =
         describeServiceSubmitError(error);
-      // 504: the job service never answered, so the job may still have been
-      // queued (the server's message says which). Keep it on screen with a
-      // way to check before the user submits again.
+      // 504: the job may still have been queued; keep the error on screen.
       if (mayHaveBeenQueued) {
         toast.error(title, {
           description: message,

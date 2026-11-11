@@ -30,9 +30,7 @@ import { clsx } from "cn";
 
 export const taxonomyRowHeight = 24;
 
-// Column width for the `w-(--col-size)` class. A column without a size (0)
-// leaves `--col-size` unset, so its width stays auto, as it did when the
-// inline width was `undefined`.
+// A column without a size (0) leaves `--col-size` unset, so its width stays auto.
 function columnSize(size: number): string | undefined {
   return size ? `${String(size)}px` : undefined;
 }
@@ -112,8 +110,6 @@ export function TreeTableView({
             <TableBody>
               {rows.length === 0 ? (
                 <TableRow className="flex w-full">
-                  {/* The cell stays unstyled; its HEAD border, padding and text
-                      live on a block wrapper that fills it exactly. */}
                   <TableCell className="w-full p-0">
                     <div className="border-t px-2 py-8 text-center text-muted-foreground">
                       No results

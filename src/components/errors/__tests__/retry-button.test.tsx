@@ -13,8 +13,8 @@ function Refetched({ request }: { request: Promise<string> }) {
   return <p>{use(request)}</p>;
 }
 
-// Stands in for Next's retry: the update it starts suspends until the
-// refetched payload arrives, as router.refresh() does.
+// Stands in for Next's retry: the update suspends until the refetch arrives, as
+// router.refresh() does.
 function RefetchingPage({ request }: { request: Promise<string> }) {
   const [refetch, setRefetch] = useState<Promise<string> | null>(null);
   return (
@@ -31,14 +31,11 @@ function RefetchingPage({ request }: { request: Promise<string> }) {
 
 describe("RetryButton", () => {
   it("stays pending, on the old page, while the refetch is in flight", async () => {
-    // Never settles: the refetch is still in flight for the whole test.
     const request = new Promise<string>(() => undefined);
     render(<RefetchingPage request={request} />);
 
     await userEvent.click(screen.getByRole("button", { name: "Retry" }));
 
-    // The old page stays up (no fallback) and the button says it is working,
-    // where a bare retry() gave no feedback at all.
     const pending = screen.getByRole("button", { name: "Retrying…" });
     expect(pending).toBeDisabled();
     expect(pending).toHaveAttribute("aria-busy", "true");

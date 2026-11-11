@@ -1,9 +1,3 @@
-/**
- * One chat turn as the stream reports it: the gateway's SSE events
- * (`GW/services/orchestratorClient.js`) decoded into `CopilotEvent`s, and a
- * pure reducer that folds them into the turn the transcript shows while it
- * runs. Once a turn ends, the stored session replaces it.
- */
 import type { CopilotPlanStepStatus, CopilotPlanStepUpdate } from "./plan";
 import type { SseFrame } from "./sse";
 import {
@@ -27,7 +21,6 @@ export type CopilotEvent =
   | { type: "cancelled" }
   | { type: "done"; messageId: string | null; cancelled: boolean };
 
-/** The step status each `plan_step_*` event sets (the gateway's map). */
 const planStepStatuses: Record<string, CopilotPlanStepStatus> = {
   plan_step_started: "running",
   plan_step_completed: "completed",
@@ -75,10 +68,6 @@ function parseData(data: string): Record<string, unknown> {
   }
 }
 
-/**
- * The event a frame carries, or null for one the transcript does not show
- * (`tool_selected`, `tool_executed`, events this client does not know).
- */
 export function decodeCopilotEvent(
   frame: SseFrame,
   noteId: () => string,
@@ -96,7 +85,6 @@ export function decodeCopilotEvent(
     case "progress": {
       const step = readCopilotStep(data);
       if (step) return { type: "step", step };
-      // An older free-text update: the live line only.
       const message = text(data.message);
       if (!message) return null;
       return {
@@ -173,28 +161,23 @@ export type CopilotTurnStatus =
   | "stopped"
   | "error"
   /**
-   * The stream dropped before the turn ended and the stored session could
-   * not be read back. The gateway may still be answering; nothing in this
-   * tab follows the turn any more, so it no longer counts as active.
+   * The stream dropped and the stored session could not be read back; nothing follows the turn any
+   * more, so it no longer counts as active.
    */
   | "disconnected";
 
 export interface CopilotTurn {
-  /** Client id of the user message this turn answers. */
   id: string;
   query: string;
   status: CopilotTurnStatus;
   jobId: string | null;
-  /** The live line ("Searching genomes…"); the latest step's label. */
   liveLabel: string | null;
   queuedMessage: string | null;
   steps: CopilotStep[];
   answer: string;
   card: CopilotCard | null;
   error: string | null;
-  /** The saved answer's id, when the gateway reports it. */
   messageId: string | null;
-  /** Plan steps this turn ran, as they went. */
   planUpdates: CopilotPlanStepUpdate[];
 }
 
@@ -225,10 +208,8 @@ export function isCopilotTurnActive(turn: CopilotTurn | null): boolean {
 }
 
 /**
- * Appends a chunk of the answer. The gateway may send the whole answer again
- * as one last chunk after streaming it; a multi-character chunk equal to the
- * whole answer so far is that repeat, and is skipped. A chunk that only
- * matches the end of the text ("world" after "Hello world") is real text.
+ * The gateway may resend the whole answer as one last chunk; a multi-character chunk equal to the
+ * answer so far is skipped, while one only matching the end is real text.
  */
 export function appendAnswer(answer: string, chunk: string): string {
   if (chunk.length > 1 && answer === chunk) {
@@ -241,7 +222,6 @@ export function reduceCopilotTurn(
   turn: CopilotTurn,
   event: CopilotEvent,
 ): CopilotTurn {
-  // Nothing changes a turn that already ended (a late event after Stop).
   if (!isCopilotTurnActive(turn)) return turn;
   switch (event.type) {
     case "queued":

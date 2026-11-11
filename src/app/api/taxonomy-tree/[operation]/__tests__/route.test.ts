@@ -1,7 +1,5 @@
-// `server-only` throws unconditionally outside Next's bundler (it relies on a
-// webpack alias swap that only exists in the real build); this route reaches it
-// through `@/lib/data-api/server-policy`, so the guard is neutralized the same
-// way `src/lib/phylogeny/__tests__/dataset-store.test.ts` does.
+// `server-only` throws outside Next's bundler; neutralized as in
+// `src/lib/phylogeny/__tests__/dataset-store.test.ts`.
 vi.mock("server-only", () => ({}));
 
 import { http, HttpResponse } from "msw";
@@ -18,10 +16,7 @@ import { GET } from "../route";
 
 const taxonomyUrl = "https://data.test/taxonomy/";
 
-/**
- * Each test uses its own client IP so the shared in-memory rate-limit bucket
- * from one case never spills into the next.
- */
+// Each test uses its own client IP so the shared rate-limit bucket does not spill over.
 let nextIpOctet = 10;
 
 function request(operation: string, query = "") {
@@ -269,9 +264,7 @@ describe("taxonomy tree route", () => {
       error: "The data service is not configured for this deployment.",
       code: "not_configured",
     });
-    // The env var name names the actual fix, so it goes to the operator's log
-    // rather than to every unauthenticated caller — and the log names this
-    // route, not the gateway, so an operator knows which one is unconfigured.
+    // The log names this route, not the gateway, so an operator knows which is unconfigured.
     expect(consoleError).toHaveBeenCalledWith(
       "Taxa Tree route is not configured: set DATA_API_URL (or NEXT_PUBLIC_DATA_API).",
     );

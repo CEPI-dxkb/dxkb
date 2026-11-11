@@ -23,13 +23,7 @@ import type { CopilotExecutionMode } from "@/lib/copilot/types";
 
 const emptyContent: CopilotDraftContent = { text: "", attachments: [] };
 
-/**
- * Reads files into the draft under `key`, which is captured here: a file
- * lands in the chat it was added to, even if the user switched chats while
- * it was read. Room is reserved for reads still running, and a result read
- * after an account change is dropped without a word. Module scope because
- * the React Compiler compiles only components and hooks.
- */
+/** `key` is captured so a file lands in the chat it was added to; a result read after an account change is dropped. */
 async function attachToCopilotDraft(key: string, files: File[]): Promise<void> {
   const signal = copilotDraftSignal();
   const { attachments, pendingReads } = readCopilotDraft(key);
@@ -53,7 +47,6 @@ async function attachToCopilotDraft(key: string, files: File[]): Promise<void> {
       })),
     ),
   );
-  // The account changed: its drafts are gone, and so is this result.
   if (signal.aborted) return;
 
   const added: CopilotAttachment[] = [];
@@ -68,11 +61,6 @@ async function attachToCopilotDraft(key: string, files: File[]): Promise<void> {
   }));
 }
 
-/**
- * The composer's draft for one chat of one account: its text, attachments
- * and Plan/Execute choice, shared by every surface that shows the chat.
- * Without a user or session it is the empty draft, and changes do nothing.
- */
 export function useCopilotDraft(username: string | null, sessionId: string | null) {
   const key =
     username !== null && sessionId !== null
@@ -81,15 +69,13 @@ export function useCopilotDraft(username: string | null, sessionId: string | nul
   const draft: CopilotDraft = useSyncExternalStore(
     subscribeToCopilotDrafts,
     () => (key === null ? emptyCopilotDraft : readCopilotDraft(key)),
-    // The server render, and hydration: the store is only written from
-    // event handlers, so it starts empty.
+    // The store is only written from event handlers, so server render and hydration start empty.
     () => emptyCopilotDraft,
   );
 
   return {
     text: draft.text,
     attachments: draft.attachments,
-    /** Files are still being read: nothing can be sent yet. */
     reading: draft.pendingReads > 0,
     mode: draft.mode,
     setText: (text: string) => {
@@ -107,14 +93,9 @@ export function useCopilotDraft(username: string | null, sessionId: string | nul
         attachments: current.attachments.filter((item) => item.id !== id),
       }));
     },
-    /** Empties the text and attachments for a send, and returns them. */
     take: (): CopilotDraftContent =>
       key === null ? emptyContent : takeCopilotDraft(key),
-    /**
-     * Gives a send's text and attachments back to this chat's draft (the one
-     * this render shows, not whichever is open when the send ends). False
-     * when the draft was not empty, or the account changed.
-     */
+    /** Targets this render's chat, not whichever is open when the send ends. */
     restore: (content: CopilotDraftContent, signal: AbortSignal): boolean =>
       key !== null && restoreCopilotDraft(key, content, signal),
   };

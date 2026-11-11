@@ -5,9 +5,8 @@ import { valueImportsMatching } from "@/test-helpers/static-imports";
 
 const organismsDir = resolve(__dirname, "..");
 
-// The Overview chart client modules the server components must reach only
-// through their lazy-* wrappers (docs/architecture.md, "Views & organism
-// landing"): a value import puts them back in every route's chunk group.
+// The Overview chart clients must stay behind their lazy-* wrappers: a value
+// import puts them back in every route's chunk group.
 const chartModule =
   /^@\/components\/organisms\/(?:geo-distribution\/geo-distribution-client|reference-genomes\/reference-genomes-client|metadata-distributions\/(?!lazy-charts$|metadata-distributions|_shared\/)[a-z0-9-]+)$/;
 

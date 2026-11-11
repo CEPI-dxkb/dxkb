@@ -3,14 +3,11 @@ import { fetchUpstream, upstreamResponseError } from "@/lib/api/upstream-failure
 
 const defaultDictionaryUrl =
   "https://www.bv-brc.org/api/content/bvbrc_phylogeny_tab/taxon_tree_dict.json";
-// ~32 MB of JSON (4.3 MB gzipped). A cold server-side read takes seconds, so
-// this budget matches the tree download's, not the 2 s metadata budget.
+// ~32 MB of JSON: a cold read takes seconds, so this budget matches the tree download's.
 const dictionaryFetchTimeoutMs = 30_000;
 const dictionaryService = "the BV-BRC phylogeny tree dictionary";
-// BV-BRC republishes the trees rarely (the file was last modified 2024-01-23).
 const dictionaryTtlMs = 24 * 60 * 60 * 1000;
-// After a failed background refresh the saved dictionary keeps serving; wait
-// this long before hitting the failing upstream (and the log) again.
+// After a failed background refresh the saved dictionary keeps serving; wait this long before retrying.
 const refreshRetryDelayMs = 5 * 60 * 1000;
 
 interface TreeIndex {
@@ -24,9 +21,6 @@ let lastRefreshFailureAt: number | null = null;
 
 async function loadIndex(): Promise<TreeIndex> {
   const url = process.env.PHYLO_TREE_DICTIONARY_URL ?? defaultDictionaryUrl;
-  // A timeout or unreachable host throws an UpstreamError (504 / 502), and a
-  // non-OK answer is described by its status and page title, so the route
-  // can pass the real cause on instead of a fixed sentence.
   const response = await fetchUpstream(
     url,
     {
@@ -43,7 +37,6 @@ async function loadIndex(): Promise<TreeIndex> {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     throw new Error("tree dictionary has an invalid shape");
   }
-  // 499,508 taxa share 2,900 files: keep one copy of each filename.
   const shared = new Map<string, string>();
   const filenames = new Map<string, string>();
   for (const [taxonId, filename] of Object.entries(value)) {
@@ -55,8 +48,7 @@ async function loadIndex(): Promise<TreeIndex> {
     }
     filenames.set(taxonId, name);
   }
-  // A 200 like `{}` or `{ "error": "..." }` parses fine but holds no taxa;
-  // accepting it would replace a working dictionary and hide every tree.
+  // A 200 like `{}` parses but holds no taxa; accepting it would replace a working dictionary.
   if (filenames.size === 0) {
     throw new Error("tree dictionary has no valid entries");
   }
@@ -75,18 +67,13 @@ function reload(): Promise<TreeIndex> {
   return loading;
 }
 
-/**
- * The phyloXML filename BV-BRC publishes for a bacterial taxon, or `null` when
- * the taxon has none. The dictionary is downloaded once per server process; a
- * stale copy keeps answering while a fresh one loads in the background.
- */
+/** The dictionary is downloaded once per process; a stale copy keeps answering while a fresh one loads. */
 export async function bacterialTreeFilename(
   taxonId: number,
 ): Promise<string | null> {
   const current = index ?? (await reload());
   const now = Date.now();
-  // Only the lookup that starts a refresh watches it, so one failure is
-  // logged once rather than once per request that arrived while it ran.
+  // Only the lookup that starts a refresh watches it, so a failure is logged once.
   if (
     loading === null &&
     now - current.loadedAt > dictionaryTtlMs &&

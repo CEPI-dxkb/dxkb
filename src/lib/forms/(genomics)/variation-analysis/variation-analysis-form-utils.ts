@@ -13,9 +13,6 @@ export const variationAnalysisCallers = [
   { value: "BCFtools", label: "BCFtools" },
 ];
 
-/**
- * Transform variation analysis form data to the format expected by the backend service
- */
 export function transformVariationAnalysisParams(data: VariationAnalysisFormData) {
   const params: Record<string, unknown> = {
     reference_genome_id: data.reference_genome_id,
@@ -25,12 +22,10 @@ export function transformVariationAnalysisParams(data: VariationAnalysisFormData
     output_file: data.output_file,
   };
 
-  // Add library data
   if (data.paired_end_libs && data.paired_end_libs.length > 0) {
     params.paired_end_libs = data.paired_end_libs.map((lib) => {
       const libData: Record<string, unknown> = {};
 
-      // Copy all properties except internal ones (starting with _)
       Object.keys(lib).forEach((key) => {
         if (!key.startsWith("_")) {
           libData[key] = lib[key as keyof typeof lib];

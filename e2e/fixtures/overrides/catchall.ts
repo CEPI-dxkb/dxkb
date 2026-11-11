@@ -26,32 +26,10 @@ import {
 } from "@/lib/e2e-fixtures/envelopes";
 
 /**
- * Browser-side mocks for API namespaces that don't have specific fixtures,
- * built from the canonical records in `src/lib/e2e-fixtures/records.ts` — the
- * same records the server-side loopback mock (`src/app/api/e2e-mock/[...path]/route.ts`)
- * uses. A record fixed once (e.g. the epitope `host_name` drift) is now correct
- * in both transports.
- *
- * This module is intentionally split into two kinds of exports:
- *
- *   - `emptyBackendFallbackOverrides` — generic, data-free responses for
- *     namespaces every page touches (auth, services, workspace) plus external
- *     hosts. Safe to include anywhere; answers with `{}` / `[]`, never with
- *     named business data a test didn't ask for.
- *   - Per-resource NAMED scenario bundles (`genomeScenarioOverrides`,
- *     `epitopeScenarioOverrides`, etc.) — populated fixture data for one
- *     resource. Import the ones a spec actually exercises instead of reaching
- *     for the broad aggregate below. `taxonomyTreeScenarioOverrides` is the one
- *     bundle named for a *boundary* rather than a resource, because the Taxa
- *     Tree has its own route rather than an `/api/data` operation.
- *
- * `apiCatchallOverrides` composes the named bundles + the empty fallback (no
- * external hosts) as an internal building block. `a11yBackendOverrides` adds
- * `externalCatchallOverrides` on top and is the *only* broad, unscoped
- * aggregate this module exports — reserved for the accessibility sweep (see
- * its doc comment below). Every journey/view/smoke spec in the suite has been
- * converted to import the specific named bundle(s) it actually exercises;
- * there is no `permissiveBackendOverrides` fallback anymore.
+ * Browser-side mocks built from the canonical records in
+ * `src/lib/e2e-fixtures/records.ts`, shared with the server-side loopback.
+ * Specs import the named bundle they exercise; the only broad aggregate is
+ * `a11yBackendOverrides`.
  */
 const genomeRows = [genomeRecord];
 
@@ -116,7 +94,6 @@ function genomeDataResponse({ parsedBody }: { parsedBody: unknown }) {
   return buildGatewayCollectionEnvelope(genomeRows);
 }
 
-/** Generic, data-free responses — safe as a blanket fallback for any test. */
 export const emptyBackendFallbackOverrides: JsonOverride[] = [
   { url: /\/api\/auth\//, method: "GET", body: {} },
   { url: /\/api\/auth\//, method: "POST", body: {} },
@@ -131,24 +108,10 @@ export const emptyBackendFallbackOverrides: JsonOverride[] = [
 ];
 
 /**
- * The Taxa Tree's own same-origin boundary (`/api/taxonomy-tree/*`), which is
- * not the `/api/data/taxonomy` gateway below: the tree has a dedicated route
- * because it asks for one node's children in a single upstream range far
- * wider than the gateway's fixed 200-row page, and reads its child counts from
- * a `facet_counts` response header (`src/lib/data-api/taxonomy-tree.ts`).
- *
- * Data-free on purpose — an empty `{rows}` and an empty `{counts}`, so a page
- * that mounts the tree renders its server-provided root rows with no children
- * and no expand arrows. This is the bundle for a spec that mounts the tree
- * incidentally and only needs the strict guard satisfied: `applyBackendMocks`'
- * guard aborts any unmocked `/api/**` request and fails the test on teardown.
- * `e2e/tests/organisms/all.spec.ts` and the a11y sweep use it that way.
- *
- * A spec that exercises the tree itself does not use this bundle at all — it
- * supplies its own content-bearing entries for both operations, because an
- * empty `{rows}`/`{counts}` earlier in the list would win under first-match
- * ordering and leave every node a leaf. `e2e/tests/taxonomy-tree.spec.ts` is
- * the worked example.
+ * Data-free `/api/taxonomy-tree/*` bundle for specs that mount the tree
+ * incidentally. A spec exercising the tree must supply its own entries first,
+ * since an empty `{rows}` earlier in the list wins and leaves every node a
+ * leaf.
  */
 export const taxonomyTreeScenarioOverrides: JsonOverride[] = [
   {
@@ -318,11 +281,8 @@ export const strainScenarioOverrides: JsonOverride[] = [
 ];
 
 /**
- * The all-data-types search's one bulk query (`/api/data/search`, which
- * the server runs as one Data API `query/` call), answered with Strain matches
- * only; the page counts every type it gets no answer for as zero. Both strain
- * records share the name `A/California/04/2009`, so only their record IDs tell
- * the two result links apart.
+ * Both strain records share the name `A/California/04/2009`, so only their
+ * record IDs tell the result links apart.
  */
 export const strainAllTypesSearchOverrides: JsonOverride[] = [
   {
@@ -491,9 +451,7 @@ export const genomeScenarioOverrides: JsonOverride[] = [
 ];
 
 /**
- * The rows of Taxon 11974's Genomes tab, with a second Genome that the MERS
- * keyword does not match, so a spec can see that tab's keyword filter hide a
- * row. Rows only: the tab's facet request (`facet=`) falls through to
+ * Rows only; the tab's `facet=` request falls through to
  * `genomeScenarioOverrides`.
  */
 export const taxonGenomesScenarioOverrides: JsonOverride[] = [
@@ -520,13 +478,6 @@ export const taxonGenomesScenarioOverrides: JsonOverride[] = [
   },
 ];
 
-/**
- * Union of every named resource scenario bundle above. Internal composition
- * building block only — not exported. No spec should import "every resource
- * bundle at once"; a spec that needs broad coverage across many resource
- * types is the accessibility sweep's job (`a11yBackendOverrides` below), not
- * a general-purpose escape hatch for other specs.
- */
 const namedResourceScenarioOverrides: JsonOverride[] = [
   ...taxonomyTreeScenarioOverrides,
   ...taxonomyScenarioOverrides,
@@ -539,9 +490,9 @@ const namedResourceScenarioOverrides: JsonOverride[] = [
   ...surveillanceScenarioOverrides,
   ...epitopeAssayScenarioOverrides,
   ...epitopeScenarioOverrides,
-  // Ahead of the genome-feature bundle, whose `/api/data/genome_feature` GET
-  // would otherwise answer the Compare Region card's member read (first match
-  // wins) with a list, so the card would show "No BV-BRC feature record".
+  // Must precede the genome-feature bundle, whose `/api/data/genome_feature`
+  // GET would otherwise answer the Compare Region member read with a list
+  // (first match wins).
   ...compareRegionScenarioOverrides,
   ...genomeFeatureScenarioOverrides,
   ...genomeSequenceScenarioOverrides,
@@ -549,23 +500,15 @@ const namedResourceScenarioOverrides: JsonOverride[] = [
   ...genomeScenarioOverrides,
 ];
 
-/** Internal composition building block only — not exported (see above). */
 const apiCatchallOverrides: JsonOverride[] = [
   ...namedResourceScenarioOverrides,
   ...emptyBackendFallbackOverrides,
 ];
 
 /**
- * External-host stubs — an `a11yBackendOverrides` building block only, not
- * exported. No journey spec needs one: the last importer was
- * `e2e/tests/organisms/all.spec.ts`, whose only external dependency was the
- * Taxa Tree reading `NEXT_PUBLIC_DATA_API` straight from the browser, which it
- * no longer does.
- *
- * Anchored to scheme + host so these only match outbound requests whose HOST
- * ends in one of the domains. Without the anchor, a URL like
- * `http://127.0.0.1:3020/workspace/user@patricbrc.org/home` would match
- * `/patricbrc\.org/` and hijack the page navigation itself.
+ * Anchored to scheme + host: an unanchored `/patricbrc\.org/` would match
+ * `http://127.0.0.1:3020/workspace/user@patricbrc.org/home` and hijack
+ * navigation.
  */
 const externalCatchallOverrides: JsonOverride[] = [
   {
@@ -591,15 +534,8 @@ const externalCatchallOverrides: JsonOverride[] = [
 ];
 
 /**
- * The one broad, unscoped aggregate — reserved for the accessibility sweep
- * (`e2e/tests/a11y/*.spec.ts`). Those specs scan dozens of routes spanning
- * every resource type in one pass, so they legitimately need every named
- * scenario bundle populated at once, unlike a single-resource journey or
- * smoke spec, which should import the specific named bundle(s) it exercises
- * instead. Do not import this outside `e2e/tests/a11y/` — every other spec in
- * the suite has been converted to declare its actual fixture dependency (see
- * `e2e/README.md`'s "Canonical fixture records" section). There is no
- * `permissiveBackendOverrides` alias anymore; this is the only broad export.
+ * Reserved for the accessibility sweep (`e2e/tests/a11y/`); other specs
+ * import the specific named bundles.
  */
 export const a11yBackendOverrides: JsonOverride[] = [
   ...apiCatchallOverrides,

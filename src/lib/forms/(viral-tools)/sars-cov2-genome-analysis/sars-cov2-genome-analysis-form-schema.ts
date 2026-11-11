@@ -2,7 +2,6 @@ import { z } from "zod";
 
 import { baseLibrarySchema } from "@/lib/forms/shared-schemas";
 
-// SARS-CoV-2–specific platform enum (includes iontorrent, infer; not in shared-schemas)
 export const sarsCov2PlatformSchema = z.enum([
   "illumina",
   "iontorrent",
@@ -26,7 +25,6 @@ export const sarsCov2PairedPlatformOptions: { value: SarsCov2Platform; label: st
   { value: "infer", label: "Infer Platform" },
 ];
 
-// Library with platform for SARS-CoV-2 (platform required for paired/single)
 export const sarsCov2LibrarySchema = baseLibrarySchema
   .extend({
     platform: sarsCov2PlatformSchema.optional(),
@@ -45,11 +43,9 @@ export const sarsCov2LibrarySchema = baseLibrarySchema
   });
 export type SarsCov2LibraryItem = z.infer<typeof sarsCov2LibrarySchema>;
 
-// Input type
 export const inputTypeSchema = z.enum(["reads", "contigs"]);
 export type InputType = z.infer<typeof inputTypeSchema>;
 
-// Recipe (strategy)
 export const recipeSchema = z.enum([
   "onecodex",
   "cdc-illumina",
@@ -87,7 +83,6 @@ export const primerOptions: { value: Primers; label: string }[] = [
   { value: "varskip-long", label: "varskip-long" },
 ];
 
-// Primer version options per primer (legacy onPrimersChange)
 export const primerVersionOptions: Record<Primers, { value: string; label: string }[]> = {
   ARTIC: [
     { value: "V5.3.2", label: "V5.3.2" },
@@ -116,7 +111,6 @@ export const defaultPrimerVersion: Record<Primers, string> = {
   "varskip-long": "V1a",
 };
 
-// Main form schema
 export const sarsCov2GenomeAnalysisFormSchema = z
   .object({
     input_type: inputTypeSchema,

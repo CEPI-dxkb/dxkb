@@ -1,13 +1,8 @@
 /**
- * Single source of truth for "essential workspace folders" that must never be
- * deleted: a user's `/home` directory and its four conventional sub-folders.
- *
- * Two layers consume this:
- *   1. UI — the action bar disables the DELETE button when the selection
- *      contains a protected path (see `workspace-action-bar.tsx`).
- *   2. API — both workspace repository adapters call `assertNoProtectedFolders`
- *      before issuing `Workspace.delete`, so even a programmatic caller cannot
- *      bypass the UI safeguard.
+ * Single source of truth for essential workspace folders that must never be
+ * deleted: a user's `/home` and its four conventional sub-folders. The UI
+ * disables DELETE for them and both repository adapters call
+ * `assertNoProtectedFolders` before `Workspace.delete`.
  */
 
 import { expectedHomeSubfolders } from "./setup";
@@ -26,11 +21,9 @@ export function isProtectedHomeFolder(path: string): boolean {
   if (!normalized) return false;
   const match = protectedHomeRegex.exec(normalized);
   if (!match) return false;
-  // match[1] captures the optional subfolder segment (e.g. "Genome Groups").
-  // When the group did not participate in the match (path is exactly /user/home),
-  // the value is `undefined` at runtime even though TypeScript types all
-  // RegExpMatchArray elements as `string`. The `as` cast below preserves the
-  // runtime check without triggering no-unnecessary-condition.
+  // match[1] is `undefined` at runtime when the group did not match (path is
+  // exactly /user/home), though TypeScript types it as `string`; the `as` cast
+  // avoids no-unnecessary-condition.
   const subfolder = match[1] as string | undefined;
   if (subfolder === undefined) return true;
   return protectedSubfolderSet.has(subfolder);

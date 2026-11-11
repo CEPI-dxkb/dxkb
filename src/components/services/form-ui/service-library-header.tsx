@@ -6,11 +6,8 @@ import { ServiceLabel } from "@/components/services/form-ui/service-label";
 import { cn } from "@/lib/utils";
 
 /**
- * The header of a read-library input ("Paired Read Library", "SRA Run
- * Accession", ...): its label, a rule across the row, and the action that
- * moves the entered library into Selected Libraries (usually a
- * `ServiceLibraryAddButton`, passed as `children`). A string `title` renders
- * as a `ServiceLabel`, which the header centers on the row.
+ * Header of a read-library input: a label, a rule, and the add action passed as
+ * `children`.
  */
 export function ServiceLibraryHeader({
   title,
@@ -28,12 +25,8 @@ export function ServiceLibraryHeader({
 }
 
 /**
- * The library header's add button. It reads "Add" beside its arrow, on the
- * primary tint the pickers' dropdown chips use, so it stays findable while it
- * waits (disabled) for the files to be chosen; the bare outline arrow it
- * replaces sank into the card. `pending` swaps the arrow for a spinner and
- * disables the button (an SRA accession being validated). Give it an
- * `aria-label` that names the library ("Add paired read library").
+ * Add button on the primary tint so it stays findable while disabled; give it
+ * an `aria-label` naming the library.
  */
 export function ServiceLibraryAddButton({
   pending = false,

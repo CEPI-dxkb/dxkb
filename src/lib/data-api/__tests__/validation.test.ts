@@ -91,10 +91,8 @@ describe("data API contracts", () => {
   });
 
   it("registers AMR phenotypes with a validated boundary", () => {
-    // Without a registry entry the gateway 404s `/api/data/genome_amr`.
     expect(resourceRegistry.genome_amr.idField).toBe("id");
     expect(resourceRegistry.genome_amr.fields.antibiotic.facet).toBe(true);
-    // Legacy AMRPanelGridContainer facets the phenotype, visible by default.
     expect(resourceRegistry.genome_amr.fields.resistant_phenotype.facet).toBe(
       true,
     );
@@ -103,10 +101,6 @@ describe("data API contracts", () => {
     expect(resourceRegistry.genome_amr.fields.pmid.cardinality).toBe("multiple");
     expect(resourceRegistry.genome_amr.fields.pmid.sortable).toBe(false);
     expect(resourceRegistry.genome_amr.fields.antibiotic.sortable).toBe(true);
-    // The schema declares only `id` (plus the shared optional taxonomy keys),
-    // so a row keeps every other AMR column verbatim — including the shapes
-    // that have no in-repo fixture to check a declaration against: a
-    // multi-publication `pmid` list and a non-numeric measurement.
     expect(
       genomeAmrRecordSchema.parse({
         id: "amr-row-1",
@@ -126,8 +120,6 @@ describe("data API contracts", () => {
       evidence: ["Laboratory Method"],
       pmid: ["12345", "67890"],
     });
-    // Only `id` is required, so a missing one is what fails — not a column
-    // whose type this repo cannot verify.
     expect(() => genomeAmrRecordSchema.parse({ antibiotic: "ampicillin" })).toThrow();
     for (const field of ["evidence", "pmid"]) {
       expect(() =>
@@ -151,8 +143,6 @@ describe("data API contracts", () => {
   });
 
   it("admits legacy FeatureGrid's order on Features and caps the keys that break its ties", () => {
-    // Every Features and Proteins table reads its unsorted rows in this order,
-    // so a field in it losing `sortable` would fail each of those reads.
     expect(() =>
       validateDataApiRequest("genome_feature", {
         operation: "collection",
@@ -529,7 +519,6 @@ describe("validateDownloadRequest", () => {
     expect(validate("genome", { total: 2_500_001 })).toThrow(
       "Over 2,500,000 rows: narrow the filters.",
     );
-    // A selection is counted by its ids, not by the total it claims.
     expect(
       validate("genome", {
         scope: { kind: "selected", ids: ["1.1"] },

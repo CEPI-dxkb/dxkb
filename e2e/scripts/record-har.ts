@@ -7,17 +7,10 @@ import readline from "node:readline";
 import { loadEnvFile } from "./env-loader.mjs";
 import { harReplayHostPlaceholder } from "./har-constants";
 
-/** Placeholder values written into HARs in place of real credentials / PII. */
 const usernamePlaceholder = "e2e-test-user";
 const passwordPlaceholder = "REDACTED-PASSWORD";
 const emailPlaceholder = "e2e@example.com";
 
-/**
- * Headers that may carry session tokens, signed cookies, or other credentials.
- * Drop them entirely from the recorded HAR because replay fixtures do not need
- * them for matching and committed recordings must not retain credentials.
- * Compared lower-case.
- */
 const sensitiveHeaderNames = new Set([
   "cookie",
   "authorization",
@@ -52,17 +45,8 @@ interface HarEntry {
 }
 
 /**
- * Strip credentials and PII from a HAR file in place. Replaces the live
- * username, password, any email-shaped substring, and the recorder's origin
- * with stable placeholders, then drops every header in `sensitiveHeaderNames`
- * from both request and response — `mode: "minimal"` already omits most
- * headers, but the auth cookie / set-cookie pair is not minimal-stripped and
- * must be removed explicitly.
- *
- * Username scrubbing runs before email scrubbing on purpose: the BV-BRC
- * realm-qualified user id (e.g. `liveuser@patricbrc.org`) matches the email
- * regex, so swapping the username first prevents the user-id form from being
- * clobbered by the email placeholder.
+ * Username scrubbing runs before email scrubbing because a realm-qualified
+ * user id (`liveuser@patricbrc.org`) also matches the email regex.
  */
 export function sanitizeHar(
   harPath: string,
@@ -92,21 +76,13 @@ export function sanitizeHar(
     headers?.filter((h) => !sensitiveHeaderNames.has(h.name.toLowerCase()));
 
   for (const entry of har.log.entries) {
-    // Drop sensitive headers + structured cookies; the per-string scrub below
-    // handles non-sensitive headers (Referer, etc.) and parsed queryString/cookies.
     entry.request.headers = stripSensitiveHeaders(entry.request.headers);
     entry.response.headers = stripSensitiveHeaders(entry.response.headers);
     if (entry.response.cookies) entry.response.cookies = [];
   }
 
-  // Scrub during serialization via a replacer so each string is matched in its
-  // unescaped form. Scrubbing the post-stringify text would miss credentials
-  // containing JSON-escaped chars (e.g. a password with `"` or `\` becomes
-  // `\"` / `\\` in the output and the raw-credential regex no longer matches).
-  // Reaches every place the username can leak — request.url, response.redirectURL,
-  // queryString/cookies values, non-sensitive header values, entry.pageref,
-  // response.content.text, request.postData.text, and anything Playwright adds
-  // in a future schema bump — without enumerating fields by hand.
+  // Scrub in a JSON replacer so strings are matched unescaped; scrubbing the
+  // stringified text would miss credentials containing `"` or `\`.
   fs.writeFileSync(
     harPath,
     JSON.stringify(
@@ -119,12 +95,6 @@ export function sanitizeHar(
   assertNoSensitiveData(harPath, user, password);
 }
 
-/**
- * Belt-and-suspenders check that fails the recorder if any pattern that looks like
- * a credential, BV-BRC token, or the live username/password slipped past
- * `sanitizeHar`. The check runs against the on-disk file (post-write), so it
- * catches drift in either the sanitizer or the HAR shape.
- */
 export function assertNoSensitiveData(
   harPath: string,
   user: string,
@@ -133,9 +103,8 @@ export function assertNoSensitiveData(
   const text = fs.readFileSync(harPath, "utf8");
   const violations: string[] = [];
 
-  // A credential containing `"`, `\`, or a control character is JSON-escaped
-  // in the on-disk file (e.g. `pa$$"word` → `pa$$\"word`), so a raw
-  // `text.includes(secret)` would miss the leak. Check the JSON-escaped form too.
+  // A credential with `"`, `\` or a control character is JSON-escaped on
+  // disk, so also check the escaped form.
   const includesAnyForm = (secret: string): boolean => {
     if (text.includes(secret)) return true;
     const escaped = JSON.stringify(secret).slice(1, -1);
@@ -148,8 +117,8 @@ export function assertNoSensitiveData(
   if (password && includesAnyForm(password)) {
     violations.push(`live password appears in HAR`);
   }
-  // BV-BRC tokens are pipe-delimited fields ending in a hex `sig=` — match the
-  // signature segment, which is the only piece that's hard to imitate by accident.
+  // Match the hex `sig=` segment of BV-BRC tokens, the part that is hard to
+  // imitate by accident.
   if (/sig=[0-9a-f]{32,}/i.test(text)) {
     violations.push("BV-BRC-shaped session token (sig=<hex>) appears in HAR");
   }
@@ -226,11 +195,8 @@ async function main(): Promise<void> {
     required: true,
     port: process.env.E2E_PORT ?? "3020",
   });
-  // Default to `pnpm start` (production build, port 3010) rather than `pnpm dev`.
-  // Dev mode + Turbopack injects HMR plumbing that blocks React hydration in
-  // headless Chromium, which means the auth boundary's useEffect never fires
-  // and journeys that depend on a hydrated client (sign-in, signed-in pages)
-  // hang. Production build hydrates cleanly.
+  // Default to `pnpm start`: dev mode HMR blocks hydration in headless
+  // Chromium, so the auth boundary never runs.
   const baseURL = process.env.E2E_RECORD_BASE_URL ?? "http://127.0.0.1:3010";
   const user = process.env.E2E_TEST_USER ?? "";
   const password = process.env.E2E_TEST_PASSWORD ?? "";
@@ -245,11 +211,7 @@ async function main(): Promise<void> {
   console.log(`Output: ${harPath}`);
   console.log(driver ? "Mode: scripted (driver found)" : "Mode: interactive");
 
-  // Only record requests that a spec's page.route() could meaningfully replay:
-  // the app's own /api/** namespace and outbound BV-BRC / PATRIC / TheSEED / NCBI
-  // hosts. Skips _next/static, fonts, and images so the HAR stays small enough to
-  // diff in code review. Keep this regex in sync with applyBackendMocks's
-  // backendHostPattern in e2e/mocks/backends.ts.
+  // Keep in sync with `backendHostPattern` in e2e/mocks/backends.ts.
   const harUrlFilter =
     /^https?:\/\/(?:[^/]+\/api\/|(?:[a-z0-9-]+\.)*(?:patricbrc\.org|bv-brc\.org|theseed\.org|ncbi\.nlm\.nih\.gov))/i;
 
@@ -281,23 +243,18 @@ async function main(): Promise<void> {
   } catch (e) {
     driverError = e;
   } finally {
-    // Closing the context flushes the HAR to disk. Must happen before sanitize
-    // so the file actually exists.
     await context.close();
     await browser.close();
   }
 
-  // Always sanitize what hit disk, even if the driver threw partway through.
-  // Otherwise a partial HAR full of live credentials would sit in the workspace
-  // until someone noticed (or worse, got committed). `sanitizeHar` deletes the
-  // file when its post-write assertion finds anything sensitive.
+  // Sanitize even if the driver threw, so a partial HAR with live credentials
+  // is never left on disk.
   if (fs.existsSync(harPath)) {
     const recordedOrigin = new URL(baseURL).origin;
     sanitizeHar(harPath, user, password, recordedOrigin);
   }
 
   if (driverError) {
-    // Re-throw after sanitizing so the recorder still exits non-zero.
     throw driverError instanceof Error
       ? driverError
       : new Error(
@@ -307,9 +264,7 @@ async function main(): Promise<void> {
   console.log(`HAR saved to ${harPath}`);
 }
 
-// Only run main() when invoked as a script. Vitest imports this module to
-// exercise sanitizeHar / assertNoSensitiveData directly; without the guard the
-// recorder would launch a browser whenever the test file is loaded.
+// Vitest imports this module; the guard stops it from launching a browser.
 if (import.meta.url === pathToFileURL(process.argv[1]).href) {
   main().catch((error: unknown) => {
     console.error(error);

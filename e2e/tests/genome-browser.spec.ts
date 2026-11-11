@@ -26,12 +26,9 @@ const overrides = [
 test.use({ storageState: { cookies: [], origins: [] } });
 
 test.describe("Genome Browser", () => {
-  // JBrowse errors (a failed build, a track error logged to the console) must
-  // fail the journey. Known exception (seen on beta-17, not
-  // rechecked on beta-20), avoided rather than allowlisted:
-  // tearing an engine down after its feature dialog was opened logs
-  // "Error running the formatDetails callbacks: Error: no session model found!"
-  // (spike item 8), so no journey opens the dialog and then navigates away.
+  // JBrowse errors must fail the journey. Known exception: tearing an engine down after
+  // its feature dialog opened logs a formatDetails error, so no journey navigates away
+  // from an open dialog.
   let assertNoRuntimeErrors: () => void;
 
   test.beforeEach(async ({ page }) => {
@@ -66,19 +63,13 @@ test.describe("Genome Browser", () => {
     ]);
     await expect(browser.track("RefSeq Annotation")).toBeVisible();
     await expect(page).toHaveURL(/browser\.loc=JX869059:1\.\.30119/);
-    // The default tracks are all three, which the URL omits: loading must not
-    // write `browser.tracks`, not even `none` while the tracks attach.
     await expectUrlParams(page, { "browser.tracks": null });
 
-    // The view fills the host's content box (spike item 2: without the
-    // globals.css rule its wrapper has no height, so it is content-height and
-    // spilled 7 px past a bounded host).
     await browser.expectViewFillsHost();
 
     await browser.goTo("JX869059:1000..2000");
     await expect(page).toHaveURL(/browser\.loc=JX869059:1000\.\.2000/);
 
-    // Zoomed in to bases, the sequence track reads the sequence.
     await dataRequests.expectRead("sequence");
     await browser.goTo("JX869059:1000..1100");
     await expect(page).toHaveURL(/browser\.loc=JX869059:1000\.\.1100/);
@@ -109,8 +100,6 @@ test.describe("Genome Browser", () => {
     );
     await browser.expectLoaded();
     await expect(page).toHaveURL(/browser\.loc=JX869059:1\.\.3100/);
-    // The view's read-back keeps the opt-out instead of dropping it, which
-    // would restore the feature's highlight on the next remount.
     await expectUrlParams(page, { "browser.highlight": "none" });
   });
 
@@ -146,12 +135,8 @@ test.describe("Genome Browser", () => {
       "Translation",
     );
     await expect(translation).toHaveAttribute("aria-checked", "false");
-    // JBrowse saves a track's edited settings 400 ms after the edit. Unpatched,
-    // beta.20's embedded engine threw "this product's config cannot be edited"
-    // (`editableConfig(self).updateTrackConf`) from that save for this track,
-    // which has no `tracks` entry
-    // (patches/@jbrowse__product-core@5.0.0-beta.20.patch). The error is the
-    // only sign, so wait past the save before afterEach checks for it.
+    // JBrowse saves edited track settings 400 ms later and the error is the only sign,
+    // so wait past the save before afterEach checks.
     await page.waitForTimeout(1000);
   });
 
@@ -162,9 +147,8 @@ test.describe("Genome Browser", () => {
     await page.goto("/genome/1282460.2049?tab=genome-browser");
     await browser.expectLoaded();
 
-    // JBrowse pins its header at z-index 825-850; without the wrapper's
-    // `isolate` that beat the z-50 portalled popups in the root stacking
-    // context and showed through them.
+    // JBrowse's header z-index (825-850) beats the z-50 portalled popups unless the
+    // wrapper isolates.
     const navbar = new Navbar(page);
     const services = await navbar.openServicesMenu();
     expect(await browser.headerPointsAbove(services)).toBe(0);
@@ -182,7 +166,6 @@ test.describe("Genome Browser", () => {
     await new GenomeBrowserPanelPage(page).expectLoaded();
     await new GenomeMemberPage(page).openTab("Sequences");
     await expect(page).toHaveURL(/\?tab=sequences$/);
-    // The engine is destroyed with the tab (`useCreateViewState`).
     await expect(page.getByTestId("app-ready-marker")).toHaveCount(0);
   });
 
@@ -203,15 +186,14 @@ test.describe("Genome Browser", () => {
 
     await new ThemeSwitcher(page).chooseMode("dark");
 
-    // The remount builds JBrowse from the tokens that are on `<html>` by then:
-    // an engine built from the light tokens would keep painting `light`.
+    // The remount builds JBrowse from the tokens on <html> by then; an engine built
+    // from the light tokens would keep painting light.
     const dark = await browser.expectPaintedWithAppliedTheme();
     expect(dark.background).not.toBe(light.background);
     expect(dark.card).not.toBe(light.card);
     await browser.expectLoaded();
-    // It reopens where the URL was, not at the genome's first window. The URL
-    // alone cannot show it (the old engine wrote it before the switch); the
-    // new engine's location box can.
+    // The URL alone cannot show it (the old engine wrote it before the switch); the new
+    // engine's location box can.
     await browser.expectLocation("JX869059:1000..2000");
     await expect(page).toHaveURL(/browser\.loc=JX869059:1000\.\.2000/);
     dataRequests.expectWellFormedRanges();

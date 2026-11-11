@@ -3,7 +3,6 @@ import Link from "next/link";
 import { fetchCepiNews, type CepiNewsItem } from "@/lib/cepi-news";
 import { NewsCardImage } from "./news-card-image";
 
-// Rendered only when the live CEPI fetch/parse fails (site down or format changed).
 const fallbackNews: CepiNewsItem[] = [
   {
     title: "Measles Cases and Outbreaks",

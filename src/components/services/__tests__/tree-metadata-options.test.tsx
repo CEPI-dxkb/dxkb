@@ -44,8 +44,6 @@ describe("TreeMetadataOptions", () => {
         screen.getByRole("group", { name: section.label }),
       ).toBeInTheDocument();
     }
-    // The repeated fields used to log "Encountered two children with the
-    // same key" once per repeat.
     const keyWarnings = vi
       .mocked(console.error)
       .mock.calls.filter(([message]) => String(message).includes("same key"));

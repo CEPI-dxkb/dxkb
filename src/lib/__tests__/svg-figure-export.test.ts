@@ -15,7 +15,6 @@ vi.mock("@/lib/utils", async (importOriginal) => ({
 
 const svgNamespace = "http://www.w3.org/2000/svg";
 
-/** The sRGB a browser would give these (made up; only the shape matters). */
 const srgbOf: Record<string, SrgbColor> = {
   "oklch(0.73 0.12 212)": { r: 79, g: 186, b: 222, alpha: 1 },
   "oklch(71.57% 0.182 37.18 / 0.5)": { r: 242, g: 131, b: 74, alpha: 0.5 },
@@ -29,7 +28,6 @@ const srgbOf: Record<string, SrgbColor> = {
   },
 };
 
-/** A stand-in for the canvas converter (jsdom has no canvas): the table above, else rgb()/rgba(). */
 function fakeSrgb(color: string): SrgbColor | null {
   if (color in srgbOf) return srgbOf[color];
   const rgb = /^rgba?\((\d+), (\d+), (\d+)(?:, ([\d.]+))?\)$/.exec(color);
@@ -38,16 +36,10 @@ function fakeSrgb(color: string): SrgbColor | null {
   return { r: Number(r), g: Number(g), b: Number(b), alpha: Number(alpha) };
 }
 
-/** The export, converting colors with `fakeSrgb`, so no test touches a canvas. */
 function exportSvgFigure(svg: SVGSVGElement, fileName: string) {
   exportWithConverter(svg, fileName, fakeSrgb);
 }
 
-/**
- * A small figure shaped like the chart's: a classed root (a named group), a
- * row of gene buttons, a trace overlay, the sticky ruler and label column
- * (scrolled), and labels, one in capitals.
- */
 function figure(): SVGSVGElement {
   const host = document.createElement("div");
   host.innerHTML = `
@@ -72,7 +64,6 @@ function figure(): SVGSVGElement {
   return svg;
 }
 
-/** What the download received: its markup parsed back, the blob and the file name. */
 async function downloaded() {
   const [blob, fileName] = download.blob.mock.calls.at(0) ?? [];
   if (!blob) throw new Error("nothing was downloaded");
@@ -107,7 +98,6 @@ describe("exportSvgFigure", () => {
     expect(root.querySelectorAll("[role], [tabindex], [aria-label]")).toHaveLength(
       0,
     );
-    // The glyph itself stays.
     expect(root.querySelector('path[data-feature="0"]')).not.toBeNull();
   });
 
@@ -116,7 +106,6 @@ describe("exportSvgFigure", () => {
 
     const { root } = await downloaded();
     expect(root.querySelectorAll("[data-overlay]")).toHaveLength(0);
-    // Everything else stays.
     expect(root.querySelector("[data-track-background]")).not.toBeNull();
     expect(root.querySelectorAll("text")).toHaveLength(3);
   });
@@ -135,8 +124,7 @@ describe("exportSvgFigure", () => {
   it("resolves every class, the root's too, and leaves none", async () => {
     exportSvgFigure(figure(), "figure.svg");
 
-    // jsdom resolves no class (Vitest loads no CSS), so the colors themselves
-    // are the browser's to check; here, that every class is gone.
+    // jsdom resolves no class (Vitest loads no CSS), so only that every class is gone is checked.
     const { root, markup } = await downloaded();
     expect(root.hasAttribute("class")).toBe(false);
     expect(root.querySelectorAll("[class]")).toHaveLength(0);
@@ -162,19 +150,16 @@ describe("exportSvgFigure", () => {
   });
 
   it("writes the fonts on every text and tspan, inherited ones too", async () => {
-    // jsdom computes (and inherits) font-weight from a stylesheet.
     const style = document.createElement("style");
     style.textContent =
       ".font-medium { font-weight: 500; } .text-3xs { font-size: 10px; }";
     document.head.append(style);
     try {
       const svg = figure();
-      // Unclassed text in a classed group, as the label header draws it.
       svg.insertAdjacentHTML(
         "beforeend",
         '<g class="font-medium"><text>Genome</text><text><tspan>strain</tspan></text></g>',
       );
-      // A size from a class, as the Circular Viewer's position labels set it.
       svg.insertAdjacentHTML(
         "beforeend",
         '<g><text class="text-3xs">1.5</text></g>',
@@ -195,7 +180,6 @@ describe("exportSvgFigure", () => {
       expect(weightOf("strain", "tspan")).toBe("500");
       const label = texts.find((element) => element.textContent === "1.5");
       expect(label?.getAttribute("font-size")).toBe("10px");
-      // Every text and tspan gets the five font attributes.
       const fontAttributes = [
         "font-family",
         "font-size",
@@ -214,8 +198,7 @@ describe("exportSvgFigure", () => {
   });
 
   it("resolves as in the light theme when the page is dark", async () => {
-    // The `dark:` variant matches anything under a dark-themed <html>, the
-    // light host included. jsdom computes text-transform from a stylesheet.
+    // jsdom computes text-transform from a stylesheet, and the `dark:` variant matches anything under a dark-themed <html>.
     const style = document.createElement("style");
     style.textContent = String.raw`[data-theme$="-dark"] .dark\:uppercase { text-transform: uppercase; }`;
     document.head.append(style);
@@ -237,8 +220,7 @@ describe("exportSvgFigure", () => {
   });
 
   it("exports an animated element at rest, not at its animation's first frame", async () => {
-    // jsdom runs no animations: a stylesheet stands in for the first frame,
-    // which the copy would start again from in the host.
+    // jsdom runs no animations: a stylesheet stands in for the first frame.
     const style = document.createElement("style");
     style.textContent = String.raw`.animate-circular-track-sweep, .animate-pulse { opacity: 0; }`;
     document.head.append(style);
@@ -259,8 +241,7 @@ describe("exportSvgFigure", () => {
   });
 
   it("drops a sweep mask and the references to it, so marks exported mid-sweep are whole", async () => {
-    // Its class sets `mask-type: alpha`, which resolving the classes would not
-    // keep: as a luminance mask, its dark currentColor circle hides the marks.
+    // Its class sets `mask-type: alpha`, which resolving the classes would not keep.
     const svg = figure();
     svg.insertAdjacentHTML(
       "beforeend",
@@ -276,7 +257,6 @@ describe("exportSvgFigure", () => {
     expect(root.querySelector("#swept")?.hasAttribute("mask")).toBe(false);
     expect(root.querySelector('#swept path[d="M1 1"]')).not.toBeNull();
     expect(root.querySelector("#masked")?.getAttribute("mask")).toBe("url(#kept)");
-    // The figure on the page keeps its sweep.
     expect(svg.querySelector("mask[data-sweep]")).not.toBeNull();
   });
 
@@ -338,7 +318,6 @@ describe("exportSvgFigure", () => {
     expect(root.querySelector("stop")?.getAttribute("stop-color")).toBe(
       "rgb(79, 186, 222)",
     );
-    // The root's own color, in its style.
     expect(root.getAttribute("style")).toContain("color: rgb(0, 0, 0)");
   });
 
@@ -377,7 +356,7 @@ describe("exportSvgFigure", () => {
 describe("canvasToSrgb", () => {
   const spies: { mockRestore: () => void }[] = [];
   afterEach(() => {
-    // The config only clears mocks: put the real canvas and CSS.supports back.
+    // The config only clears mocks: restore the real canvas and CSS.supports.
     for (const spy of spies.splice(0)) spy.mockRestore();
   });
 

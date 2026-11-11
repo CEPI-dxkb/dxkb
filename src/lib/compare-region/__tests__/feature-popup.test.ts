@@ -1,7 +1,6 @@
 import { glyphInView } from "../feature-popup";
 import type { PopupBox } from "@/lib/popup-placement";
 
-/** The plot in view: right of a 200 px label column, under a 30 px ruler. */
 const plot: PopupBox = { left: 200, top: 130, right: 1000, bottom: 800 };
 
 function glyph(left: number, right: number, top = 300): PopupBox {

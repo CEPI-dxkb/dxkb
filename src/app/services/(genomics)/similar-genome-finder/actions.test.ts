@@ -29,7 +29,6 @@ const minhashHit = () =>
 beforeEach(() => {
   vi.stubEnv("MINHASH_SERVICE_URL", minhashUrl);
   vi.stubEnv("BVBRC_WEBSITE_API_URL", websiteApi);
-  // The action used to loop back through this origin; it must not need it.
   vi.stubEnv("INTERNAL_API_ORIGIN", "");
   setTestSession({ token: "test-token" });
 });

@@ -71,7 +71,6 @@ import {
 import { proteomeComparisonService } from "@/lib/forms/(protein-tools)/proteome-comparison/proteome-comparison-service";
 
 function useProteomeComparisonPage() {
-  // State for comparison genome selectors
   const [selectedCompGenomeId, setSelectedCompGenomeId] = useState<string>("");
   const [selectedCompFasta, setSelectedCompFasta] =
     useState<WorkspaceObject | null>(null);
@@ -81,20 +80,14 @@ function useProteomeComparisonPage() {
     useState<WorkspaceObject | null>(null);
   const [isLoadingGenomeGroup, setIsLoadingGenomeGroup] = useState(false);
   const [isLoadingCompGenome, setIsLoadingCompGenome] = useState(false);
-  // Why the last genome added by ID went in under its ID: its name lookup
-  // failed. The genome is still added, since the ID is all the job needs.
   const [compGenomeLookupNote, setCompGenomeLookupNote] = useState<
     string | null
   >(null);
-  // Reset bumps this, so a genome or group read still in flight neither adds
-  // its item to the new comparison nor clears the spinner of an add the user
-  // starts after the reset.
+  // Reset bumps this so reads still in flight neither add to the new comparison nor clear a newer add's spinner.
   const resetRevisionRef = useRef(0);
 
-  // State for advanced parameters visibility
   const [showAdvancedParams, setShowAdvancedParams] = useState(false);
 
-  // State for submission
   const [isOutputNameValid, setIsOutputNameValid] = useState(true);
 
   const form = useForm({
@@ -105,7 +98,6 @@ function useProteomeComparisonPage() {
     },
   });
 
-  // Handle reset
   function handleReset() {
     resetRevisionRef.current += 1;
     form.reset(defaultProteomeComparisonFormValues);
@@ -126,17 +118,14 @@ function useProteomeComparisonPage() {
   });
   const { isSubmitting, jobParamsDialogProps } = runtime;
 
-  // Watch form values
   const comparisonItems = useSelector(
     form.store,
     (s) => s.values.comparison_items,
   );
   const canSubmit = useSelector(form.store, (s) => s.canSubmit);
 
-  // Calculate total genome count (accounting for genome groups)
   const totalGenomeCount = countTotalComparisonGenomes(comparisonItems);
 
-  // Handle adding comparison genome
   async function handleAddCompGenome() {
     if (!selectedCompGenomeId || selectedCompGenomeId.trim() === "") {
       toast.error("No genome selected", {
@@ -156,7 +145,6 @@ function useProteomeComparisonPage() {
 
     const currentItems = form.state.values.comparison_items;
 
-    // Check for duplicates by genome_id
     if (
       isDuplicateComparisonItem(currentItems, {
         genome_id: selectedCompGenomeId,
@@ -172,11 +160,9 @@ function useProteomeComparisonPage() {
     const resetRevision = resetRevisionRef.current;
     setIsLoadingCompGenome(true);
 
-    // Fall back to using the genome ID as the name
     let genomeName = selectedCompGenomeId;
     let lookupNote: string | null = null;
     try {
-      // Fetch the genome name from the API
       const genomes = await fetchGenomesByIds([selectedCompGenomeId]);
       if (genomes.length > 0) genomeName = genomes[0].genome_name;
     } catch (error) {
@@ -187,13 +173,10 @@ function useProteomeComparisonPage() {
       )}).`;
     }
 
-    // A reset during the lookup already cleared the list and this spinner.
     if (resetRevision !== resetRevisionRef.current) return;
 
     setIsLoadingCompGenome(false);
 
-    // Read the list again: the other add buttons stay live during the lookup,
-    // so a FASTA file or a genome group may have taken the last slots.
     const latestItems = form.state.values.comparison_items;
     if (countTotalComparisonGenomes(latestItems) >= maxComparisonGenomes) {
       toast.error("Maximum genomes reached", {
@@ -291,12 +274,7 @@ function useProteomeComparisonPage() {
     setIsLoadingGenomeGroup(true);
 
     try {
-      // Fetch genome IDs from the group. The spinner ends when the read
-      // settles, either way, so the early returns below (empty group, over the
-      // limit, duplicate) and a failed read all give the "+" button back.
-      // Ending the spinner sits on the read's `.finally()`, not a `finally`
-      // clause, which would make the React Compiler skip this page. After a
-      // form reset the spinner belongs to whichever add started since, if any.
+      // The spinner ends on `.finally()`, not a `finally` clause, which would make the React Compiler skip this page.
       const genomeIds = await getGenomeIdsFromGroup(
         selectedCompGenomeGroup.path,
       ).finally(() => {
@@ -305,7 +283,6 @@ function useProteomeComparisonPage() {
         }
       });
 
-      // A reset during the read already cleared the list and this spinner.
       if (resetRevision !== resetRevisionRef.current) return;
 
       if (genomeIds.length === 0) {
@@ -318,7 +295,6 @@ function useProteomeComparisonPage() {
 
       const currentItems = form.state.values.comparison_items;
 
-      // Validate if adding would exceed max
       const validation = validateGenomeGroupAddition(
         currentItems,
         genomeIds,
@@ -397,9 +373,7 @@ function useProteomeComparisonPage() {
         className="flex flex-col gap-4"
       >
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-          {/* Left Column */}
           <div className="flex flex-col gap-6">
-            {/* Parameters Card */}
             <Card>
               <ServiceCardHeader>
                 <ServiceCardTitle>
@@ -436,7 +410,6 @@ function useProteomeComparisonPage() {
                     )}
                   </form.Field>
 
-                  {/* Advanced Parameters */}
                   <ServiceCollapsible
                     open={showAdvancedParams}
                     onOpenChange={setShowAdvancedParams}
@@ -518,7 +491,6 @@ function useProteomeComparisonPage() {
               </ServiceCardContent>
             </Card>
 
-            {/* Reference Genome Card */}
             <Card>
               <ServiceCardHeader>
                 <RequiredFormCardTitle>
@@ -536,7 +508,6 @@ function useProteomeComparisonPage() {
 
               <ServiceCardContent>
                 <div className="space-y-4">
-                  {/* Reference Genome Selector */}
                   <form.Field name="ref_genome_id">
                     {(field) => (
                       <FieldItem>
@@ -547,7 +518,6 @@ function useProteomeComparisonPage() {
                           onChange={(genomeId) => {
                             field.handleChange(genomeId);
                             form.setFieldValue("ref_source_type", "genome");
-                            // Clear other reference fields
                             form.setFieldValue("ref_fasta_file", "");
                             form.setFieldValue("ref_feature_group", "");
                           }}
@@ -557,7 +527,6 @@ function useProteomeComparisonPage() {
                     )}
                   </form.Field>
 
-                  {/* Reference FASTA File */}
                   <form.Field name="ref_fasta_file">
                     {(field) => (
                       <FieldItem>
@@ -572,7 +541,6 @@ function useProteomeComparisonPage() {
                             if (object?.path) {
                               field.handleChange(object.path);
                               form.setFieldValue("ref_source_type", "fasta");
-                              // Clear other reference fields
                               form.setFieldValue("ref_genome_id", "");
                               form.setFieldValue("ref_genome_name", "");
                               form.setFieldValue("ref_feature_group", "");
@@ -586,7 +554,6 @@ function useProteomeComparisonPage() {
                     )}
                   </form.Field>
 
-                  {/* Reference Feature Group */}
                   <form.Field name="ref_feature_group">
                     {(field) => (
                       <FieldItem>
@@ -604,7 +571,6 @@ function useProteomeComparisonPage() {
                                 "ref_source_type",
                                 "feature_group",
                               );
-                              // Clear other reference fields
                               form.setFieldValue("ref_genome_id", "");
                               form.setFieldValue("ref_genome_name", "");
                               form.setFieldValue("ref_fasta_file", "");
@@ -622,7 +588,6 @@ function useProteomeComparisonPage() {
             </Card>
           </div>
 
-          {/* Right Column - Comparison Genomes */}
           <Card>
             <ServiceCardHeader>
               <RequiredFormCardTitle>
@@ -641,7 +606,6 @@ function useProteomeComparisonPage() {
 
             <ServiceCardContent>
               <div className="space-y-4">
-                {/* Select Genome */}
                 <div className="space-y-2">
                   <ServiceLabel>Select Genome</ServiceLabel>
                   <div className="flex gap-2">
@@ -673,7 +637,6 @@ function useProteomeComparisonPage() {
                   ) : null}
                 </div>
 
-                {/* Select Protein FASTA File */}
                 <div className="space-y-2">
                   <ServiceLabel>And/Or Select Protein FASTA File</ServiceLabel>
                   <div className="flex gap-2">
@@ -700,7 +663,6 @@ function useProteomeComparisonPage() {
                   </div>
                 </div>
 
-                {/* Select Feature Group */}
                 <div className="space-y-2">
                   <ServiceLabel>And/Or Select Feature Group</ServiceLabel>
                   <div className="flex gap-2">
@@ -727,7 +689,6 @@ function useProteomeComparisonPage() {
                   </div>
                 </div>
 
-                {/* Select Genome Group */}
                 <div className="space-y-2">
                   <ServiceLabel>And/Or Select Genome Group</ServiceLabel>
                   <div className="flex gap-2">
@@ -757,7 +718,6 @@ function useProteomeComparisonPage() {
                   </div>
                 </div>
 
-                {/* Selected Genome Table */}
                 <div className="space-y-2">
                   <SelectedItemsTable
                     title="Selected Genome Table"
@@ -794,7 +754,6 @@ function useProteomeComparisonPage() {
           </Card>
         </div>
 
-        {/* Form Controls */}
         <ServiceFormFooter
           form={form}
           onReset={handleReset}

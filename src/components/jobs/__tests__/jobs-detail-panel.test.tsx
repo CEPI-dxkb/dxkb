@@ -55,7 +55,6 @@ describe("JobDetailsPanel output sections", () => {
     );
     await userEvent.click(within(alert).getByRole("button", { name: "Retry" }));
 
-    // The failure stays up, retrying, instead of going back to "Loading…".
     expect(
       await within(alert).findByRole("button", { name: "Retrying…" }),
     ).toBeDisabled();

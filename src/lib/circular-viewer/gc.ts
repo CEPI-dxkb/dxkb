@@ -1,9 +1,3 @@
-/**
- * GC content `(G + C) / length` and GC skew `(G - C) / (G + C)` in fixed
- * windows, as legacy `getGCContent` computed them in the browser (a window
- * with no G or C has skew 0). Run on the server, so a genome's sequence never
- * reaches the browser. Rounded to four decimals to keep the answer small.
- */
 const lowerG = 103;
 const lowerC = 99;
 

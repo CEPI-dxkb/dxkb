@@ -229,17 +229,13 @@ describe("fetchOrganismGeoDistribution", () => {
     const result = await fetchOrganismGeoDistribution(234);
     expect(result.countyData["Pennsylvania|Washington"]).toBe(5);
     expect(result.countyData["Maryland|Washington"]).toBe(2);
-    // A plain "Washington" key must not exist
     expect(result.countyData["Washington"]).toBeUndefined();
-    // Genera must be state-scoped — same-named counties get different genera
     expect(result.countyMeta["Pennsylvania|Washington"].genera).toEqual({ Escherichia: 5 });
     expect(result.countyMeta["Maryland|Washington"].genera).toEqual({ Salmonella: 2 });
   });
 
   it("throws when a required field facet fails", async () => {
     server.use(defaultGenomeRouter({ stateStatus: 500 }));
-    // Unlabelled: the map's card names it ("Geographic distribution could not
-    // be loaded"); the field is only for the log.
     await expect(fetchOrganismGeoDistribution(234)).rejects.toMatchObject({
       status: 502,
       message:
@@ -276,7 +272,6 @@ describe("fetchOrganismGeoDistribution", () => {
         if (query.includes("(field,state_province)")) {
           return HttpResponse.json(fieldFacet("state_province", []));
         }
-        // For pivots (including state_province,county), hang long enough to be cancellable.
         return new Promise<Response>((resolve) => {
           setTimeout(() => { resolve(HttpResponse.json({ response: { numFound: 0 }, facet_counts: { facet_pivot: {} } })); }, 1000);
         });
@@ -285,7 +280,6 @@ describe("fetchOrganismGeoDistribution", () => {
 
     const controller = new AbortController();
     const promise = fetchOrganismGeoDistribution(234, { signal: controller.signal });
-    // Allow the field fetches to start before we abort.
     queueMicrotask(() => { controller.abort(); });
     await expect(promise).rejects.toThrow();
   });

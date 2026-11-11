@@ -6,11 +6,7 @@ import {
 
 const maxAgeSeconds = 60 * 60 * 24 * 365;
 
-/**
- * A `document.cookie` assignment for one preference. This is a cookie value, not a
- * URL, so `encodeURIComponent` is the right escaping (the readable-URL helpers in
- * src/lib/url.ts do not apply); Next's `cookies()` decodes it on the way back in.
- */
+/** A `document.cookie` assignment for one preference; `encodeURIComponent` is right here since this is a cookie value, not a URL. */
 export function serializeUiPreferenceCookie<K extends UiPreferenceKey>(
   key: K,
   value: UiPreferences[K],

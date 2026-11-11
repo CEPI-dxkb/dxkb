@@ -125,7 +125,6 @@ const upcomingEvents: UpcomingEvent[] = [
 const Updates = () => {
   const [date, setDate] = React.useState<Date | undefined>(new Date());
 
-  // Function to convert event date to Date object
   const getEventDate = (eventDate: { month: string; day: string }): Date => {
     const monthNum = {
       Jan: 0,
@@ -147,7 +146,6 @@ const Updates = () => {
     return new Date(2025, monthNum, parseInt(eventDate.day));
   };
 
-  // Function to check if a date matches an event
   const isSelectedDateEvent = (eventDate: { month: string; day: string }) => {
     if (!date) return false;
     const monthNum = {
@@ -171,10 +169,8 @@ const Updates = () => {
     );
   };
 
-  // Create a map of dates that have events
   const eventDates = new Set<string>();
   upcomingEvents.forEach((event) => {
-    // Parse the date string to ensure consistent format
     const monthNum = {
       Jan: 0,
       Feb: 1,
@@ -197,7 +193,6 @@ const Updates = () => {
     }
   });
 
-  // Custom day content renderer
   const modifiers = {
     hasEvent: (date: Date) => eventDates.has(date.toDateString()),
   };
@@ -213,16 +208,12 @@ const Updates = () => {
     },
   };
 
-  // Debug log to check dates
-  // console.log("Event dates:", Array.from(eventDates));
-
   return (
     <div className="flex w-full flex-col">
       <FooterHeader title="Updates" />
 
       <div className="mx-auto grid w-full max-w-7xl gap-8 p-4 md:p-8">
         <div className="grid grid-cols-1 gap-8 md:grid-cols-[1fr_300px]">
-          {/* Sidebar - Calendar & Events */}
           <div className="order-1 flex w-full flex-col space-y-8 self-start md:sticky md:top-8 md:order-2 md:w-75">
             <Card className="w-full p-0">
               <div className="w-full p-3">
@@ -286,7 +277,6 @@ const Updates = () => {
             </Card>
           </div>
 
-          {/* Timeline */}
           <div className="order-2 space-y-12 md:order-1">
             <Timeline className="mt-8">
               {timelineData.map((item) => (

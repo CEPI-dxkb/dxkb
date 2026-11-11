@@ -8,19 +8,13 @@ import { Button } from "@/components/ui/button";
 
 interface RetryButtonProps {
   /**
-   * What a retry runs. An `error.tsx` boundary passes its `retry` prop
-   * (refresh, then reset): `reset` alone re-renders the same failed server
-   * payload, so a button wired to it never recovers.
+   * An `error.tsx` boundary passes its `retry` prop: `reset` alone re-renders
+   * the same failed server payload.
    */
   retry: () => void;
   label?: string;
 }
 
-/**
- * The Retry of a failed page or record. It runs inside a transition, so the
- * button stays disabled with a spinner until the refetched page commits,
- * instead of looking as if the click did nothing.
- */
 export function RetryButton({ retry, label = "Retry" }: RetryButtonProps) {
   const [isRetrying, startRetry] = useTransition();
 
@@ -51,10 +45,6 @@ export function RetryButton({ retry, label = "Retry" }: RetryButtonProps) {
   );
 }
 
-/**
- * Retry for a server page that rendered its own error state instead of
- * throwing: refreshing the route re-runs its server components.
- */
 export function RefreshRetryButton({ label }: { label?: string }) {
   const router = useRouter();
   return (

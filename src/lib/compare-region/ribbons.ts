@@ -1,21 +1,9 @@
-/**
- * The Compare Region Viewer's ribbons, which join same-family genes in
- * adjacent rows. At rest they cover only the families most genomes share,
- * reaching rarer families as the zoom grows: Comfortable draws faint bands,
- * Compact thin center-line connectors. The family trace draws full bands.
- * Paths are in track pixels, under the zoom's `x`.
- */
 import type { DensitySpec } from "./density";
 import type { ChartModel, Ribbon } from "./families";
 import { glyphBox, type FigureFrame } from "./figure-frame";
 import { roundPx } from "./glyph-paths";
 import type { CompareRegionLayout } from "./layout";
 
-/**
- * A ribbon's React key: its family and both genes' refs. `indexFamilies`
- * joins a pair of genes once, and a bridge set joins each row to one next
- * row, so the key is unique within either list.
- */
 export function ribbonKey(ribbon: Ribbon): string {
   const { upper, lower } = ribbon;
   return [
@@ -27,39 +15,22 @@ export function ribbonKey(ribbon: Ribbon): string {
   ].join(":");
 }
 
-// ---------------------------------------------------------------------------
-// Ribbons by zoom
-// ---------------------------------------------------------------------------
-
-/**
- * How many genomes a family must appear in for its ribbons to show at rest:
- * half the rows at 1×, fewer as the zoom grows (a third at 1.5×, …), down to
- * every family shared by two genomes.
- */
 export function ribbonMinRows(zoom: number, rowTotal: number): number {
   return Math.max(2, Math.ceil((rowTotal * 0.5) / Math.max(zoom, 1)));
 }
 
-/** How far the zoom is from 1× to 5×, 0 to 1. */
 function zoomShare(zoom: number): number {
   return Math.min(1, Math.max(0, Math.log(Math.max(zoom, 1)) / Math.log(5)));
 }
 
-/** Resting band opacity (Comfortable): a faint texture at 1×, a little firmer from 5× on. */
 export function ribbonAlpha(zoom: number): number {
   return Math.round((0.12 + 0.1 * zoomShare(zoom)) * 1000) / 1000;
 }
 
-/** Resting connector opacity (Compact): a line needs more than a band's 0.12, so 0.5 at 1× to 0.7 at 5×. */
 export function connectorAlpha(zoom: number): number {
   return Math.round((0.5 + 0.2 * zoomShare(zoom)) * 1000) / 1000;
 }
 
-/**
- * The ribbons the figure shows at rest at `zoom`: those of the families in at
- * least `ribbonMinRows` genomes. Never the focus family's, whose genes
- * already stack on the focus line.
- */
 export function restingRibbons(model: ChartModel, zoom: number): Ribbon[] {
   const { families } = model;
   const minRows = ribbonMinRows(zoom, model.layout.rows.length);
@@ -70,10 +41,6 @@ export function restingRibbons(model: ChartModel, zoom: number): Ribbon[] {
   );
 }
 
-// ---------------------------------------------------------------------------
-// Paths: a band (at rest in Comfortable, traced in both) or a thin connector
-// ---------------------------------------------------------------------------
-
 interface RibbonEnds {
   a1: number;
   a2: number;
@@ -83,10 +50,6 @@ interface RibbonEnds {
   bottom: number;
 }
 
-/**
- * Both genes' ends on screen and the gap between them; null when the whole
- * ribbon lies more than `reach` px off the plot (see `placeGlyph`).
- */
 function ribbonEnds(
   spec: DensitySpec,
   layout: CompareRegionLayout,
@@ -116,9 +79,8 @@ function ribbonEnds(
 }
 
 /**
- * A ribbon's band from the upper gene's bottom edge to the lower gene's top
- * edge, as two vertical-tangent cubic curves. Genes pointing opposite ways
- * (an inversion) join left to right, so the band twists into a bow tie.
+ * Genes pointing opposite ways (an inversion) join left to right, so the band
+ * twists into a bow tie.
  */
 export function ribbonPath(
   spec: DensitySpec,
@@ -147,16 +109,10 @@ export function ribbonPath(
   ].join("");
 }
 
-/** Connectors reaching further sideways than this (px) start to fade, down to `minReachFade`. */
 const reachFadeFrom = 48;
 const reachFadeSpan = 500;
 const minReachFade = 0.35;
 
-/**
- * How much a connector `reach` px sideways is quieted (a moved homolog), as
- * a factor on its opacity: 1 up to 48 px, down to 0.35 at 373 px and beyond,
- * since a long diagonal is the busiest mark a resting figure can hold.
- */
 export function connectorFade(reach: number): number {
   return Math.max(
     minReachFade,
@@ -164,12 +120,6 @@ export function connectorFade(reach: number): number {
   );
 }
 
-/**
- * Compact's resting ribbon: one vertical-tangent curve from the middle of the
- * upper gene's bottom edge to the middle of the lower gene's top edge (a
- * center line, stroked 1.25 px), so dense rows do not fill up with color.
- * `reach` is how far it runs sideways, for `connectorFade`.
- */
 export function connectorPath(
   spec: DensitySpec,
   layout: CompareRegionLayout,

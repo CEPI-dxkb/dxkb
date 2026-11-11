@@ -7,7 +7,6 @@ import {
 } from "lucide-react";
 import { CirclePlaySpinner } from "./icons";
 
-/** Status display configuration for job status cells and badges. */
 export const statusConfig: Record<
   string,
   { icon: React.ElementType; className: string; label: string }
@@ -42,7 +41,6 @@ export const statusConfig: Record<
   },
 };
 
-/** Status filter options for the jobs toolbar dropdown. */
 export const statusOptions = [
   { value: "all", label: "All Status" },
   { value: "queued", label: "Queued" },
@@ -51,7 +49,6 @@ export const statusOptions = [
   { value: "failed", label: "Failed" },
 ];
 
-/** Job statuses that indicate the job is still active (for polling). */
 export const activeJobStatuses = [
   "pending",
   "queued",
@@ -59,13 +56,10 @@ export const activeJobStatuses = [
   "in-progress",
 ];
 
-/** Available page size options for the jobs list. */
 export const pageSizeOptions = [25, 50, 100, 200, 500, 1000] as const;
 
-/** Default page size for the jobs list. */
 export const defaultPageSize = 200;
 
-/** Default column display order for the jobs table. */
 export const defaultJobsColumnOrder = [
   "status",
   "id",
@@ -76,13 +70,11 @@ export const defaultJobsColumnOrder = [
   "completed_time",
 ];
 
-
 export interface ServiceNameEntry {
   value: string;
   displayName: string;
 }
 
-/** Known service names mapped to their human-readable display names. */
 export const serviceNames: ServiceNameEntry[] = [
   { value: "ComprehensiveSARS2Analysis", displayName: "SARS-CoV-2 Genome Analysis" },
   { value: "SubspeciesClassification", displayName: "Subspecies Classification" },

@@ -63,7 +63,6 @@ describe("POST /api/copilot/chat", () => {
       query: "  Find Mpox genomes ",
       model: "Qwen/Qwen3.6-35B-A3B",
       pageContext: "The user is on DXKB.",
-      // Ignored: the gateway takes the user and mode from elsewhere.
       user_id: "someone-else",
       execution_mode: "execute",
       auth_token: "forged",
@@ -306,8 +305,7 @@ describe("POST /api/copilot/chat body and stream guards", () => {
 
   it("answers 413 for a streamed body over the cap with no length", async () => {
     const calls = neverCalled();
-    // A string body carries no Content-Length header on the request, so only
-    // the capped read can catch it.
+    // A string body has no Content-Length header, so only the capped read can catch it.
     const { POST } = await import("../chat/route");
     const request = mockNextRequest({
       method: "POST",
@@ -559,7 +557,6 @@ describe("GET /api/copilot/sessions/[sessionId]", () => {
         ],
       }),
     );
-    // The stored plan (kept current as steps run), not the first card.
     expect(body.messages[2]).toEqual(
       expect.objectContaining({
         card: { cardType: "plan", payload: { plan_id: "p1", status: "executing" } },

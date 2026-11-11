@@ -19,7 +19,6 @@ function filterElement(from?: string, to?: string) {
   );
 }
 
-/** Feeds the picked dates back as props through the URL's day-only form. */
 function UrlBackedFilter() {
   const [dates, setDates] = useState<{ from?: Date; to?: Date }>({});
   const viaUrl = (date: Date | undefined) =>
@@ -88,7 +87,6 @@ describe("JobsDateFilter applied filter", () => {
   it("follows the props when they change from outside", () => {
     const view = render(filterElement("2026-09-01", "2026-09-10"));
 
-    // Back to an earlier range, then Forward again.
     view.rerender(filterElement("2026-08-03", "2026-08-07"));
     expect(
       screen.getByRole("button", { name: "Between Aug 3, 2026 → Aug 7, 2026" }),
@@ -131,7 +129,6 @@ describe("JobsDateFilter applied filter", () => {
       document.querySelector('button[data-day="2026-09-10"]') as HTMLElement,
     );
 
-    // The props are now the day before (Sep 9); the label is still the user's.
     expect(
       screen.getByRole("button", { name: "Before Sep 10, 2026" }),
     ).toBeVisible();
@@ -141,9 +138,8 @@ describe("JobsDateFilter applied filter", () => {
 });
 
 describe("JobsDateFilter across a daylight-saving change", () => {
-  // Before/After move the picked day by one, and that day goes into the URL. A
-  // day is not always 24 hours long, so the test needs a zone that changes its
-  // clocks. Each test file runs in its own process, so this reaches no other file.
+  // A day is not always 24 hours, so this needs a zone that changes its clocks; each test file runs
+  // in its own process.
   const originalZone = process.env.TZ;
 
   beforeAll(() => {
@@ -158,7 +154,6 @@ describe("JobsDateFilter across a daylight-saving change", () => {
   const day = (date: Date | undefined) =>
     date ? toLocalDateParam(date) : undefined;
 
-  // US clocks went forward on 2026-03-08 and went back on 2026-11-01.
   it.each([
     ["Before", "2026-03-15", "2026-03-09", undefined, "2026-03-08"],
     ["After", "2026-11-15", "2026-11-01", "2026-11-02", undefined],

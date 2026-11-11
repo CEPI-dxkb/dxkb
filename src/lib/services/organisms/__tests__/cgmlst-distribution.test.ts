@@ -29,7 +29,7 @@ describe("fetchCgmlstHcDistribution", () => {
         const url = new URL(request.url);
         const match = url.search.match(/\(field,cgmlst_(hc\d+)\)/);
         if (!match) return HttpResponse.text("unexpected", { status: 400 });
-        const level = match[1]; // e.g. "hc0"
+        const level = match[1];
         const field = `cgmlst_${level}`;
         return HttpResponse.json(facet(field, ["1", 100, "3", 50]));
       }),
@@ -39,7 +39,6 @@ describe("fetchCgmlstHcDistribution", () => {
     expect(result.hc0).toEqual([{ name: "1", count: 100 }, { name: "3", count: 50 }]);
     expect(result.hc2).toEqual([{ name: "1", count: 100 }, { name: "3", count: 50 }]);
     expect(result.hc100).toEqual([{ name: "1", count: 100 }, { name: "3", count: 50 }]);
-    // All 7 keys present
     expect(Object.keys(result)).toHaveLength(7);
   });
 

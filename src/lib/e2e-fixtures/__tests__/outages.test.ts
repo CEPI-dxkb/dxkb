@@ -14,7 +14,6 @@ describe("outageSessionToken / parseOutageDirective", () => {
     });
 
     expect(token).toMatch(/^un=e2e-test-user@patricbrc\.org\|/);
-    // Only cookie octets: no space, comma, semicolon, quote or backslash.
     expect(token).not.toMatch(/[\s,;"\\]/);
     expect(parseOutageDirective(token)).toEqual({
       kind: "outages",

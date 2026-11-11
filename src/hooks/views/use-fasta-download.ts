@@ -21,24 +21,11 @@ export interface FastaDownloadRequest<
 > {
   resource: Resource;
   type: FastaTypeFor<Resource>;
-  /** Any number of ids; the client batches them under the route's cap. */
   ids: readonly string[];
-  /**
-   * File name without extension. `fastaFileName` makes it safe and appends
-   * `.<type>.fasta`.
-   */
   fileNameBase: string;
 }
 
-/**
- * The one way a page or action triggers a FASTA download: fetch through the
- * same-origin gateway, save the file, and toast a failure with the server's
- * own message. An empty result is a failure too, so a click never produces
- * a zero-byte file.
- *
- * `pendingType` is the sequence type being fetched, so a control offering
- * several can show which one is busy.
- */
+/** Fetches through the same-origin gateway and saves the file; an empty result is a failure. `pendingType` is the type being fetched. */
 export function useFastaDownload() {
   const mutation = useMutation({
     mutationFn: async ({

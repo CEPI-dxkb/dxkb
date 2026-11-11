@@ -90,9 +90,8 @@ describe("classifyHref", () => {
   });
 
   it("classifies browser-normalized network paths as unsafe, not internal", () => {
-    // A browser resolves "//evil.com" as an absolute, cross-origin URL despite
-    // the missing scheme — a bare startsWith("/") check would wrongly treat it
-    // as same-origin and hand it straight to Link.
+    // "//evil.com" resolves as an absolute cross-origin URL despite the missing
+    // scheme, so a bare startsWith("/") check is wrong.
     expect(classifyHref("//evil.com")).toBe("unsafe");
     expect(classifyHref("/\\evil.com")).toBe("unsafe");
     expect(new URL("/\\evil.com", "https://app.example").origin).toBe(
@@ -130,12 +129,6 @@ describe("isLinkValue", () => {
 });
 
 describe("the relocated boundary's fail-closed contract", () => {
-  // The classifier and the resolver moved out of `info-panel.tsx` into this
-  // module. What must survive the move is that a row value cannot widen the
-  // classification: `resolveLink` percent-encodes every row-supplied segment,
-  // so a row carrying a scheme or a protocol-relative prefix still resolves to
-  // an internal path, and a template that is itself unsafe still classifies as
-  // unsafe.
   it("keeps a scheme-bearing row value inside the internal path segment", () => {
     const href = resolveLink(
       "/genome/{value}",

@@ -28,7 +28,6 @@ interface SingleGenomeSelectorProps {
   minQueryLength?: number;
 }
 
-// Genome IDs match numeric patterns like "123.45"
 function isGenomeId(str: string): boolean {
   return /^[0-9]+(\.[0-9]+)?$/.test(str.trim());
 }
@@ -48,11 +47,11 @@ function useSingleGenomeSelector({
   const buttonRef = useRef<HTMLButtonElement | null>(null);
   const [isManualTrigger, setIsManualTrigger] = useState(false);
   const selectedGenomeIdRef = useRef<string | null>(null);
-  // Typing over a selection reports "" to the parent. The "" a controlled
+  // Typing over a selection reports "" to the parent; the "" a controlled
   // parent passes back is that edit, not a reset, so it keeps the text.
   const clearedByEditRef = useRef(false);
-  // Why a prefilled genome ID shows without its name (the lookup failed, or
-  // found no record). The ID is kept, so the form stays submittable.
+  // Why a prefilled genome ID shows without its name (the lookup failed or
+  // found no record); the ID is kept so the form stays submittable.
   const [lookupNote, setLookupNote] = useState<string | null>(null);
   const lookupNoteId = useId();
 
@@ -85,8 +84,6 @@ function useSingleGenomeSelector({
     },
   });
 
-  // A list open when the field is disabled closes with it, and stays closed
-  // when the field is enabled again.
   const [wasDisabled, setWasDisabled] = useState(disabled);
   if (disabled !== wasDisabled) {
     setWasDisabled(disabled);
@@ -96,7 +93,6 @@ function useSingleGenomeSelector({
     }
   }
 
-  // Sync query with value prop; resolve genome ID -> name via fetchGenomesByIds.
   const syncValue = useEffectEvent((nextValue: string) => {
     const clearedByEdit = clearedByEditRef.current;
     clearedByEditRef.current = false;
@@ -120,8 +116,8 @@ function useSingleGenomeSelector({
         return;
       }
       if (!selectedGenome || selectedGenome.genome_id !== nextValue) {
-        // Keep an unresolved ID selected as itself: it is already the value,
-        // so it must not start a name search for "83332.12".
+        // Keep an unresolved ID selected as itself: it is already the value, so
+        // it must not start a name search.
         const keepIdOnly = (note: string) => {
           selectedGenomeIdRef.current = nextValue;
           setSelectedGenome({ genome_id: nextValue, genome_name: nextValue });

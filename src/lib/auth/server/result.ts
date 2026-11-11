@@ -14,10 +14,8 @@ export function fail<T>(
 }
 
 /**
- * A request that never got an answer. `service` names who did not answer
- * ("the BV-BRC authentication service"); the message keeps the cause
- * ("Could not reach …: connection refused."). The host is not in it: the
- * identity adapter's own log line names it.
+ * `service` names who did not answer; the host is not in the message because
+ * the identity adapter's own log line names it.
  */
 export function networkFailure(cause: unknown, service: string): AuthError {
   const failure = describeUpstreamFailure(cause, service);

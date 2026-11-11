@@ -2,9 +2,7 @@ export type ColorScale = (count: number) => string;
 
 /**
  * The map's seven color steps, fewest genomes first, and the fill of a region
- * with none. `globals.css` defines them per accent (`data-geo-accent`) as an
- * OKLCH ramp with evenly spaced lightness, light to dark, and dark to light
- * on a dark theme, so the steps stay apart in either.
+ * with none. `globals.css` defines them per accent.
  */
 export const geoStepFills = [
   "var(--geo-step-1)",
@@ -47,14 +45,9 @@ function quantile(sorted: readonly number[], p: number): number {
 }
 
 /**
- * Color steps for the regions a view shows. Each step's lower bound is a
- * quantile of their counts, so the steps hold about as many regions each and
- * the whole ramp is in use however skewed the counts are (one state with 8
- * genomes beside fifty with 5K–115K). Every step holds a region: a view with
- * fewer distinct bounds than steps, or a bound no region reaches, uses fewer
- * steps and spreads them across the ramp, so the darkest still marks the most
- * genomes. One whose quantiles all tie at the fewest (seven regions with 1
- * beside one with 100) gives the most a step of their own.
+ * Color steps for a view's regions, with lower bounds at quantiles of their
+ * counts. A step no region reaches is dropped and the rest spread across the
+ * ramp, so the darkest still marks the most genomes.
  */
 export function makeGeoColorScale(counts: Iterable<number>): GeoColorScale {
   const sorted = [...counts]
@@ -70,12 +63,10 @@ export function makeGeoColorScale(counts: Iterable<number>): GeoColorScale {
     const bound = roundBound(quantile(sorted, index / geoStepFills.length));
     if (bound > bounds[bounds.length - 1] && bound <= max) bounds.push(bound);
   }
-  // The bound is `max` itself: rounding can carry it past every region
-  // (105 to 110), and the legend already ends the bar at `max`.
+  // The bound is `max` itself: rounding can carry it past every region.
   if (bounds.length === 1 && max > bounds[0]) bounds.push(max);
-  // Rounding can also start a step no region reaches ([1, 3] puts bounds at
-  // 1, 2 and 3), so such a step joins the one below. The first holds the
-  // fewest and the last the most, so both stay.
+  // Rounding can also start a step no region reaches, so it joins the one below;
+  // the first and last steps always stay.
   const inUse = bounds.filter((from, index) => {
     const to = bounds.at(index + 1) ?? Infinity;
     return sorted.some((count) => count >= from && count < to);
@@ -105,10 +96,7 @@ export function makeGeoColorScale(counts: Iterable<number>): GeoColorScale {
   };
 }
 
-// TopoJSON country name → API alias candidates. Only entries where the two
-// disagree are listed; entries that match directly (e.g. "France", "Germany")
-// fall through to the direct lookup. Sourced from world-atlas Natural Earth
-// names paired against BV-BRC `isolation_country` values.
+// TopoJSON country name → API alias candidates; only names that differ are listed.
 export const countryNameAliases: Partial<Record<string, readonly string[]>> = {
   "United States of America": ["USA", "United States", "US"],
   Russia: ["Russian Federation"],

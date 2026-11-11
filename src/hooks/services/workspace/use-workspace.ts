@@ -13,8 +13,7 @@ export function useKillJob() {
         `/api/services/app-service/jobs/${jobId}/kill`,
         undefined,
       );
-      // kill_task answers [0, "<reason>"] (e.g. "Task not found") when it did
-      // not cancel the job; that is a failure, not a sent request.
+      // kill_task answers [0, "<reason>"] when it did not cancel the job: a failure.
       if (!result.success) {
         throw new Error(
           result.message || "The job service did not cancel the job.",

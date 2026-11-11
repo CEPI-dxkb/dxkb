@@ -4,10 +4,8 @@ import { Autocomplete as AutocompletePrimitive } from "@base-ui/react/autocomple
 
 import { cn } from "@/lib/utils"
 
-// Hand-written, not from the shadcn registry (it has no autocomplete), so
-// `shadcn add` never regenerates it. The popup and item looks follow
-// `select.tsx`, so a field that takes typed text with suggestions opens the
-// same list a select does.
+// Hand-written (shadcn has no autocomplete); the popup and item looks follow
+// `select.tsx`.
 
 const Autocomplete = AutocompletePrimitive.Root
 
@@ -101,9 +99,8 @@ function AutocompleteItem({
 }
 
 /**
- * Shown only while the list has nothing to offer: no items at all, or none
- * matching the typed text. The element itself stays mounted (Base UI announces
- * its text politely), so give the children their padding, not this.
+ * Stays mounted because Base UI announces its text politely, so put padding on
+ * the children.
  */
 function AutocompleteEmpty({
   className,

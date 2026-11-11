@@ -1,6 +1,5 @@
 import type { HoverItem } from "./drawing";
 
-/** The hovered item's heading: a feature's PATRIC id, else its sequence. */
 export function itemTitle(item: HoverItem): string {
   switch (item.kind) {
     case "feature":
@@ -18,10 +17,6 @@ function formatBases(value: number): string {
   return `${value.toLocaleString("en-US")} bp`;
 }
 
-/**
- * Label/value rows: the short set for the tooltip (legacy's `mini` popup),
- * the full set for the pinned dialog. Empty values are left out.
- */
 export function itemFields(item: HoverItem, full: boolean): [string, string][] {
   const rows: [string, string | undefined][] = [];
   if (item.kind === "feature") {
@@ -64,10 +59,6 @@ export function itemFields(item: HoverItem, full: boolean): [string, string][] {
   return rows.flatMap(([label, value]) => (value === undefined || value === "" ? [] : [[label, value]]));
 }
 
-/**
- * What a screen reader hears for the keyboard's item: its track, its place
- * on the ring, and the tooltip's text.
- */
 export function itemAnnouncement(target: {
   title: string;
   position: number;

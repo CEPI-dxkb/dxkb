@@ -60,7 +60,6 @@ describe("reloadCopilotSession", () => {
     await vi.waitFor(() => {
       expect(sessionGets).toHaveBeenCalledTimes(1);
     });
-    // The second reload cancels the first one's fetch, and its own fails.
     const second = reloadCopilotSession(queryClient, sessionId);
 
     await expect(second).resolves.toBe("The BV-BRC Copilot service did not respond.");
@@ -89,9 +88,7 @@ describe("reloadCopilotSession", () => {
     await vi.waitFor(() => {
       expect(sessionGets).toHaveBeenCalledTimes(1);
     });
-    // What a rating click does: cancel the session read, then write the
-    // optimistic rating into the (pre-turn) cache. The write lands before the
-    // reload resumes from the cancel, the order that fooled an update count.
+    // A rating click's optimistic write lands before the reload resumes from the cancel, the order that fooled an update count.
     void queryClient.cancelQueries({ queryKey: key });
     queryClient.setQueryData(key, session(0));
 

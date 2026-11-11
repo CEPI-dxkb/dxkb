@@ -3,34 +3,12 @@ import ts from "typescript";
 import { scanTargets } from "./routes";
 
 /**
- * Scan keys that are deliberately NOT route-entry names.
- *
- * `baseline.generated.ts` and `reflowSkip` are keyed by scan key, and most keys
- * are route names (or `${name}/${variant.nameSuffix}`) derived from
- * `routes.ts`. These are the exceptions — surfaces a spec scans directly, which
- * therefore have no entry in the route table. The list is sanctioned rather
- * than derived because the alternative is a guard that cannot tell a renamed
- * route from a component scan, and so cannot reject either.
- *
- * `coverage.meta.spec.ts` checks every key below is still passed as a top-level
- * string literal to an `assertNoBlocking*` call in an `e2e/tests/a11y/*.spec.ts`
- * source (see {@link extractScannedKeys}), so a deleted or renamed surface
- * leaves its entry here unreferenced.
- *
- * Two limits of that check, stated so nobody has to re-derive them:
- *
- * - It does not record *which* spec scans a key, so moving a surface between
- *   a11y specs keeps its entry valid.
- * - It recognises direct string literal arguments, but not template literals,
- *   variables or concatenations. Those forms fail closed and leave the entry
- *   reported as unreferenced.
- *
- * Adding a surface is the other direction and is not enforced: an un-enumerated
- * surface only matters once someone baselines it, and the stale key message
- * says what to do at that point.
+ * Scan keys that are deliberately not route-entry names: surfaces a spec
+ * scans directly. `coverage.meta.spec.ts` checks each is still passed as a
+ * string literal to an `assertNoBlocking*` call; template literals and
+ * variables fail closed.
  */
 export const nonRouteScanKeys: readonly string[] = [
-  // Component surfaces scanned by routes-sweep.spec.ts ("a11y component surfaces").
   "taxonomy-metadata-distributions",
   "command-palette",
   "auspice-picker",
@@ -43,7 +21,6 @@ export const nonRouteScanKeys: readonly string[] = [
   "feature-browser-view",
   "feature-compare-region",
   "feature-compare-region/pinned",
-  // Interaction states scanned by deep-tier.spec.ts.
   "genome-assembly/validation-errors",
   "genome-assembly/file-picker-open",
   "genome-assembly/file-picker-file-info",
@@ -69,7 +46,6 @@ export const nonRouteScanKeys: readonly string[] = [
   "file-viewer/json",
 ];
 
-/** Scan keys passed as direct string arguments to live `assertNoBlocking*` calls. */
 export function extractScannedKeys(source: string): string[] {
   const keys: string[] = [];
   const supportedCallees = new Set([
@@ -99,24 +75,20 @@ export function extractScannedKeys(source: string): string[] {
 }
 
 /**
- * The baseline map's route dimension accepts this wildcard (see `lookupEntry`
- * in `baseline.ts`). `reflowSkip` does not — `isReflowSkipped` tests plain key
- * membership — so a `"*"` there would be dead weight and is reported as stale.
+ * `reflowSkip` does not accept the wildcard (`isReflowSkipped` tests plain
+ * key membership), so a `"*"` there is reported as stale.
  */
 export const baselineWildcardKey = "*";
 
-/** Every scan key a suppression may be keyed by, excluding the wildcard. */
 export const knownScanKeys: ReadonlySet<string> = new Set([
   ...scanTargets.map((target) => target.name),
   ...nonRouteScanKeys,
 ]);
 
 export interface StaleScanKeyOptions {
-  /** Accept the baseline wildcard route key. Pass `false` for `reflowSkip`. */
   allowWildcard: boolean;
 }
 
-/** Keys that match no current scan target and no sanctioned non-route scan. */
 export function findStaleScanKeys(
   keys: readonly string[],
   { allowWildcard }: StaleScanKeyOptions,
@@ -127,7 +99,6 @@ export function findStaleScanKeys(
   });
 }
 
-/** Failure message naming every stale key and what to do about it. */
 export function formatStaleScanKeys(
   mapName: string,
   staleKeys: readonly string[],

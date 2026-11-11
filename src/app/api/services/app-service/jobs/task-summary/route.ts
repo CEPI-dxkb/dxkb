@@ -6,10 +6,6 @@ interface TaskSummaryBody {
   include_archived?: boolean;
 }
 
-/**
- * Query task status summary
- * POST /api/services/app-service/jobs/task-summary
- */
 export const POST = withAuth(async (request: NextRequest, { token }) => {
   const body = (await request.json()) as TaskSummaryBody;
   const { include_archived = false } = body;

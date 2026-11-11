@@ -67,10 +67,6 @@ describe("useRerunForm", () => {
   });
 
   it("reads sessionStorage entry on mount and leaves it in place across remounts", () => {
-    // Idempotent on purpose: AuthBoundary's Suspense fallback shares the same
-    // children as the resolved tree, so the form can mount twice on hydration
-    // when useSearchParams suspends. Consuming on read would null out the
-    // second mount and drop every rerun pre-fill under load.
     setRerunSession("k1", { foo: "bar" });
     const form = makeForm();
     const { result } = renderHook(

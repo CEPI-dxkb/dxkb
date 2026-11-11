@@ -4,15 +4,8 @@ import {
   workspacePopulatedOverrides,
 } from "../fixtures/overrides";
 
-// Two complementary keyboard surfaces ship together:
-// - the navbar `SearchBar` form (focus → type → Enter → /search?q=…, plus
-//   clipboard paste filling the input)
-// - the global `<CommandPalette>` mounted in the root layout (Cmd/Ctrl+K
-//   toggles open, arrow keys navigate, Enter routes, Esc closes).
-
-// /api/data/search — the same-origin route behind the bulk multi-type search SearchResults fires on mount.
-// Returns zero hits for every type so the page renders its "No results found" state without errors.
-// Both describe blocks navigate to /search, so this mock has to be in scope for both.
+// /api/data/search returns zero hits so /search renders "No results found"; both
+// describe blocks navigate there.
 const emptyDataApiResponse = Object.fromEntries(
   [
     "taxonomy", "genome", "strain", "genome_feature", "protein_feature",
@@ -33,19 +26,15 @@ test.describe("global search (keyboard journey)", () => {
   test.beforeEach(async ({ page }) => {
     await applyBackendMocks(page, {
       overrides: [
-        // Workspace.get (favorites) fired when /jobs loads the workspace sidebar chrome.
-        // (AppService.enumerate_tasks_filtered is covered by jobsOverrides inside journeyOverrides.)
         ...workspacePopulatedOverrides,
         ...journeyOverrides,
-        // /api/data/search bulk search — fired by SearchResults when /search mounts.
         dataApiOverride,
       ],
     });
   });
 
   test("typing in navbar search and pressing Enter routes to /search", async ({ page }) => {
-    // Home hides the navbar SearchBar (welcome hero owns search there).
-    // /jobs is signed-in and renders the navbar variant we want to drive.
+    // Home hides the navbar SearchBar; /jobs is signed in and renders it.
     await page.goto("/jobs");
 
     const searchInput = page
@@ -63,9 +52,6 @@ test.describe("global search (keyboard journey)", () => {
     expect(page.url()).toMatch(/q=influenza/);
     expect(page.url()).toMatch(/type=everything/);
 
-    // Beyond URL navigation, the /search page must actually render its results
-    // region. A regression that breaks SearchResults rendering would still pass
-    // the URL-only assertion above; this guards against that.
     await expect(
       page.getByRole("heading", { level: 1, name: /results for influenza/i }),
     ).toBeVisible({ timeout: 10_000 });
@@ -79,7 +65,6 @@ test.describe("global search (keyboard journey)", () => {
       .first();
     await searchInput.click();
     await page.keyboard.press("Enter");
-    // SearchBar bails out of router.push() when input is empty.
     await expect(page).toHaveURL(/\/jobs/);
   });
 
@@ -97,7 +82,6 @@ test.describe("global search (keyboard journey)", () => {
       .first();
     await searchInput.click();
 
-    // Seed the system clipboard, then trigger a paste with the keyboard.
     await page.evaluate(async (text) => {
       await navigator.clipboard.writeText(text);
     }, "sars-cov-2");
@@ -118,17 +102,13 @@ test.describe("global search (keyboard journey)", () => {
 
     await page.keyboard.press("Tab");
     await expect(searchInput).not.toBeFocused();
-    // Form is still in the DOM after Tab; Esc/blur should not unmount the search bar.
     await expect(searchInput).toBeVisible();
   });
 });
 
 test.describe("command palette (Cmd+K)", () => {
-  // Command palette is mounted globally in the root layout, so any route
-  // works; /jobs is signed-in and gives us the navbar/auth chrome we'd hit
-  // in real usage. The data_api mock is required because the "typing a query
-  // then Enter" test routes to /search, which fires the SearchResults Solr
-  // POST on mount.
+  // The data_api mock is needed because the Enter test routes to /search, which fires a
+  // Solr POST on mount.
   test.beforeEach(async ({ page }) => {
     await applyBackendMocks(page, {
       overrides: [
@@ -152,9 +132,8 @@ test.describe("command palette (Cmd+K)", () => {
     return dialog;
   }
 
-  // The CommandPalette listener attaches in a useEffect at the root layout.
-  // Retrying the shortcut avoids racing hydration while still testing the
-  // keyboard interaction instead of opening the palette through another path.
+  // The CommandPalette listener attaches in a useEffect; retrying the shortcut avoids
+  // racing hydration.
   test("Cmd/Ctrl+K opens the palette with an accessible name", async ({ page }) => {
     await page.goto("/jobs");
     await page.waitForLoadState("networkidle");
@@ -176,8 +155,6 @@ test.describe("command palette (Cmd+K)", () => {
     await page.waitForLoadState("networkidle");
     await openCommandPalette(page);
 
-    // cmdk auto-selects the first item ("Home") on open; ArrowDown advances
-    // to the next item ("Workspace" when signed in) and Enter selects it.
     await page.keyboard.press("ArrowDown");
     await page.keyboard.press("Enter");
 
@@ -192,8 +169,6 @@ test.describe("command palette (Cmd+K)", () => {
 
     await page.keyboard.type("influenza");
 
-    // The "Search for X" item is filtered to the top once the input has text;
-    // pressing Enter selects it and the runSearch handler routes us to /search.
     await page.keyboard.press("Enter");
 
     await page.waitForURL(/\/search\?type=[^&]+&q=influenza$/, {
@@ -221,7 +196,6 @@ test.describe("command palette (Cmd+K)", () => {
     const pasteShortcut = process.platform === "darwin" ? "Meta+V" : "Control+V";
     await page.keyboard.press(pasteShortcut);
 
-    // The CommandInput is the focused element after the palette opens.
     const input = page.locator('[data-slot="command-input"]');
     await expect(input).toHaveValue("sars-cov-2");
   });

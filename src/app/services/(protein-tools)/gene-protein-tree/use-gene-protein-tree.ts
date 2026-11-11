@@ -105,8 +105,6 @@ export function useGeneProteinTree() {
         if (rerunSequences.length > 0)
           form.setFieldValue("sequences", rerunSequences);
         const fieldIds = metadataFieldIdsFromJob(rerunData);
-        // Through updateMetadataFields, so the form's metadata_fields (what
-        // is submitted) follows the table.
         if (fieldIds.length > 0)
           updateMetadataFields(fieldIds.map(createMetadataField));
       },
@@ -246,7 +244,6 @@ export function useGeneProteinTree() {
     handleMetadataSelection,
     addMetadataField,
     removeMetadataField,
-    // A field already in the table is not offered again.
     metadataSections: availableMetadataFieldSections(
       new Set(selectedMetadataFields.map((field) => field.id)),
     ),

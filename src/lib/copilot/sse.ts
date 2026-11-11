@@ -1,24 +1,13 @@
 /**
- * Server-Sent Events read from a `fetch` body. The chat stream is a POST, so
- * `EventSource` (GET only) cannot open it.
- *
- * The gateway writes `event: <name>\ndata: <one-line JSON>\n\n`, plus comment
- * lines (`: connected`, `: heartbeat`) to keep the connection open. Frames can
- * be split anywhere across chunks, and lines may end in `\r\n`.
+ * The chat stream is a POST, so `EventSource` cannot open it. Frames can be split anywhere across
+ * chunks, lines may end in CRLF, and the gateway interleaves comment lines (`: heartbeat`).
  */
 
 export interface SseFrame {
-  /** `message` when the frame names no event, as the SSE spec defines. */
   event: string;
-  /** The frame's `data:` lines joined with `\n`. */
   data: string;
 }
 
-/**
- * Parses frames from decoded text pushed in arbitrary pieces. `push` returns
- * the frames completed by that piece; `flush` returns a final frame the stream
- * ended without a blank line after.
- */
 export function createSseParser() {
   let buffer = "";
   let event = "";
@@ -71,10 +60,7 @@ export function createSseParser() {
   };
 }
 
-/**
- * Every frame of a byte stream, in order. An abort of `signal` ends the
- * iteration even when the body itself does not end on abort.
- */
+/** An abort of `signal` ends the iteration even when the body does not end on abort. */
 export async function* readSseFrames(
   body: ReadableStream<Uint8Array>,
   signal?: AbortSignal,
@@ -83,7 +69,6 @@ export async function* readSseFrames(
   const decoder = new TextDecoder();
   const parser = createSseParser();
   let finished = false;
-  // Cancelling resolves a pending read as done, which ends the loop below.
   const onAbort = () => {
     reader.cancel().catch(() => undefined);
   };
@@ -101,9 +86,7 @@ export async function* readSseFrames(
     if (last) yield last;
   } finally {
     signal?.removeEventListener("abort", onAbort);
-    // A consumer that stops early (a `done` event, Stop) closes the stream
-    // rather than leaving the connection open behind a released lock. Not
-    // awaited: a cancel can wait on the source, and the consumer is done.
+    // Not awaited: a cancel can wait on the source, and the consumer is done.
     if (finished) reader.releaseLock();
     else reader.cancel().catch(() => undefined);
   }

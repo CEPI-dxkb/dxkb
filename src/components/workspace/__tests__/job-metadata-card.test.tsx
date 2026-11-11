@@ -93,7 +93,6 @@ describe("JobMetadataCard", () => {
       taskData: undefined,
     });
     render(<JobMetadataCard resolvedJobMeta={meta} />);
-    // Should show "—" for job ID
     const dashes = screen.getAllByText("—");
     expect(dashes.length).toBeGreaterThan(0);
   });

@@ -1,11 +1,6 @@
 import { downloadFormats, type DownloadFormatId } from "@/lib/data-api/downloads";
 import { cn } from "@/lib/utils";
 
-/**
- * The extension tag (`TXT`, `CSV`, `XLSX`, `FNA`, `FAA`) at the start of a
- * Download format row, coloured by what the file holds: tables in the primary
- * colour, Excel in green, sequences in a chart colour.
- */
 export function FileTypeTag({ format }: { format: DownloadFormatId }) {
   const { tag, kind } = downloadFormats[format];
   return (

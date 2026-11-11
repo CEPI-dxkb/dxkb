@@ -36,7 +36,6 @@ const sortKeySchema = z.object({
   field: z.string().min(1).max(128),
   direction: z.enum(["asc", "desc"]),
 });
-// Legacy's longest default order (FeatureGrid's) has two keys after its first.
 const sortSchema = sortKeySchema.extend({
   then: z.array(sortKeySchema).max(3).optional(),
 });
@@ -152,10 +151,6 @@ const fastaRequestSchema = z.object({
     ),
 });
 
-/**
- * Body of `POST /api/data/[resource]/fasta`. Duplicate ids are dropped, so the
- * upstream `in(...)` clause (and the file) names each record once.
- */
 export function validateFastaRequest(
   resource: FastaResource,
   value: unknown,
@@ -204,11 +199,9 @@ const downloadRequestSchema = z.object({
 });
 
 /**
- * Body of `POST /api/data/[resource]/download`, whether it arrived as JSON or
- * as the native transport's form field. Duplicate ids are dropped, so the
- * upstream `in(...)` clause (and the file) names each record once; `fields`
- * are dropped from a sequence format, which has no columns; and the file name
- * base comes back safe for a `Content-Disposition` header.
+ * Duplicate ids are dropped, `fields` are dropped from a sequence format (it
+ * has no columns), and the file name base comes back safe for
+ * `Content-Disposition`.
  */
 export function validateDownloadRequest(
   resource: DataResource,

@@ -1,12 +1,10 @@
 import { workspaceApi } from "./client";
 
-/** Raw Workspace.get result (nested arrays of object metadata). */
 export type WorkspaceGetResult = unknown[];
 
 /**
- * Fetch workspace object metadata (e.g. when opening a shared folder).
- * Uses Workspace.get with metadata_only: true.
- * Paths are decoded so @ is sent literally (not %40) to the API.
+ * Fetches object metadata via Workspace.get with metadata_only; paths are
+ * decoded so @ is sent literally (not %40).
  */
 export async function getWorkspaceMetadata(
   objectPaths: string[],

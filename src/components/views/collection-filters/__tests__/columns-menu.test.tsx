@@ -7,7 +7,6 @@ import type { CollectionColumnControls, CollectionColumnOption } from "../types"
 
 stubMenuLayout();
 
-/** The default layout: Host is hidden between two shown columns. */
 const defaultColumns: CollectionColumnOption[] = [
   ["genome_id", "Genome ID", true],
   ["host", "Host", false],
@@ -24,7 +23,6 @@ const defaultColumns: CollectionColumnOption[] = [
 
 type ColumnChange = Parameters<CollectionColumnControls["setColumns"]>[0];
 
-/** The menu over a real layout: each write is applied, and spied on. */
 function renderColumnsMenu(initial: CollectionColumnOption[] = defaultColumns) {
   const setColumns = vi.fn<(change: ColumnChange) => void>();
   const resetColumns = vi.fn<() => void>();
@@ -128,8 +126,6 @@ describe("ColumnsMenu", () => {
 
     await user.click(screen.getByRole("option", { name: "Host, hidden" }));
 
-    // Host leaves its default slot (second) for the end of the shown run;
-    // the hidden Country keeps its slot.
     expect(setColumns).toHaveBeenCalledWith({
       visibility: { host: true },
       order: ["genome_id", "genome_name", "strain", "host", "country"],
@@ -184,7 +180,6 @@ describe("ColumnsMenu", () => {
 
     await user.keyboard("{ArrowDown}{Alt>}{ArrowUp}{/Alt}");
 
-    // Genome Name moves up past Genome ID; hidden columns keep their slots.
     expect(setColumns).toHaveBeenLastCalledWith({
       order: ["genome_name", "host", "genome_id", "strain", "country"],
     });
@@ -202,7 +197,6 @@ describe("ColumnsMenu", () => {
     });
     expect(labelsIn("Shown").at(-1)).toBe("Genome Name, shown, position 3 of 3");
 
-    // Only the order differs from the default, and that counts as customised.
     expect(
       screen.getByRole("button", { name: "Columns 3/5 shown, customised" }),
     ).toBeInTheDocument();
@@ -228,7 +222,6 @@ describe("ColumnsMenu", () => {
   });
 
   it("reorders by dragging a row's grip", async () => {
-    // Rows 32px tall from the list's top; the list itself is 400px.
     const rects = vi
       .spyOn(Element.prototype, "getBoundingClientRect")
       .mockImplementation(
@@ -351,7 +344,7 @@ describe("ColumnsMenu", () => {
     expect(screen.getByText("No column matches “zzz”")).toBeInTheDocument();
     expect(screen.queryAllByRole("option")).toHaveLength(0);
 
-    // The empty state's own button (the search box has an × as well).
+    // The empty state's own button (the search box has an x as well).
     await user.click(
       within(screen.getByRole("listbox", { name: "Columns" })).getByRole(
         "button",

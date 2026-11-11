@@ -8,9 +8,7 @@ import { cn } from "@/lib/utils";
 interface GenomeSuggestionListProps {
   suggestions: GenomeSummary[];
   isLoading: boolean;
-  /** The failed search, with what failed ("Genome search unavailable: …"). */
   error: string | null;
-  /** Runs the failed search again (`useGenomeTypeahead`'s `retry`). */
   onRetry?: () => void;
   emptyMessage: string | null;
   highlightedIndex: number;
@@ -73,9 +71,9 @@ export function GenomeSuggestionList({
         type="button"
         className={cn(
           "group/suggestion flex w-full flex-col items-start px-4 py-1 text-left hover:bg-accent",
-          // Caller overrides come before the state classes so a caller-supplied
-          // background (e.g. `bg-transparent`) cannot strip the keyboard
-          // highlight via tailwind-merge's last-wins resolution.
+          // Caller overrides come before the state classes so a caller
+          // background cannot strip the keyboard highlight through
+          // tailwind-merge.
           itemClassName,
           disabled && "cursor-not-allowed opacity-60",
           highlighted && "bg-accent",
@@ -95,8 +93,7 @@ export function GenomeSuggestionList({
           <span className="truncate">{genome.genome_name}</span>
         </span>
         {/* `muted-foreground` is 2-3:1 on the accent fill, so the second line
-            takes the accent's own foreground while the row is hovered or
-            highlighted. */}
+            takes the accent foreground while hovered or highlighted. */}
         <span
           className={cn(
             "text-xs text-muted-foreground group-hover/suggestion:text-accent-foreground",

@@ -1,13 +1,7 @@
 /**
- * What the user has typed and attached for each chat's next question, kept
- * outside React so the side panel, the floating window and the `/copilot`
- * page show the same draft, and switching chats shows that chat's own.
- *
- * Only the Copilot panel's chunk and the `/copilot` page load this module
- * (never the auth provider or the sign-out paths), and it registers its clear
- * with `registerAccountCacheClear`, so an account change empties it. Keys
- * also carry the username, which keeps accounts apart on a path that never
- * calls `clearAccountCaches()` (signing in from another tab).
+ * Kept outside React so every surface shows the same draft. Only the panel chunk and `/copilot`
+ * load this module, and it registers its clear with `registerAccountCacheClear`; keys carry the
+ * username so accounts stay apart when signing in from another tab.
  */
 import { registerAccountCacheClear } from "@/lib/account-caches";
 import type { CopilotAttachment } from "./attachments";
@@ -16,16 +10,10 @@ import type { CopilotExecutionMode } from "./types";
 export interface CopilotDraft {
   text: string;
   attachments: CopilotAttachment[];
-  /** Files still being read for this draft; their room is reserved. */
   pendingReads: number;
-  /**
-   * Plan/Execute picked in this chat, or null for the mode the session
-   * stored (a new chat saves it with its first question).
-   */
   mode: CopilotExecutionMode | null;
 }
 
-/** What a send takes from the draft, and gives back if it was not sent. */
 export type CopilotDraftContent = Pick<CopilotDraft, "text" | "attachments">;
 
 export const emptyCopilotDraft: Readonly<CopilotDraft> = Object.freeze({
@@ -56,12 +44,10 @@ export function copilotDraftKey(username: string, sessionId: string): string {
   return `${username}\n${sessionId}`;
 }
 
-/** The draft under `key`: the stored object, so snapshots stay stable. */
 export function readCopilotDraft(key: string): CopilotDraft {
   return drafts.get(key) ?? emptyCopilotDraft;
 }
 
-/** Replaces the draft under `key`; one that comes back empty is deleted. */
 export function updateCopilotDraft(
   key: string,
   update: (draft: CopilotDraft) => CopilotDraft,
@@ -81,10 +67,6 @@ export function subscribeToCopilotDrafts(listener: () => void): () => void {
   };
 }
 
-/**
- * Empties the draft's text and attachments for a send, and returns them. The
- * mode and any reads still running stay.
- */
 export function takeCopilotDraft(key: string): CopilotDraftContent {
   const { text, attachments } = readCopilotDraft(key);
   updateCopilotDraft(key, (draft) =>
@@ -96,11 +78,8 @@ export function takeCopilotDraft(key: string): CopilotDraftContent {
 }
 
 /**
- * Gives a send's text and attachments back to the draft it took them from,
- * when that send did not go out. Only an empty draft is filled (nothing
- * typed, attached or being read since), and only while `signal`, taken
- * before the send, has not been aborted by an account change. True when it
- * was filled; otherwise the caller has to tell the user the question is gone.
+ * Fills only an empty draft, and only while `signal` (taken before the send) is not aborted; true
+ * when filled, else the caller must tell the user the question is gone.
  */
 export function restoreCopilotDraft(
   key: string,
@@ -124,16 +103,11 @@ export function restoreCopilotDraft(
   return true;
 }
 
-/**
- * Aborted when the account changes. Work that writes into a draft later (a
- * file read, a send's restore) takes it first and drops its result once it
- * is aborted.
- */
+/** Aborted when the account changes; later writers take it first and drop their result once aborted. */
 export function copilotDraftSignal(): AbortSignal {
   return generation.signal;
 }
 
-/** Drops every draft and aborts the current account's signal. */
 export function clearCopilotDrafts(): void {
   drafts.clear();
   generation.abort();

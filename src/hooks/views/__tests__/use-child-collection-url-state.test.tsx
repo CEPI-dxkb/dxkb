@@ -57,8 +57,7 @@ describe("useChildCollectionUrlState", () => {
   });
 
   it("builds the address from the live pathname, not the last render's", () => {
-    // usePathname above says /genome/1.1, as it does in a render that predates
-    // a navigation to another genome. The hook must not build from it.
+    // `usePathname` says /genome/1.1 as in a render that predates a navigation; the hook must not build from it.
     window.history.replaceState(
       null,
       "",
@@ -93,8 +92,7 @@ describe("useChildCollectionUrlState", () => {
   });
 
   it("keeps both of two tables' writes made in one tick", () => {
-    // Both hooks still hold the URL from before either write, as they do while
-    // Next applies a History API write inside a transition.
+    // Both hooks still hold the URL from before either write, as while Next applies a write in a transition.
     const features = renderHook(() =>
       useChildCollectionUrlState("features", options),
     );
@@ -110,9 +108,6 @@ describe("useChildCollectionUrlState", () => {
 });
 
 describe("useChildCollectionUrlState history entries", () => {
-  // One user action is one Back step. A sort click reports a page reset and then
-  // the sort in the same event, and a keyword commit resets the page and then
-  // writes the state.
   it("gives two writes in one task a single entry holding the final state", () => {
     const pushState = vi.spyOn(window.history, "pushState");
     const replaceState = vi.spyOn(window.history, "replaceState");
@@ -168,8 +163,7 @@ describe("useChildCollectionUrlState history entries", () => {
       useChildCollectionUrlState("features", options),
     );
 
-    // The address bar already holds page 2, so the first call is skipped; the
-    // second is the real change and still gets the task's one push.
+    // The address already holds page 2, so the first call is skipped; the second still gets the task's one push.
     result.current[1]({ filters: {}, page: 2, sort: "start:asc" });
     result.current[1]({ filters: {}, page: 2, sort: "product:desc" });
 

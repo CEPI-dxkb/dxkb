@@ -1,7 +1,6 @@
 import type { JsonOverride } from "../../mocks/backends";
 import rows10 from "../compare-region/rows-10.json" with { type: "json" };
 
-/** The fixture's focus gene (row 0's first feature) as its `genome_feature` record. */
 export const compareRegionFocusRecord = {
   feature_id: "PATRIC.1004954.3.AFFC01000001.CDS.67.684.rev",
   patric_id: "fig|1004954.3.peg.1",
@@ -22,18 +21,11 @@ export const compareRegionFocusRecord = {
 };
 
 /**
- * `/api/compare-region` for the Feature View's Compare Region tab: ten
- * genomes' regions as the route answers them (`{rows}`), saved from one SEED
- * `compare_regions_for_peg2` answer. The panel fetches the route from the
- * browser, so this browser-side override is the whole mock; the loopback has
- * no compare-region endpoint and is never reached. The rows' focus gene
- * (`fig|1004954.3.peg.1`) is not the fixture feature's: the panel draws
- * whatever the route answers.
- *
- * A click on a gene pins its card, which reads the gene's record by its
- * BRC ID (`/api/data/genome_feature?operation=member&idField=patric_id`).
- * That read is answered here, ahead of `genomeFeatureScenarioOverrides`,
- * whose GET answers a collection's rows, not a member's `{row}`.
+ * Ten genomes' regions saved from one SEED `compare_regions_for_peg2` answer.
+ * The panel fetches this from the browser, so the loopback is never reached.
+ * A gene click reads its record as a member via `/api/data/genome_feature`,
+ * answered here ahead of `genomeFeatureScenarioOverrides`, whose GET answers
+ * collection rows.
  */
 export const compareRegionScenarioOverrides: JsonOverride[] = [
   {

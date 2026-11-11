@@ -23,35 +23,13 @@ import { resolveServerDataRepository } from "@/lib/data-api/server-policy";
 import { validateDownloadRequest } from "@/lib/data-api/validation";
 
 /**
- * Table and FASTA downloads: `POST` a `DownloadRequest` → the upstream's file,
- * streamed, as an attachment.
- *
- * A sub-route beside `fasta/`, for the reason that route gives: every generic
- * operation answers JSON through one `execute()`, and this one answers a file
- * that may be gigabytes long. Everything else is shared — the session-aware
- * repository and its upstream error mapping, the admission guards, and the
- * `{error, code}` error contract.
- *
- * The body is JSON from `DataRepository.download()`, or a form whose one
- * `request` field holds the same JSON from the native transport
- * (`startNativeDownload`), which a browser can stream straight to disk. A
- * form's errors land in a hidden same-origin iframe, so they are answered as
- * `text/plain` (the same `{error, code}` JSON as text): every browser then
- * shows the body as plain text the transport can read back, where some would
- * otherwise mount a JSON viewer over it.
- *
- * No sign-in is needed: an anonymous caller downloads public data, as the
- * JSON gateway serves it. The session cookie is `SameSite=Strict`, so a
- * cross-site form posting here is anonymous too.
- *
- * Which formats each resource offers is decided in
- * `src/lib/data-api/downloads.ts`, not here.
+ * Table and FASTA downloads: `POST` a `DownloadRequest` (JSON, or a form whose one `request` field holds it) and stream the upstream file as an attachment.
+ * A form's errors land in a hidden iframe, so they are answered as `text/plain` to keep browsers from mounting a JSON viewer over them.
  */
 const rateLimitMax = 20;
 const rateLimitWindowMs = 60_000;
 const formContentType = "application/x-www-form-urlencoded";
 
-/** RFC 6266: an ASCII `filename` for old clients, the exact name in `filename*`. */
 function contentDisposition(fileName: string): string {
   const ascii = fileName.replace(/[^\x20-\x7e]/g, "_");
   const encoded = encodeURIComponent(fileName).replace(
@@ -62,11 +40,7 @@ function contentDisposition(fileName: string): string {
   return `attachment; filename="${ascii}"; filename*=UTF-8''${encoded}`;
 }
 
-/**
- * A 429's `Retry-After` copied into its `{error, code}` body as
- * `retryAfterMs`, since the iframe that reads a form's error cannot see
- * headers. Any other body is returned as it came.
- */
+/** Copies a 429's `Retry-After` into its body as `retryAfterMs`, since the iframe reading a form's error cannot see headers. */
 function withRetryAfter(text: string, response: NextResponse): string {
   const header = response.headers.get("Retry-After");
   const seconds = Number(header);
@@ -82,7 +56,7 @@ function withRetryAfter(text: string, response: NextResponse): string {
     if (payload && typeof payload === "object")
       return JSON.stringify({ ...payload, retryAfterMs: seconds * 1_000 });
   } catch {
-    // Not the `{error, code}` JSON: leave it for the transport to show.
+    // non-JSON body: return as-is
   }
   return text;
 }
@@ -115,7 +89,6 @@ export async function POST(
     isForm ? asPlainText(response) : response;
 
   const { resource } = await context.params;
-  // Allowlisted before the rate limit: the resource is part of the bucket key.
   if (!isDataResource(resource)) {
     return answer(
       NextResponse.json(
@@ -142,9 +115,7 @@ export async function POST(
       resource,
       parseBody(text, isForm),
     );
-    // `"query"`: an id list or a query is near-unique per caller, and an
-    // authenticated caller can see private genomes, so a download is never
-    // shared.
+    // `"query"`: an authenticated caller can see private genomes, so a download is never shared.
     const { repository } = await resolveServerDataRepository({
       readScope: "query",
       notConfigured: {
@@ -163,7 +134,6 @@ export async function POST(
         Vary: "Cookie",
       },
     });
-    // Read by script, so not HttpOnly; it carries nothing but the nonce.
     if (download.nonce) {
       response.cookies.set(downloadNonceCookie, download.nonce, {
         path: "/",

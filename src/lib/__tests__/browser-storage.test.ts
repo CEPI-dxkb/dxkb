@@ -38,9 +38,7 @@ describe("browser storage", () => {
   });
 });
 
-// The in-memory fallback is module state, so these tests load a fresh copy of the
-// module each time (vi.resetModules + dynamic import) rather than share one whose
-// unsaved values would leak from test to test.
+// The in-memory fallback is module state, so each test loads a fresh module copy (vi.resetModules + dynamic import).
 describe("browser storage when storage refuses writes", () => {
   async function freshBrowserStorage() {
     vi.resetModules();

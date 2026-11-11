@@ -7,8 +7,8 @@ import {
 import { getCurrentUser } from "../actions";
 import { requireCurrentUserOrRedirect } from "../page-auth";
 
-// The setup file mocks `next/headers` with cookies only; the redirect branch of
-// `requireCurrentUserOrRedirect` also reads the proxy-forwarded request path.
+// The setup file mocks `next/headers` with cookies only; the redirect branch
+// also reads the proxy-forwarded request path.
 vi.mock("next/headers", async () => {
   const helpers = await import("@/test-helpers/api-route-helpers");
   return {

@@ -1,12 +1,7 @@
 /**
- * Pure item-derivation policy for the workspace mini-browser.
- *
- * Extracted from `useMiniBrowserItems` in
- * `src/components/workspace/workspace-mini-browser.tsx` so the root/path
- * merge, write-access filtering, folders-only mode, hidden-item filtering and
- * ordering rules are directly testable without rendering the component or
- * standing up TanStack Query. The hook keeps repository selection and the
- * three queries; this module owns only what to show and in what order.
+ * Pure item-derivation policy for the workspace mini-browser: root/path merge,
+ * write-access filtering, folders-only mode, hidden-item filtering and
+ * ordering.
  */
 
 import type { WorkspaceItem } from "./domain";
@@ -16,13 +11,9 @@ import { isFolder, isFolderType } from "./utils";
 export type MiniBrowserMode = "folders-only" | "all";
 
 export interface BuildMiniBrowserItemsInput {
-  /** True when the browser is sitting on the user's workspace root. */
   isAtRoot: boolean;
-  /** Root listing of the current user's own workspaces (root mode only). */
   userWorkspaces: WorkspaceItem[];
-  /** Root listing of workspaces shared with the user (root mode only). */
   shared: WorkspaceItem[];
-  /** Listing of the current directory (non-root mode only). */
   pathItems: WorkspaceItem[];
   mode: MiniBrowserMode;
   showHidden: boolean;
@@ -30,7 +21,6 @@ export interface BuildMiniBrowserItemsInput {
 
 const nameCollator = new Intl.Collator(undefined, { sensitivity: "base" });
 
-/** Trim trailing slashes; empty/nullish paths collapse to "/". */
 export function normalizePath(path: string | null | undefined): string {
   if (!path) return "/";
   const trimmed = path.replace(/\/+$/, "");
@@ -38,21 +28,17 @@ export function normalizePath(path: string | null | undefined): string {
 }
 
 /**
- * "/alice@bvbrc" -> "alice@bvbrc". Used to list and key the root-level
- * workspace queries. The realm is kept: it varies per account, so dropping it
- * would make `useUserWorkspaces` list `/alice@bvbrc` for a `@patricbrc.org` user.
+ * "/alice@bvbrc" -> "alice@bvbrc"; the realm is kept because it varies per
+ * account.
  */
 export function usernameFromWorkspaceRoot(workspaceRoot: string): string {
   return workspaceRoot.replace(/^\/+|\/+$/g, "").split("/")[0] ?? "";
 }
 
 /**
- * Note on the deliberate folder-predicate asymmetry below: `folders-only`
- * filters with `isFolder` (folder/directory/modelfolder), while the
- * folders-first sort uses the wider `isFolderType` (which also counts
- * job_result and the *_group types). This mirrors the pre-extraction hook
- * exactly and is not a bug to be tidied — in `mode: "all"` the wider predicate
- * is what keeps groups and job results grouped with folders at the top.
+ * Deliberate asymmetry: `folders-only` filters with `isFolder` while the
+ * folders-first sort uses the wider `isFolderType`, which keeps groups and job
+ * results at the top in `mode: "all"`.
  */
 export function buildMiniBrowserItems({
   isAtRoot,

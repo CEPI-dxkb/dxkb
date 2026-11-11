@@ -22,12 +22,6 @@ export interface MinhashServicePayload {
   id: string;
 }
 
-/**
- * Builds the JSON-RPC payload for the Minhash service at
- * https://p3.theseed.org/services/minhash_service.
- * Params order: [input, max_pvalue, max_distance, max_hits, include_reference,
- * include_representative, include_bacterial, include_viral].
- */
 export function buildMinhashServicePayload(
   data: SimilarGenomeFinderFormData,
   id = `${String(Date.now())}${Math.random().toString(36).slice(2, 9)}`,
@@ -63,11 +57,7 @@ export function buildMinhashServicePayload(
   };
 }
 
-/**
- * Transforms Similar Genome Finder form data into a flat params object
- * (for debug dialog / legacy compatibility). For actual submission use
- * buildMinhashServicePayload and POST to the Minhash service.
- */
+/** Flat params for the debug dialog; submit via buildMinhashServicePayload. */
 export function transformSimilarGenomeFinderParams(
   data: SimilarGenomeFinderFormData,
 ): Record<string, unknown> {
@@ -107,9 +97,6 @@ export function transformSimilarGenomeFinderParams(
   return params;
 }
 
-/**
- * Reset form values to defaults
- */
 export function resetSimilarGenomeFinderValues(): SimilarGenomeFinderFormData {
   return { ...defaultSimilarGenomeFinderFormValues };
 }

@@ -1,7 +1,5 @@
-// `server-only` throws unconditionally outside Next's bundler (it relies on a
-// webpack alias swap that only exists in the real build); every test file
-// that imports a module gated by it neutralizes the guard the same way
-// `src/lib/phylogeny/__tests__/dataset-store.test.ts` does.
+// `server-only` throws outside Next's bundler, so this mock neutralizes the
+// guard.
 vi.mock("server-only", () => ({}));
 
 import { http } from "msw";
@@ -34,13 +32,6 @@ afterEach(() => {
   }
 });
 
-// Auth, env resolution and cache policy themselves belong to
-// `resolveServerDataRepository` and are covered exhaustively in
-// `server-policy.test.ts` (every read scope × anonymous/authenticated/E2E).
-// What is left here is the factory's own contribution: its client-facing
-// missing-configuration message, that a read scope reaches the shared policy
-// unchanged, and that the assembled repository really talks to the resolved
-// base URL.
 describe("createServerDataRepository", () => {
   it("names the env var in its own missing-configuration error, with the shared discriminator", async () => {
     const rejection = createServerDataRepository({ readScope: "member" });
@@ -107,11 +98,6 @@ describe("createServerDataRepository", () => {
     expect(headers.get("Authorization")).toBeNull();
   });
 
-  // Deliberate production behaviour change, not a refactor: this factory used
-  // to cache *every* anonymous request for 300 seconds, including the
-  // collection-backed compound lookups in `surveillance-view/server.ts` and
-  // `serology-view/server.ts`. Those pass `readScope: "query"` now and are
-  // never cached, which is what the gateway already did for collections.
   it("does not cache an anonymous query lookup", async () => {
     process.env.DATA_API_URL = "https://data.example";
     const fetchMock = vi
@@ -172,11 +158,6 @@ describe("createServerDataRepository", () => {
     expect(headers.get("Authorization")).toBeNull();
   });
 
-  // HTTPS enforcement itself is `ServerDataRepository`'s own concern, fully
-  // covered by the "requires HTTPS and disables redirects for authenticated
-  // requests" case in `repository.test.ts`. This test only proves the factory
-  // wiring — env resolution feeding straight into the repository's own
-  // check — doesn't accidentally bypass it for an authenticated caller.
   it("still enforces HTTPS for authenticated requests once assembled by the factory", async () => {
     process.env.DATA_API_URL = "http://insecure.example";
     setTestSession({ token: "secret-token" });

@@ -78,7 +78,6 @@ describe("circular viewer route", () => {
   it("answers a specialty gene listed only by patric_id through a quoted, encoded in(patric_id,…) read", async () => {
     const featureQueries: string[] = [];
     server.use(
-      // A CARD row: the gene is named by its patric_id alone.
       http.get("https://data.test/sp_gene/", () =>
         HttpResponse.json([{ id: "card", patric_id: "fig|83332.12.peg.7" }]),
       ),
@@ -180,8 +179,7 @@ describe("circular viewer route", () => {
 const gcBudget = 20;
 
 describe("circular viewer rate limits", () => {
-  // Validation fails before any upstream call, so each allowed request spends
-  // the bucket without touching the backend.
+  // Validation fails before any upstream call, so allowed requests spend the bucket without touching the backend.
   it.each([
     ["contigs", 60, "198.51.100.7"],
     ["track", 120, "198.51.100.21"],

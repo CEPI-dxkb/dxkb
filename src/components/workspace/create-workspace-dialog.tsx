@@ -20,10 +20,7 @@ export interface CreateWorkspaceDialogProps {
   isCreating: boolean;
 }
 
-// State lives inside the form, not the dialog wrapper, so closing the dialog
-// unmounts this subtree (base-ui Dialog uses keepMounted={false} by default)
-// and state is destroyed. Reopening remounts with fresh state — no explicit
-// prop→state sync needed.
+// State lives inside the form so closing the dialog unmounts it and a reopen starts fresh.
 function CreateWorkspaceForm({
   onOpenChange,
   onCreateWorkspace,
@@ -44,8 +41,8 @@ function CreateWorkspaceForm({
       await onCreateWorkspace(name);
       onOpenChange(false);
     } catch (err) {
-      // Stay open with the typed name; the handler's toast covers a dialog
-      // closed while pending, so this one only shows the reason inline.
+      // Stay open with the typed name; the handler's toast covers a dialog closed while
+      // pending.
       setCreateError(
         `Couldn't create workspace "${name}": ${workspaceErrorMessage(err, "the workspace service returned an error.")}`,
       );

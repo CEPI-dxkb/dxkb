@@ -12,25 +12,7 @@ import {
 } from "@/lib/data-api/taxonomy-tree";
 import { maxRqlInValues } from "@/lib/data-api/rql";
 
-/**
- * Dedicated same-origin boundary for the Taxa Tree, deliberately *not* an
- * operation on `/api/data/[resource]`.
- *
- * The tree asks for one node's children in a single upstream range bounded by
- * `taxonChildrenPageSize` (50,000), and reads its child counts out of a
- * `facet_counts` response header.
- * Neither fits the generic gateway: the collection operation is fixed at a
- * 200-row page and validates every request through `validateDataApiRequest`,
- * and no generic operation reads response headers at all. Threading this
- * contract through that validation and limit policy is what would let the
- * exceptional bound leak into generic collection and export requests, so the
- * bound, the two RQL clauses, and the facet parser live together in
- * `src/lib/data-api/taxonomy-tree.ts` and are reachable only from here.
- *
- * Both operations reuse `ServerDataRepository` — the same authenticated
- * transport the gateway uses, with the same HTTPS-with-token guard, Range
- * headers, and upstream error mapping.
- */
+/** Dedicated boundary for the Taxa Tree, not a generic data operation: its 50,000-row child range and `facet_counts` header read must not leak into generic collection and export validation. */
 const rateLimitMax = 120;
 const rateLimitWindowMs = 60_000;
 
@@ -43,12 +25,7 @@ function isTaxonomyTreeOperation(
   return (taxonomyTreeOperations as readonly string[]).includes(value);
 }
 
-/**
- * `taxonomy-tree:${clientIp}:${operation}` is the rate-limit key, so the
- * operation segment must be allowlist-checked before it reaches `limited()` —
- * otherwise a caller can mint one rate-limit bucket per garbage path segment.
- * Same ordering, for the same reason, as `/api/data/[resource]`.
- */
+/** Allowlist-check the operation before `limited()`: the rate-limit key includes it. */
 function unsupportedOperationResponse(operation: string): NextResponse {
   return NextResponse.json(
     {
@@ -72,12 +49,7 @@ function limited(
   });
 }
 
-/**
- * Taxon ids are positive integers. Fifteen digits is the widest value that
- * stays a safe JavaScript integer, and rejecting anything else here is what
- * lets `taxonChildrenClause` / `taxonChildCountsClause` interpolate straight
- * into RQL without going through `validateRql`.
- */
+/** Positive integers of at most 15 digits (a safe JS integer), which lets the RQL clauses interpolate the id without `validateRql`. */
 function parseParentId(value: string | null): number {
   if (value === null || !/^\d{1,15}$/.test(value) || Number(value) <= 0) {
     throw new DataApiValidationError("parentId must be a positive integer.");
@@ -113,16 +85,7 @@ export async function GET(
         );
       }
     }
-    // Session lookup, env resolution, missing-configuration handling, and
-    // repository construction come from `resolveServerDataRepository`, shared
-    // with the Data API gateway and the page factory. The base-URL check and
-    // throw used to be copied here verbatim from the gateway, which is exactly
-    // where a drift in status or code would have started.
-    //
-    // `readScope: "query"` because both operations are multi-row reads whose
-    // answers vary with the caller's token — the token decides what the
-    // upstream counts as a visible genome — so neither is ever shared-cached.
-    // Same reason as the response headers below.
+    // `readScope: "query"`: both reads vary with the caller's token, so neither is shared-cached.
     const { repository } = await resolveServerDataRepository({
       readScope: "query",
       notConfigured: {
@@ -138,8 +101,6 @@ export async function GET(
             request.signal,
           )
         : await readTaxonChildCounts(repository, parentIds, request.signal);
-    // Both answers vary with the caller's token, which decides what the
-    // upstream counts as a visible genome, so neither is shared-cacheable.
     return NextResponse.json(result, {
       headers: { "Cache-Control": "private, no-store", Vary: "Cookie" },
     });

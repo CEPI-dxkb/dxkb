@@ -4,8 +4,7 @@ import { taxonLineageClause, type TaxonViewScope } from "./scope";
 
 export function makeAmrPhenotypesView({ scope }: { scope: TaxonViewScope }) {
   function AmrPhenotypesView() {
-    // genome_amr carries a row's own taxon_id but no lineage, so the taxon
-    // reaches it through the genome join, as legacy's taxon AMR tab sends it.
+    // genome_amr has no lineage, so the taxon reaches it through the genome join.
     return (
       <LazyResourceChildCollection
         urlKey="amr"

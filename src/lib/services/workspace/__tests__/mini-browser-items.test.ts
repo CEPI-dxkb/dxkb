@@ -191,10 +191,8 @@ describe("buildMiniBrowserItems folders-only mode", () => {
     ]);
   });
 
-  // Deliberate asymmetry: folders-only filters with `isFolder` (which excludes
-  // job_result and the *_group types) while the sort uses the wider
-  // `isFolderType`. These two assertions pin the real behaviour so the
-  // asymmetry cannot be "tidied away" without a failing test.
+  // Deliberate asymmetry: folders-only filters with `isFolder` while the sort
+  // uses the wider `isFolderType`; these assertions pin that.
   it("drops a job_result in folders-only mode", () => {
     const pathItems = [
       makeItem({ name: "a-job", type: "job_result" }),

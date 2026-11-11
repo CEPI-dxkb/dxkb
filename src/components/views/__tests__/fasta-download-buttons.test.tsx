@@ -81,8 +81,6 @@ describe("FastaDownloadButtons", () => {
     for (const button of screen.getAllByRole("button")) {
       expect(button).toBeDisabled();
     }
-    // The button turns busy before the handler has read the body; once it has,
-    // `release` is the handler's own.
     await waitFor(() => {
       expect(requested).toEqual([{ type: "protein", ids: ["PATRIC.1"] }]);
     });

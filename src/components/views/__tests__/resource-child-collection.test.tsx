@@ -146,8 +146,6 @@ vi.mock("../resource-collection", async (importOriginal) => {
   };
 });
 
-// Every child sort allowlist takes "unsorted", and the URL only carries a state its
-// profile could have produced, so a sort or filter the profile lacks would throw.
 const changedState = {
   filters: {},
   page: 4,
@@ -168,10 +166,8 @@ beforeEach(() => {
 
 afterEach(() => vi.unstubAllGlobals());
 
-/** Minimal, valid `useResourceCollection` return value for a real-render export test. */
 const realCollectionResult = createResourceCollectionResult;
 
-/** Open the rail's Download tile and pick `format`, as a user does. */
 async function downloadFromTile(format = "CSV", scope?: "Selected" | "All") {
   await userEvent.click(screen.getByRole("button", { name: /^DOWNLOAD/ }));
   if (scope)
@@ -181,7 +177,6 @@ async function downloadFromTile(format = "CSV", scope?: "Selected" | "All") {
   await userEvent.click(await screen.findByRole("button", { name: format }));
 }
 
-/** The request the last tile click handed the shell's download mutation. */
 function lastDownload() {
   const call = collectionDownload.mock.lastCall as
     | [DataResource, DownloadRequest, unknown]
@@ -189,12 +184,10 @@ function lastDownload() {
   return { resource: call?.[0], request: call?.[1] };
 }
 
-/** The state the mocked collection is currently showing, as it received it. */
 function shownCollectionState() {
   return JSON.parse(screen.getByTestId("collection-state").textContent) as unknown;
 }
 
-/** Has the table report `state`, as its own pager, sort header or facets would. */
 function changeCollectionState(state: typeof changedState = changedState) {
   act(() => {
     lastResourceCollectionProps().onStateChange(state);
@@ -222,10 +215,6 @@ describe("ResourceChildCollection controlled server keyword", () => {
       />,
     );
 
-    // A caller sharing one keyword box with a sibling view (the Interactions
-    // Graph) needs that text to be a request predicate, not a filter over the
-    // page already loaded — otherwise the two views answer the same input with
-    // different datasets.
     expect(screen.getByTestId("collection-state")).toHaveTextContent(
       '"keyword":"groEL"',
     );
@@ -246,8 +235,6 @@ describe("ResourceChildCollection controlled server keyword", () => {
     );
 
     expect(onKeywordChange).toHaveBeenCalledWith("dnaK");
-    // Nothing kept locally: the owner's value is the single source, so the
-    // sibling view can never be one edit behind.
     expect(screen.getByTestId("collection-state")).not.toHaveTextContent(
       '"keyword"',
     );
@@ -273,18 +260,13 @@ describe("ResourceChildCollection controlled server keyword", () => {
     );
 
     // A keyword arriving as a prop never passes through `onStateChange`, so
-    // nothing else in the stack (no clamp in `useResourceCollection`, none in
-    // `ResourceCollection`) could notice the page it was paged into is now past
-    // the end of a smaller result set.
+    // nothing else could notice the page is now past the end.
     const collectionState = screen.getByTestId("collection-state");
     expect(collectionState).toHaveTextContent('"page":1');
     expect(collectionState).toHaveTextContent('"keyword":"groEL"');
   });
 
   it("leaves paging alone when the shared keyword filters client-side", () => {
-    // "loaded" mode is a filter over the rows already fetched, not a request
-    // predicate, so the page it is filtering stays meaningful. Only the
-    // controlled *server* keyword path resets it.
     const { rerender } = render(
       <ResourceChildCollection
         {...interactionsChildProps}
@@ -417,7 +399,6 @@ describe("ResourceChildCollection URL state", () => {
         keyword: "ha",
         page: 1,
       });
-      // The owner has not dropped the param yet, so the URL still says page 4.
       expect(window.location.search).toBe("?assays.page=4");
 
       act(() => {
@@ -443,7 +424,6 @@ describe("ResourceChildCollection URL state", () => {
           keyword: "ha",
         });
       });
-      // Paging on is not held on page 1 by the pending reset.
       expect(lastResourceCollectionProps().state).toMatchObject({ page: 2 });
       expect(window.location.search).toBe("?assays.page=2");
     });
@@ -607,11 +587,6 @@ describe("ResourceChildCollection scope changes", () => {
     ).toBeInTheDocument();
   });
 
-  // Each test leaves the source tab with a sort its table accepts that is not the
-  // destination tab's default, so state carrying over would show in the
-  // destination. The Genome pair also shares a profile, so its facet filter would
-  // survive parsing there too; Feature's tabs have no facets in common, so that
-  // test can only pin the sort.
   it("resets state when FeatureMember switches child tabs", () => {
     const feature = {
       feature_id: "feature-1",
@@ -719,8 +694,6 @@ describe("ResourceChildCollection scope changes", () => {
 
     const profile = resourceCollectionProfile.mock.lastCall?.[0] as
       ResourceCollectionProfile<Record<string, unknown>> | undefined;
-    // Passing only `columns` used to drop these, so PDB links, the detail panel and
-    // the facets disappeared from the multi-genome Protein Structures tab.
     expect(profile?.detailFields?.length).toBeGreaterThan(0);
     expect(profile?.facets?.length).toBeGreaterThan(0);
     expect(profile?.rowLinkField).toBe("pdb_id");
@@ -728,7 +701,6 @@ describe("ResourceChildCollection scope changes", () => {
       "/protein-structure?accession=1ABC",
     );
     expect(profile?.basePredicate).toBe("eq(genome_id,83332.12)");
-    // A facet click stays inside the parent scope instead of replacing it.
     expect(
       profile?.buildStructuralRql?.({
         filters: { method: ["X-Ray"] },
@@ -764,7 +736,6 @@ describe("ResourceChildCollection scope changes", () => {
     );
 
     await downloadFromTile("CSV");
-    // The keyword filters the loaded page, so the file is the rows it leaves.
     expect(lastDownload().resource).toBe("protein_structure");
     expect(lastDownload().request).toMatchObject({
       scope: { kind: "selected", ids: ["1ABC"] },
@@ -867,7 +838,6 @@ describe("ResourceChildCollection scope changes", () => {
     ).not.toBeInTheDocument();
     unmount();
 
-    // The Features tab keeps both.
     render(<GenomeMember genome={genome} lineage={Promise.resolve([])} activeTab="features" />);
     await userEvent.click(screen.getByRole("button", { name: /^DOWNLOAD/ }));
     expect(screen.getByRole("button", { name: "Protein FASTA" })).toBeVisible();
@@ -904,7 +874,6 @@ describe("ResourceChildCollection download naming and keyword mode (plan item 14
       />,
     );
     await downloadFromTile("CSV");
-    // A child download keeps the tab label as its file name base.
     expect(lastDownload().request).toMatchObject({ fileNameBase: "structures" });
     unmount();
 
@@ -989,8 +958,6 @@ describe("ResourceChildCollection default filters", () => {
     expect(props.profile.buildStructuralRql?.(props.state)).toBe(
       "and(keyword(Dnak),eq(annotation,PATRIC))",
     );
-    // Legacy counts the annotation facet without its untouched default, so
-    // RefSeq stays visible beside PATRIC.
     expect(props.facetState?.filters).toEqual({});
   });
 
@@ -1039,16 +1006,12 @@ describe("ResourceChildCollection server keyword mode", () => {
     defaultSort: "unsorted",
   } as const;
 
-  // Both profile shapes: the resource's canonical profile (Features) and the raw
-  // `columns` fallback (Sequences). Neither sets a keyword mode of its own.
   it.each([
     ["a canonical profile", featuresChildProps, "features"],
     ["raw columns", sequencesChildProps, "sequences"],
   ])(
     "sends the in-tab keyword exact when the list asks for it, with %s",
     async (_shape, childProps, urlKey) => {
-      // The Genome list passes "exact" so the table's own keyword box follows the
-      // list's `keyword(...)`: legacy GenomeList has no prefix search anywhere.
       window.history.replaceState(
         null,
         "",
@@ -1064,8 +1027,6 @@ describe("ResourceChildCollection server keyword mode", () => {
       const request = useResourceCollection.mock.lastCall?.[0];
       expect(request?.serverKeywordMode).toBe("exact");
       expect(request?.state.keyword).toBe("gyrA");
-      // The download reads the same profile field (as does select-all's row
-      // resolution, in ResourceCollection).
       await downloadFromTile("CSV");
       expect(lastDownload().resource).toBe(childProps.resource);
       expect(lastDownload().request?.scope).toMatchObject({

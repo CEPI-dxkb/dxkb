@@ -27,8 +27,6 @@ export function ViralPhylogenyPanel({
   taxonName: string;
 }) {
   const family = useViralFamily(taxonId);
-  // A Retry keeps the failure up ("Retrying…") instead of going back to the
-  // loading skeleton until it answers; the tree viewer does the same.
   const familyRetry = useRetryKeepingError(family, String(taxonId));
   const advertisedDatasetIds =
     family.data?.groups.flatMap((group) =>

@@ -41,7 +41,6 @@ export const mockJobs: MockJob[] = [
   },
 ];
 
-/** 3-job lifecycle fixture used by jobs-lifecycle spec: queued / running / completed. */
 export const mockLifecycleJobs: MockJob[] = [
   {
     id: "job-queued",
@@ -74,7 +73,6 @@ export const mockLifecycleJobs: MockJob[] = [
   },
 ];
 
-/** Summary buckets derived from a job list. Drives the toolbar status counts. */
 function summarizeJobs(jobs: MockJob[]): Record<string, number> {
   const summary: Record<string, number> = {};
   for (const j of jobs) {
@@ -93,12 +91,9 @@ function appSummary(jobs: MockJob[]): Record<string, number> {
 
 interface BuildJobsOverridesOptions {
   jobs?: MockJob[];
-  /** Per-job stdout content. Defaults to "Starting job...\nDone.\n". */
   stdoutById?: Record<string, string>;
   stderrById?: Record<string, string>;
-  /** Response shape for the kill POST. Defaults to `{ success: true, message: "killed" }`. */
   killResponse?: unknown;
-  /** Response for the submit POST. Defaults to a freshly-generated job. */
   submitResponse?: unknown;
 }
 

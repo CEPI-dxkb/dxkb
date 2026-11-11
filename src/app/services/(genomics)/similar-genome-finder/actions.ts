@@ -19,10 +19,6 @@ import { formatUserFacingErrorMessage } from "@/lib/utils";
 export interface SubmitSimilarGenomesResult {
   success: true;
   rows: SimilarGenomeFinderResultRow[];
-  /**
-   * Why the hits have no genome names: the genome details lookup failed. The
-   * MinHash rows are still returned, keyed by genome ID.
-   */
   genomeDetailsError?: string;
 }
 
@@ -34,9 +30,6 @@ export interface SubmitSimilarGenomesError {
 export type SubmitSimilarGenomesResponse =
   SubmitSimilarGenomesResult | SubmitSimilarGenomesError;
 
-/**
- * Parse minhash result into rows and genome IDs; apply fallback when rows have no genome_id.
- */
 function getMinhashRowsAndIds(result: unknown): {
   minhashRows: SimilarGenomeFinderResultRow[];
   genomeIds: string[];
@@ -82,14 +75,7 @@ function getMinhashRowsAndIds(result: unknown): {
   return { minhashRows, genomeIds };
 }
 
-/**
- * What the user sees for a failed search. Service and network failures keep
- * their own message ("The BV-BRC minhash service did not respond …"); a
- * missing setting is logged with its name and shown without it, since server
- * configuration is not the user's to read. An outage is logged too: the
- * `UpstreamError`'s `host` names the machine that failed, which the user's
- * message leaves out.
- */
+/** Service and network failures keep their own message; a missing setting is logged by name and shown without it. */
 function describeSearchFailure(error: unknown): string {
   if (error instanceof MinhashConfigurationError) {
     console.error(error.message);
@@ -101,12 +87,7 @@ function describeSearchFailure(error: unknown): string {
   return formatUserFacingErrorMessage(error, "Similar Genome Finder search failed");
 }
 
-/**
- * Server Action: run Similar Genome Finder (MinHash search, then the genome
- * details that name each hit). Calls the services directly rather than this
- * app's own API routes. Returns the failure instead of throwing it, because
- * production redacts a thrown Server Action error.
- */
+/** Returns the failure instead of throwing, since production redacts a thrown Server Action error. */
 export async function submitSimilarGenomes(
   data: SimilarGenomeFinderFormData,
 ): Promise<SubmitSimilarGenomesResponse> {
@@ -129,7 +110,6 @@ export async function submitSimilarGenomes(
             : minhashRows,
       };
     } catch (error) {
-      // The distances are still the answer; say why the names are missing.
       return {
         success: true,
         rows: minhashRows,

@@ -3,7 +3,6 @@ import { render, screen } from "@testing-library/react";
 vi.mock("../experiment-collection", async () => {
   const { useState } = await import("react");
   return {
-    // The first props it mounted with live in state, so a remount shows.
     ExperimentCollection: ({ initialState, activeTab }: { initialState: unknown; activeTab: string }) => {
       const [mountedWith] = useState(() => JSON.stringify(initialState));
       return <div data-testid="state" data-tab={activeTab} data-mounted-with={mountedWith}>{JSON.stringify(initialState)}</div>;

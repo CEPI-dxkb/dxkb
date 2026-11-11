@@ -15,7 +15,6 @@ const leftSearch = () =>
   screen.getByRole("combobox", { name: "Find a facet or value" });
 const groupNamed = (name: string) =>
   within(facetList()).getByRole("group", { name });
-/** The right pane's checklist, by its facet's label. */
 const valueList = (label: string) =>
   screen.getByRole("listbox", { name: `${label} values` });
 
@@ -42,7 +41,6 @@ describe("FiltersMenu groups", () => {
       screen.queryByRole("option", { name: "Isolation Country" }),
     ).not.toBeInTheDocument();
 
-    // The first active facet is the one shown on the right.
     expect(valueList("Host Name")).toBeInTheDocument();
   });
 
@@ -99,8 +97,6 @@ describe("FiltersMenu groups", () => {
     expect(
       screen.queryByRole("option", { name: "Genome Status, pinned" }),
     ).not.toBeInTheDocument();
-    // The first match is highlighted; More is not counted, so the pane waits
-    // for a click rather than starting a read.
     expect(screen.getByRole("option", { name: "Species" })).toHaveAttribute(
       "data-active",
       "true",
@@ -127,7 +123,6 @@ describe("FiltersMenu value search", () => {
     const user = userEvent.setup();
     const { spies } = renderToolbar();
     await openFilters(user);
-    // Counts the More facets, so their values are in loaded counts.
     await user.click(screen.getByRole("option", { name: "Show 2 more facets" }));
 
     await user.type(leftSearch(), "germ");
@@ -212,7 +207,6 @@ describe("FiltersMenu counting", () => {
 
     expect(spies.setPeekedFields).toHaveBeenCalledOnce();
     expect(valueList("Species")).toBeInTheDocument();
-    // Counting: the checklist waits on skeleton rows.
     expect(valueList("Species")).toHaveAttribute("aria-busy", "true");
     expect(screen.getByText("Loading values…")).toBeInTheDocument();
   });
@@ -312,7 +306,6 @@ describe("FiltersMenu pinning", () => {
       within(moreGroup).getByRole("option", { name: "Species, pinned" }),
     ).toBeInTheDocument();
 
-    // Reopened, it is listed with the pinned set.
     await user.keyboard("{Escape}");
     await waitFor(() => {
       expect(
@@ -344,7 +337,6 @@ describe("FiltersMenu pinning", () => {
       "aria-pressed",
       "false",
     );
-    // Still counted (as a peek) and still in its place until the menu closes.
     expect(state.peeked).toEqual(new Set(["genome_status"]));
     expect(
       within(groupNamed("Facets")).getByRole("option", { name: "Genome Status" }),
@@ -411,7 +403,6 @@ describe("FiltersMenu keyboard", () => {
     expect(
       screen.getByRole("option", { name: "Show 2 more facets" }),
     ).toBeInTheDocument();
-    // Space folded the group rather than typing into the search.
     expect(leftSearch()).toHaveValue("");
   });
 
@@ -430,7 +421,6 @@ describe("FiltersMenu keyboard", () => {
     });
     expect(right).toHaveFocus();
 
-    // The checklist's own arrows and Enter pick a value.
     await user.keyboard("{ArrowDown}{Enter}");
     expect(spies.toggleValue).toHaveBeenCalledWith("genome_status", "Complete");
 
@@ -442,7 +432,6 @@ describe("FiltersMenu keyboard", () => {
       screen.getByRole("combobox", { name: "Filter Host Name values" }),
     ).toHaveFocus();
 
-    // Backspace in an empty checklist search also returns to the facets.
     await user.keyboard("{Backspace}");
     expect(leftSearch()).toHaveFocus();
   });
@@ -455,8 +444,6 @@ describe("FiltersMenu keyboard", () => {
       expect(leftSearch()).toHaveFocus();
     });
 
-    // A search lists Species while More is folded, so it is only highlighted
-    // and the pane still shows Genome Status: Enter replaces the checklist.
     await user.type(leftSearch(), "spec");
     await user.keyboard("{Enter}");
 
@@ -467,7 +454,6 @@ describe("FiltersMenu keyboard", () => {
     await user.keyboard("{ArrowLeft}");
     await user.clear(leftSearch());
     await user.type(leftSearch(), "isol");
-    // Counted now, so the highlight has already switched the pane; → keeps it.
     await user.keyboard("{ArrowRight}");
 
     expect(
@@ -481,7 +467,6 @@ describe("FiltersMenu keyboard", () => {
     await openFilters(user);
 
     await user.type(leftSearch(), "fran");
-    // The first row is the matched value (no facet label matches).
     await user.keyboard("{Enter}");
 
     expect(spies.toggleValue).toHaveBeenCalledWith("isolation_country", "France");
@@ -574,7 +559,6 @@ describe("FiltersMenu checklist", () => {
     expect(
       screen.getByText("This filter has no facet, so its values are not counted."),
     ).toBeInTheDocument();
-    // Nothing to pin: no facet stands behind it.
     expect(screen.queryByRole("button", { name: /^Pin/ })).not.toBeInTheDocument();
   });
 });

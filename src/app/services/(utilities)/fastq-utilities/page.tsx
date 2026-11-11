@@ -86,7 +86,6 @@ export default function FastqUtilitiesPage() {
           <FastqPipelineCard page={page} />
         </div>
 
-        {/* Input Library Section */}
         <div className="md:col-span-7">
           <Card>
             <ServiceCardHeader>
@@ -101,7 +100,6 @@ export default function FastqUtilitiesPage() {
             </ServiceCardHeader>
 
             <ServiceCardContent className="space-y-6">
-              {/* Paired Read Library */}
               <div className="space-y-4">
                 <ServiceLibraryHeader title="Paired Read Library">
                   <ServiceLibraryAddButton
@@ -130,7 +128,6 @@ export default function FastqUtilitiesPage() {
                 </div>
               </div>
 
-              {/* Single Read Library */}
               <div className="space-y-4">
                 <ServiceLibraryHeader title="Single Read Library">
                   <ServiceLibraryAddButton
@@ -175,7 +172,6 @@ export default function FastqUtilitiesPage() {
                 />
               </div>
 
-              {/* SRA Run Accession */}
               <SraRunAccessionWithValidation
                 key={sraResetKey}
                 title="SRA Run Accession"
@@ -196,7 +192,6 @@ export default function FastqUtilitiesPage() {
           </Card>
         </div>
 
-        {/* Selected Libraries Section */}
         <div className="md:col-span-5">
           <SelectedLibrariesCard
             items={selectedLibraries}
@@ -205,7 +200,6 @@ export default function FastqUtilitiesPage() {
           />
         </div>
 
-        {/* Form Controls */}
         <div className="md:col-span-12">
           <ServiceFormFooter
             form={form}

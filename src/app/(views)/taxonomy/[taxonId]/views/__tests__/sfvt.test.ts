@@ -2,10 +2,8 @@ import { getCuratedLists } from "@/lib/taxon-view/curated-lists";
 
 import { resolveSfvtTaxonId, sfvtTaxonIdRemap } from "@/components/organisms/taxon-views/sfvt";
 
-// SFVT scopes the sequence_feature core via eq(taxon_id,…). The page taxon
-// resolves to the curated species id where features are stored. Taxa in
-// sfvtTaxonIds self-map by default; sfvtTaxonIdRemap holds only explicit
-// overrides where the landing taxon id differs from the feature taxon id.
+// Taxa in sfvtTaxonIds self-map; sfvtTaxonIdRemap holds only explicit overrides
+// where the landing taxon id differs from the feature taxon id.
 describe("sfvt taxon-id remap", () => {
   it("covers every curated SFVT taxon", () => {
     const { sfvtTaxonIds } = getCuratedLists();
@@ -15,14 +13,13 @@ describe("sfvt taxon-id remap", () => {
   });
 
   it("self-maps a curated taxon with no explicit remap entry", () => {
-    const sfvtTaxonIds = new Set([12637]); // Dengue — no entry in sfvtTaxonIdRemap
+    const sfvtTaxonIds = new Set([12637]);
     expect(resolveSfvtTaxonId([12637], sfvtTaxonIds)).toBe(12637);
   });
 
   it("resolves a taxon via any ancestor in its lineage", () => {
     const [curatedId] = Object.keys(sfvtTaxonIdRemap).map(Number);
     const sfvtTaxonIds = new Set([curatedId]);
-    // A sub-taxon (leaf 999 not in the map) resolves through its curated ancestor.
     expect(resolveSfvtTaxonId([999, curatedId], sfvtTaxonIds)).toBe(
       sfvtTaxonIdRemap[curatedId],
     );

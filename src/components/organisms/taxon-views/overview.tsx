@@ -72,12 +72,7 @@ async function ReferenceGenomesBoundary({
   );
 }
 
-/**
- * The genome sections of an overview, each streaming behind its own skeleton
- * and failing on its own: the map, the reference genomes and the metadata
- * distributions of every genome in `scope`. The Taxonomy page puts its taxon
- * summary above them; the Genome list's Overview tab shows them for its query.
- */
+/** The genome sections of an overview, each streaming behind its own skeleton and failing on its own. */
 export function GenomeOverviewSections({
   scope,
   accent,

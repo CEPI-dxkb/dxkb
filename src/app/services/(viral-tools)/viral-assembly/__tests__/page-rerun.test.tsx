@@ -55,7 +55,6 @@ describe("Viral Assembly rerun", () => {
     sessionStorage.clear();
     window.history.replaceState({}, "", "/");
     server.use(
-      // Workspace.get is the output name check: "Object not found" means "name available".
       http.post("*/api/services/workspace", async ({ request }) => {
         const body = (await request.json()) as { method?: string };
         if (body.method === "Workspace.get")

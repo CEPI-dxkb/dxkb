@@ -1,4 +1,3 @@
-// src/lib/taxon-view/phylo-manifest.ts
 import { describeUpstreamFailure, hostOf } from "@/lib/api/upstream-failure";
 import {
   organismBvBrcRevalidateSeconds,
@@ -9,9 +8,7 @@ import {
 import type { PhyloManifest } from "./tab-context";
 
 const defaultManifestUrl = "https://www.bv-brc.org/api/content/phyloxml_trees/manifest.json";
-// Bounds worst-case added latency on the taxon page (this fetch runs parallel
-// to, but is awaited before, page render). A slow/dead endpoint only disables
-// the Phylogeny tab, so failing fast matters more than tolerating slow success.
+// A slow or dead endpoint only disables the Phylogeny tab, so fail fast: this fetch is awaited before page render.
 const manifestFetchTimeoutMs = 2000;
 
 function isTreeMap(value: unknown): value is Record<string, unknown> {
@@ -27,12 +24,7 @@ function parseManifest(payload: unknown): PhyloManifest | null {
   return isTreeMap(object) ? { trees: object } : null;
 }
 
-/**
- * Fetch the published-viral-tree manifest (doc §4.5/§7.2). Fail-open by design:
- * a missing/broken manifest must NEVER block the taxon page — it only means the
- * viral Phylogeny tab is treated as "no tree" (disabled). PHYLO_MANIFEST_URL can
- * override the public BV-BRC manifest URL for mirrors and test deployments.
- */
+/** Fail-open: a missing or broken manifest only disables the viral Phylogeny tab, never the page. */
 export async function fetchPhyloManifest(): Promise<PhyloManifest | null> {
   const url = process.env.PHYLO_MANIFEST_URL ?? defaultManifestUrl;
 
@@ -48,8 +40,7 @@ export async function fetchPhyloManifest(): Promise<PhyloManifest | null> {
     }
     return parseManifest(await response.json());
   } catch (error) {
-    // undici's own message is only "fetch failed"; name what timed out or
-    // could not be reached, and the host, so the log says which host is down.
+    // undici's message is only "fetch failed"; name what and which host failed.
     const failure = describeUpstreamFailure(error, "the BV-BRC phylogeny manifest", {
       timeoutMs: manifestFetchTimeoutMs,
     });

@@ -3,12 +3,11 @@ import { dirname } from "node:path";
 import type { NextConfig } from "next";
 import pkg from "./package.json" with { type: "json" };
 
-// Pin the Turbopack workspace root to this directory. Stray package-lock.json
-// files in parent directories otherwise make Next infer an ancestor as the root,
-// which breaks file-watching/cache invalidation (nested API routes silently 404).
+// Pin the Turbopack root: stray lockfiles in parent directories otherwise
+// make Next infer an ancestor, breaking cache invalidation (nested API routes
+// silently 404).
 const projectRoot = dirname(fileURLToPath(import.meta.url));
 
-// Minimal type for webpack rule (avoids depending on full webpack types)
 interface WebpackRuleLike {
   test?: { test?(s: string): boolean };
   issuer?: unknown;
@@ -88,20 +87,17 @@ const nextConfig: NextConfig = {
   },
 
   webpack(config: WebpackConfig): WebpackConfig {
-    // Grab the existing rule that handles SVG imports
     const fileLoaderRule = config.module.rules.find((rule) =>
       rule.test?.test?.(".svg"),
     );
 
     config.module.rules.push(
-      // Reapply the existing rule, but only for svg imports ending in ?url
       {
         ...fileLoaderRule,
         test: /\.svg$/i,
-        resourceQuery: /url/, // *.svg?url
+        resourceQuery: /url/,
       },
 
-      // Convert all other *.svg imports to React components
       {
         test: /\.svg$/i,
         issuer: fileLoaderRule?.issuer,
@@ -112,12 +108,11 @@ const nextConfig: NextConfig = {
             )?.not ?? []),
             /url/,
           ],
-        }, // exclude if *.svg?url
+        },
         use: ["@svgr/webpack"],
       },
     );
 
-    // Modify the file loader rule to ignore *.svg, since we have it handled now.
     if (fileLoaderRule) {
       fileLoaderRule.exclude = /\.svg$/i;
     }

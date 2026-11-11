@@ -16,21 +16,18 @@ import {
   type ServiceChoice,
 } from "./use-selection-service-launch";
 
-/** Which ID kind the selection resolved to, and so which services accept it. */
 export type { SelectionServiceKind } from "./use-selection-service-launch";
 
 interface SelectionServiceChooserProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  /** Plural label of the collection the selection came from, e.g. "Strains". */
   label: string;
   ids: readonly string[];
-  /** Genome IDs by default; Feature collections resolve `feature_id`s instead. */
   kind?: SelectionServiceKind;
   workspaceUsername?: string;
   /**
-   * Where a signed-out user goes to sign in, opened in a new tab so this tab — and
-   * with it the row selection behind the dialog — stays mounted.
+   * Opened in a new tab so this tab, and the row selection behind the dialog,
+   * stays mounted.
    */
   signInHref: string;
 }
@@ -91,10 +88,6 @@ const featureServiceOptions: readonly ServiceOption[] = [
   },
 ];
 
-/**
- * BLAST can take a Feature Group either way, so legacy asks which side of the
- * search the selection belongs on before it opens the form.
- */
 const featureBlastSourceOptions: readonly ServiceOption[] = [
   {
     choice: "feature-blast-query",

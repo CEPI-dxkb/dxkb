@@ -165,7 +165,6 @@ describe("useWorkspaceDirectory", () => {
 
       act(() => { result.current.refetch(); });
       await waitFor(() => { expect(result.current.hasLoaded).toBe(true); });
-      // Only the listing that loaded its items asks for their permissions.
       await waitFor(() => {
         expect(repo.calls.filter((call) => call.method === "listPermissions")).toEqual([
           { method: "listPermissions", paths: ["/alice@bvbrc/home/x"] },

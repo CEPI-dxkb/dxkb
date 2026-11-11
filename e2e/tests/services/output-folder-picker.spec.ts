@@ -13,12 +13,9 @@ import {
 import { FolderPickerDialog, ServiceFormPage } from "../../pages";
 
 /**
- * The Output Folder picker on a real service form (BLAST), against the real
- * JSON-RPC workspace client. Vitest covers the picker's rules and keyboard
- * model in jsdom; this spec covers what jsdom cannot: layout (column widths,
- * the scrolling strip, the pinned info pane, header alignment), mouse drags,
- * the scroll glide frame by frame, the multipart upload, and the chosen
- * folder reaching the submitted job.
+ * The Output Folder picker on BLAST, covering what jsdom cannot: layout, mouse drags,
+ * scroll glide frame by frame, the multipart upload and the folder reaching the
+ * submitted job.
  */
 
 function folder(parentPath: string, name: string, extra: Partial<TupleItem> = {}): TupleItem {
@@ -118,7 +115,6 @@ async function openBlast(
   return { form, picker: new FolderPickerDialog(page) };
 }
 
-/** Walk the open picker Home → Experiments → Run 1 → Lane A. */
 async function walkToLaneA(picker: FolderPickerDialog) {
   await picker.option("Home", "Experiments").click();
   await picker.option("Experiments", "Run 1").click();
@@ -127,7 +123,6 @@ async function walkToLaneA(picker: FolderPickerDialog) {
   await picker.option("Run 1", "Lane A").focus();
 }
 
-/** Open the picker and walk it to Lane A. */
 async function openAtLaneA(picker: FolderPickerDialog) {
   await picker.open();
   await walkToLaneA(picker);
@@ -145,7 +140,6 @@ function workspaceRpcMethod(request: Request): string | null {
   }
 }
 
-/** Each value is >= the one before it (or <= when `direction` is -1). */
 function expectMonotonic(values: number[], direction: 1 | -1) {
   for (let index = 1; index < values.length; index += 1) {
     expect(
@@ -195,7 +189,6 @@ test.describe("output folder picker: choosing", () => {
     const picker = new FolderPickerDialog(page);
 
     await picker.open();
-    // It opens on the field's current value: Home.
     await expect(picker.selectButton).toHaveAccessibleName("Select “Home”");
     await picker.option("Home", "Experiments").click();
     await picker.option("Experiments", "Run 1").click();
@@ -208,7 +201,6 @@ test.describe("output folder picker: choosing", () => {
     await picker.selectButton.click();
     await expect(picker.dialog).toBeHidden();
 
-    // Reopening starts at the new value.
     await picker.open();
     await expect(picker.option("Experiments", "Run 1")).toHaveAttribute(
       "aria-selected",
@@ -240,7 +232,6 @@ test.describe("output folder picker: choosing", () => {
     await page.keyboard.press("ArrowDown");
     await page.keyboard.press("ArrowDown");
     await expect(picker.option("Home", "Experiments")).toBeFocused();
-    // → enters the first subfolder, which needs Experiments listed first.
     await expect(picker.option("Experiments", "Run 1")).toBeVisible();
     await page.keyboard.press("ArrowRight");
     await expect(picker.option("Experiments", "Run 1")).toBeFocused();
@@ -291,8 +282,7 @@ test.describe("output folder picker: choosing", () => {
     await picker.dialog.getByRole("button", { name: "Upload here" }).click();
     await expect(picker.dialog.getByText("Upload to “Experiments”")).toBeVisible();
 
-    // Hold the multipart POST until the locked state has been checked. Routes
-    // registered later run first, so this one wins over the default mock.
+    // Routes registered later run first, so this one wins over the default mock.
     const uploadHeld = Promise.withResolvers<undefined>();
     await page.route(/\/api\/services\/workspace\/upload/, async (route) => {
       await uploadHeld.promise;
@@ -345,7 +335,6 @@ test.describe("output folder picker: layout", () => {
       "340",
     );
 
-    // Widths last between opens.
     await picker.close();
     await picker.open();
     expect(await picker.width(picker.columnAt(0))).toBe(340);
@@ -353,7 +342,6 @@ test.describe("output folder picker: layout", () => {
     await picker.resizeHandle("Home").dblclick();
     expect(await picker.width(picker.columnAt(0))).toBe(240);
 
-    // The info pane is resized from its left edge: dragging left widens it.
     const before = await picker.width(
       picker.infoPaneHandle().locator("xpath=.."),
     );
@@ -388,7 +376,6 @@ test.describe("output folder picker: layout", () => {
     }
     expect(await pane.boundingBox()).toEqual(paneBefore);
 
-    // The footer spells out the whole path; nothing is cut short.
     expect(await picker.breadcrumbLabels()).toEqual([
       "Home",
       "Experiments",
@@ -402,7 +389,6 @@ test.describe("output folder picker: layout", () => {
       );
     expect(truncated).toBe(0);
 
-    // Back at the top, the strip scrolls home.
     await picker.breadcrumb.getByRole("button", { name: "Home" }).click();
     await expect.poll(async () => picker.scrollLeft()).toBe(0);
   });
@@ -439,8 +425,6 @@ test.describe("output folder picker: layout", () => {
       if (dialog && trail && crumb && cancel && select) {
         expect(trail.x).toBeGreaterThanOrEqual(dialog.x);
         expect(trail.x + trail.width).toBeLessThanOrEqual(dialog.x + dialog.width);
-        // The current folder is in view, within the trail and clear of the
-        // actions, however many folders come before it.
         expect(crumb.x).toBeGreaterThanOrEqual(trail.x - 1);
         expect(crumb.x + crumb.width).toBeLessThanOrEqual(trail.x + trail.width + 1);
         for (const action of [cancel, select]) {
@@ -453,7 +437,6 @@ test.describe("output folder picker: layout", () => {
         }
       }
 
-      // The start of the trail is still there to go back to.
       await picker.breadcrumb.getByRole("button", { name: "Home" }).click();
       await expect(current).toHaveText("Home");
     });
@@ -499,8 +482,6 @@ test.describe("output folder picker: layout", () => {
     ]);
     expect(dialog && places && strip && action).toBeTruthy();
     if (dialog && places && strip && action) {
-      // The columns get the dialog's full width, between the places row and
-      // the info pane, and the pane's actions are inside the dialog.
       expect(strip.width).toBeGreaterThanOrEqual(dialog.width - 1);
       expect(strip.height).toBeGreaterThan(160);
       expect(places.y + places.height).toBeLessThanOrEqual(strip.y + 1);
@@ -512,13 +493,11 @@ test.describe("output folder picker: layout", () => {
     }
     await expect(picker.infoPaneHandle()).toBeHidden();
 
-    // Every place is reachable from the scrolling row.
     await picker.places
       .getByRole("button", { name: "Public Workspaces" })
       .click();
     await expect(picker.column("Public Workspaces")).toBeVisible();
 
-    // The upload form takes the whole body, and Back brings the columns back.
     await picker.places.getByRole("button", { name: "Home" }).click();
     await picker.option("Home", "Experiments").click();
     await picker.dialog.getByRole("button", { name: "Upload here" }).click();
@@ -543,7 +522,6 @@ test.describe("output folder picker: motion", () => {
     const { picker } = await openBlast(page);
     await openAtLaneA(picker);
     await expect.poll(async () => picker.scrollLeft()).toBeGreaterThan(0);
-    // Back out to Run 1 so the next step in needs the strip to scroll.
     await picker.option("Experiments", "Run 1").click();
     await picker.settled();
     await picker.option("Experiments", "Run 1").focus();
@@ -551,13 +529,10 @@ test.describe("output folder picker: motion", () => {
     const goingIn = await picker.pressAndTrace("ArrowRight");
     const inEnd = goingIn.scrollLeft.at(-1) ?? goingIn.before;
     expect(inEnd).toBeGreaterThan(goingIn.before);
-    // It starts from where the strip was, not from the end.
     expect(goingIn.scrollLeft[0]).toBeLessThan(inEnd);
     expect(goingIn.scrollLeft[0]).toBeGreaterThanOrEqual(goingIn.before);
-    // Intermediate positions: it glides rather than jumping.
     expect(new Set(goingIn.scrollLeft).size).toBeGreaterThan(2);
     expectMonotonic(goingIn.scrollLeft, 1);
-    // The content width (the thumb's size) grows along with it, in steps.
     expect(new Set(goingIn.scrollWidth).size).toBeGreaterThan(2);
     expectMonotonic(goingIn.scrollWidth, 1);
 
@@ -569,7 +544,6 @@ test.describe("output folder picker: motion", () => {
     expectMonotonic(goingOut.scrollLeft, -1);
     expect(new Set(goingOut.scrollWidth).size).toBeGreaterThan(2);
     expectMonotonic(goingOut.scrollWidth, -1);
-    // The column that closed plays its exit on a copy, which is then removed.
     expect(goingOut.ghostsDuring).toBe(1);
     await expect(picker.exitCopies).toHaveCount(0);
   });
@@ -580,7 +554,6 @@ test.describe("output folder picker: motion", () => {
     const { picker } = await openBlast(page);
     await openAtLaneA(picker);
     await expect.poll(async () => picker.scrollLeft()).toBeGreaterThan(0);
-    // Let the glide to Lane A end first, or its last frame moves the strip back.
     await picker.settled();
     await picker.strip.evaluate((strip) => {
       strip.scrollLeft = 10;
@@ -605,13 +578,11 @@ test.describe("output folder picker: motion", () => {
 
     const trace = await picker.pressAndTrace("ArrowRight");
 
-    // Already at its final place once committed, and never in between.
     expect(new Set(trace.scrollLeft).size).toBe(1);
     expect(trace.scrollLeft[0]).toBeGreaterThan(trace.before);
     expect(trace.ghostsDuring).toBe(0);
-    // The reduced-motion rule in globals.css cuts CSS animations to 0.01ms,
-    // and WebKit lists one as running until it next draws, so only longer
-    // animations (the columns' fades are 180ms) count.
+    // The reduced-motion rule cuts CSS animations to 0.01ms and WebKit lists one as
+    // running until it next draws, so only longer ones (the fades are 180ms) count.
     const running = await picker.dialog.evaluate(
       (dialog) =>
         dialog
@@ -659,8 +630,6 @@ test.describe("output folder picker: every service", () => {
           ...buildWorkspaceOverrides({ pathItems: workspaceTree() }),
           ...buildJobsOverrides(),
           ...journeyOverrides,
-          // Lookups a form makes on load (SARS-CoV-2's taxonomy query) get
-          // empty answers.
           ...emptyBackendFallbackOverrides,
         ],
       });

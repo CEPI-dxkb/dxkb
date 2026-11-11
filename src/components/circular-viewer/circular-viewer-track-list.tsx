@@ -15,20 +15,15 @@ import { formatUserFacingErrorMessage } from "@/lib/utils";
 import { TrackColorPicker } from "./track-color-picker";
 
 /**
- * A failed track's query, as the data hook hands it over. TanStack resets a
- * query with no data to `pending` when it refetches, so the hook keeps the
- * last error here while the retry runs (as `useRetryKeepingError` does for
- * one query) and only the retry's own answer replaces it.
+ * TanStack resets a query with no data to `pending` when it refetches, so the
+ * hook keeps the last error while the retry runs.
  */
 export interface TrackError {
-  /** The query's error, or the last one, kept while its retry is in flight. */
   error: Error;
-  /** That query's TanStack `isFetching`: the Retry reads "Retrying…" meanwhile. */
   isFetching: boolean;
   retry: () => void;
 }
 
-/** A track's answer beside its title: loading, nothing found, or cut at the feature limit. */
 function TrackStatus({ state }: { state: TrackData | undefined }) {
   if (state === undefined || state.status === "pending") {
     return (
@@ -57,11 +52,9 @@ export interface CircularViewerTrackListProps {
   data: ReadonlyMap<string, TrackData>;
   gcWindowSize: number | undefined;
   dispatch: Dispatch<TrackAction>;
-  /** Every failed track, by id, including one whose retry is in flight. */
   errors: ReadonlyMap<string, TrackError>;
 }
 
-/** Legacy `TrackController`'s "Available tracks" table. */
 export function CircularViewerTrackList({ tracks, data, gcWindowSize, dispatch, errors }: CircularViewerTrackListProps) {
   const id = useId();
   return (
@@ -77,8 +70,6 @@ export function CircularViewerTrackList({ tracks, data, gcWindowSize, dispatch, 
           const description = trackDescription(track, gcWindowSize);
           return (
             <li key={track.id} aria-label={track.title} className="py-0.5">
-              {/* One height for every row, with or without its show and remove buttons
-                  (24px targets, WCAG 2.5.8). */}
               <div className="flex h-7 items-center gap-2">
                 <div className="flex shrink-0 items-center gap-0.5">
                   <TrackColorPicker
@@ -105,8 +96,9 @@ export function CircularViewerTrackList({ tracks, data, gcWindowSize, dispatch, 
                   <span className="min-w-0 flex-1 truncate text-sm">{track.title}</span>
                 ) : (
                   <>
-                    {/* Focusable so the tooltip opens from the keyboard too; screen readers get the
-                        description once, through the hidden span, not from the portalled tooltip. */}
+                    {/* Focusable so the tooltip opens from the keyboard; screen
+                       readers get the description once, through the hidden
+                       span. */}
                     <Tooltip>
                       <TooltipTrigger
                         render={

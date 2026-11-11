@@ -5,26 +5,17 @@ import type React from "react";
 
 export interface UseTableKeyboardNavigationOptions<T> {
   items: T[];
-  /** Return the index of the currently focused item, or -1 if none. */
   getFocusedIndex: () => number;
-  /** Called when arrow keys move focus to an item. */
   onSelect: (
     item: T,
     modifiers: { ctrlOrMeta: boolean; shift: boolean },
   ) => void;
-  /** Called when Enter is pressed on a focused item. */
   onEnter: (item: T) => void;
-  /** Whether keyboard navigation is active. Defaults to true. */
   enabled?: boolean;
-  /** Number of special leading rows before data items (e.g. "View shared" row). */
   leadingOffset?: number;
-  /** Number of special parent rows before data items (e.g. "Parent folder" row). */
   parentOffset?: number;
-  /** Called when Enter is pressed on the leading special row. */
   onLeadingEnter?: () => void;
-  /** Called when Enter is pressed on the parent special row. */
   onParentEnter?: () => void;
-  /** Called when focus moves to a special row (clears item selection). */
   onClearSelection?: () => void;
 }
 
@@ -46,7 +37,6 @@ export function useTableKeyboardNavigation<T>({
 
   const hasSpecialRows = leadingOffset > 0 || parentOffset > 0;
 
-  // Special-row focus is only relevant when no item is focused
   const focusedSpecialRow =
     hasSpecialRows && getFocusedIndex() < 0 ? rawFocusedSpecialRow : null;
 
@@ -107,7 +97,6 @@ export function useTableKeyboardNavigation<T>({
       nextVirtual = currentVirtual <= 0 ? 0 : currentVirtual - 1;
     }
 
-    // Check if landing on a special row
     if (hasSpecialRows) {
       if (nextVirtual < leadingOffset) {
         setFocusedSpecialRow("leading");

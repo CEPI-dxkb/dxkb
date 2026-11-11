@@ -15,20 +15,9 @@ import {
 } from "@/hooks/services/use-service-form-submission";
 
 /**
- * The page's last failed job submission, shown by the Submit row so the
- * reason stays on screen after the toast has gone. Render it right before the
- * form's `service-form-controls` row with the page's `form`; it reads the
- * submission from the mutation cache (`useServiceFormSubmission` tags it).
- *
- * The mutation cache outlives navigation, so only submissions started since
- * this component mounted count: a failure on another form, or on an earlier
- * visit to this one, never shows. A new submit clears it (its mutation is
- * pending, then succeeds or replaces the error).
- *
- * Reset clears it too: `form.reset()` sets the form's `submissionAttempts`
- * back to 0, and from then on only later submissions count. Hiding it while
- * the count is 0 would not do: a Submit that validation stops counts an
- * attempt without sending a job, and the old failure would come back.
+ * The page's last failed submission, so the reason stays after the toast goes.
+ * Only submissions started since mount count, because the mutation cache
+ * outlives navigation.
  */
 export function ServiceSubmitError({ form }: { form: AnyFormApi }) {
   const [mountedAt] = useState(() => Date.now());
@@ -53,7 +42,9 @@ export function ServiceSubmitError({ form }: { form: AnyFormApi }) {
       undefined,
     );
 
-  // Back to 0 attempts means Reset: drop every submission seen so far.
+  // Reset sets `submissionAttempts` to 0; hiding on 0 would not do, since a
+  // Submit stopped by validation counts an attempt and the old failure would
+  // return.
   if (tracked.attempts !== attempts) {
     setTracked({
       attempts,
@@ -71,8 +62,6 @@ export function ServiceSubmitError({ form }: { form: AnyFormApi }) {
   );
 
   return (
-    // col-span-full: some forms are grids, and the alert spans the row the
-    // Submit buttons sit in; outside a grid it has no effect.
     <Alert variant="destructive" className="col-span-full">
       <CircleAlert aria-hidden="true" />
       <AlertTitle>{title}</AlertTitle>

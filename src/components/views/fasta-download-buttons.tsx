@@ -13,18 +13,10 @@ import {
 interface FastaDownloadButtonsProps<Resource extends FastaResource> {
   resource: Resource;
   ids: readonly string[];
-  /** One button per type, in this order. Nothing renders for an empty list. */
   types: readonly FastaTypeFor<Resource>[];
-  /** File name without extension; see `FastaDownloadRequest`. */
   fileNameBase: string;
 }
 
-/**
- * "DNA FASTA" / "Protein FASTA" download buttons for a fixed set of records,
- * sized for an `EntityViewShell` header's `metadataActions`. A selection-driven
- * control (the action bar's FASTA entry) calls `useFastaDownload()` directly
- * instead of rendering these.
- */
 export function FastaDownloadButtons<Resource extends FastaResource>({
   resource,
   ids,

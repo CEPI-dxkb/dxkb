@@ -96,8 +96,8 @@ describe("ServerDataRepository upstream failures", () => {
   });
 
   it("gives feature reads their longer budget", async () => {
-    // A large taxon's Features tab joins every genome through genome(...):
-    // Influenza A's 1.6M genomes took 109–125 s upstream.
+    // A large taxon's Features tab joins every genome through genome(...);
+    // Influenza A's 1.6M genomes took 109-125 s upstream.
     const timeoutSpy = vi.spyOn(AbortSignal, "timeout");
     shortenTimeouts();
     server.use(http.get("https://data.test/genome_feature/", neverRespond));

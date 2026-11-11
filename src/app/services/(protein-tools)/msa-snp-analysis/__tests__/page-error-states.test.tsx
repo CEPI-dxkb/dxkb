@@ -97,9 +97,6 @@ vi.mock("@/components/services/service-output-fields", () => ({
   ),
 }));
 
-// The selector as a read-only box showing the `value` and error state the
-// page gives it, with buttons that pick an object or clear the pick. A FASTA
-// picker's "A" is a DNA file and its "B" a protein one.
 vi.mock("@/components/workspace/workspace-object-selector", () => {
   const fastaTypes: Partial<Record<string, string[]>> = {
     featureFasta: ["feature_dna_fasta", "feature_protein_fasta"],
@@ -155,7 +152,6 @@ vi.mock("@/components/workspace/workspace-object-selector", () => {
   };
 });
 
-/** File contents the preview route serves, by workspace path. */
 let fastaFiles: Partial<Record<string, string>> = {};
 
 function serveFastaFiles() {
@@ -181,10 +177,6 @@ const selection = (preset: string) =>
 const pickButton = (preset: string, name: string) =>
   screen.getByRole("button", { name: `Pick ${preset} ${name}` });
 
-/**
- * The card shows an error's summary; its info button opens the full text.
- * Returns that text.
- */
 async function errorDetails(
   user: ReturnType<typeof userEvent.setup>,
   summary: string,
@@ -248,7 +240,6 @@ describe("MSA & SNP page error states", () => {
     });
     await user.click(pickButton("genomeGroup", "B"));
 
-    // The card keeps the summary; the full findings are one click away.
     expect(await errorDetails(user, "Genome group validation failed")).toMatch(
       /Invalid Superkingdom: only virus genomes/,
     );
@@ -256,7 +247,6 @@ describe("MSA & SNP page error states", () => {
     expect(selection("genomeGroup")).toHaveValue("/groups/genomeGroup/B");
     expect(selection("genomeGroup")).toHaveAttribute("aria-invalid", "true");
 
-    // The form no longer holds group A, so there is nothing to submit.
     submit(container);
     await waitFor(() => {
       expect(screen.getByRole("button", { name: "Submit" })).toBeDisabled();
@@ -281,7 +271,6 @@ describe("MSA & SNP page error states", () => {
     await user.click(radio("Genome ID"));
 
     await user.click(pickButton("genomeGroup", "B"));
-    // Under the selector, and as the disabled Genome ID's placeholder.
     expect(screen.getAllByText("Validating genome group...")).toHaveLength(2);
     expect(screen.getByRole("button", { name: "Submit" })).toBeDisabled();
     expect(
@@ -366,7 +355,6 @@ describe("MSA & SNP page error states", () => {
     await user.click(pickButton("featureGroup", "A"));
     await user.click(radio("Feature ID"));
 
-    // The toast carries the error until it is closed.
     expect(toastError).toHaveBeenCalledWith(
       "Failed to load features",
       expect.objectContaining({
@@ -428,7 +416,6 @@ describe("MSA & SNP page error states", () => {
       "true",
     );
 
-    // The conditional "required" errors need the base object to parse.
     await fillOutput(user);
     submit(container);
     expect(await screen.findByText("Feature group is required")).toBeVisible();
@@ -455,7 +442,6 @@ describe("MSA & SNP page FASTA file checks", () => {
   }
 
   it("submits a file that passes, typed by its workspace type", async () => {
-    // "B" is a protein file whatever its path says.
     const user = userEvent.setup();
     const { container } = render(<MSAandSNPAnalysisPage />, { wrapper: createQueryClientWrapper() });
     await fillOutput(user);
@@ -552,8 +538,6 @@ describe("MSA & SNP page FASTA file checks", () => {
     await pickFastaFile(user, "A");
     await screen.findByText("Invalid FASTA file");
 
-    // The aligned selector opens empty and unvalidated (a swapped-in field
-    // does not open on "required"), and Submit waits for its file.
     await user.click(radio("Aligned Sequences"));
     expect(selection("alignedFasta")).toHaveValue("");
     expect(selection("alignedFasta")).not.toHaveAttribute("aria-invalid");

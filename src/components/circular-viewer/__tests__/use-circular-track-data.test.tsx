@@ -41,7 +41,6 @@ describe("useRetriesKeepingErrors", () => {
     act(() => {
       result.current.get("a")?.retry();
     });
-    // TanStack resets a no-data query to pending, error cleared, while it refetches.
     rerender([{ key: "a", error: null, isFetching: true, refetch }, other]);
     expect(result.current.get("a")).toMatchObject({ error: down, isFetching: true });
     expect(result.current.get("b")).toMatchObject({ error: down, isFetching: false });
@@ -60,7 +59,6 @@ describe("useRetriesKeepingErrors", () => {
     rerender([{ key: "a", error: null, isFetching: true, refetch }]);
     rerender([{ key: "a", error: again, isFetching: false, refetch }]);
     expect(result.current.get("a")).toMatchObject({ error: again, isFetching: false });
-    // The kept error is gone: a later refetch without one does not bring it back.
     rerender([{ key: "a", error: null, isFetching: true, refetch }]);
     expect(result.current.has("a")).toBe(false);
   });

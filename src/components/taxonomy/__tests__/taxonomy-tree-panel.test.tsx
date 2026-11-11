@@ -14,10 +14,8 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: mockPush }),
 }));
 
-// Replace the real tree (virtualizer + TanStack Query + facet fetches) with a
-// stub that exposes buttons to drive onSelect, plus expansion and filter state of
-// its own. This test covers the panel's action wiring and the workspace's treatment
-// of the tree's mount, not the tree.
+// Replace the real tree with a stub exposing buttons to drive onSelect, plus its own
+// expansion and filter state, so this test covers the panel's wiring, not the tree.
 vi.mock("../taxonomy-tree", () => ({
   TaxonomyTree: ({
     rootTaxa,
@@ -27,8 +25,7 @@ vi.mock("../taxonomy-tree", () => ({
     onSelect?: (rows: TaxonRecord[]) => void;
   }) => {
     treePropsSpy(rootTaxa);
-    // The real tree keeps expanded node ids and its keyword filter in its own
-    // instance, so only the tree's own mount can carry them across a resize.
+    // The real tree keeps expanded ids and its filter in its own instance, so only its mount can carry them across a resize.
     const [expanded, setExpanded] = useState<string[]>([]);
     const [filter, setFilter] = useState("");
     return (
@@ -85,7 +82,6 @@ vi.mock("../taxonomy-tree", () => ({
 import { TaxonomyTreePanel } from "../taxonomy-tree-panel";
 
 beforeAll(() => {
-  // ResourceWorkspace's resizable panels need ResizeObserver, absent in jsdom.
   globalThis.ResizeObserver = class {
     observe = () => undefined;
     unobserve = () => undefined;
@@ -147,7 +143,6 @@ describe("TaxonomyTreePanel", () => {
     const services = screen.getByRole("button", { name: /services/i });
     expect(services).toBeDisabled();
 
-    // The tooltip trigger is the wrapper, since a disabled button gets no hover.
     await userEvent.hover(services.parentElement as HTMLElement);
     expect(
       await screen.findByText("No services available for this Taxon"),
@@ -202,12 +197,6 @@ function mockViewport(initiallyNarrow = false) {
   };
 }
 
-/**
- * The Taxa Tree tab is the `ResourceWorkspace` consumer where a slot remount is most
- * visible: the tree owns its expanded nodes, its keyword filter and the user's focus,
- * and none of that is recoverable from above. This suite uses the real workspace and
- * the real `react-resizable-panels`, so it sees the actual DOM the two layouts produce.
- */
 describe("TaxonomyTreePanel across the workspace breakpoint", () => {
   it.each([
     { name: "narrow first", start: true, then: false },
@@ -218,7 +207,6 @@ describe("TaxonomyTreePanel across the workspace breakpoint", () => {
       const viewport = mockViewport(start);
       const { container } = render(<TaxonomyTreePanel taxa={[taxon]} phylogenyTaxonIds={[]} />);
 
-      // A selection so the detail panel is mounted too.
       await userEvent.click(screen.getByRole("button", { name: "select-one" }));
       const expandNode = screen.getByRole("button", { name: "expand-node" });
       await userEvent.click(expandNode);
@@ -239,7 +227,6 @@ describe("TaxonomyTreePanel across the workspace breakpoint", () => {
           "node-1,node-2",
         );
         expect(screen.getByLabelText("tree filter")).toHaveValue("brucel");
-        // Same DOM node, still focused: the tree was re-styled, not re-created.
         expect(screen.getByRole("button", { name: "expand-node" })).toBe(
           expandNode,
         );
@@ -257,9 +244,8 @@ describe("TaxonomyTreePanel across the workspace breakpoint", () => {
       "data-layout",
       "stacked",
     );
-    // `hidden: true` deliberately: rendering both layouts and hiding one with CSS
-    // would trade the remount for duplicate interactive controls, which a
-    // visibility-filtered query cannot see.
+    // `hidden: true` deliberately: rendering both layouts and hiding one with CSS would
+    // trade the remount for duplicate interactive controls.
     for (const name of [
       /^(Hide|Show)$/,
       /services/i,
@@ -272,8 +258,6 @@ describe("TaxonomyTreePanel across the workspace breakpoint", () => {
     }
     expect(screen.getAllByLabelText("tree filter")).toHaveLength(1);
 
-    // One separator, taken out of the layout (and so out of the tab order) while
-    // there is nothing to drag.
     const separators = container.querySelectorAll("[role='separator']");
     expect(separators).toHaveLength(1);
     expect(separators[0].className).toContain("max-md:hidden");

@@ -8,10 +8,6 @@ interface WorkspaceUsernamePageProps {
   params: Promise<{ username: string }>;
 }
 
-/**
- * /workspace/[username] -> shared workspaces root (all folders: yours + shared with you).
- * Data is fetched on the client so requests appear in the browser Network tab.
- */
 export default async function WorkspaceUsernamePage({ params }: WorkspaceUsernamePageProps) {
   await requireCurrentUserOrRedirect("/workspace");
   const resolved = await params;

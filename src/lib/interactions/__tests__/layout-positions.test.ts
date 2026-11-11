@@ -22,8 +22,6 @@ function edge(id: string, source: string, target: string): GEdge {
   };
 }
 
-// A hub with three spokes, a directed chain and a disconnected pair: enough
-// structure for degree rings (concentric), ranks (dagre) and components.
 const nodes = ["hub", "a", "b", "c", "d", "e", "pair-1", "pair-2"].map(node);
 const edges = [
   edge("hub-a", "hub", "a"),
@@ -31,12 +29,10 @@ const edges = [
   edge("hub-c", "hub", "c"),
   edge("c-d", "c", "d"),
   edge("d-e", "d", "e"),
-  // A repeated pair: graphology keeps both in a multi graph.
   edge("d-e-again", "d", "e"),
   edge("pair", "pair-1", "pair-2"),
 ];
 
-/** The graph `buildGraph` in sigma-canvas.tsx builds, before its layout runs. */
 function graphLikeBuildGraph(graphNodes: GNode[], graphEdges: GEdge[]) {
   const g = new Graph({ multi: true });
   for (const n of graphNodes) {
@@ -117,8 +113,6 @@ describe("computeLayoutPositions", () => {
       buildLayoutRequest([...nodes].reverse(), [], "grid"),
     );
 
-    // Grid places nodes row by row in insertion order: index 0 sits at the
-    // origin whichever node it is, and the cells follow the list.
     expect(Array.from(forward.subarray(0, 6))).toEqual([0, 0, 1, 0, 2, 0]);
     expect(Array.from(reversed)).toEqual(Array.from(forward));
   });
@@ -132,7 +126,6 @@ describe("computeLayoutPositions", () => {
       buildLayoutRequest(chain, [edge("z-y", "z", "y"), edge("y-x", "y", "x")], "dagre"),
     );
 
-    // The root (in-degree 0) takes the top rank: x in one, z in the other.
     expect(down[1]).toBeLessThan(down[5]);
     expect(up[5]).toBeLessThan(up[1]);
   });

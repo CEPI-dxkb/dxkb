@@ -35,7 +35,6 @@ vi.mock("@/components/workspace/workspace-object-selector", () => ({
   WorkspaceObjectSelector: () => null,
 }));
 
-/** The bordered box that holds the scheme checkboxes. */
 function schemeBox() {
   return screen.getByRole("checkbox", { name: "H3" }).closest("div.grid");
 }

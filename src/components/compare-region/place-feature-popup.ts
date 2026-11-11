@@ -1,10 +1,6 @@
 /**
- * Places a gene's popup (the hover tooltip or the pinned card) beside its
- * glyph as it is drawn now, after a hover, a zoom, a pan, a scroll or a
- * density switch, or hides it while the gene is out of view. Written to the
- * element (custom properties `--popup-x`, `--popup-y`, `--popup-max-h` and
- * `--popup-max-w`, and `data-offscreen`), not through React, so following
- * the gene re-renders nothing. The rules are `feature-popup.ts`'s and `popup-placement.ts`'s.
+ * Written to the element (custom properties and `data-offscreen`), not through
+ * React, so following the gene re-renders nothing.
  */
 import { rulerHeight } from "@/lib/compare-region/density";
 import type { FeatureRef } from "@/lib/compare-region/families";
@@ -21,22 +17,13 @@ import {
 
 interface PlaceFeaturePopupOptions {
   popup: HTMLElement | null;
-  /** The chart's root (position: relative), which the popup is placed in. */
   root: HTMLElement | null;
-  /** The figure's scroller, which holds the glyphs. */
   scroller: HTMLElement | null;
-  /** The gene the popup is about. */
   at: FeatureRef | null | undefined;
-  /** The sticky label column's width: the plot is in view right of it. */
   labelWidth: number;
 }
 
-/**
- * The height the popup needs on its side: all of it, or for one with a part
- * marked `data-popup-scroller` (the expanded card's details) a fair room,
- * which that part then scrolls in. Measured past any height limit already
- * set, so placing it again decides the same.
- */
+/** Measured past any height limit already set, so placing it again decides the same. */
 function neededHeight(popup: HTMLElement): number {
   const scrolling = popup.querySelector<HTMLElement>("[data-popup-scroller]");
   if (!scrolling) return Math.max(popup.offsetHeight, popup.scrollHeight);
@@ -57,7 +44,7 @@ export function placeFeaturePopupElement({
     `[data-row="${String(at.rowIndex)}"][data-feature="${String(at.featureIndex)}"]`,
   );
   const rootBox = root.getBoundingClientRect();
-  // The width first: it sets the popup's height, and its size is measured below.
+  // The width first: it sets the popup's height.
   popup.style.setProperty(
     "--popup-max-w",
     `${String(popupMaxWidth(rootBox.width))}px`,
@@ -86,9 +73,7 @@ export function placeFeaturePopupElement({
     popup.setAttribute("data-offscreen", "");
     return;
   }
-  // From the figure's top down: the command bar and the strip stay in reach.
   const bounds = { width: rootBox.width, top, bottom: rootBox.height };
-  // The height first: the room on its side limits the card's.
   const { below, room } = popupSide(
     glyph,
     bounds,

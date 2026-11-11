@@ -4,20 +4,12 @@ import ts from "typescript";
 
 const srcDir = resolve(__dirname, "..");
 
-/** A specifier as its `@/` path, so a relative import is caught like an alias one. */
 export function aliasPath(specifier: string, fromDir: string): string {
   if (!specifier.startsWith(".")) return specifier;
   return `@/${relative(srcDir, resolve(fromDir, specifier)).split("\\").join("/")}`;
 }
 
-/**
- * Specifiers of the value imports (not type-only ones) in `source`, which lives
- * in `fromDir`, whose `@/` path matches `target`. Returned as written. Covers
- * every top-level `import` and `export … from`; the TypeScript parser, not a
- * regex, so comments and strings cannot hide or fake a specifier. A
- * declaration TypeScript drops (`import type`, or braces whose every
- * specifier is an inline `type` one) adds nothing to the runtime graph.
- */
+/** Value-import specifiers in `source` whose `@/` path matches `target`, via the TypeScript parser; type-only imports are skipped. */
 export function valueImportsMatching(
   source: string,
   fromDir: string,

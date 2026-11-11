@@ -3,10 +3,6 @@ import { LandingNavSkeleton } from "@/components/organisms/landing-shell/landing
 import { MetadataDistributionsSkeleton } from "@/components/organisms/metadata-distributions/metadata-distributions-skeleton";
 import { Skeleton } from "@/components/ui/skeleton";
 
-// A taxon page renders OrganismLandingShell, not the list's table, so it gets
-// the landing's geometry (nav rail on lg+, header card, overview) instead of
-// inheriting the taxonomy list's loading state. Mirrors
-// src/app/organisms/loading.tsx.
 export default function TaxonLoading() {
   return (
     <div

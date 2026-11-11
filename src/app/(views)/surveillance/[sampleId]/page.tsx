@@ -60,7 +60,6 @@ export default async function SurveillancePage({
     },
   );
   if ("unavailable" in loaded) {
-    // An outage is rendered, not thrown: production would redact its message.
     return (
       <RecordUnavailable
         viewLabel="Surveillance View"

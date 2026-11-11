@@ -44,8 +44,6 @@ export function ResultsSection({
         </ServiceCardHeader>
         <ServiceCardContent>
           {searchError ? (
-            // A failed search is not "no similar genomes": say why, and
-            // offer the same search again.
             <Alert variant="destructive">
               <CircleAlert aria-hidden="true" />
               <AlertTitle>Search failed</AlertTitle>

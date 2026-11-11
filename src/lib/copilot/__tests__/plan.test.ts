@@ -194,7 +194,6 @@ describe("copilotPlanObject", () => {
         step_id: "step_2",
         description: "Annotate all",
         reasoning: "second",
-        // step_1 was deleted: nothing waits for it.
         depends_on: [],
       }),
       expect.objectContaining({

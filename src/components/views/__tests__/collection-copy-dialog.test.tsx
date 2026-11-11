@@ -119,7 +119,6 @@ describe("CollectionCopyDialog", () => {
     rerender(<CollectionCopyDialog open={false} {...props} />);
     rerender(<CollectionCopyDialog open {...props} />);
 
-    // The reopened session is idle, not stuck in the previous "Copying..." state.
     expect(
       screen.getByRole("button", { name: "All Columns (with headers)" }),
     ).toBeEnabled();

@@ -40,7 +40,6 @@ const formSchema = z.object({
 
 function SigninForm() {
   const [error, setError] = useState("");
-  // Keys the error alert, so every failed attempt brings it into view again.
   const [attempt, setAttempt] = useState(0);
   const [showPassword, setShowPassword] = useState(false);
   const { signIn } = useAuthActions();
@@ -83,11 +82,7 @@ function SigninForm() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {/*
-            noValidate: the zod schema reports every empty field inline. A
-            native `required` bubble would block the submit first and show
-            a second, different message for one field only.
-          */}
+          {/* zod reports empty fields inline, so native `required` bubbles stay off */}
           <form
             noValidate
             onSubmit={(e) => {

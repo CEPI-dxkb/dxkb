@@ -1,15 +1,5 @@
 "use client";
 
-/**
- * The feature card: a click on a gene pins its hover tooltip where it stands
- * (just below and right of the gene) and expands it with the gene's record,
- * the details BV-BRC's Compare Region Viewer shows in its Feature Summary.
- * The record is the detail panel's `genome_feature` sections (Genome,
- * Source, Identifiers, Location, …), read through `/api/data`, with the
- * gene's FASTA downloads and page. Collapse leaves the tooltip's lines;
- * Close (or Escape) clears the pin, and with it the card. The chart moves it
- * with the gene (`placeFeaturePopupElement`).
- */
 import { useQuery } from "@tanstack/react-query";
 import { ArrowUpRight, ChevronDown, ChevronUp, X } from "lucide-react";
 import Link from "next/link";
@@ -55,11 +45,6 @@ interface FeatureDetailsProps {
   id: string;
 }
 
-/**
- * The gene's record (or the comparison's stand-in), with its state, FASTA
- * downloads and page (the strip carries "Compare regions"). Mounted only
- * while expanded.
- */
 function FeatureDetails({ chosen, id }: FeatureDetailsProps) {
   const { feature, row } = chosen;
   const linkable = isCompareRegionLinkable(feature.fid);
@@ -69,8 +54,7 @@ function FeatureDetails({ chosen, id }: FeatureDetailsProps) {
       idField: "patric_id",
     }),
     enabled: linkable,
-    // A record changes rarely: collapsing and expanding again, or pinning the
-    // gene again, shows it without another read.
+    // A record changes rarely, so collapsing and expanding again shows it without another read.
     staleTime: 5 * 60_000,
   });
   const retry = useRetryKeepingError(query, feature.fid);
@@ -121,7 +105,6 @@ function FeatureDetails({ chosen, id }: FeatureDetailsProps) {
   return (
     <div id={id} className="mt-3 flex min-h-0 flex-1 flex-col gap-2">
       {notice}
-      {/* Scrolls within the card's height (`--popup-max-h`, the room on its side). */}
       <div
         data-popup-scroller=""
         className="scrollbar-themed -mx-3 min-h-0 flex-1 overflow-y-auto border-y"
@@ -131,9 +114,8 @@ function FeatureDetails({ chosen, id }: FeatureDetailsProps) {
           activeTab="genome_feature"
           selectedIds={[feature.fid]}
           selectedRow={found ?? featureStandIn(feature, row)}
-          // The card's first line already names the gene.
           hideHeader
-          // The comparison's few fields leave most sections empty: that says
+          // The comparison's few fields leave most sections empty, which says
           // nothing about the record, so those sections are left out.
           hideEmptySections={!found}
         />
@@ -198,16 +180,13 @@ function CardButton({
 
 interface FeatureCardProps {
   model: ChartModel;
-  /** The pinned gene. */
   at: FeatureRef;
   expanded: boolean;
   onExpandedChange: (expanded: boolean) => void;
   onClose: () => void;
-  /** The chart's, to place the card: it starts hidden (`data-offscreen`) until placed. */
   ref: Ref<HTMLDivElement>;
 }
 
-/** The pinned gene's card, absolutely placed in the chart's root. */
 export function FeatureCard({
   model,
   at,

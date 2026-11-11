@@ -139,7 +139,6 @@ describe("useServiceFormSubmission", () => {
   });
 
   it.each([
-    // A 504 toast stays until dismissed, so it must not hold a page of text.
     { status: 504, title: "The job service did not respond", duration: Infinity },
     { status: 500, title: "Submission failed", duration: undefined },
   ])(

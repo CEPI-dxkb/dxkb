@@ -2,13 +2,7 @@ import { readSession } from "@/lib/auth/server/session";
 import { fetchTaxonGenomeCount } from "@/lib/services/organisms/genome-count";
 import { numberFormatter } from "@/lib/services/organisms/utils";
 
-/**
- * The "(N Genomes)" after the Taxonomy page's heading, streamed so a slow
- * genome count never holds the page. Signed in, it counts the user's private
- * genomes too, as legacy's header and the Genomes tab do. A failed count is
- * left out rather than replaced by the taxonomy record's figure, which counts
- * Deprecated genomes; the overview and the Genomes tab report the outage.
- */
+/** The "(N Genomes)" after the Taxonomy heading, streamed so a slow count never holds the page. A failed count is omitted rather than replaced by the taxonomy record's figure, which counts Deprecated genomes. */
 export async function TaxonGenomeCount({ taxonId }: { taxonId: number }) {
   const session = await readSession();
   const count = await fetchTaxonGenomeCount(taxonId, {

@@ -1,7 +1,6 @@
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
 
-// Make framer-motion's animate call onUpdate(1) and onComplete immediately so
-// animation-driven arc paths are fully rendered in synchronous tests.
+// Make framer-motion call onUpdate(1) and onComplete immediately so arcs render synchronously.
 vi.mock("framer-motion", () => ({
   animate: vi.fn(
     (
@@ -23,14 +22,11 @@ import { animate } from "framer-motion";
 
 import { DonutChart } from "../donut-chart";
 
-// Constants mirrored from the component for hit-test coordinate calculations
 const chartSize = 160;
 const chartCenter = chartSize / 2;
 const outerRadius = 66;
 const popDistance = 8;
 
-// Make requestAnimationFrame synchronous so animation useEffect completes
-// immediately on render.
 beforeEach(() => {
   vi.spyOn(window, "requestAnimationFrame").mockImplementation(
     (cb: FrameRequestCallback) => {
@@ -70,7 +66,6 @@ describe("DonutChart", () => {
       screen.getByRole("img", { name: "Genus distribution" }),
     ).toBeInTheDocument();
     expect(screen.getByText("Others")).toBeInTheDocument();
-    // A–I are shown individually; J(2)+K(1)=3 collapse into Others
     expect(
       within(screen.getByRole("img")).getByLabelText("Others: 3"),
     ).toBeInTheDocument();
@@ -96,8 +91,6 @@ describe("DonutChart", () => {
       />,
     );
 
-    // "Others" is one of the top 9 shown items; the aggregate bucket for the
-    // remaining items must pick the fallback label "Other values" to avoid collision.
     expect(screen.getByText("Others")).toBeInTheDocument();
     expect(screen.getByText("Other values")).toBeInTheDocument();
   });
@@ -121,7 +114,6 @@ describe("DonutChart", () => {
       toJSON: () => ({}),
     });
 
-    // clientX=80,clientY=25 → svgX=0, svgY=-55 → dist=55 (inside ring: 38<55<66)
     fireEvent.mouseMove(screen.getByTestId("chart-overlay"), {
       clientX: chartCenter,
       clientY: chartCenter - outerRadius + 17,
@@ -155,19 +147,16 @@ describe("DonutChart", () => {
 
     const overlay = screen.getByTestId("chart-overlay");
 
-    // First hover the ring to show tooltip
     fireEvent.mouseMove(overlay, {
       clientX: chartCenter,
       clientY: chartCenter - outerRadius + 17,
     });
     expect(screen.getByRole("status")).toBeInTheDocument();
 
-    // Then move into the inner hole — clientX=80, clientY=80 → dist=0 < innerRadius
     fireEvent.mouseMove(overlay, {
       clientX: chartCenter,
       clientY: chartCenter,
     });
-    // deactivate() schedules a 40ms timer — advance past it
     act(() => {
       vi.advanceTimersByTime(50);
     });
@@ -234,13 +223,9 @@ describe("DonutChart", () => {
     const path = document.querySelector("path");
     expect(path).not.toBeNull();
     const d = path?.getAttribute("d") ?? "";
-    // Old behavior was a "M outerR 0 A ... M outerR 0 A ..." degenerate arc
-    // (start == end). The full-circle fix emits two semicircle arcs for both
-    // the outer and inner circle — at least 4 arc commands plus the outer
-    // -outerR landing point.
     const arcCount = (d.match(/ A /g) ?? []).length;
     expect(arcCount).toBeGreaterThanOrEqual(4);
-    expect(d).toMatch(/-66\s+0/); // outer semicircle landing at (-outerR, 0)
+    expect(d).toMatch(/-66\s+0/);
   });
 
   it("legend pill mouse enter activates the slice highlight", () => {
@@ -280,7 +265,6 @@ describe("DonutChart", () => {
     expect(pill).toHaveAttribute("data-active", "true");
 
     fireEvent.blur(pill);
-    // deactivate() uses a 40ms timer — highlight should still be present before it fires
     expect(pill).toHaveAttribute("data-active", "true");
 
     act(() => {
@@ -304,7 +288,6 @@ describe("DonutChart", () => {
 
     expect(screen.getByRole("button", { name: "Genus" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Species" })).toBeInTheDocument();
-    // First tab active by default — first tab's data is shown
     expect(
       within(screen.getByRole("img")).getByLabelText("Brucella: 100"),
     ).toBeInTheDocument();
@@ -321,15 +304,12 @@ describe("DonutChart", () => {
       />,
     );
 
-    // Initial: Genus data visible
     expect(
       within(screen.getByRole("img")).getByLabelText("Brucella: 100"),
     ).toBeInTheDocument();
 
-    // Click Species tab
     fireEvent.click(screen.getByRole("button", { name: "Species" }));
 
-    // Now: Species data visible
     expect(
       within(screen.getByRole("img")).getByLabelText("B. abortus: 50"),
     ).toBeInTheDocument();
@@ -443,12 +423,10 @@ describe("DonutChart", () => {
       />,
     );
 
-    // No tooltip before focus
     expect(screen.queryByRole("status")).not.toBeInTheDocument();
 
     fireEvent.focus(screen.getByRole("button", { name: /Alpha/ }));
 
-    // Tooltip should now be present with the slice's label, value, and percentage
     const tooltip = screen.getByRole("status");
     expect(tooltip).toHaveTextContent("Alpha");
     expect(tooltip).toHaveTextContent("75");
@@ -499,12 +477,8 @@ describe("DonutChart", () => {
       });
     }
 
-    // 12 o'clock, inside the ring: Human's slice, which starts at 9 o'clock
-    // and sweeps three quarters of the ring.
     const onHuman = { clientX: chartCenter, clientY: chartCenter - outerRadius + 17 };
 
-    // A point `degrees` clockwise from 12 o'clock, `radius` from the center
-    // (the default is inside the ring).
     const ringPoint = (degrees: number, radius = 52) => {
       const radians = (degrees * Math.PI) / 180;
       return {
@@ -513,8 +487,6 @@ describe("DonutChart", () => {
       };
     };
 
-    // Past the ring's outer edge, on the line through the middle of Human's
-    // slice (45°), where its rim lands once it pops out.
     const onHumanRim = ringPoint(45, outerRadius + popDistance / 2);
 
     beforeEach(() => {
@@ -565,8 +537,7 @@ describe("DonutChart", () => {
       render(<DonutChart title="Host" data={linked} />);
       mockSvgRect();
       const overlay = screen.getByTestId("chart-overlay");
-      // The overlay reaches the rim, so the pointer never leaves it for the
-      // popped path, which has no handlers of its own.
+      // The overlay reaches the rim, so the pointer never leaves it for the popped path.
       expect(overlay).toHaveAttribute("r", String(outerRadius + popDistance));
 
       fireEvent.mouseMove(overlay, onHuman);
@@ -589,12 +560,9 @@ describe("DonutChart", () => {
       mockSvgRect();
       const overlay = screen.getByTestId("chart-overlay");
 
-      // Nothing is popped out yet, so Human's rim is not drawn there.
       fireEvent.click(overlay, onHumanRim);
       expect(push).not.toHaveBeenCalled();
 
-      // With Human popped out, Bat (180°→270°) has nothing past the edge, and
-      // neither do Human's own far corners.
       fireEvent.mouseMove(overlay, onHuman);
       const offBat = ringPoint(225, outerRadius + popDistance / 2);
       const offHumanCorner = ringPoint(170, outerRadius + popDistance / 2);
@@ -637,31 +605,24 @@ describe("DonutChart", () => {
         return { stop: vi.fn() };
       }) as unknown as typeof animate);
 
-      // Human, Bat and Mouse sit at -90°→0°, 0°→90° and 90°→270°. Hiding Human
-      // retargets Bat to -90°→30° and Mouse to 30°→270°; halfway there, Bat is
-      // drawn at -45°→60°, Mouse at 60°→270°, and Human shrinks at -67.5°→-22.5°.
       fireEvent.click(screen.getByRole("button", { name: "Human: 10" }));
       act(() => {
         held.update?.(0.5);
       });
 
-      // 45° is drawn as Bat, though it ends up Mouse's.
       fireEvent.mouseMove(overlay, ringPoint(45));
       expect(screen.getByRole("status")).toHaveTextContent("Bat: 10");
       fireEvent.click(overlay, ringPoint(45));
       expect(push).toHaveBeenCalledExactlyOnceWith("/genomes?host=Bat");
 
-      // 75° was Bat's in the first frame and is Mouse's now.
       push.mockClear();
       fireEvent.click(overlay, ringPoint(75));
       expect(push).toHaveBeenCalledExactlyOnceWith("/genomes?host=Mouse");
 
-      // At -30° the hidden Human is painted over Bat, which takes the click.
       push.mockClear();
       fireEvent.click(overlay, ringPoint(-30));
       expect(push).toHaveBeenCalledExactlyOnceWith("/genomes?host=Bat");
 
-      // -60° shows only the hidden Human, though it ends up Bat's.
       push.mockClear();
       fireEvent.click(overlay, ringPoint(-60));
       expect(push).not.toHaveBeenCalled();

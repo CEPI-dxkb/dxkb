@@ -11,10 +11,8 @@ import {
 } from "@/components/ui/dialog";
 
 /**
- * A field's error as one short line, with an info button that opens its full
- * text, for an error too long to sit under the field (a rejected genome group
- * lists a finding per check). The error's toast carries the full text too and
- * stays until it is closed, so the card shows only the summary.
+ * A field's error as one short line with an info button that opens its full
+ * text, for errors too long to sit under the field.
  */
 export function FieldErrorDetails({
   summary,

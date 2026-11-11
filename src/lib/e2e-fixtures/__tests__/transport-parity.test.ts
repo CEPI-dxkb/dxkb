@@ -3,13 +3,7 @@ import {
   mockNextRequest,
 } from "@/test-helpers/api-route-helpers";
 import { GET } from "@/app/api/e2e-mock/[...path]/route";
-// `catchall.ts` only imports `JsonOverride` from `e2e/mocks/backends.ts` as a
-// TYPE (`import type`), which esbuild/Vite elide entirely at compile time —
-// no `@playwright/test` runtime import is pulled into this Vitest module.
-// (`e2e/mocks/backends.ts` DOES value-import `@playwright/test` itself, so
-// this type-only import is load-bearing, not incidental.) This lets us read
-// the REAL browser-side override bundles, not just the shared records both
-// layers happen to import.
+// `catchall.ts` imports `JsonOverride` from `e2e/mocks/backends.ts` as a type only; a value import would pull `@playwright/test` into this Vitest module.
 import {
   epitopeScenarioOverrides,
   experimentScenarioOverrides,
@@ -32,39 +26,7 @@ import {
   taxonomyRecord,
 } from "../records";
 
-/**
- * Regression guard for the exact defect this module fixes: the browser-side
- * mock (e2e/fixtures/overrides/catchall.ts) and the server-side loopback mock
- * (src/app/api/e2e-mock/[...path]/route.ts, via the real GET handler) must
- * serve the SAME record content for a given resource, even though their
- * envelopes differ by transport.
- *
- * Before the shared `records.ts` module existed, epitope `host_name` was an
- * array in the browser layer and a bare string in the server layer — the two
- * layers rendered the same page differently depending on which fetch (SSR vs.
- * client refetch) supplied the data.
- *
- * **Exact coverage** (be precise here — an inaccurate broad claim is worse
- * than a narrow true one). For each of the 7 resources below, this test
- * diffs the server's real `route.ts` GET/loopback response against every
- * STATIC `JsonOverride` body in the matching `catchall.ts` bundle that also
- * carries row/doc data:
- *   - the gateway GET entry (`/api/data/<resource>`) — all 7 resources
- *   - the gateway POST entry (`/api/data/<resource>`) — all except `genome`,
- *     whose POST body is a dynamic function (`genomeDataResponse`, branching
- *     on `parsedBody.operation`) rather than a static literal, so there is
- *     nothing to statically diff there
- *   - the e2e-mock loopback GET entry (`/api/e2e-mock/data/<resource>/`) —
- *     only `experiment`, `surveillance`, and `serology` carry one with real
- *     data; `epitope`, `genome`, and `protein_structure` have no loopback
- *     entry in their bundle, and `taxonomy`'s loopback entry is deliberately
- *     empty by design (see its comment in catchall.ts) so there is nothing to
- *     diff there either
- *
- * A future edit that re-inlines a diverging literal into any of the covered
- * call sites — not just a change to `records.ts` — fails loudly here instead
- * of drifting silently again.
- */
+/** Guards against the browser-side mock (`catchall.ts`) and the server-side loopback (`route.ts`) serving different record content for a resource. It diffs every static `JsonOverride` body that carries rows: gateway GET for all 7 resources, gateway POST for all but `genome` (dynamic body), and loopback GET only for `experiment`, `surveillance` and `serology`. */
 
 function routeContext(path: string[]): { params: Promise<{ path: string[] }> } {
   return makeRouteContext({ path });
@@ -84,13 +46,7 @@ afterEach(() => {
   }
 });
 
-/**
- * Finds the browser-side gateway override (`/api/data/<resource>` — never the
- * `/api/e2e-mock/data/<resource>` loopback-direct variant some bundles also
- * carry) for a given method, and returns its statically-defined body's rows.
- * `sampleUrl` must NOT contain "e2e-mock" so it doesn't accidentally match a
- * bundle's loopback-direct entry instead of its gateway entry.
- */
+/** Finds the browser-side gateway override (`/api/data/<resource>`) for a method and returns its static rows; `sampleUrl` must not contain "e2e-mock". */
 function gatewayRowsFromBundle(
   bundle: JsonOverride[],
   method: string,
@@ -119,12 +75,7 @@ function gatewayRowsFromBundle(
   return (body as { rows: unknown[] }).rows;
 }
 
-/**
- * Finds the browser-side e2e-mock loopback-direct override (`GET
- * /api/e2e-mock/data/<resource>/`) and returns its statically-defined body's
- * `response.docs`. `sampleUrl` MUST contain "e2e-mock" — the counterpart to
- * `gatewayRowsFromBundle`'s exclusion.
- */
+/** Finds the loopback-direct override and returns its static `response.docs`; `sampleUrl` must contain "e2e-mock". */
 function loopbackDocsFromBundle(
   bundle: JsonOverride[],
   sampleUrl: string,
@@ -273,10 +224,7 @@ describe("browser vs. server transport parity for shared canonical records", () 
     const serverBody = (await resp.json()) as {
       response: { docs: unknown[] };
     };
-    // The browser-side gateway override always returns just the primary
-    // record (never the ambiguous ones) regardless of query — see
-    // e2e/fixtures/overrides/catchall.ts's surveillanceScenarioOverrides —
-    // but the loopback-direct entry returns all 3 rows unfiltered.
+    // The gateway override returns only the primary record regardless of query, but the loopback-direct entry returns all 3 rows.
     const browserGetRows = gatewayRowsFromBundle(
       surveillanceScenarioOverrides,
       "GET",
@@ -311,8 +259,6 @@ describe("browser vs. server transport parity for shared canonical records", () 
     const serverBody = (await resp.json()) as {
       response: { docs: unknown[] };
     };
-    // Same shape as surveillance above: the gateway entries return only the
-    // primary record; the loopback-direct entry returns all 3 rows.
     const browserGetRows = gatewayRowsFromBundle(
       serologyScenarioOverrides,
       "GET",

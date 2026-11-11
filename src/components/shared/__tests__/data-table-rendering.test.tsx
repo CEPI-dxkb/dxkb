@@ -33,8 +33,8 @@ Element.prototype.setPointerCapture = vi.fn();
 Element.prototype.releasePointerCapture = vi.fn();
 
 /**
- * Presses a resize handle with the primary pointer. jsdom defaults
- * `isPrimary` to false, which `followPointer` ignores.
+ * Presses a resize handle with the primary pointer (jsdom defaults `isPrimary`
+ * to false, which `followPointer` ignores).
  */
 function pressHandle(
   handle: HTMLElement,
@@ -579,10 +579,6 @@ describe("DataTable row selection checkboxes", () => {
   );
 });
 
-// Regression: "Showing 1-0 of N" appeared during page-data loading because end was
-// computed from data.length (= 0) even when isLoading=true. The fix uses the expected
-// page range (pageIndex * pageSize + pageSize) while loading, so the display is
-// meaningful from the moment totalItems resolves.
 describe("DataTable Showing display during loading", () => {
   it("renders the empty state inside the table body", () => {
     render(
@@ -737,7 +733,6 @@ describe("DataTable Showing display during loading", () => {
     expect(
       screen.queryByText(/Showing 201-203 of 5000 results/),
     ).not.toBeInTheDocument();
-    // The rows handed in are another page's; the skeleton stands in for them.
     expect(screen.queryByText("Previous Strain 0")).not.toBeInTheDocument();
   });
 
@@ -792,15 +787,12 @@ describe("DataTable Showing display during loading", () => {
         pageSize={200}
       />,
     );
-    // expected end: min(201 + 200 - 1, 210) = 210, not 400
     expect(
       screen.getByText(/Showing 201-210 of 210 results/),
     ).toBeInTheDocument();
   });
 });
 
-// Regression: array-valued fields (e.g. treatment_duration: [3,6,12,18]) rendered
-// as raw React children with no separator, reading as "361218" instead of "3, 6, 12, 18".
 describe("formatCellValue array handling", () => {
   it("joins array of numbers with comma-space", () => {
     expect(formatCellValue([3, 6, 12, 18])).toBe("3, 6, 12, 18");
@@ -886,14 +878,6 @@ describe("DataTable empty state", () => {
   });
 });
 
-// ─── Download Selected: capability gate ───────────────────────────────────────
-// Regression: DataTable used to fall back to an unsafe raw fetch to
-// NEXT_PUBLIC_DATA_API (with hand-built RQL, an unvalidated response envelope,
-// and comma-joined output even for .txt) whenever a caller wired selectedIds
-// without an onDownloadSelected handler. That fallback has been removed:
-// DataTable now requires a caller-supplied export path for selected rows and
-// hides the "Download Selected" buttons entirely when nothing can fulfil them,
-// rather than rendering a button whose click would silently no-op.
 describe("DataTable download selected: capability gate", () => {
   const dlColumns = [{ id: "value", label: "Value" }];
   const oneRow = [{ id: "aaaa-0001", value: "A" }];
@@ -969,17 +953,6 @@ describe("DataTable download selected: capability gate", () => {
   });
 });
 
-// ─── Download all: local fallback when onDownloadAll is not supplied ─────────
-// Unlike the selected-rows fallback removed above, DataTable's "download every
-// currently-loaded row" fallback is still a live, legitimate path: it never
-// touches the network (no fetch, safe or otherwise) — it just serializes the
-// table's own pre-paginated row model client-side via csvExportValue and
-// downloadFile(). similar-genome-finder's results-section.tsx renders
-// <DataTable> with no onDownloadAll, so its "Download (CSV)"/"(TXT)" buttons
-// go through exactly this branch. This is the one place in the suite that
-// still needs to prove the blob/anchor-click download mechanism actually
-// fires, now that the selected-rows POST-regression block (which used to
-// cover the same mechanism for a since-deleted path) is gone.
 describe("DataTable download all: local fallback when onDownloadAll is not supplied", () => {
   it("triggers anchor click (file download) when no onDownloadAll is provided", async () => {
     const user = userEvent.setup();
@@ -989,9 +962,7 @@ describe("DataTable download all: local fallback when onDownloadAll is not suppl
     vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => undefined);
     const clickSpy = vi
       .spyOn(HTMLAnchorElement.prototype, "click")
-      .mockImplementation(() => {
-        /* no-op */
-      });
+      .mockImplementation(() => undefined);
 
     render(
       <DataTable
@@ -1016,11 +987,6 @@ describe("DataTable download all: local fallback when onDownloadAll is not suppl
     clickSpy.mockRestore();
   });
 
-  // Regression: this fallback interpolated `format` into the filename but
-  // always joined on "," and always quoted strings, so "Download (TXT)"
-  // produced a comma-delimited, CSV-quoted file named .txt. The sibling
-  // serializer (views/resource-export.ts) uses a tab for TXT, emits bare
-  // values, and strips embedded tabs.
   function captureLocalDownload() {
     let blob: Blob | undefined;
     let filename: string | undefined;
@@ -1107,14 +1073,6 @@ describe("DataTable download all: local fallback when onDownloadAll is not suppl
   });
 });
 
-// ─── "Downloading..." indicator: onDownloadAll regression ────────────────────
-// Regression: handleDownload called the parent-supplied onDownloadAll without
-// awaiting it, then immediately cleared downloadingButton — so "Downloading..."
-// never had a chance to render on the plain Download (CSV/TXT) buttons (every
-// caller wires onDownloadAll, so this path is always taken for those two
-// buttons). Fix: onDownloadAll's return value is awaited before the button
-// state clears. These tests use a manually-resolved promise to freeze the
-// in-flight window and assert the label swap happens (and reverts after).
 describe("DataTable 'Downloading...' indicator via onDownloadAll", () => {
   it("shows 'Downloading...' on Download (CSV) while onDownloadAll's promise is pending", async () => {
     const user = userEvent.setup();
@@ -1250,9 +1208,7 @@ describe("DataTable 'Downloading...' indicator via onDownloadAll", () => {
 
   it("clears 'Downloading...' even when onDownloadAll's promise rejects", async () => {
     const user = userEvent.setup();
-    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {
-      /* no-op */
-    });
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined);
     const onDownloadAll = vi.fn(() =>
       Promise.reject(new Error("network down")),
     );
@@ -1282,10 +1238,6 @@ describe("DataTable 'Downloading...' indicator via onDownloadAll", () => {
   });
 });
 
-// Column reordering only works when the parent owns the order: data-table.tsx
-// passes `onColumnOrderChange: undefined` to useTable when the prop is absent,
-// which also makes table.setColumnOrder a no-op. Offering a drag affordance in
-// that case produces a grab cursor and a drag preview whose drop is discarded.
 describe("DataTable column drag affordance", () => {
   const reorderColumns = [
     { id: "strain_name", label: "Strain Name", visible: true },
@@ -1333,8 +1285,6 @@ describe("DataTable column drag affordance", () => {
     expect(wrapper).not.toHaveClass("cursor-move");
   });
 
-  // A press that lands just off a resize handle is a resize that missed, not
-  // the start of a reorder.
   describe("a drag that starts near a header's edge", () => {
     function renderReorderable() {
       render(
@@ -1374,8 +1324,6 @@ describe("DataTable column drag affordance", () => {
       expect(dragFrom(renderReorderable(), 200)).toBe(true);
     });
 
-    // The wrapper sits inside the cell's px-2, so a 40px column measures 24px.
-    // A fixed 12px guard would cover all of it; the guard shrinks with width.
     function renderWithWidth(width: number) {
       const wrapper = renderReorderable();
       vi.spyOn(wrapper, "getBoundingClientRect").mockReturnValue(
@@ -1442,10 +1390,8 @@ describe("DataTable column drag affordance", () => {
 });
 
 /**
- * A header cell's rendered width (px) in a scroll box `boxWidth` wide, laid
- * out as the browser lays out its flex row (jsdom lays out nothing): each cell
- * is its `--col-size`, plus a share of the room left after the last cell's 8px
- * margin in proportion to its `--col-grow`.
+ * A header cell's rendered width in a `boxWidth`-wide scroll box, laid out as
+ * the browser lays out the flex row (jsdom lays out nothing).
  */
 function laidOutWidth(cell: HTMLElement, boxWidth: number): number {
   const row = [...(cell.closest("tr")?.children ?? [])].filter(
@@ -1465,8 +1411,6 @@ function laidOutWidth(cell: HTMLElement, boxWidth: number): number {
     : sizes[index];
 }
 
-// One pointer path for mouse, pen and touch: the handle follows the pressing
-// pointer (followPointer in pointer-drag.ts) until it is lifted or cancelled.
 describe("DataTable resize handle pointer wiring", () => {
   const resizeColumns = [
     { id: "strain_name", label: "Strain Name", visible: true },
@@ -1555,7 +1499,6 @@ describe("DataTable resize handle pointer wiring", () => {
     fireEvent.pointerUp(handle, { pointerId: 2, clientX: 300 });
     expect(onColumnWidthsCommit).not.toHaveBeenCalled();
 
-    // The first finger is still dragging.
     fireEvent.pointerMove(handle, { pointerId: 1, clientX: 150 });
     expect(handle).toHaveAttribute("aria-valuenow", "383");
     fireEvent.pointerUp(handle, { pointerId: 1, clientX: 150 });
@@ -1576,7 +1519,6 @@ describe("DataTable resize handle pointer wiring", () => {
     fireEvent.pointerMove(handle, { pointerId: 1, clientX: 150 });
     expect(handle).toHaveAttribute("aria-valuenow", "383");
     expect(header.style.getPropertyValue("--col-size")).toBe("383px");
-    // A dragged column takes no share of spare room: it is its preview width.
     expect(header.style.getPropertyValue("--col-grow")).toBe("0");
 
     fireEvent.pointerCancel(handle, { pointerId: 1, isPrimary: true });
@@ -1598,8 +1540,6 @@ describe("DataTable resize handle pointer wiring", () => {
     fireEvent.pointerMove(handle, { pointerId: 1, clientX: 150 });
     expect(handle).toHaveAttribute("aria-valuenow", "383");
     unmount();
-    // A removed capture target gets no further events; the release lands on
-    // the document, where nothing listens any more.
     fireEvent.pointerUp(document, { pointerId: 1, clientX: 150 });
     fireEvent.mouseUp(document);
     fireEvent.touchEnd(document);
@@ -1619,12 +1559,9 @@ describe("DataTable resize handle pointer wiring", () => {
       pressHandle(handle, 100, "touch");
       fireEvent.pointerUp(handle, { pointerId: 1, clientX: 100 });
 
-      // justResizedRef is latched by the handle's pointerup, so a click that
-      // lands on the sort button straight after must not toggle the sort.
       fireEvent.click(sortButton);
       expect(onSortingChange).not.toHaveBeenCalled();
 
-      // …and the suppression window closes again afterwards.
       await vi.advanceTimersByTimeAsync(150);
       fireEvent.click(sortButton);
       expect(onSortingChange).toHaveBeenCalledTimes(1);
@@ -1633,11 +1570,6 @@ describe("DataTable resize handle pointer wiring", () => {
     }
   });
 
-  // The preview is drawn from the settings that would be saved, so a drag too
-  // small to change a setting (a 1px pointer move is a fifth of a setting px
-  // when the columns are stretched five-fold) neither moves anything nor
-  // commits. A preview drawn from the raw pointer moved the edge, and the
-  // column snapped back on release.
   it("moves and commits nothing for a drag smaller than a setting step", async () => {
     const clientWidth = vi
       .spyOn(HTMLElement.prototype, "clientWidth", "get")
@@ -1666,14 +1598,11 @@ describe("DataTable resize handle pointer wiring", () => {
       });
       const header = screen.getByRole("columnheader", { name: /Strain Name/ });
       const restingWidth = laidOutWidth(header, 2000);
-      // Stretched well past the 200px setting.
       expect(restingWidth).toBeGreaterThan(900);
 
       pressHandle(handle, 500);
       fireEvent.pointerMove(handle, { pointerId: 1, clientX: 501 });
-      // The drag is live (the handle draws its active bar)…
       expect(handle.firstElementChild).toHaveClass("bg-info");
-      // …but nothing moved.
       expect(laidOutWidth(header, 2000)).toBeCloseTo(restingWidth, 6);
       expect(handle).toHaveAttribute("aria-valuenow", "200");
 
@@ -1685,10 +1614,6 @@ describe("DataTable resize handle pointer wiring", () => {
     }
   });
 
-  // Collapsing the view rail or dragging the detail panel resizes the scroll
-  // container on every animation frame. The browser stretches the columns
-  // (flex-grow in proportion to each setting) so a resize re-renders nothing;
-  // that must still give the widths the stretch formula gives.
   it("stretches resting columns in proportion to their settings", async () => {
     render(
       <DataTable
@@ -1709,7 +1634,6 @@ describe("DataTable resize handle pointer wiring", () => {
         headers.map((header) => header.style.getPropertyValue("--col-size")),
       ).toEqual(["40px", "300px", "100px"]);
     });
-    // The selection column keeps its width; the others share the room.
     expect(
       headers.map((header) => header.style.getPropertyValue("--col-grow")),
     ).toEqual(["0", "300", "100"]);
@@ -1724,7 +1648,6 @@ describe("DataTable resize handle pointer wiring", () => {
         expect(laidOutWidth(header, boxWidth)).toBeCloseTo(expected[i], 6);
       });
     }
-    // Narrower than the settings: no stretch, the container scrolls.
     expect(headers.map((header) => laidOutWidth(header, 300))).toEqual([
       40, 300, 100,
     ]);
@@ -1804,10 +1727,9 @@ describe("DataTable remembered widths", () => {
     expect(onColumnWidthsCommit).toHaveBeenCalledTimes(1);
   });
 
-  // TanStack stores the raw drag width (0 when dragged far left, past the origin)
-  // and only getSize() clamps it to the column's limits. What is committed must be
-  // what the column renders at: a width outside the saved-layout schema (20-4000)
-  // makes the whole stored layout unreadable.
+  // TanStack stores the raw drag width and only getSize() clamps it; a
+  // committed width outside the saved-layout schema (20-4000) would make the
+  // stored layout unreadable.
   describe("a drag past the column's limits", () => {
     async function dragBy(savedWidth: number, deltaX: number) {
       const onColumnWidthsCommit = vi.fn();
@@ -1852,8 +1774,6 @@ describe("DataTable remembered widths", () => {
     });
   });
 
-  // Loading and zero-row tables never run the auto-measure, so the saved widths are
-  // the only source of the sizes on screen, and a resize must start from all of them.
   it("shows saved widths before any data is measured, and a resize keeps the others", async () => {
     const onColumnWidthsCommit = vi.fn();
     render(
@@ -1890,9 +1810,6 @@ describe("DataTable remembered widths", () => {
   });
 });
 
-// Regression: after a same-page change (sort, filter, keyword) the previous
-// query's rows stay on screen while the new ones load, and nothing showed it, so
-// the table looked loaded and an export of it was refused.
 describe("DataTable refreshing state", () => {
   const previousRows = [{ strain_name: "Previous Strain" }];
 
@@ -1949,8 +1866,6 @@ describe("DataTable refreshing state", () => {
   });
 });
 
-// The sorted column's highlight keys off `aria-sort` (ui/table.tsx), so the
-// attribute must name the sort the table was given, on that column only.
 describe("DataTable sorted column", () => {
   const sortColumns = [
     { id: "strain_name", label: "Strain Name", visible: true },

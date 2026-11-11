@@ -64,7 +64,6 @@ describe("useFacetActions peek", () => {
     expect(result.current.isCounted("genome_status")).toBe(true);
     expect(result.current.isCounted("species")).toBe(true);
     expect(result.current.isCounted("host_name")).toBe(false);
-    // Nothing counts a field no facet names; there is nothing to wait for.
     expect(result.current.isCounted("strain")).toBe(true);
   });
 });

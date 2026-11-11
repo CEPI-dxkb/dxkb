@@ -108,9 +108,6 @@ function DialogFooter({
   )
 }
 
-// Local edit (keep when regenerating with `shadcn add --overwrite`): the
-// DialogTitle `size` axis. `lg`'s `text-2xl` drops the base `leading-none`
-// through tailwind-merge, so the large title keeps text-2xl's own line height.
 const dialogTitleVariants = cva("text-base leading-none font-medium", {
   variants: {
     size: {

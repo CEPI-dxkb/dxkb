@@ -34,7 +34,6 @@ describe("LoadingProgress", () => {
 
   it("does not show total when totalBytes is null", () => {
     render(<LoadingProgress bytesLoaded={512} totalBytes={null} />);
-    // Should only show bytesLoaded, no " / "
     expect(screen.queryByText(/\//)).not.toBeInTheDocument();
   });
 });

@@ -35,16 +35,14 @@ interface TaxonomyPageProps {
   }>;
 }
 
-// generateMetadata and the page share one taxonomy lookup and one manifest
-// fetch per request, as the genome page shares `getGenome`. Next would not
-// dedupe them on its own: both fetches carry a timeout signal, which opts a
-// fetch out of request memoization.
+// generateMetadata and the page share one lookup and manifest fetch per
+// request; Next would not dedupe them, because a timeout signal opts a fetch
+// out of memoization.
 const getOrganismTaxonomy = cache((taxonId: number) =>
   fetchOrganismTaxonomy(taxonId),
 );
 const getPhyloManifest = cache(fetchPhyloManifest);
 
-/** The route's taxon id, or null when it is not a positive integer. */
 function routeTaxonId(rawTaxonId: string): number | null {
   const taxonId = Number(rawTaxonId);
   return Number.isInteger(taxonId) && taxonId > 0 ? taxonId : null;
@@ -66,11 +64,6 @@ function taxonomyViews(
   return { config, navItems };
 }
 
-/**
- * The rail label of the view the shell opens for `tab`, picked as
- * `OrganismLandingShell` picks it: the requested view when it is enabled,
- * otherwise the default view (Overview), otherwise the first enabled one.
- */
 function activeTabLabel(
   config: OrganismLandingConfig,
   navItems: readonly OrganismLandingView[],
@@ -86,11 +79,8 @@ function activeTabLabel(
 }
 
 /**
- * BV-BRC's browser title for a Taxon View tab (`Taxonomy.js`, `onSetState`),
- * "Escherichia coli::Taxonomy Genomes", so a root or domain, whose trail is
- * empty, still names its taxon in the tab. It never throws: when the taxon
- * cannot be shown the root layout's title stands, and the page, awaiting the
- * same lookup, reports why (its notFound, outage page or error boundary).
+ * Never throws: when the taxon cannot be shown the root layout's title stands
+ * and the page reports why.
  */
 export async function generateMetadata({
   params,
@@ -111,7 +101,6 @@ export async function generateMetadata({
     const label = activeTabLabel(config, navItems, firstSearchParam(query, "tab"));
     return label ? { title: `${taxon.taxonName}::Taxonomy ${label}` } : {};
   } catch {
-    // Reported by the page, which awaits the same lookup.
     return {};
   }
 }
@@ -123,14 +112,12 @@ export default async function TaxonomyPage({ params, searchParams }: TaxonomyPag
     notFound();
   }
 
-  // No legacy `view` param here: the raw `tab` both picks the view and is what
-  // the shell's tab content matches against the URL.
+  // No legacy `view` param: the raw `tab` both picks the view and matches the
+  // shell's tab content.
   const tab = firstSearchParam(await searchParams, "tab");
 
-  // Kick off the manifest fetch in parallel with the taxonomy fetch — they are
-  // independent. Started before the try so taxonomy's notFound/unavailable control
-  // flow is unchanged; fetchPhyloManifest is fail-open (never rejects), so a
-  // missing/broken manifest can't block the page — it only disables the viral
+  // Started before the try so notFound/unavailable control flow is unchanged;
+  // fetchPhyloManifest never rejects, so a broken manifest only disables the
   // Phylogeny tab.
   const phyloManifestPromise = getPhyloManifest();
 
@@ -141,15 +128,12 @@ export default async function TaxonomyPage({ params, searchParams }: TaxonomyPag
     if (err instanceof TaxonomyNotFoundError) {
       notFound();
     }
-    // Only an outage is rendered: anything else (a missing env var, a
-    // malformed payload, a bug) is thrown to the boundary and the server log,
+    // Only an outage is rendered; anything else is thrown to the boundary
     // because its message can name server configuration.
     const unavailable = upstreamOutageMessage(err, upstreamServices.dataApi, {
       fallback: taxonomyUnavailableFallback,
     });
     if (unavailable === null) throw err;
-    // Rendered, not thrown: production replaces a thrown server error's
-    // message with a digest, and the boundary would drop the shell with it.
     console.error(`taxonomy/${String(taxonId)}: taxonomy lookup failed`, err);
     return <TaxonUnavailable taxonId={taxonId} tab={tab} message={unavailable} />;
   }

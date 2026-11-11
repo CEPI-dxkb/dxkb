@@ -1,11 +1,6 @@
 import { ConfigurationSchema } from "@jbrowse/core/configuration";
 import type { Instance } from "@jbrowse/mobx-state-tree";
 
-/**
- * The two BV-BRC adapters' config schemas, apart from the adapter classes,
- * which type their configs from these (`./adapters.ts` imports the types and
- * `./plugin.ts` registers both).
- */
 export const featureAdapterConfig = ConfigurationSchema(
   "BvbrcFeatureAdapter",
   {

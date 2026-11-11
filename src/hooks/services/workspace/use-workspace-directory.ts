@@ -10,10 +10,7 @@ import { safeDecode } from "@/lib/url";
 import type { WorkspaceRepository } from "@/lib/services/workspace/workspace-repository";
 import { useWorkspaceRepository } from "@/contexts/workspace-repository-context";
 
-/**
- * Discriminated mode describing what the browser wants to show. Keep these
- * `kind` names stable — they're also used as the TanStack Query mode tag.
- */
+/** Keep `kind` names stable: they are also the TanStack Query mode tag. */
 export type WorkspaceDirectoryMode =
   | { kind: "home"; username: string; path: string }
   | { kind: "sharedRoot"; currentUser: string }
@@ -24,11 +21,8 @@ export type WorkspaceDirectoryMode =
   | { kind: "jobResult"; fullPath: string; visiblePath: string };
 
 export interface UseWorkspaceDirectoryOptions {
-  /** Default true. When false, disables the query. */
   enabled?: boolean;
-  /** Initial items to seed the query cache (e.g. from SSR). */
   initialItems?: WorkspaceItem[];
-  /** Pre-fetched permissions map to seed the permissions query. */
   initialPermissions?: ListPermissionsResult;
 }
 
@@ -36,14 +30,10 @@ export interface UseWorkspaceDirectoryReturn {
   items: WorkspaceItem[];
   isLoading: boolean;
   isFetching: boolean;
-  /** True once the listing has loaded (kept while a later refetch fails). */
   hasLoaded: boolean;
   error: Error | null;
-  /** Refetches the listing and the permission queries that are enabled. */
   refetch: () => void;
-  /** Permissions keyed by each item's path (authenticated modes only). */
   memberCountByPath: Record<string, number> | undefined;
-  /** Raw permissions map (authenticated modes only). */
   permissions: ListPermissionsResult | undefined;
 }
 
@@ -52,11 +42,7 @@ function normalizeFullPath(raw: string): string {
   return decoded.startsWith("/") ? decoded : `/${decoded}`;
 }
 
-/**
- * Shared-root mode: merge the user's own top-level workspaces with the
- * workspaces shared with them. The repository exposes directory listings, so
- * we fetch both paths and de-dupe by `path`.
- */
+/** Merges the user's own top-level workspaces with those shared with them, de-duped by `path`. */
 async function fetchSharedRoot(
   repository: WorkspaceRepository,
   currentUser: string,
@@ -235,9 +221,7 @@ export function useWorkspaceDirectory(
 
   const isAuthenticated = isAuthenticatedMode(mode);
 
-  // Explicit memo: the React Compiler leaves this derivation uncached, and a
-  // new object every render rebuilds the workspace table columns (see
-  // `useWorkspaceColumns`), remounting every cell.
+  // Explicit memo: the compiler leaves this uncached, and a new object each render remounts every workspace table cell.
   const listingData = listingQuery.data;
   const permissionsData = permissionsQuery.data;
   const memberCountByPath = useMemo(() => {
@@ -260,9 +244,7 @@ export function useWorkspaceDirectory(
   const listingRefetch = listingQuery.refetch;
   const permissionsRefetch = permissionsQuery.refetch;
   const currentPathPermissionsRefetch = currentPathPermissionsQuery.refetch;
-  // `refetch()` ignores `enabled`, so each call is gated on the condition its
-  // query is enabled by: a refresh of an empty or failed listing otherwise
-  // sent `Workspace.list_permissions` for no paths.
+  // `refetch()` ignores `enabled`, so each call is gated on its query's condition.
   const refetch = () => {
     if (enabled) void listingRefetch();
     if (permissionsEnabled) void permissionsRefetch();

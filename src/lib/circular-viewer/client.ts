@@ -1,8 +1,6 @@
 /**
- * Browser side of `/api/circular-viewer/[operation]`, kept apart from
- * `./server.ts` so no Data API registry reaches a client bundle. Answers are
- * cached only by TanStack Query (these keys), so `queryClient.clear()` on an
- * account change drops them and nothing registers with `account-caches.ts`.
+ * Answers are cached only by TanStack Query, so `queryClient.clear()` on an
+ * account change drops them; nothing registers with `account-caches.ts`.
  */
 import { httpFailure } from "@/lib/data-api/route-failure-client";
 import { toQueryString } from "@/lib/url";

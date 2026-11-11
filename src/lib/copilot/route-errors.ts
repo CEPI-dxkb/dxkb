@@ -13,16 +13,7 @@ import {
 } from "@/lib/copilot/server";
 import type { CopilotErrorBody } from "@/lib/copilot/types";
 
-/**
- * The answer for the Copilot errors a route owns, or null for any other error,
- * which the route rethrows for `withAuth` to answer (upstream failures become
- * their 502/503/504 there).
- *
- * - A missing `COPILOT_API_URL`: the variable's name goes to the server log,
- *   the client gets the user-facing reason.
- * - A gateway rejection: its status and message, with its own code as
- *   `copilotCode` for the client to act on.
- */
+/** Null for any other error, which the route rethrows for `withAuth` to answer. */
 export function copilotErrorResponse(error: unknown): NextResponse | null {
   if (error instanceof CopilotConfigurationError) {
     console.error(error.message);
@@ -44,7 +35,6 @@ export function copilotErrorResponse(error: unknown): NextResponse | null {
   return null;
 }
 
-/** 400 for a malformed request, in the routes' `{error, code}` shape. */
 export function copilotBadRequest(message: string): NextResponse {
   return NextResponse.json<CopilotErrorBody>(
     { error: message, code: "validation" },
@@ -52,11 +42,6 @@ export function copilotBadRequest(message: string): NextResponse {
   );
 }
 
-/**
- * The request's JSON body, read up to `maxBytes`, or the error response to
- * return: the 413 for an oversized body (declared or streamed), a 400
- * "Malformed JSON" for one that does not parse.
- */
 export async function readCopilotJsonBody(
   request: NextRequest,
   maxBytes: number,
@@ -75,10 +60,6 @@ export async function readCopilotJsonBody(
 
 export const copilotNoStore = { "Cache-Control": "private, no-store" } as const;
 
-/**
- * Runs a route body, answering the Copilot errors it owns
- * (`copilotErrorResponse`) and rethrowing the rest for `withAuth`.
- */
 export async function answerCopilot(
   run: () => Promise<NextResponse>,
 ): Promise<NextResponse> {

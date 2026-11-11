@@ -46,7 +46,6 @@ describe("profile cache", () => {
     expect(
       readCachedProfile("mallory@patricbrc.org", "token-a"),
     ).toBeUndefined();
-    // The stored entry is untouched by the mismatched read.
     expect(readCachedProfile("alice@patricbrc.org", "token-a")).toEqual(
       profile,
     );
@@ -98,10 +97,8 @@ describe("profile cache", () => {
     vi.useFakeTimers({ now: 0, toFake: ["Date"] });
     forgetProfile("token-a");
     vi.setSystemTime(28_000);
-    // Taken from the first forget's record, which expires at 30 s.
     const generation = profileGeneration("token-a");
     vi.setSystemTime(30_500);
-    // A sign-out or save while the lookup is in flight re-creates the record.
     forgetProfile("token-a");
     vi.setSystemTime(31_000);
 

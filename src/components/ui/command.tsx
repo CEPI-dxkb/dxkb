@@ -57,8 +57,8 @@ function CommandDialog({
         )}
         showCloseButton={showCloseButton}
       >
-        {/* Inside the popup: Base UI marks everything outside a modal popup
-            aria-hidden, which would hide the title that names the dialog. */}
+        {/* Base UI marks everything outside a modal popup aria-hidden, which
+            would hide the title that names the dialog. */}
         <DialogHeader className="sr-only">
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>{description}</DialogDescription>
@@ -171,11 +171,8 @@ function CommandSeparator({
   )
 }
 
-// Local edit (keep when regenerating with `shadcn add --overwrite`): the
-// CommandItem `variant` axis. `app-selection` is for lists whose highlighted
-// row is the app's selection (`data-app-selected`) rather than cmdk's keyboard
-// cursor: it neutralises cmdk's `data-selected` fill and forces the app
-// selection to win when a row is both.
+// Local edit: `app-selection` neutralises cmdk's `data-selected` fill so the
+// app's selection (`data-app-selected`) wins.
 const commandItemVariants = cva("", {
   variants: {
     variant: {

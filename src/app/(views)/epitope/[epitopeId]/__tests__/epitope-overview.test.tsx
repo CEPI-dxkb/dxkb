@@ -57,11 +57,8 @@ describe("EpitopeOverview", () => {
     ]);
     const link = screen.getByRole("link", { name: "11320" });
     expect(link).not.toHaveAttribute("target");
-    // Class identity with the boundary's own constant is the mechanism check.
-    // A local `<Link className="text-primary underline">` — the code this task
-    // replaced — also lacks `target` and also carries `text-primary`, so only
-    // the exact shared treatment distinguishes a classified link from an
-    // unclassified one.
+    // Only the boundary's exact shared class distinguishes a classified link
+    // from a local `text-primary` one.
     expect(link).toHaveClass(metadataLinkClassName, { exact: true });
   });
 

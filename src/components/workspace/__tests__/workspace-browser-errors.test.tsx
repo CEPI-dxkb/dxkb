@@ -68,7 +68,6 @@ function tuple(name: string, type: string, parent: string): unknown[] {
   return [name, type, parent, "2026-01-01T00:00:00Z", `id-${name}`, "alice@bvbrc", 0, {}, {}, "o", "n", ""];
 }
 
-/** `Workspace.get` of one path, as the path lookup expects it. */
 function resolvesAs(name: string, type: string, parent: string): Answer {
   return () => rpcResult([[[tuple(name, type, parent)]]]);
 }
@@ -83,11 +82,6 @@ interface ProxyAnswers {
   get?: Answer;
 }
 
-/**
- * The workspace proxy: `Workspace.ls` and the path lookup's `Workspace.get`
- * answer as given; the favorites file is missing. Records every method, and
- * every ensure-workspace call.
- */
 function workspaceProxy(answers: ProxyAnswers) {
   const record = { methods: [] as string[], ensureCalls: 0 };
   server.use(
@@ -170,7 +164,6 @@ describe("WorkspaceBrowser during a workspace outage", () => {
     expect(screen.queryByText("Folder not found")).not.toBeInTheDocument();
     expect(screen.queryByText("This folder is empty")).not.toBeInTheDocument();
     expect(screen.queryByText(/\(0 items\)/)).not.toBeInTheDocument();
-    // The listing still ran: a failed lookup does not disable it.
     expect(proxy.methods).toContain("Workspace.ls");
   });
 
@@ -195,7 +188,6 @@ describe("WorkspaceBrowser during a workspace outage", () => {
     await settle();
     expect(proxy.ensureCalls).toBe(0);
     expect(storedRecentPaths()).toEqual([]);
-    // Refresh of a failed listing sends no permissions lookup.
     expect(proxy.methods).not.toContain("Workspace.list_permissions");
   });
 });
@@ -209,7 +201,6 @@ describe("WorkspaceBrowser when the folder is really missing", () => {
     expect(
       await screen.findByText("Folder not found", {}, { timeout: 5_000 }),
     ).toBeInTheDocument();
-    // Behind the dialog the table names the reason rather than "empty".
     expect(screen.getByText("Object not found!")).toBeInTheDocument();
     expect(screen.queryByText("This folder is empty")).not.toBeInTheDocument();
     expect(storedRecentPaths()).toEqual([]);
@@ -249,7 +240,6 @@ describe("WorkspaceBrowser Retry keeps the error on screen", () => {
   const homePath = "/alice@bvbrc/home";
   const skeletons = () => document.querySelectorAll('[data-slot="skeleton"]');
 
-  /** The first `Workspace.ls` fails; each later one waits for `release`. */
   function failThenHold() {
     let lsCalls = 0;
     const held: { release: (answer: Answer) => void } = { release: () => undefined };

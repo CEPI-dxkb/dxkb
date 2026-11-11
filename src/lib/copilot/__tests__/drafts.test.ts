@@ -47,7 +47,6 @@ describe("copilot drafts", () => {
     expect(stored.text).toBe("hi");
     expect(readCopilotDraft(aliceKey)).toBe(stored);
     expect(listener).toHaveBeenCalledTimes(1);
-    // An update that changes nothing notifies no one.
     updateCopilotDraft(aliceKey, (draft) => draft);
     expect(listener).toHaveBeenCalledTimes(1);
     unsubscribe();
@@ -87,7 +86,6 @@ describe("copilot drafts", () => {
       attachments: [file],
     });
 
-    // Typed since the send: kept as it is.
     updateCopilotDraft(aliceKey, (draft) => ({ ...draft, text: "newer", attachments: [] }));
     expect(
       restoreCopilotDraft(aliceKey, { text: "question", attachments: [file] }, signal),

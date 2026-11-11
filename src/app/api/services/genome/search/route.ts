@@ -7,11 +7,8 @@ import {
 } from "@/lib/api/upstream-failure";
 import { getRequiredEnv } from "@/lib/env";
 
-// Keep letters, digits and the dot of a genome ID. The genome_name wildcard
-// match runs against a form with spaces and punctuation removed, so
-// `*Grapevineleafrollassociatedvirus3*` finds "Grapevine leafroll-associated
-// virus 3" while a query that keeps the hyphen or a space finds nothing.
-// BV-BRC's GenomeNameSelector strips the same characters.
+// The genome_name wildcard runs against a form with spaces and punctuation
+// removed (as BV-BRC's GenomeNameSelector does), so a query keeping them finds nothing.
 function sanitizeQuery(input: string): string {
   return input.replace(/[^a-zA-Z0-9.]/g, "");
 }
@@ -28,10 +25,8 @@ export const GET = withAuth(async (request: NextRequest, { token }) => {
   let queryString: string;
 
   if (!trimmedQuery) {
-    // Blank query - return all genomes with filters (no search filter)
     queryString = `?or(eq(public,true),eq(public,false))&in(superkingdom,(Eukaryota,Bacteria,Viruses))&select(genome_id,genome_name,public,owner,reference_genome,strain,superkingdom)&limit(${String(limit)})`;
   } else {
-    // Has query - apply search filter
     const sanitized = sanitizeQuery(trimmedQuery);
 
     if (!sanitized) {
@@ -44,8 +39,6 @@ export const GET = withAuth(async (request: NextRequest, { token }) => {
 
   const url = `${getRequiredEnv("NEXT_PUBLIC_DATA_API")}/genome/${queryString}`;
 
-  // A network failure or spent budget throws an UpstreamError, which
-  // withAuth's errorResponse answers with its 502/503/504.
   const response = await fetchUpstream(
     url,
     {

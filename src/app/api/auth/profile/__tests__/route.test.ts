@@ -1,5 +1,4 @@
-// `server-only` throws unconditionally outside Next's bundler, and route.ts now
-// imports profile-settings.ts, which uses it.
+// `server-only` throws outside Next's bundler; route.ts imports profile-settings.ts, which uses it.
 vi.mock("server-only", () => ({}));
 
 import { http, HttpResponse } from "msw";

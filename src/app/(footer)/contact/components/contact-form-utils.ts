@@ -5,7 +5,6 @@ import {
 } from "@/lib/api/upstream-failure";
 import { formatUserFacingErrorMessage } from "@/lib/utils";
 
-/** Inquiry categories offered in the contact form. */
 export const inquiryTypes = [
   { value: "general", label: "General Inquiry" },
   { value: "technical", label: "Technical Support" },
@@ -20,7 +19,6 @@ const inquiryTypeValues = inquiryTypes.map((option) => option.value) as [
   ...InquiryType[],
 ];
 
-/** Validation schema shared by the client form and the /api/contact route. */
 export const contactFormSchema = z.object({
   inquiryType: z.enum(inquiryTypeValues),
   name: z.string().trim().min(1, "Please enter your name."),
@@ -46,24 +44,18 @@ export const defaultContactFormValues: ContactFormData = {
   message: "",
 };
 
-/** Human-readable label for an inquiry type value. */
 export const inquiryTypeLabel = (value: InquiryType): string =>
   inquiryTypes.find((option) => option.value === value)?.label ?? value;
 
 /**
- * How long the form waits for `/api/contact`. Without a budget a hung relay
- * left the button on "Sending..." until the browser gave up minutes later.
- * The route bounds its own SMTP wait below this (see `smtpSendDeadlineMs`), so a
- * slow relay answers with its reason before the form stops waiting.
+ * Budget for `/api/contact`; the route's SMTP deadline (`smtpSendDeadlineMs`)
+ * sits below it so the reason arrives first.
  */
 export const contactRequestTimeoutMs = 30_000;
 
 /**
- * nodemailer's per-step SMTP budgets for `/api/contact` (its defaults are
- * 2 min to connect and 10 min of socket inactivity). They name the step that
- * stalled, but do not bound the send: `socketTimeout` is inactivity, so each
- * command may wait that long, and a relay that keeps trickling replies resets
- * it forever. `smtpSendDeadlineMs` is the bound.
+ * Per-step nodemailer budgets; `socketTimeout` is inactivity, not a bound on
+ * the send, so `smtpSendDeadlineMs` is the bound.
  */
 export const smtpTimeoutsMs = {
   connectionTimeout: 8_000,
@@ -72,18 +64,16 @@ export const smtpTimeoutsMs = {
 } as const;
 
 /**
- * The whole send's deadline in `/api/contact`, inside
- * `contactRequestTimeoutMs` so the form hears the reason before it stops
- * waiting. At the deadline the route destroys the relay connection.
+ * Whole-send deadline, below `contactRequestTimeoutMs`; the route destroys the
+ * relay connection when it passes.
  */
 export const smtpSendDeadlineMs = 25_000;
 
 const contactService = "the contact service";
 
 /**
- * Why `/api/contact` answered with an error: the route's own `{ error }`, or,
- * for a body that is not ours (a proxy's HTML 503), the status and the page
- * title, never its markup.
+ * Falls back to the status and page title (never markup) for a non-JSON body
+ * such as a proxy's 503.
  */
 export async function contactResponseError(response: Response): Promise<string> {
   const body = await response.text().catch(() => "");
@@ -97,17 +87,14 @@ export async function contactResponseError(response: Response): Promise<string> 
       return formatUserFacingErrorMessage(new Error(error), error);
     }
   } catch {
-    // Not JSON: describe the status and page instead.
+    // non-JSON body: fall through
   }
   return describeUpstreamResponse(response, body, contactService).message;
 }
 
 /**
- * Why the request to `/api/contact` never got an answer: the spent budget
- * ("… did not respond (timed out after 30 s)") or the network failure with the
- * browser's own words ("Could not reach the contact service: Failed to fetch").
- * Every `TypeError` a browser `fetch` rejects with is a network failure, and
- * Safari's says only "Load failed", so it is named as one here too.
+ * Safari's network failure says only "Load failed", so every `TypeError` from
+ * `fetch` is named as one.
  */
 export function contactRequestError(error: unknown): string {
   const failure = describeUpstreamFailure(error, contactService, {
@@ -126,10 +113,8 @@ interface MailSendError {
 }
 
 /**
- * The route's answer when the relay refused or never answered, worded so an
- * anonymous submitter learns what went wrong without the relay's host, port
- * or reply text: nodemailer's error `code` picks the phrase, and the code (or
- * the SMTP status) stays in the message for whoever the user writes to.
+ * Worded without the relay's host, port or reply text; the code or SMTP status
+ * stays in the message.
  */
 export function mailSendFailure(error: unknown): {
   status: number;

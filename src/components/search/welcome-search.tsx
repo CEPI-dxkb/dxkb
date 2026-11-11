@@ -26,7 +26,6 @@ const WelcomeSearch = () => {
 
   return (
     <section className="grow">
-      {/* Hero Section with Search */}
       <div className="bg-linear-to-b from-primary to-background py-16 md:py-8">
         {isAuthenticated && !isVerified && (
           <div className="container mx-auto px-4">
@@ -58,7 +57,6 @@ const WelcomeSearch = () => {
             <ThemeContent type="welcome-subtitle" as="span" />
           </h3>
 
-          {/* Search Interface */}
           <div className="mx-auto max-w-4xl">
             <div className="welcome-search-card rounded-lg bg-card p-6 shadow-lg">
               <Tabs defaultValue="basic" className="w-full">

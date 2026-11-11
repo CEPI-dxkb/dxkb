@@ -2,8 +2,7 @@ import { readRouteParam, readRouteParamSegments } from "../route-params";
 
 /**
  * Next's own encoding is the oracle: a page component receives
- * `encodeURIComponent(value)` and `generateMetadata` receives `value`, so the
- * helper is correct exactly when both land back on `value`.
+ * `encodeURIComponent(value)` and `generateMetadata` receives `value`.
  */
 const identifiers = [
   ["a slash", "sample/1"],
@@ -35,7 +34,6 @@ describe("readRouteParam", () => {
   );
 
   it("does not throw on a malformed escape", () => {
-    // Unreachable for a real request, but a route param must never 500.
     expect(readRouteParam("%E0%A4%A", "page")).toBe("%E0%A4%A");
   });
 

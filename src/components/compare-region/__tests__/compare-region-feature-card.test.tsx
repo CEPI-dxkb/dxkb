@@ -16,7 +16,6 @@ import { FeatureCard } from "../compare-region-feature-card";
 const model = buildChartModel([focusRow, mirroredRow], densitySpecs.comfortable);
 const focusGene: FeatureRef = { rowIndex: 0, featureIndex: 1 };
 
-/** fig|1.1.peg.2's `genome_feature` record, as `/api/data` answers it. */
 const record = {
   feature_id: "PATRIC.1.1.NC_000913.CDS.900.1200.fwd",
   patric_id: "fig|1.1.peg.2",
@@ -38,7 +37,6 @@ const record = {
   plfam_id: "PLF_561_00000001",
 };
 
-/** Answers member reads of `genome_feature` with `answer`, recording each request's query. */
 function answerMember(
   answer: () => Response | Promise<Response>,
 ): URLSearchParams[] {
@@ -52,7 +50,6 @@ function answerMember(
   return requests;
 }
 
-/** The card with its expanded state held, as the chart holds it. */
 function Card({
   at = focusGene,
   onClose = () => undefined,
@@ -77,7 +74,6 @@ function renderCard(props: { at?: FeatureRef; onClose?: () => void } = {}) {
   return render(<Card {...props} />, { wrapper: createQueryClientWrapper() });
 }
 
-/** The card is placed by the chart; unplaced, it is hidden from the accessibility tree. */
 function card(): HTMLElement {
   const element = document.querySelector<HTMLElement>(
     '[aria-label="Feature details"]',
@@ -98,10 +94,8 @@ describe("FeatureCard", () => {
     answerMember(() => HttpResponse.json({ row: record }));
     renderCard();
     const view = within(card());
-    // The tooltip's lines.
     expect(view.getByText("900…1,200 (301 bp, +)")).toBeInTheDocument();
     expect(view.getByText("100% to the focus gene")).toBeInTheDocument();
-    // From the comparison, before the record answers: only the sections it fills.
     expect(view.getByText("Loading the feature record…")).toBeInTheDocument();
     expect(view.getByRole("button", { name: "Genome", hidden: true })).toBeInTheDocument();
     expect(
@@ -109,7 +103,6 @@ describe("FeatureCard", () => {
     ).not.toBeInTheDocument();
     expect(view.queryByText("None available")).not.toBeInTheDocument();
 
-    // The record's own fields, in the detail panel's sections.
     expect(await view.findByText("b0002")).toBeInTheDocument();
     expect(view.getByText("NP_414543.1")).toBeInTheDocument();
     expect(view.getByText("PLF_561_00000001")).toBeInTheDocument();
@@ -121,7 +114,6 @@ describe("FeatureCard", () => {
     expect(
       view.queryByText("Loading the feature record…"),
     ).not.toBeInTheDocument();
-    // The first line names the gene: the panel adds no title of its own.
     expect(view.queryByRole("heading", { hidden: true })).not.toBeInTheDocument();
   });
 
@@ -191,7 +183,6 @@ describe("FeatureCard", () => {
   });
 
   it("reads nothing for a BLAST hit, which has no record", () => {
-    // MSW is strict: a read would fail the test.
     renderCard({ at: { rowIndex: 0, featureIndex: 2 } });
     const view = within(card());
     expect(
@@ -234,7 +225,6 @@ describe("FeatureCard", () => {
     });
     expect(expand).toHaveAttribute("aria-expanded", "false");
     await user.click(expand);
-    // The record comes from the cache: no second read.
     expect(view.getByText("b0002")).toBeInTheDocument();
     expect(requests).toHaveLength(1);
   });

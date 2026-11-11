@@ -17,7 +17,7 @@ export interface NumberInputProps extends Omit<
   defaultValue?: number;
   min?: number;
   max?: number;
-  value?: number; // Controlled value
+  value?: number;
   suffix?: string;
   prefix?: string;
   onValueChange?: (value: number | undefined) => void;
@@ -96,7 +96,6 @@ export const NumberInput = forwardRef<HTMLInputElement, NumberInputProps>(
       holdTimeRef.current = 0;
       lastChangeTimeRef.current = startTime;
 
-      // Initial change
       if (direction === "up") {
         handleIncrement();
       } else {
@@ -118,7 +117,7 @@ export const NumberInput = forwardRef<HTMLInputElement, NumberInputProps>(
           lastChangeTimeRef.current = now;
         }
 
-        intervalRef.current = setTimeout(updateInterval, 16); // ~60fps
+        intervalRef.current = setTimeout(updateInterval, 16);
       };
 
       updateInterval();
@@ -188,8 +187,8 @@ export const NumberInput = forwardRef<HTMLInputElement, NumberInputProps>(
     };
 
     return (
-      // Local edit: `data-slot` lets the services layout hover the input and
-      // its stepper arrows as one field (see globals.css).
+      // `data-slot` lets the services layout hover the input and its arrows as
+      // one field (globals.css).
       <div data-slot="number-input" className="flex items-center">
         <NumericFormat
           value={value}
@@ -206,9 +205,6 @@ export const NumberInput = forwardRef<HTMLInputElement, NumberInputProps>(
           prefix={prefix}
           customInput={Input}
           placeholder={placeholder}
-          // Merged, not replaced: a caller's className used to overwrite these
-          // (it arrived later through `...props`), dropping the joined right
-          // edge and the hidden spin buttons.
           className={cn(
             "relative [appearance:textfield] rounded-r-none bg-muted [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none",
             className,

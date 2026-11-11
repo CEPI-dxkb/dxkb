@@ -32,7 +32,6 @@ interface Props {
   data: object;
 }
 
-// Stand-ins for two distinct `useInteractions` results.
 const rowsA = { rows: ["a"] };
 const rowsB = { rows: ["b"] };
 
@@ -47,7 +46,6 @@ function useLayout({ layout, data }: Props) {
   });
 }
 
-/** A computation the test settles by hand. */
 function deferredLayout() {
   let resolve: (positions: Float64Array) => void = () => undefined;
   const promise = new Promise<Float64Array>((settle) => {
@@ -93,7 +91,6 @@ describe("useGraphLayout", () => {
     const positions = first.result.current.data;
     first.unmount();
 
-    // A return to the Graph tab remounts the graph against the same cache.
     const second = renderHook(useLayout, {
       wrapper,
       initialProps: { layout: "forceatlas2", data: rowsA },
@@ -145,7 +142,6 @@ describe("useGraphLayout", () => {
     const resolve = deferredLayout();
     rerender({ layout: "forceatlas2", data: rowsB });
 
-    // Positions computed for other rows would not line up with these nodes.
     expect(result.current.isFetching).toBe(true);
     expect(result.current.data).toBeUndefined();
 
@@ -177,14 +173,13 @@ describe("useGraphLayout", () => {
     let serverRows: { id: string }[] = [];
     let rowFetches = 0;
 
-    // The rows come from a real query, so TanStack's structural sharing decides
-    // whether a refetch hands back the same `data` reference.
+    // The rows come from a real query, so TanStack's structural sharing decides whether a refetch
+    // returns the same `data` reference.
     function useRowsAndLayout() {
       const rows = useQuery({
         queryKey: ["rows"],
         queryFn: () => {
           rowFetches += 1;
-          // Fresh objects every time, as a network response would be.
           return Promise.resolve({ rows: serverRows.map((row) => ({ ...row })) });
         },
       });
@@ -223,13 +218,10 @@ describe("useGraphLayout", () => {
       await new Promise((resolve) => setTimeout(resolve, 5));
 
       await act(() => result.current.rows.refetch());
-      // The render that carries the refetched result (the old key moved here).
       await waitFor(() => {
         expect(result.current.rows.dataUpdatedAt).not.toBe(updatedBefore);
       });
 
-      // A second fetch, but structural sharing keeps the same rows object, so
-      // the same positions (and picture) stay.
       expect(rowFetches).toBe(2);
       expect(result.current.rows.data).toBe(rowsBefore);
       expect(result.current.layout.data).toBe(positions);

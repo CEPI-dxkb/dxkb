@@ -29,10 +29,6 @@ const dateFields = new Set([
   "date_updated",
 ]);
 
-/**
- * Latitude and longitude are rendered as one combined "Coordinates" field
- * appended to the Collection section, so neither is collected on its own.
- */
 const combinedCoordinateFields = new Set([
   "collection_latitude",
   "collection_longitude",

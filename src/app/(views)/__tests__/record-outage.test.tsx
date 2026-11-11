@@ -1,5 +1,3 @@
-// The record pages' real lookups pull in `server-only` through the server
-// data repository; see src/lib/data-api/__tests__/server-repository.test.ts.
 vi.mock("server-only", () => ({}));
 
 import { http, HttpResponse } from "msw";

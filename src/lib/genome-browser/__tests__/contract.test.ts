@@ -114,7 +114,6 @@ describe("genome browser locations", () => {
   });
 
   it("falls back when the requested range is reversed", () => {
-    // JBrowse throws "found start greater than end" and opens a blank view.
     for (const location of [
       "470.36849.con.0001:500..100",
       "470.36849.con.0001:2,000..1,000",
@@ -124,7 +123,6 @@ describe("genome browser locations", () => {
         "fallback",
       );
     }
-    // Compared as numbers once the digit grouping is gone, not as text.
     for (const location of [
       "470.36849.con.0001:100..100",
       "470.36849.con.0001:9..10",

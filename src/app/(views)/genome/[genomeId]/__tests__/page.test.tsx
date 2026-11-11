@@ -150,8 +150,8 @@ describe("Genome member route", () => {
         "unclassified Campylobacter",
         "Campylobacter sp. 2014D-0259",
       ],
-      // BV-BRC's taxonomy as of 2026: NCBI ranks Bacteria a "domain", which
-      // legacy's `visibleRanks` predates, so BV-BRC's breadcrumb starts at the phylum.
+      // NCBI ranks Bacteria a "domain", which legacy's `visibleRanks` predates,
+      // so the breadcrumb starts at the phylum.
       lineage_ranks: [
         "cellular root",
         "domain",
@@ -169,7 +169,6 @@ describe("Genome member route", () => {
       params: Promise.resolve({ genomeId: "1595915.3" }),
       searchParams: Promise.resolve({}),
     });
-    // The lineage streams in behind a Suspense boundary; let it land.
     await act(async () => {
       render(page);
       await new Promise((resolve) => setTimeout(resolve, 0));
@@ -253,8 +252,7 @@ describe("Genome member route", () => {
   });
 
   it("shows the genome without waiting for its lineage", async () => {
-    // A stalled taxonomy lookup runs to the Data API's budget; the record has
-    // loaded by then, so only the breadcrumb's taxa wait for it.
+    // A stalled taxonomy lookup only delays the breadcrumb's taxa.
     mocks.getGenome.mockResolvedValue({
       genome_id: "83332.12",
       genome_name: "E. coli",
@@ -306,8 +304,7 @@ describe("Genome member route", () => {
   });
 
   it("gives the Features tab legacy's removable PATRIC default", async () => {
-    // Legacy's Genome Features tab lists PATRIC features until its default is
-    // removed: 5,425 of genome 83332.12's 10,940.
+    // Legacy lists PATRIC features until its default is removed.
     render(
       await GenomePage({
         params: Promise.resolve({ genomeId: "83332.12" }),
@@ -325,8 +322,7 @@ describe("Genome member route", () => {
   it.each(["features", "proteins"])(
     "orders the %s tab as legacy's grid does, with no column sorted",
     async (tab) => {
-      // Legacy FeatureGrid and ProteinGrid: sort(+genome_name,+accession,+start),
-      // so a genome's features run along each sequence from position 1.
+      // Legacy sorts features along each sequence from position 1.
       render(
         await GenomePage({
           params: Promise.resolve({ genomeId: "83332.12" }),

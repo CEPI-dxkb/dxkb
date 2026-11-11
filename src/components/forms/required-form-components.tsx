@@ -1,7 +1,6 @@
 import { ServiceCardTitle } from "@/components/services/form-ui/service-card";
 import { ServiceLabel } from "@/components/services/form-ui/service-label";
 
-/** A service form card title with a required-field marker. */
 export function RequiredFormCardTitle({
   className,
   children,

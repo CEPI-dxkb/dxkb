@@ -22,8 +22,6 @@ export function useSimilarGenomeFinderForm() {
   const [showAdvanced, setShowAdvanced] = useState(false);
   const { isDebugMode } = useServiceDebugging();
 
-  // The search answers in the page (it is not a queued job), so its state is
-  // a mutation: idle before the first search, then pending, error or data.
   const search = useMutation({
     mutationFn: async (value: SimilarGenomeFinderFormData) => {
       const response = await submitSimilarGenomes(value);
@@ -82,7 +80,6 @@ export function useSimilarGenomeFinderForm() {
     search.reset();
   }
 
-  /** Runs the last search again, with the values it was run with. */
   function retrySearch() {
     if (search.variables) search.mutate(search.variables);
   }
@@ -91,7 +88,6 @@ export function useSimilarGenomeFinderForm() {
     form,
     runtime,
     results: search.data?.rows ?? noSimilarGenomeResults,
-    /** False until the first search starts, so the table is not an empty answer. */
     hasSearched: !search.isIdle,
     searchError: search.isError
       ? formatUserFacingErrorMessage(

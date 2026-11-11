@@ -31,7 +31,6 @@ function facet(...pairs: (string | number)[]) {
   return { facet_counts: { facet_fields: { reference_genome: pairs } } };
 }
 
-/** Answers the summary read, then each type's read by its `eq` clause. */
 function serveTypes(
   summary: JsonBodyType,
   byType: Record<string, JsonBodyType>,
@@ -190,8 +189,6 @@ describe("fetchReferenceGenomes", () => {
     expect(requested).toHaveLength(1);
   });
 
-  // The card names the section ("Reference genomes could not be loaded"), so
-  // a message never repeats it, nor names the endpoint.
   it("says what is wrong with a payload without a response object", async () => {
     server.use(
       http.get(`${baseUrl}/genome/`, () => HttpResponse.json({ docs: [] })),

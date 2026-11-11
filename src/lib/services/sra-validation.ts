@@ -1,9 +1,6 @@
 /**
- * Transport + parsing boundary for SRA run-accession validation.
- *
- * Everything here is free of React state so the component can apply a single
- * staleness guard to the resolved outcome instead of scattering guards across
- * every branch of the request chain.
+ * Transport and parsing boundary for SRA run-accession validation, free of
+ * React state so the component applies one staleness guard.
  */
 
 export interface SraValidationResult {
@@ -12,15 +9,8 @@ export interface SraValidationResult {
 }
 
 /**
- * Interpretation of one validation request.
- *
- * - `invalid-format` — the accession failed the client-side shape check and no
- *   request was made.
- * - `error` — the backend rejected the accession, or the request itself failed.
- * - `timeout` — the backend gave up on NCBI; the accession is accepted as a
- *   single run.
- * - `not-run` — the record parsed but contains no run accessions.
- * - `valid` — one or more run accessions were extracted.
+ * Outcome of one validation request; `timeout` means the backend gave up on
+ * NCBI and the accession is accepted as a single run.
  */
 export type SraValidationOutcome =
   | { status: "invalid-format" }
@@ -35,15 +25,11 @@ export function isWellFormedAccession(accession: string): boolean {
   return accessionPattern.test(accession);
 }
 
-/** Strips HTML tags so only plain text is stored/displayed (XSS safety). */
 export function toPlainText(s: string): string {
   const text = new DOMParser().parseFromString(s, "text/html").body.textContent;
   return text.trim() || s;
 }
 
-/**
- * Parses XML text and extracts data using XPath-like queries
- */
 export function parseXmlAndExtract(xmlText: string): {
   title: string;
   runs: string[];
@@ -52,7 +38,6 @@ export function parseXmlAndExtract(xmlText: string): {
   const parser = new DOMParser();
   const xmlDoc = parser.parseFromString(xmlText, "text/xml");
 
-  // Check for parsing errors
   const parseError = xmlDoc.querySelector("parsererror");
   if (parseError) {
     throw new Error("Failed to parse XML response");
@@ -60,7 +45,6 @@ export function parseXmlAndExtract(xmlText: string): {
 
   let title = "";
 
-  // Extract study title
   try {
     const studyTitle = xmlDoc.evaluate(
       "//STUDY/DESCRIPTOR/STUDY_TITLE//text()",
@@ -76,7 +60,6 @@ export function parseXmlAndExtract(xmlText: string): {
 
   const runs: string[] = [];
 
-  // Extract all run accessions
   try {
     const runNodes = xmlDoc.evaluate(
       "//EXPERIMENT_PACKAGE_SET/EXPERIMENT_PACKAGE/RUN_SET/RUN/@accession",
@@ -106,12 +89,8 @@ export function parseXmlAndExtract(xmlText: string): {
 }
 
 /**
- * Validates one accession against the SRA proxy route.
- *
- * Never throws: transport and parse failures come back as an `error` outcome so
- * the caller's staleness guard stays in one place. Aborting the supplied signal
- * also surfaces as `error`; callers must discard superseded outcomes rather
- * than relying on the abort to suppress them.
+ * Validates one accession against the SRA proxy route; never throws, and an
+ * abort surfaces as `error`, so callers must discard superseded outcomes.
  */
 export async function requestSraValidation(
   accession: string,

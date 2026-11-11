@@ -91,7 +91,6 @@ describe("buildTaxonomyConfig", () => {
   it("falls back to a placeholder displayName when taxon is null", () => {
     const config = buildTaxonomyConfig(999, null);
     expect(config.displayName).toBe("Taxon 999");
-    // null taxon → empty lineage → no Viruses/Fungi/Bacteria match → "all"
     expect(config.accent).toBe("all");
   });
 

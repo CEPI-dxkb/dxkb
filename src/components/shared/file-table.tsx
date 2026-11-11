@@ -61,10 +61,6 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { clsx } from "cn";
 
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
-
 export interface DataTableSort {
   field: string;
   direction: "asc" | "desc";
@@ -72,7 +68,6 @@ export interface DataTableSort {
 
 export interface FileTableColumnMeta {
   className?: string;
-  /** Overrides the default padding applied to the header cell (pl-6 for first, pl-2 for others). */
   headerClassName?: string;
   sortField?: string;
 }
@@ -91,18 +86,14 @@ export interface DataTableProps<T extends RowData> {
   data: T[];
   columns: ColumnDef<FileTableFeatures, T>[];
   defaultColumnOrder: string[];
-  /** Where this table's column order and widths are remembered, e.g. "workspace". */
   layoutKey: string;
   isLoading: boolean;
   getRowId: (row: T) => string;
-  // Sort
   sort: DataTableSort;
   onSort: (field: string) => void;
-  // DnD context id
   dndId?: string;
   children: ReactNode;
   skeleton?: ReactNode;
-  // Keyboard
   onKeyDown?: (e: React.KeyboardEvent) => void;
   ariaLabel?: string;
   tabIndex?: number;
@@ -117,13 +108,11 @@ export interface TableSkeletonColumn {
   isFirst?: boolean;
 }
 
-/** Each column's width in px, keyed by column id. */
 type FileTableColumnSizes = Record<string, number>;
 
 /**
- * Body rows carry no widths. The table uses fixed layout, which takes every
- * column's width from the first row (the header), so a resize re-renders only
- * the header cells.
+ * Body rows carry no widths: fixed layout takes every column's width from the
+ * header row.
  */
 interface DataTableBodyContextValue<T extends RowData> {
   rows: Row<FileTableFeatures, T>[];
@@ -134,11 +123,6 @@ interface DataTableBodyContextValue<T extends RowData> {
 const DataTableBodyContext =
   createContext<DataTableBodyContextValue<Record<string, unknown>> | null>(null);
 
-/**
- * The `--col-size` value for a header cell of the given column width (px),
- * which its `w-(--col-size)` classes read. An unknown column (no size) leaves
- * it unset, so the width stays auto.
- */
 function columnSizeValue(size: number | undefined) {
   return size === undefined ? undefined : `${String(size)}px`;
 }
@@ -150,10 +134,6 @@ export function useDataTableBody<T extends RowData>() {
   }
   return context as DataTableBodyContextValue<T>;
 }
-
-// ---------------------------------------------------------------------------
-// Header sub-components
-// ---------------------------------------------------------------------------
 
 function SortIcon({
   field,
@@ -184,16 +164,9 @@ function DraggableTableHeader<T extends RowData>({
   sort,
 }: {
   header: Header<FileTableFeatures, T>;
-  /** The column's width in px (a prop, so the compiled header re-renders with it). */
   size: number | undefined;
-  /**
-   * The column's width setting, which the handle reports as its value. It
-   * differs from `size` while a pointer drag sets rendered widths directly.
-   */
   widthSetting: number | undefined;
-  /** Whether this column is being resized (a prop, for the same reason). */
   isResizing: boolean;
-  /** Starts a pointer resize of this column from the handle's pointerdown. */
   onResizeStart: (
     columnId: string,
     event: React.PointerEvent<HTMLElement>,
@@ -215,9 +188,7 @@ function DraggableTableHeader<T extends RowData>({
   const meta = header.column.columnDef.meta;
   const style = {
     "--col-size": columnSizeValue(size),
-    // Undefined (no drag offset) drops the property, so transform is none.
     "--drag-transform": CSS.Translate.toString(transform),
-    // dnd-kit's own shorthand ("transform 200ms ease"); no utility sets it.
     transition,
   } as CSSProperties;
 
@@ -227,13 +198,10 @@ function DraggableTableHeader<T extends RowData>({
     meta?.headerClassName ?? (isFirst ? "pl-6" : "pl-2"),
     // eslint-disable-next-line shadcn/require-static-classes -- column classes come from TanStack column meta, authored as static strings in the column definitions
     meta?.className ?? "",
-    // Last, so these win over the meta classes (as the inline style they
-    // replace did).
     "relative w-(--col-size) max-w-(--col-size) min-w-(--col-size) transform-(--drag-transform) whitespace-nowrap",
-    // No z-index at rest: a positioned cell with one is a stacking context,
-    // and the next cell's opaque background would then paint over the half
-    // of this cell's resize handle that straddles the shared edge. A dragged
-    // header rises above every handle.
+    // No z-index at rest: a positioned cell with one is a stacking context, so
+    // the next cell's opaque background would paint over this cell's half of
+    // the resize handle.
     isDragging && "z-20 opacity-80",
   );
   const isLast = header.index === (header.headerGroup?.headers.length ?? 0) - 1;
@@ -284,11 +252,9 @@ function DraggableTableHeader<T extends RowData>({
         )}
       </div>
       {header.column.getCanResize() && (
-        // A child of the cell, not of its content box, so it spans the full
-        // header height and sits on the cell's edge. The hit area straddles
-        // the edge (the last column's stays inside, so the table does not
-        // overflow its scroll box); the line inside it is the divider, `info`
-        // while active because the dark themes keep a dark primary.
+        // A child of the cell, not its content box, so it spans the full header
+        // height; the last column's hit area stays inside so the table does not
+        // overflow its scroll box.
         <div
           role="separator"
           aria-orientation="vertical"
@@ -333,10 +299,6 @@ function DraggableTableHeader<T extends RowData>({
   );
 }
 
-// ---------------------------------------------------------------------------
-// Skeleton
-// ---------------------------------------------------------------------------
-
 const skeletonRowHeight = "h-9";
 const skeletonRowCount = 30;
 
@@ -377,10 +339,6 @@ function TableSkeleton({ columns }: { columns?: TableSkeletonColumn[] }) {
   );
 }
 
-// ---------------------------------------------------------------------------
-// DataTable
-// ---------------------------------------------------------------------------
-
 function DataTableInner<T extends RowData>(
   {
     data,
@@ -402,11 +360,10 @@ function DataTableInner<T extends RowData>(
 ) {
   const tableContainerRef = useRef<HTMLDivElement>(null);
   const [tableLayout, updateTableLayout] = useTableLayout(layoutKey);
-  // Explicit memo: the compiler leaves this unmemoized, and a new array re-renders every row.
-  // Keyed on serialized ids: any layout save (widths, visibility) re-parses storage
-  // and yields a new `order` array, and the JSON key keeps columnOrder's identity
-  // across those saves. The default-order key is defensive (current callers pass
-  // module constants).
+  // Explicit memo: the compiler leaves this unmemoized and a new array
+  // re-renders every row.
+  // Keyed on serialized ids because any layout save re-parses storage and
+  // yields a new `order` array.
   const defaultOrderKey = JSON.stringify(defaultColumnOrder);
   const savedOrderKey = tableLayout.order
     ? JSON.stringify(tableLayout.order)
@@ -426,22 +383,13 @@ function DataTableInner<T extends RowData>(
       order: sameOrder(next, defaultColumnOrder) ? undefined : next,
     });
   };
-  // Live widths during a drag stay in component state (no storage write per
-  // pointer move); finished resizes are committed by the effect below, which
-  // then empties this so the saved widths (and any later change to them, such
-  // as another tab's) are what the table shows.
   const [liveColumnSizing, setLiveColumnSizing] = useState<
     Record<string, number>
   >({});
   const columnSizing = { ...tableLayout.widths, ...liveColumnSizing };
-  // Which columns the user resized (or reset with a double-click on the handle,
-  // which deletes the size) since the layout was last saved. Only ids are kept:
   // Pointer drags bypass the TanStack sizing state, which only receives
   // keyboard steps and double-click resets; getSize() clamps those to
   // minSize/maxSize.
-  // The pointer drag in progress: its column, and (once the pointer moves) the
-  // rendered width and width setting of every rendered column (CSS-hidden
-  // columns are left out).
   const [pointerResize, setPointerResize] = useState<{
     columnId: string;
     widths?: Record<string, number>;
@@ -511,19 +459,13 @@ function DataTableInner<T extends RowData>(
     useSensor(KeyboardSensor, {}),
   );
 
-  // Save keyboard resizes and double-click resets as soon as they happen (a
-  // pointer drag saves itself on release, in startPointerResize). The width
-  // saved is what the column renders at, so it stays inside the saved-layout
-  // schema.
   useEffect(() => {
     const { resized, reset } = pendingWidthCommitRef.current;
     if (resized.size === 0 && reset.size === 0) return;
-    // Copied before the sets are cleared, so the updater below reads them.
     const resizedIds = [...resized];
     const resetIds = [...reset];
     resized.clear();
     reset.clear();
-    // Merged into the widths stored now, so another tab's save survives.
     updateTableLayout((current) => {
       const widths: Record<string, number> = { ...current.widths };
       for (const columnId of resizedIds) {
@@ -533,8 +475,6 @@ function DataTableInner<T extends RowData>(
       for (const columnId of resetIds) Reflect.deleteProperty(widths, columnId);
       return { widths: Object.keys(widths).length > 0 ? widths : undefined };
     });
-    // The write above is read back on the same re-render (a write storage
-    // refuses is kept in memory), so the widths on screen do not change.
     setLiveColumnSizing({});
     // liveColumnSizing is not read here, but every resize and reset replaces
     // it, so it is what re-runs this.
@@ -546,16 +486,14 @@ function DataTableInner<T extends RowData>(
   ]);
 
   // Computed after the hooks above: the React Compiler does not cache a value
-  // whose computation spans a hook call. Cached, it changes when `table` does.
+  // whose computation spans a hook call.
   const columnSizes: FileTableColumnSizes = Object.fromEntries(
     table.getAllFlatColumns().map((col) => [col.id, col.getSize()]),
   );
 
-  // A pointer drag sets every rendered column's width directly, so the dragged
-  // edge follows the pointer (see column-resize.ts). Its settings are saved
-  // once, on release. Only columns the browser lays out take part:
-  // `hidden md:table-cell` and its kin hide Owner, Created and Type on narrow
-  // screens, and those keep their saved widths.
+  // Only columns the browser lays out take part: `hidden md:table-cell` hides
+  // Owner, Created and Type on narrow screens, and those keep their saved
+  // widths.
   const startPointerResize = (
     columnId: string,
     event: React.PointerEvent<HTMLElement>,
@@ -598,9 +536,6 @@ function DataTableInner<T extends RowData>(
       onEnd: (released) => {
         if (released && Object.keys(settings).length > 0) {
           const committed = settings;
-          // Merged into the widths stored now, not at the press: another tab
-          // may have saved since. Read back on the same re-render, so nothing
-          // moves on release.
           updateTableLayout((current) => ({
             widths: { ...current.widths, ...committed },
           }));
@@ -611,9 +546,8 @@ function DataTableInner<T extends RowData>(
     if (started) setPointerResize({ columnId });
   };
 
-  // Separate values, so the body context below is cached on them and keeps
-  // its identity through a resize (`table` changes on every state update, but
-  // the row model does not).
+  // Separate values so the body context is cached on them and keeps its
+  // identity through a resize (`table` changes on every state update).
   const rows = table.getRowModel().rows;
   const colSpan = table.getAllLeafColumns().length;
 
@@ -639,7 +573,6 @@ function DataTableInner<T extends RowData>(
               : selected[0];
           target.scrollIntoView({ block: "center" });
         } else {
-          // Special row (leading/parent) — scroll to top of table body
           const firstRow = container.querySelector("tbody tr");
           firstRow?.scrollIntoView({ block: "center" });
         }
@@ -655,9 +588,8 @@ function DataTableInner<T extends RowData>(
       aria-label={ariaLabel}
       className={cn(
         "scrollbar-themed h-full min-h-0 overflow-auto rounded-md border outline-none",
-        // A drag outruns its handle whenever the column stops at its minimum
-        // or maximum width; keep the resize cursor (not a header's grab or a
-        // row's pointer) and text selection off until it is released.
+        // A drag outruns its handle when the column stops at its minimum or
+        // maximum width, so the resize cursor stays until release.
         pointerResize && "cursor-col-resize select-none **:cursor-col-resize",
       )}
       onKeyDown={wrappedKeyDown}
@@ -669,12 +601,9 @@ function DataTableInner<T extends RowData>(
         onDragEnd={handleColumnDragEnd}
         sensors={sensors}
       >
-        {/* No min-w-max here: Chrome gives a fixed-layout table with a
-            percentage width a near-infinite max-content width. A fixed table
-            is still as wide as its columns, so a wide table overflows this
-            box and the region scrolls. */}
+        {/* No min-w-max: Chrome gives a fixed-layout table with a percentage
+            width a near-infinite max-content width. */}
         <div className="relative">
-          {/* Fixed layout: the header row sets the column widths. */}
           <Table disableScrollWrapper className="table-fixed">
             <TableHeader variant="sticky-surface" className="sticky top-0 z-20">
               {table.getHeaderGroups().map((headerGroup) => (
@@ -733,7 +662,6 @@ function DataTableInner<T extends RowData>(
   );
 }
 
-// Export with displayName for forwardRef generic pattern
 export const DataTable = forwardRef(DataTableInner) as <T extends RowData>(
   props: DataTableProps<T> & { ref?: React.Ref<DataTableHandle> },
 ) => React.ReactElement;

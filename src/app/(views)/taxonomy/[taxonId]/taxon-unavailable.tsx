@@ -9,7 +9,6 @@ import { buildTaxonomyConfig } from "./_config";
 
 interface TaxonUnavailableProps {
   taxonId: number;
-  /** The raw `tab` param, so the shell stays on the requested URL. */
   tab: string | undefined;
   message: string;
 }
@@ -29,12 +28,6 @@ function makeUnavailableView(title: string, message: string) {
   };
 }
 
-/**
- * A taxon page whose taxonomy lookup failed for a reason other than "not
- * found". The tabs depend on the taxon's lineage, so only Overview is offered;
- * the shell, header and rail stay, and the cause is rendered here because a
- * thrown server error reaches the boundary with its message redacted.
- */
 export function TaxonUnavailable({ taxonId, tab, message }: TaxonUnavailableProps) {
   const config = buildTaxonomyConfig(taxonId, null);
   const views: OrganismLandingView[] = [

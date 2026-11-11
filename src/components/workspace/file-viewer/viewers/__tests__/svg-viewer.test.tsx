@@ -39,10 +39,8 @@ describe("SvgViewer", () => {
 
   it("switches back to image mode when Image button is clicked", () => {
     render(<SvgViewer filePath="/user/diagram.svg" fileName="diagram.svg" />);
-    // Switch to code
     fireEvent.click(screen.getByText("Code"));
     expect(screen.getByTestId("text-viewer")).toBeInTheDocument();
-    // Switch back to image
     fireEvent.click(screen.getByText("Image"));
     expect(screen.getByTestId("zoomable-image")).toBeInTheDocument();
   });

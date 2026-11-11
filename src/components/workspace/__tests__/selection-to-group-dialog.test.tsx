@@ -76,7 +76,6 @@ function renderDialog(
   const { rerender } = render(<SelectionToGroupDialog {...props} />);
   return {
     ...props,
-    /** Closes and reopens the dialog, which is what starts a new session. */
     reopen: () => {
       rerender(<SelectionToGroupDialog {...props} open={false} />);
       rerender(<SelectionToGroupDialog {...props} open />);
@@ -223,7 +222,6 @@ describe("SelectionToGroupDialog", () => {
         await create.promise;
       });
 
-      // Closing here would have dismissed whatever the user opened afterwards.
       expect(props.onOpenChange).not.toHaveBeenCalled();
       expect(screen.getByRole("button", { name: "Create Group" })).toBeVisible();
     });
@@ -244,8 +242,6 @@ describe("SelectionToGroupDialog", () => {
       );
       props.reopen();
 
-      // Pin what reopening produced: the popup is not kept mounted, so this is a
-      // brand-new form back on the New Group tab — not the one that submitted.
       expect(screen.getByRole("tab", { name: "New Group" })).toHaveAttribute(
         "aria-selected",
         "true",
@@ -257,7 +253,6 @@ describe("SelectionToGroupDialog", () => {
         await append.promise.catch(() => undefined);
       });
 
-      // The new session is untouched by the old one's rejection, and still usable.
       expect(screen.queryByText("Group already exists")).toBeNull();
       expect(props.onOpenChange).not.toHaveBeenCalled();
       fireEvent.change(screen.getByLabelText("Group name"), {

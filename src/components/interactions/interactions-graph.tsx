@@ -53,19 +53,10 @@ const emptySelection: GraphSelection = { nodes: [], edges: [] };
 const emptyRows: PpiRecord[] = [];
 
 interface InteractionsGraphProps {
-  /**
-   * The subview's scoping predicate, already normalized by the shell. The shared
-   * keyword is NOT folded in here — it arrives as `keywordValue` and travels as
-   * the request's own `keyword`, exactly as it does for the Table, so both views
-   * resolve one input to one dataset.
-   */
+  /** The shared keyword is not folded in here; it travels as the request's own `keyword`, as for the Table. */
   rql: string;
   keywordValue: string;
   onKeywordChange: (value: string) => void;
-  /**
-   * The chosen layout. The shell owns it, so it survives the Graph tab's
-   * unmount on a switch to Table and back.
-   */
   layout: LayoutName;
   onLayoutChange: (layout: LayoutName) => void;
 }
@@ -79,8 +70,6 @@ export function InteractionsGraph({
 }: InteractionsGraphProps) {
   const interactions = useInteractions(rql, keywordValue);
   const { data } = interactions;
-  // A Retry keeps the failure up ("Retrying…") instead of going back to the
-  // loading skeleton until it answers.
   const loadRetry = useRetryKeepingError(
     interactions,
     JSON.stringify([rql, keywordValue]),
@@ -103,12 +92,8 @@ export function InteractionsGraph({
     setActiveHub(null);
   }
 
-  // React Compiler preserves these derived identities while their inputs are stable,
-  // avoiding graph reloads when only selection state changes.
   const graph = toGraph(data?.rows ?? emptyRows);
   const selectionIndex = buildGraphSelectionIndex(graph.nodes, graph.edges);
-  // Positions come from a worker and are cached per rows and layout, so a
-  // return to this tab reuses them rather than laying the graph out again.
   const layoutQuery = useGraphLayout({
     rql,
     keywordValue,
@@ -126,17 +111,12 @@ export function InteractionsGraph({
     <GraphToolbar filterValue={keywordValue} onFilterChange={onKeywordChange} />
   );
 
-  // Toolbar (and its keyword box) renders in every state — including
-  // loading/error/empty — so a keyword filter that matches nothing doesn't
-  // strand the user without a way to see or clear it.
+  // The toolbar renders in every state so a keyword matching nothing cannot strand the user without
+  // a way to clear it.
   if (loadRetry.error) {
     return (
       <div className="flex h-full min-h-0 flex-col">
         {toolbar}
-        {/* Same shape, wording and retry affordance as the Table subview's load
-            error (`ResourceCollection`): a gateway 502 is transient for both
-            views, and leaving only this one without a retry made a tab switch
-            the sole way back. */}
         <Alert variant="destructive">
           <AlertTitle>Could not load interactions</AlertTitle>
           <AlertDescription>
@@ -156,7 +136,6 @@ export function InteractionsGraph({
     );
   }
 
-  // No rows yet, and no failure (that is above): still loading.
   if (data === undefined) {
     return (
       <div className="flex h-full min-h-0 flex-col">
@@ -207,9 +186,6 @@ export function InteractionsGraph({
   return (
     <div className="flex h-full min-h-0 flex-col">
       {toolbar}
-      {/* The row ceiling used to be a silent `Range` header: a query matching
-          more interactions than the graph can draw looked like a complete
-          answer. Say so, and point at the view that can show the rest. */}
       {data.isTruncated && (
         <Alert className="mb-2">
           <AlertTitle>
@@ -253,8 +229,7 @@ export function InteractionsGraph({
               layoutQuery.data !== undefined
             }
           />
-          {/* The WebGL canvases have no accessible role. Keep this wrapper exposed
-              because SigmaCanvas also contains labeled, keyboard-operable zoom controls. */}
+          {/* The WebGL canvases have no accessible role; keep this wrapper exposed for SigmaCanvas's labeled zoom controls. */}
           <div className="relative min-h-0 flex-1">
             {nodes.length === 0 ? (
               <div className="flex size-full items-center justify-center text-sm text-muted-foreground">

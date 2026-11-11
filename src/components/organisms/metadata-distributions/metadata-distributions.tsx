@@ -32,17 +32,9 @@ import {
 type MetadataDistributionsProps = GenomeScopeProps & {
   fields: string[];
   showAmr?: boolean;
-  /**
-   * Leave the AMR chart out when the scope has no AMR records, as legacy
-   * GenomeListOverview does: a Genome list has no lineage to decide `showAmr`
-   * from, and a virus list would otherwise show an empty AMR card. A failed
-   * request still shows its error.
-   */
+  /** Leave the AMR chart out when the scope has no AMR records; a failed request still shows its error. */
   hideEmptyAmr?: boolean;
-  /**
-   * The Genomes tab listing the scope's genomes. Given one, each chart bucket
-   * links to its genomes there (`genomeListValueHref`).
-   */
+  /** The Genomes tab listing the scope's genomes; given one, each bucket links to its genomes there. */
   genomeList?: GenomeListLink;
 };
 
@@ -82,8 +74,6 @@ export async function MetadataDistributions({
   const hasTaxonomicSentinel = fields.includes(taxonomicDistributionSentinel);
   const fetchFields = fields.filter((f) => f !== taxonomicDistributionSentinel);
 
-  // One request per facet, so a facet that fails (one slow field, one bad
-  // value) fails its own chart instead of the whole grid.
   const [facetResults, [taxonomicResult, amrResult]] = await Promise.all([
     Promise.allSettled(
       fetchFields.map(async (field) => {
@@ -99,8 +89,6 @@ export async function MetadataDistributions({
     ]),
   ]);
 
-  // When nothing loaded (the service is down), one section error with a
-  // Retry says it once instead of in every chart.
   const settled: PromiseSettledResult<unknown>[] = [
     ...facetResults,
     taxonomicResult,
@@ -138,7 +126,6 @@ export async function MetadataDistributions({
     );
   }
 
-  // A bucket links to its genomes; an empty one has none to list.
   const chartDatum = (field: string, facet: { name: string; count: number }) => ({
     label: facet.name,
     value: facet.count,

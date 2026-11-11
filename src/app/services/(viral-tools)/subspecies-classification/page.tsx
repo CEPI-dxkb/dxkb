@@ -51,7 +51,6 @@ const quickReference =
 const tutorial =
   "https://www.bv-brc.org/docs/tutorial/subspecies_classification/subspecies_classification.html";
 
-/** Indices in SUBSPECIES_VIRUS_TYPE_OPTIONS before which to render a SelectSeparator (legacy family grouping). */
 const subspeciesSpeciesSeparatorBeforeIndex = new Set([5, 7, 17, 21, 23, 24]);
 
 export default function SubspeciesClassificationPage() {
@@ -111,7 +110,6 @@ export default function SubspeciesClassificationPage() {
         }}
         className="grid grid-cols-1 gap-6 md:grid-cols-12"
       >
-        {/* Query Source */}
         <div className="md:col-span-12">
           <Card>
             <ServiceCardHeader>
@@ -225,7 +223,6 @@ export default function SubspeciesClassificationPage() {
           </Card>
         </div>
 
-        {/* Species and Output */}
         <div className="md:col-span-12">
           <Card>
             <ServiceCardHeader>
@@ -300,7 +297,6 @@ export default function SubspeciesClassificationPage() {
           </Card>
         </div>
 
-        {/* Form controls */}
         <div className="md:col-span-12">
           <ServiceFormFooter
             form={form}

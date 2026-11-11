@@ -9,11 +9,8 @@ import { attachFocusTrail, recordFocusTrail } from "../support/focus-trail";
 import { failOnRuntimeErrors } from "../support/runtime-errors";
 
 /**
- * The fixture feature: a CDS with a BRC ID (`fig|1282460.2049.peg.1`), so its
- * Compare Region tab is enabled. The tab's answer is the ten-genome fixture
- * (`compareRegionScenarioOverrides`), whose focus gene is
- * `fig|1004954.3.peg.1`: row 0's first feature, in a family that runs through
- * every row.
+ * The fixture feature: a CDS with a BRC ID so its Compare Region tab is enabled; the
+ * focus gene is `fig|1004954.3.peg.1`.
  */
 const featureId = "PATRIC.1282460.2049.JX869059.CDS.1.100.fwd";
 const focusGene = "fig|1004954.3.peg.1";
@@ -24,10 +21,8 @@ const overrides = [
   ...emptyBackendFallbackOverrides,
 ];
 
-// Signed out, as every record-view spec runs: signed in, the Feature page reads
-// its record with the session token, which the data service client refuses to
-// send to the loopback's plain-http URL ("Authenticated data service requests
-// require HTTPS."), so the page would render its error panel instead.
+// Signed out: signed in, the data service client refuses to send the token to the
+// loopback's plain-http URL.
 test.use({ storageState: { cookies: [], origins: [] } });
 
 test.describe("Compare Region Viewer", () => {
@@ -44,8 +39,6 @@ test.describe("Compare Region Viewer", () => {
     try {
       assertNoRuntimeErrors();
     } catch (error) {
-      // The test body passed, so the call above attached nothing; this
-      // failure is the hook's own.
       if (testInfo.status === testInfo.expectedStatus) {
         await attachFocusTrail(page, testInfo, { force: true });
       }
@@ -62,7 +55,6 @@ test.describe("Compare Region Viewer", () => {
         new URL(candidate.url()).pathname === "/api/compare-region",
     );
     await compare.goto(featureId);
-    // The tab asks about the feature's BRC ID.
     expect(new URL((await request).url()).searchParams.get("peg")).toBe(
       "fig|1282460.2049.peg.1",
     );
@@ -72,7 +64,6 @@ test.describe("Compare Region Viewer", () => {
     await expect(compare.zoomOut).toBeDisabled();
     await expect(compare.fit).toBeDisabled();
 
-    // Zoom in disables at the cap, 20×.
     await compare.zoomInToLimit();
     await expect(compare.zoomLevel).toHaveText("20×");
     await expect(compare.zoomIn).toBeDisabled();
@@ -90,7 +81,6 @@ test.describe("Compare Region Viewer", () => {
     const compare = new CompareRegionPage(page);
     await compare.goto(featureId);
     await compare.expectFigure(10);
-    // Comfortable at first: the toggle offers Compact.
     await expect(compare.densityToggle("Compact")).toBeVisible();
     const level = await compare.zoomInBy(2);
     expect(level).toBe("2.3×");
@@ -103,7 +93,6 @@ test.describe("Compare Region Viewer", () => {
     await compare.expectFigure(10);
     const compact = await compare.figureHeight();
 
-    // A device preference the server renders: a reload opens in Compact.
     await page.reload();
     await compare.expectFigure(10);
     await expect(compare.densityToggle("Comfortable")).toBeVisible();
@@ -127,13 +116,11 @@ test.describe("Compare Region Viewer", () => {
     const x = start.x + start.width / 2;
     const y = start.y + start.height / 2;
 
-    // Pressed on a gene, which holds the pointer's capture while the drag pans.
     await page.mouse.move(x, y);
     await page.mouse.down();
     await page.mouse.move(x - 10, y);
-    // The drag starts on this move. Zoom's move handler reads isDragging from
-    // its last render, so the next move pans only once that start is drawn;
-    // a loaded runner can deliver it first, and it would be dropped.
+    // Zoom's move handler reads isDragging from its last render; a loaded runner can
+    // deliver the next move before the drag start is drawn, dropping it.
     await expect(compare.dragging).toHaveCount(1);
     await page.mouse.move(x - 110, y);
     const slide = /^translate\(-(\d+(\.\d+)?) 0\)$/;
@@ -143,7 +130,6 @@ test.describe("Compare Region Viewer", () => {
     await page.mouse.move(x - 210, y);
     await expect.poll(async () => (await box()).x).toBeCloseTo(start.x - 200, 0);
 
-    // Released: drawn where the drag left it, with nothing left to slide, and not pinned.
     await page.mouse.up();
     await expect(compare.panLayers.first()).not.toHaveAttribute("transform");
     expect((await box()).x).toBeCloseTo(start.x - 200, 0);
@@ -165,14 +151,11 @@ test.describe("Compare Region Viewer", () => {
     await expect(compare.tooltip).toContainText("SSU ribosomal protein S4p");
     await expect(compare.traceVeil()).toHaveCSS("opacity", "0.8");
 
-    // Another family's gene: its trace fades in as the last one fades out,
-    // and the last one goes once its fade ends.
     await compare.glyph(0, 3).hover();
     await expect(compare.tooltip).toContainText("RNA binding S1 domain protein");
     await expect(compare.traceVeil()).toHaveCSS("opacity", "0.8");
     await expect(compare.traceSlots().filter({ has: page.locator("*") })).toHaveCount(1);
 
-    // Off the figure, the tooltip and the trace go.
     await page.mouse.move(0, 0);
     await expect(compare.tooltip).toHaveCount(0);
     await expect(compare.traceVeil()).toHaveCSS("opacity", "0");
@@ -181,8 +164,6 @@ test.describe("Compare Region Viewer", () => {
   test("the tooltip hangs below and right of its gene, or left and above it near the edges", async ({
     page,
   }) => {
-    // Tall enough for all ten genomes: in a short card, a mid-figure gene has
-    // room for the tooltip on neither side and it takes the roomier one.
     await page.setViewportSize({ width: 1440, height: 900 });
     const compare = new CompareRegionPage(page);
     await compare.goto(featureId);
@@ -217,17 +198,14 @@ test.describe("Compare Region Viewer", () => {
       expect(past).toBeLessThanOrEqual(10);
     };
 
-    // ThiD, left of the focus line: just below and right of it.
     const roomy = await hover(2, 1);
     justPast(roomy.tip.left, roomy.gene.right, 1);
     justPast(roomy.tip.top, roomy.gene.bottom, 1);
 
-    // DNA polymerase III runs off the plot's right edge: the tooltip goes left.
     const atRight = await hover(0, 6);
     justPast(atRight.tip.right, atRight.gene.left, -1);
     justPast(atRight.tip.top, atRight.gene.bottom, 1);
 
-    // The last genome's S4p, at the figure's bottom: the tooltip goes above.
     const atBottom = await hover(9, 4);
     justPast(atBottom.tip.bottom, atBottom.gene.top, -1);
   });
@@ -246,10 +224,8 @@ test.describe("Compare Region Viewer", () => {
     await gene.click();
     const card = compare.featureCard;
     await expect(card).toBeVisible();
-    // The tooltip's lines stay; the gene's own tooltip gives way to them.
     await expect(card).toContainText(focusGene);
     await expect(compare.tooltip).toHaveCount(0);
-    // A field only the gene's record has, read through /api/data.
     const recordField = card.getByText("AFFC01000001", { exact: true });
     await expect(recordField).toBeVisible();
     await expect(
@@ -262,7 +238,6 @@ test.describe("Compare Region Viewer", () => {
     await card.getByRole("button", { name: "Expand details" }).click();
     await expect(recordField).toBeVisible();
 
-    // The card follows its gene through a zoom: still beside it.
     await compare.zoomInBy(2);
     await expect(card).toBeVisible();
     const geneBox = await gene.boundingBox();
@@ -274,14 +249,11 @@ test.describe("Compare Region Viewer", () => {
       x >= geneBox.x - 20 && x <= geneBox.x + geneBox.width + 20;
     expect(nearGene(cardLeft) || nearGene(cardRight)).toBe(true);
 
-    // The strip links the pinned gene too.
     await expect(compare.openFeature).toHaveAttribute(
       "href",
       "/feature/fig%7C1004954.3.peg.1",
     );
 
-    // Closing the card clears the pin; so do Escape, straight after the
-    // click (which focuses the gene), and the strip's Clear.
     await compare.closeFeatureCard();
     await expect(compare.selectionStrip).toHaveCount(0);
     await gene.click();
@@ -299,12 +271,10 @@ test.describe("Compare Region Viewer", () => {
   test("on a phone, the expanded card fits the chart, its buttons in view", async ({
     page,
   }) => {
-    // A phone's width; tall enough that the figure shows under the command bar.
     await page.setViewportSize({ width: 320, height: 1000 });
     const compare = new CompareRegionPage(page);
     await compare.goto(featureId);
     await compare.expectFigure(10);
-    // Pinned from the keyboard, which brings the gene into the narrow plot.
     await compare.scroller.focus();
     await page.keyboard.press("Tab");
     await expect(compare.glyph(0, 0)).toBeFocused();
@@ -338,16 +308,13 @@ test.describe("Compare Region Viewer", () => {
     await compare.expectFigure(10);
     const focused = compare.figure.locator("[data-feature]:focus");
 
-    // Zoomed in, most of the row lies off the plot.
     await compare.zoomInBy(4);
-    // The scroller, then the figure's one tab stop: the focus gene.
     await compare.scroller.focus();
     await page.keyboard.press("Tab");
     const gene = compare.glyph(0, 0);
     await expect(gene).toBeFocused();
     await expect(compare.tooltip).toContainText(focusGene);
 
-    // → and ← move along the row, the tooltip with them.
     await page.keyboard.press("ArrowRight");
     await expect(gene).not.toBeFocused();
     await expect(focused).toHaveAttribute("data-row", "0");
@@ -355,9 +322,6 @@ test.describe("Compare Region Viewer", () => {
     await page.keyboard.press("ArrowLeft");
     await expect(gene).toBeFocused();
 
-    // End reaches the row's last gene, off the plot: the figure pans to it,
-    // at the same zoom. It is wider than the plot, so it comes to rest at its
-    // start, just inside the plot.
     await page.keyboard.press("End");
     await expect(focused).toHaveAttribute("data-row", "0");
     await expect(focused).not.toHaveAttribute("data-feature", "0");
@@ -369,20 +333,16 @@ test.describe("Compare Region Viewer", () => {
     expect(endBox.x).toBeLessThan(scrollerBox.x + scrollerBox.width / 2);
     await expect(compare.zoomLevel).toHaveText("5.1×");
 
-    // ↓ reaches the next genome's row.
     await page.keyboard.press("Home");
     await page.keyboard.press("ArrowDown");
     await expect(focused).toHaveAttribute("data-row", "1");
     const pinned = await focused.getAttribute("data-feature");
     expect(pinned).not.toBeNull();
 
-    // Enter pins it; Tab reaches the card's actions, and closing the card
-    // hands focus back to the gene.
     await page.keyboard.press("Enter");
     await expect(compare.featureCard).toBeVisible();
     await expect(compare.selectionStrip).toBeVisible();
-    // Pinning keeps the keyboard's place on the gene: WebKit would send the
-    // next Tab to the top of the page if it were blurred.
+    // WebKit would send the next Tab to the top of the page if the gene were blurred.
     await expect(focused).toHaveAttribute("data-row", "1");
     await expect(focused).toHaveAttribute("data-feature", pinned ?? "");
     await page.keyboard.press("Tab");
@@ -410,7 +370,6 @@ test.describe("Compare Region Viewer", () => {
     await expect(gene).toHaveCSS("cursor", "pointer");
     await expect(compare.trackBackground()).toHaveCSS("cursor", "grab");
 
-    // A drag that starts on a gene pans: the gene shows the grabbing hand too.
     const box = await gene.boundingBox();
     if (!box) throw new Error("the gene has no box");
     const x = box.x + box.width / 2;

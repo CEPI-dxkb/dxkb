@@ -5,8 +5,6 @@ import RootError from "../error";
 import GlobalError from "../global-error";
 import RootNotFound from "../not-found";
 
-// The navbar and footer read auth, query and theme state; their own tests
-// cover them. Here they only need to be present around the boundary.
 vi.mock("@/components/navbars/navbar", () => ({
   default: () => <nav aria-label="Main">navbar</nav>,
 }));
@@ -36,7 +34,6 @@ describe("root error.tsx", () => {
     expect(
       within(alert).getByRole("heading", { name: "This page could not be loaded" }),
     ).toBeInTheDocument();
-    // Never the redacted (or raw HTML) message; the digest is the reference.
     expect(alert).not.toHaveTextContent("Site Maintenance");
     expect(alert).toHaveTextContent("Reference: 2732112646");
     expect(within(alert).getByRole("link", { name: "Go to the home page" })).toHaveAttribute(
@@ -53,8 +50,8 @@ describe("root error.tsx", () => {
 describe("global-error.tsx", () => {
   it("renders a standalone document with Retry", async () => {
     const retry = vi.fn();
-    // Its own <html>/<body> nest inside the test container (React warns about
-    // the nesting, which the suite's console.error stub absorbs).
+    // Its own <html>/<body> nest inside the test container; the suite's
+    // console.error stub absorbs React's warning.
     render(<GlobalError error={serverError()} reset={vi.fn()} retry={retry} />);
 
     expect(

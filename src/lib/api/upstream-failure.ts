@@ -1,25 +1,6 @@
 /**
- * One mapping from "a server-side call to a BV-BRC backend failed" to the
- * status, code and message a route answers with.
- *
- * Without it every layer dropped the cause on its own: undici reports a
- * connect timeout as `TypeError: fetch failed` with the real reason in
- * `cause`, so a route that forwarded `error.message` told the user "fetch
- * failed", and one that did not said "Internal server error". A maintenance
- * page is HTML, so a route that forwarded the body printed page source.
- *
- * - `describeUpstreamFailure` reads a thrown network error (undici's
- *   `cause.code`, or the `TimeoutError` of an `AbortSignal.timeout`).
- * - `describeUpstreamResponse` reads a non-OK response, keeping only the
- *   `<title>`/`<h1>` text of an HTML body.
- * - `fetchUpstream` is `fetch` with a budget that throws `UpstreamError`
- *   carrying either description, and leaves a caller's own abort untouched.
- *
- * Messages name the service and the cause, never the host: which machine
- * answers for a service is deployment detail a user cannot act on. The host
- * rides along on `UpstreamFailure.host` (and `UpstreamError.host`), so a
- * route's `console.error` of the error still tells an operator which host is
- * down.
+ * Maps a failed server-side BV-BRC call to the status, code and message a route answers with.
+ * Messages name the service and cause, never the host; the host rides on `host` for server logs.
  */
 
 import { noop } from "@/lib/utils";
@@ -33,24 +14,15 @@ export interface UpstreamFailure {
   status: number;
   code: UpstreamFailureCode;
   message: string;
-  /** The host that failed, for server logs only; never in `message`. */
   host?: string;
-  /**
-   * The request that failed, by its internal name ("genome isolation_country
-   * facet"), for server logs only; never in `message`.
-   */
   source?: string;
 }
 
 export class UpstreamError extends Error {
   readonly status: number;
   readonly code: UpstreamFailureCode;
-  /**
-   * Printed by `console.error(error)`, which lists an error's own fields.
-   * `declare` emits no field, so an error without a host has no `host` key.
-   */
+  /** `declare` emits no field, so an error without a host has no `host` key. */
   declare readonly host?: string;
-  /** Printed by `console.error(error)`, as `host` is. */
   declare readonly source?: string;
 
   constructor(failure: UpstreamFailure, options?: ErrorOptions) {
@@ -63,7 +35,6 @@ export class UpstreamError extends Error {
   }
 }
 
-/** How failure messages name each backend (lower case, mid-sentence). */
 export const upstreamServices = {
   dataApi: "the BV-BRC data service",
   workspace: "the BV-BRC workspace service",
@@ -74,54 +45,20 @@ export const upstreamServices = {
   copilot: "the BV-BRC Copilot service",
 } as const;
 
-/**
- * Per-service budgets for one upstream round trip. Each bounds the wait for a
- * service that accepts the connection and then never answers (undici's own
- * bound is a 300 s headers timeout); a host that refuses or drops the
- * connection already fails within undici's 10 s connect timeout.
- *
- * They sit above the slow-but-good responses each service is known for, so a
- * budget never turns a slow success into a failure.
- */
+/** Budgets bound the wait for a service that accepts the connection and never answers; they sit above each service's slow successes. */
 export const upstreamTimeoutMs = {
-  /** Data API reads. Large facet queries take 5–15 s; the gateway's own 503 takes ~20 s. */
   dataApi: 20_000,
-  /**
-   * Data API reads of AMR phenotypes (`genome_amr`), a per-resource override of
-   * `dataApi` that `ServerDataRepository` applies. A taxon's AMR tab joins
-   * through `genome(...)`, and that join over every bacterial genome takes
-   * well past `dataApi` while Solr's caches are cold (a phylum alone takes
-   * ~11 s), then answers in 2–3 s once warm.
-   */
+  /** Override for `genome_amr`: the taxon join is slow while Solr's caches are cold. */
   dataApiGenomeAmr: 60_000,
-  /**
-   * Data API reads of features (`genome_feature`), the same kind of override.
-   * A taxon's Features tab joins through `genome(...)`, which Solr runs as a
-   * cross-collection join that is not cached: for Influenza A (taxon 2955291,
-   * 1.6M genomes) the first 200 rows took 109–125 s, as they do on legacy
-   * BV-BRC, which sends the same join and waits for it. Kept under undici's
-   * 300 s headers timeout.
-   */
+  /** Override for `genome_feature`: Solr's uncached cross-collection join took 109–125 s for Influenza A; kept under undici's 300 s headers timeout. */
   dataApiGenomeFeature: 150_000,
-  /** Workspace JSON-RPC (a recursive `Workspace.ls` of a large home is the slow case). */
   workspace: 30_000,
-  /** App service JSON-RPC, including `start_app2`, and job stdout/stderr. */
   jobService: 30_000,
-  /** Time to the first byte of a Shock file; the body itself streams unbounded. */
   fileStorage: 30_000,
-  /** Similar Genome Finder computes distances before it answers. */
   minhash: 60_000,
-  /**
-   * The SEED compare_regions service pins homologs in every compared genome
-   * before it answers: 7–20 s for 5–10 genomes, 72 s for 50 genomes over all
-   * genomes (measured 2026-10-23).
-   */
+  /** compare_regions pins homologs in every compared genome first: 72 s for 50 genomes. */
   compareRegion: 120_000,
-  /**
-   * Copilot gateway reads (models, sessions). A chat turn streams through with
-   * `streamBody`, so this bounds only the wait for its headers: the gateway
-   * answers those at once and then sends `: connected` and heartbeats.
-   */
+  /** Bounds only the wait for headers; a chat turn streams through with `streamBody`. */
   copilot: 30_000,
 } as const;
 
@@ -145,7 +82,6 @@ const unreachableReasons: Record<string, string> = {
 };
 
 const maxDetailLength = 200;
-// Bounds the regex work on a large error page; a title sits at the top.
 const maxScannedBodyLength = 20_000;
 
 function property(value: unknown, key: string): unknown {
@@ -154,8 +90,7 @@ function property(value: unknown, key: string): unknown {
     : undefined;
 }
 
-// Matched by name rather than instanceof: the DOMException an abort produces
-// can come from another realm (jsdom in tests), where instanceof Error fails.
+// Matched by name: an abort's DOMException can come from another realm (jsdom), where instanceof fails.
 function errorName(error: unknown): string | undefined {
   const name = property(error, "name");
   return typeof name === "string" ? name : undefined;
@@ -168,11 +103,7 @@ function errorMessage(error: unknown): string | undefined {
     : undefined;
 }
 
-/**
- * The error and its causes, outermost first: undici puts the socket error in
- * `cause`, and a dual-stack connect failure is an `AggregateError` whose
- * `errors` hold one failure per address.
- */
+/** undici puts the socket error in `cause`; a dual-stack connect failure is an `AggregateError` with one failure per address in `errors`. */
 function causeChain(error: unknown): unknown[] {
   const chain: unknown[] = [];
   let current: unknown = error;
@@ -193,10 +124,6 @@ function firstCode(chain: unknown[]): string | undefined {
   return undefined;
 }
 
-/**
- * The socket-level code behind a failure (`UND_ERR_CONNECT_TIMEOUT`,
- * `ECONNREFUSED`, …), searched through its causes.
- */
 export function upstreamCauseCode(error: unknown): string | undefined {
   // An UpstreamError's own `code` is ours, not the socket's.
   let start: unknown = error;
@@ -241,13 +168,10 @@ function connectTimeoutMs(chain: unknown[]): number | undefined {
 }
 
 export interface DescribeFailureOptions {
-  /** The budget whose `TimeoutError` this may be, for the message. */
   timeoutMs?: number;
-  /** Carried on the failure for server logs; never part of the message. */
   host?: string;
 }
 
-/** `host` as an optional field, absent rather than `undefined`. */
 function withHost(
   failure: UpstreamFailure,
   host: string | undefined,
@@ -255,7 +179,6 @@ function withHost(
   return host ? { ...failure, host } : failure;
 }
 
-/** A spent budget: 504 "… did not respond (timed out after N s)". */
 export function upstreamTimeoutFailure(
   service: string,
   options: DescribeFailureOptions = {},
@@ -271,18 +194,7 @@ export function upstreamTimeoutFailure(
   );
 }
 
-/**
- * Describes a thrown network-level failure, or returns `null` when `error` is
- * not one: a caller's own `AbortError` (which keeps its own handling, such as
- * the Data API's 499) and ordinary application errors are the caller's to
- * map.
- *
- * - a budget's `TimeoutError`, or an undici connect/headers/body timeout →
- *   504 `upstream_timeout`, "… did not respond (timed out after N s)"
- * - refused, reset, unresolvable or otherwise failed connections → 502
- *   `service_unavailable`, "Could not reach …: <reason>" (502 as a gateway
- *   answers an upstream it cannot connect to)
- */
+/** Returns `null` for a caller's own `AbortError` and ordinary application errors. */
 export function describeUpstreamFailure(
   error: unknown,
   service: string,
@@ -326,9 +238,7 @@ export function describeUpstreamFailure(
     name === "TypeError" &&
     /fetch failed|failed to fetch|network/i.test(errorMessage(error) ?? "");
   if (reason || isFetchFailure) {
-    // The innermost message is the specific one ("getaddrinfo ENOTFOUND …",
-    // "unable to verify the first certificate"); the outer one is only
-    // "fetch failed".
+    // The innermost message is the specific one; the outer one is only "fetch failed".
     const detail =
       reason ??
       chain
@@ -386,12 +296,7 @@ export function isHtmlBody(body: string, contentType?: string | null): boolean {
   return /html/i.test(contentType ?? "") || /^\s*</.test(body);
 }
 
-/**
- * The readable part of an upstream error body, condensed, never markup:
- * an HTML page's `<title>` and first `<h1>` ("Site Maintenance — We’ll be
- * back soon!"), a JSON body's `error`/`message`, or the text itself.
- * Empty when the body says nothing.
- */
+/** The readable part of an upstream error body, never markup. */
 export function summarizeUpstreamBody(
   body: string,
   contentType?: string | null,
@@ -421,7 +326,7 @@ export function summarizeUpstreamBody(
       );
     if (message) return condense(message);
   } catch {
-    // Not JSON: fall through to the text itself.
+    // non-JSON body: fall through
   }
   return condense(text);
 }
@@ -432,24 +337,14 @@ export interface UpstreamResponseLike {
   headers?: Headers;
 }
 
-/**
- * Describes a non-OK upstream response from its status and body text.
- *
- * - 503 → 503 `service_unavailable`; 504 → 504 `upstream_timeout`; any other
- *   5xx → 502 `upstream_error`, each "… is unavailable (HTTP 503 Service
- *   Unavailable: Site Maintenance)".
- * - 4xx keeps its status with "… rejected the request (HTTP 404 …)". Callers
- *   that own a more specific wording for a 4xx ("Authentication failed")
- *   keep theirs and use this only for 5xx.
- */
+/** Callers owning a more specific 4xx wording keep theirs and use this only for 5xx. */
 export function describeUpstreamResponse(
   response: UpstreamResponseLike,
   body: string,
   service: string,
   options: { host?: string } = {},
 ): UpstreamFailure {
-  // Trailing sentence punctuation is dropped: the detail sits inside "(…)."
-  // and "Service will be back soon." would otherwise end in "soon.).".
+  // Trailing punctuation is dropped so the detail does not end in "soon.).".
   const detail = summarizeUpstreamBody(
     body,
     response.headers?.get("content-type"),
@@ -481,42 +376,21 @@ export function describeUpstreamResponse(
 }
 
 export interface FetchUpstreamOptions {
-  /** Lower-case service phrase for messages: "the BV-BRC workspace service". */
   service: string;
   timeoutMs: number;
-  /**
-   * Bound only the wait for the response headers. For a body the caller
-   * streams through (a file download), which may legitimately take longer
-   * than any budget.
-   */
+  /** Bounds only the wait for headers, for bodies the caller streams (file downloads). */
   streamBody?: boolean;
   fetcher?: typeof fetch;
 }
 
-/**
- * The budget `fetchUpstream` waits, which is `timeoutMs` everywhere but the
- * e2e harness. There the loopback mock's "hang" outage never answers, and a
- * spec would sit out a 20–60 s production budget, so `E2E_UPSTREAM_BUDGET_MS`
- * (`.env.e2e.test`) caps it. Read only when `E2E_MOCK_ENABLED=1`, the flag
- * that also guards the mock, so a deploy cannot shorten a budget by setting
- * one variable. Messages keep naming `timeoutMs`, the production budget.
- */
+/** Capped by `E2E_UPSTREAM_BUDGET_MS` only when `E2E_MOCK_ENABLED=1`, so a hang outage does not sit out a production budget. */
 function e2eBudgetMs(timeoutMs: number): number {
   if (process.env.E2E_MOCK_ENABLED !== "1") return timeoutMs;
   const cap = Number(process.env.E2E_UPSTREAM_BUDGET_MS);
   return Number.isFinite(cap) && cap > 0 ? Math.min(timeoutMs, cap) : timeoutMs;
 }
 
-/**
- * `fetch` bounded by `options.timeoutMs`, composed with any `init.signal` so
- * the caller's own cancellation keeps working. A network failure or a spent
- * budget throws `UpstreamError` (with the original error as `cause`); the
- * caller's own abort rethrows untouched. The response is returned as is, OK or
- * not: reading a non-OK body is the caller's (see `describeUpstreamResponse`).
- *
- * Without `streamBody`, the budget also bounds reading the body, exactly as
- * `AbortSignal.timeout` on a plain `fetch` does.
- */
+/** `fetch` bounded by `timeoutMs`, composed with `init.signal`. Throws `UpstreamError` on failure; a caller's own abort rethrows untouched. */
 export async function fetchUpstream(
   input: string | URL,
   init: RequestInit,
@@ -554,7 +428,6 @@ export async function fetchUpstream(
   }
 }
 
-/** `describeUpstreamResponse` for a response `fetchUpstream` returned. */
 export async function upstreamResponseError(
   response: Response,
   service: string,

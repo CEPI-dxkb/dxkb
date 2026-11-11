@@ -78,7 +78,6 @@ describe("Taxonomy view contract", () => {
         lineage_ids: ["10239", 11308, "11520"],
       }),
     ).toMatchObject({ taxon_id: "11520" });
-    // The wire format is numeric; the parsed record keeps the canonical string.
     expect(
       taxonomyViewRecordSchema.parse({ taxon_id: 11520, parent_id: 11308 }),
     ).toMatchObject({ taxon_id: "11520" });

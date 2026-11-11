@@ -7,8 +7,6 @@ const { fetchTaxonomy, buildViews } = vi.hoisted(() => ({
   buildViews: vi.fn(),
 }));
 
-// The static fallback itself is covered with MSW in
-// src/app/organisms/__tests__/landing-outage.test.tsx.
 vi.mock("@/lib/services/organisms/taxonomy", () => ({
   fetchLandingRootTaxonomy: (taxonId: number) => fetchTaxonomy(taxonId) as unknown,
 }));

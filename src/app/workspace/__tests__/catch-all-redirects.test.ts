@@ -16,13 +16,9 @@ import WorkspaceSharedRedirect from "../shared/[[...path]]/page";
 const userId = "e2e-test-user@patricbrc.org";
 
 /**
- * These two pages take a catch-all segment list and re-encode it into a
- * redirect target. A page component receives those segments already
- * percent-encoded (`getParamValue` maps `encodeURIComponent` over the array),
- * so re-encoding without reading them back produced a doubly encoded target
- * — and the destination page decodes exactly once, landing one level short.
- * The tests therefore feed the segments the way Next does, not the way a
- * human would type them.
+ * A page receives catch-all segments percent-encoded, so re-encoding them
+ * without reading them back double-encodes the target; feed segments the way
+ * Next does.
  */
 function pageParams(segments: string[]) {
   return {
@@ -81,8 +77,8 @@ describe("workspace catch-all redirects", () => {
   );
 
   it("qualifies a bare session user id with the session realm", async () => {
-    // The BV-BRC profile service returns `id` without a realm, and legacy
-    // PATRIC accounts live under `@patricbrc.org`, not the `@bvbrc` default.
+    // The profile service returns `id` without a realm; legacy PATRIC accounts
+    // live under `@patricbrc.org`, not `@bvbrc`.
     mocks.requireAuthSessionOrRedirect.mockResolvedValue({
       userId: "clark.cucinell",
       realm: "patricbrc.org",
@@ -97,8 +93,8 @@ describe("workspace catch-all redirects", () => {
   });
 
   it("passes the singly encoded path to the auth redirect target too", async () => {
-    // `requireAuthSessionOrRedirect` receives the path a signed-out visitor
-    // is sent back to, so it has the same double-encoding exposure.
+    // `requireAuthSessionOrRedirect` receives the signed-out return path, so it
+    // has the same double-encoding exposure.
     await redirectTargetOf(WorkspaceHomeRedirect, ["my folder"]);
 
     expect(mocks.requireAuthSessionOrRedirect).toHaveBeenCalledWith(

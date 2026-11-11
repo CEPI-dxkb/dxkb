@@ -1,5 +1,4 @@
-// `server-only` throws outside Next's bundler; this route reaches it through
-// `@/lib/data-api/server-policy`. Same neutralization as the gateway's spec.
+// `server-only` throws outside Next's bundler (same neutralization as the gateway's spec).
 vi.mock("server-only", () => ({}));
 
 import { http, HttpResponse } from "msw";
@@ -18,7 +17,6 @@ import { POST } from "../route";
 const dataApiOrigin = "https://data.test";
 const tsv = "Genome ID\tGenome Name\n1.1\tOne\n";
 
-/** One client IP per test, so rate-limit buckets never spill between cases. */
 let nextIpOctet = 20;
 function freshIp(): string {
   nextIpOctet += 1;
@@ -57,7 +55,6 @@ function post(
   );
 }
 
-/** The native transport's form body: one `request` field holding the JSON. */
 function formBody(value: unknown): string {
   return new URLSearchParams({ request: JSON.stringify(value) }).toString();
 }
@@ -78,7 +75,6 @@ function captureUpstream(resource: string, respond: () => Response) {
   return seen;
 }
 
-/** Fails the test if the route reaches the upstream at all. */
 function forbidUpstream() {
   const hit = vi.fn();
   server.use(
@@ -127,7 +123,6 @@ describe("POST /api/data/[resource]/download", () => {
     );
     expect(response.headers.get("Cache-Control")).toBe("private, no-store");
     expect(response.headers.get("Vary")).toBe("Cookie");
-    // No nonce, no cookie: the buffered path does not poll for one.
     expect(response.headers.get("Set-Cookie")).toBeNull();
     expect(await response.text()).toBe(tsv);
     expect(seen).toEqual([
@@ -178,7 +173,6 @@ describe("POST /api/data/[resource]/download", () => {
 
   it("accepts the native transport's form and echoes its nonce in a cookie", async () => {
     setTestSession({ token: "secret", userId: "alice" });
-    // The repository counts a query again before downloading it.
     server.use(
       http.get(`${dataApiOrigin}/genome/`, () =>
         HttpResponse.json({ response: { numFound: 20_000, docs: [] } }),
@@ -198,7 +192,6 @@ describe("POST /api/data/[resource]/download", () => {
     });
 
     expect(response.status).toBe(200);
-    // Readable by script (no HttpOnly), short-lived, and never sent cross-site.
     const cookie = response.headers.get("Set-Cookie") ?? "";
     expect(cookie).toMatch(/^dxkb-download=abcdef0123456789; Path=\/;/);
     expect(cookie).toContain("Max-Age=60");
@@ -207,8 +200,6 @@ describe("POST /api/data/[resource]/download", () => {
     expect(seen).toEqual([
       {
         accept: "text/csv",
-        // The form reaches the route with the session cookie, so the token
-        // goes upstream from the server, never through the page.
         authorization: "secret",
         body: "eq(genome_status,Complete)&sort(+genome_id)&limit(2500000)",
       },
@@ -235,7 +226,6 @@ describe("POST /api/data/[resource]/download", () => {
   });
 
   it("answers a genome selection with no contigs as an error, not an empty file", async () => {
-    // Whole contigs stream through the form, which saves whatever it is sent.
     captureUpstream("genome_sequence", () => new Response(""));
 
     const response = await post({

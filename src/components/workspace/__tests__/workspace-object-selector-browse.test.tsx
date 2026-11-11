@@ -21,8 +21,8 @@ vi.mock("sonner", () => ({ toast: { error: vi.fn(), success: vi.fn() } }));
 stubPickerBrowserApis();
 
 beforeEach(() => {
-  // useAuth runs on every render, so a test that signs out sets the value for
-  // the whole test; this puts the signed-in user back.
+  // useAuth runs on every render, so a sign-out test sets the value for the whole test;
+  // this restores the signed-in user.
   vi.mocked(useAuth).mockReturnValue({
     user: pickerUser,
   } as ReturnType<typeof useAuth>);
@@ -192,7 +192,6 @@ describe("WorkspaceObjectSelector browse (files)", () => {
       expect.objectContaining({ path: `${home}/draft.fasta` }),
     );
     expect(onObjectSelect).not.toHaveBeenCalled();
-    // Enter in the field then commits it, as it does after a clicked suggestion.
     await user.click(screen.getByPlaceholderText("Optional"));
     await user.keyboard("{Escape}{Enter}");
     expect(onObjectSelect).toHaveBeenCalledWith(
@@ -229,7 +228,6 @@ describe("WorkspaceObjectSelector browse (files)", () => {
 
   it("hands over the path the picker committed, not the row's own", async () => {
     const repository = files();
-    // A row whose path carries a trailing slash is committed without it.
     repository.addItem(home, {
       name: "slashed.fasta",
       type: "contigs",

@@ -37,7 +37,6 @@ describe("POST /api/services/genome/get-all-ids", () => {
       }),
     );
 
-    // Send request with no JSON body — route handles parse failure via .catch(() => ({}))
     const req = new (await import("next/server")).NextRequest(
       "http://localhost:3019/api/services/genome/get-all-ids",
       { method: "POST" },

@@ -8,7 +8,6 @@ export interface ServiceOutputFieldBinding {
   value: string;
   onChange: (value: string) => void;
   errors?: ReactNode;
-  /** Draws the field in its error state while `errors` shows a message. */
   invalid?: boolean;
 }
 
@@ -16,15 +15,8 @@ interface ServiceOutputFieldsProps {
   outputPath: ServiceOutputFieldBinding;
   outputName: ServiceOutputFieldBinding;
   onOutputNameValidationChange: (valid: boolean) => void;
-  /**
-   * Marks both labels required. Defaults to `true`, unlike `OutputFolder`
-   * (`false`), so a row page whose labels carry no "*" passes `false`.
-   */
+  /** Marks both labels required; defaults to true, unlike `OutputFolder`. */
   required?: boolean;
-  /**
-   * `column` stacks the two fields; `row` puts each in a
-   * `service-card-row-item` of one `service-card-row`.
-   */
   layout?: "column" | "row";
   className?: string;
 }

@@ -12,7 +12,6 @@ describe("ServiceAddButton", () => {
 
     const button = screen.getByRole("button", { name: "Add genome group" });
     expect(button).toHaveAttribute("data-variant", "soft");
-    // A plain button, so it never submits the service form around it.
     expect(button).toHaveAttribute("type", "button");
     expect(button.querySelector("svg.lucide-plus")).not.toBeNull();
 

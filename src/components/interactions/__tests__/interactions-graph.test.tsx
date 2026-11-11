@@ -19,11 +19,8 @@ import { defaultLayout } from "@/lib/interactions/renderer-capabilities";
 import type { LayoutName, PpiRecord } from "@/lib/interactions/types";
 import { createQueryClientWrapper } from "@/test-helpers/react";
 
-// InteractionsGraph only reaches SigmaCanvas (WebGL, untestable in jsdom —
-// see docs/architecture.md / testing.md canvas exclusion) once useInteractions
-// resolves with rows. Mocking it pending keeps the component on its loading
-// branch, which is enough to observe what query it asked for. The hook's own
-// request shape is covered over MSW in lib/interactions/__tests__.
+// Mocked pending: SigmaCanvas (WebGL) is untestable in jsdom, and this keeps the component on its
+// loading branch, enough to observe the query it asked for.
 vi.mock("@/lib/interactions/use-interactions", async (importOriginal) => ({
   ...(await importOriginal<
     typeof import("@/lib/interactions/use-interactions")
@@ -36,8 +33,6 @@ vi.mock("@/lib/interactions/use-interactions", async (importOriginal) => ({
   })),
 }));
 
-// The layout runs in a Web Worker in the browser; here each test decides when
-// (and whether) it answers.
 vi.mock("@/lib/interactions/layout-client", () => ({
   requestGraphLayout: vi.fn(),
 }));
@@ -67,7 +62,6 @@ beforeEach(() => {
   );
 });
 
-/** A layout computation the test settles by hand. */
 function deferredLayout() {
   let resolve: (positions: Float64Array) => void = () => undefined;
   const promise = new Promise<Float64Array>((settle) => {
@@ -82,7 +76,6 @@ type GraphHarnessProps = Omit<
   "layout" | "onLayoutChange"
 >;
 
-/** Owns the chosen layout, as the subview shell does. */
 function GraphHarness(props: GraphHarnessProps) {
   const [layout, setLayout] = useState<LayoutName>(defaultLayout);
   return (
@@ -113,7 +106,6 @@ function resolved(data: InteractionsGraphData) {
   } as unknown as ReturnType<typeof useInteractions>);
 }
 
-/** Returns the query's `refetch` spy so a retry affordance can be observed. */
 function failed(error: Error) {
   const refetch = vi.fn();
   vi.mocked(useInteractions).mockReturnValue({
@@ -146,9 +138,6 @@ describe("InteractionsGraph query inputs", () => {
       />,
     );
 
-    // The graph no longer encodes the keyword into RQL itself. That local
-    // encoding was a second, differently-escaped clause for the same text as
-    // the table's, which is how one input came to mean two datasets.
     expect(useInteractions).toHaveBeenCalledWith(
       "eq(evidence,experimental)",
       "  groEL   dnaK ",
@@ -170,8 +159,6 @@ describe("InteractionsGraph query inputs", () => {
       { target: { value: "dnaK" } },
     );
 
-    // The owner holds the keyword, and the toolbar debounces before handing it
-    // over, so the query keeps asking for the committed one meanwhile.
     expect(useInteractions).toHaveBeenLastCalledWith(
       "eq(evidence,experimental)",
       "groEL",
@@ -186,17 +173,11 @@ describe("InteractionsGraph query inputs", () => {
   });
 });
 
-// The mock above holds useInteractions on `isPending`, so this exercises the
-// real loading branch and guards its wiring: a regression that swaps the
-// skeleton back for a blank/centered-text state (the pre-skeleton behavior)
-// makes the spinner disappear and fails here.
 describe("InteractionsGraph loading state", () => {
   it("renders the loading skeleton while the query is pending", () => {
     renderGraph(<GraphHarness rql="" keywordValue="" onKeywordChange={vi.fn()} />);
 
-    // Skeleton's Spinner is the single role=status loading announcement.
     expect(screen.getByRole("status")).toBeInTheDocument();
-    // Real keyword toolbar stays mounted in every state, loading included.
     expect(
       screen.getByPlaceholderText("Search interaction results..."),
     ).toBeInTheDocument();
@@ -212,16 +193,12 @@ describe("InteractionsGraph error state", () => {
     expect(
       screen.getByText("DATA_API_URL is not configured."),
     ).toBeInTheDocument();
-    // The keyword box survives the error, so the search can still be cleared.
     expect(
       screen.getByPlaceholderText("Search interaction results..."),
     ).toBeInTheDocument();
   });
 
   it("re-issues the query from a Retry button, like the Table subview does", async () => {
-    // A transient gateway 502 is recoverable, and the Table subview's load
-    // error already offers a retry for the same failure class — without one
-    // here, switching tabs was the only way back.
     const refetch = failed(new Error("Bad gateway"));
 
     renderGraph(<GraphHarness rql="" keywordValue="" onKeywordChange={vi.fn()} />);
@@ -234,8 +211,7 @@ describe("InteractionsGraph error state", () => {
 
   it("keeps the failure up, retrying, until the Retry answers", async () => {
     const refetch = failed(new Error("Bad gateway"));
-    // What TanStack does to a failed query with no data when it refetches:
-    // back to pending, the error cleared, a read in flight.
+    // What TanStack does to a failed query with no data on refetch: back to pending, error cleared.
     refetch.mockImplementation(() => {
       vi.mocked(useInteractions).mockReturnValue({
         data: undefined,
@@ -251,12 +227,10 @@ describe("InteractionsGraph error state", () => {
       <GraphHarness rql="" keywordValue="" onKeywordChange={vi.fn()} />,
     );
     await userEvent.click(screen.getByRole("button", { name: "Retry" }));
-    // The query's own re-render once its state changed.
     rerender(
       <GraphHarness rql="" keywordValue="" onKeywordChange={vi.fn()} />,
     );
 
-    // The alert, not the loading skeleton, until the retry answers.
     const alert = screen.getByRole("alert");
     expect(alert).toHaveTextContent("Bad gateway");
     expect(
@@ -408,7 +382,6 @@ describe("InteractionsGraph layout", () => {
     );
 
     expect(await screen.findByRole("status")).toHaveTextContent("Laying out…");
-    // The canvas is up, but there is no picture to export yet.
     fireEvent.click(screen.getByTestId("sigma-canvas"));
     expect(screen.getByTestId("sigma-canvas")).toHaveAttribute(
       "data-positions",
@@ -480,7 +453,6 @@ describe("InteractionsGraph layout", () => {
     const alert = await screen.findByRole("alert");
     expect(alert).toHaveTextContent("Could not lay out the graph");
     expect(alert).toHaveTextContent("Graph.addEdge: source node not found");
-    // A ready canvas with no positions has nothing to export.
     fireEvent.click(screen.getByTestId("sigma-canvas"));
     expect(screen.getByRole("button", { name: "Export" })).toBeDisabled();
 

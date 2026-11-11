@@ -16,7 +16,6 @@ import {
 } from "@/constants/search-info";
 
 interface AdvancedSearchDropdownProps {
-  /** Visual style: "tab" renders as a tab-shaped trigger; "button" renders as a segmented button */
   variant?: "tab" | "button";
   className?: string;
 }

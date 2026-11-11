@@ -1,18 +1,9 @@
-/**
- * A viewer's figure (Compare Region, Circular Viewer) as a standalone SVG
- * file. The figure is drawn with theme classes, which mean nothing outside
- * the page, so a copy is resolved under an off-screen light-theme host first:
- * every class becomes the colors and fonts it computes to there. Exports
- * always use DXKB's light theme, whatever the page's. Every color is then written as sRGB: browsers
- * compute theme tokens and the data colors as `oklch()` / `lab()`, which
- * Illustrator, Office, LibreOffice and many SVG-to-PDF tools cannot read.
- */
+/** Exports a viewer figure as standalone SVG with theme classes resolved under a light theme and colors written as sRGB (many SVG tools cannot read `oklch()`). */
 import { downloadBlob } from "@/lib/utils";
 
 const svgNamespace = "http://www.w3.org/2000/svg";
 const xmlnsNamespace = "http://www.w3.org/2000/xmlns/";
 
-/** A color as 8-bit sRGB channels, with its alpha (0–1) apart. */
 export interface SrgbColor {
   r: number;
   g: number;
@@ -20,22 +11,15 @@ export interface SrgbColor {
   alpha: number;
 }
 
-/** Any CSS color as sRGB; null when it is no color (or cannot be converted here). */
 export type ToSrgb = (color: string) => SrgbColor | null;
 
-/**
- * Converts on a 1×1 canvas, which paints any CSS color the browser knows in
- * sRGB (exactly, gamut-mapped when it lies outside), and reads the pixel
- * back. Each distinct color is converted once. Without a 2D context it
- * converts nothing, so the colors are kept as they are.
- */
+/** Converts via a 1×1 canvas (sRGB, gamut-mapped), caching each color; without a 2D context colors are kept as-is. */
 export function canvasToSrgb(): ToSrgb {
   const cache = new Map<string, SrgbColor | null>();
   let context: CanvasRenderingContext2D | null | undefined;
   return (color) => {
     const cached = cache.get(color);
     if (cached !== undefined) return cached;
-    // Looked up once: null (no 2D context) is an answer too.
     if (context === undefined) {
       context = document
         .createElement("canvas")
@@ -54,7 +38,6 @@ export function canvasToSrgb(): ToSrgb {
   };
 }
 
-/** The color attributes, each with the opacity attribute its alpha goes to. */
 const colorAttributes = [
   ["fill", "fill-opacity"],
   ["stroke", "stroke-opacity"],
@@ -62,25 +45,13 @@ const colorAttributes = [
   ["color", null],
 ] as const;
 
-/** Paints that are no color: kept as they are. */
 const notAColor = /^(?:none|currentcolor|inherit|url\(.*)$/i;
 
 function rgbText({ r, g, b }: SrgbColor): string {
   return `rgb(${String(r)}, ${String(g)}, ${String(b)})`;
 }
 
-/**
- * Every color attribute (and the root's style color) as `rgb(r, g, b)`, its
- * alpha moved to the matching opacity attribute and multiplied with one
- * already there. A wholly clear fill or stroke becomes `none`.
- *
- * `fill-opacity` / `stroke-opacity` inherit and do not multiply down the
- * tree, so this is exact only while a group whose paint has alpha has no
- * child with a paint of its own, and no alpha-painted child sits under a
- * group's opacity attribute. The figure holds to both (the translucent
- * groups' children set no paint, and the ribbon group's paths are opaque);
- * a layer that breaks either needs its opacity on the painted elements.
- */
+/** `fill-opacity`/`stroke-opacity` do not multiply down the tree, so this is exact only while no alpha-painted group has children with their own paint. */
 function writeSrgbColors(copy: SVGSVGElement, toSrgb: ToSrgb): void {
   for (const element of [copy, ...copy.querySelectorAll("*")]) {
     for (const [name, opacityName] of colorAttributes) {
@@ -104,7 +75,6 @@ function writeSrgbColors(copy: SVGSVGElement, toSrgb: ToSrgb): void {
   if (rootColor) copy.style.color = rgbText(rootColor);
 }
 
-/** An off-screen element in DXKB's light theme, for resolving the copy's classes. */
 function lightThemeHost(): HTMLDivElement {
   const host = document.createElement("div");
   host.setAttribute("data-theme", "dxkb-light");
@@ -116,15 +86,7 @@ function lightThemeHost(): HTMLDivElement {
   return host;
 }
 
-/**
- * Two kinds of class the copy must not compute with. The `dark:` variant
- * matches anything under a dark-themed <html>, the light host included (it
- * reads the nearest `data-theme` ending in `-dark`, not the closest
- * `data-theme`): without it the copy computes as in the light theme. An
- * animation (`animate-*`, `motion-safe:animate-*`) starts again on the copy,
- * which would export its first frame (the Circular Viewer's rings at opacity
- * 0): without it the copy computes at rest.
- */
+/** Classes the copy must not compute with: `dark:` matches under a dark `<html>` even on the light host, and animations would export their first frame. */
 function dropLiveOnlyClasses(copy: SVGSVGElement): void {
   for (const element of [copy, ...copy.querySelectorAll("[class]")]) {
     for (const name of [...element.classList]) {
@@ -136,13 +98,7 @@ function dropLiveOnlyClasses(copy: SVGSVGElement): void {
   }
 }
 
-/**
- * A mask that only sweeps marks into view (`data-sweep`, the Circular
- * Viewer's rings while their data arrives) is dropped with every `mask`
- * reference to it: at rest it uncovers all the marks, so the file draws them
- * unmasked. Kept, it would lose its class's `mask-type: alpha` and work as a
- * luminance mask, whose dark `currentColor` circle hides what it masks.
- */
+/** A sweep-only mask (`data-sweep`) is dropped with its references; kept, it would act as a luminance mask and hide what it masks. */
 function dropSweepMasks(copy: SVGSVGElement): void {
   const references = new Set<string>();
   for (const mask of copy.querySelectorAll("mask[data-sweep]")) {
@@ -156,7 +112,6 @@ function dropSweepMasks(copy: SVGSVGElement): void {
   }
 }
 
-/** Text set in capitals by CSS (`text-transform: uppercase`) is written in capitals. */
 function uppercaseText(copy: SVGSVGElement): void {
   for (const element of copy.querySelectorAll("text, tspan")) {
     if (getComputedStyle(element).textTransform !== "uppercase") continue;
@@ -168,13 +123,7 @@ function uppercaseText(copy: SVGSVGElement): void {
   }
 }
 
-/**
- * Every class as the paint it computes to, then no class. Fonts go on every
- * text and tspan (Compact's genome line sets the strain in a tspan), since
- * they also inherit them from a classed group: the size too, which a class
- * such as `text-3xs` sets (the Circular Viewer's position labels), and which
- * a `font-size` attribute computes to unchanged.
- */
+/** Fonts and sizes go on every text and tspan, since they may be inherited from a classed group. */
 function resolveClasses(copy: SVGSVGElement): void {
   for (const element of copy.querySelectorAll("text, tspan")) {
     const style = getComputedStyle(element);
@@ -196,20 +145,13 @@ function resolveClasses(copy: SVGSVGElement): void {
   }
 }
 
-/**
- * Downloads `svg` (the chart's figure) as `fileName`: the hover overlays
- * (`data-overlay`) and sweep masks (`data-sweep`) dropped, the sticky label
- * column and ruler (`data-sticky`) back in place, every theme class resolved
- * to light-theme colors, and every
- * color written as sRGB through `toSrgb` (tests pass one; jsdom has no canvas).
- */
+/** Downloads `svg` as `fileName`; `toSrgb` is injectable because jsdom has no canvas. */
 export function exportSvgFigure(
   svg: SVGSVGElement,
   fileName: string,
   toSrgb: ToSrgb = canvasToSrgb(),
 ): void {
   const copy = svg.cloneNode(true) as SVGSVGElement;
-  // A picture: the genes' buttons and the rows' groups stay in the app.
   copy.setAttribute("role", "img");
   for (const node of copy.querySelectorAll("[role], [tabindex]")) {
     for (const name of ["role", "tabindex", "aria-label"]) {
@@ -233,8 +175,7 @@ export function exportSvgFigure(
     copy.style.backgroundColor = "#fff";
     resolveClasses(copy);
     writeSrgbColors(copy, toSrgb);
-    // A namespace declaration, not a plain attribute: the serializer would
-    // write a plain `xmlns` beside its own, and the file would not parse.
+    // A namespace declaration, not a plain attribute: a plain `xmlns` would duplicate the serializer's and break parsing.
     copy.setAttributeNS(xmlnsNamespace, "xmlns", svgNamespace);
     const markup = new XMLSerializer().serializeToString(copy);
     downloadBlob(new Blob([markup], { type: "image/svg+xml" }), fileName);

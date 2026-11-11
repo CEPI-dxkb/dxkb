@@ -36,7 +36,6 @@ describe("useFastaValidation", () => {
 
     expect(result.current.fastaText).toBe(validDnaFasta);
     expect(result.current.isValidating).toBe(true);
-    // Validation result should not be set yet (debounce hasn't fired)
     expect(result.current.validationResult).toBeNull();
   });
 
@@ -65,7 +64,6 @@ describe("useFastaValidation", () => {
       useFastaValidation({ inputType: "blastn" }),
     );
 
-    // First set some text and let debounce fire so fastaText is populated
     act(() => {
       result.current.setFastaText(validDnaFasta);
     });
@@ -73,11 +71,9 @@ describe("useFastaValidation", () => {
       vi.advanceTimersByTime(500);
     });
 
-    // Reset by checking current state
     const previousResult = result.current.validationResult;
     expect(previousResult).not.toBeNull();
 
-    // Call validateFasta directly - it should validate immediately
     act(() => {
       result.current.validateFasta();
     });

@@ -146,14 +146,10 @@ export function JobMetadataCard({
         </div>
       </dl>
 
-      {/* Closed, the trigger's fill is the whole control; open, one border
-          wraps the trigger and the parameters together. Both key on the
-          panel not being `hidden` rather than on the open state: Base UI
-          flips `data-open` at the start of the close animation but hides the
-          panel only at its end, so the border and the trigger's square
-          bottom corners stay until the panel has collapsed; both then ease
-          out instead of snapping. The outer radius is one step above the
-          trigger's so the corners nest inside the 1px border. */}
+      {/* Border and trigger corners key on the panel not being `hidden`: Base UI
+         flips `data-open` at the start of the close animation but hides the panel
+         only at its end. The outer radius is one step above the trigger's so the
+         corners nest inside the 1px border. */}
       <Collapsible
         open={parametersOpen}
         onOpenChange={setParametersOpen}

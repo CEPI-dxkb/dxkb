@@ -12,51 +12,23 @@ import { useUiPreference } from "@/lib/ui-preferences/provider";
 
 interface ResourceWorkspaceProps {
   children: ReactNode;
-  /**
-   * A row above `children` in the content column, so it spans the table and
-   * not the action strip beside it (the collection's filter toolbar).
-   */
   toolbar?: ReactNode;
   sidePanel: ReactNode;
   actionBar?: ReactNode;
   hasSidePanel?: boolean;
-  /**
-   * The action rail beside the content, with its Hide/Show button. A failed
-   * collection read turns it off: there is nothing to act on.
-   */
   hasActionRail?: boolean;
 }
 
 /**
- * Below this width the detail panel sits under the content instead of beside it.
- * Matches Tailwind's `md` breakpoint so the `max-md:` utilities below flip in the
- * same place as the `orientation`/`disabled`/size props this query feeds.
+ * Matches Tailwind's `md` breakpoint so the `max-md:` utilities flip in the
+ * same place.
  */
 const narrowWorkspaceQuery = "(max-width: 47.999rem)";
 
 /**
- * Detail-panel extent along the group's main axis, per layout. Stacked gets a much
- * larger share because the axis is the viewport's short one, and it cannot be dragged
- * there (the group is `disabled` and the separator is hidden below `md`).
- *
- * `panelId` is load-bearing, not decoration. `ResizablePanelGroup` caches its computed
- * layout under a key built from its panels' joined `id`s and restores that cache in
- * preference to any `defaultSize`, merely clamping it to the current `minSize`/
- * `maxSize`. A layout whose sizes change therefore has to change the key too, or the
- * first mount's split is the only one the group will ever use: crossing the breakpoint
- * would leave the detail panel clamped to `stacked.minSize` (25%) and crossing back
- * would leave the desktop panel at that same 25% instead of 15%. Changing an `id` on a
- * mounted element remounts nothing, which is what lets this coexist with the
- * one-stable-subtree contract below.
- *
- * Because the cache is per key, the two layouts also keep their splits apart: the
- * stacked layout does not inherit a share dragged along the horizontal axis (where it
- * would mean nothing), and a width the user dragged side by side is handed back when
- * they return to it. `resource-workspace.test.tsx` pins all of that as rendered
- * `flex-grow`, because a `defaultSize` assertion cannot see any of it.
- *
- * The side-by-side `defaultSize` is the user's remembered width
- * (`resourceDetailPanelSize`); 15% is only the first-visit default.
+ * `panelId` is load-bearing: `ResizablePanelGroup` restores a layout cached per
+ * joined panel-id key in preference to `defaultSize`, so a layout whose sizes
+ * change must change the key too.
  */
 const detailPanelSizes = {
   stacked: {
@@ -74,28 +46,10 @@ const detailPanelSizes = {
 } as const;
 
 /**
- * The content / action-strip / detail-panel shell every resource view fills.
- *
- * **One element tree, in both layouts.** `children`, `actionBar` and `sidePanel` are
- * each rendered exactly once, under the same ancestors at every width; crossing
- * `narrowWorkspaceQuery` only changes props and `max-md:` classes on that stable tree.
- * That matters because `children` is typically a whole resource collection, and React
- * cannot reconcile a subtree across two different ancestor element types — returning a
- * separate narrow tree discarded the table's selection, scroll and focus, the tree's
- * expansion state, and any dialog the action bar had open, on every resize. It also
- * double-mounted every narrow page load, because `isNarrow` can only become true after
- * the effect below has read `matchMedia`.
- *
- * The one thing the layout cannot express in CSS alone is the resize axis:
- * `ResizablePanelGroup` computes drag geometry in JS and writes the main-axis extent
- * as an inline style, so `orientation` has to come from a real media-query read. It is
- * a prop on a tree that stays put, not a choice of tree.
- *
- * Hiding the detail panel — either because the consumer withdrew it (`hasSidePanel`)
- * or because the user pressed Hide — still unmounts that slot. That is the panel's
- * intended lifecycle, not the responsive defect. Withdrawing the action rail
- * (`hasActionRail`) likewise unmounts the rail and nothing else: the toolbar and
- * `children` keep their place in the tree.
+ * One element tree in both layouts: crossing `narrowWorkspaceQuery` only
+ * changes props and `max-md:` classes, because React cannot reconcile a subtree
+ * across different ancestor types and a separate narrow tree would discard
+ * table and dialog state on every resize.
  */
 export function ResourceWorkspace({
   children,
@@ -105,15 +59,12 @@ export function ResourceWorkspace({
   hasSidePanel = true,
   hasActionRail = true,
 }: ResourceWorkspaceProps) {
-  // Namespaces the detail panel's id. The library writes a panel's id straight into
-  // the DOM `id` attribute, so two workspaces mounted at once would otherwise collide
-  // on a bare "detail-side" — the duplicate-id failure this item exists to avoid.
+  // The library writes a panel's id straight into the DOM, so namespace it to
+  // avoid duplicate ids across workspaces.
   const instanceId = useId();
   const [savedDetailSize, setSavedDetailSize] = useUiPreference(
     "resourceDetailPanelSize",
   );
-  // Read once per mount. Within a mount the group's own per-id layout cache already
-  // hands the user's width back (see detailPanelSizes); this only seeds new groups.
   const [sideBySideDefaultSize] = useState(
     () => `${String(savedDetailSize)}%`,
   );
@@ -146,15 +97,12 @@ export function ResourceWorkspace({
 
   return (
     <div
-      // "stacked" below the md breakpoint, "resizable" above it. Read by tests to
-      // tell the two responsive modes apart; both render the same element tree.
+      // Read by tests to tell the responsive modes apart.
       data-layout={isNarrow ? "stacked" : "resizable"}
       className="flex min-h-0 w-full flex-1 overflow-hidden"
     >
       <ResizablePanelGroup
         orientation={isNarrow ? "vertical" : "horizontal"}
-        // Stacked has no room to trade between content and detail, and the separator
-        // is hidden there, so nothing should be draggable.
         disabled={isNarrow}
         className="size-full min-h-0"
         onLayoutChanged={(layout, meta) => {
@@ -165,15 +113,12 @@ export function ResourceWorkspace({
       >
         <ResizablePanel
           minSize="20%"
-          // Content beside the action strip when side by side, above it when stacked.
           className="flex min-h-0 min-w-0 overflow-hidden max-md:flex-col"
         >
           <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
             {toolbar}
             {children}
           </div>
-          {/* A sibling after the content, so dropping it moves neither the
-              toolbar nor `children`. */}
           {hasActionRail && (
             <aside className="shrink-0 max-md:max-h-20 max-md:min-w-0">
               <div className="flex h-full min-h-0 w-20 shrink-0 flex-col rounded-l-lg border-l bg-muted max-md:h-20 max-md:w-full max-md:flex-row max-md:rounded-l-none max-md:border-t max-md:border-l-0">
@@ -206,8 +151,6 @@ export function ResourceWorkspace({
         </ResizablePanel>
         {hasSidePanel && panelExpanded && (
           <>
-            {/* Nothing to drag when stacked, so the separator goes out of the layout
-                and out of the accessibility tree and tab order with it. */}
             <ResizableHandle withHandle className="max-md:hidden" />
             <ResizablePanel
               id={detailPanelId}
@@ -216,14 +159,9 @@ export function ResourceWorkspace({
               maxSize={detailSizes.maxSize}
               className="relative min-h-0 overflow-hidden"
             >
-              {/* `border-t` and `max-md:bg-background` are the stacked layout's
-                  separation from the content above it. The old stacked `<aside>` also
-                  carried an upward `shadow-[0_-8px_24px_-16px_…]`; that cannot survive
-                  here, because the library writes `overflow: auto` inline on the
-                  panel's inner div (beating any `overflow-hidden` class) and this
-                  element fills that box exactly, so a shadow drawn above its top edge
-                  is entirely outside the clip. Carrying the class anyway would just be
-                  dead CSS. */}
+              {/* The library writes `overflow: auto` inline on the panel's
+                 inner div, so a shadow above the top edge would be
+                 clipped; hence none here. */}
               <div className="absolute inset-0 flex flex-col overflow-hidden border-t max-md:overflow-auto max-md:bg-background">
                 {sidePanel}
               </div>

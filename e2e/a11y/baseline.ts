@@ -5,10 +5,8 @@ export interface ReflowSkipEntry {
   ticket: string;
 }
 
-/** { routeName: entry } — routes known to have WCAG 1.4.10 reflow failures at 320px. */
 export type ReflowSkipMap = Partial<Record<string, ReflowSkipEntry>>;
 
-/** Returns true if the route's reflow failure is suppressed in the skip map. */
 export function isReflowSkipped(skipMap: ReflowSkipMap, routeName: string): boolean {
   return routeName in skipMap;
 }
@@ -16,26 +14,26 @@ export function isReflowSkipped(skipMap: ReflowSkipMap, routeName: string): bool
 export interface BaselineEntry {
   /** Maximum allowed node count — more nodes than this → still blocks. */
   maxNodes: number;
-  /** Required ticket reference, e.g. "DXKBCORE-133". Un-ticketed entries fail baseline-lint. */
+  /**
+   * Required ticket reference, e.g. "DXKBCORE-133". Un-ticketed entries fail
+   * baseline-lint.
+   */
   ticket: string;
-  /** ISO date after which this entry auto-expires and violations block again. */
+  /**
+   * ISO date after which this entry auto-expires and violations block again.
+   */
   expires?: string;
 }
 
 /**
- * { route: { theme: { ruleId: entry } } }
- *
- * The special route key "*" is a wildcard: its entries apply to every route that
- * lacks a more-specific entry for the same theme + ruleId combination.
- *
- * Each level is wrapped in `Partial` so optional-chaining (`?.`) is type-valid
- * for sparse key lookups at runtime.
+ * The "*" route key applies to every route lacking a more specific entry for
+ * the same theme + rule.
  */
 export type BaselineMap = Partial<
   Record<string, Partial<Record<string, Record<string, BaselineEntry>>>>
 >;
 
-/** Critical violations may NEVER be baselined (plan §gate). */
+/** Critical violations may never be baselined. */
 export function canBaseline(violation: Violation): boolean {
   return violation.impact !== "critical";
 }
@@ -49,7 +47,6 @@ function lookupEntry(
   return baseline[route]?.[theme]?.[ruleId] ?? baseline["*"]?.[theme]?.[ruleId];
 }
 
-/** Returns true if the violation is within its baseline budget and should be suppressed. */
 export function isBaselined(
   baseline: BaselineMap,
   route: string,
@@ -68,10 +65,6 @@ export function isBaselined(
   return violation.nodes.length <= entry.maxNodes;
 }
 
-/**
- * Filter blocking violations through the baseline.
- * Violations exceeding their budget, or with no entry, remain in `remaining`.
- */
 export function applyBaseline(
   baseline: BaselineMap,
   route: string,

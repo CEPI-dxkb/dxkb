@@ -17,7 +17,6 @@ function placed(product: string): PlacedFeature {
 }
 
 describe("labelForms", () => {
-  // Products from the 10-genome answer (`fixtures/rows-10.json`).
   it.each([
     [
       "SSU ribosomal protein S4p (S9e) @ SSU ribosomal protein S4p (S9e), zinc-independent",
@@ -149,7 +148,6 @@ describe("glyphLabel", () => {
     glyphLabel(comfortable, kind, item, x1, x2, box, 800, estimateTextWidth);
 
   it("labels only what fits whole, centered in the gene's body", () => {
-    // Body 0–93, room 3.5–89.5: the phrase (179.2 px) does not fit.
     expect(label(0, 100)).toEqual({
       text: "SecY",
       x: 46.5,
@@ -161,7 +159,6 @@ describe("glyphLabel", () => {
   });
 
   it("keeps the head clear on the minus strand", () => {
-    // Body 7–100, room 10.5–96.5.
     expect(label(100, 0)).toEqual(
       expect.objectContaining({ text: "SecY", x: 53.5 }),
     );
@@ -177,14 +174,12 @@ describe("glyphLabel", () => {
   });
 
   it("labels a body wholly off the plot in all of it", () => {
-    // Drawn ahead of a drag: centered in its whole body, to slide into view.
     expect(label(-300, -200)).toEqual(
       expect.objectContaining({ text: "SecY", x: -253.5 }),
     );
     expect(label(900, 1000)).toEqual(
       expect.objectContaining({ text: "SecY", x: 946.5 }),
     );
-    // Partly on it: still only the part in view.
     expect(label(-50, 60)?.x).toBe(26.5);
   });
 

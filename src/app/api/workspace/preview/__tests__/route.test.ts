@@ -5,7 +5,6 @@ import {
 } from "@/test-helpers/api-route-helpers";
 import { GET } from "../[...path]/route";
 
-// Mock resolveWorkspaceDownload — the preview route depends on it
 vi.mock("../../resolve-download", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../../resolve-download")>()),
   resolveWorkspaceDownload: vi.fn(),
@@ -14,7 +13,6 @@ vi.mock("../../resolve-download", async (importOriginal) => ({
 import { resolveWorkspaceDownload } from "../../resolve-download";
 const mockResolve = vi.mocked(resolveWorkspaceDownload);
 
-/** Helper to build a resolved download with a readable body. */
 function makeResolvedDownload(
   body: string,
   opts: { contentLength?: number; filename?: string; contentType?: string } = {},
@@ -101,9 +99,8 @@ describe("GET /api/workspace/preview/[...path]", () => {
   });
 
   it("truncates large files at the last newline boundary", async () => {
-    // Create content larger than a small maxBytes limit
-    const line = "abcdefghij\n"; // 11 bytes each
-    const content = line.repeat(10); // 110 bytes
+    const line = "abcdefghij\n";
+    const content = line.repeat(10);
     mockResolve.mockResolvedValue(
       makeResolvedDownload(content, { contentLength: content.length }),
     );
@@ -118,8 +115,6 @@ describe("GET /api/workspace/preview/[...path]", () => {
     expect(res.headers.get("X-Truncated")).toBe("true");
 
     const body = await res.text();
-    // Should be truncated to last newline <= 50 bytes
-    // 4 complete lines = 44 bytes
     expect(body.length).toBeLessThanOrEqual(50);
     expect(body.endsWith("\n")).toBe(true);
   });
@@ -135,7 +130,6 @@ describe("GET /api/workspace/preview/[...path]", () => {
     });
     const res = await GET(req, makeParams(["user", "home", "file.txt"]));
 
-    // Small file should be returned in full (no truncation)
     expect(res.status).toBe(200);
     expect(res.headers.get("X-Truncated")).toBeNull();
   });
@@ -146,7 +140,6 @@ describe("GET /api/workspace/preview/[...path]", () => {
       makeResolvedDownload(content, { contentLength: content.length }),
     );
 
-    // Request 100MB — should be capped at 10MB internally
     const req = mockNextRequest({
       url: "http://localhost:3019/api/workspace/preview/user/home/file.txt",
       searchParams: { maxBytes: "104857600" },
@@ -183,7 +176,6 @@ describe("GET /api/workspace/preview/[...path]", () => {
     });
     const res = await GET(req, makeParams(["user", "home", "file.txt"]));
 
-    // maxBytes=0 is clamped to 1, file is 2 bytes so will truncate
     expect(res.status).toBe(200);
   });
 
@@ -201,7 +193,7 @@ describe("GET /api/workspace/preview/[...path]", () => {
   });
 
   it("reads exact number of bytes when file fits in maxBytes exactly", async () => {
-    const content = "12345\n"; // exactly 6 bytes
+    const content = "12345\n";
     mockResolve.mockResolvedValue(
       makeResolvedDownload(content, { contentLength: content.length }),
     );
@@ -213,14 +205,12 @@ describe("GET /api/workspace/preview/[...path]", () => {
     const res = await GET(req, makeParams(["user", "home", "file.txt"]));
 
     expect(res.status).toBe(200);
-    // File fits exactly in maxBytes, should not be truncated
     expect(res.headers.get("X-Truncated")).toBeNull();
     const body = await res.text();
     expect(body).toBe("12345\n");
   });
 
   it("keeps all bytes when truncated content has no newlines", async () => {
-    // Binary-like content with no newlines at all
     const content = "x".repeat(100);
     mockResolve.mockResolvedValue(
       makeResolvedDownload(content, { contentLength: content.length }),
@@ -235,16 +225,14 @@ describe("GET /api/workspace/preview/[...path]", () => {
     expect(res.status).toBe(200);
     expect(res.headers.get("X-Truncated")).toBe("true");
     const body = await res.text();
-    // No newlines, so lastNewline is -1, slice is skipped: all 50 bytes kept
     expect(body.length).toBe(50);
   });
 
   it("handles unknown Content-Length (streams and truncates)", async () => {
-    // When Content-Length is not set, we go to the stream-reading path
-    const line = "0123456789\n"; // 11 bytes
-    const content = line.repeat(10); // 110 bytes
+    const line = "0123456789\n";
+    const content = line.repeat(10);
     mockResolve.mockResolvedValue(
-      makeResolvedDownload(content), // no contentLength set
+      makeResolvedDownload(content),
     );
 
     const req = mockNextRequest({

@@ -1,12 +1,5 @@
-/**
- * Where a popup goes beside the thing it describes: the Compare Region's
- * hover tooltip and feature card (hung from a gene's glyph) and the Circular
- * Viewer's tooltip (hung from the pointer, a zero-size box). A popup opens
- * just below and right of the box; left of it where the right lacks room, and
- * above it where below does. Boxes are in the bounds' coordinates.
- */
+/** Places a popup beside its box: below-right, else left or above where there is no room. */
 
-/** A box in the bounds' coordinates, px. */
 export interface PopupBox {
   left: number;
   top: number;
@@ -14,34 +7,20 @@ export interface PopupBox {
   bottom: number;
 }
 
-/** A popup keeps this far inside its bounds, px. */
 const popupMargin = 8;
 
-/**
- * The widest a popup may be in bounds `width` px wide: the bounds less its
- * margins. A phone's figure is narrower than the Compare Region card (24rem)
- * or a tooltip; capped, they fit inside it, so the clamp in `placePopup`
- * keeps all of them in view.
- */
+/** The widest a popup may be: the bounds less its margins, so wide cards fit a narrow phone figure. */
 export function popupMaxWidth(width: number): number {
   return Math.max(0, width - 2 * popupMargin);
 }
 
-/**
- * Where a popup may go: the bounds' width, and from `top` (so a command bar
- * above stays in reach) to `bottom`.
- */
 export interface PopupBounds {
   width: number;
   top: number;
   bottom: number;
 }
 
-/**
- * Which side of the box the popup opens on, and the room there (the card's
- * height limit): below while `need` fits below, above while it fits above,
- * else the roomier side. `gap` is the distance from the box to the popup.
- */
+/** Which side opens: below while it fits, above while it fits, else the roomier side. */
 export function popupSide(
   box: PopupBox,
   bounds: PopupBounds,
@@ -60,22 +39,13 @@ function clampInto(value: number, low: number, high: number): number {
 }
 
 export interface PopupPlacement {
-  /** The box the popup hangs from. */
   box: PopupBox;
-  /** The popup's size as drawn. */
   size: { width: number; height: number };
   bounds: PopupBounds;
-  /** `popupSide`'s side. */
   below: boolean;
-  /** From the box to the popup, px, across and down. */
   gap: number;
 }
 
-/**
- * The popup's top-left corner: right of the box, else left of it, else (a box
- * wider than the room beside it) under its left end; below the box or above
- * it, by `below`; kept inside `bounds`.
- */
 export function placePopup({
   box,
   size,

@@ -12,7 +12,6 @@ export const genomeFields = {
         facet_hidden: true, 
         search: true 
       },
-      // General Info
       genome_name: {
         label: 'Genome Name',
         field: 'genome_name',
@@ -32,7 +31,6 @@ export const genomeFields = {
         search: true 
       },
   
-      // Taxonomy Info
       taxon_id: {
         label: 'NCBI Taxon ID',
         field: 'taxon_id',
@@ -135,7 +133,6 @@ export const genomeFields = {
         search: true 
       },
   
-      // Status
       genome_status: {
         label: 'Genome Status',
         field: 'genome_status',
@@ -145,9 +142,7 @@ export const genomeFields = {
         facet_hidden: false, 
         search: true 
       },
-      // Facet and filter, not a table column: private genomes carry
-      // public=false, which the "My Genomes" link queries. Shown as a facet
-      // like legacy BV-BRC's genome list.
+      // Filter-only: private genomes carry public=false, which the "My Genomes" link queries.
       public: {
         label: 'Public',
         field: 'public',
@@ -159,7 +154,6 @@ export const genomeFields = {
         search: false
       },
   
-      // Type Info
       strain: {
         label: 'Strain',
         field: 'strain',
@@ -354,7 +348,6 @@ export const genomeFields = {
         search: true 
       },
   
-      // Database Cross Reference
       completion_date: {
         label: 'Completion Date',
         field: 'completion_date',
@@ -429,7 +422,6 @@ export const genomeFields = {
         search: true 
       },
   
-      // Sequence Info
       sequencing_centers: {
         label: 'Sequencing Center',
         field: 'sequencing_centers',
@@ -476,7 +468,6 @@ export const genomeFields = {
         search: true 
       },
   
-      // Genome Statistics
       chromosomes: {
         label: 'Chromosome',
         field: 'chromosomes',
@@ -495,12 +486,6 @@ export const genomeFields = {
         facet_hidden: true, 
         search: true 
       },
-      // segments: {
-      //   label: 'Segments',
-      //   field: 'Segments',
-      //   hidden: true,
-      //   group: 'Genome Statistics'
-      // },
       contigs: {
         label: 'Contigs',
         field: 'contigs',
@@ -548,7 +533,6 @@ export const genomeFields = {
         search: true 
       },
   
-      // Annotation Statistics
       trna: {
         label: 'TRNA',
         field: 'trna',
@@ -586,7 +570,6 @@ export const genomeFields = {
         search: true 
       },
   
-      // Genome Quality
       genome_quality: {
         label: 'Genome Quality',
         field: 'genome_quality',
@@ -643,7 +626,6 @@ export const genomeFields = {
         search: true 
       },
   
-      // Isolate Info
       isolation_source: {
         label: 'Isolation Source',
         field: 'isolation_source',
@@ -737,7 +719,6 @@ export const genomeFields = {
         search: true 
       },
   
-      // Host Info
       host_name: {
         label: 'Host Name',
         field: 'host_name',
@@ -820,7 +801,6 @@ export const genomeFields = {
         search: true 
       },
   
-      // Additon Info
       additional_metadata: {
         label: 'Additional Metadata',
         field: 'additional_metadata',

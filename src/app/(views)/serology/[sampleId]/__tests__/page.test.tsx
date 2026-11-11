@@ -31,13 +31,8 @@ const record = {
 };
 
 /**
- * Next gives the two entry points DIFFERENT encodings of the same segment, so
- * these helpers take the real identifier and produce what each one actually
- * receives. Feeding one string to both would prove nothing — see
- * `readRouteParam` in `src/lib/views/route-params.ts`.
- *
- * The page component's params come from `getDynamicParam()`, which
- * percent-ENCODES the matched value before user code sees it.
+ * The two entry points get different encodings of the same segment
+ * (`readRouteParam`); these helpers produce what each receives.
  */
 function pageProps(
   sampleId = "000123",
@@ -49,7 +44,6 @@ function pageProps(
   };
 }
 
-/** `generateMetadata` reads the route matcher's already-decoded params. */
 function metadataProps(
   sampleId = "000123",
   query: Record<string, string | string[] | undefined> = {},
@@ -91,8 +85,6 @@ describe("Serology member page", () => {
       status: "ambiguous",
       testTypes: ["ELISA/IgG test", "Western blot"],
     });
-    // The identifier is "sample/1"; the page component receives the
-    // percent-encoded form Next re-encodes for user code.
     render(await SerologyPage(pageProps("sample/1")));
 
     expect(
@@ -120,9 +112,8 @@ describe("Serology member page", () => {
   });
 
   it("preserves a sample ID containing literal percent text instead of over-decoding it", async () => {
-    // The identifier really is "sample%2Fone". The page component receives it
-    // double-encoded and must decode exactly once; `generateMetadata`
-    // receives it as-is and must not decode at all.
+    // The page component receives the identifier double-encoded and must decode
+    // once; `generateMetadata` receives it as-is.
     render(
       await SerologyPage(
         pageProps("sample%2Fone", { test_type: "ELISA/IgG test" }),

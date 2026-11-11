@@ -10,9 +10,6 @@ import {
   surveillanceScenarioOverrides,
 } from "../fixtures/overrides";
 
-// This spec parametrizes over six different resource collection pages; each
-// case's own memberOverride/collectionOverrides win first-match, so the
-// bundles below only need to cover shell rendering, not the exact assertions.
 const resourceCollectionOverrides = [
   ...genomeScenarioOverrides,
   ...genomeFeatureScenarioOverrides,
@@ -187,7 +184,6 @@ test("shows the loading skeleton, centered under the header checkbox, for a page
     genome_id: `1282460.${String(2048 + number)}`,
     genome_name: `Genome on page ${String(number)}`,
   }));
-  // Four pages, so page 3 is one the prefetch (page 2, from page 1) never reaches.
   const total = 650;
   await applyBackendMocks(page, {
     overrides: [
@@ -201,8 +197,8 @@ test("shows the loading skeleton, centered under the header checkbox, for a page
       ...resourceCollectionOverrides,
     ],
   });
-  // Hold page 3 so the state between the click and its rows can be observed.
-  // Registered after the mocks, so it is matched first.
+  // Hold page 3 to observe the state between the click and its rows. Registered after
+  // the mocks, so it is matched first.
   let releasePageThree!: () => void;
   const pageThreeHeld = new Promise<void>((resolve) => {
     releasePageThree = resolve;
@@ -228,14 +224,11 @@ test("shows the loading skeleton, centered under the header checkbox, for a page
   await expect(collection.rowSkeletons()).toHaveCount(0);
   await collection.goToPage(3);
 
-  // The page being left is not shown as if it were page 3; the skeleton is,
-  // and the previous total keeps the pager and the range in place.
   await expect(collection.rowSkeletons().first()).toBeVisible();
   await expect(collection.rowCheckbox(rows[0].genome_id)).toHaveCount(0);
   await expect(collection.resultRange(401, 600, 650)).toBeVisible();
   await expect(collection.pager()).toBeVisible();
 
-  // The selection column's skeleton sits where the checkboxes do.
   const headerCheckbox = await collection.headerCheckbox().boundingBox();
   const selectionSkeleton = await collection
     .selectionCellSkeleton()

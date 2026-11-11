@@ -10,13 +10,9 @@ import { OrganismLandingPage, TaxonPage } from "../../pages";
 import { failOnRuntimeErrors } from "../../support/runtime-errors";
 
 /**
- * Next prefetches each in-viewport `<Link>` with a `?_rsc=` request, a few at a time
- * and after hydration. A hard navigation (`page.goto`, `page.reload`) cancels whatever
- * is still in flight, and WebKit reports each cancelled fetch as an unhandled
- * "due to access control checks" TypeError, which `failOnRuntimeErrors` rightly fails
- * on. `networkidle` does not close that gap (a prefetch can start after 500ms of
- * quiet), so track the prefetches from the start of the test and wait for the links
- * the page is about to abandon instead of hiding the error.
+ * Next prefetches in-viewport links with `?_rsc=` requests; a hard navigation cancels
+ * in-flight ones and WebKit reports each as an unhandled TypeError. Wait for the links
+ * the page is about to abandon; `networkidle` does not close the gap.
  */
 function trackPrefetches(page: Page) {
   const inFlight = new Set<Request>();
@@ -32,7 +28,6 @@ function trackPrefetches(page: Page) {
   });
   page.on("requestfinished", settle);
   page.on("requestfailed", settle);
-  // Each document prefetches its own links; earlier pages' entries say nothing about it.
   page.on("framenavigated", (frame) => {
     if (frame !== page.mainFrame()) return;
     inFlight.clear();

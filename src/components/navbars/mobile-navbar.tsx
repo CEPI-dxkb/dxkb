@@ -57,12 +57,10 @@ const useMobileNavbar = () => {
     queryKey: workspaceQueryKeys.favorites(wsUsername),
     queryFn: () => loadFavorites(wsUsername),
     // Only the open sheet shows favorites; the navbar is mounted on every
-    // signed-in page, desktop included.
+    // signed-in page.
     enabled: isAuthenticated && !!wsUsername && isSheetOpen,
     staleTime: 2 * 60 * 1000,
   });
-  // A Retry keeps the failure up ("Retrying…") instead of the Favorites
-  // subsection vanishing until it answers.
   const favoritesRetry = useRetryKeepingError(favorites, wsUsername);
 
   const recentFolders = useRecentWorkspaceFolders(

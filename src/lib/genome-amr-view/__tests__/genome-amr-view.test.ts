@@ -19,7 +19,6 @@ describe("AMR Phenotypes collection profile", () => {
     );
   });
 
-  // Legacy AMRPanelGridContainer's visible facets.
   it("offers legacy's visible facets", () => {
     const visible = genomeAmrCollectionProfile.facets
       ?.filter((facet) => facet.initiallyVisible)

@@ -1,15 +1,9 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
-// Guards the contract between the two halves of the Auspice theming setup:
-// `scripts/build-auspice.mjs` injects a bridge that copies a fixed list of host
-// tokens into the iframe, and `public/auspice-dark.css` consumes them. A token
-// added to the stylesheet but not the bridge silently falls back to the stock
-// Auspice colour, which is exactly the kind of drift nobody notices by eye.
-//
-// Reads both files as source text rather than importing the build script,
-// which would run a full webpack build on import. The built shell itself is
-// gitignored and absent in CI, so it cannot be asserted on here.
+// Guards the token list the bridge in `scripts/build-auspice.mjs` copies into
+// the iframe against what `public/auspice-dark.css` consumes. Reads both as
+// source text because importing the build script would run a webpack build.
 
 const root = resolve(__dirname, "..");
 const buildScript = readFileSync(resolve(root, "scripts/build-auspice.mjs"), "utf8");
@@ -34,15 +28,13 @@ describe("Auspice theme bridge", () => {
   it("injects the stylesheet and an inline bridge into the built shell", () => {
     expect(buildScript).toContain('<link rel="stylesheet" href="/auspice-dark.css">');
     expect(buildScript).toContain("<script>${themeBridge}</script>");
-    // The injection anchors on </head>; a shell without one must fail loudly
-    // rather than silently ship an unthemed viewer.
+    // The injection anchors on </head>; a shell without one must fail loudly.
     expect(buildScript).toMatch(/if \(!shell\.includes\("\/auspice-dark\.css"\)\)/);
   });
 
   it("points the shell's favicon links at the copied favicon, quoted or not", () => {
-    // The built index.html is minified, so its links read `href=/favicon.png`
-    // with no quotes. A quoted-only replacement left both links pointing at a
-    // /favicon.png the app does not serve.
+    // The built index.html is minified, so links read `href=/favicon.png`
+    // with no quotes.
     const match = /\.replaceAll\(\/(.+?)\/g, '(href="\/auspice-favicon\.png")'\)/.exec(buildScript);
     if (!match) throw new Error("favicon replaceAll not found in build-auspice.mjs");
     const rewrite = (html: string) => html.replaceAll(new RegExp(match[1], "g"), match[2]);
@@ -55,7 +47,8 @@ describe("Auspice theme bridge", () => {
   });
 
   it("runs inline before first paint rather than loading an external script", () => {
-    // An external <script src> would resolve after the first frame and flash light.
+    // An external <script src> would resolve after the first frame and flash
+    // light.
     expect(buildScript).not.toMatch(/<script src="[^"]*bridge/);
   });
 
@@ -95,9 +88,8 @@ describe("Auspice theme bridge", () => {
   });
 
   it("defines every token it exempts from the bridge", () => {
-    // `locallyDefined` is an allowlist, so a token added to it but never given a
-    // value in :root would resolve to `initial` — a transparent border or an
-    // invisible label — while both drift guards above stayed green.
+    // `locallyDefined` is an allowlist, so a token with no value in :root
+    // would resolve to `initial`.
     const rootBlock = /:root\s*\{([\s\S]*?)\n\}/.exec(sheet);
     if (!rootBlock) throw new Error(":root block not found in auspice-dark.css");
     const defined = new Set(
@@ -108,8 +100,7 @@ describe("Auspice theme bridge", () => {
   });
 
   it("keeps a stock-Auspice fallback on every bridged var() in the stylesheet", () => {
-    // Without a fallback the standalone viewer (no bridge, no tokens) renders
-    // with `initial` values — transparent text on transparent panels.
+    // Without a fallback the standalone viewer renders `initial` values.
     const noFallback = [...sheet.matchAll(/var\(--dxkb-([\w-]+)\s*\)/g)]
       .map((m) => m[1])
       .filter((name) => !locallyDefined.has(name));
@@ -117,34 +108,29 @@ describe("Auspice theme bridge", () => {
   });
 
   it("keeps the sidebar chevron anchored to the nav bar's content edge", () => {
-    // The chevron is `position: fixed`, so it escapes to the viewport unless
-    // NavBarContainer establishes a containing block. Without the transform the
-    // `right: 0` below silently resolves against the viewport instead of the
-    // nav bar and the chevron lands back on top of the scroll gutter — which
-    // still renders a plausible-looking chevron, just in the wrong place.
+    // The chevron is `position: fixed`, so without the transform `right: 0`
+    // resolves against the viewport instead of the nav bar.
     expect(sheet).toMatch(/\[class\*="NavBarContainer"\]\s*\{[^}]*transform:\s*translateZ\(0\)/);
     const chevron = /\[class\*="NavBarContainer"\] > div\[style\*="position: fixed"\]\s*\{([^}]*)\}/
       .exec(sheet);
     if (!chevron) throw new Error("chevron rule not found in auspice-dark.css");
-    // The component's inline `left: sidebarWidth - 12` measures from the
-    // sidebar's outer edge, i.e. under the gutter. Both halves are needed:
-    // clearing `left` without setting `right` just unpins it.
+    // The inline `left: sidebarWidth - 12` measures from the sidebar's outer
+    // edge, so both `left` and `right` must be set.
     expect(chevron[1]).toMatch(/left:\s*auto\s*!important/);
     expect(chevron[1]).toMatch(/right:\s*0\s*!important/);
   });
 
   it("mirrors color-scheme into the iframe", () => {
-    // color-scheme does not cross a frame boundary any more than a custom
-    // property does. Without this the UA paints light scrollbars over the dark
-    // chrome — the original defect.
+    // color-scheme does not cross a frame boundary, so the UA would paint
+    // light scrollbars over dark chrome.
     expect(sheet).toMatch(
       /html\[data-theme\$="-dark"\]\s*\{[^}]*color-scheme:\s*dark/,
     );
   });
 
   it("leaves the categorical colour scales alone", () => {
-    // Tip fills and legend swatches encode the data. Only the translucent white
-    // legend backing plates are retargeted, matched on their rgba( prefix.
+    // Only the translucent white legend backing plates are retargeted,
+    // matched on their rgba( prefix.
     expect(sheet).not.toMatch(/\.tip\s*\{/);
     expect(sheet).not.toMatch(/\.branch\s*\{/);
     expect(sheet).toContain('rect[fill^="rgba(255"]');

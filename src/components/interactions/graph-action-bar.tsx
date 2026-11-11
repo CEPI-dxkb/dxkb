@@ -120,7 +120,6 @@ function SelectionMenu<T extends SubgraphSelection | HubSelection>({
   );
 }
 
-/** Graph action band spanning the canvas column. */
 export function GraphActionBar({
   layout,
   activeSubgraph,

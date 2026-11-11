@@ -8,11 +8,7 @@ import type { GenomeViewRecord } from "@/lib/genome-view";
 import { genomeFeatureRql } from "@/lib/views/child-resources";
 import { featureListHref } from "@/lib/views/hrefs";
 
-/**
- * An annotation count linking to the Feature collection pre-filtered to that
- * feature type. The count is the link text, so an unavailable count omits the
- * field rather than linking the words "Not available".
- */
+/** The count is the link text, so an unavailable count omits the field. */
 function featureCountField(
   genomeId: string,
   label: string,

@@ -12,8 +12,7 @@ import { GraphToolbar } from "../graph-toolbar";
 
 const placeholder = "Search interaction results...";
 
-// Holds the shared keyword the way InteractionsSubviewShell does, so a commit
-// comes straight back as `filterValue`.
+// Holds the shared keyword as InteractionsSubviewShell does.
 function SharedKeyword({
   initial = "",
   onFilterChange,
@@ -40,14 +39,10 @@ describe("GraphToolbar", () => {
     render(<GraphToolbar filterValue="" onFilterChange={onFilterChange} />);
     const keywordInput = screen.getByPlaceholderText(placeholder);
 
-    // One input event per character, which is all KeywordSearch reports.
     for (const value of ["g", "gr", "gro", "groE", "groEL"]) {
       fireEvent.change(keywordInput, { target: { value } });
     }
 
-    // This keyword is a request predicate for the Graph and for the Table that
-    // shares it, so committing per keystroke meant two gateway requests per
-    // character. Nothing is committed while the user is still typing.
     expect(onFilterChange).not.toHaveBeenCalled();
     expect(keywordInput).toHaveValue("groEL");
 
@@ -109,7 +104,6 @@ describe("GraphToolbar", () => {
       expect(onFilterChange).toHaveBeenCalledExactlyOnceWith("eco");
       expect(keywordInput).toHaveValue("eco ");
 
-      // The next word follows the space instead of running into "eco".
       fireEvent.change(keywordInput, { target: { value: "eco k" } });
       act(() => {
         vi.advanceTimersByTime(keywordDebounceMs);
@@ -131,12 +125,10 @@ describe("GraphToolbar", () => {
       });
       expect(onFilterChange).toHaveBeenCalledExactlyOnceWith("eco");
 
-      // The user types on before "eco" comes back as the shared keyword.
       fireEvent.change(keywordInput, { target: { value: "eco k" } });
       rerender(<GraphToolbar filterValue="eco" onFilterChange={onFilterChange} />);
       expect(keywordInput).toHaveValue("eco k");
 
-      // Leaving the Graph before the next debounce still commits that typing.
       unmount();
       expect(onFilterChange).toHaveBeenCalledTimes(2);
       expect(onFilterChange).toHaveBeenLastCalledWith("eco k");

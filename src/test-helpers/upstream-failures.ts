@@ -1,13 +1,6 @@
 import { delay, HttpResponse } from "msw";
 
-/**
- * Upstream failures as the server sees them, for MSW handlers.
- *
- * undici rejects a failed connection with `TypeError("fetch failed")` and the
- * socket error in `cause`. MSW rejects the intercepted `fetch` with a thrown
- * error as is when it looks like a Node error (`code` and `errno` present),
- * so a handler can `throw connectTimeout()` to reproduce the outage exactly.
- */
+/** Upstream failures for MSW handlers: undici rejects with `TypeError("fetch failed")` and the socket error in `cause`, which a handler can reproduce by throwing `connectTimeout()`. */
 export function undiciFetchFailure(code: string, causeMessage: string): TypeError {
   const cause = Object.assign(new Error(causeMessage), { code });
   return Object.assign(new TypeError("fetch failed", { cause }), {
@@ -16,7 +9,6 @@ export function undiciFetchFailure(code: string, causeMessage: string): TypeErro
   });
 }
 
-/** The 2026-10-19 outage: TCP connect to p3.theseed.org hung until undici gave up. */
 export function connectTimeout(): TypeError {
   return undiciFetchFailure(
     "UND_ERR_CONNECT_TIMEOUT",
@@ -28,7 +20,6 @@ export function connectionRefused(): TypeError {
   return undiciFetchFailure("ECONNREFUSED", "connect ECONNREFUSED 127.0.0.1:443");
 }
 
-/** BV-BRC's maintenance page, as `user.bv-brc.org` and `www.bv-brc.org` served it. */
 export const maintenancePageHtml = `<!doctype html>
 <title>Site Maintenance</title>
 <style>
@@ -54,7 +45,6 @@ export function maintenancePage(status = 503): HttpResponse<string> {
   });
 }
 
-/** A service that accepts the connection and never answers. */
 export async function neverRespond(): Promise<never> {
   await delay("infinite");
   throw new Error("unreachable");
@@ -62,11 +52,7 @@ export async function neverRespond(): Promise<never> {
 
 const realTimeout = AbortSignal.timeout.bind(AbortSignal);
 
-/**
- * Lets every `AbortSignal.timeout` budget fire after `ms` while the code under
- * test still names its production budget in messages. Undo with
- * `vi.restoreAllMocks()`.
- */
+/** Fires every `AbortSignal.timeout` budget after `ms` while messages still name the production budget; undo with `vi.restoreAllMocks()`. */
 export function shortenTimeouts(ms = 20): void {
   vi.spyOn(AbortSignal, "timeout").mockImplementation(() => realTimeout(ms));
 }

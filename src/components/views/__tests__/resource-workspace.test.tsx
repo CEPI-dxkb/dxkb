@@ -10,18 +10,8 @@ import { createUiPreferencesWrapper } from "@/test-helpers/react";
 import { ResourceWorkspace } from "../resource-workspace";
 
 /**
- * The **real** `react-resizable-panels`, deliberately. This suite used to replace
- * `@/components/ui/resizable` with stand-ins that echoed `defaultSize` back as a data
- * attribute, and asserted that attribute — which is green whatever the group actually
- * renders. It hid a live defect: the group caches its computed layout under a key made
- * from its panels' joined ids and restores that cache in preference to `defaultSize`,
- * so switching only `defaultSize` on a breakpoint crossing left the detail panel
- * clamped to the stacked `minSize` (25%) and then stranded the desktop panel at that
- * same 25%. Every size assertion below therefore reads the inline `flex-grow` the
- * library writes, never a prop this file passed in.
- *
- * jsdom has no layout engine, so `ResizeObserver` is stubbed and the group is given a
- * non-zero size. That is enough for the library's real layout arithmetic to run.
+ * Real `react-resizable-panels`: it restores a layout cached per panel-id key
+ * over `defaultSize`, which a stub echoing props would hide.
  */
 vi.mock("@/components/ui/button", () => ({
   Button: ({ children, ...props }: ComponentProps<"button">) => (
@@ -31,13 +21,12 @@ vi.mock("@/components/ui/button", () => ({
 
 stubResizableGeometry();
 
-// vitest.config.mts sets clearMocks but not restoreMocks. Restore here so a failing
-// assertion cannot leave document.cookie spied for the next test.
+// vitest.config.mts sets clearMocks but not restoreMocks; restore so a failing
+// assertion cannot leave document.cookie spied.
 afterEach(() => {
   vi.restoreAllMocks();
 });
 
-/** A `matchMedia` whose `matches` can change and notify, like a real resize. */
 function mockViewport(initiallyNarrow = false) {
   const listeners = new Set<() => void>();
   const state = { matches: initiallyNarrow };
@@ -78,11 +67,6 @@ function separator() {
   ) as HTMLElement;
 }
 
-/**
- * The separator's reported range, which is the *content* panel's constraint window and
- * therefore pins the detail panel's `minSize`/`maxSize` as rendered: side by side the
- * detail panel may take 10–60%, so the content panel may take 40–90%.
- */
 function resizeWindow() {
   const handle = separator();
   return [
@@ -92,11 +76,6 @@ function resizeWindow() {
   ];
 }
 
-/**
- * One mount probe per workspace slot. Each records its own mounts and cleanups, so a
- * layout change that re-parents a slot (rather than re-styling it) is visible as a
- * second mount — the defect this component exists to not have.
- */
 function createSlotProbes() {
   const log: string[] = [];
   const probe = (name: string) =>
@@ -157,11 +136,6 @@ function renderProbedWorkspace(probes: ReturnType<typeof createSlotProbes>) {
   );
 }
 
-/**
- * Every `id` in the tree. Meaningful here because the real library writes each panel's,
- * the group's and the separator's id into the DOM — including the detail panel's
- * layout-dependent id, which is the one that could collide.
- */
 function duplicateIds(container: HTMLElement) {
   const seen = new Set<string>();
   const duplicates: string[] = [];
@@ -185,11 +159,8 @@ describe("ResourceWorkspace layout", () => {
     expect(panelShares()).toStrictEqual(["85", "15"]);
     expect(panelGroup().style.flexDirection).toBe("row");
     expect(separator()).toHaveAttribute("aria-orientation", "vertical");
-    // Detail panel 10–60% ⇒ content panel 40–90%, currently 85%.
     expect(resizeWindow()).toStrictEqual(["40", "85", "90"]);
 
-    // A real resize through the library, not a prop assertion: jsdom cannot drag, but
-    // the separator's own keyboard handler goes through the same layout code.
     pressOnSeparator("ArrowLeft");
     expect(panelShares()).toStrictEqual(["80", "20"]);
     pressOnSeparator("ArrowRight");
@@ -203,7 +174,6 @@ describe("ResourceWorkspace layout", () => {
     const workspace = screen.getByText("Table").closest("[data-layout]");
     expect(workspace).toHaveAttribute("data-layout", "stacked");
     expect(workspace).toHaveTextContent("Details");
-    // Same panel group, turned through 90 degrees — not a second tree.
     expect(panelShares()).toStrictEqual(["55", "45"]);
     expect(panelGroup().style.flexDirection).toBe("column");
     expect(separator()).toHaveAttribute("aria-orientation", "horizontal");
@@ -212,11 +182,8 @@ describe("ResourceWorkspace layout", () => {
     expect(actionStrip?.querySelector(".scrollbar-themed")?.className).toContain(
       "max-md:overflow-x-auto",
     );
-    // Detail panel 25–60% ⇒ content panel 40–75%, currently 55%.
     expect(resizeWindow()).toStrictEqual(["40", "55", "75"]);
 
-    // Taken out of the layout by CSS, and out of the group's hit regions and keyboard
-    // handling by `disabled` — so neither a drag nor an arrow key can move it.
     expect(separator().className).toContain("max-md:hidden");
     for (const key of ["ArrowUp", "ArrowDown", "Home", "End"]) {
       pressOnSeparator(key);
@@ -296,8 +263,6 @@ describe("ResourceWorkspace slot mounting", () => {
 
     renderProbedWorkspace(probes);
 
-    // Narrow is only knowable after the effect reads matchMedia, so a layout chosen
-    // by branching would have mounted the wide tree first and thrown it away here.
     expect(screen.getByText("Table").closest("[data-layout]")).toHaveAttribute(
       "data-layout",
       "stacked",
@@ -330,17 +295,13 @@ describe("ResourceWorkspace slot mounting", () => {
         expect(
           screen.getByText("Table").closest("[data-layout]"),
         ).toHaveAttribute("data-layout", narrow ? "stacked" : "resizable");
-        // The rendered split, not the prop: the group has to re-read its sizes on a
-        // crossing rather than restore the layout it cached for the other axis.
         expect(panelShares()).toStrictEqual(
           narrow ? ["55", "45"] : ["85", "15"],
         );
         expect(panelGroup().style.flexDirection).toBe(
           narrow ? "column" : "row",
         );
-        // No remount, and no cleanup: the slots were re-styled, not re-parented.
         expect(probes.counts()).toStrictEqual({ mounts: 3, cleanups: 0 });
-        // Which is what lets slot-local state survive the transition.
         expect(screen.getByLabelText("Table local state")).toHaveValue("row-7");
         expect(screen.getByLabelText("Actions local state")).toHaveValue(
           "pending-copy",
@@ -367,9 +328,6 @@ describe("ResourceWorkspace slot mounting", () => {
     pressOnSeparator("ArrowLeft");
     expect(panelShares()).toStrictEqual(["80", "20"]);
 
-    // The group caches one layout per panel-id key, so the stacked layout does not
-    // inherit the side-by-side split (a share of a horizontal axis means nothing on a
-    // vertical one) and the side-by-side layout gets the user's own width back.
     viewport.crossBreakpoint(true);
     expect(panelShares()).toStrictEqual(["55", "45"]);
     viewport.crossBreakpoint(false);
@@ -388,8 +346,8 @@ describe("ResourceWorkspace slot mounting", () => {
       mockViewport(narrow);
       const { container } = renderWorkspace();
 
-      // `hidden: true` deliberately: the wrong fix for the breakpoint remount is to
-      // render both layouts and hide one, which a visibility-filtered query misses.
+      // `hidden: true`: rendering both layouts and hiding one is the wrong fix,
+      // and a visibility-filtered query would miss it.
       expect(
         screen.getAllByRole("button", { hidden: true, name: /^(Hide|Show)$/ }),
       ).toHaveLength(1);
@@ -424,7 +382,6 @@ describe("ResourceWorkspace slot mounting", () => {
       target: { value: "keyword draft" },
     });
 
-    // A failed read: no rail (nor its Hide/Show) and no detail panel.
     rerender(workspace(false));
     expect(document.querySelector("aside")).not.toBeInTheDocument();
     expect(screen.queryByText("Rail actions")).not.toBeInTheDocument();
@@ -436,7 +393,6 @@ describe("ResourceWorkspace slot mounting", () => {
     rerender(workspace(true));
     expect(screen.getByText("Rail actions")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Hide" })).toBeInTheDocument();
-    // The toolbar and the content kept their place, and their state, throughout.
     expect(screen.getByLabelText("Toolbar local state")).toHaveValue(
       "keyword draft",
     );
@@ -464,8 +420,6 @@ describe("ResourceWorkspace slot mounting", () => {
       </>,
     );
 
-    // The library writes a panel's `id` prop straight into the DOM, so the
-    // layout-dependent id has to be namespaced per instance.
     expect(duplicateIds(container)).toStrictEqual([]);
     expect(
       [...container.querySelectorAll("[data-panel]")].map((panel) => panel.id),

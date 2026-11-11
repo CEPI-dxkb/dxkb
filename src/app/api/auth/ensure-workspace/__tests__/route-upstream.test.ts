@@ -11,7 +11,6 @@ interface RpcBody {
   method: string;
 }
 
-/** Records each JSON-RPC method that reaches the Workspace. */
 function workspaceAnswers(answer: (method: string) => Response | never): string[] {
   const methods: string[] = [];
   server.use(
@@ -33,11 +32,7 @@ const rpcError = (message: string) =>
 const homeMissing = () =>
   rpcError(`_ERROR_User lacks permission to ${homePath}_ERROR_`);
 
-/**
- * Headers, then a body cut short by the budget. MSW does not tie the request
- * signal to a mocked body, so the stream errors the way undici's does when
- * `AbortSignal.timeout` fires mid-body.
- */
+/** A body cut short by the budget: errors the way undici's does when `AbortSignal.timeout` fires mid-body. */
 function stalledBody(status: number): HttpResponse<ReadableStream> {
   return new HttpResponse(
     new ReadableStream({

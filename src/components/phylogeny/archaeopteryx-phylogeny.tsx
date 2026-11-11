@@ -15,9 +15,8 @@ import {
 
 import { ArchaeopteryxLoading } from "./archaeopteryx-loading";
 
-// In a host this narrow the floating control panel would cover most of the
-// tree, so it is kept collapsed to its header bar. The host, not the viewport,
-// is measured: the side panel can take most of a wide screen.
+// In a narrow host the floating control panel would cover the tree, so it
+// starts collapsed; the host is measured, not the viewport.
 const collapsedControlsWidth = 640;
 
 function subscribeSelectionChange(listener: () => void): () => void {
@@ -61,9 +60,6 @@ export function ArchaeopteryxPhylogeny({
     const isNarrowHost = () => host.clientWidth <= collapsedControlsWidth;
     let narrowHost = false;
     let controlsCollapsedForWidth = false;
-    // Only crossing the threshold moves the controls, and widening reopens
-    // them only if narrowing folded them, so a choice the user makes in
-    // between stands.
     const fitControlsToHost = () => {
       const narrow = isNarrowHost();
       if (narrow === narrowHost) return;
@@ -75,8 +71,8 @@ export function ArchaeopteryxPhylogeny({
         setViewerControlsCollapsed(host, false);
       }
     };
-    // Archaeopteryx follows window resizes only; the host also resizes when
-    // the side panel opens or its separator is dragged.
+    // Archaeopteryx follows window resizes only; the host also resizes when the
+    // side panel opens or is dragged.
     const resizeObserver = new ResizeObserver(() => {
       if (resizeFrame !== null) cancelAnimationFrame(resizeFrame);
       resizeFrame = requestAnimationFrame(() => {
@@ -115,7 +111,6 @@ export function ArchaeopteryxPhylogeny({
       await viewer.ready;
       if (isCancelled()) return;
 
-      // The theme may have changed while the tree was being drawn.
       syncViewerTheme(host, documentViewerTheme());
       resizeObserver.observe(host);
       setStatus(null);
@@ -186,9 +181,8 @@ export function ArchaeopteryxPhylogeny({
           <ArchaeopteryxLoading />
         </div>
       )}
-      {/* No minimum height: Archaeopteryx sizes its canvas to this box, and
-          the page region around it never scrolls, so any extra height is cut
-          off. A short frame gets a short canvas the viewer pans and zooms. */}
+      {/* No minimum height: Archaeopteryx sizes its canvas to this box and the
+          page region never scrolls, so extra height is cut off. */}
       <div
         ref={hostRef}
         className="size-full min-w-0"

@@ -60,14 +60,10 @@ describe("TaxonomySummary", () => {
     await renderServer(TaxonomySummary({ taxonId: 234, taxon: brucellaTaxon }));
 
     expect(screen.getByText("Brucella")).toBeInTheDocument();
-    // Species, CDS and PDB come only from the summary; none reads as "-".
     expect(screen.getAllByText("Unavailable")).toHaveLength(3);
     expect(screen.queryByText("-")).toBeNull();
-    // The taxonomy record still knows the genome count the breadcrumb shows.
     const genomes = screen.getByTitle("Assembled genome records");
     expect(within(genomes).getByText("1,909")).toBeInTheDocument();
-    // The line names the counts, so the message carries no label of its own,
-    // and the endpoint is only for the log.
     expect(screen.getByRole("alert")).toHaveTextContent(
       "Taxon counts could not be loaded: The BV-BRC data service is unavailable (HTTP 503 Service Unavailable: Site Maintenance — We’ll be back soon!).",
     );
@@ -120,10 +116,8 @@ describe("TaxonomySummary", () => {
 
     await renderServer(TaxonomySummary({ taxonId: 234, taxon: null }));
 
-    // Taxon ID falls back to the input taxonId
     expect(screen.getByText("234")).toBeInTheDocument();
     expect(screen.getByText("1,909")).toBeInTheDocument();
-    // Two taxon-derived strings (taxonName, taxonRank) are "-"
     expect(screen.getAllByText("-").length).toBeGreaterThanOrEqual(2);
   });
 

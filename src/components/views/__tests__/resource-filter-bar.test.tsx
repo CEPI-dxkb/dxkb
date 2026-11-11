@@ -28,7 +28,6 @@ const definitions = [
 
 const layoutKey = "collection:genome";
 const layoutStorageKey = "dxkb-table-layout:v1:collection:genome";
-// `a` is pinned by default and `b` starts in More.
 const pickableDefinitions = [
   { field: "a", label: "Facet A" },
   { field: "b", label: "Facet B", initiallyVisible: false },
@@ -109,7 +108,6 @@ describe("ResourceFilterBar keyword", () => {
     });
     expect(onChange).toHaveBeenLastCalledWith({ keyword: "eco", filters: {} });
 
-    // The user types on before the trimmed keyword reaches the URL.
     fireEvent.change(searchbox, { target: { value: "eco k" } });
     rerender(<ResourceFilterBar {...props} keyword="eco" />);
     expect(searchbox).toHaveValue("eco k");
@@ -137,7 +135,6 @@ describe("ResourceFilterBar keyword", () => {
     rerender(<ResourceFilterBar {...props} keyword="eco" />);
     expect(searchbox).toHaveValue("eco ");
 
-    // The URL already holds the trimmed draft, so nothing is written again.
     act(() => {
       vi.advanceTimersByTime(900);
     });
@@ -166,7 +163,6 @@ describe("ResourceFilterBar picks", () => {
       screen.getByRole("button", { name: "Genome Status: WGS. Edit filter" }),
     ).toBeInTheDocument();
 
-    // The page's filters arrive; nothing reverts after the grace period.
     rerender(
       <ResourceFilterBar {...props} filters={{ genome_status: ["WGS"] }} />,
     );
@@ -191,7 +187,6 @@ describe("ResourceFilterBar picks", () => {
       vi.advanceTimersByTime(300);
     });
 
-    // The page's filters have not caught up, so the keyword carries the pick.
     expect(onChange).toHaveBeenLastCalledWith({
       keyword: "influenza",
       filters: { genome_status: ["WGS"] },
@@ -253,8 +248,6 @@ describe("ResourceFilterBar picks", () => {
       ).getByRole("option", { name: /^Human/ }),
     );
 
-    // The first pick replaced the rql; the page has not caught up, so the
-    // second must not bring the rql back over it.
     expect(onChange).toHaveBeenLastCalledWith({
       keyword: undefined,
       filters: { genome_status: ["WGS"], host: ["Human"] },
@@ -286,7 +279,6 @@ describe("ResourceFilterBar picks", () => {
   it("picks two values in one facet with the menu staying open", async () => {
     const user = userEvent.setup();
     const onChange = vi.fn<FilterBarProps["onChange"]>();
-    // The page writes each pick back, as the URL would.
     function Page() {
       const [filters, setFilters] = useState<FilterBarProps["filters"]>({});
       return (
@@ -499,7 +491,6 @@ describe("ResourceFilterBar facet counts", () => {
     await user.click(screen.getByRole("button", { name: "Retry" }));
     expect(onRetryFacets).toHaveBeenCalledOnce();
 
-    // The menu repeats the error over the facet's values, with no skeleton.
     await openFilters(user);
     expect(
       within(screen.getByRole("dialog")).getByRole("alert"),
@@ -567,7 +558,6 @@ describe("ResourceFilterBar facet counts", () => {
     expect(
       screen.getByText("Filter values are unavailable until the results load."),
     ).toBeInTheDocument();
-    // Not an empty facet, and not a wait either.
     expect(
       screen.queryByText("No values in these results"),
     ).not.toBeInTheDocument();
@@ -631,7 +621,6 @@ describe("ResourceFilterBar pinned facets", () => {
       JSON.parse(localStorage.getItem(layoutStorageKey) ?? "null"),
     ).toStrictEqual({ facets: { b: true } });
 
-    // Back at the defaults, so there is nothing left to remember.
     await user.click(screen.getByRole("button", { name: "Pinned" }));
 
     expect(screen.getByRole("button", { name: "Pin" })).toHaveAttribute(

@@ -17,9 +17,8 @@ function requestDestination(
 }
 
 /**
- * The current user, or a redirect to sign-in when signed out. A user whose
- * session the profile service could not verify (`sessionUnverified`) is still
- * signed in, so the page renders and the navbar explains the outage.
+ * A `sessionUnverified` user is still signed in, so the page renders and the
+ * navbar explains the outage.
  */
 export async function requireCurrentUserOrRedirect(fallbackPath: string) {
   const user = await getCurrentUser();
@@ -30,10 +29,6 @@ export async function requireCurrentUserOrRedirect(fallbackPath: string) {
   redirect(`/sign-in?redirect=${encodeQueryComponent(destination)}`);
 }
 
-/**
- * Sends a signed-in user away from a sign-in or sign-up page, back to the
- * page's `?redirect=` destination when it is a same-origin path, else home.
- */
 export async function redirectSignedInUser(
   destination: string | string[] | undefined,
 ): Promise<void> {

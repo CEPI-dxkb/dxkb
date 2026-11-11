@@ -12,15 +12,9 @@ import {
   type UiPreferences,
 } from "./definitions";
 
-/**
- * Validation for the preference cookies. Server-only by use: zod stays out of the
- * client bundle, so `definitions.ts` and `cookie.ts` (which the provider imports)
- * import none of it.
- */
+/** zod stays out of the client bundle, so `definitions.ts` and `cookie.ts` import none of this. */
 
-// Strictly positive: the app never saves a share <= 0 (saves need details > 0, and main
-// has a minSize). A hand-edited 0 would make Show a no-op (`resize("0%")`), and {0, 0}
-// makes the library compute a NaN width.
+// Strictly positive: a hand-edited 0 would make Show a no-op and {0, 0} makes the library compute a NaN width.
 const panelShare = z.number().gt(0).max(100);
 
 export const uiPreferenceSchemas: {
@@ -35,7 +29,6 @@ export const uiPreferenceSchemas: {
     [jobsPanelIds.main]: panelShare,
     [jobsPanelIds.details]: panelShare,
   }),
-  // Same window as the side-by-side panel's minSize/maxSize in resource-workspace.tsx.
   resourceDetailPanelSize: z.number().min(10).max(60),
   workspaceShowHiddenFiles: z.boolean(),
   workspaceSort: z.strictObject({
@@ -44,9 +37,7 @@ export const uiPreferenceSchemas: {
   }),
   compareRegionDensity: z.enum(compareRegionDensities),
   copilotSurface: z.enum(copilotSurfaces),
-  // Width and height only need to be sane: a cookie saved on a small viewport
-  // can hold less than the 320x360 minimum, and the component restores the
-  // minimum.
+  // A cookie saved on a small viewport can hold less than the minimum; the component restores it.
   copilotFloatingRect: z.strictObject({
     right: z.number().min(0).max(10_000),
     bottom: z.number().min(0).max(10_000),
@@ -55,7 +46,6 @@ export const uiPreferenceSchemas: {
   }),
 };
 
-/** Parse one cookie value; anything absent, malformed or out of schema is the default. */
 export function parseUiPreference<K extends UiPreferenceKey>(
   key: K,
   raw: string | undefined,

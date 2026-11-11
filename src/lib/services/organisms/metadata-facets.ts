@@ -15,8 +15,6 @@ async function fetchMetadataFacet(
   limit: number | undefined,
   signal: AbortSignal | undefined,
 ) {
-  // The chart's title prefixes a failure ("Isolation Country: The BV-BRC data
-  // service is unavailable (…)."); the field name stays in the server log.
   const payload = await fetchOrganismSolrJson(
     buildGenomeFacetUrl(baseUrl, scope, field, limit),
     { source: `genome ${field} facet`, label: metadataFieldLabel(field) },

@@ -100,10 +100,8 @@ describe("Epitope member route", () => {
   });
 
   it("resolves one identifier from both entry points for a percent-bearing ID", async () => {
-    // Same asymmetry as the Feature route: the page component receives
-    // `encodeURIComponent(id)` and `generateMetadata` the decoded `id`, so
-    // decoding in the shared loader regardless of caller made the two
-    // disagree for any id carrying a literal percent escape.
+    // The page receives `encodeURIComponent(id)` and `generateMetadata` the
+    // decoded `id`; each gets its real encoding.
     const percentId = "15780%2F1";
     mocks.getEpitope.mockResolvedValue(epitope);
 

@@ -34,7 +34,6 @@ test.describe("public routes (no auth)", () => {
     ).toBeVisible();
   });
 
-  // Every workspace route, public folders included, needs a signed-in user.
   for (const path of [
     "/workspace/public",
     "/workspace/public/ARWattam@patricbrc.org/BV-BRC%20Workshop",

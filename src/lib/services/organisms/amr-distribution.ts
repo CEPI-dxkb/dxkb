@@ -22,9 +22,7 @@ function buildBody(scope: GenomeScope): string {
     "&in(resistant_phenotype,(Resistant,Susceptible,Intermediate))" +
     "&limit(1)" +
     "&facet((pivot,(antibiotic,resistant_phenotype)),(mincount,1),(limit,-1))" +
-    // Matches the live site request verbatim for cache/telemetry parity. Does not change
-    // the facet_pivot shape in the application/solr+json response — pivots remain arrays of
-    // {value, count, pivot} objects, which parseSolrFacetPivot expects.
+    // Matches the live site request verbatim for cache/telemetry parity.
     "&json(nl,map)"
   );
 }

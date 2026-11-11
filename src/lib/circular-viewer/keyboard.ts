@@ -1,12 +1,3 @@
-/**
- * The Circular Viewer's keyboard, as pure functions of the drawings: which
- * item an arrow key moves to, and where that item is. The figure draws one
- * path per color, so its items are not elements to focus; the figure is one
- * tab stop and a cursor names the item, as a ring and a place on it.
- *
- * A ring's items are ordered as they stand on the circle, clockwise from
- * 12 o'clock (the span index's order), not in the service's order.
- */
 import {
   spanHit,
   type FigureHit,
@@ -16,10 +7,8 @@ import {
 import type { SpanIndex } from "./hit-test";
 import { fullTurn, toCartesian } from "./layout";
 
-/** Where a key moves the cursor: along its ring, to the ring's ends, or to the next ring out or in. */
 export type ItemStep = "previous" | "next" | "first" | "last" | "outer" | "inner";
 
-/** The keys that move the cursor, and where each goes. */
 export const itemStepKeys: Readonly<Partial<Record<string, ItemStep>>> = {
   ArrowLeft: "previous",
   ArrowRight: "next",
@@ -29,19 +18,15 @@ export const itemStepKeys: Readonly<Partial<Record<string, ItemStep>>> = {
   ArrowDown: "inner",
 };
 
-/** An item, as its track and its place among the ring's spans (clockwise). */
 export interface FigureCursor {
   trackId: string;
   position: number;
 }
 
-/** The item a cursor names, as the pointer would hit it, and its middle (from the center). */
 export interface CursorTarget {
   hit: FigureHit;
-  /** The track's title, for the announcement. */
   title: string;
   position: number;
-  /** How many items its ring has. */
   count: number;
   x: number;
   y: number;
@@ -53,7 +38,6 @@ interface NavigableRing {
   items: readonly HoverItem[];
 }
 
-/** A ring the cursor can stand on: shown, loaded, with hover (not a line) and at least one item. */
 function navigable(drawing: TrackDrawing): NavigableRing | null {
   const { body } = drawing;
   if (!drawing.visible || body.kind !== "marks" || body.hits === null) {
@@ -68,13 +52,11 @@ function middleAngle(ring: NavigableRing, position: number): number {
   return (span.startAngle + span.endAngle) / 2;
 }
 
-/** The distance between two angles the short way around the circle. */
 function turnDistance(a: number, b: number): number {
   const apart = Math.abs(a - b) % fullTurn;
   return Math.min(apart, fullTurn - apart);
 }
 
-/** The cursor's ring and its index among the drawings, while it still names an item. */
 function locate(
   drawings: readonly TrackDrawing[],
   cursor: FigureCursor,
@@ -86,7 +68,6 @@ function locate(
   return { ring, at };
 }
 
-/** Where the cursor starts: the first item clockwise on the outermost ring that has any. */
 export function firstCursor(
   drawings: readonly TrackDrawing[],
 ): FigureCursor | null {
@@ -94,12 +75,6 @@ export function firstCursor(
   return ring ? { trackId: ring.id, position: 0 } : null;
 }
 
-/**
- * The item `step` moves the cursor to: the one beside it on its ring
- * (wrapping around the circle), the ring's first or last, or the one nearest
- * it on the next ring out or in that has any. Null where there is none to
- * move to; a cursor that no longer names an item starts over at `firstCursor`.
- */
 export function stepCursor(
   drawings: readonly TrackDrawing[],
   cursor: FigureCursor | null,
@@ -141,11 +116,6 @@ export function stepCursor(
   return { trackId: cursor.trackId, position };
 }
 
-/**
- * The cursor on the item a pointer hit (the same item object `hitTest` took
- * from the ring), so a key goes on from where a click was. Null when the
- * drawings no longer hold it.
- */
 export function cursorFor(
   drawings: readonly TrackDrawing[],
   hit: FigureHit,
@@ -159,7 +129,6 @@ export function cursorFor(
   return position === -1 ? null : { trackId: hit.trackId, position };
 }
 
-/** The item a cursor names, or null once its ring or item is gone (hidden, reloading, removed). */
 export function cursorTarget(
   drawings: readonly TrackDrawing[],
   cursor: FigureCursor,

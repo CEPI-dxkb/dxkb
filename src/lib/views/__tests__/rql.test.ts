@@ -17,14 +17,12 @@ describe("rqlEq / rqlKeyword", () => {
     expect(rqlEq("name", "a,b")).toBe("eq(name,a%2Cb)");
   });
   it("builds one keyword clause per term", () => {
-    // `keywordQuery` reads the RQL-special characters as the spaces Solr
-    // splits a word at, so none can break out of its clause.
     expect(rqlKeyword("flu)")).toBe("keyword(flu)");
     expect(rqlKeyword("a,b")).toBe("and(keyword(a),keyword(b))");
   });
   it("keeps a quoted phrase and closes a quote left open", () => {
-    // Solr rejects an unbalanced quote (TokenMgrError), so a refinement typed
-    // as `"DNA polymerase` reads as the phrase it is heading for.
+    // Solr rejects an unbalanced quote, so a refinement typed as `"DNA
+    // polymerase` reads as the phrase.
     expect(rqlKeyword('coli "DNA polymerase"')).toBe(
       'and(keyword(coli),keyword("DNA polymerase"))',
     );
@@ -32,11 +30,6 @@ describe("rqlEq / rqlKeyword", () => {
       'and(keyword(coli),keyword("DNA polymerase"))',
     );
   });
-  // The Data API joins a keyword's text into the surrounding query without
-  // brackets, so an OR inside one clause leaks out of it:
-  // and(eq(genome_id,*),keyword(coli OR Salmonella)) lists all 17,033,311
-  // genomes, and(eq(genome_id,*),or(keyword(coli),keyword(Salmonella))) the
-  // 195,658 that keyword(coli OR Salmonella) alone finds.
   it.each([
     ["coli OR Salmonella", "or(keyword(coli),keyword(Salmonella))"],
     ['"DNA polymerase" OR helicase', 'or(keyword("DNA polymerase"),keyword(helicase))'],
@@ -54,7 +47,6 @@ describe("rqlEq / rqlKeyword", () => {
   ])("sends %s's OR as RQL or()", (value, expected) => {
     expect(rqlKeyword(value)).toBe(expected);
   });
-  // Each of these as one keyword() clause is a Solr or Data API error.
   it.each([
     ["kinase NOT hypothetical", "and(keyword(kinase),not(keyword(hypothetical)))"],
     ["coli AND", "keyword(coli)"],
@@ -67,8 +59,8 @@ describe("rqlEq / rqlKeyword", () => {
     expect(rqlKeyword(value)).toBe(expected);
   });
   it("builds no clause from text without terms", () => {
-    // A lone `"` typed to start a phrase is nothing to search for yet; sent as
-    // keyword("") it would list nothing.
+    // A lone `"` is nothing to search for; sent as keyword("") it would list
+    // nothing.
     expect(rqlKeyword('"')).toBeUndefined();
     expect(rqlKeyword('  "" ')).toBeUndefined();
   });

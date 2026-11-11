@@ -25,8 +25,6 @@ describe("OrganismsError", () => {
     expect(
       screen.getByRole("heading", { name: "Organism data is temporarily unavailable" }),
     ).toBeInTheDocument();
-    // A server error's message is redacted in production, so the digest is
-    // the reference and the copy is fixed.
     expect(alert).toHaveTextContent(/could not load the organism data/i);
     expect(alert).toHaveTextContent("Reference: digest-1");
     expect(alert).not.toHaveTextContent("taxonomy unavailable");
@@ -34,7 +32,7 @@ describe("OrganismsError", () => {
     expect(consoleError).toHaveBeenCalledWith(error);
 
     // reset() alone re-renders the same failed server payload; retry() also
-    // refreshes the route so the server data is fetched again.
+    // refreshes the route.
     await userEvent.click(screen.getByRole("button", { name: "Retry" }));
     expect(retry).toHaveBeenCalledTimes(1);
     expect(reset).not.toHaveBeenCalled();

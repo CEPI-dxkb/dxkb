@@ -24,11 +24,6 @@ interface ThemeBlock {
   declarations: string[];
 }
 
-/**
- * The innermost `selector { ... }` blocks of a stylesheet, with comments
- * dropped, each reduced to its declaration names. A theme block holds only
- * declarations, so "innermost" finds it without a CSS parser.
- */
 function readBlocks(file: string): ThemeBlock[] {
   const css = readFileSync(join(repoRoot, file), "utf8").replace(
     /\/\*[\s\S]*?\*\//g,
@@ -68,13 +63,7 @@ describe("theme tokens: --primary-hover", () => {
         name.startsWith("--"),
       );
 
-      // Tailwind lowers a color-mix() of var()s to an sRGB fallback plus an
-      // `@supports (color: color-mix(...))` rule, and lightningcss then
-      // splits the block at that point and keeps only the sRGB hex fallback
-      // of every declaration after it: later tokens lose their lab() values,
-      // with no error and no visible change until a wide-gamut colour is
-      // compared. --primary-hover is the one color-mix() token, so it has to
-      // come last. See --color-primary-hover in src/app/globals.css.
+      // Tailwind lowers color-mix() to an sRGB fallback plus @supports, and lightningcss then drops lab() values after it, so --primary-hover must come last.
       expect(
         customProperties.at(-1),
         `${block.file}: --primary-hover must stay the last custom property in ${block.selector}. A token declared after it loses its lab() value in the built CSS (Tailwind's color-mix() fallback lowering splits the block there). Move the other declaration above it.`,

@@ -1,8 +1,3 @@
-/**
- * Maps workspace file types and extensions to viewer categories.
- * Pure utility — no React dependencies.
- */
-
 import { buildEncodedSegmentPath, parsePathSegments } from "@/lib/services/workspace/path-utils";
 
 export type ViewerCategory =
@@ -13,10 +8,6 @@ export type ViewerCategory =
   | "csv"
   | "iframe"
   | "fallback";
-
-// ---------------------------------------------------------------------------
-// Workspace object type -> viewer
-// ---------------------------------------------------------------------------
 
 const typeToViewer: Partial<Record<string, ViewerCategory>> = {
   txt: "text",
@@ -46,10 +37,6 @@ const typeToViewer: Partial<Record<string, ViewerCategory>> = {
   diffexp_sample: "iframe",
 };
 
-// ---------------------------------------------------------------------------
-// File extension -> viewer
-// ---------------------------------------------------------------------------
-
 const extensionToViewer: Partial<Record<string, ViewerCategory>> = {
   ".txt": "text",
   ".log": "text",
@@ -77,10 +64,6 @@ const extensionToViewer: Partial<Record<string, ViewerCategory>> = {
   ".pdf": "iframe",
   ".pdb": "text",
 };
-
-// ---------------------------------------------------------------------------
-// Extension -> MIME type
-// ---------------------------------------------------------------------------
 
 const mimeMap: Record<string, string> = {
   ".txt": "text/plain",
@@ -110,15 +93,7 @@ const mimeMap: Record<string, string> = {
   ".pdb": "chemical/x-pdb",
 };
 
-// ---------------------------------------------------------------------------
-// Preview constants
-// ---------------------------------------------------------------------------
-
-export const previewMaxBytes = 10 * 1024 * 1024; // 10 MB — shared limit for preview endpoint and interactive viewer threshold
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
+export const previewMaxBytes = 10 * 1024 * 1024;
 
 function getExtension(fileName: string): string {
   const dot = fileName.lastIndexOf(".");
@@ -126,18 +101,9 @@ function getExtension(fileName: string): string {
   return fileName.slice(dot).toLowerCase();
 }
 
-// ---------------------------------------------------------------------------
-// Public API
-// ---------------------------------------------------------------------------
-
 /**
- * Determine which viewer category should handle a given workspace item.
- *
- * Resolution order:
- *  1. File extension (`extensionToViewer`) — checked first because workspace
- *     types are often generic (e.g. an SVG stored as type "txt")
- *  2. Workspace object type (`typeToViewer`)
- *  3. "fallback"
+ * File extension wins over workspace type, which is often generic (e.g. an SVG stored
+ * as "txt").
  */
 export function resolveViewer(
   workspaceType: string,
@@ -154,10 +120,6 @@ export function resolveViewer(
   return "fallback";
 }
 
-/**
- * Returns `true` when the file can be rendered by any viewer other than the
- * fallback placeholder.
- */
 export function isViewableType(
   workspaceType: string,
   fileName: string,
@@ -165,25 +127,14 @@ export function isViewableType(
   return resolveViewer(workspaceType, fileName) !== "fallback";
 }
 
-/**
- * Returns `true` when the file is a PDB structure file that can be viewed
- * in the 3D Molstar viewer.
- */
 export function isStructureFile(fileName: string): boolean {
   return getExtension(fileName) === ".pdb";
 }
 
-/**
- * Build a URL for the dedicated Molstar 3D viewer page.
- */
 export function getStructureViewerUrl(filePath: string): string {
   return `/viewer/structure/${encodePath(filePath)}`;
 }
 
-/**
- * Best-guess MIME type for a file name. Falls back to
- * `application/octet-stream` for unknown extensions.
- */
 export function getMimeType(fileName: string): string {
   const ext = getExtension(fileName);
   return mimeMap[ext] ?? "application/octet-stream";
@@ -193,27 +144,16 @@ function encodePath(filePath: string): string {
   return buildEncodedSegmentPath(parsePathSegments(filePath));
 }
 
-/**
- * Returns `true` when an iframe-rendered file needs `allow-scripts` in its
- * sandbox (e.g. PDF viewer plugin, HTML with embedded JS).
- */
 export function iframeNeedsScripts(fileName: string): boolean {
   const ext = getExtension(fileName);
   return ext === ".pdf" || ext === ".html" || ext === ".htm";
 }
 
-/**
- * Build an API proxy URL for streaming a workspace file, encoding each path
- * segment individually so slashes are preserved.
- */
 export function getProxyUrl(filePath: string): string {
   return `/api/workspace/view/${encodePath(filePath)}`;
 }
 
-/**
- * Build a preview API URL that returns only the first `maxBytes` bytes of a
- * workspace file (rounded down to the last newline by the server).
- */
+/** The server rounds the preview down to the last newline. */
 export function getPreviewUrl(
   filePath: string,
   maxBytes: number = previewMaxBytes,

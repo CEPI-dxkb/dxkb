@@ -6,10 +6,6 @@ interface AppSummaryBody {
   include_archived?: boolean;
 }
 
-/**
- * Query app/service summary
- * POST /api/services/app-service/jobs/app-summary
- */
 export const POST = withAuth(async (request: NextRequest, { token }) => {
   const body = (await request.json()) as AppSummaryBody;
   const { include_archived = false } = body;

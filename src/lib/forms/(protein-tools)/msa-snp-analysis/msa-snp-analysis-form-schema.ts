@@ -1,9 +1,7 @@
 import { z } from "zod";
 
-// Input status enum
 export const inputStatusSchema = z.enum(["unaligned", "aligned"]);
 
-// Input type enum (for unaligned sequences)
 export const inputTypeSchema = z.enum([
   "input_feature_group",
   "input_genome_group",
@@ -11,10 +9,8 @@ export const inputTypeSchema = z.enum([
   "input_sequence",
 ]);
 
-// Alphabet enum (for feature groups)
 export const alphabetSchema = z.enum(["dna", "protein"]);
 
-// Reference type enum
 export const refTypeSchema = z.enum([
   "none",
   "first",
@@ -23,10 +19,8 @@ export const refTypeSchema = z.enum([
   "string",
 ]);
 
-// Aligner enum
 export const alignerSchema = z.enum(["Mafft", "Muscle"]);
 
-// Strategy enum (for Mafft only)
 export const strategySchema = z.enum([
   "auto",
   "fftns1",
@@ -37,7 +31,6 @@ export const strategySchema = z.enum([
   "ginsi",
 ]);
 
-// FASTA file item schema
 export const fastaFileItemSchema = z.object({
   file: z.string().min(1, "FASTA file path is required"),
   type: z.enum([
@@ -50,33 +43,27 @@ export const fastaFileItemSchema = z.object({
 
 export type FastaFileItem = z.infer<typeof fastaFileItemSchema>;
 
-// Main form schema
 export const msaSnpAnalysisFormSchema = z
   .object({
     input_status: inputStatusSchema,
     input_type: inputTypeSchema.optional(),
     alphabet: alphabetSchema.optional(),
     
-    // Input sources (conditional based on input_type)
     feature_groups: z.string().optional(),
     select_genomegroup: z.array(z.string()).optional(),
     fasta_files: z.array(fastaFileItemSchema).optional(),
     fasta_keyboard_input: z.string().optional(),
     
-    // Reference options
     ref_type: refTypeSchema,
-    ref_string: z.string().optional(), // For feature_id, genome_id, or string reference
+    ref_string: z.string().optional(),
     
-    // Alignment parameters
     aligner: alignerSchema,
     strategy: strategySchema.optional(),
     
-    // Output
     output_path: z.string().min(1, "Output folder is required"),
     output_file: z.string().min(1, "Output name is required"),
   })
   .superRefine((data, ctx) => {
-    // Validation for unaligned sequences
     if (data.input_status === "unaligned") {
       if (!data.input_type) {
         ctx.addIssue({
@@ -87,7 +74,6 @@ export const msaSnpAnalysisFormSchema = z
         return;
       }
 
-      // Validate based on input type
       if (data.input_type === "input_feature_group") {
         if (!data.feature_groups || data.feature_groups.trim() === "") {
           ctx.addIssue({
@@ -120,7 +106,6 @@ export const msaSnpAnalysisFormSchema = z
           });
         }
       } else {
-        // data.input_type === "input_sequence"
         if (!data.fasta_keyboard_input || data.fasta_keyboard_input.trim() === "") {
           ctx.addIssue({
             code: "custom",
@@ -130,7 +115,6 @@ export const msaSnpAnalysisFormSchema = z
         }
       }
 
-      // Validate reference type compatibility
       if (data.ref_type === "feature_id") {
         if (data.input_type !== "input_feature_group" && data.input_type !== "input_genome_group") {
           ctx.addIssue({
@@ -179,7 +163,6 @@ export const msaSnpAnalysisFormSchema = z
         }
       }
     } else {
-      // data.input_status === "aligned" — only fasta_files is needed
       if (!data.fasta_files || data.fasta_files.length === 0) {
         ctx.addIssue({
           code: "custom",
@@ -188,7 +171,6 @@ export const msaSnpAnalysisFormSchema = z
         });
       }
 
-      // For aligned sequences, only "none" or "first" reference types are allowed
       if (data.ref_type !== "none" && data.ref_type !== "first") {
         ctx.addIssue({
           code: "custom",
@@ -198,7 +180,6 @@ export const msaSnpAnalysisFormSchema = z
       }
     }
 
-    // Validate strategy is only for Mafft
     if (data.aligner === "Muscle" && data.strategy) {
       ctx.addIssue({
         code: "custom",
@@ -210,13 +191,11 @@ export const msaSnpAnalysisFormSchema = z
 
 export type MsaSnpAnalysisFormData = z.infer<typeof msaSnpAnalysisFormSchema>;
 
-// Constants
 export const maxGenomes = 5000;
 export const maxGenomeLength = 250000;
 export const minSequences = 2;
 export const minSequencesWithRef = 1;
 
-// Strategy options for Mafft
 export const strategyOptions = [
   { value: "auto", label: "Auto (FFT-NS-1, FFT-NS-2, FFT-NS-i or L-INS-i; depends on data size)" },
   { value: "fftns1", label: "FFT-NS-1 (Very fast; recommended for >2,000 sequences; progressive method)" },
@@ -227,7 +206,6 @@ export const strategyOptions = [
   { value: "ginsi", label: "G-INS-i (Very slow; recommended for <200 sequences with global homology; 2 iterative cycles only)" },
 ] as const;
 
-// Default form values
 export const defaultMsaSnpAnalysisFormValues: MsaSnpAnalysisFormData = {
   input_status: "unaligned",
   input_type: "input_feature_group",

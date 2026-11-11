@@ -72,8 +72,8 @@ describe("harOverridesFor", () => {
       status: 200,
       body: '{"user":{"id":"u1"}}',
     });
-    // No matchBody on the sign-in entry: its body has no `method` field, so
-    // it isn't a JSON-RPC envelope. Plain URL+method matching is enough.
+    // The sign-in body has no `method` field, so plain URL+method matching is
+    // enough.
     expect(overrides[1].matchBody).toBeUndefined();
   });
 
@@ -110,17 +110,14 @@ describe("harOverridesFor", () => {
     );
     expect(lsOverride?.body).toBe('{"result":"ls-data"}');
     expect(permOverride?.body).toBe('{"result":"perm-data"}');
-    // Bodies that don't carry the right RPC method must not match either override.
     expect(lsOverride?.matchBody?.({ method: "Workspace.get" })).toBe(false);
     expect(permOverride?.matchBody?.({ method: "Workspace.get" })).toBe(false);
     expect(lsOverride?.matchBody?.(null)).toBe(false);
   });
 
   it("serves sequential same-key entries in HAR order via callIndex", () => {
-    // Models the upload journey: a Workspace.ls before the upload (no new
-    // file) followed by a Workspace.ls after the upload (new file present).
-    // Both calls share the same URL+method+RPC method; the spec needs each
-    // call to receive the next recorded response, not just the first one.
+    // Models the upload journey: two Workspace.ls calls that must each get
+    // the next recorded response.
     const harPath = writeHar(tmpDir, "upload.har", [
       {
         request: {
@@ -161,8 +158,6 @@ describe("harOverridesFor", () => {
         method: "GET",
       }),
     ).toBe('{"result":"after"}');
-    // Beyond the recorded sequence, freeze on the last entry rather than
-    // returning undefined and serving an empty body.
     expect(
       bodyFn({
         callIndex: 7,
@@ -200,10 +195,8 @@ describe("harOverridesFor", () => {
     expect(headers).not.toHaveProperty("Authentication-Info");
   });
 
-  // The recorder captures the live server's framing headers verbatim, but
-  // route.fulfill re-serializes the body so values like `Transfer-Encoding:
-  // chunked`, `Content-Length`, or `Content-Encoding: gzip` would no longer
-  // describe the bytes the browser actually receives.
+  // route.fulfill re-serializes the body, so recorded framing headers would
+  // no longer describe it.
   it("strips hop-by-hop and body-shape headers from replayed responses", () => {
     const harPath = writeHar(tmpDir, "transport.har", [
       {
@@ -236,10 +229,8 @@ describe("harOverridesFor", () => {
   });
 
   it("uses path+search so the host placeholder is irrelevant", () => {
-    // The recorder rewrites every recorded host to `http://e2e-har-replay.local`.
-    // The override matcher does a `requestUrl.includes(override.url)` check
-    // against the live request URL (which uses 127.0.0.1:<E2E_PORT>), so the
-    // override's URL must not pin the host.
+    // The override's URL must not pin the recorded host, since matching is by
+    // `includes` against the live URL.
     const harPath = writeHar(tmpDir, "path.har", [
       {
         request: {
@@ -271,9 +262,6 @@ describe("harOverridesFor", () => {
   });
 
   it("resolves relative HAR paths against e2e/fixtures/hars/", () => {
-    // The committed HARs are read by name (e.g. `harOverridesFor("workspace-browse.har")`).
-    // We point CWD at a tmp dir, drop a fixture in the expected subpath, and
-    // confirm the helper finds it.
     const fixtureDir = path.join(tmpDir, "e2e/fixtures/hars");
     fs.mkdirSync(fixtureDir, { recursive: true });
     writeHar(fixtureDir, "fixture.har", [

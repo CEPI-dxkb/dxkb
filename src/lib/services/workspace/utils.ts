@@ -17,7 +17,7 @@ const folderObjectTypes = new Set([
 export function normalizeWorkspaceObjectType(
   type: string | null | undefined,
 ): string {
-  return (type ?? "").toLowerCase(); // runtime guard: API responses may return null type fields
+  return (type ?? "").toLowerCase();
 }
 
 export function isFolderType(type: string | null | undefined): boolean {

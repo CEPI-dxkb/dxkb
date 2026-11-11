@@ -90,8 +90,6 @@ export const genomeAssemblyParameters: ServiceInfoPopup = {
   ],
 };
 
-// Advanced Options sections, worded as BV-BRC's Genome Assembly quick
-// reference ("Advanced Parameters") describes them.
 export const genomeAssemblyReadProcessing: ServiceInfoPopup = {
   title: "Read Processing",
   sections: [

@@ -23,10 +23,7 @@ const titleSchema = z.object({
   question: z.string().trim().min(1).max(maxCopilotQueryLength),
 });
 
-/**
- * Titles a session from its first question (`{model, question}`) and saves
- * the title. Answers `{title}`, null when the gateway gave none.
- */
+/** Answers `{title}`, null when the gateway gave none. */
 export const POST = withAuth<RouteParams>(
   async (request: NextRequest, { token, params }) => {
     const { sessionId } = await params;

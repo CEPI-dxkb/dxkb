@@ -15,12 +15,6 @@ import { ChangeForm } from "./copilot-change-form";
 import { ExecutionAnswered } from "./copilot-execution-answered";
 import { copilotName } from "@/lib/copilot/name";
 
-/**
- * Actions an agent prepared but did not run (Plan mode, or a set of jobs,
- * which is always confirmed). One question, three answers: Yes runs them once
- * exactly as prepared; No records the answer and runs nothing; a typed change
- * asks the agent to revise the set, which never submits.
- */
 export function ExecutionCardView({
   messageId,
   card,
@@ -31,16 +25,12 @@ export function ExecutionCardView({
   interactive: boolean;
 }) {
   const actions = useCardActions();
-  // "No" in this visit: asks whether anything should change.
   const [declined, setDeclined] = useState(false);
   const [busy, setBusy] = useState(false);
-  // Owned here, not by the form: the form unmounts while an answer is sent, and
-  // the typed change must survive a refused one.
+  // Owned here, not by the form, which unmounts while an answer is sent.
   const [change, setChange] = useState("");
   const canAnswer = interactive && actions !== null && !busy;
   const count = card.actions.length;
-  // A refused answer leaves the question open; a sent one waits for the
-  // stored card, which comes back answered.
   const settle = (ok: boolean) => {
     if (!ok) setBusy(false);
   };

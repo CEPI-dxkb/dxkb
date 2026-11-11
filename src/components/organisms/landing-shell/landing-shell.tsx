@@ -12,11 +12,7 @@ interface OrganismLandingShellProps {
   config: OrganismLandingConfig;
   views: readonly OrganismLandingView[];
   activeViewKey?: string;
-  /**
-   * The raw `tab` search param the page was rendered for (null: none), which
-   * the active view's content matches against the URL. Kept apart from
-   * `activeViewKey` because a legacy `?view=` link opens a view without a `tab`.
-   */
+  /** The raw `tab` search param the page was rendered for (null: none); apart from `activeViewKey` because a legacy `?view=` link opens a view without a `tab`. */
   tabParam: string | null;
   headerContent?: ReactNode;
 }
@@ -36,17 +32,12 @@ export function OrganismLandingShell({
   headerContent,
 }: OrganismLandingShellProps) {
   const defaultView = config.defaultView ?? "overview";
-  // When hideDisabledTabs is set, drop disabled views entirely (hard-hide);
-  // otherwise keep them so they render greyed/disabled (default).
   const visibleViews = config.hideDisabledTabs
     ? views.filter((view) => view.enabled !== false)
     : views;
   const requestedKey = isOrganismViewKey(activeViewKey, visibleViews) ? activeViewKey : defaultView;
-  // requestedKey may still point at a disabled view (when it falls back to a
-  // disabled defaultView), so require enabled here and fall back to the first
-  // enabled view. .at(0) (not [0]) gives T | undefined so the null guard below
-  // is type-safe — hideDisabledTabs=true with all views disabled yields an
-  // empty visibleViews and a real runtime undefined.
+  // requestedKey may point at a disabled defaultView; .at(0) types the result as
+  // T | undefined for the null guard below.
   const activeView =
     visibleViews.find((view) => view.key === requestedKey && view.enabled !== false) ??
     visibleViews.find((view) => view.enabled !== false) ??

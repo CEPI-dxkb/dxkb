@@ -1,8 +1,5 @@
 import type { ViewRegistry, ViewTypeEntry } from "./view-types";
 
-// Data-only route metadata: the canonical URL segment for each view type, plus the
-// legacy BV-BRC view names that redirect to it. Identifier validation, collection
-// defaults and domain queries live in each resource's colocated view module.
 export const viewRegistry = {
   taxonomy: {
     segment: "taxonomy",
@@ -60,7 +57,6 @@ export const viewRegistry = {
 
 export const viewSegments = Object.keys(viewRegistry);
 
-/** Legacy BV-BRC view name → new segment. Derived so it cannot drift from routes. */
 export interface LegacyViewTarget {
   segment: string;
   kind: "singular" | "list";

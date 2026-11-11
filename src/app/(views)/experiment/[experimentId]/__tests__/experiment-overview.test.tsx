@@ -157,8 +157,6 @@ describe("ExperimentOverview", () => {
         experiment={experimentRecord({ pmid: 12345678, biosets: 3 })}
       />,
     );
-    // lucide renders an svg; the external PubMed link carries one, the
-    // same-origin biosets link does not.
     const pubmed = screen.getByRole("link", { name: "12345678" });
     const biosets = screen.getByRole("link", { name: "3" });
     expect(pubmed.querySelector("svg")).not.toBeNull();

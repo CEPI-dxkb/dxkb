@@ -27,7 +27,6 @@ vi.mock("../codemirror-languages", () => ({
   getLanguageExtension: vi.fn(() => Promise.resolve(null)),
 }));
 
-// CodeMirror uses requestAnimationFrame for batched rendering
 const flushRaf = () => vi.advanceTimersByTime(16);
 
 beforeEach(() => {
@@ -43,7 +42,6 @@ describe("CodeMirrorViewer", () => {
   it("shows loading state initially", () => {
     server.use(
       http.get("/api/workspace/view/*", () => {
-        // Never respond — keep loading
         return new Promise(() => void 0);
       }),
     );
@@ -73,9 +71,9 @@ describe("CodeMirrorViewer", () => {
   it("shows truncation banner for files exceeding threshold", async () => {
     server.use(
       http.get("/api/workspace/view/*", () => {
-        const chunkSize = 1024 * 1024; // 1 MB chunks
-        const totalChunks = 51; // 51 MB total
-        const chunk = new Uint8Array(chunkSize).fill(65); // 'A'
+        const chunkSize = 1024 * 1024;
+        const totalChunks = 51;
+        const chunk = new Uint8Array(chunkSize).fill(65);
 
         const stream = new ReadableStream({
           start(controller) {
@@ -96,11 +94,10 @@ describe("CodeMirrorViewer", () => {
       <CodeMirrorViewer
         filePath="/user/large.json"
         fileName="large.json"
-        fileSize={100 * 1024 * 1024} // 100 MB total
+        fileSize={100 * 1024 * 1024}
       />,
     );
 
-    // Flush rAF so pending text gets flushed to editor
     flushRaf();
 
     await waitFor(() => {
@@ -161,7 +158,6 @@ describe("CodeMirrorViewer", () => {
       expect(resolveLanguage).toBeTypeOf("function");
     });
 
-    // Unmount while the dynamically loaded editor is waiting for its language.
     expect(() => {
       unmount();
     }).not.toThrow();

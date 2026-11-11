@@ -16,7 +16,6 @@ import {
 } from "@/lib/services/workspace/helpers";
 import { isFolderType } from "@/lib/services/workspace/utils";
 
-/** Responsive hide classes for each column — shared with special rows (LeadingRow, ParentRow). */
 export const columnClassMap: Record<string, string> = {
   name: "",
   size: "",
@@ -52,11 +51,9 @@ export function useWorkspaceColumns(
     }
   };
 
-  // Explicit memo, not left to the React Compiler: this hook calls no other
-  // hook, so the compiler's "infer" mode skips it. FlexRender renders each
-  // `cell` as a component type, so rebuilding the columns remounts every cell
-  // on each render — which detaches the node under the cursor after a row
-  // click and stops the browser from firing `dblclick`.
+  // Explicit memo: this hook calls no other hook so the compiler skips it, and rebuilding
+  // the columns remounts every cell (FlexRender), which swallows `dblclick` after a row
+  // click.
   const columns = useMemo<ColumnDef<FileTableFeatures, WorkspaceItem>[]>(() => {
     const favoriteSet = new Set(favoritePaths);
     return [

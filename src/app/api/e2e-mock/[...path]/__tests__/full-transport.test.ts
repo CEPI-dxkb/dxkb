@@ -11,26 +11,8 @@ import { makeRouteContext } from "@/test-helpers/api-route-helpers";
 import { GET } from "../route";
 
 /**
- * Full-transport coverage for the compound-sample lookups whose identifiers
- * carry reserved characters.
- *
- * The query is built by the REAL `ServerDataRepository` (so `serializeValue`
- * and `URL.search` assignment are exercised, not a hand-written string) and
- * answered by the REAL loopback GET handler. Each case runs twice:
- *
- *   - `repository` — the search string the repository puts on the wire.
- *   - `next` — the same query after the `URLSearchParams` round trip Next
- *     applies to every route-handler request, which re-encodes `(` `)` `,`,
- *     turns spaces into `+`, and (when a page component's dynamic `params`
- *     segment was still percent-encoded) leaves the value one encode deeper.
- *
- * Matching is strict in both: a request for `sample%2F1` is a request for the
- * identifier `sample%2F1`, not for `sample/1`. That strictness is the point.
- * The page component used to send the former while meaning the latter (Next
- * re-encodes its `params` — see `readRouteParam` in
- * `src/lib/views/route-params.ts`), and a mock lenient enough to
- * forgive it kept `e2e/tests/surveillance-view.spec.ts` green while the real
- * app 404'd.
+ * Runs the real repository's query through the real loopback handler, as built (`repository`) and after Next's `URLSearchParams` round trip (`next`).
+ * Matching is strict in both: `sample%2F1` is not `sample/1`.
  */
 
 type WireForm = "repository" | "next";
@@ -115,18 +97,12 @@ describe.each(wireForms)("surveillance over the %s wire form", (wireForm) => {
   });
 
   it("does not resolve an unrelated percent-bearing identifier", async () => {
-    // A literal `%` survives the round trip as a malformed escape and falls
-    // back to its raw text, so it stays a distinct identifier rather than
-    // collapsing onto any fixture.
+    // A literal `%` survives as a malformed escape and falls back to raw text.
     await expect(lookup("50%")).resolves.toEqual({ status: "not-found" });
   });
 
   it("does NOT resolve a literal %2F identifier to the slash record", async () => {
-    // The regression guard for the production bug. A caller that forwards an
-    // un-decoded route param asks for the identifier `sample%2F1`; the mock
-    // must answer not-found so the failure surfaces in the suite instead of
-    // being absorbed here. See `readRouteParam` in
-    // `src/lib/views/route-params.ts` for why a caller used to.
+    // Regression guard: an un-decoded route param asks for `sample%2F1`, which must be not-found.
     await expect(lookup("sample%2F1")).resolves.toEqual({
       status: "not-found",
     });
@@ -190,9 +166,7 @@ describe.each(wireForms)("serology over the %s wire form", (wireForm) => {
 });
 
 describe("the two wire forms are genuinely different strings", () => {
-  // Guards the test harness itself: if `normalizeLikeNext` ever became a
-  // no-op, every `next` case above would silently re-run the `repository`
-  // case and the regression this file exists for would go uncovered.
+  // Guards the harness: a no-op `normalizeLikeNext` would silently re-run the `repository` case.
   it("normalizes the repository's search string", async () => {
     const repositorySearches: string[] = [];
     const nextSearches: string[] = [];

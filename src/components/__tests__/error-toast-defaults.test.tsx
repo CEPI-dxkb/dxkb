@@ -6,7 +6,6 @@ import {
   errorToastDurationMs,
 } from "@/components/error-toast-defaults";
 
-// Sonner removes a toast this long after its timer ends (exit animation).
 const exitAnimationMs = 500;
 
 async function advance(ms: number) {

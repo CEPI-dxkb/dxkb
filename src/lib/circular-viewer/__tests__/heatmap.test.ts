@@ -7,7 +7,6 @@ describe("heatmapColor", () => {
     [0.15, "#FFCDD2"],
     [1, "#B71C1C"],
     [2, "#B71C1C"],
-    // Legacy fell through to plain "red" for exactly 0.
     [0, "#FFEBEE"],
     [-0.05, "#E8EAF6"],
     [-0.2, "#C5CAE9"],

@@ -5,13 +5,13 @@ import { TaxonPage } from "../../pages";
 test.use({ storageState: { cookies: [], origins: [] } });
 
 const serologyData = /\/api\/data\/serology(?:\?|$)/;
-const SEROLOGY_TAXON_ID = "2955291"; // Alphainfluenzavirus influenzae — hasSerology = true
+const SEROLOGY_TAXON_ID = "2955291";
 
 function buildSerologyRows(count: number) {
   return Array.from({ length: count }, (_, i) => ({
     id: `sero-${String(i).padStart(4, "0")}`,
-    // sample_identifier is the first visible column — assert on it, not `id`
-    // (the row key), which the table never renders as a cell.
+    // sample_identifier is the first visible column; `id` (the row key) is never
+    // rendered as a cell.
     sample_identifier: `sample-${String(i)}`,
     host_common_name: "Domestic Cat",
     test_type: "ELISA/IDEXX Flu Ab",

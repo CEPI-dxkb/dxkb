@@ -18,7 +18,6 @@ describe("TaxIDSelector search", () => {
     server.use(
       http.get("*/api/services/taxonomy", ({ request }) => {
         query = new URL(request.url).searchParams.get("q");
-        // BV-BRC's application/json reply: a bare array, taxon_id a string.
         return HttpResponse.json([
           {
             taxon_id: "562",
@@ -36,7 +35,6 @@ describe("TaxIDSelector search", () => {
 
     const input = screen.getByRole("textbox");
     await user.type(input, "562");
-    // The name on the first line, the ID under it, and no lineage.
     const suggestion = await screen.findByRole("button", {
       name: /Escherichia coli/,
     });
@@ -91,9 +89,8 @@ describe("TaxIDSelector blur", () => {
   });
 
   it("leaves no timer behind when it unmounts with the close pending", () => {
-    // Only timeouts are faked (React's scheduler queues immediates of its
-    // own), and an infinite gcTime keeps TanStack Query from scheduling a
-    // cache timeout on unmount, so the count below is the selector's alone.
+    // Only timeouts are faked, and an infinite gcTime keeps TanStack Query from
+    // scheduling a cache timeout on unmount, so the count is the selector's alone.
     vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
     const consoleError = vi.spyOn(console, "error");
     const consoleWarn = vi.spyOn(console, "warn");
@@ -115,8 +112,8 @@ describe("TaxIDSelector blur", () => {
     });
     unmount();
 
-    // A close timer that outlives the component fires after the test's jsdom
-    // window is torn down and throws "ReferenceError: window is not defined".
+    // A close timer outliving the component fires after jsdom is torn down and throws
+    // "window is not defined".
     expect(vi.getTimerCount()).toBe(0);
     vi.runAllTimers();
     expect(consoleError).not.toHaveBeenCalled();
@@ -202,7 +199,6 @@ describe("TaxIDSelector failed search", () => {
     await screen.findByRole("alert");
     await user.tab();
 
-    // The list closes 200 ms after blur; the failure stays, under the field.
     expect(
       await screen.findByRole("button", { name: "Show suggestions" }),
     ).toBeInTheDocument();

@@ -5,8 +5,6 @@ import {
   emptyBackendFallbackOverrides,
 } from "../fixtures/overrides";
 
-// Minimal 1-atom PDB. Mol* parses ATOM records; HEADER + END frames the file
-// so the trajectory builder produces a valid (single-atom) structure.
 const minimalPdb = [
   "HEADER    TEST                                                                  ",
   "ATOM      1  N   ALA A   1       0.000   0.000   0.000  1.00  0.00           N  ",
@@ -20,10 +18,9 @@ const viewerUrl = "/viewer/structure/e2e-test-user%40patricbrc.org/home/test.pdb
 async function applyViewerMocks(page: import("@playwright/test").Page) {
   await applyBackendMocks(page, {
     overrides: [
-      // PDB override MUST come before workspaceOverrides — applyBackendMocks
-      // does first-match-wins, and workspaceOverrides has a generic
-      // /api/workspace/view GET that returns JSON `{items: []}`. If that wins
-      // here, Mol* receives JSON instead of PDB text and never mounts a canvas.
+      // The PDB override must precede workspaceOverrides: first match wins and its
+      // generic /api/workspace/view GET returns JSON, so Mol* would never mount a
+      // canvas.
       {
         url: /\/api\/workspace\/view\//,
         method: "GET",
@@ -37,17 +34,8 @@ async function applyViewerMocks(page: import("@playwright/test").Page) {
   });
 }
 
-/**
- * Mol* runs its own WebGL probe (more strict than `canvas.getContext("webgl")`)
- * and renders the literal text "WebGL does not seem to be available" when its
- * probe fails — for instance under headless browsers without GPU acceleration.
- * This is the only signal we have that Mol*'s init bailed before mounting a
- * canvas, so use it to gate the paint assertion.
- */
 async function molstarWebglAvailable(page: import("@playwright/test").Page): Promise<boolean> {
   const fallback = page.getByText(/webgl does not seem to be available/i).first();
-  // Wait briefly for either the fallback notice or a canvas to appear. Whichever
-  // wins tells us how Mol* booted.
   const canvas = page.getByTestId("molstar-container").locator("canvas").first();
   const winner = await Promise.race([
     fallback.waitFor({ state: "visible", timeout: 30_000 }).then(() => "fallback" as const),
@@ -58,13 +46,9 @@ async function molstarWebglAvailable(page: import("@playwright/test").Page): Pro
 
 test.describe("3D viewer (Mol*)", () => {
   test("requests the workspace file at a singly encoded path", async ({ page }) => {
-    // The catch-all route param reaches a page component already
-    // percent-encoded, and `buildWorkspaceStructureSource` encodes what it is
-    // handed, so forwarding the raw segments produced a DOUBLY encoded
-    // `/api/workspace/view/` URL — `%2540` for the `@` every workspace path
-    // starts with. The route handler on the other end decodes exactly once,
-    // so it looked up a path that does not exist. The other specs here mock
-    // that endpoint with a URL-agnostic regex and cannot see the difference.
+    // The catch-all route param arrives percent-encoded and
+    // `buildWorkspaceStructureSource` encodes again, so forwarding raw segments
+    // double-encoded the URL; URL-agnostic mocks in other specs cannot see it.
     const viewRequest = page.waitForRequest((request) =>
       request.url().includes("/api/workspace/view/"),
     );
@@ -81,9 +65,7 @@ test.describe("3D viewer (Mol*)", () => {
     await page.goto(viewerUrl);
 
     await expect(page.getByRole("button", { name: /go back/i })).toBeVisible();
-    // The visible filename in the page header lives inside the truncate <span>.
-    // Scope to that span so we don't collide with Mol*'s log panel which can
-    // also include the path string.
+    // Scope to the truncate span; Mol*'s log panel can also contain the path.
     await expect(page.locator("span.truncate", { hasText: "test.pdb" })).toBeVisible();
 
     const container = page.getByTestId("molstar-container");
@@ -111,10 +93,8 @@ test.describe("3D viewer (Mol*)", () => {
     await applyViewerMocks(page);
     await page.goto(viewerUrl);
 
-    // Headless browsers ship without GPU acceleration by default. Mol* renders
-    // its "WebGL not available" notice in that case instead of a canvas —
-    // a Playwright launch-flag concern, not an app regression — so skip the
-    // paint assertion when that happens.
+    // Headless browsers lack GPU acceleration, so Mol* shows its notice instead of a
+    // canvas; skip the paint assertion then.
     const webglOk = await molstarWebglAvailable(page);
     test.skip(!webglOk, "Mol* could not initialise WebGL in this Playwright runtime");
 

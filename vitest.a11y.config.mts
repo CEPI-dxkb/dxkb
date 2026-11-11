@@ -2,13 +2,9 @@ import { defineConfig } from "vitest/config";
 import react from "@vitejs/plugin-react";
 import { playwright } from "@vitest/browser-playwright";
 
-// Isolated Vitest browser-mode config for a11y primitive isolation.
-// Run via: pnpm a11y:primitives
-//
-// Why browser mode: jsdom cannot compute CSS custom properties (color-contrast
-// checks would return false-positives). Real Chromium resolves them correctly.
-//
-// Excluded from pnpm test (jsdom) and from coverage thresholds.
+// Browser-mode config for a11y primitives (`pnpm a11y:primitives`): jsdom
+// cannot compute CSS custom properties, so contrast checks need real
+// Chromium. Excluded from `pnpm test` and coverage.
 export default defineConfig({
   plugins: [react()],
   resolve: {

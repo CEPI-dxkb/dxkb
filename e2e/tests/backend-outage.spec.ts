@@ -16,20 +16,14 @@ import {
   WorkspacePage,
 } from "../pages";
 
-// The BV-BRC backends as they behaved during the 2026-10-19 maintenance window:
-// an immediate 503 with an HTML maintenance page, or a connection that never
-// answers. The loopback mock serves both (src/app/api/e2e-mock/[...path]/
-// outage.ts) for the requests a test marks, so these assert the whole server
-// path: the upstream call, its mapping to a status and a readable message, and
-// the page that shows it. How a test marks its requests:
-// src/lib/e2e-fixtures/outages.ts.
+// The BV-BRC backends during an outage: an immediate 503 maintenance page, or a
+// connection that never answers (src/lib/e2e-fixtures/outages.ts).
 
-/** What a page keeps of the maintenance page: its title, never its markup. */
 const maintenanceText = "Site Maintenance";
 
 test.describe("data service outage", () => {
-  // Record pages read the Data API without a token in e2e, so they run signed
-  // out and name an outage record instead.
+  // Record pages read the Data API without a token in e2e, so they run signed out and
+  // name an outage record.
   test.use({ storageState: { cookies: [], origins: [] } });
 
   test.beforeEach(async ({ page }) => {
@@ -57,8 +51,6 @@ test.describe("data service outage", () => {
       unavailable.root.getByRole("link", { name: "Browse genomes" }),
     ).toBeVisible();
 
-    // Retry re-runs the page's server components; the outage is still on, so
-    // the same error comes back rather than an empty page.
     const refreshed = page.waitForRequest(
       (request) =>
         request.headers().rsc === "1" &&
@@ -73,8 +65,7 @@ test.describe("data service outage", () => {
   test("a genome page whose lookup never answers says the service did not respond", async ({
     page,
   }) => {
-    // The loopback never answers; E2E_UPSTREAM_BUDGET_MS (.env.e2e.test) ends
-    // the wait after 5 s, while the message names the production budget.
+    // E2E_UPSTREAM_BUDGET_MS (.env.e2e.test) ends the wait after 5 s.
     test.slow();
     const { genomeId } = outageRecords.hang;
     const genome = new GenomeMemberPage(page);
@@ -163,7 +154,6 @@ test.describe("job service outage", () => {
     await applyBackendMocks(page, {
       overrides: [
         ...outagePassthroughOverrides.jobs,
-        // The workspace sidebar's favorites lookup on /jobs.
         ...workspacePopulatedOverrides,
         ...journeyOverrides,
       ],

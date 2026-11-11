@@ -121,9 +121,8 @@ describe("CopilotTranscript scrolling", () => {
   const itemHeight = 200;
   const viewportHeight = 300;
   const scrollTops = new WeakMap<Element, number>();
-  // jsdom may not define Element#scrollTo, so vi.spyOn cannot track it: the
-  // stub is assigned here and the original (or its absence) put back after
-  // each test, so later tests do not inherit a scroll backed by scrollTops.
+  // jsdom may not define Element#scrollTo, so vi.spyOn cannot track it; the stub is assigned and
+  // restored after each test.
   let originalScrollTo: PropertyDescriptor | undefined;
 
   function message(id: string, role: "user" | "assistant", content: string) {
@@ -148,7 +147,7 @@ describe("CopilotTranscript scrolling", () => {
     return element.closest('[data-slot="message-scroller-viewport"]');
   }
 
-  // jsdom has no layout: stack the items 200px apart in a 300px viewport.
+  // jsdom has no layout: items are stacked 200px apart in a 300px viewport.
   function rect(top: number, height: number) {
     return DOMRect.fromRect({ x: 0, y: top, width: 400, height });
   }
@@ -252,7 +251,6 @@ describe("CopilotTranscript scrolling", () => {
     await act(async () => {
       await new Promise((resolve) => requestAnimationFrame(resolve));
     });
-    // Opening the chat shows the live question at the top.
     expect(viewport.scrollTop).toBe(4 * itemHeight - 64);
 
     rerender(
@@ -273,8 +271,7 @@ describe("CopilotTranscript scrolling", () => {
       await new Promise((resolve) => requestAnimationFrame(resolve));
     });
 
-    // The saved question sits fifth (index 4); it is shown at the top, with
-    // the default 64px of the previous answer peeking above it.
+    // The saved question (index 4) is shown at the top, with 64px of the previous answer above it.
     expect(viewport.scrollTop).toBe(4 * itemHeight - 64);
   });
 });

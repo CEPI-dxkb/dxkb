@@ -8,16 +8,14 @@ import {
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
-// jsdom doesn't ship ResizeObserver; cmdk's <Command> calls it on mount.
 class ResizeObserverStub {
   observe = vi.fn();
   unobserve = vi.fn();
   disconnect = vi.fn();
 }
-// jsdom does not ship ResizeObserver or scrollIntoView; stub both unconditionally.
+// jsdom does not ship ResizeObserver or scrollIntoView; stub both
+// unconditionally.
 globalThis.ResizeObserver = ResizeObserverStub;
-// jsdom's HTMLElement.scrollIntoView is undefined; cmdk calls it when the
-// active item changes.
 Element.prototype.scrollIntoView = vi.fn();
 
 const { mockPush, mockSignOut, mockAuth } = vi.hoisted(() => ({

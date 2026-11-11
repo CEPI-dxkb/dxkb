@@ -22,18 +22,12 @@ import { CustomTrackForm } from "./custom-track-form";
 import { UserTrackForm } from "./user-track-form";
 import { useCircularTrackData } from "./use-circular-track-data";
 
-/** Legacy's GUIDE action (`tutorialLink`). */
 const guideUrl = "https://www.bv-brc.org/docs/quick_references/organisms_genome/circular_genome_viewer.html";
 
 export interface CircularViewerPanelProps {
   genomeId: string;
 }
 
-/**
- * The Genome View's Circular Viewer tab: the track sidebar beside the figure.
- * The sequences load first; while they fail, nothing else shows (the upload
- * form needs them to check accessions), so the error says why.
- */
 export function CircularViewerPanel({ genomeId }: CircularViewerPanelProps) {
   const contigs = useQuery({
     queryKey: circularViewerQueryKeys.contigs(genomeId),
@@ -49,15 +43,12 @@ export function CircularViewerPanel({ genomeId }: CircularViewerPanelProps) {
     () => (sequences ? new Map(sequences.map((contig) => [contig.accession, contig.length])) : undefined),
     [sequences],
   );
-  // State, not a ref: Export SVG is enabled once the figure's svg is mounted.
   const [svg, setSvg] = useState<SVGSVGElement | null>(null);
   // A loading ring would be exported mid-pulse, so Export waits for every shown track.
   const settled = state.tracks.every(
     (track) => !track.visible || tracks.data.get(track.id)?.status !== "pending",
   );
 
-  // Legacy's "No data found." for a custom track that matches nothing, once
-  // per track; an empty default track only says so in its row (deviation 5).
   const toastedEmpty = useRef(new Set<string>());
   useEffect(() => {
     for (const track of state.tracks) {
@@ -88,23 +79,15 @@ export function CircularViewerPanel({ genomeId }: CircularViewerPanelProps) {
 
   return (
     // `flex-1`, not `h-full`: in the tab's fill region a percentage height can
-    // resolve to 0, and the figure draws nothing at a zero-sized parent.
-    // On a card, as Compare Region is: the fill region runs under the page's
-    // right padding, which `pr-*` gives back, and muted text meets 4.5:1 on
-    // the card's surface, not on the page's own background.
-    // Below `md` the sidebar stacks above a square figure and the card
-    // scrolls through both: beside a 320px sidebar a phone's figure would be
-    // a sliver. From `md` the sidebar sits beside the figure and scrolls alone.
-    // Both scrollers are `relative`: an absolutely positioned descendant (the
-    // guide link's `sr-only` cue) is placed in its nearest positioned ancestor,
-    // and without one inside the scroller it escapes the scroller's clip and
-    // stretches the page below the screen.
+    // resolve to 0, and the figure draws nothing at a zero-sized parent. Both
+    // scrollers are `relative`: otherwise an absolutely positioned descendant
+    // (the guide link's `sr-only` cue) escapes the scroller's clip and
+    // stretches the page.
     <div className="flex min-h-0 min-w-0 flex-1 flex-col pt-3 pr-2 sm:pr-3 lg:pr-4">
       <div
         data-testid="circular-viewer"
         className="relative flex min-h-0 min-w-0 flex-1 flex-col rounded-t-xl border border-b-0 bg-card text-card-foreground shadow-sm max-md:overflow-y-auto md:flex-row"
       >
-        {/* Its sections (the tracks, the two forms, the actions) are split by rules. */}
         <aside className="relative flex flex-col divide-y border-b p-3 *:py-3 *:first:pt-0 *:last:pb-0 md:w-80 md:shrink-0 md:overflow-y-auto md:border-r md:border-b-0">
           <CircularViewerTrackList
             tracks={state.tracks}
@@ -136,7 +119,6 @@ export function CircularViewerPanel({ genomeId }: CircularViewerPanelProps) {
               <Download />
               Export SVG
             </Button>
-            {/* A link, not a button: it opens a page, in a new tab, which it says. */}
             <a
               href={guideUrl}
               target="_blank"

@@ -2,14 +2,15 @@ import AxeBuilder from "@axe-core/playwright";
 import type { Page } from "@playwright/test";
 import type { Violation } from "./gate";
 
-// Full tag set: WCAG 2.1AA (blocking tier) + best-practice + 2.2AA (warn tier). Experimental excluded.
+// WCAG 2.1AA (blocking tier) + best-practice + 2.2AA (warn tier);
+// experimental excluded.
 export const coreTags = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"];
 export const extraTags = ["best-practice", "wcag22aa"];
 export const allAxeTags = [...coreTags, ...extraTags];
 
 /**
- * Vendor subtrees excluded from every axe scan.
- * The wrapping element must still carry an accessible name / text alternative (tested separately).
+ * Vendor subtrees excluded from every scan; their wrapper must still carry an
+ * accessible name (tested separately).
  */
 export const vendorExclusions = [
   "[data-molstar-viewer]",
@@ -19,24 +20,13 @@ export const vendorExclusions = [
 ];
 
 export interface ScanOptions {
-  /** axe .include() — restrict scan to this CSS selector. */
   include?: string;
-  /** Extra selectors excluded beyond vendorExclusions. */
   exclude?: string[];
-  /** Override default allAxeTags. */
   tags?: string[];
-  /**
-   * Disable specific rule IDs entirely (axe won't run them).
-   * Prefer baseline suppression; only use this for rules that cannot be run at all
-   * (e.g. false-positive vendor internals the exclude selector can't reach).
-   */
+  /** Prefer baseline suppression; use only for rules that cannot run at all. */
   disableRules?: string[];
 }
 
-/**
- * Scan the page with axe and return raw violations.
- * Applies vendorExclusions automatically.
- */
 export async function scanPage(page: Page, options: ScanOptions = {}): Promise<Violation[]> {
   let builder = [...vendorExclusions, ...(options.exclude ?? [])].reduce(
     (b, sel) => b.exclude(sel),
@@ -50,7 +40,6 @@ export async function scanPage(page: Page, options: ScanOptions = {}): Promise<V
   return results.violations;
 }
 
-/** Format blocking violations into a human-readable assertion message. */
 export function formatBlocking(violations: Violation[], context: string): string {
   const lines = violations.map((v) => {
     const targets = v.nodes
@@ -62,7 +51,6 @@ export function formatBlocking(violations: Violation[], context: string): string
   return `${String(violations.length)} blocking a11y violation(s) on ${context}:\n${lines.join("\n")}`;
 }
 
-/** Log warn-tier violations without failing the test. */
 export function logWarnings(warnings: Violation[], context: string): void {
   if (warnings.length === 0) return;
   const summary = warnings

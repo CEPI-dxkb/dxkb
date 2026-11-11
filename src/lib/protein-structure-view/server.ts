@@ -11,36 +11,19 @@ export interface ProteinStructureLookup {
   error?: string;
 }
 
-/**
- * Client-facing text for a deployment with no Data API base URL. Stable and
- * distinct from a per-accession upstream failure, without echoing the
- * `DATA_API_URL`/`NEXT_PUBLIC_DATA_API` env var name — which
- * `createServerDataRepository`'s thrown error does name — to a response any
- * caller can read. The same-origin routes answer the identical condition with
- * `dataApiNotConfiguredMessage` (`@/lib/data-api/route-errors`); this one is
- * separate because it names the protein structure service specifically, and it
- * reaches the caller through a per-accession `error` field rather than a
- * response body.
- */
+/** Client-facing text for a deployment with no Data API base URL; it does not echo the env var name that `createServerDataRepository`'s error names. */
 const proteinStructureNotConfiguredMessage =
   "The protein structure service is not configured for this deployment.";
 
 export async function getProteinStructures(
   accessions: readonly string[],
 ): Promise<ProteinStructureLookup[]> {
-  // Deliberately not wrapped in React `cache()`: this takes an array of
-  // accessions, so memoizing on "same array" would not mean the same thing as
-  // the scalar-ID memoization the sibling *-view/server.ts modules do.
+  // Not wrapped in React `cache()`: it takes an array, unlike the scalar-ID sibling modules.
   let repository: ServerDataRepository;
   try {
     repository = await createServerDataRepository({ readScope: "member" });
   } catch (error) {
-    // Narrow on the factory's specific "not configured" error only — a
-    // readSession()/cookies() failure (or anything else) is a different
-    // problem and must propagate normally, not be relabeled as a
-    // configuration issue. The factory's error names the env var for
-    // operators; log that detail server-side and return the generic message
-    // above to callers instead.
+    // Narrow on the factory's "not configured" error only; anything else must propagate. Its message names the env var, so log it and return the generic message.
     if (!(error instanceof DataApiError) || error.code !== "not_configured")
       throw error;
     console.error("Protein structure lookup is not configured:", error);

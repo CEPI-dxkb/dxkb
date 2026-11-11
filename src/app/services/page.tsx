@@ -49,16 +49,7 @@ export default function ServicesIndexPage() {
         title="Services"
         description="Browse bioinformatics services by category."
       />
-      {/* The whole card is the link: the title's `after` box covers the
-          card, so a click anywhere on it navigates, and the card, not the
-          small title, takes the hover and focus states the service fields
-          have (white fill and a darker border; the focus ring). The ring is
-          a box-shadow, which forced-colors mode drops, so a focused link keeps
-          a transparent outline (`focus-visible:outline-hidden`, not
-          `outline-none`) that that mode paints. Only on focus: the bare
-          `outline-hidden` paints it on every card at rest, and the focused
-          one is then no different. `has-focus-visible` keeps a mouse click
-          from showing the ring. */}
+      {/* `has-focus-visible` shows the ring only on keyboard focus; forced-colors drops the box-shadow ring, so `focus-visible:outline-hidden` paints an outline there. */}
       <ul className="grid gap-4 sm:grid-cols-2">
         {serviceCategories.map((c) => (
           <li

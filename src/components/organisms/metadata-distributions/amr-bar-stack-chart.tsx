@@ -197,8 +197,6 @@ function useAmrBarStackChart({
 
   const yTicks = scale === "percent" ? [0, 25, 50, 75, 100] : yScale.ticks(4);
 
-  // A literal style object with static keys: the lint rule allows the
-  // runtime left/right/top, but not a style computed by a call.
   const tooltipPosition = chartTooltipStyle(
     tooltipLeft ?? 0,
     tooltipTop ?? 0,
@@ -258,8 +256,7 @@ function useAmrBarStackChart({
               })}
             </div>
           </nav>
-          {/* Focusable so keyboard users can scroll the wide chart (axe
-              scrollable-region-focusable); labelled by the chart title. */}
+          {/* Focusable so keyboard users can scroll the wide chart (axe scrollable-region-focusable). */}
           <div
             className="overflow-x-auto pt-2"
             tabIndex={0}
@@ -328,8 +325,7 @@ function useAmrBarStackChart({
                             key={`bar-${String(barStack.index)}-${String(bar.index)}`}
                             fill={bar.color}
                             rx={barStack.index === barStacks.length - 1 ? 2 : 0}
-                            // SVG <rect> has no implicit ARIA role; graphics-symbol permits
-                            // aria-label without tripping axe aria-prohibited-attr on WebKit/Firefox.
+                            // SVG <rect> has no implicit ARIA role; graphics-symbol permits aria-label without axe aria-prohibited-attr.
                             role="graphics-symbol"
                             aria-label={label}
                             pointerEvents="none"

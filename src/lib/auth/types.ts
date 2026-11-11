@@ -10,19 +10,14 @@ export interface AuthUser {
   roles?: string[];
   isImpersonating?: boolean;
   originalUsername?: string;
-  /**
-   * The profile's `settings.default_job_folder`; absent when unset or when the
-   * session is unverified.
-   */
   defaultJobFolder?: string;
   /**
-   * The session cookies are present but the profile service could not answer
-   * (outage, timeout, unreachable), so the user is built from the session alone:
-   * `id` and `username` are the session user id, `email` is empty and `roles` is
+   * The session cookies are present but the profile service could not answer,
+   * so `id` and `username` are the session user id and `email` and `roles` are
    * empty. The user stays signed in until the service rejects the token.
    */
   sessionUnverified?: boolean;
-  /** Why the profile lookup failed, for the outage banner. Never upstream HTML. */
+  /** For the outage banner; never upstream HTML. */
   sessionUnverifiedReason?: string;
 }
 
@@ -49,10 +44,6 @@ export type ProfilePatch =
       value: ProfileSettings;
     };
 
-/**
- * What the route sends upstream: a client patch as sent, or one settings key set in
- * place, so the profile service leaves the other keys in its stored settings alone.
- */
 export type UpstreamProfilePatch =
   | ProfilePatch
   | { op: "add"; path: `/settings/${string}`; value: unknown };

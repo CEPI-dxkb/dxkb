@@ -185,8 +185,7 @@ describe("Genome view contracts", () => {
   });
 
   it("drops a non-boolean visibility filter on the taxon Genomes tab", () => {
-    // That tab reads the URL through the generic parser, not
-    // parseGenomeCollectionState, and the gateway rejects eq(public,maybe).
+    // That tab reads the URL through the generic parser, and the gateway rejects eq(public,maybe).
     const state = parseCollectionState(
       { public: "maybe", genome_status: "Complete" },
       genomeCollectionOptions,
@@ -207,9 +206,6 @@ describe("Genome view contracts", () => {
   it("builds exact child predicates", () => {
     expect(genomeSequenceRql("83332.12")).toBe("eq(genome_id,83332.12)");
     expect(genomeDomainsRql("83332.12")).toBe("eq(genome_id,83332.12)");
-    // Symmetric on the interaction endpoints — a PPI row can file the scoped
-    // genome on either side. Endpoint coverage lives in
-    // src/lib/views/__tests__/interaction-predicates.test.ts.
     expect(genomeInteractionsRql("83332.12")).toBe(
       "and(or(eq(genome_id_a,83332.12),eq(genome_id_b,83332.12)),eq(evidence,experimental))",
     );
@@ -271,8 +267,6 @@ describe("Genome view contracts", () => {
 
 describe("genomeBaseRql with a refinement", () => {
   it("does not restrict a refined list to recent genomes", () => {
-    // As for a keyword (Fix 2): the Genomes tab and the related tabs, which run
-    // the refinement on their own collections, then cover the same records.
     expect(
       genomeBaseRql({ filters: {}, page: 1, sort: "unsorted", refine: "coli" }),
     ).toBeUndefined();
@@ -312,9 +306,6 @@ describe("genomeRelatedScope", () => {
   });
 
   it("keeps Solr's OR and NOT on the tabs' own collections", () => {
-    // Alpha's search box sends `coli or Salmonella` as
-    // or(keyword(coli),keyword(Salmonella)) and hands it to every tab's
-    // collection; as ?rql= the tabs would join through genome() instead.
     expect(
       genomeRelatedScope({ ...bare, keyword: "coli OR Salmonella" }),
     ).toEqual({ rql: "or(keyword(coli),keyword(Salmonella))", join: false });
@@ -327,14 +318,10 @@ describe("genomeRelatedScope", () => {
   });
 
   it("splits a multi-word keyword as the Genomes tab's own search does", () => {
-    // The Genomes tab sends ?keyword=coli Salmonella as
-    // and(keyword(coli),keyword(Salmonella)) (1,933 genomes, legacy's count);
-    // one keyword(coli Salmonella) clause is the phrase, 29 genomes.
     expect(genomeRelatedScope({ ...bare, keyword: "coli Salmonella" })).toEqual({
       rql: "and(keyword(coli),keyword(Salmonella))",
       join: false,
     });
-    // The refinement too, as ResourceCollection's `rqlKeyword` reads it.
     expect(
       genomeRelatedScope({
         ...bare,
@@ -358,8 +345,6 @@ describe("genomeRelatedScope", () => {
   });
 
   it("keeps a quoted keyword's quotes on the related collections", () => {
-    // Legacy's search quotes id-like words (keyword(%22Rv0001%22)); the
-    // Genomes tab's ?keyword= sends them that way too.
     expect(genomeRelatedScope({ ...bare, keyword: '"Rv0001"' })).toEqual({
       rql: "keyword(%22Rv0001%22)",
       join: false,
@@ -367,20 +352,16 @@ describe("genomeRelatedScope", () => {
   });
 
   it("reads a keyword or refinement without terms as none", () => {
-    // `"` alone (a phrase being typed) or empty quotes search for nothing, so
-    // the list keeps its recent-genomes default instead of listing every genome.
+    // `"` alone or empty quotes search for nothing, so the list keeps its recent-genomes default.
     const empty = { ...bare, keyword: '""', refine: '"' };
     expect(genomeBaseRql(empty)).toBe(recentGenomeRql);
     expect(genomeRelatedScope(empty)).toBeUndefined();
-    // Nor does an operator with nothing to join, or only syntax.
     const syntax = { ...bare, keyword: "OR", refine: "/ -" };
     expect(genomeBaseRql(syntax)).toBe(recentGenomeRql);
     expect(genomeRelatedScope(syntax)).toBeUndefined();
   });
 
   it("sends a quoted phrase to the related collections whole", () => {
-    // Alpha's GenomeList/?keyword(%22DNA%20polymerase%22) Sequences tab reads
-    // 16,199 rows with the phrase; split onto its words it would find none.
     expect(
       genomeRelatedScope({ ...bare, keyword: 'coli "DNA polymerase"' }),
     ).toEqual({
@@ -427,7 +408,6 @@ describe("genomeTaxonScope", () => {
   const bare: CollectionState = { filters: {}, page: 1, sort: "unsorted" };
 
   it("leaves the taxon-scoped tabs unscoped for the bare list", () => {
-    // The recent-genomes default is the Genomes tab's own, not a scope.
     expect(genomeTaxonScope(bare)).toEqual({ supported: true });
   });
 
@@ -479,7 +459,6 @@ describe("genomeTaxonScope", () => {
     let rql = "eq(taxon_lineage_ids,561)";
     for (let level = 0; level < 12; level++) rql = `not(${rql})`;
     const state = parseGenomeCollectionState({ rql });
-    // The rql alone parses, and names only the taxon lineage.
     expect(genomeTaxonScope(state)).toEqual({ supported: true, rql });
     expect(genomeTaxonScope({ ...state, keyword: "coli" })).toEqual({
       supported: false,
@@ -542,7 +521,6 @@ describe("genomeOverviewScope", () => {
   });
 
   it("keeps a clause mixing keywords and genome fields whole", () => {
-    // Splitting `or` or `not` would change which genomes match.
     const rql = "or(keyword(coli),eq(genome_status,Complete))";
     expect(genomeOverviewScope({ ...bare, rql })).toEqual({ fieldRql: rql });
     expect(
@@ -578,12 +556,9 @@ describe("genomeOverviewScope", () => {
     "in(public,(true))",
     "not(eq(public,false))",
     "not(in(public,(true,false)))",
-    // A clause that admits private genomes, overruled by the rest.
     "and(eq(public,true),in(public,(true,false)))",
     "and(eq(public,true),or(eq(public,false),eq(genome_status,Complete)))",
     "or(eq(genome_status,Complete),and(eq(public,false),eq(public,true)))",
-    // Private genomes reach this one only through genome_status, as they reach
-    // a list with no visibility clause at all.
     "or(eq(public,true),eq(genome_status,Complete))",
   ])("stays available for an rql of public genomes: %s", (rql) => {
     expect(genomeOverviewScope({ ...bare, rql })).toEqual({ fieldRql: rql });

@@ -2,7 +2,6 @@ import type { ReactNode } from "react";
 
 import { viewIcons } from "@/components/views/view-icons";
 
-/** Each data type's view icon, as every view rail shows it. */
 const typeIcons: Readonly<Record<string, ReactNode>> = {
   taxonomy: viewIcons.taxonomy,
   genome: viewIcons.genomes,

@@ -34,8 +34,7 @@ function SubGroups({ subGroups }: { subGroups: VirusFamilySubGroup[] }) {
 }
 
 export function VirusFamiliesSection() {
-  // col3 is the mixed group (DS-RNA, SS-DNA, Partially DS-DNA)
-  // At lg it renders below DS-DNA; at xl+ it becomes its own 4th column.
+  // col3 is the mixed group: below DS-DNA at lg, its own 4th column at xl+.
   const col3 = virusFamilies[3];
 
   return (

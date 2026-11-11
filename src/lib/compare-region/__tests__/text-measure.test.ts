@@ -41,7 +41,6 @@ describe("canvasTextWidth", () => {
     expect(canvasTextWidth("Escherichia coli", "italic 500 12px")).toBe(
       estimateTextWidth("Escherichia coli", "italic 500 12px"),
     );
-    // The context is looked up once, on the first measurement.
     expect(getContext).toHaveBeenCalledTimes(1);
     expect(getContext).toHaveBeenCalledWith("2d");
   });

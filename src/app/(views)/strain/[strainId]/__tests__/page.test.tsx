@@ -75,8 +75,8 @@ describe("Strain member route", () => {
   });
 
   it("resolves one identifier from both entry points for a percent-bearing ID", async () => {
-    // The page component receives `encodeURIComponent(id)` and
-    // `generateMetadata` the decoded `id`; see `readRouteParam`.
+    // The page receives `encodeURIComponent(id)` and `generateMetadata` the
+    // decoded `id`.
     const percentId = "strain%2F1";
 
     await StrainPage({

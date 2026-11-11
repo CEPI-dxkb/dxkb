@@ -38,13 +38,7 @@ function formatFromPath(path: string): StructureFormat {
   return "pdb";
 }
 
-/**
- * Build the workspace-file `StructureSource` for an already-decoded workspace
- * path. This is the single place extension detection, filename extraction,
- * and per-segment URL encoding happen for workspace structure files, shared
- * by the `/protein-structure?path=` view and the standalone
- * `/viewer/structure/[[...path]]` catch-all route.
- */
+/** Builds the workspace-file `StructureSource` for an already-decoded path; the single place extension detection, filename extraction and per-segment encoding happen. */
 export function buildWorkspaceStructureSource(path: string): StructureSource {
   const normalizedPath = path.replace(/^\/+/, "");
   return {

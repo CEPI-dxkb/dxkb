@@ -2,8 +2,7 @@ import type { GenomeBrowserAnnotation } from "@/lib/genome-browser/contract";
 import type { ThemeMode } from "@/styles/themes";
 
 /**
- * The theme tokens the browser takes its colors from, as hex. The tokens are
- * oklch, which MUI (JBrowse's UI library) cannot parse, so they are resolved
+ * The tokens are oklch, which MUI cannot parse, so they are resolved to hex
  * through a canvas pixel.
  */
 export interface ThemeColors {
@@ -35,7 +34,6 @@ const tokenNames: Record<keyof ThemeColors, string> = {
   chart2: "--chart-2",
 };
 
-/** Legacy BV-BRC's PATRIC blue and JBrowse's own defaults, for a token that does not resolve. */
 const fallbackColors: ThemeColors = {
   primary: "#17487d",
   secondary: "#357089",
@@ -47,7 +45,7 @@ const fallbackColors: ThemeColors = {
   chart2: "#357089",
 };
 
-/** A fill no theme token uses, to tell "invalid color" from black. */
+/** A fill no theme token uses, to tell an invalid color from black. */
 const sentinelColor = "#010203";
 
 export function rgbToHex(red: number, green: number, blue: number): string {
@@ -85,8 +83,8 @@ export function buildJBrowseTheme(
   mode: ThemeMode,
   fontFamily: string,
 ): JBrowseTheme {
-  // Dark themes keep --primary a dark fill that reads at 2–3:1 as text
-  // (AGENTS.md); JBrowse draws primary as text and icons, so dark uses --link.
+  // Dark themes keep --primary at 2-3:1 as text, and JBrowse draws primary as
+  // text and icons, so dark uses --link.
   const primary = mode === "dark" ? colors.link : colors.primary;
   return {
     palette: {

@@ -3,11 +3,7 @@ import type { MouseEvent, RefObject } from "react";
 
 import { chartMarginLeft, chartWidth } from "./chart-dimensions";
 
-/**
- * Convert a pointer event over the chart overlay into the nearest band index.
- * Uses nearest-band-center (not Math.round/step) so paddingOuter doesn't skew
- * the mapping — see `bar-chart.tsx` regression that motivated this helper.
- */
+/** Nearest band index for a pointer over the overlay; uses band centers, not Math.round(x/step), so paddingOuter does not skew it. */
 export function nearestBandIndex<T extends { toString(): string }>(
   event: MouseEvent<SVGElement>,
   svgRef: RefObject<SVGSVGElement | null>,

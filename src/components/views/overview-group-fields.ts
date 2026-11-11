@@ -4,11 +4,6 @@ import {
   isOverviewValueAvailable,
 } from "./overview-value-policy";
 
-/**
- * A field ready for `OverviewSection`, already reduced to display text.
- * Structurally a subset of `OverviewSectionField`, so the result of
- * {@link overviewGroupFields} can be handed straight to the section renderer.
- */
 export interface OverviewGroupField {
   field: string;
   label: string;
@@ -16,44 +11,17 @@ export interface OverviewGroupField {
 }
 
 export interface OverviewGroupFieldsOptions {
-  /** The resource's `DataFieldMap`. Its iteration order sets display order. */
   fields: DataFieldMap;
-  /** The `DataField.group` to collect. */
   group: string;
-  /** The entity row to read values from. */
   row: Record<string, unknown>;
-  /** Field IDs whose value is a source date rather than an ordinary value. */
   dateFields: ReadonlySet<string>;
-  /** Formatter for the fields named in `dateFields`. */
   formatDate: (value: string) => string | null;
-  /**
-   * Field IDs to skip entirely — for a field the caller renders itself, such
-   * as a latitude/longitude pair combined into one coordinates field.
-   */
   exclude?: ReadonlySet<string>;
 }
 
 /**
- * Collect one `DataField.group`'s populated fields from a row, as display text.
- *
- * This is the shared half of the Serology and Surveillance overviews. Their
- * per-field `displayValue` branches were identical apart from the date
- * formatter they called, and the group `flatMap` around them was identical
- * outright. Four things differed, which is why four parameters join `group`
- * and `row`: the `DataFieldMap` each one read (`fields`), its own set of
- * date-valued field ids (`dateFields`), its formatter (`formatDate`), and
- * Surveillance's skip of `collection_latitude`/`collection_longitude`, which
- * it renders as a single combined field (`exclude`).
- *
- * It deliberately does **not** generalize to the static entity overviews
- * (Genome, Feature, Epitope, Experiment). Those order and format their fields
- * by hand, and this helper's whole premise is that display order comes from a
- * `DataFieldMap` instead.
- *
- * A field is dropped when it formats to no text: a date field with no usable
- * date, an unavailable value, or an available-but-empty formatting such as
- * `[""]`. That last case is why the check is on the formatted text rather than
- * on `isOverviewValueAvailable` alone.
+ * A field is dropped when its formatted text is empty; the check is on text
+ * because `[""]` is available but formats to nothing.
  */
 export function overviewGroupFields({
   fields,

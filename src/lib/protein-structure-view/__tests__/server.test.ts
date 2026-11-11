@@ -1,7 +1,4 @@
-// See src/lib/phylogeny/__tests__/dataset-store.test.ts: `server-only` throws
-// unconditionally outside Next's bundler, so any test importing a module
-// gated by it (this one, transitively via `@/lib/data-api/server-repository`)
-// neutralizes the guard.
+// `server-only` throws outside Next's bundler; neutralize it as dataset-store.test.ts does.
 vi.mock("server-only", () => ({}));
 
 import { http, HttpResponse } from "msw";
@@ -90,11 +87,7 @@ describe("getProteinStructures", () => {
   });
 
   it("propagates a readSession/cookies failure instead of reporting it as a configuration problem", async () => {
-    // DATA_API_URL is set (see beforeEach), so this exercises a session
-    // lookup failure with a genuinely valid configuration — the regression
-    // this guards is the catch block in getProteinStructures relabeling any
-    // failure from createServerDataRepository() as "not configured", which
-    // would hide this error from both the caller and the operator log.
+    // DATA_API_URL is set, so this is a session lookup failure under valid configuration; it guards against `getProteinStructures` relabeling any factory failure as "not configured".
     const cookieStoreError = new Error(
       "Cookie store unavailable in this rendering mode",
     );

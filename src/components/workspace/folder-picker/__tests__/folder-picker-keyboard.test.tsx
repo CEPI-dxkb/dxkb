@@ -19,7 +19,6 @@ vi.mock("sonner", () => ({ toast: { error: vi.fn(), success: vi.fn() } }));
 
 stubPickerBrowserApis();
 
-/** Rows in the Tab order (each resize handle is a Tab stop of its own). */
 function tabStops() {
   return within(screen.getByRole("group", { name: "Folder columns" }))
     .getAllByRole("option")
@@ -222,7 +221,6 @@ describe("WorkspaceFolderPickerDialog arrow keys", () => {
       directories: {
         [home]: [{ name: "Batch", type: "folder" }],
         [`${home}/Batch`]: [
-          // Folder-like, so it sorts with the folders, but not navigable.
           { name: "assembly-job", type: "job_result" },
           { name: "outputs", type: "folder" },
         ],

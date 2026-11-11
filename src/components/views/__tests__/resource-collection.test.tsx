@@ -14,14 +14,6 @@ import { writeStorageItem } from "@/lib/browser-storage";
 import { jsdomLocalStorage } from "@/test-helpers/storage";
 import { createResourceCollectionResult } from "./fixtures/resource-collection-result";
 
-// Generic ResourceCollection behaviour: rendering the same profile across scopes,
-// collection-load error/retry, keyword/filter modes (server, loaded, refine), what the
-// Download tile is handed, and the table/detail rendering contracts. None
-// of this depends on which resource is mounted, so `genomeCollectionProfile` stands in
-// throughout (Taxonomy appears only in "error presentation", as the vehicle for the
-// action-error sink). Selection, Taxonomy, Bioset and resource-navigation action tests
-// live in their own `resource-collection-*-actions.test.tsx` files (plan item 21).
-
 const { push, downloadResourceExport, useResourceCollection, collectionDownload } =
   vi.hoisted(() => ({
     push: vi.fn(),
@@ -143,10 +135,6 @@ vi.mock("../resource-filter-bar", () => ({
     );
   },
 }));
-// The `SearchActionBar` fake shared with every resource-collection*.test.tsx suite.
-// It calls the same `visibleSearchActions` / `isSearchActionDisabled` policy
-// production does (search-action-policy.ts), so a control this suite can query or
-// click is one the real bar would have rendered, in the same enabled state.
 vi.mock("@/components/search/search-action-bar", async () =>
   (await import("./fixtures/resource-collection-mocks")).searchActionBarMock(
     (props) => {
@@ -225,8 +213,8 @@ function repository(
 
 beforeEach(() => {
   useResourceCollection.mockReturnValue(collectionResult());
-  // A subclass rather than a spread, so `URL` stays constructible: jsdom's
-  // cookie jar builds one when the UI-preferences provider clears old cookies.
+  // A subclass rather than a spread, so `URL` stays constructible for jsdom's
+  // cookie jar.
   vi.stubGlobal(
     "URL",
     class extends URL {
@@ -238,7 +226,6 @@ beforeEach(() => {
 
 afterEach(() => vi.unstubAllGlobals());
 
-/** Open the rail's Download tile, and pick `format` when one is given. */
 async function downloadFromTile(
   user: ReturnType<typeof userEvent.setup>,
   format?: string,
@@ -248,7 +235,6 @@ async function downloadFromTile(
     await user.click(await screen.findByRole("button", { name: format }));
 }
 
-/** `collectionResult()` with nothing selected and no detail row. */
 const unselected: Partial<ReturnType<typeof useResourceCollectionHook>> = {
   activeId: null,
   detail: null,
@@ -256,21 +242,13 @@ const unselected: Partial<ReturnType<typeof useResourceCollectionHook>> = {
   selectedIds: [],
 };
 
-/** Calls one of the toolbar's callbacks, as the real toolbar does. */
 function callToolbar(name: string, ...args: unknown[]) {
   act(() => {
     (filterBarProps[name] as (...callArgs: unknown[]) => void)(...args);
   });
 }
 
-// `genomeCollectionProfile` stands in for "any resource" throughout this block; none
-// of these assertions are Genome-specific. Renamed from "Genome integration contracts"
-// (plan item 21) now that the resource-specific action tests that name lumped
-// together have moved to their own files.
 describe("ResourceCollection generic collection, export and filter behaviour", () => {
-  // Plan item 27: `showHeader` (and its heading/aria-labelledby branch) is gone
-  // because every production caller always passed `showHeader={false}` — this
-  // pins the one surviving arm so the accessible name doesn't regress.
   it("labels the collection region from the profile with no rendered heading", () => {
     render(
       <ResourceCollection
@@ -280,10 +258,8 @@ describe("ResourceCollection generic collection, export and filter behaviour", (
         onStateChange={vi.fn()}
       />,
     );
-    // The COMPUTED accessible name, not the attribute that happens to produce
-    // it today: `getByRole` also fails if the region is hidden (`aria-hidden`,
-    // `display: none`) or given a competing label on a wrapper, neither of
-    // which a `toHaveAttribute("aria-label", …)` check can see.
+    // Asserts the computed accessible name: `getByRole` also fails when the
+    // region is hidden or relabelled.
     const section = screen.getByRole("region", { name: "Genomes" });
     expect(section).not.toHaveAttribute("aria-labelledby");
     expect(screen.queryByRole("heading")).not.toBeInTheDocument();
@@ -388,7 +364,6 @@ describe("ResourceCollection generic collection, export and filter behaviour", (
     expect(useResourceCollection.mock.calls.at(-1)?.[0]).toMatchObject({
       unsortedOrder,
     });
-    // The rows on screen are this query's, so the table shows no refresh.
     expect(dataTableProps.isRefreshing).toBe(false);
   });
 
@@ -507,9 +482,6 @@ describe("ResourceCollection generic collection, export and filter behaviour", (
     expect(onStateChange).toHaveBeenCalledTimes(1);
   });
 
-  // The Feature list keeps its PATRIC default and its feature-type scope beside
-  // a link's rql (`filtersBesideRql`), so the user can remove either chip
-  // without losing the link's scope.
   it("applies a chip removal beside an explicit rql to the filters it keeps", async () => {
     const onStateChange = vi.fn();
     useResourceCollection.mockReturnValue(collectionResult());
@@ -539,7 +511,6 @@ describe("ResourceCollection generic collection, export and filter behaviour", (
       page: 1,
     });
 
-    // A filter the rql does not keep stays as it is until the rql is cleared.
     rerender(
       <ResourceCollection
         profile={genomeCollectionProfile}
@@ -617,9 +588,6 @@ describe("ResourceCollection generic collection, export and filter behaviour", (
     expect(dataTableProps.totalItems).toBe(160);
   });
 
-  // Loaded mode filters the current page for display, but an export must refetch
-  // the complete source set and apply the same filter so later-page matches are
-  // included.
   it("clears hidden selections and downloads only the rows a loaded keyword leaves", async () => {
     const user = userEvent.setup();
     const laterMatch = {
@@ -694,8 +662,6 @@ describe("ResourceCollection generic collection, export and filter behaviour", (
     });
     expect(actionBarProps.selectedCount).toBe(1);
 
-    // A loaded keyword filters the loaded page only, so *All results* is the rows
-    // it leaves, by id, rather than a query the keyword is not part of.
     await downloadFromTile(user);
     await user.click(screen.getByRole("radio", { name: /^All/ }));
     await user.click(screen.getByRole("button", { name: "CSV" }));
@@ -872,7 +838,6 @@ describe("ResourceCollection generic collection, export and filter behaviour", (
     );
 
     expect(dataTableProps.isLoading).toBe(true);
-    // The previous page's total keeps the pager in place meanwhile.
     expect(dataTableProps.totalItems).toBe(1);
   });
 
@@ -990,7 +955,6 @@ describe("ResourceCollection Download tile", () => {
           keyword: "coli",
           keywordMode: "exact",
         },
-        // Unsorted: the gateway falls back to the primary key.
         sort: undefined,
         fileNameBase: "genomes tab",
       }),
@@ -1046,7 +1010,6 @@ describe("ResourceCollection Download tile", () => {
       />,
     );
 
-    // The badge counts every matching row.
     expect(screen.getByRole("button", { name: /^DOWNLOAD/ })).toHaveTextContent(
       "DOWNLOAD2",
     );
@@ -1114,7 +1077,6 @@ describe("ResourceCollection Download tile", () => {
       />,
     );
 
-    // The previous query's rows stay on screen, marked as refreshing.
     expect(dataTableProps.isRefreshing).toBe(true);
     await downloadFromTile(user);
     expect(screen.getByRole("radio", { name: /^All/ })).toHaveAttribute(
@@ -1137,7 +1099,6 @@ describe("ResourceCollection Download tile", () => {
       />,
     );
     await downloadFromTile(user);
-    // A genome's DNA is every contig it has.
     expect(screen.getByRole("button", { name: "DNA FASTA" })).toHaveAttribute(
       "title",
       "Nucleotide sequences. Contigs of each genome.",
@@ -1161,7 +1122,6 @@ describe("ResourceCollection Download tile", () => {
       />,
     );
     await downloadFromTile(user);
-    // The Proteins search offers Protein FASTA only.
     expect(screen.getByRole("button", { name: "Protein FASTA" })).toBeVisible();
     expect(
       screen.queryByRole("button", { name: "DNA FASTA" }),
@@ -1211,8 +1171,6 @@ describe("ResourceCollection error presentation", () => {
       />,
     );
 
-    // The alert renders on the `error` object, so a blank message left a
-    // bordered destructive region with no text in it for a screen reader.
     expect(screen.getByText("Could not load genomes")).toBeVisible();
     expect(
       screen.getByText(
@@ -1242,7 +1200,6 @@ describe("ResourceCollection error presentation", () => {
         "The requested records could not be loaded. Please try again.",
       ),
     ).toBeVisible();
-    // `String(error)` used to put this in front of the user.
     expect(screen.queryByText("[object Object]")).not.toBeInTheDocument();
   });
 
@@ -1275,7 +1232,6 @@ describe("ResourceCollection error presentation", () => {
       />,
     );
 
-    // The in-page services dialog path, so no tab is reserved.
     await user.click(screen.getByRole("button", { name: "services" }));
     expect(
       await screen.findByText(
@@ -1311,8 +1267,6 @@ describe("ResourceCollection error presentation", () => {
         repository={
           {
             selected: vi.fn(() => Promise.resolve({ rows: [] })),
-            // A rejected string, not an Error — the shape a thrown response
-            // body or a non-Error library rejection arrives in.
             exportAll: vi.fn().mockRejectedValue("gateway reset"),
           } as unknown as DataRepository
         }
@@ -1344,8 +1298,8 @@ describe("ResourceCollection column layout", () => {
     localStorage.clear();
   });
 
-  // browser-storage keeps a refused write in module state; a successful write to the
-  // key is what clears it, so do that once storage works again.
+  // browser-storage keeps a refused write in module state; a successful write
+  // clears it.
   afterEach(() => {
     vi.stubGlobal("localStorage", jsdomLocalStorage());
     writeStorageItem(storageKey, null);
@@ -1479,7 +1433,6 @@ describe("ResourceCollection column layout", () => {
         onStateChange={vi.fn()}
       />,
     );
-    // A new scope alone does not start the counts either.
     rerender(
       <ResourceCollection
         profile={genomeCollectionProfile}
@@ -1526,7 +1479,6 @@ describe("ResourceCollection column layout", () => {
       [],
     );
 
-    // Hovering Filters prefetches the pinned set without showing it.
     callToolbar("onPrefetchFacets");
     expect(prefetchFacets).toHaveBeenLastCalledWith(stillShown);
     expect(useResourceCollection.mock.calls.at(-1)?.[0].facetFields).toEqual(
@@ -1538,7 +1490,6 @@ describe("ResourceCollection column layout", () => {
       stillShown,
     );
 
-    // Opening a facet outside the pinned set counts it too, after them, once.
     callToolbar(
       "onPeekedFieldsChange",
       new Set([collapsedByUser.field, stillShown[0]]),
@@ -1579,15 +1530,11 @@ describe("ResourceCollection column layout", () => {
       />
     );
 
-    // Server HTML first (storage reads as empty there), then hydrate it, which
-    // is the render pair a full page load goes through.
     const container = document.createElement("div");
     document.body.append(container);
     let root: ReturnType<typeof hydrateRoot> | undefined;
     try {
       container.innerHTML = renderToString(tree);
-      // Before the saved set is known, a request would count the collapsed
-      // facet, and so would a prefetch.
       expect(
         useResourceCollection.mock.calls.map(
           ([options]) => options.facetFields,
@@ -1634,7 +1581,6 @@ describe("ResourceCollection column layout", () => {
       />,
     );
 
-    // An id the profile no longer has is dropped; the rest keep their place.
     expect(dataTableProps).toMatchObject({
       hideColumnControls: true,
       columnOrder: ["__select__", second, first, ...rest],
@@ -1735,7 +1681,6 @@ describe("ResourceCollection column layout", () => {
       ...rest,
     ]);
 
-    // Moving back to the default order stores no order at all.
     callToolbar("setColumns", { order: defaultOrder });
     expect(stored()).toStrictEqual({
       visibility: { [shownByDefault.id]: false },
@@ -1752,7 +1697,6 @@ describe("ResourceCollection column layout", () => {
 });
 
 describe("ResourceCollection facet state", () => {
-  /** The `facetStructuralRql` the collection last handed its hook. */
   const facetStructuralRql = () => {
     const scope =
       useResourceCollection.mock.calls.at(-1)?.[0].facetStructuralRql;
@@ -1776,7 +1720,6 @@ describe("ResourceCollection facet state", () => {
       structuralRql:
         "and(eq(taxon_lineage_ids,561),eq(genome_status,Complete))",
     });
-    // The rows' genome_status filter is not part of facetState's scope.
     expect(facetStructuralRql()("genome_status")).toBe(
       "and(eq(taxon_lineage_ids,561),eq(host_group,Human))",
     );
@@ -1796,12 +1739,9 @@ describe("ResourceCollection facet state", () => {
     );
 
     const options = useResourceCollection.mock.calls.at(-1)?.[0];
-    // An unfiltered field counts over exactly the rows' scope.
     expect(facetStructuralRql()("host_group")).toBe(options?.structuralRql);
   });
 
-  // Multi-select faceting: a field's counts list every value a pick could add,
-  // so its own filter is left out while every other field's stays in.
   it("leaves each field's own filter out of its counts and keeps the others'", () => {
     render(
       <ResourceCollection
@@ -1827,7 +1767,6 @@ describe("ResourceCollection facet state", () => {
     expect(hostScope).toContain("eq(taxon_lineage_ids,561)");
     expect(hostScope).toContain("eq(genome_status,Complete)");
     expect(hostScope).not.toContain("host_group");
-    // A field nothing filters counts over the full scope, as the rows do.
     expect(facetStructuralRql()("genome_quality")).toBe(options?.structuralRql);
   });
 });
@@ -1844,7 +1783,6 @@ describe("ResourceCollection loading and failure states", () => {
   );
   const liveRegion = (container: HTMLElement) =>
     container.querySelector('[aria-live="polite"]');
-  /** Nothing loaded yet, as on the first read. */
   const empty: Partial<ReturnType<typeof useResourceCollectionHook>> = {
     ...unselected,
     rows: [],
@@ -1909,7 +1847,6 @@ describe("ResourceCollection loading and failure states", () => {
     await user.click(screen.getByRole("button", { name: "Retry" }));
     expect(refetch).toHaveBeenCalledOnce();
 
-    // TanStack resets a query with no data to pending on refetch: no error.
     useResourceCollection.mockReturnValue(
       collectionResult({ ...empty, isInitialLoading: true, refetch }),
     );
@@ -1920,7 +1857,6 @@ describe("ResourceCollection loading and failure states", () => {
     expect(screen.queryByTestId("data-table")).not.toBeInTheDocument();
     expect(liveRegion(container)).toHaveTextContent("Retrying…");
 
-    // A second failure replaces it, and Retry is offered again.
     useResourceCollection.mockReturnValue(
       collectionResult({
         ...empty,
@@ -1932,7 +1868,6 @@ describe("ResourceCollection loading and failure states", () => {
     expect(screen.getByRole("alert")).toHaveTextContent("Still unavailable.");
     expect(screen.getByRole("button", { name: "Retry" })).toBeEnabled();
 
-    // And rows replace the alert once a retry succeeds.
     await user.click(screen.getByRole("button", { name: "Retry" }));
     useResourceCollection.mockReturnValue(collectionResult());
     rerender(view());
@@ -1961,8 +1896,6 @@ describe("ResourceCollection loading and failure states", () => {
   it("keeps the same toolbar through a failed read and its recovery", () => {
     useResourceCollection.mockReturnValue(collectionResult());
     const { rerender } = render(view());
-    // The toolbar holds the keyword draft, its focus, a pending pick and an
-    // open Filters menu, so a remount would throw all of them away.
     const toolbar = screen.getByTestId("filter-bar");
 
     useResourceCollection.mockReturnValue(

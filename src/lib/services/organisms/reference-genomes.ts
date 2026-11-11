@@ -10,8 +10,6 @@ import {
   type OrganismRequest,
 } from "./utils";
 
-// Unlabelled: the card showing a failure names it ("Reference genomes could
-// not be loaded").
 const referenceGenomesRequest: OrganismRequest = { source: "reference-genomes" };
 
 export interface ReferenceGenome {
@@ -21,20 +19,15 @@ export interface ReferenceGenome {
 }
 
 /**
- * How many genomes of each type the card inlines into the page. A taxon like
- * Bacteria has over 21,000 Representative genomes; the card shows about 20 at
- * a time, so the rest of a larger type is a click away in the Genomes tab
- * instead of in the HTML. The cap is per type so a huge type cannot crowd a
- * small one out (Viruses: 24,890 Reference, 21 Representative).
+ * How many genomes of each type the card inlines; the cap is per type so a huge
+ * type cannot crowd out a small one (Viruses: 24,890 Reference, 21
+ * Representative).
  */
 export const inlineReferenceGenomeLimit = 1000;
 
 export interface ReferenceGenomeSummary {
-  /** Per type, at most `inlineReferenceGenomeLimit`, by name. */
   rows: ReferenceGenome[];
-  /** Genomes per type ("Reference", "Representative", ...), over all of them. */
   counts: Record<string, number>;
-  /** Every reference or representative genome in the scope (`numFound`). */
   total: number;
 }
 
@@ -79,9 +72,8 @@ export async function fetchReferenceGenomes(
       options.signal,
     );
 
-  // No `json(nl,map)`: it makes the website API answer a bare array, which
-  // drops the facet counts and the total. One row is read only because the
-  // docs of this read are unused: the per-type reads below carry the rows.
+  // No `json(nl,map)`: it makes the website API answer a bare array that drops
+  // the facet counts and the total.
   const summary = await read([
     `eq(reference_genome,*)`,
     genomeFields,
@@ -97,8 +89,8 @@ export async function fetchReferenceGenomes(
     types.map(async (type) =>
       parseGenomes(
         await read([
-          // Percent-encode like genome-scope.ts (the clause joins a GET query
-          // string), then escape the `(` `)` encodeURIComponent leaves alone.
+          // Percent-encode like genome-scope.ts, then escape the `(` `)`
+          // encodeURIComponent leaves alone.
           rqlEq("reference_genome", encodeURIComponent(type)),
           genomeFields,
           `sort(+genome_name)`,

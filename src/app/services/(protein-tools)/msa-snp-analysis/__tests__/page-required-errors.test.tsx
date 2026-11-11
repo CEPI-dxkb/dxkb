@@ -122,8 +122,6 @@ vi.mock("@/components/workspace/workspace-object-selector", () => ({
 const requiredMessages = () => screen.queryAllByText(/is required/i);
 const radio = (name: string) => screen.getByRole("radio", { name });
 
-// The zod `superRefine` that holds every conditional "required" only runs
-// once the base object parses, so fill the two output fields first.
 async function fillOutput(user: ReturnType<typeof userEvent.setup>) {
   await user.type(screen.getByLabelText("Output folder"), "/home/user");
   await user.type(screen.getByLabelText("Output name"), "msa-out");

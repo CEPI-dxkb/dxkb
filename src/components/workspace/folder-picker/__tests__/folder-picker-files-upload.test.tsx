@@ -14,10 +14,8 @@ vi.mock("@/lib/auth/provider", () => ({
   useAuth: () => ({ user: pickerUser }),
 }));
 vi.mock("sonner", () => ({ toast: { error: vi.fn(), success: vi.fn() } }));
-// jsdom can't send the multipart request (see `folder-picker-upload.test.tsx`),
-// so this panel calls `onUploadComplete` the way the real one does once the
-// files are in. `vi.mock` is hoisted above the imports, so the paths are
-// literals rather than built from `home`.
+// jsdom can't send the multipart request, so this panel calls `onUploadComplete` as the
+// real one does. `vi.mock` is hoisted above the imports, so the paths are literals.
 vi.mock("@/components/workspace/upload-panel", () => ({
   WorkspaceUploadPanel: ({
     initialUploadType,
@@ -55,7 +53,6 @@ stubPickerBrowserApis();
 
 const contigs = { kind: "object", types: ["contigs"] } as const;
 
-/** Opens the upload form for Alpha, picking a folder or, with `target`, a file. */
 async function openUpload(target?: PickerTarget) {
   const repository = makeFilePickerRepository();
   const picker = renderPicker({ target }, repository);
@@ -71,7 +68,6 @@ async function uploadInto(
 ) {
   const picker = await openUpload(contigs);
   expect(screen.getByText("Upload type: contigs")).toBeInTheDocument();
-  // The file appears in the listing only from the next fetch, as after a real upload.
   picker.repository.addItem(`${home}/Alpha`, { name, type });
   await picker.user.click(screen.getByRole("button", { name: button }));
   return picker;
@@ -95,8 +91,6 @@ it("leaves the selection on the folder when the upload doesn't match", async () 
   expect(selectButton()).toHaveAccessibleName("Select “Alpha”");
 });
 
-// The panel keeps its files after an upload, so a form still open while the
-// listings refresh would offer the same upload again.
 describe("while the listings refresh after an upload", () => {
   it("has already closed the form when picking a folder", async () => {
     const { repository, user } = await openUpload();
@@ -138,7 +132,6 @@ describe("while the listings refresh after an upload", () => {
     await user.click(await findOption("Home", "Experiments"));
     await user.click(await findOption("Home", "Alpha"));
     refresh.release();
-    // Listed only by the refresh, so the refresh is over.
     await findOption("Alpha", /new\.fasta/);
     expect(selectButton()).toHaveAccessibleName("Select “Alpha”");
   });

@@ -38,12 +38,10 @@ export const dbStatisticsDefinitions: readonly StatisticDefinition[] = Object.fr
 export type StatisticCounts = Record<StatisticKey, number | null>;
 
 export interface DbStatistics {
-  /** Each count, or `null` where its request failed. */
   counts: StatisticCounts;
   /**
-   * Why no count could be loaded: the first failure, condensed (an HTML
-   * maintenance page reduced to its title). `null` while any count loaded;
-   * empty when the failure carried no message.
+   * Why no count loaded: the first failure, condensed; `null` while any count
+   * loaded.
    */
   unavailableReason: string | null;
 }
@@ -70,10 +68,7 @@ async function fetchCount(
   signal: AbortSignal | undefined,
 ): Promise<number> {
   const url = buildCountUrl(baseUrl, definition);
-  // A spent budget or a refused connection throws an `UpstreamError` naming
-  // the service and host; a non-OK answer is described from its status and
-  // the readable part of its body, never the maintenance page's markup. The
-  // shared Data API budget applies: the CDS count over `genome_feature`
+  // The shared Data API budget applies; the CDS count over `genome_feature`
   // routinely takes 7–8 s.
   const response = await fetchUpstream(
     url,

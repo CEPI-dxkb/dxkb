@@ -156,7 +156,6 @@ describe("useJobsSummary", () => {
     await waitFor(() => { expect(result.current.isSuccess).toBe(true); });
 
     expect(calls).toBe(1);
-    // Running jobs would otherwise poll every 3 s.
     expect(nextRefetchInterval(queryClient, ["jobs-summary", false])).toBe(false);
   });
 });

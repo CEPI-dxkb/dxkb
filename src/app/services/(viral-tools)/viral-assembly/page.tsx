@@ -91,7 +91,6 @@ const ViralAssemblyPage = function ViralAssemblyPage() {
         }}
         className="grid grid-cols-1 gap-6 md:grid-cols-12"
       >
-        {/* Input File */}
         <div className="md:col-span-12">
           <Card>
             <ServiceCardHeader>
@@ -203,7 +202,6 @@ const ViralAssemblyPage = function ViralAssemblyPage() {
           </Card>
         </div>
 
-        {/* Parameters */}
         <div className="md:col-span-12">
           <Card>
             <ServiceCardHeader>
@@ -403,7 +401,6 @@ const ViralAssemblyPage = function ViralAssemblyPage() {
           </Card>
         </div>
 
-        {/* Form controls */}
         <div className="md:col-span-12">
           <ServiceFormFooter
             form={form}

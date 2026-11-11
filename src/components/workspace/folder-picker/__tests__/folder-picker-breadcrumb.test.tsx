@@ -133,8 +133,8 @@ describe("FolderPickerBreadcrumb", () => {
         "slide-in-from-right-2",
         "motion-reduce:animate-none",
       );
-      // `duration-*` also sets `transition-duration` in Tailwind v4, which
-      // made the crumbs animate their layout whenever they changed role.
+      // `duration-*` also sets `transition-duration` in Tailwind v4, which made the crumbs
+      // animate their layout.
       expect(item.className).not.toMatch(/\bduration-/);
     }
   });

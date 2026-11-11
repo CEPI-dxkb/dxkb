@@ -169,8 +169,8 @@ describe("SearchBar", () => {
       expect(mockPush).toHaveBeenCalledWith("/feature?keyword=%22Rv0001%22");
     });
 
-    // `*` alone would list all 17,033,456 genomes; legacy's search box also
-    // waits for a letter or digit.
+    // `*` alone would list all genomes; legacy's search box also waits for a
+    // letter or digit.
     it.each(["OR", ":/", '""', "*", "?"])(
       "does not navigate for %j, which has nothing to search for",
       async (typed) => {

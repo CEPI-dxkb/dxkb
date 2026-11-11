@@ -19,9 +19,6 @@ const countryLimit = 300;
 const stateLimit = 100;
 const countyLimit = 1000;
 
-// Requests go unlabelled: a failed field fails the whole map, whose card names
-// it ("Geographic distribution could not be loaded"), and a failed pivot is
-// only logged.
 async function fetchField(baseUrl: string, scope: GenomeScope, field: string, limit: number | undefined, signal: AbortSignal | undefined): Promise<Record<string, number>> {
   const url = buildGenomeGeoFacetUrl(baseUrl, scope, field, limit);
   const payload = await fetchOrganismSolrJson(url, { source: `genome ${field} facet` }, signal);
@@ -46,9 +43,8 @@ async function fetchPivotOrEmpty(baseUrl: string, scope: GenomeScope, primary: s
     // AbortError must propagate so callers can short-circuit on cancellation.
     if (err instanceof DOMException && err.name === "AbortError") throw err;
     if (err instanceof Error && err.name === "AbortError") throw err;
-    // Pivots are best-effort enrichment data. Log so operators have a signal
-    // that a tooltip's "Top Genera"/"Top Hosts" section is empty due to error
-    // rather than missing data.
+    // Pivots are best-effort enrichment; log so an empty tooltip section is
+    // distinguishable from missing data.
     const message = err instanceof Error ? err.message : String(err);
     console.warn(`[geo-distribution] pivot ${primary},${secondary} failed: ${message}`);
     return {};
@@ -104,22 +100,16 @@ export async function fetchOrganismGeoDistribution(
   ] = await Promise.all([
     fetchField(baseUrl, scope, "isolation_country", countryLimit, signal),
     fetchField(baseUrl, scope, "state_province", stateLimit, signal),
-    // Pivot on state_province→county so each county is scoped to its state.
-    // A flat `county` facet would merge same-named counties across states
-    // (e.g. "Washington County" exists in 31 states) into a single key.
+    // Pivot on state_province→county; a flat `county` facet would merge
+    // same-named counties across states.
     fetchPivotOrEmpty(baseUrl, scope, "state_province", "county", countyLimit, signal),
     fetchPivotOrEmpty(baseUrl, scope, "isolation_country", "genus", undefined, signal),
     fetchPivotOrEmpty(baseUrl, scope, "isolation_country", "host_common_name", undefined, signal),
     fetchPivotOrEmpty(baseUrl, scope, "state_province", "genus", undefined, signal),
     fetchPivotOrEmpty(baseUrl, scope, "state_province", "host_common_name", undefined, signal),
-    // 3-level pivot so each county genus map is scoped to its state. A flat
-    // `county,genus` pivot would merge same-named counties (e.g. "Washington
-    // County" in 31 states) into one merged genus breakdown.
     fetchPivot3OrEmpty(baseUrl, scope, "state_province", "county", "genus", countyLimit, signal),
   ]);
 
-  // Build compound-keyed county maps: "StateName|CountyName" → value.
-  // This ensures "Washington County, PA" and "Washington County, MD" are kept separate.
   const countyData: Record<string, number> = {};
   const countyMeta: Record<string, OrganismGeoLocationMeta> = {};
   for (const [stateName, counties] of Object.entries(countyPivot)) {

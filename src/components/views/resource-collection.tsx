@@ -55,24 +55,8 @@ export interface ResourceCollectionProfile<Row extends DataTableRow> {
   rowLinkField?: string;
   rowLinkFields?: readonly string[];
   serverKeywordMode?: "exact" | "prefix";
-  /**
-   * The order rows are read and exported in while no column is sorted: a
-   * legacy grid's default order (`useResourceCollection`'s `unsortedOrder`).
-   */
   unsortedOrder?: DataSort;
-  /**
-   * Overrides the export filename's base segment (otherwise `resource`).
-   * `ResourceChildCollection` sets this to the tab's label so a child tab's
-   * export stays named after the tab instead of the shared resource id.
-   */
   exportFileName?: string;
-  /**
-   * How this view narrows its resource's download formats
-   * (`src/lib/data-api/downloads.ts`). Most profiles declare nothing and get
-   * the resource default. A function of the collection state is for a view
-   * whose formats follow URL state, such as the Feature list's
-   * `filter=protein`.
-   */
   download?:
     | CollectionDownloadSpec
     | ((state: CollectionState) => CollectionDownloadSpec);
@@ -98,17 +82,9 @@ function matchesLoadedKeyword(row: DataTableRow, keyword: string) {
   });
 }
 
-/**
- * Per-sink fallback for `formatUserFacingErrorMessage`, used for a non-`Error`
- * rejection and for an `Error` whose message is empty or whitespace-only. The
- * shared helper owns the emptiness, non-`Error` and length decisions; only the
- * wording that names what failed is decided here. Download and action hooks own
- * the matching fallbacks for their sinks.
- */
 const genericCollectionErrorMessage =
   "The requested records could not be loaded. Please try again.";
 
-/** `formatUserFacingErrorMessage` fallback for a failed facet read. */
 const genericFacetErrorMessage =
   "The filter values could not be loaded. Please try again.";
 
@@ -117,37 +93,21 @@ export interface ResourceCollectionProps<Row extends DataTableRow> {
   repository: DataRepository;
   state: CollectionState;
   /**
-   * `change.clearAll` marks "Clear All Filters", which removes a view's
-   * defaults too; any other change that drops the rql (a facet pick) leaves
-   * the defaults that rql hid for the caller to restore.
+   * `change.clearAll` removes a view's defaults too; any other change that
+   * drops the rql leaves them for the caller to restore.
    */
   onStateChange: (
     state: CollectionState,
     change?: { clearAll?: boolean },
   ) => void;
   baseRql?: string;
-  /**
-   * The state facet counts are read for, when it is not `state`: a view's
-   * untouched default filters do not narrow their own facet
-   * (`facetCountState`). Rows always use `state`.
-   */
   facetState?: CollectionState;
-  /**
-   * Filters that stay beside an explicit `state.rql` (`filtersBesideRql`), such
-   * as the Feature list's PATRIC default: the user can remove or pick their
-   * values and keep the rql. Changes to any other filter wait until the rql is
-   * cleared, and picking one of their values clears it.
-   */
   filtersBesideRql?: readonly string[];
   enableRowLinks?: boolean;
   keywordMode?: "server" | "loaded" | "refine";
   loadedKeywordValue?: string;
   onLoadedKeywordChange?: (value: string) => void;
   keywordPlaceholder?: string;
-  /**
-   * Fetch the page after the current one in the background so the pager's Next
-   * shows it without a round trip. On for every table unless a caller opts out.
-   */
   prefetchNextPage?: boolean;
 }
 
@@ -191,16 +151,12 @@ export function ResourceCollection<Row extends DataTableRow>({
       visibility: diffBooleanOverrides(defaultColumnVisibility, next),
     });
   };
-  // No counts are read until the user reaches for the filters (a menu or a
-  // pill opens, `onFacetsWanted`); hovering Filters prefetches them. Once
-  // wanted, they follow the scope for the rest of the page's life.
   const [facetsWanted, setFacetsWanted] = useState(false);
-  // Facets outside the pinned set, counted because the user opened one.
   const [peekedFacetFields, setPeekedFacetFields] = useState<
     ReadonlySet<string>
   >(() => new Set());
-  // The saved facet set reads as empty until the render after hydration, and
-  // useIsMounted flips in that same render, so counts wait for the set shown.
+  // The saved facet set reads empty until the render after hydration, so counts
+  // wait for the set shown.
   const facetsSettled = useIsMounted();
   const { visibility: facetVisibility } = resolveFacetVisibility(
     profile.facets ?? [],
@@ -217,7 +173,6 @@ export function ResourceCollection<Row extends DataTableRow>({
   ];
   const shownFacetFields =
     facetsWanted && facetsSettled ? countedFacetFields : [];
-  // Columns in the saved order; the header drags and the Columns menu write it.
   const defaultColumnOrder = profile.columns.map((column) => column.id);
   const orderedColumnIds = applyColumnOrder(
     defaultColumnOrder,
@@ -232,9 +187,8 @@ export function ResourceCollection<Row extends DataTableRow>({
     refinementRql,
   );
   const effectiveRql = combinePredicates(structuralRql, state.rql);
-  // A field's counts leave its own filter out, so a facet lists every value a
-  // pick could add ("any of"), not only the ones already picked. Legacy's
-  // counts include it, which makes a second value in one field unpickable.
+  // A field's counts leave its own filter out so a facet lists every value a
+  // pick could add; legacy includes it, which makes a second value unpickable.
   const countState = facetState ?? state;
   const facetStructuralRql = (field: string) => {
     const filters = Object.fromEntries(
@@ -269,9 +223,6 @@ export function ResourceCollection<Row extends DataTableRow>({
           }
         : onStateChange,
   });
-  // A Retry keeps its failure on screen, marked "Retrying…", until it answers,
-  // rather than swapping it for skeletons for the whole wait. The rows' Retry
-  // also reloads failed counts, whose own error is not shown beside theirs.
   const rowsRetry = useRetryKeepingError(
     {
       error: collection.error,
@@ -304,12 +255,8 @@ export function ResourceCollection<Row extends DataTableRow>({
     ]),
   );
   const collectionError = rowsRetry.error;
-  // A read in flight while the error shows (a Retry, or a background refetch)
-  // is a retry of it.
   const rowsRetrying =
     rowsRetry.retrying || (Boolean(collection.error) && collection.isRefreshing);
-  // The total on screen is not this query's yet: a previous query's, or none
-  // while the first read is in flight. Counts wait instead of reading 0.
   const isTotalPending =
     collection.isPlaceholderData || collection.isInitialLoading;
   const rowLinkFields = new Set(
@@ -377,9 +324,6 @@ export function ResourceCollection<Row extends DataTableRow>({
     keywordMode: profile.serverKeywordMode,
     sort,
   });
-  // What the Download tile's *All results* covers. A client-side keyword
-  // filters the loaded page only, so the rows it leaves are downloaded by id;
-  // otherwise it is the query the table sends.
   const allResultsScope: DownloadScope = hasLoadedKeyword
     ? { kind: "selected", ids: displayedIds ?? [] }
     : {
@@ -407,14 +351,6 @@ export function ResourceCollection<Row extends DataTableRow>({
         ? "custom query"
         : undefined;
 
-  /**
-   * Everything resource-specific about the action bar. A hook rather than a
-   * component so its state lives in this instance: a collection error drops the
-   * action rail, action bar included, and puts the alert below in the table's place,
-   * and `actionDialogs` is rendered at section level as a sibling of the workspace,
-   * so an in-flight launch survives that. (Crossing the `md` breakpoint does not
-   * remount the slot — the workspace renders one stable subtree at every width.)
-   */
   const { actionBar, actionDialogs } = useResourceCollectionActions({
     profile,
     selection: {
@@ -474,8 +410,6 @@ export function ResourceCollection<Row extends DataTableRow>({
     </div>
   );
 
-  // One row above the table, inside its column (the action rail sits beside
-  // it): keyword, Filters, active filter pills, Clear all and Columns.
   const toolbar = (
     <ResourceFilterBar
       layoutKey={`collection:${profile.resource}`}
@@ -489,8 +423,6 @@ export function ResourceCollection<Row extends DataTableRow>({
       filters={state.filters}
       facets={collection.facets}
       facetStatuses={collection.facetStatuses}
-      // One failure, one alert: while the rows have failed, the panel does
-      // not repeat it (VWA-7: `/strain` showed two red errors).
       facetsError={
         facetsRetry.error && !collectionError
           ? formatUserFacingErrorMessage(
@@ -577,9 +509,6 @@ export function ResourceCollection<Row extends DataTableRow>({
       aria-label={profile.label}
       className="flex min-h-0 flex-1 flex-col overflow-hidden"
     >
-      {/* Never a count the query has not answered: the first read's wait is
-          "Loading results…", and a failure is announced by its own
-          role="alert" below, so this says nothing then but a retry. */}
       <span className="sr-only" aria-live="polite">
         {collectionError
           ? rowsRetrying
@@ -599,11 +528,8 @@ export function ResourceCollection<Row extends DataTableRow>({
         </Alert>
       )}
 
-      {/* One workspace whether or not the rows failed, so the toolbar (keyword
-          draft and focus, a pending pick, an open Filters menu) is never
-          remounted by a failure or by the Retry that ends it. A failure drops
-          the action rail and the detail panel; the alert takes the table's
-          place. */}
+      {/* One workspace whether or not the rows failed, so the toolbar is
+         never remounted by a failure or its Retry. */}
       <ResourceWorkspace
         toolbar={toolbar}
         hasActionRail={!collectionError}
@@ -676,11 +602,8 @@ export function ResourceCollection<Row extends DataTableRow>({
               collection.setSelection(selection);
               rememberSelectedRows(selection);
             }}
-            // Downloads live in the action rail's Download tile.
             showExportControls={false}
-            // The toolbar's Columns menu replaces the table's own.
             hideColumnControls
-            // The selection column stays first; a header drag reorders the rest.
             columnOrder={["__select__", ...orderedColumnIds]}
             onColumnOrderChange={(order) => {
               const ids = order.filter((id) => id !== "__select__");

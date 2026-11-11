@@ -29,7 +29,6 @@ export const strainViewRecordSchema = strainRecordSchema.extend({
 
 export type StrainViewRecord = z.infer<typeof strainViewRecordSchema>;
 
-/** A Strain record `id` (a UUID upstream), not the phrase-matched strain name. */
 export function isStrainId(value: string): boolean {
   return value.length > 0 && value.length <= 1_000;
 }

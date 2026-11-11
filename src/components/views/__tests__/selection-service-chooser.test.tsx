@@ -11,7 +11,6 @@ const mocks = vi.hoisted(() => ({
   refresh: vi.fn(),
 }));
 
-// The shared setup mock has no `refresh`, which is the only router call here.
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ refresh: mocks.refresh }),
 }));
@@ -23,7 +22,6 @@ vi.mock("@/contexts/workspace-repository-context", () => ({
     delete: mocks.delete,
   })),
 }));
-// `closeRerunWindow` stays real so the tests observe the reserved tab being closed.
 vi.mock("@/lib/rerun-utility", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/rerun-utility")>()),
   rerunJob: mocks.rerunJob,
@@ -48,7 +46,6 @@ interface FakeWindow {
   closed: boolean;
 }
 
-/** Tabs handed out by the mocked `reserveRerunWindow`, newest last. */
 let reservedWindows: FakeWindow[] = [];
 
 function reserveFakeWindow(closeImplementation?: () => void): Window {
@@ -106,9 +103,6 @@ describe("SelectionServiceChooser", () => {
 
     await userEvent.click(screen.getByRole("button", { name: "BLAST" }));
 
-    // Direct BLAST writes no workspace object, so the IDs travel in the rerun
-    // payload and the protected service route handles sign-in itself. Redirecting
-    // here instead dropped the selection.
     expect(mocks.rerunJob).toHaveBeenCalledWith(
       expect.objectContaining({ db_genome_list: genomeIds }),
       "Homology",
@@ -128,13 +122,11 @@ describe("SelectionServiceChooser", () => {
       screen.getByRole("button", { name: "Viral Genome Tree" }),
     );
 
-    // Navigating to the service form closed the dialog and discarded the row
-    // selection, so the form opened unprefilled after sign-in.
     expect(screen.getByRole("alert")).toHaveTextContent(signInMessage);
-    // Rendered through `Button render={<Link/>}`, so the anchor carries role="button".
+    // Rendered through `Button render={<Link/>}`, so the anchor has
+    // role="button".
     const signInButton = screen.getByRole("button", { name: signInButtonName });
     expect(signInButton).toHaveAttribute("href", signInHref);
-    // A new tab is what keeps this tab — and the selection behind it — mounted.
     expect(signInButton).toHaveAttribute("target", "_blank");
     expect(onOpenChange).not.toHaveBeenCalled();
     expect(mocks.reserveRerunWindow).not.toHaveBeenCalled();
@@ -411,14 +403,10 @@ describe("SelectionServiceChooser", () => {
     );
     expect(screen.getByRole("alert")).toHaveTextContent(signInMessage);
 
-    // Sign-in happens on the tab the link opened, so this tab only learns about the
-    // new session when it is focused again.
     expect(mocks.refresh).not.toHaveBeenCalled();
     fireEvent.focus(window);
     expect(mocks.refresh).toHaveBeenCalledTimes(1);
 
-    // What that refresh produces: a re-derived server user, with every client
-    // component — including the collection holding the selection — still mounted.
     rerender(
       <SelectionServiceChooser {...chooserProps(onOpenChange)} />,
     );
@@ -469,7 +457,6 @@ describe("SelectionServiceChooser", () => {
     expect(screen.getByRole("alert")).toHaveTextContent(
       rerunPopupBlockedMessage,
     );
-    // Failing before the workspace write is what keeps the group from leaking.
     expect(mocks.createFolder).not.toHaveBeenCalled();
     expect(mocks.createIdGroup).not.toHaveBeenCalled();
     expect(mocks.rerunJob).not.toHaveBeenCalled();
@@ -574,7 +561,6 @@ describe("SelectionServiceChooser", () => {
       />,
     );
 
-    // No prompt yet, so a focused tab has nothing to re-check.
     fireEvent.focus(window);
     expect(mocks.refresh).not.toHaveBeenCalled();
 
@@ -584,7 +570,6 @@ describe("SelectionServiceChooser", () => {
     fireEvent.focus(window);
     expect(mocks.refresh).toHaveBeenCalledTimes(1);
 
-    // Closing clears the prompt, which is what releases the listener again.
     rerender(
       <SelectionServiceChooser
         {...chooserProps(onOpenChange, {
@@ -613,7 +598,6 @@ describe("SelectionServiceChooser", () => {
       rerunPopupBlockedMessage,
     );
 
-    // Entering the subflow is a new question; the previous answer's error is stale.
     await userEvent.click(screen.getByRole("button", { name: "BLAST" }));
     expect(screen.getByText("Select the BLAST source")).toBeVisible();
     expect(screen.queryByRole("alert")).toBeNull();
@@ -743,9 +727,6 @@ describe("SelectionServiceChooser failure presentation", () => {
   afterEach(() => vi.unstubAllGlobals());
 
   it("falls back to a readable message when the failure is an Error with no message", async () => {
-    // The alert renders on the `failure` object, not on its text, so an empty
-    // message painted a bordered destructive region with nothing in it —
-    // announced to a screen reader as an empty alert.
     mocks.createIdGroup.mockRejectedValue(new Error("   "));
     renderChooser();
 
@@ -772,8 +753,6 @@ describe("SelectionServiceChooser failure presentation", () => {
   });
 
   it("reports a reserved tab the user closed with the closed-tab advice", async () => {
-    // `windowClosed` is its own status: telling the user to allow pop-ups would
-    // be the wrong fix for a tab they closed themselves.
     mocks.rerunJob.mockReturnValue({
       status: "windowClosed",
       message: rerunWindowClosedMessage,

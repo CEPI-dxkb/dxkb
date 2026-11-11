@@ -243,7 +243,6 @@ describe("WorkspaceActionBar", () => {
     });
 
     it("hides DELETE when permissions.user is read-only even if global is writable", () => {
-      // Action bar checks permissions.user only — global permission is not consulted here
       const globalWriteItem = makeItem({
         permissions: { user: "r", global: "w" },
       });

@@ -2,9 +2,8 @@ import type { z } from "zod";
 
 export const maxExportRows = 10_000;
 /**
- * The largest request body (and, on GET, URL) the `/api/data` routes admit, in
- * bytes. Here rather than in `./validation` so the browser client can size its
- * requests without bundling the validators.
+ * Here rather than in `./validation` so the browser client can size requests
+ * without bundling the validators.
  */
 export const maxRequestBytes = 32_000;
 
@@ -57,15 +56,9 @@ export interface SortKey {
 }
 
 export interface DataSort extends SortKey {
-  /**
-   * Keys that order the rows this sort ties, in turn: a legacy grid's default
-   * order (FeatureGrid's `+genome_name,+accession,+start`). The resource's id
-   * still breaks any tie they leave.
-   */
   then?: readonly SortKey[];
 }
 
-/** A sort's keys in the order they apply. */
 export function sortKeys(sort: DataSort): readonly SortKey[] {
   return [
     { field: sort.field, direction: sort.direction },
@@ -133,22 +126,11 @@ export interface RowsResult<T extends Record<string, unknown>> {
   rows: T[];
 }
 
-/**
- * `/api/taxonomy-tree/children` response. Separate from `RowsResult` because
- * the Taxa Tree route is not a generic collection: it has no page, no total,
- * and no facet map, and its rows are every child of one parent rather than one
- * bounded page of them.
- */
 export interface TaxonChildrenResult {
   rows: Record<string, unknown>[];
 }
 
-/**
- * `/api/taxonomy-tree/child-counts` response: parent taxon id → number of
- * qualifying children. Keys are the ids as decimal strings, because that is
- * what a JSON object can carry. A requested parent with no qualifying children
- * is absent rather than present with `0`.
- */
+/** A requested parent with no qualifying children is absent rather than `0`. */
 export interface TaxonChildCountsResult {
   counts: Record<string, number>;
 }

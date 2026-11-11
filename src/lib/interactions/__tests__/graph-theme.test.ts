@@ -8,14 +8,9 @@ import {
   renderEdgeHover,
 } from "../graph-theme";
 
-// Premultiplied edge colors must converge back to the opaque theme swatch the
-// legend renders: as translucent edges stack in dense regions they approach
-// premultRGB / alpha. Guarding this keeps legend and canvas a single source of
-// truth (regression: hardcoded #0A0D0D / #080D1C drifted from the theme).
-//
-// Convergence is not bit-exact: at ~16% alpha each ±1 premultiply rounding step
-// maps back to ~±6 here, so compare per channel within tolerance. The historical
-// bug (R premult 0x0A vs correct 0x0D) lands ~19 off — well outside tolerance.
+// Premultiplied edge colors must converge back to the opaque legend swatch as translucent edges
+// stack (~premultRGB / alpha). Convergence is not bit-exact: at ~16% alpha each premultiply
+// rounding step maps back to ~±6, so compare within tolerance.
 function channels(hex: string): number[] {
   return [0, 1, 2].map((i) => parseInt(hex.slice(1 + i * 2, 3 + i * 2), 16));
 }
@@ -52,9 +47,8 @@ describe("graph-theme render edges", () => {
   });
 
   it("premultiplies the hover edge to a translucent form of the selected color", () => {
-    // renderEdgeHover uses 0x99 alpha (≈60%). Its RGB must converge back to the
-    // opaque edgeSelected swatch so the hover reads as a paler pink of the same
-    // hue, not a drifted color. Higher alpha than the mesh → tighter tolerance.
+    // renderEdgeHover's RGB must converge back to the opaque edgeSelected swatch; higher alpha than
+    // the mesh, so tighter tolerance.
     const hoverAlpha = 0x99;
     expect(renderEdgeHover.slice(7)).toBe(
       hoverAlpha.toString(16).padStart(2, "0"),

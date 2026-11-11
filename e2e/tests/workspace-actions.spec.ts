@@ -14,10 +14,8 @@ test.describe("workspace actions", () => {
   }) => {
     await applyBackendMocks(page, {
       overrides: [
-        // reflectFolderCreates: Workspace.create with type "Directory" appends the new folder
-        // tuple to pathItems so the post-create Workspace.ls refresh surfaces the row.
-        // Distinct from reflectUploads (which covers file uploads) so this spec doesn't also
-        // reflect any incidental file-upload Workspace.create traffic.
+        // reflectFolderCreates appends created Directory tuples to pathItems so the
+        // refreshed Workspace.ls shows the row.
         ...buildWorkspaceOverrides({ reflectFolderCreates: true }),
         ...journeyOverrides,
       ],
@@ -25,17 +23,13 @@ test.describe("workspace actions", () => {
     const workspace = new WorkspacePage(page);
     await workspace.goto();
 
-    // Open the New Folder dialog from the toolbar.
     await workspace.openNewFolder();
     const dialog = page.getByRole("dialog");
     await expect(dialog).toBeVisible();
 
-    // Fill the folder name before registering the request watcher so the field is ready.
     await dialog.getByLabel(/folder name/i).fill("e2e-new-folder");
 
-    // Register the request predicate BEFORE clicking so we don't race against the POST.
-    // http-workspace-repository sends type "Directory" (capital D) for createFolder calls.
-    // The confirm button renders "Create Folder" (not "Create") per create-folder-dialog.tsx.
+    // Register the request predicate before clicking to avoid racing the POST.
     const createRequestPromise = page.waitForRequest((req) => {
       if (!req.url().endsWith("/api/services/workspace") || req.method() !== "POST") {
         return false;
@@ -66,18 +60,14 @@ test.describe("workspace actions", () => {
     expect(tuple?.[0]).toBe(`${e2eHomePath}/e2e-new-folder`);
     expect(tuple?.[1]).toBe("Directory");
 
-    // After the create resolves, Workspace.ls refreshes and the new row appears.
     await expect(workspace.rowByName("e2e-new-folder").first()).toBeVisible();
   });
 
   test("deleting a file confirms via dialog and POSTs Workspace.delete", async ({ page }) => {
     await applyBackendMocks(page, {
       overrides: [
-        // Single owned file in home. Omitting `userPermission` defaults to "o" via
-        // workspaceTuple, which makes the DELETE action (requireWrite) visible.
-        // The test asserts on the Workspace.delete request shape, so we pin only
-        // that method explicitly — leaving the catch-all off keeps strict-mode
-        // tripping on any new RPC the action introduces.
+        // Pin only Workspace.delete so strict mode trips on any new RPC the action
+        // introduces.
         ...buildWorkspaceOverrides({
           pathItems: {
             [e2eHomePath]: [
@@ -98,15 +88,10 @@ test.describe("workspace actions", () => {
     const workspace = new WorkspacePage(page);
     await workspace.goto();
 
-    // Select the row so the DELETE action becomes valid.
     await workspace.rowByName("to-delete.txt").first().click();
 
-    // The action-bar DELETE button is the only matching control on the page at
-    // this point — the dialog opens after the click. Use the same case-insensitive
-    // regex the dialog button uses below for selector-style consistency.
     await page.getByRole("button", { name: /^delete$/i }).click();
 
-    // Delete uses an AlertDialog (role="alertdialog", not "dialog").
     const dialog = page.getByRole("alertdialog");
     await expect(dialog).toBeVisible();
     await expect(dialog).toContainText(/to-delete\.txt/);
@@ -123,15 +108,14 @@ test.describe("workspace actions", () => {
       }
     });
 
-    // The footer action button text is "Delete" (capital D, no spinner since not yet deleting).
     await dialog.getByRole("button", { name: /^delete$/i }).click();
     const req = await deleteRequestPromise;
     const body = JSON.parse(req.postData() ?? "{}") as {
       params?: [{ objects?: string[]; force?: boolean; deleteDirectories?: boolean }];
     };
     expect(body.params?.[0]?.objects).toContain(`${e2eHomePath}/to-delete.txt`);
-    // Both flags default to true in http-workspace-repository.delete and the UI
-    // does not expose them — pin the wire defaults so a behaviour change is caught.
+    // Both flags default to true in the repository and the UI does not expose them; pin
+    // the wire defaults.
     expect(body.params?.[0]?.force).toBe(true);
     expect(body.params?.[0]?.deleteDirectories).toBe(true);
   });
@@ -139,18 +123,13 @@ test.describe("workspace actions", () => {
   test("copying a file: pick a non-default destination via the mini-browser and POST Workspace.copy with move: false", async ({
     page,
   }) => {
-    // The CopyToDialog mini-browser at root mode renders items from `useUserWorkspaces`,
-    // which lists the realm-qualified workspace root (`/e2e-test-user@patricbrc.org`).
-    // The realm is kept rather than replaced with `@bvbrc`, which would list another
-    // user's workspace for a `@patricbrc.org` account, so the destination tree lives
-    // at the user's own root and picked destinations use the same segment.
+    // The realm-qualified root (`@patricbrc.org`) is kept, not replaced with `@bvbrc`,
+    // which would list another user's workspace.
     const userRoot = `/${e2eUsername}`;
     await applyBackendMocks(page, {
       overrides: [
         ...buildWorkspaceOverrides({
           pathItems: {
-            // Workspace.ls at "/" — used by ensureDestinationWriteAccess and by the
-            // mini-browser's `useSharedWithUser` scan for shared folders.
             "/": [
               {
                 name: e2eUsername,
@@ -159,10 +138,6 @@ test.describe("workspace actions", () => {
                 userPermission: "o",
               },
             ],
-            // Workspace root listing the mini-browser actually queries (via
-            // useUserWorkspaces). Stage "Reports" + "Archive" so we have at least
-            // one obviously-pickable folder row that's distinct from the default
-            // root destination.
             [userRoot]: [
               {
                 name: "Reports",
@@ -177,7 +152,6 @@ test.describe("workspace actions", () => {
                 userPermission: "o",
               },
             ],
-            // Source listing in /home — a single source file we'll copy.
             [e2eHomePath]: [
               {
                 name: "report.txt",
@@ -188,8 +162,7 @@ test.describe("workspace actions", () => {
               },
             ],
           },
-          // Pin Workspace.copy explicitly. The test asserts on its request shape, and
-          // the explicit override keeps strict-mode active for any unrelated RPC.
+          // Pin Workspace.copy so strict mode stays active for unrelated RPCs.
           extraRpc: [workspaceRpcOverride("Workspace.copy", { result: [[]] })],
         }),
         ...journeyOverrides,
@@ -198,23 +171,20 @@ test.describe("workspace actions", () => {
     const workspace = new WorkspacePage(page);
     await workspace.goto();
 
-    // Source is a file. Click the row to select it as the COPY action's source.
     await workspace.rowByName("report.txt").first().click();
     await page.getByRole("button", { name: /^copy$/i }).click();
 
     const dialog = page.getByRole("dialog");
     await expect(dialog).toBeVisible();
 
-    // The dialog's default destination is the workspace root. For a file source,
-    // rootWithIncompatibleTypes blocks the Copy button until the user picks a folder
-    // destination. Single-click on a folder row in the mini-browser sets that folder
-    // as the destinationPath (vs. dblclick which navigates into the folder).
+    // The default destination (root) is incompatible with a file source
+    // (rootWithIncompatibleTypes); a single click on a folder row picks it, a
+    // double-click navigates.
     const confirmButton = dialog.getByRole("button", { name: /^copy$/i });
     await expect(confirmButton).toBeDisabled();
 
-    // The mini-browser table row's accessible name combines all visible cell texts —
-    // match against just the leading folder-name token so date/owner cell drift doesn't
-    // brittle the selector. `data-row-key` would be cleaner but is internal markup.
+    // The row's accessible name combines all cell texts; match the leading folder name
+    // so date/owner drift does not break it.
     const reportsRow = dialog.getByRole("row", { name: /^Reports\s/ }).first();
     await reportsRow.click();
     await expect(confirmButton).toBeEnabled();
@@ -242,13 +212,8 @@ test.describe("workspace actions", () => {
     };
     const pairs = body.params?.[0]?.objects ?? [];
     expect(pairs.length).toBe(1);
-    // Source path is the full path of the selected file.
     expect(pairs[0]?.[0]).toBe(`${e2eHomePath}/report.txt`);
-    // Destination uses the picked "Reports" folder under the root the mini-browser
-    // queries — distinct from the workspace-root default — with the original
-    // filename preserved.
     expect(pairs[0]?.[1]).toBe(`${userRoot}/Reports/report.txt`);
-    // move: false distinguishes copy from move; recursive: true is the default.
     expect(body.params?.[0]?.move).toBe(false);
     expect(body.params?.[0]?.recursive).toBe(true);
   });
@@ -256,7 +221,6 @@ test.describe("workspace actions", () => {
   test("moving a file: pick a non-default destination via the mini-browser and POST Workspace.copy with move: true", async ({
     page,
   }) => {
-    // See the copy test above for why the destination listing lives at the user's root.
     const userRoot = `/${e2eUsername}`;
     await applyBackendMocks(page, {
       overrides: [
@@ -294,8 +258,6 @@ test.describe("workspace actions", () => {
               },
             ],
           },
-          // Move uses Workspace.copy with move: true. Pin only that method so any
-          // other unexpected RPC trips strict-mode.
           extraRpc: [workspaceRpcOverride("Workspace.copy", { result: [[]] })],
         }),
         ...journeyOverrides,
@@ -310,14 +272,11 @@ test.describe("workspace actions", () => {
     const dialog = page.getByRole("dialog");
     await expect(dialog).toBeVisible();
 
-    // Default destination (workspace root) is incompatible for a file source — Move stays
-    // disabled until the user picks a folder row from the mini-browser.
     const confirmButton = dialog.getByRole("button", { name: /^move$/i });
     await expect(confirmButton).toBeDisabled();
 
-    // The mini-browser table row's accessible name combines all visible cell texts —
-    // match against just the leading folder-name token so date/owner cell drift doesn't
-    // brittle the selector. `data-row-key` would be cleaner but is internal markup.
+    // The row's accessible name combines all cell texts; match the leading folder name
+    // so date/owner drift does not break it.
     const reportsRow = dialog.getByRole("row", { name: /^Reports\s/ }).first();
     await reportsRow.click();
     await expect(confirmButton).toBeEnabled();
@@ -351,7 +310,6 @@ test.describe("workspace actions", () => {
     const pairs = body.params?.[0]?.objects ?? [];
     expect(pairs.length).toBe(1);
     expect(pairs[0]?.[0]).toBe(`${e2eHomePath}/report.txt`);
-    // Destination uses the picked "Reports" folder, not the workspace-root default.
     expect(pairs[0]?.[1]).toBe(`${userRoot}/Reports/report.txt`);
     expect(body.params?.[0]?.move).toBe(true);
     expect(body.params?.[0]?.recursive).toBe(true);
@@ -362,7 +320,6 @@ test.describe("workspace actions", () => {
   }) => {
     await applyBackendMocks(page, {
       overrides: [
-        // Single owned txt file. Default "o" userPermission satisfies requireWrite for editType.
         ...buildWorkspaceOverrides({
           pathItems: {
             [e2eHomePath]: [
@@ -375,8 +332,6 @@ test.describe("workspace actions", () => {
               },
             ],
           },
-          // Pin Workspace.update_metadata explicitly so the test asserts on its
-          // request shape against a real override, not a permissive catch-all.
           extraRpc: [workspaceRpcOverride("Workspace.update_metadata", { result: [[]] })],
         }),
         ...journeyOverrides,
@@ -385,27 +340,22 @@ test.describe("workspace actions", () => {
     const workspace = new WorkspacePage(page);
     await workspace.goto();
 
-    // Select the row so the EDIT TYPE action becomes visible.
     await workspace.rowByName("sample.dat").first().click();
 
-    // Action-bar EDIT TYPE button (label "EDIT TYPE" with a space).
     await page.getByRole("button", { name: /^edit type$/i }).click();
 
     const dialog = page.getByRole("dialog");
     await expect(dialog).toBeVisible();
     await expect(dialog).toContainText(/change object type/i);
 
-    // Open the type Select (base-ui renders the trigger as role="combobox") and choose
-    // "contigs" from the popover. Options render outside the dialog node in a portal,
-    // so use page.getByRole (not dialog.getByRole) to find them.
+    // Options render in a portal outside the dialog, so use page.getByRole, not
+    // dialog.getByRole.
     await dialog.getByRole("combobox").click();
     await page.getByRole("option", { name: /^contigs$/i }).click();
-    // base-ui renders the listbox in a portal outside the dialog. In WebKit, the portal
-    // overlay can remain in the DOM after selection and block the Save button's click
-    // stabilisation check. Wait for the option to fully detach before proceeding.
+    // In WebKit the portal overlay can stay in the DOM after selection and block Save's
+    // click; wait for the option to detach.
     await expect(page.getByRole("option", { name: /^contigs$/i })).not.toBeAttached();
 
-    // Register the request watcher BEFORE clicking Save so we don't race the POST.
     const updateRequestPromise = page.waitForRequest((req) => {
       if (!req.url().endsWith("/api/services/workspace") || req.method() !== "POST") {
         return false;
@@ -423,7 +373,6 @@ test.describe("workspace actions", () => {
     const body = JSON.parse(req.postData() ?? "{}") as {
       params?: [{ objects?: [string, Record<string, unknown>, string][] }];
     };
-    // Wire shape: objects is an array of [path, emptyMetadata, newType] tuples.
     const tuple = body.params?.[0]?.objects?.[0];
     expect(tuple?.[0]).toBe(`${e2eHomePath}/sample.dat`);
     expect(tuple?.[1]).toEqual({});

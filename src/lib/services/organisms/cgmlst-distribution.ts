@@ -19,10 +19,8 @@ export async function fetchCgmlstHcDistribution(
 ): Promise<CgmlstHcDistribution> {
   const baseUrl = getBvBrcWebsiteApiBaseUrl();
 
-  // No internal allSettled — let any per-level failure surface to the caller
-  // (e.g. `MetadataDistributions`) which already wraps in `Promise.allSettled`
-  // and decides how to degrade. Swallowing here too would hide errors twice
-  // and prevent the panel from showing a real error message.
+  // No internal allSettled: a per-level failure surfaces to the caller, which
+  // decides how to degrade.
   const lists = await Promise.all(
     hcLevels.map((level) =>
       fetchOrganismSolrJson(

@@ -6,22 +6,19 @@ import {
   type OrganismRequest,
 } from "./utils";
 
-// Unlabelled: the count is a header decoration that is left out when it fails;
-// the label only reaches the server log.
 const genomeCountRequest: OrganismRequest = { source: "genome count" };
 
 export interface TaxonGenomeCountOptions extends OrganismFetchOptions {
   /**
-   * The signed-in user's token. Their private genomes then count too, as in
-   * legacy's header and this page's Genomes tab, and the answer is not cached.
+   * The signed-in user's token; their private genomes then count too and the
+   * answer is not cached.
    */
   token?: string;
 }
 
 /**
- * How many genomes the Taxonomy page's header counts for a taxon: its lineage
- * less Deprecated genomes, as legacy's "(N Genomes)" counts them. The taxonomy
- * record's own `genomes` field counts the Deprecated ones as well.
+ * Genomes the Taxonomy page header counts for a taxon: its lineage less
+ * Deprecated genomes.
  */
 export async function fetchTaxonGenomeCount(
   taxonId: number,

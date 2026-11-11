@@ -18,12 +18,7 @@ export interface SearchType {
   allTermOrder?: number;
 }
 
-/**
- * Where a search for `query` (text as typed) goes. A canonical list reads its
- * `?keyword=` as written, so the text goes there as legacy's search box reads
- * it (`normalizeLegacyKeyword`: `Rv0001` as the exact token `"Rv0001"`, `or`
- * as Solr's `OR`); `/search` normalizes its own `q`.
- */
+/** Where a search for `query` goes; a canonical list reads `?keyword=` as written, so the text is normalized like legacy's search box. */
 export function searchHref(searchType: SearchType, query: string): string {
   if (searchType.route.status === "canonical") {
     const params = [
@@ -171,10 +166,7 @@ export const searchTypes = searchDescriptors
   .filter((descriptor) => descriptor.pickerOrder !== undefined)
   .toSorted((a, b) => (a.pickerOrder ?? 0) - (b.pickerOrder ?? 0));
 
-/**
- * The types the all-data-types page (`/search?type=everything`) searches, in
- * its order: only types with a DXKB list view, so every count links to one.
- */
+/** Types with a DXKB list view, in page order, so every count links to one. */
 export const allTermSearchTypes = searchDescriptors
   .filter((descriptor) => descriptor.allTermOrder !== undefined)
   .toSorted((a, b) => (a.allTermOrder ?? 0) - (b.allTermOrder ?? 0));

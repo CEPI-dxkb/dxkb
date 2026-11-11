@@ -4,10 +4,8 @@ import { join, relative, resolve, sep } from "node:path";
 const repoRoot = resolve(__dirname, "..", "..", "..", "..");
 
 /**
- * The only files that import JBrowse. JBrowse is a pinned 5.0 beta whose APIs
- * change between builds, and several MB: kept to these four, it stays in the
- * lazily loaded browser chunk and a beta bump touches nothing else (AGENTS.md
- * "New genome browser track"). Vitest never imports them.
+ * The only files that import JBrowse, so it stays in the lazily loaded chunk
+ * and a beta bump touches nothing else.
  */
 const jbrowseImporters = [
   "src/components/genome-browser/genome-browser-view.tsx",
@@ -16,11 +14,9 @@ const jbrowseImporters = [
   "src/components/genome-browser/jbrowse/plugin.ts",
 ];
 
-/** A static, dynamic, side-effect or `require` import of an `@jbrowse/` package. */
 const jbrowseImportPattern =
   /(?:\bfrom\s+|\bimport\s*\(\s*|\bimport\s+|\brequire\s*\(\s*)["']@jbrowse\//;
 
-/** Source files, without `__tests__` (the `view-icons.test.tsx` scan's rule). */
 function* sourceFiles(dir: string): Generator<string> {
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
     const full = join(dir, entry.name);

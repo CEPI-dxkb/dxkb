@@ -25,13 +25,7 @@ interface LandingMobileNavProps<Key extends string = OrganismViewKey> {
   onChange: (view: Key) => void;
 }
 
-/**
- * Mobile organism-view navigation: a floating bottom-center pill that opens a
- * bottom sheet of view tiles. Replaces the desktop "Views" rail below `lg`.
- * The pill hides on scroll-down and reveals on scroll-up; it stays visible
- * while the sheet is open and whenever it (or a child) holds focus, so
- * keyboard users can always reach it.
- */
+/** Floating bottom pill that opens a sheet of view tiles below `lg`; it hides on scroll-down unless the sheet is open or focus is inside. */
 export function LandingMobileNav<Key extends string>({
   items,
   activeView,
@@ -63,9 +57,7 @@ export function LandingMobileNav<Key extends string>({
             <Button
               variant="floating"
               size="pill-lg"
-              // Explicit name: the pill animates to opacity-0 on scroll-down,
-              // where axe treats the visible text as absent — the label keeps
-              // the trigger named for assistive tech in every state.
+              // Explicit name: the pill's opacity-0 on scroll-down makes axe treat its text as absent.
               aria-label={`${title}: ${active.label}`}
               {...triggerProps}
             >
@@ -86,9 +78,6 @@ export function LandingMobileNav<Key extends string>({
         />
       </div>
       <SheetContent side="bottom" className="max-h-[75vh]">
-        {/* A single column child, so SheetContent's gap-4 does not apply: the
-            title's pb-2 and the grid's p-3 space them. min-h-0 lets the grid
-            scroll within the sheet's max height. */}
         <div className="flex min-h-0 flex-col">
           <div className="px-4 pt-4 pb-2">
             <SheetTitle variant="label">{title}</SheetTitle>

@@ -13,7 +13,6 @@ interface RpcBody {
   params: unknown[];
 }
 
-/** Answers each JSON-RPC method the proxy receives; records every call. */
 function workspaceProxy(
   answers: Partial<Record<string, () => Response>>,
 ): { methods: string[] } {
@@ -55,7 +54,8 @@ describe("loadFavorites against the workspace proxy", () => {
   });
 
   it("returns [] when the favorites file does not exist yet (the proxy's empty result)", async () => {
-    // The proxy turns the Workspace's 404 for a preferences file into `result: []`.
+    // The proxy turns the Workspace's 404 for a preferences file into `result:
+    // []`.
     workspaceProxy({
       "Workspace.get": () => HttpResponse.json({ id: 1, jsonrpc: "2.0", result: [] }),
     });
@@ -127,7 +127,6 @@ describe("toggleFavorite never overwrites favorites from a failed read", () => {
         const body = (await request.json()) as RpcBody;
         if (body.method === "Workspace.get") {
           gets += 1;
-          // First the favorites file, then the .preferences folder check.
           return gets === 1
             ? savedFavorites()
             : HttpResponse.json({ id: 1, jsonrpc: "2.0", result: [[["dir"]]] });

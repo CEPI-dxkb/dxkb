@@ -11,9 +11,7 @@ import {
 import { validateFastaForBlast } from "@/lib/fasta-validation";
 import type { FastaValidationResult } from "@/lib/fasta-validation";
 
-// Flat partial of all BlastFormData fields — discriminated-union-aware Partial
-// hides input_fasta_*/db_* fields, so we expose them all as optional here for
-// helpers that build/merge override objects.
+// Flat Partial: the discriminated-union Partial hides the input_fasta_*/db_* fields.
 type BlastFormDataPartial = Partial<{
   input_type: BlastFormData["input_type"];
   db_type: BlastFormData["db_type"];
@@ -38,9 +36,6 @@ type BlastFormDataPartial = Partial<{
 /** Most genomes "Search within selected genome list" accepts (`maxGenomes` in BV-BRC's Homology app). */
 export const blastMaxGenomes = 20;
 
-/**
- * Get available database types for BLAST based on the selected program and database source
- */
 export function getAvailableBlastDatabaseTypes(
   inputType: string,
   dbSource: string,
@@ -68,9 +63,6 @@ export function getAvailableBlastDatabaseTypes(
   return filtered;
 }
 
-/**
- * Get the default database type for a given BLAST program and database source
- */
 export function getDefaultBlastDatabaseType(
   inputType: string,
   dbSource: string,
@@ -90,9 +82,6 @@ export function getCompatibleBlastDatabaseType(
     : getDefaultBlastDatabaseType(inputType, dbSource);
 }
 
-/**
- * Transform BLAST form data to API parameters
- */
 export function transformBlastParams(
   data: Record<string, unknown>,
 ): Record<string, unknown> {
@@ -161,7 +150,6 @@ export const maxHitsOptionsBlast = [
   { value: 5000, label: "5000" },
 ] as const;
 
-/** Options for E-value threshold dropdown */
 export const evalueOptionsBlast = [
   { value: 0.0001, label: "0.0001" },
   { value: 0.001, label: "0.001" },
@@ -201,10 +189,6 @@ export function resolveDbSource(
   return dbSourceMap[database ?? "bacteria-archaea"];
 }
 
-/**
- * Creates a new form values object by merging current values with overrides
- * Automatically handles all form fields without manual mapping
- */
 export function createBlastFormValues(
   currentValues: Partial<BlastFormData>,
   overrides: Partial<BlastFormData>,
@@ -230,7 +214,6 @@ export function createBlastFormValues(
     ) as BlastFormData["db_type"]);
 
   return {
-    // Base fields
     input_type: resolveInputType(
       overrides.blast_program || currentValues.blast_program,
       currentValues.input_type,
@@ -245,7 +228,6 @@ export function createBlastFormValues(
     blast_evalue_cutoff: currentValues.blast_evalue_cutoff || 0.0001,
     db_precomputed_database: dbPrecomputedDatabase,
 
-    // Input source fields - handle discriminated union properly
     input_fasta_data:
       ((currentValues as Record<string, unknown>).input_fasta_data as
         string | undefined) ?? "",
@@ -256,21 +238,16 @@ export function createBlastFormValues(
       ((currentValues as Record<string, unknown>).input_feature_group as
         string | undefined) ?? "",
 
-    // Database conditional fields
     db_genome_list: currentValues.db_genome_list || [],
     db_genome_group: currentValues.db_genome_group || "",
     db_feature_group: currentValues.db_feature_group || "",
     db_taxon_list: currentValues.db_taxon_list || [],
     db_fasta_file: currentValues.db_fasta_file || "",
 
-    // Apply overrides
     ...overrides,
   };
 }
 
-/**
- * Creates input source field overrides based on the selected input source
- */
 export function createInputSourceOverrides(
   newSource: BlastFormData["input_source"],
   preservedFastaData = "",
@@ -291,9 +268,6 @@ export function createInputSourceOverrides(
   }
 }
 
-/**
- * Creates database field overrides based on the selected database source
- */
 export function createDatabaseSourceOverrides(
   newDBPrecomputedDatabase: BlastFormData["db_precomputed_database"],
   preservedInputFields: BlastFormDataPartial,
@@ -317,7 +291,6 @@ export function createDatabaseSourceOverrides(
     db_fasta_file: "",
   };
 
-  // Add database-specific field overrides
   switch (newDBPrecomputedDatabase) {
     case "selGenome":
       return { ...baseOverrides, db_genome_list: [] };
@@ -334,9 +307,6 @@ export function createDatabaseSourceOverrides(
   }
 }
 
-/**
- * Extracts input-related fields from form values for preservation
- */
 export function extractInputFields(
   values: BlastFormDataPartial,
 ): BlastFormDataPartial {
@@ -354,9 +324,6 @@ export function extractInputFields(
   };
 }
 
-/**
- * Custom hook to manage BLAST database type availability
- */
 export function useBlastDatabaseTypes(form: AnyFormApi) {
   const blastProgram = useSelector(
     form.store,
@@ -370,9 +337,6 @@ export function useBlastDatabaseTypes(form: AnyFormApi) {
   return getAvailableBlastDatabaseTypes(blastProgram, dbPrecomputedDatabase);
 }
 
-/**
- * Custom hook to track BLAST program changes
- */
 export function useBlastProgramTracking(form: AnyFormApi) {
   const currentBlastProgram = useSelector(
     form.store,
@@ -381,9 +345,6 @@ export function useBlastProgramTracking(form: AnyFormApi) {
   return currentBlastProgram;
 }
 
-/**
- * Custom hook to manage FASTA validation
- */
 export function useFastaValidation(
   form: AnyFormApi,
   currentBlastProgram: BlastFormData["blast_program"],

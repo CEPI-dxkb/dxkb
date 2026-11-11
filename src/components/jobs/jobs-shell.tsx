@@ -46,8 +46,8 @@ export function JobsShell({
           }`}
           onClick={() => {
             const panel = detailsPanelRef.current;
-            // resize, not expand(): expand() returns to the size before an *imperative*
-            // collapse, and falls back to minSize after the user drags the panel shut.
+            // resize, not expand(): expand() returns to the size before an imperative collapse, and
+            // falls back to minSize after the user drags the panel shut.
             if (panel?.isCollapsed()) {
               panel.resize(`${String(savedLayout[jobsPanelIds.details])}%`);
             }

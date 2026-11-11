@@ -59,7 +59,6 @@ describe("WorkspaceDropdownContent favorites", () => {
   });
 
   it("keeps the alert up, with a disabled 'Retrying…', until the Retry answers", async () => {
-    // A recent folder keeps the section visible once the retry finds no favorites.
     localStorage.setItem(
       recentWorkspaceFoldersStorageKey,
       JSON.stringify([{ path: "/alice@bvbrc/home/Recent", visitedAt: 1 }]),
@@ -95,7 +94,6 @@ describe("WorkspaceDropdownContent favorites", () => {
   });
 
   it("says 'No favorites yet' when the favorites file does not exist", async () => {
-    // A recent folder keeps the section visible when there are no favorites.
     localStorage.setItem(
       recentWorkspaceFoldersStorageKey,
       JSON.stringify([{ path: "/alice@bvbrc/home/Recent", visitedAt: 1 }]),

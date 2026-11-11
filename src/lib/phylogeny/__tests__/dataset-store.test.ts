@@ -53,10 +53,7 @@ describe("Nextstrain dataset store", () => {
   });
 
   it("consistently rejects a dataset id whose final segment names a sidecar", async () => {
-    // "Influenza-A-Virus_H3N2_measurements.json" is ambiguous: it is both the
-    // filename for dataset "Influenza-A-Virus/H3N2" + the "measurements" sidecar,
-    // and for a hypothetical main dataset "Influenza-A-Virus/H3N2/measurements".
-    // The id must be rejected everywhere, not just hidden from the inventory.
+    // "Influenza-A-Virus_H3N2_measurements.json" is ambiguous between dataset "Influenza-A-Virus/H3N2" plus a measurements sidecar and a main dataset "…/measurements", so the id must be rejected everywhere.
     await writeFile(
       join(datasetDir, "Influenza-A-Virus_H3N2_measurements.json"),
       validDataset,
@@ -190,9 +187,7 @@ describe("Nextstrain dataset store", () => {
   });
 
   it("treats a root store directory as containing its children", () => {
-    // regression: naive `child.startsWith(parent + sep)` checks fail at "/"
-    // because resolve("/") has no trailing separator to append, so
-    // `${directory}${sep}` becomes "//" and never matches any real path.
+    // `startsWith(parent + sep)` fails at "/" because `${directory}${sep}` becomes "//".
     expect(isWithinDirectory("/", "/Orthoebolavirus_100.json")).toBe(true);
     expect(isWithinDirectory("/", "/")).toBe(true);
     expect(isWithinDirectory("/store", "/store/Orthoebolavirus_100.json")).toBe(

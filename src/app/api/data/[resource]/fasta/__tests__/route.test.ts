@@ -1,5 +1,4 @@
-// `server-only` throws outside Next's bundler; this route reaches it through
-// `@/lib/data-api/server-policy`. Same neutralization as the gateway's spec.
+// `server-only` throws outside Next's bundler (same neutralization as the gateway's spec).
 vi.mock("server-only", () => ({}));
 
 import { http, HttpResponse } from "msw";
@@ -18,7 +17,6 @@ const dataApiOrigin = "https://data.test";
 const record =
   ">fig|644340.17.peg.16| Flagellar biosynthesis protein FliQ\nMNEADALDIV\n";
 
-/** One client IP per test, so rate-limit buckets never spill between cases. */
 let nextIpOctet = 20;
 function freshIp(): string {
   nextIpOctet += 1;
@@ -50,7 +48,6 @@ function post(
   );
 }
 
-/** A real upstream handler, so the request goes through the repository. */
 function captureUpstream(resource: string, respond: () => Response) {
   const seen: {
     accept: string | null;
@@ -70,7 +67,6 @@ function captureUpstream(resource: string, respond: () => Response) {
   return seen;
 }
 
-/** Fails the test if the route reaches the upstream at all. */
 function forbidUpstream() {
   const hit = vi.fn();
   server.use(
@@ -122,7 +118,6 @@ describe("POST /api/data/[resource]/fasta", () => {
     expect(response.headers.get("Cache-Control")).toBe("private, no-store");
     expect(response.headers.get("Vary")).toBe("Cookie");
     expect(await response.text()).toBe(record);
-    // Validation dropped the duplicate before it reached the upstream.
     expect(seen).toEqual([
       {
         accept: "application/protein+fasta",

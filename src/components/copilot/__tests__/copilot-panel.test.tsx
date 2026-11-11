@@ -12,8 +12,7 @@ import { useCopilot } from "../copilot-provider";
 import { useCopilotActions } from "../use-copilot-actions";
 import { copilotName } from "@/lib/copilot/name";
 
-// The provider and the turn driver are modules with their own tests; the
-// panel is tested against fakes of them. The session reads go through MSW.
+// The provider and turn driver are faked; session reads go through MSW.
 vi.mock("../copilot-provider", () => ({
   useCopilot: vi.fn(),
   useOptionalCopilot: vi.fn(),
@@ -232,7 +231,6 @@ describe("CopilotPanel", () => {
         description: `${copilotName} did not respond. Your question: “next question”`,
       });
     });
-    // What was typed since is kept.
     expect(box()).toHaveValue("a follow-up");
     toastError.mockRestore();
   });

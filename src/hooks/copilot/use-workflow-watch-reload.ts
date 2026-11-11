@@ -5,10 +5,6 @@ import { useEffect, useRef } from "react";
 import { copilotQueryKeys } from "@/lib/copilot/client";
 import type { CopilotWorkflowWatch } from "@/lib/copilot/types";
 
-/**
- * Jobs the chat waits for: when one ends, the gateway writes a completion
- * message into the chat a moment later; reload it then.
- */
 export function useWorkflowWatchReload(
   sessionId: string | null,
   watches: CopilotWorkflowWatch[] | undefined,

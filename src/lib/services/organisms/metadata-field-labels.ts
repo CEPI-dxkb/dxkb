@@ -1,4 +1,3 @@
-/** Chart titles for the genome metadata fields the overview charts facet on. */
 const metadataFieldLabels: Record<string, string> = {
   genus: "Genus",
   host: "Host",
@@ -12,15 +11,12 @@ const metadataFieldLabels: Record<string, string> = {
   sequencing_centers: "Sequencing Centers",
 };
 
-/** Titles of the overview charts that are not one metadata field's. */
 export const taxonomicDistributionTitle = "Taxonomic Distribution";
 export const amrProfileTitle = "Antimicrobial Resistance Profile";
 
 /**
- * What a metadata chart is called, for its title and for the error a failed
- * facet shows ("Isolation Country: The BV-BRC data service is unavailable
- * (…)."), so the user never reads a field name such as `isolation_country`.
- * An unlisted field keeps its name.
+ * Chart title for a metadata field, also used in a failed facet's error; an
+ * unlisted field keeps its name.
  */
 export function metadataFieldLabel(field: string): string {
   return metadataFieldLabels[field] ?? field;

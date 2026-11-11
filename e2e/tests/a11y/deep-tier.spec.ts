@@ -32,7 +32,6 @@ import type { MockJob } from "../../fixtures/overrides";
 
 const baselineMap: BaselineMap = generatedBaseline;
 
-/** Scan current page state and assert no unbaselined blocking violations. */
 async function assertNoBlocking(
   page: Parameters<typeof scanPage>[0],
   surfaceName: string,
@@ -69,12 +68,7 @@ async function assertNoBlocking(
   ).toEqual([]);
 }
 
-// ── Service forms — interaction states ──────────────────────────────────────────
-
 test.describe("a11y deep tier: service forms", () => {
-  // genome-assembly as the representative service form (already covered by sweep).
-  // These tests exercise states the load-scan cannot reach.
-
   test("genome-assembly: validation errors shown", async ({ page }) => {
     await applyBackendMocks(page, {
       overrides: [...authSessionOverrides, ...a11yBackendOverrides],
@@ -82,9 +76,7 @@ test.describe("a11y deep tier: service forms", () => {
     await page.goto("/services/genome-assembly");
     await page.waitForLoadState("networkidle");
 
-    // Submit with empty required fields to trigger inline validation errors.
     await page.getByRole("button", { name: /assemble/i }).click();
-    // Give validation messages time to render.
     await page.waitForTimeout(300);
 
     await forEachTheme(page, async (theme) => {
@@ -92,10 +84,7 @@ test.describe("a11y deep tier: service forms", () => {
     });
   });
 
-  /**
-   * Genome Assembly with READ FILE 1's picker open in file mode on
-   * Home → Inputs, with the other files shown.
-   */
+  /** Genome Assembly with READ FILE 1's picker open in file mode on Home → Inputs. */
   async function openReadFilePicker(
     page: Parameters<typeof applyBackendMocks>[0],
   ) {
@@ -124,7 +113,6 @@ test.describe("a11y deep tier: service forms", () => {
     });
     await page.goto("/services/genome-assembly");
     await page.waitForLoadState("networkidle");
-    // READ FILE 1's Browse, the first file field on the form.
     const picker = new FolderPickerDialog(page, "Select a File", {
       browseButton: page
         .getByRole("button", { name: "Browse workspace files" })
@@ -163,8 +151,6 @@ test.describe("a11y deep tier: service forms", () => {
     });
   });
 });
-
-// ── Output folder picker — interaction states ─────────────────────────────────────
 
 test.describe("a11y deep tier: output folder picker", () => {
   const experiments = `${e2eHomePath}/Experiments`;
@@ -243,8 +229,6 @@ test.describe("a11y deep tier: output folder picker", () => {
   });
 });
 
-// ── Workspace — data states ──────────────────────────────────────────────────────
-
 test.describe("a11y deep tier: workspace", () => {
   test("workspace: populated state", async ({ page }) => {
     await applyBackendMocks(page, {
@@ -292,7 +276,6 @@ test.describe("a11y deep tier: workspace", () => {
     await wp.goto();
     await awaitSettled(page);
 
-    // Select the first file to open the details panel.
     await wp.selectFile("sample.fastq");
     await page.waitForLoadState("networkidle");
 
@@ -340,8 +323,6 @@ test.describe("a11y deep tier: workspace", () => {
   });
 });
 
-// ── Jobs — data states ────────────────────────────────────────────────────────────
-
 test.describe("a11y deep tier: jobs", () => {
   test("jobs: populated state", async ({ page }) => {
     await applyBackendMocks(page, {
@@ -353,8 +334,8 @@ test.describe("a11y deep tier: jobs", () => {
     });
     const jobs = new JobsListPage(page);
     await jobs.goto();
-    // Wait for skeleton rows to detach — the DataTable renders 30 [data-slot="skeleton"]
-    // <tr> placeholders that satisfy waitForRows(), so scan only after real rows paint.
+    // The DataTable renders 30 skeleton <tr> placeholders that satisfy waitForRows();
+    // wait for their detach before scanning.
     await awaitSettled(page, { skeletonSelector: '[data-slot="skeleton"]' });
 
     await forEachTheme(page, async (theme) => {
@@ -372,7 +353,6 @@ test.describe("a11y deep tier: jobs", () => {
     });
     const jobs = new JobsListPage(page);
     await jobs.goto();
-    // Empty state transitions skeleton → "No jobs found"; wait for skeleton detach.
     await awaitSettled(page, { skeletonSelector: '[data-slot="skeleton"]' });
 
     await forEachTheme(page, async (theme) => {
@@ -398,8 +378,8 @@ test.describe("a11y deep tier: jobs", () => {
     });
     const jobs = new JobsListPage(page);
     await jobs.goto();
-    // Skeleton <tr> rows satisfy waitForRows(); wait for their detach so axe scans
-    // the real failed-job row, not the loading placeholder (root cause of flake).
+    // Skeleton rows satisfy waitForRows(); wait for their detach so axe scans the real
+    // row (flake).
     await awaitSettled(page, { skeletonSelector: '[data-slot="skeleton"]' });
     await jobs.waitForRows();
 
@@ -440,7 +420,6 @@ test.describe("a11y deep tier: jobs", () => {
         await assertNoBlocking(page, "jobs/kill-dialog", theme);
       });
     } else {
-      // If no confirmation dialog, just verify the kill button itself was accessible.
       test
         .info()
         .annotations.push({
@@ -450,8 +429,6 @@ test.describe("a11y deep tier: jobs", () => {
     }
   });
 });
-
-// ── Search — data states ──────────────────────────────────────────────────────────
 
 test.describe("a11y deep tier: search", () => {
   const emptyDataApiResponse = Object.fromEntries(
@@ -499,8 +476,6 @@ test.describe("a11y deep tier: search", () => {
   });
 });
 
-// ── Collection Download tile (interaction state) ─────────────────────────────────
-
 test.describe("a11y deep tier: collection download", () => {
   test("collection download: popover open", async ({ page }) => {
     await applyBackendMocks(page, {
@@ -518,9 +493,6 @@ test.describe("a11y deep tier: collection download", () => {
   });
 });
 
-// ── Command palette (interaction state) ──────────────────────────────────────────
-// Migrated from routes-sweep.spec.ts Phase 1 to its natural home here.
-
 test.describe("a11y deep tier: command palette", () => {
   test("command palette (open): no blocking violations", async ({ page }) => {
     await applyBackendMocks(page, {
@@ -533,7 +505,7 @@ test.describe("a11y deep tier: command palette", () => {
     });
     await page.goto("/jobs");
     await page.waitForLoadState("networkidle");
-    // WebKit requires explicit page focus before keyboard events reach document listeners.
+    // WebKit needs explicit page focus before keyboard events reach document listeners.
     await page.locator("body").click();
 
     const modifierKey = process.platform === "darwin" ? "Meta" : "Control";
@@ -541,7 +513,7 @@ test.describe("a11y deep tier: command palette", () => {
     await page
       .getByRole("dialog", { name: /command palette/i })
       .waitFor({ state: "visible", timeout: 10_000 });
-    // Wait for auto-focus: WebKit cmdk theme CSS can lag behind dialog visibility.
+    // WebKit's cmdk theme CSS can lag behind dialog visibility.
     await expect(page.locator('[data-slot="command-input"]')).toBeFocused({
       timeout: 5_000,
     });
@@ -551,9 +523,6 @@ test.describe("a11y deep tier: command palette", () => {
     });
   });
 });
-
-// ── Settings — interaction + data states ─────────────────────────────────────
-// 168 deep-tier floor (Q29): settings default · error-toast.
 
 const settingsProfile = {
   id: "e2e-test-user@patricbrc.org",
@@ -594,8 +563,6 @@ test.describe("a11y deep tier: settings", () => {
     await applyBackendMocks(page, {
       overrides: [
         { url: "/api/auth/profile", method: "GET", body: settingsProfile },
-        // Failing save → error toast. Preserve a real message (project rule:
-        // no generic errors) so the toast text is meaningful.
         {
           url: "/api/auth/profile",
           method: "POST",
@@ -610,7 +577,6 @@ test.describe("a11y deep tier: settings", () => {
     await settings.goto();
     await expect(settings.firstNameInput).toHaveValue("Original");
 
-    // Mutate a field so the form is dirty, then submit to trigger the failing POST.
     await settings.firstNameInput.fill("Updated");
     await settings.saveButton.click();
     await expect(settings.errorToast).toBeVisible();
@@ -621,18 +587,15 @@ test.describe("a11y deep tier: settings", () => {
   });
 });
 
-// ── Taxon interactions — Graph subtab (interaction state, not URL-addressable) ────
-// The Graph subtab is local React state (no query param), so routes-sweep.spec.ts
-// cannot reach it. Cover it here by driving the click before scanning.
+// The Graph subtab is local React state, so routes-sweep.spec.ts cannot reach it.
 
 test.describe("a11y deep tier: taxon interactions graph", () => {
   test("interactions: Graph subtab has no blocking violations", async ({
     page,
     browserName,
   }) => {
-    // Sigma.js needs a WebGL context to mount its canvas. Headless Firefox and
-    // WebKit cannot render it reliably, so Chromium carries this a11y coverage.
-    // Mirrors interactions.spec.ts and viewer-3d.spec.ts.
+    // Sigma needs WebGL, which headless Firefox and WebKit cannot render reliably, so
+    // Chromium carries this coverage.
     test.skip(
       browserName !== "chromium",
       "Headless non-Chromium browsers cannot render the Sigma.js WebGL canvas",
@@ -659,11 +622,6 @@ test.describe("a11y deep tier: taxon interactions graph", () => {
   });
 });
 
-// ── File viewer — panel render states ────────────────────────────────────────
-// 168 deep-tier floor (Q29): file-viewer text · csv · fallback.
-// Structure (.pdb) is covered by the /viewer/structure route in the sweep.
-// CodeMirror (.cm-editor) and molstar subtrees are in vendorExclusions.
-
 const viewerItems = [
   { name: "notes.txt", type: "txt", parentPath: e2eHomePath, size: 32 },
   { name: "table.csv", type: "csv", parentPath: e2eHomePath, size: 64 },
@@ -687,7 +645,7 @@ test.describe("a11y deep tier: file viewer", () => {
   test.beforeEach(async ({ page }) => {
     await applyBackendMocks(page, {
       overrides: [
-        // Specific view URLs MUST precede the catch-all in buildWorkspaceOverrides.
+        // Specific view URLs must precede the catch-all in buildWorkspaceOverrides.
         viewerContentOverride(
           "notes\\.txt",
           "Plain text notes.\nSecond line.\n",
@@ -718,7 +676,6 @@ test.describe("a11y deep tier: file viewer", () => {
     await wp.goto();
     await awaitSettled(page);
     await wp.selectFile("notes.txt");
-    // CodeMirror streams content into .cm-content; wait for it before scanning.
     await expect(page.locator(".cm-content")).toContainText("Plain text notes");
 
     await forEachTheme(page, async (theme) => {
@@ -731,7 +688,6 @@ test.describe("a11y deep tier: file viewer", () => {
     await wp.goto();
     await awaitSettled(page);
     await wp.selectFile("table.csv");
-    // CsvViewer renders a table; wait for a known cell value.
     await expect(page.getByText("alpha")).toBeVisible();
 
     await forEachTheme(page, async (theme) => {
@@ -744,8 +700,6 @@ test.describe("a11y deep tier: file viewer", () => {
     await wp.goto();
     await awaitSettled(page);
     await wp.selectFile("config.json");
-    // JsonViewer renders the parsed JSON into CodeMirror (.cm-content);
-    // .cm-editor is vendor-excluded, so the scan covers the surrounding chrome.
     await expect(page.locator(".cm-content")).toContainText("hello");
 
     await forEachTheme(page, async (theme) => {

@@ -13,11 +13,7 @@ export function useInfluenzaHaSubtypePage() {
   const [isOutputNameValid, setIsOutputNameValid] = useState(true);
   const [fastaValidationMessage, setFastaValidationMessage] = useState("");
   const [isFastaValid, setIsFastaValid] = useState(false);
-  // The text that last passed validation on blur, or "" while none has. The
-  // textarea shows its valid cue (border, "Valid FASTA with n sequences") only
-  // while its value still equals it, so the cue goes as soon as the text
-  // changes and the count it names can no longer be stale. `isFastaValid`
-  // stays the submit gate.
+  // The text that last passed validation on blur; the valid cue shows only while the value equals it.
   const [validatedFasta, setValidatedFasta] = useState("");
   const [fastaSequenceCount, setFastaSequenceCount] = useState(0);
 
@@ -54,8 +50,6 @@ export function useInfluenzaHaSubtypePage() {
     setIsFastaValid(result.valid);
     setFastaSequenceCount(result.valid ? result.numseq : 0);
     setFastaValidationMessage(result.message || "");
-    // The value the field holds once this blur settles: the cleaned text when
-    // it replaces the typed one, the typed text otherwise.
     let settledFasta = fastaData;
     if (result.valid && result.trimFasta && result.trimFasta !== trimmed) {
       form.setFieldValue("input_fasta_data", result.trimFasta);

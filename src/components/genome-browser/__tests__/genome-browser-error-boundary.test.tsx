@@ -4,10 +4,8 @@ import { GenomeBrowserErrorBoundary } from "../genome-browser-error-boundary";
 
 const engine = vi.hoisted(() => ({ failing: true }));
 
-// Fails on every render until the test says the cause is gone: React 19
-// re-renders a root that errored once more before it hands the error to the
-// boundary, so a component that fails only on its first call would never
-// reach it.
+// Fails on every render until the cause is gone: React 19 re-renders an errored
+// root once more before handing the error to the boundary.
 function FailsUntilFixed({
   message = 'could not find a region with refName "ctgX"',
 }: {
@@ -22,7 +20,6 @@ function FailsUntilFixed({
 describe("GenomeBrowserErrorBoundary", () => {
   beforeEach(() => {
     engine.failing = true;
-    // React logs the caught error; keep the test output readable.
     vi.spyOn(console, "error").mockImplementation(() => undefined);
   });
 
@@ -52,7 +49,6 @@ describe("GenomeBrowserErrorBoundary", () => {
   });
 
   it("shows the fallback when a child throws undefined", () => {
-    // Typed `unknown`, as a value thrown by library code would be.
     const thrown: unknown = undefined;
     function ThrowsUndefined(): never {
       throw thrown;

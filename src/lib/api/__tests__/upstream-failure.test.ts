@@ -68,7 +68,6 @@ describe("describeUpstreamFailure", () => {
       message: "The BV-BRC data service is unavailable (HTTP 503 Service Unavailable).",
       source: "genome genus facet",
     });
-    // An own field, so `console.error(error)` prints it.
     expect(Object.keys(error)).toContain("source");
     expect(error.source).toBe("genome genus facet");
     expect(error.message).not.toContain("genus");
@@ -360,8 +359,7 @@ describe("fetchUpstream", () => {
     await expect(pending).rejects.not.toBeInstanceOf(UpstreamError);
   });
 
-  // MSW does not tie the request signal to a mocked body, so watch the signal
-  // the body would be read under (undici errors the stream when it aborts).
+  // MSW does not tie the request signal to a mocked body, so watch the signal the body is read under.
   async function signalAfterBudget(streamBody: boolean): Promise<AbortSignal> {
     shortenTimeouts(10);
     let seen: AbortSignal | undefined;

@@ -124,8 +124,8 @@ export function errorResponse(
   }
 
   if (error instanceof Error) {
-    // A raw network failure from a route's own fetch: its message is only
-    // "fetch failed", so describe the cause it carries instead.
+    // A raw network failure's message is only "fetch failed", so describe the
+    // cause it carries.
     const failure = describeUpstreamFailure(error, "an upstream service");
     if (failure) {
       return NextResponse.json(

@@ -89,9 +89,8 @@ function SearchBarForm({
 
   const handleSearch = (e: SyntheticEvent) => {
     e.preventDefault();
-    // Nothing to search for once read as a search (blank, `OR`, only syntax),
-    // or no letter or digit, as legacy's search box requires (`*` alone would
-    // list every record).
+    // `*` alone would list every record, so also require a letter or digit, as
+    // legacy's search box does.
     const keyword = normalizeLegacyKeyword(inputValue);
     if (keywordQuery(keyword).length === 0 || !/[\p{L}\p{N}]/u.test(keyword)) return;
 

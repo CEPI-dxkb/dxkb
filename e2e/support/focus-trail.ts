@@ -1,13 +1,9 @@
 import type { Page, TestInfo } from "@playwright/test";
 
-/** One entry of the page's focus trail. */
 interface FocusStep {
-  /** ms since the page's navigation start. */
   at: number;
   event: "focusin" | "focusout" | "keydown" | "window-blur" | "window-focus";
-  /** The element the event is about, or the key pressed. */
   target: string;
-  /** focusin/focusout: the other side of the move; "(none)" is the body. */
   related: string;
 }
 
@@ -17,14 +13,10 @@ type TrailWindow = Window & {
 };
 
 /**
- * Records every focus change, key press and window focus change in the page,
- * so a failed focus assertion says where focus went and when it left.
- *
- * WebKit restarts Tab navigation from the top of the document once focus is
- * blurred to the body, where Chromium and Firefox continue from the element
- * that lost it. So a stray blur shows up only in WebKit, as "Tab went to the
- * header", with nothing else in the trace to say why. Call before the first
- * navigation; it re-installs on every navigation.
+ * Records focus changes, key presses and window focus changes so a failed
+ * focus assertion says where focus went. WebKit restarts Tab from the
+ * document top after a blur to the body, so a stray blur shows up only there.
+ * Call before the first navigation; it re-installs on each one.
  */
 export async function recordFocusTrail(page: Page): Promise<void> {
   await page.addInitScript(() => {
@@ -81,9 +73,8 @@ export async function recordFocusTrail(page: Page): Promise<void> {
 }
 
 /**
- * On a failed test: attaches the focus trail and the element focus ended on.
- * `force` attaches it even while `testInfo.status` still reads as expected,
- * for a failure the afterEach hook itself is about to throw.
+ * Attaches the focus trail on failure; `force` attaches it even while the
+ * status still reads as expected.
  */
 export async function attachFocusTrail(
   page: Page,

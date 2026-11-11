@@ -4,12 +4,7 @@ import dynamic from "next/dynamic";
 
 import { Skeleton } from "@/components/ui/skeleton";
 
-/**
- * The Overview's metadata charts, one chunk each (SSR on), so only an Overview
- * ships visx and the charts; see docs/architecture.md, "Views & organism
- * landing". Fallbacks use `h-80` (the charts have no fixed height), as
- * `MetadataDistributionsSkeleton` does.
- */
+/** The Overview's metadata charts, one chunk each, so only an Overview ships visx. Fallbacks use `h-80`, like `MetadataDistributionsSkeleton`. */
 function ChartLoading() {
   return <Skeleton className="h-80 rounded-lg" />;
 }

@@ -19,7 +19,6 @@ import {
 const typeItems: Record<CustomFeatureType, string> = { CDS: "CDS", RNA: "RNA", Miscellaneous: "Misc" };
 const strandItems: Record<CustomStrand, string> = { both: "Both", forward: "Forward", reverse: "Reverse" };
 
-/** Legacy `TrackController`'s "Add custom tracks" section. */
 export function CustomTrackForm({ onAdd }: { onAdd: (query: CustomTrackQuery, name: string) => void }) {
   const id = useId();
   const [type, setType] = useState<CustomFeatureType | null>(null);
@@ -39,7 +38,6 @@ export function CustomTrackForm({ onAdd }: { onAdd: (query: CustomTrackQuery, na
         setName("");
       }}
     >
-      {/* A heading or label sits 8px above its control; fields are 12px apart. */}
       <div className="space-y-2">
         <div className="flex h-6 items-center gap-1">
           <h2 id={`${id}-title`} className="text-base font-semibold">Add custom tracks</h2>
@@ -113,8 +111,6 @@ export function CustomTrackForm({ onAdd }: { onAdd: (query: CustomTrackQuery, na
       </div>
       <div className="space-y-2">
         <Label htmlFor={`${id}-name`}>Track name (optional)</Label>
-        {/* The service forms' inline add button (`ServiceAddButton`'s look), but a
-            submit: Enter in a field adds the track too. */}
         <div className="flex gap-2">
           <Input
             id={`${id}-name`}

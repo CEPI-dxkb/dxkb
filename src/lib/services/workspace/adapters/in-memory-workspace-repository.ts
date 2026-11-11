@@ -1,7 +1,6 @@
 /**
- * In-memory implementation of `WorkspaceRepository` for tests and stories.
- * Stores a mutable map of path -> children and tracks calls so specs can
- * assert on behavior without an HTTP transport.
+ * In-memory `WorkspaceRepository` for tests and stories; tracks calls so specs
+ * can assert on behavior.
  */
 
 import type {
@@ -67,8 +66,8 @@ export interface InMemoryFixtureItem {
 
 export interface InMemoryFixtures {
   /**
-   * Map of directory path -> listing. Paths are stored as canonical
-   * (leading slash, no trailing slash). The repository normalizes lookups.
+   * Map of directory path -> listing, paths canonical (leading slash, no
+   * trailing slash).
    */
   directories?: Record<string, InMemoryFixtureItem[]>;
   permissions?: ListPermissionsResult;
@@ -113,9 +112,8 @@ function toBrowserItem(
   };
 }
 
-// Mirrors the `Workspace.get` tuple layout (see `parseWorkspaceGetSingle`), so
-// `WorkspaceMetadata.raw` / `getRaw()` carry the same shape the HTTP adapter
-// produces and tests can assert against it.
+// Mirrors the `Workspace.get` tuple layout so `WorkspaceMetadata.raw` matches
+// what the HTTP adapter produces.
 function toGetTuple(
   parent: string,
   fixture: InMemoryFixtureItem,
@@ -177,7 +175,6 @@ export class InMemoryWorkspaceRepository implements WorkspaceRepository {
   private throwIfConfigured(method: CallRecord["method"]): void {
     const err = this.errors[method];
     if (err) {
-      // One-shot: matches the JSDoc on `InMemoryFixtures.errors`.
       this.errors[method] = undefined;
       throw err;
     }
@@ -298,8 +295,8 @@ export class InMemoryWorkspaceRepository implements WorkspaceRepository {
     return this.run(() => {
       this.calls.push({ method: "createUploadNode", input });
       this.throwIfConfigured("createUploadNode");
-      // Shaped like Workspace.create's link_reference: a UUID node under the
-      // Shock API path, so it passes the upload route's node URL check.
+      // Shaped like Workspace.create's link_reference (a UUID node under the
+      // Shock API path) so it passes the upload route's node URL check.
       this.uploadNodes += 1;
       const nodeId = `00000000-0000-4000-8000-${String(this.uploadNodes).padStart(12, "0")}`;
       return {
@@ -460,8 +457,6 @@ export class InMemoryWorkspaceRepository implements WorkspaceRepository {
         destSiblings.push({ ...source, name: destName });
         this.directories[destParent] = destSiblings;
 
-        // Recursively carry any nested directory listings for folder sources.
-        // Mirrors the HTTP server behavior when `recursive: true` is passed.
         const clonedKeys: string[] = [];
         if (input.recursive) {
           const srcPrefix = srcNormalized === "/" ? "/" : `${srcNormalized}/`;
@@ -532,7 +527,6 @@ export class InMemoryWorkspaceRepository implements WorkspaceRepository {
     });
   }
 
-  /** A fixture's string `content`, cut as the preview route cuts a file. */
   readTextStart(path: string, maxBytes: number): Promise<WorkspaceTextStart> {
     return this.run(() => {
       this.calls.push({ method: "readTextStart", path, maxBytes });
@@ -553,9 +547,9 @@ export class InMemoryWorkspaceRepository implements WorkspaceRepository {
         );
       }
       const content = typeof fixture.content === "string" ? fixture.content : "";
-      // The route counts UTF-8 bytes, not UTF-16 code units, and a cut with
-      // no line end in it can split a character, which `response.text()`
-      // decodes as U+FFFD; `TextDecoder` does the same.
+      // The route counts UTF-8 bytes, not UTF-16 code units, and a cut with no
+      // line end can split a character, which decodes as U+FFFD; `TextDecoder`
+      // does the same.
       const bytes = new TextEncoder().encode(content);
       if (bytes.length <= maxBytes) {
         return { text: content, truncated: false };

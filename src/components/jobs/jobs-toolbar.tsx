@@ -53,10 +53,8 @@ interface JobsToolbarProps {
   isRefreshing: boolean;
   statusSummary?: Record<string, number | undefined>;
   /**
-   * Why the job summary (the status counts and the service list) could not be
-   * loaded, already condensed for display. Shown in place of the counts, or,
-   * when a later refresh failed, beside the last counts as a note that they
-   * may be out of date.
+   * Already condensed for display; shown in place of the counts, or as a stale-counts note when a
+   * later refresh failed.
    */
   summaryError?: string;
   dataUpdatedAt?: number;
@@ -92,7 +90,6 @@ export function JobsToolbar({
   const RunningIcon = runningCount > 0 ? CirclePlaySpinner : CirclePlay;
   return (
     <div className="space-y-3">
-      {/* Search */}
       <InputGroup>
         <InputGroupAddon align="inline-start">
           <Search />
@@ -105,7 +102,6 @@ export function JobsToolbar({
       </InputGroup>
 
       <div className="flex flex-wrap items-center gap-3">
-        {/* Service filter */}
         <Select
           items={[
             { value: "all", label: "All Services" },
@@ -137,7 +133,6 @@ export function JobsToolbar({
           </SelectContent>
         </Select>
 
-        {/* Status filter */}
         <Select
           items={statusOptions}
           value={statusFilter}
@@ -159,14 +154,12 @@ export function JobsToolbar({
           </SelectContent>
         </Select>
 
-        {/* Date filter */}
         <JobsDateFilter
           dateFrom={dateFrom}
           dateTo={dateTo}
           onFilterChange={onDateFilterChange}
         />
 
-        {/* Archived toggle */}
         <div className="flex items-center gap-2">
           <Checkbox
             id="include-archived"
@@ -191,7 +184,6 @@ export function JobsToolbar({
 
       </div>
 
-      {/* Status bar + refresh */}
       <div className="flex min-w-0 flex-wrap items-center gap-1 text-sm text-muted-foreground">
         {!statusSummary && summaryError && (
           <span role="status" className="flex min-w-0 items-center gap-1">

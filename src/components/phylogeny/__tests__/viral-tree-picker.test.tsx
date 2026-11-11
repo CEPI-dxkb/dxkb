@@ -4,9 +4,8 @@ import userEvent from "@testing-library/user-event";
 import type { PhyloFamilyBlock } from "@/lib/services/organisms/phylogeny";
 import { ViralTreePicker } from "../viral-tree-picker";
 
-// Segment suffixes matter now that a row is keyed by (strain, segment): without
-// them every tree parses to segment `null` and collapses into one row, silently
-// shadowing "Missing NA" behind "Auspice HA" in the nextstrain slot.
+// Segment suffixes matter: a row is keyed by (strain, segment), so without them
+// every tree collapses into one row.
 const block: PhyloFamilyBlock = {
   groups: [
     {
@@ -23,8 +22,6 @@ const block: PhyloFamilyBlock = {
   ],
 };
 
-// Two strains where H5N1 is Archaeopteryx-only and PB2-only, so every facet has
-// at least one dead-end option to disable.
 const mixedBlock: PhyloFamilyBlock = {
   groups: [
     {
@@ -69,10 +66,7 @@ describe("ViralTreePicker", () => {
         />,
       );
 
-      // Archaeopteryx and Auspice share the HA row, so the row's own displayed
-      // name is the primary (first) choice — "XML HA (HA)" — even though the
-      // button we're targeting is the Auspice peer within that same row. A
-      // native <button> only fires click on Enter/Space through the browser's
+      // A native <button> only fires click on Enter/Space through the browser's
       // real default action, which userEvent simulates but fireEvent does not.
       within(row("XML HA (HA)"))
         .getByRole("button", { name: "Open Auspice HA (HA) in Auspice" })
@@ -96,9 +90,6 @@ describe("ViralTreePicker", () => {
       />,
     );
 
-    // NA has no Archaeopteryx tree at all *and* an unavailable Auspice dataset,
-    // so both peer slots in this row read "Not Available" — assert on the
-    // Auspice one specifically via its distinguishing tooltip.
     const unavailable = within(row("Missing NA (NA)")).getByTitle(
       "Auspice dataset is not available",
     );
@@ -161,9 +152,6 @@ describe("ViralTreePicker", () => {
       />,
     );
 
-    // Archaeopteryx and Auspice both cover HA, so they share one row (displayed
-    // under the primary choice's name, "XML HA (HA)") — the aria-label is what
-    // actually distinguishes the two buttons within it.
     const haRow = row("XML HA (HA)");
     expect(
       within(haRow).getByRole("button", {
@@ -265,13 +253,12 @@ describe("ViralTreePicker", () => {
       />,
     );
 
-    // Base UI renders these as <span role="radio"> with aria-disabled, not a
-    // natively disabled input, so assert on the ARIA state.
+    // Base UI renders these as <span role="radio"> with aria-disabled, so
+    // assert on the ARIA state.
     const auspice = screen.getByRole("radio", { name: /Auspice/ });
     expect(auspice).not.toHaveAttribute("aria-disabled", "true");
 
     await user.click(screen.getByRole("radio", { name: /H5N1/ }));
-    // H5N1 has no Auspice trees, and only PB2 among the segments.
     expect(auspice).toHaveAttribute("aria-disabled", "true");
     expect(
       screen.getByRole("radio", { name: /Archaeopteryx/ }),
@@ -286,12 +273,9 @@ describe("ViralTreePicker", () => {
       ).toHaveAttribute("aria-disabled", "true");
     }
 
-    // A disabled option must also be inert, not merely styled.
     await user.click(auspice);
     expect(auspice).toHaveAttribute("aria-checked", "false");
 
-    // Strain is never disabled, so the cascade can relax the viewer rather
-    // than locking the user into a dead end.
     await user.click(screen.getByRole("radio", { name: /All strains/ }));
     await user.click(screen.getByRole("radio", { name: /Auspice/ }));
     expect(screen.getByRole("radio", { name: /H5N1/ })).not.toHaveAttribute(
@@ -310,7 +294,6 @@ describe("ViralTreePicker", () => {
       />,
     );
 
-    // Trailing count is a separate span; drop it to compare the labels alone.
     const segmentNames = () =>
       screen.getAllByRole("checkbox").map((box) =>
         [...(box.parentElement?.childNodes ?? [])]
@@ -321,12 +304,9 @@ describe("ViralTreePicker", () => {
     const before = segmentNames();
     expect(before).toEqual(["PB2", "HA", "NA"]);
 
-    // Options are disabled, never removed — the list must not reflow under the
-    // cursor when a filter narrows the results.
     await user.click(screen.getByRole("radio", { name: /H5N1/ }));
     expect(segmentNames()).toEqual(before);
 
-    // And clearing the filter brings them back enabled.
     await user.click(screen.getByRole("radio", { name: /All strains/ }));
     for (const box of screen.getAllByRole("checkbox")) {
       expect(box).not.toHaveAttribute("aria-disabled", "true");
@@ -347,8 +327,6 @@ describe("ViralTreePicker", () => {
       />,
     );
 
-    // Segments are a union, so counting one must ignore the others; checking HA
-    // must not zero out NA and strand the user on a single segment.
     await user.click(screen.getByRole("checkbox", { name: /^HA/ }));
     const na = screen.getByRole("checkbox", { name: /^NA/ });
     expect(na).not.toHaveAttribute("aria-disabled", "true");
@@ -377,7 +355,6 @@ describe("ViralTreePicker", () => {
 
     await user.click(ha);
     expect(ha).toHaveAttribute("aria-checked", "false");
-    // Result list unchanged: the dead-end click did nothing.
     expect(screen.getByText("XML PB2 (PB2)")).toBeInTheDocument();
   });
 
@@ -401,8 +378,6 @@ describe("ViralTreePicker", () => {
       />,
     );
 
-    // A single-viewer block has nothing to disable — the fieldset is dropped
-    // rather than rendered with one permanently-zero option.
     expect(
       screen.queryByRole("radio", { name: /Archaeopteryx/ }),
     ).not.toBeInTheDocument();
@@ -421,7 +396,7 @@ describe("ViralTreePicker", () => {
       />,
     );
 
-    // jsdom has no layout, so assert the class contract instead of geometry;
+    // jsdom has no layout, so assert the class contract;
     // e2e/tests/organisms/auspice.spec.ts measures the real scroll behaviour.
     const grid = container.querySelector(
       "div.grid.lg\\:grid-cols-\\[260px_1fr\\]",

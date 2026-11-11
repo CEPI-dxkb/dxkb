@@ -26,6 +26,7 @@ import type { CopilotExecutionMode } from "@/lib/copilot/types";
 import { isCopilotTurnActive } from "@/lib/copilot/turn";
 import { CopilotCardActionsProvider } from "./copilot-card-actions";
 import { CopilotComposer } from "./copilot-composer";
+import { useCopilotMarkdownReady } from "./copilot-markdown-lazy";
 import {
   CopilotPanelHeader,
   type CopilotPanelVariant,
@@ -85,6 +86,11 @@ export function CopilotPanel({
     streaming: running,
   });
   const title = useSessionTitle(sessionId);
+  // The chat shows once it is read and the markdown renderer (loading beside
+  // the read) is in, so a stored answer never shows as plain text first and
+  // no answer streams before the renderer.
+  const markdownReady = useCopilotMarkdownReady();
+  const chatLoading = session.isPending || !markdownReady;
 
   const gone = isCopilotSessionGone(session.error);
   const { newChat } = copilot;
@@ -211,7 +217,7 @@ export function CopilotPanel({
           <CopilotTranscript
             sessionId={sessionId}
             detail={session.data}
-            loading={session.isPending}
+            loading={chatLoading}
             loadError={gone ? null : session.error}
             onRetryLoad={() => {
               void session.refetch();
@@ -274,8 +280,8 @@ export function CopilotPanel({
             !model ||
             !sessionId ||
             // Until the chat loads, it is unknown whether this is its first question (which titles
-            // the chat).
-            session.isPending ||
+            // the chat), and an answer could not be drawn yet.
+            chatLoading ||
             // One answer at a time: another chat is answering here, or this one in another tab.
             (anyRunning && !running) ||
             busyElsewhere ||

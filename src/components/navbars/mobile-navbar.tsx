@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
@@ -29,8 +30,26 @@ import { SuBanner } from "@/components/auth/su-banner";
 import { SessionUnverifiedBanner } from "@/components/auth/session-unverified-banner";
 import { JobStatusPill } from "@/components/jobs/job-status-pill";
 import { CopilotLauncher } from "@/components/copilot/copilot-launcher";
-import { MobileSheetNavigation } from "@/components/navbars/mobile-sheet-navigation";
+import { Spinner } from "@/components/ui/spinner";
 import { useRetryKeepingError } from "@/components/views/use-retry-keeping-error";
+
+function SheetNavigationLoading() {
+  return (
+    <div className="flex justify-center py-8">
+      <Spinner />
+    </div>
+  );
+}
+
+// The sheet's sections load on first open (the sheet mounts its content only
+// while open), so they are not in the bundle of every route.
+const MobileSheetNavigation = dynamic(
+  () =>
+    import("@/components/navbars/mobile-sheet-navigation").then(
+      (module) => module.MobileSheetNavigation,
+    ),
+  { ssr: false, loading: SheetNavigationLoading },
+);
 
 const useMobileNavbar = () => {
   const { isAuthenticated, user } = useAuth();

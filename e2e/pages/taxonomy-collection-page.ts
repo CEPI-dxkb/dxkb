@@ -98,13 +98,27 @@ export class TaxonomyCollectionPage {
     }
   }
 
+  private servicesTile() {
+    return this.page.getByRole("button", { name: "SERVICES", exact: true });
+  }
+
   async openServices(): Promise<void> {
-    const services = this.page.getByRole("button", {
-      name: "SERVICES",
-      exact: true,
-    });
+    const services = this.servicesTile();
     await expect(services).toBeEnabled();
     await services.click();
+  }
+
+  /**
+   * Closes the open service chooser with Escape and checks that focus is back
+   * on SERVICES, which was disabled (moving focus to the body) while the IDs
+   * resolved.
+   */
+  async expectEscapeReturnsFocusToServices(): Promise<void> {
+    await this.page.keyboard.press("Escape");
+    await expect(
+      this.page.getByRole("heading", { name: "Use selected Taxa in a service" }),
+    ).toHaveCount(0);
+    await expect(this.servicesTile()).toBeFocused();
   }
 
   async expectServiceOptions(): Promise<void> {

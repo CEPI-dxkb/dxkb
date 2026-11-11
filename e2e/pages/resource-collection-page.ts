@@ -109,6 +109,28 @@ export class ResourceCollectionPage {
     );
   }
 
+  actionTile(label: string) {
+    return this.page.getByRole("button", { name: label, exact: true });
+  }
+
+  actionDialog(name: string) {
+    return this.page.getByRole("dialog", { name });
+  }
+
+  /**
+   * Opens `tile`'s dialog, closes it with Escape and checks focus is back on
+   * the tile (GROUP and SERVICES are disabled while IDs resolve, which drops
+   * focus to the body).
+   */
+  async expectEscapeReturnsFocusToTile(tile: string, dialog: string) {
+    await this.actionTile(tile).click();
+    const opened = this.actionDialog(dialog);
+    await expect(opened).toBeVisible();
+    await this.page.keyboard.press("Escape");
+    await expect(opened).toBeHidden();
+    await expect(this.actionTile(tile)).toBeFocused();
+  }
+
   downloadTile() {
     return this.page.getByRole("button", { name: /^DOWNLOAD/ });
   }

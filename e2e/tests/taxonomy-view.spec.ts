@@ -76,6 +76,7 @@ test.describe("Taxonomy collection", () => {
     await taxonomyPage.expectStaleRows(false);
     await taxonomyPage.expectServiceOptions();
     await expect(page.getByText("Could not complete action")).toHaveCount(0);
+    await taxonomyPage.expectEscapeReturnsFocusToServices();
   });
 
   test("redirects legacy Taxa search URLs", async ({ page }) => {

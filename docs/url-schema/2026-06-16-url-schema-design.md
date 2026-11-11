@@ -717,11 +717,16 @@ follow-up. Guidance for the next engineer:
 
 - **Why deferred:** the search UX is the motivating use case but depends on the List views
   rendering real results (8.1). Repointing to placeholder lists would look broken.
-- **Next steps:** in `search-bar.tsx` / `command-palette.tsx`, replace the
-  `/search?q=…&searchtype=…` push with a push to `/{segment}?keyword=…`, mapping the
-  selected `searchtype` → `segment` via the registry `searchType` field (already populated).
-  Decide the fate of the catch-all `/search` page (keep as "everything" aggregator, or
-  retire). Update the related Vitest specs in `src/components/search/__tests__/`.
+- **Current state:** the per-type repoint is done. `search-bar.tsx` pushes
+  `searchHref(searchType, query)` (`src/constants/search-info.ts`), which sends every
+  descriptor with `route.status: "canonical"` to `/{segment}?keyword=…` (plus the
+  descriptor's `params`). Only "All Data Types" (`id: "everything"`,
+  `route.status: "legacy"`) still goes to `/search?type=everything&q=…`, as does the
+  command palette's search command (`runSearch` in `command-palette-body.tsx`;
+  `command-palette.tsx` is the eager shell that owns the open state).
+- **Next steps:** decide the fate of the catch-all `/search` page (keep it as the
+  "everything" aggregator, or retire it and repoint those two pushes). Update the related
+  Vitest specs in `src/components/search/__tests__/` with that change.
 - **Dependency:** 8.1 (lists must render real data first).
 
 ### 8.4 Sitemap, JSON-LD, SSG/ISR per type

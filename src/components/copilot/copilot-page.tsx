@@ -3,10 +3,15 @@
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { isCopilotTurnActive } from "@/lib/copilot/turn";
+import { loadCopilotMarkdown } from "./copilot-markdown-lazy";
 import { CopilotPanel } from "./copilot-panel";
 import { useCopilot } from "./copilot-provider";
 import { CopilotSessionList } from "./copilot-session-list";
 import { copilotName } from "@/lib/copilot/name";
+
+// Start loading the markdown renderer with the page, ahead of the chat read,
+// which waits for it.
+if (typeof window !== "undefined") void loadCopilotMarkdown();
 
 export function CopilotPage() {
   const copilot = useCopilot();

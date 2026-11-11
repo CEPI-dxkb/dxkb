@@ -21,10 +21,8 @@ import {
   ServiceFieldLabel,
   ServiceFieldSubLabel,
 } from "@/components/services/form-ui/service-field";
-import {
-  ServiceInput,
-  ServiceNumberInput,
-} from "@/components/services/form-ui/service-input";
+import { ServiceInput } from "@/components/services/form-ui/service-input";
+import { ServiceNumberInput } from "@/components/services/form-ui/service-number-input";
 import { ServiceRadioGroup } from "@/components/services/form-ui/service-radio-group";
 import {
   minContigCoverageMax,

@@ -191,6 +191,24 @@ describe("CollectionSelectionActions", () => {
     expect(onError).not.toHaveBeenCalledWith(expect.any(String));
   });
 
+  it("keeps the group's IDs when SERVICES resolves a different selection", async () => {
+    const user = userEvent.setup();
+    const resolveActionRows = vi
+      .fn()
+      .mockResolvedValueOnce([{ genome_ids: ["11320.1"] }])
+      .mockResolvedValueOnce([{ genome_ids: ["11320.2"] }]);
+    renderStrainActions({ resolveActionRows });
+
+    await user.click(screen.getByRole("button", { name: /^group$/i }));
+    await screen.findByTestId("selection-group");
+    await user.click(screen.getByRole("button", { name: /^services$/i }));
+
+    expect(await screen.findByTestId("selection-services")).toHaveTextContent(
+      "11320.2",
+    );
+    expect(screen.getByTestId("selection-group")).toHaveTextContent("11320.1");
+  });
+
   it.each([
     {
       idKind: "genome" as const,

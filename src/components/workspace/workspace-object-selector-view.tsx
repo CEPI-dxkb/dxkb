@@ -133,6 +133,8 @@ export function WorkspaceObjectSelectorView({
             title={browse.label}
             disabled={browse.disabled}
             onClick={browse.onClick}
+            onPointerEnter={browse.onPreload}
+            onFocus={browse.onPreload}
           >
             <FolderOpen />
           </Button>
@@ -174,7 +176,13 @@ interface WorkspaceObjectSelectorViewProps {
   onObjectClick: (object: WorkspaceObject) => void;
   onObjectHighlight: (index: number) => void;
   disabled?: boolean;
-  browse?: { label: string; disabled: boolean; onClick: () => void } | null;
+  browse?: {
+    label: string;
+    disabled: boolean;
+    onClick: () => void;
+    /** Starts loading what Browse opens, on pointer over or focus. */
+    onPreload?: () => void;
+  } | null;
 }
 
 function WorkspaceObjectDropdown({

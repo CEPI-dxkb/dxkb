@@ -1,6 +1,11 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+// The site's overrides of Mol*'s skin load with the viewer, not in globals.css
+// on every route. Imported before the skin so the skin still comes after them
+// (as it did when they sat in globals.css), so a tie of equal specificity
+// resolves as it used to.
+import "@/styles/molstar-theme.css";
 import "molstar/lib/mol-plugin-ui/skin/light.scss";
 
 import type { StructureSource } from "@/lib/protein-structure-view/source";

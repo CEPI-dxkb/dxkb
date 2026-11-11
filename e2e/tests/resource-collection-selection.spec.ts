@@ -5,6 +5,7 @@ import {
   genomeScenarioOverrides,
 } from "../fixtures/overrides";
 import { ResourceCollectionPage } from "../pages";
+import { e2eSignedInStatePath } from "../auth/storage-state";
 
 test.use({ storageState: { cookies: [], origins: [] } });
 
@@ -74,4 +75,39 @@ test("the header checkbox follows the page selection and the all-results selecti
   await expect(collection.allResultsSelectedNotice(401)).toHaveCount(0);
   await expect(collection.rowCheckbox(firstRow.genome_id)).not.toBeChecked();
   await expect(collection.rowCheckbox(secondRow.genome_id)).not.toBeChecked();
+});
+
+test.describe("signed in", () => {
+  test.use({ storageState: e2eSignedInStatePath });
+
+  // Closing an action dialog hands focus back to the tile that opened it, not
+  // the body (see expectEscapeReturnsFocusToTile).
+  for (const { tile, dialog } of [
+    { tile: "GROUP", dialog: "Add Genomes to Group" },
+    { tile: "SERVICES", dialog: "Use selected Genomes in a service" },
+    { tile: "COPY", dialog: "Copy selected Genomes (1)" },
+  ]) {
+    test(`Escape on the ${tile} dialog returns focus to ${tile}`, async ({
+      page,
+    }) => {
+      await applyBackendMocks(page, {
+        overrides: [
+          pageOneOverride,
+          ...genomeScenarioOverrides,
+          ...emptyBackendFallbackOverrides,
+        ],
+      });
+      const collection = new ResourceCollectionPage(
+        page,
+        "genome",
+        "genome",
+        firstRow.genome_id,
+        firstRow.genome_name,
+      );
+      await collection.goto("influenza");
+      await collection.rowCheckbox(firstRow.genome_id).check();
+
+      await collection.expectEscapeReturnsFocusToTile(tile, dialog);
+    });
+  }
 });

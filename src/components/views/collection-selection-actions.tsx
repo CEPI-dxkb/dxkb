@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useRef, useState } from "react";
@@ -11,7 +12,6 @@ import {
   type SearchActionId,
 } from "@/components/search/search-action-bar";
 import { noServicesReason } from "@/components/search/search-action-policy";
-import { SelectionToGroupDialog } from "@/components/workspace/selection-to-group-dialog";
 import type { DataTableColumn } from "@/components/shared/data-table";
 import { useAuth } from "@/lib/auth/provider";
 import { useWorkspaceRepository } from "@/contexts/workspace-repository-context";
@@ -107,6 +107,23 @@ interface CollectionSelectionActionsProps {
   onOtherAction?: (actionId: SearchActionId) => void;
 }
 
+// The group dialog loads on the group action's first run, preloaded while the
+// selection's IDs resolve.
+const SelectionToGroupDialog = dynamic(
+  () =>
+    import("@/components/workspace/selection-to-group-dialog").then(
+      (module) => module.SelectionToGroupDialog,
+    ),
+  { ssr: false },
+);
+
+// A failed load is left to the render, which reports it.
+function preloadGroupDialog(): void {
+  import("@/components/workspace/selection-to-group-dialog").catch(
+    () => undefined,
+  );
+}
+
 function isOpenableListHref(href: string | null): href is string {
   return !!href && href.length <= selectionListMaxUrlLength;
 }
@@ -142,13 +159,22 @@ export function CollectionSelectionActions({
   const { user, isAuthenticated } = useAuth();
   const workspaceRepository = useWorkspaceRepository("authenticated");
   const [selectionIds, setSelectionIds] = useState<string[]>([]);
+  // Its own slot: the group dialog loads on demand, and a SERVICES run during
+  // that load must not swap the IDs the group is created from.
+  const [groupIds, setGroupIds] = useState<string[]>([]);
   const [isCopyOpen, setIsCopyOpen] = useState(false);
   const [isServiceOpen, setIsServiceOpen] = useState(false);
   const [isGroupOpen, setIsGroupOpen] = useState(false);
+  // Mounted from the first open on, so it keeps its close animation.
+  const [hasOpenedGroup, setHasOpenedGroup] = useState(false);
   const [loadingActionIds, setLoadingActionIds] = useState<SearchActionId[]>(
     [],
   );
   const pendingActionRef = useRef<SearchActionId | null>(null);
+  // Each dialog hands focus back to the button that opened it when it closes.
+  const copyButtonRef = useRef<HTMLButtonElement>(null);
+  const servicesButtonRef = useRef<HTMLButtonElement>(null);
+  const groupButtonRef = useRef<HTMLButtonElement>(null);
   const singularLabel = singularLabelProp ?? label.replace(/s$/, "");
   const groupCopy = groupTargetByKind[idKind];
 
@@ -191,7 +217,7 @@ export function CollectionSelectionActions({
       setIsCopyOpen(true);
       return;
     }
-    // `selectionIds` is one shared slot; a ref rejects an overlapping
+    // One resolution at a time: a ref rejects an overlapping
     // resolution in the same tick, which disabled state alone cannot.
     if (pendingActionRef.current) return;
     pendingActionRef.current = actionId;
@@ -243,7 +269,8 @@ export function CollectionSelectionActions({
         );
         setIsServiceOpen(true);
       } else if (opensGroup) {
-        setSelectionIds(
+        preloadGroupDialog();
+        setGroupIds(
           await resolveSelectionIds({
             maxRows: selectionGroupMaxRows,
             maxIds: selectionGroupMaxIds,
@@ -251,6 +278,7 @@ export function CollectionSelectionActions({
             advice: "Narrow the selection and try again.",
           }),
         );
+        setHasOpenedGroup(true);
         setIsGroupOpen(true);
       }
     } catch (error) {
@@ -350,6 +378,11 @@ export function CollectionSelectionActions({
               }
         }
         disabledActions={resolvedDisabledActions}
+        actionRefs={{
+          copyRows: copyButtonRef,
+          services: servicesButtonRef,
+          group: groupButtonRef,
+        }}
         onError={onError}
         onAction={(actionId) => {
           void runAction(actionId);
@@ -361,6 +394,7 @@ export function CollectionSelectionActions({
         label={label}
         selectedCount={selectedCount}
         onCopy={copySelectedRows}
+        finalFocus={copyButtonRef}
       />
       <SelectionServiceChooser
         open={isServiceOpen}
@@ -370,12 +404,14 @@ export function CollectionSelectionActions({
         kind={idKind}
         workspaceUsername={user ? workspaceUsername(user) : undefined}
         signInHref={signInHref}
+        finalFocus={servicesButtonRef}
       />
-      {user && (
+      {user && hasOpenedGroup && (
         <SelectionToGroupDialog
           open={isGroupOpen}
           onOpenChange={setIsGroupOpen}
-          ids={selectionIds}
+          finalFocus={groupButtonRef}
+          ids={groupIds}
           groupKind={idKind}
           defaultFolder={`/${workspaceUsername(user)}/home/${groupCopy.title}s`}
           onCreate={async (folderPath, name) => {
@@ -383,7 +419,7 @@ export function CollectionSelectionActions({
               path: folderPath.replace(/\/$/, ""),
               name,
               ...groupCopy.createInput,
-              ids: selectionIds,
+              ids: groupIds,
             });
             invalidateWorkspace(queryClient);
             toast.success(
@@ -394,7 +430,7 @@ export function CollectionSelectionActions({
             await workspaceRepository.appendToIdGroup({
               path,
               idField: groupCopy.createInput.idField,
-              ids: selectionIds,
+              ids: groupIds,
             });
             invalidateWorkspace(queryClient);
             toast.success(

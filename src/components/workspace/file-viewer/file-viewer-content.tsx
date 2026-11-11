@@ -1,14 +1,30 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import type { WorkspaceItem } from "@/lib/services/workspace/domain";
+import { Spinner } from "@/components/ui/spinner";
 import { resolveViewer, iframeNeedsScripts } from "./file-viewer-registry";
 import { TextViewer } from "./viewers/text-viewer";
 import { JsonViewer } from "./viewers/json-viewer";
 import { ImageViewer } from "./viewers/image-viewer";
 import { SvgViewer } from "./viewers/svg-viewer";
-import { CsvViewer } from "./viewers/csv-viewer";
 import { IframeViewer } from "./viewers/iframe-viewer";
 import { FallbackViewer } from "./viewers/fallback-viewer";
+
+function ViewerLoading() {
+  return (
+    <div className="flex size-full items-center justify-center">
+      <Spinner />
+    </div>
+  );
+}
+
+// csv-parse (and the Buffer polyfill it needs) loads with the first table
+// preview, so the workspace browser does not carry it in its first bundle.
+const CsvViewer = dynamic(
+  () => import("./viewers/csv-viewer").then((module) => module.CsvViewer),
+  { ssr: false, loading: ViewerLoading },
+);
 
 interface FileViewerContentProps {
   item: WorkspaceItem;

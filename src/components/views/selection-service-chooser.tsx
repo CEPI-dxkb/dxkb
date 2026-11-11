@@ -1,5 +1,6 @@
 "use client";
 
+import type { RefObject } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import {
@@ -30,6 +31,13 @@ interface SelectionServiceChooserProps {
    * stays mounted.
    */
   signInHref: string;
+  /**
+   * The control that opened the dialog, which takes focus back when it closes.
+   * The dialog has no `DialogTrigger`, so it otherwise returns focus to whatever
+   * was focused as it opened: the body, when the opening button was disabled
+   * while its action loaded.
+   */
+  finalFocus?: RefObject<HTMLElement | null>;
 }
 
 interface ServiceOption {
@@ -162,6 +170,7 @@ export function SelectionServiceChooser({
   kind = "genome",
   workspaceUsername,
   signInHref,
+  finalFocus,
 }: SelectionServiceChooserProps) {
   const {
     failure,
@@ -188,7 +197,7 @@ export function SelectionServiceChooser({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent finalFocus={finalFocus}>
         <DialogHeader>
           <DialogTitle>
             {isChoosingBlastSource

@@ -159,6 +159,9 @@ export function CollectionSelectionActions({
   const { user, isAuthenticated } = useAuth();
   const workspaceRepository = useWorkspaceRepository("authenticated");
   const [selectionIds, setSelectionIds] = useState<string[]>([]);
+  // Its own slot: the group dialog loads on demand, and a SERVICES run during
+  // that load must not swap the IDs the group is created from.
+  const [groupIds, setGroupIds] = useState<string[]>([]);
   const [isCopyOpen, setIsCopyOpen] = useState(false);
   const [isServiceOpen, setIsServiceOpen] = useState(false);
   const [isGroupOpen, setIsGroupOpen] = useState(false);
@@ -214,7 +217,7 @@ export function CollectionSelectionActions({
       setIsCopyOpen(true);
       return;
     }
-    // `selectionIds` is one shared slot; a ref rejects an overlapping
+    // One resolution at a time: a ref rejects an overlapping
     // resolution in the same tick, which disabled state alone cannot.
     if (pendingActionRef.current) return;
     pendingActionRef.current = actionId;
@@ -267,7 +270,7 @@ export function CollectionSelectionActions({
         setIsServiceOpen(true);
       } else if (opensGroup) {
         preloadGroupDialog();
-        setSelectionIds(
+        setGroupIds(
           await resolveSelectionIds({
             maxRows: selectionGroupMaxRows,
             maxIds: selectionGroupMaxIds,
@@ -408,7 +411,7 @@ export function CollectionSelectionActions({
           open={isGroupOpen}
           onOpenChange={setIsGroupOpen}
           finalFocus={groupButtonRef}
-          ids={selectionIds}
+          ids={groupIds}
           groupKind={idKind}
           defaultFolder={`/${workspaceUsername(user)}/home/${groupCopy.title}s`}
           onCreate={async (folderPath, name) => {
@@ -416,7 +419,7 @@ export function CollectionSelectionActions({
               path: folderPath.replace(/\/$/, ""),
               name,
               ...groupCopy.createInput,
-              ids: selectionIds,
+              ids: groupIds,
             });
             invalidateWorkspace(queryClient);
             toast.success(
@@ -427,7 +430,7 @@ export function CollectionSelectionActions({
             await workspaceRepository.appendToIdGroup({
               path,
               idField: groupCopy.createInput.idField,
-              ids: selectionIds,
+              ids: groupIds,
             });
             invalidateWorkspace(queryClient);
             toast.success(

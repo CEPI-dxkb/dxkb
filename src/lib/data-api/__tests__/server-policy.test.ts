@@ -2,6 +2,8 @@
 // guard.
 vi.mock("server-only", () => ({}));
 
+import { cookies } from "next/headers";
+
 import { setTestSession, testCookieStore } from "@/test-helpers/api-route-helpers";
 import { DataApiError } from "../repository";
 import type { DataApiRequest } from "../types";
@@ -42,13 +44,17 @@ afterEach(() => {
 
 const notConfiguredForTest = { message: "not configured for this test" };
 
-async function resolve(readScope: DataApiReadScope) {
+async function resolve(
+  readScope: DataApiReadScope,
+  { anonymous }: { anonymous?: true } = {},
+) {
   const fetchMock = vi
     .fn<typeof fetch>()
     .mockResolvedValue(jsonResponse([{ genome_id: "1.1" }]));
   const resolved = await resolveServerDataRepository({
     readScope,
     notConfigured: notConfiguredForTest,
+    anonymous,
     fetch: fetchMock,
   });
   await resolved.repository.member("genome", {
@@ -131,6 +137,58 @@ describe("resolveServerDataRepository cache policy", () => {
     const { sharedCache } = await resolve("member");
 
     expect(sharedCache).toBe(true);
+  });
+});
+
+describe("resolveServerDataRepository anonymous", () => {
+  beforeEach(() => {
+    process.env.DATA_API_URL = "https://data.example";
+  });
+
+  it("never reads the session and sends no token for a signed-in visitor", async () => {
+    setTestSession({ token: "secret-token" });
+
+    const { sharedCache, init, authorization } =
+      await resolve("member", { anonymous: true });
+
+    expect(cookies).not.toHaveBeenCalled();
+    expect(authorization).toBeNull();
+    expect(sharedCache).toBe(true);
+    expect(init).toMatchObject({
+      cache: "force-cache",
+      next: { revalidate: anonymousMemberRevalidateSeconds },
+    });
+  });
+
+  it("does not cache an anonymous query read", async () => {
+    const { sharedCache, init } = await resolve("query", { anonymous: true });
+
+    expect(sharedCache).toBe(false);
+    expect(init).toMatchObject({ cache: "no-store", next: undefined });
+  });
+
+  it("does not cache an anonymous member read during an E2E run", async () => {
+    process.env.E2E_MOCK_ENABLED = "1";
+
+    const { sharedCache, init, authorization } =
+      await resolve("member", { anonymous: true });
+
+    expect(sharedCache).toBe(false);
+    expect(init).toMatchObject({ cache: "no-store", next: undefined });
+    expect(authorization).toBeNull();
+  });
+
+  it("still reports missing configuration first", async () => {
+    delete process.env.DATA_API_URL;
+
+    await expect(
+      resolveServerDataRepository({
+        readScope: "member",
+        notConfigured: notConfiguredForTest,
+        anonymous: true,
+      }),
+    ).rejects.toMatchObject({ code: "not_configured" });
+    expect(cookies).not.toHaveBeenCalled();
   });
 });
 

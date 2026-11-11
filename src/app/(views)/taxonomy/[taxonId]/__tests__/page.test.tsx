@@ -6,9 +6,9 @@ import { TaxonomyNotFoundError } from "@/lib/services/organisms/taxonomy";
 import { server } from "@/test-helpers/msw-server";
 import { connectTimeout, maintenancePage } from "@/test-helpers/upstream-failures";
 
-const { fetchOrganismTaxonomyMock, metadataSpy, notFoundSpy } = vi.hoisted(
+const { getSharedOrganismTaxonomyMock, metadataSpy, notFoundSpy } = vi.hoisted(
   () => ({
-    fetchOrganismTaxonomyMock: vi.fn(),
+    getSharedOrganismTaxonomyMock: vi.fn(),
     metadataSpy: vi.fn(),
     notFoundSpy: vi.fn(() => {
       throw new Error("NEXT_NOT_FOUND");
@@ -22,8 +22,8 @@ vi.mock("@/lib/services/organisms/taxonomy", async () => {
   >("@/lib/services/organisms/taxonomy");
   return {
     ...actual,
-    fetchOrganismTaxonomy: (...args: unknown[]) =>
-      fetchOrganismTaxonomyMock(...args) as unknown,
+    getSharedOrganismTaxonomy: (...args: unknown[]) =>
+      getSharedOrganismTaxonomyMock(...args) as unknown,
   };
 });
 
@@ -48,7 +48,7 @@ const viralTaxon = {
 };
 
 beforeEach(() => {
-  fetchOrganismTaxonomyMock.mockResolvedValue(bacterialTaxon);
+  getSharedOrganismTaxonomyMock.mockResolvedValue(bacterialTaxon);
 });
 
 vi.mock(
@@ -128,7 +128,7 @@ describe("TaxonomyPage", () => {
   });
 
   it("shows Interactions disabled (not removed) for viral taxa", async () => {
-    fetchOrganismTaxonomyMock.mockResolvedValueOnce(viralTaxon);
+    getSharedOrganismTaxonomyMock.mockResolvedValueOnce(viralTaxon);
     const node = await TaxonomyPage({
       params: Promise.resolve({ taxonId: "11320" }),
       searchParams: Promise.resolve({}),
@@ -194,7 +194,7 @@ describe("TaxonomyPage", () => {
   });
 
   it("passes showAmr=false for viral taxa", async () => {
-    fetchOrganismTaxonomyMock.mockResolvedValueOnce(viralTaxon);
+    getSharedOrganismTaxonomyMock.mockResolvedValueOnce(viralTaxon);
     metadataSpy.mockClear();
 
     const node = await TaxonomyPage({
@@ -211,7 +211,7 @@ describe("TaxonomyPage", () => {
   it.each(["interactions", "no-such-tab"])(
     "falls back to Overview for the unavailable tab %s on a viral taxon",
     async (tab) => {
-      fetchOrganismTaxonomyMock.mockResolvedValueOnce(viralTaxon);
+      getSharedOrganismTaxonomyMock.mockResolvedValueOnce(viralTaxon);
       metadataSpy.mockClear();
 
       const node = await TaxonomyPage({
@@ -232,9 +232,9 @@ describe("TaxonomyPage", () => {
     },
   );
 
-  it("calls notFound when fetchOrganismTaxonomy throws TaxonomyNotFoundError", async () => {
+  it("calls notFound when the lookup throws TaxonomyNotFoundError", async () => {
     notFoundSpy.mockClear();
-    fetchOrganismTaxonomyMock.mockRejectedValueOnce(
+    getSharedOrganismTaxonomyMock.mockRejectedValueOnce(
       new TaxonomyNotFoundError(999),
     );
 
@@ -269,7 +269,7 @@ describe("TaxonomyPage", () => {
     it.each(["interactions", "no-such-tab"])(
       "names Overview, which the page opens instead, for ?tab=%s on a viral taxon",
       async (tab) => {
-        fetchOrganismTaxonomyMock.mockResolvedValueOnce(viralTaxon);
+        getSharedOrganismTaxonomyMock.mockResolvedValueOnce(viralTaxon);
         await expect(
           generateMetadata({
             params: Promise.resolve({ taxonId: "11320" }),
@@ -284,7 +284,7 @@ describe("TaxonomyPage", () => {
       ["a missing taxon", new TaxonomyNotFoundError(999)],
       ["an outage", new Error("The BV-BRC data service did not respond.")],
     ])("keeps the app's title for %s without throwing", async (_, error) => {
-      fetchOrganismTaxonomyMock.mockRejectedValueOnce(error);
+      getSharedOrganismTaxonomyMock.mockRejectedValueOnce(error);
       await expect(
         generateMetadata({
           params: Promise.resolve({ taxonId: "999" }),
@@ -300,7 +300,7 @@ describe("TaxonomyPage", () => {
           searchParams: Promise.resolve({}),
         }),
       ).resolves.toEqual({});
-      expect(fetchOrganismTaxonomyMock).not.toHaveBeenCalled();
+      expect(getSharedOrganismTaxonomyMock).not.toHaveBeenCalled();
       expect(notFoundSpy).not.toHaveBeenCalled();
     });
   });
@@ -313,7 +313,7 @@ describe("TaxonomyPage", () => {
       const actual = await vi.importActual<
         typeof import("@/lib/services/organisms/taxonomy")
       >("@/lib/services/organisms/taxonomy");
-      fetchOrganismTaxonomyMock.mockImplementation(actual.fetchOrganismTaxonomy);
+      getSharedOrganismTaxonomyMock.mockImplementation(actual.getSharedOrganismTaxonomy);
       notFoundSpy.mockClear();
     });
 
@@ -347,6 +347,60 @@ describe("TaxonomyPage", () => {
         "/taxonomy",
       );
       expect(notFoundSpy).not.toHaveBeenCalled();
+    });
+
+    it("renders a cold taxon unavailable without a request once two outages opened the breaker", async () => {
+      const requested: string[] = [];
+      server.use(
+        http.get(`${baseUrl}/taxonomy/:taxonId`, ({ params }) => {
+          requested.push(String(params.taxonId));
+          return maintenancePage();
+        }),
+      );
+      for (const taxonId of ["1773", "1774"]) {
+        await TaxonomyPage({
+          params: Promise.resolve({ taxonId }),
+          searchParams: Promise.resolve({}),
+        });
+      }
+
+      render(
+        await TaxonomyPage({
+          params: Promise.resolve({ taxonId: "561" }),
+          searchParams: Promise.resolve({}),
+        }),
+      );
+
+      const alert = screen.getByRole("alert");
+      expect(
+        within(alert).getByRole("heading", { name: "Taxon 561 could not be loaded" }),
+      ).toBeInTheDocument();
+      expect(alert).toHaveTextContent(/503/);
+      expect(alert).toHaveTextContent(/Site Maintenance/);
+      expect(alert).not.toHaveTextContent("1774");
+      expect(requested).toEqual(["1773", "1774"]);
+      expect(notFoundSpy).not.toHaveBeenCalled();
+    });
+
+    it("logs a failed lookup once, not on each render of the cached outage", async () => {
+      server.use(http.get(`${baseUrl}/taxonomy/1773`, () => maintenancePage()));
+      const logged = vi.spyOn(console, "error").mockImplementation(() => undefined);
+      const renderPage = () =>
+        TaxonomyPage({
+          params: Promise.resolve({ taxonId: "1773" }),
+          searchParams: Promise.resolve({}),
+        });
+
+      await renderPage();
+      expect(
+        logged.mock.calls.filter(([message]) => String(message).includes("taxonomy/1773")),
+      ).toEqual([["taxonomy/1773: taxonomy lookup failed", expect.anything()]]);
+      logged.mockClear();
+
+      render(await renderPage());
+
+      expect(screen.getByRole("alert")).toHaveTextContent(/503/);
+      expect(logged).not.toHaveBeenCalled();
     });
 
     it("names the unreachable service for a network failure", async () => {

@@ -60,10 +60,6 @@ const boostQuery = [
   "taxon_rank:*",
 ];
 
-function encodeSolrQuery(query: string): string {
-  return query.replace(/ /g, "%20");
-}
-
 function buildSolrQuery(
   query: string,
   opts: {
@@ -104,26 +100,26 @@ function buildSolrQuery(
     searchQuery += ` AND (${boostQuery.join(" OR ")})`;
   }
 
-  const params: string[] = [];
+  const params = new URLSearchParams();
 
-  params.push(`q=${encodeSolrQuery(searchQuery)}`);
-  params.push(`fl=taxon_name,taxon_id,taxon_rank,lineage_names,division`);
-  params.push(`qf=taxon_name`);
+  params.append("q", searchQuery);
+  params.append("fl", "taxon_name,taxon_id,taxon_rank,lineage_names,division");
+  params.append("qf", "taxon_name");
 
   if (opts.includeEukaryotes && !opts.setBacteriophage) {
-    params.push(`fq=lineage_ids:2759`);
+    params.append("fq", "lineage_ids:2759");
   }
   if (opts.includeBacteria && !opts.setBacteriophage) {
-    params.push(`fq=lineage_ids:2`);
+    params.append("fq", "lineage_ids:2");
   }
   if (opts.includeViruses && !opts.setBacteriophage) {
-    params.push(`fq=lineage_ids:10239`);
+    params.append("fq", "lineage_ids:10239");
   }
   if (opts.setBacteriophage) {
-    params.push(`fq=taxon_name:*phage*`);
+    params.append("fq", "taxon_name:*phage*");
   }
 
-  return params.join("&");
+  return params.toString();
 }
 
 async function searchTaxonByName(
@@ -140,7 +136,7 @@ async function searchTaxonByName(
 ): Promise<TaxonomyItem[]> {
   const queryParams = buildSolrQuery(query.trim(), filterOpts);
 
-  // The query string is built by hand (repeated `fq`, spaces-only encoding), so it goes on the URL, not `params`.
+  // `buildSolrQuery` serializes the repeated `fq`, so the string goes on the URL rather than apiGet's `params`.
   return apiGet<TaxonomyItem[]>(`${apiUrl}?${queryParams}`, undefined, {
     headers: {
       Accept: "application/json",

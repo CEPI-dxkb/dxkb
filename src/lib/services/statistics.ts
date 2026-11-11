@@ -5,6 +5,7 @@ import {
   upstreamTimeoutMs,
 } from "@/lib/api/upstream-failure";
 import { getRequiredEnv } from "@/lib/env";
+import { createSharedCache } from "@/lib/shared-cache";
 import { formatUserFacingErrorMessage } from "@/lib/utils";
 
 export type StatisticKey =
@@ -124,4 +125,45 @@ export async function fetchDbStatistics(
         ? formatUserFacingErrorMessage(failures[0], "")
         : null,
   };
+}
+
+interface CachedStatistics {
+  statistics: DbStatistics;
+  /** The latest fetch loaded every count. */
+  complete: boolean;
+}
+
+const completeFreshMs = 3_600_000;
+const incompleteFreshMs = 60_000;
+
+function mergeStatistics(
+  latest: DbStatistics,
+  previous: DbStatistics | undefined,
+): CachedStatistics {
+  const counts = {} as StatisticCounts;
+  for (const { key } of dbStatisticsDefinitions) {
+    counts[key] = latest.counts[key] ?? previous?.counts[key] ?? null;
+  }
+  const known = Object.values(counts).some((count) => count !== null);
+  return {
+    statistics: {
+      counts,
+      unavailableReason: known ? null : latest.unavailableReason,
+    },
+    complete: Object.values(latest.counts).every((count) => count !== null),
+  };
+}
+
+// `fetchDbStatistics` settles every count, so it throws only for a missing
+// env var, which must not be cached.
+const dbStatisticsCache = createSharedCache<"all", CachedStatistics>({
+  name: "db-statistics",
+  load: async (_key, previous) =>
+    mergeStatistics(await fetchDbStatistics(), previous?.statistics),
+  freshMs: (value) => (value.complete ? completeFreshMs : incompleteFreshMs),
+  retryMs: incompleteFreshMs,
+});
+
+export async function getDbStatistics(): Promise<DbStatistics> {
+  return (await dbStatisticsCache.get("all")).statistics;
 }

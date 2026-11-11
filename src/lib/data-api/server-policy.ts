@@ -35,6 +35,7 @@ export interface DataApiNotConfiguredPolicy {
 export interface ResolveServerDataRepositoryOptions {
   readScope: DataApiReadScope;
   notConfigured: DataApiNotConfiguredPolicy;
+  anonymous?: true;
   /** Test seam only: lets a test spy on the `cache`/`next.revalidate` init. */
   fetch?: typeof fetch;
 }
@@ -51,6 +52,8 @@ export interface ResolvedServerDataRepository {
 /**
  * Single place for Data API auth, configuration and cache policy: members only,
  * never in an E2E run, with the base-URL check before `readSession()`.
+ * `anonymous` never calls `readSession()`, so the repository has no token and
+ * follows the anonymous cache policy; a read shared across visitors needs it.
  * The `DataApiError(…, 500, "not_configured")` code is a contract:
  * `protein-structure-view/server.ts` narrows on it.
  * Deliberately not wrapped in React `cache()`, which would share one repository
@@ -59,6 +62,7 @@ export interface ResolvedServerDataRepository {
 export async function resolveServerDataRepository({
   readScope,
   notConfigured,
+  anonymous,
   fetch: fetchOverride,
 }: ResolveServerDataRepositoryOptions): Promise<ResolvedServerDataRepository> {
   const baseUrl = [
@@ -69,7 +73,7 @@ export async function resolveServerDataRepository({
     if (notConfigured.log) console.error(notConfigured.log);
     throw new DataApiError(notConfigured.message, 500, "not_configured");
   }
-  const session = await readSession();
+  const session = anonymous ? null : await readSession();
   // Authenticated responses are per-user, E2E ones per-run, and `query` reads
   // near-unique, so none may be shared.
   const sharedCache =

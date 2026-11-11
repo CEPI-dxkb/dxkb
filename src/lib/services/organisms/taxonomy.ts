@@ -1,13 +1,18 @@
+import "server-only";
+
 import {
   describeUpstreamFailure,
   upstreamServices,
 } from "@/lib/api/upstream-failure";
+import { isUpstreamDown } from "@/lib/api/upstream-outage";
+import { createSharedCache } from "@/lib/shared-cache";
 
 import type { OrganismFetchOptions, OrganismTaxonomy } from "./types";
 import {
   fetchOrganism,
   getBvBrcWebsiteApiBaseUrl,
   numberOrNull,
+  organismFetchTimeoutMs,
   organismResponseError,
   readJsonObject,
   requiredNumber,
@@ -93,6 +98,49 @@ export async function fetchOrganismTaxonomy(
   };
 }
 
+/** Logs an outage once per failed load; a cached failure is served unlogged. */
+async function loadOrganismTaxonomy(taxonId: number): Promise<OrganismTaxonomy> {
+  try {
+    return await fetchOrganismTaxonomy(taxonId);
+  } catch (error) {
+    if (isTaxonomyOutage(error)) {
+      console.error(`taxonomy/${String(taxonId)}: taxonomy lookup failed`, error);
+    }
+    throw error;
+  }
+}
+
+// A 404 is cached as briefly as an outage because a new taxon may appear, and
+// a refresh's 404 replaces a deleted taxon that an outage would keep. A
+// malformed payload or a missing env var is not cached.
+const organismTaxonomyCache = createSharedCache<number, OrganismTaxonomy>({
+  name: "organism-taxonomy",
+  load: (taxonId) => loadOrganismTaxonomy(taxonId),
+  freshMs: 60 * 60 * 1000,
+  retryMs: 60_000,
+  maxEntries: 2000,
+  cacheError: (error) =>
+    error instanceof TaxonomyNotFoundError || isTaxonomyOutage(error),
+  replacesValue: (error) => error instanceof TaxonomyNotFoundError,
+  breaker: {
+    trips: (error, elapsedMs) =>
+      isUpstreamDown(error, upstreamServices.dataApi, {
+        elapsedMs,
+        budgetMs: organismFetchTimeoutMs,
+      }),
+  },
+});
+
+/**
+ * `fetchOrganismTaxonomy` through the process-wide cache. A cached failure is
+ * the same error object for every visitor, so callers must not mutate it.
+ */
+export function getSharedOrganismTaxonomy(
+  taxonId: number,
+): Promise<OrganismTaxonomy> {
+  return organismTaxonomyCache.get(taxonId);
+}
+
 /**
  * Fixed landing roots (Bacteria, Viruses, cellular organisms); they stand in
  * when the lookup fails, leaving only the genome count unknown.
@@ -151,22 +199,19 @@ export function staticLandingRootTaxonomy(
 }
 
 /**
- * A landing root's taxonomy: the fetched record, or the static one during an
- * outage (logged); any other failure or taxon is rethrown.
+ * A landing root's taxonomy: the shared record, or the static one during an
+ * outage or after a 404; any other failure or taxon is rethrown.
  */
 export async function fetchLandingRootTaxonomy(
   taxonId: number,
-  options: OrganismFetchOptions = {},
 ): Promise<OrganismTaxonomy> {
   try {
-    return await fetchOrganismTaxonomy(taxonId, options);
+    return await getSharedOrganismTaxonomy(taxonId);
   } catch (error) {
     const fallback = staticLandingRootTaxonomy(taxonId);
-    if (!fallback || !isTaxonomyOutage(error)) throw error;
-    console.error(
-      `taxonomy/${String(taxonId)}: lookup failed, using the static landing root`,
-      error,
-    );
+    const unavailable =
+      error instanceof TaxonomyNotFoundError || isTaxonomyOutage(error);
+    if (!fallback || !unavailable) throw error;
     return fallback;
   }
 }

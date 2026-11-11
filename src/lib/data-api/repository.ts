@@ -90,6 +90,15 @@ function dataApiFailure(
   });
 }
 
+const dataApiErrorCodes: Record<number, string> = {
+  401: "unauthorized",
+  403: "forbidden",
+  404: "not_found",
+  429: "rate_limited",
+  503: "service_unavailable",
+  504: "upstream_timeout",
+};
+
 const resourceTimeoutMs: Partial<Record<DataResource, number>> = {
   genome_amr: upstreamTimeoutMs.dataApiGenomeAmr,
   genome_feature: upstreamTimeoutMs.dataApiGenomeFeature,
@@ -934,27 +943,23 @@ export class ServerDataRepository {
           /503 service unavailable|no server is available to handle this request/i.test(
             upstreamText,
           ));
+      const gatewayTimeout =
+        response.status === 504 ||
+        (response.status >= 500 && /504 gateway time-?out/i.test(upstreamText));
       const safeStatus = serviceUnavailable
         ? 503
-        : [401, 403, 404, 429].includes(response.status)
-          ? response.status
-          : 502;
-      const code =
-        safeStatus === 401
-          ? "unauthorized"
-          : safeStatus === 403
-            ? "forbidden"
-            : safeStatus === 404
-              ? "not_found"
-              : safeStatus === 429
-                ? "rate_limited"
-                : safeStatus === 503
-                  ? "service_unavailable"
-                  : "upstream_error";
+        : gatewayTimeout
+          ? 504
+          : [401, 403, 404, 429].includes(response.status)
+            ? response.status
+            : 502;
+      const code = dataApiErrorCodes[safeStatus] ?? "upstream_error";
       // A 5xx with the service's own JSON error keeps that message; otherwise
       // only an HTML page's title and heading are summarized.
       const isOutage =
-        serviceUnavailable || (payload === null && response.status >= 500);
+        serviceUnavailable ||
+        (response.status >= 500 && quotedHtmlPage(upstreamText) !== "") ||
+        (payload === null && response.status >= 500);
       const message = isOutage
         ? describeUpstreamResponse(
             response,

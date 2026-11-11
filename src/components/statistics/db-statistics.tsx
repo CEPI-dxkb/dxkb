@@ -1,7 +1,7 @@
 import DBStatisticsShell from "@/components/statistics/db-statistics-shell";
 import {
   dbStatisticsDefinitions,
-  fetchDbStatistics,
+  getDbStatistics,
   type StatisticDefinition,
 } from "@/lib/services/statistics";
 
@@ -23,7 +23,7 @@ const StatisticCard = ({ definition, count }: StatisticCardProps) => {
 };
 
 const DBStatistics = async () => {
-  const { counts, unavailableReason } = await fetchDbStatistics();
+  const { counts, unavailableReason } = await getDbStatistics();
 
   // Every count failed: one line with the cause rather than eight dashes.
   if (unavailableReason !== null) {

@@ -1,9 +1,12 @@
+import "server-only";
+
 import { describeUpstreamFailure, hostOf } from "@/lib/api/upstream-failure";
 import {
   organismBvBrcRevalidateSeconds,
   organismFetchCacheInit,
   responseErrorMessage,
 } from "@/lib/services/organisms/utils";
+import { createSharedCache } from "@/lib/shared-cache";
 
 import type { PhyloManifest } from "./tab-context";
 
@@ -24,10 +27,14 @@ function parseManifest(payload: unknown): PhyloManifest | null {
   return isTreeMap(object) ? { trees: object } : null;
 }
 
-/** Fail-open: a missing or broken manifest only disables the viral Phylogeny tab, never the page. */
-export async function fetchPhyloManifest(): Promise<PhyloManifest | null> {
-  const url = process.env.PHYLO_MANIFEST_URL ?? defaultManifestUrl;
+function configuredManifestUrl(): string {
+  return process.env.PHYLO_MANIFEST_URL ?? defaultManifestUrl;
+}
 
+/** Fail-open: a missing or broken manifest only disables the viral Phylogeny tab, never the page. */
+export async function fetchPhyloManifest(
+  url = configuredManifestUrl(),
+): Promise<PhyloManifest | null> {
   try {
     const response = await fetch(url, {
       headers: { Accept: "application/json" },
@@ -49,4 +56,20 @@ export async function fetchPhyloManifest(): Promise<PhyloManifest | null> {
     console.error(`phylo-manifest (${hostOf(url) ?? url}): ${message}`);
     return null;
   }
+}
+
+// `fetchPhyloManifest` never throws, so a failure is a `null` value, retried
+// after a minute; a failed refresh keeps the manifest it already had for
+// another hour.
+const phyloManifestCache = createSharedCache<string, PhyloManifest | null>({
+  name: "phylo-manifest",
+  load: async (url, previous) =>
+    (await fetchPhyloManifest(url)) ?? previous ?? null,
+  freshMs: (manifest) => (manifest === null ? 60_000 : 60 * 60 * 1000),
+  retryMs: 60_000,
+});
+
+/** `fetchPhyloManifest` through the process-wide cache, keyed by the manifest URL. */
+export function getSharedPhyloManifest(): Promise<PhyloManifest | null> {
+  return phyloManifestCache.get(configuredManifestUrl());
 }

@@ -12,16 +12,20 @@ import {
  * A missing base URL throws `DataApiError("DATA_API_URL is not configured.",
  * 500, "not_configured")`; the message names the env var because Next redacts
  * it in production.
+ * `anonymous` builds a repository without the visitor's token, for a read
+ * shared across visitors; see `resolveServerDataRepository`.
  * Not wrapped in React `cache()`, which would share one repository across
  * callers in a render pass.
  */
 export async function createServerDataRepository(options: {
   readScope: DataApiReadScope;
+  anonymous?: true;
   fetch?: typeof fetch;
 }): Promise<ServerDataRepository> {
   const { repository } = await resolveServerDataRepository({
     readScope: options.readScope,
     notConfigured: { message: "DATA_API_URL is not configured." },
+    anonymous: options.anonymous,
     fetch: options.fetch,
   });
   return repository;

@@ -137,6 +137,28 @@ describe("createServerDataRepository", () => {
     expect(headers.get("Authorization")).toBe("secret-token");
   });
 
+  it("builds an anonymous repository for a signed-in visitor when asked", async () => {
+    process.env.DATA_API_URL = "https://data.example";
+    setTestSession({ token: "secret-token" });
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(jsonResponse([{ genome_id: "1.1" }]));
+
+    const repository = await createServerDataRepository({
+      readScope: "member",
+      anonymous: true,
+      fetch: fetchMock,
+    });
+    await repository.member("genome", { operation: "member", id: "1.1" });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.any(URL),
+      expect.objectContaining({ cache: "force-cache", next: { revalidate: 300 } }),
+    );
+    const headers = new Headers(fetchMock.mock.calls[0]?.[1]?.headers);
+    expect(headers.get("Authorization")).toBeNull();
+  });
+
   it("bypasses cache for E2E mock runs even without a session", async () => {
     process.env.DATA_API_URL = "https://data.example";
     process.env.E2E_MOCK_ENABLED = "1";

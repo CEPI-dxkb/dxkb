@@ -1,6 +1,6 @@
 import FooterHeader from "@/components/headers/footer-header";
 import Link from "next/link";
-import { fetchCepiNews, type CepiNewsItem } from "@/lib/cepi-news";
+import { getSharedCepiNews, type CepiNewsItem } from "@/lib/cepi-news";
 import { NewsCardImage } from "./news-card-image";
 
 const fallbackNews: CepiNewsItem[] = [
@@ -35,7 +35,7 @@ const NewsCard = ({ title, description, image, url }: CepiNewsItem) => (
 );
 
 const News = async () => {
-  const items = await fetchCepiNews(3);
+  const items = await getSharedCepiNews(3);
   const news = items.length > 0 ? items : fallbackNews;
 
   return (

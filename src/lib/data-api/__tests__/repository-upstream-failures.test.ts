@@ -158,6 +158,69 @@ describe("ServerDataRepository upstream failures", () => {
     },
   );
 
+  it("keeps a gateway 504 as a 504 with a JSON body", async () => {
+    server.use(
+      http.get(genomeUrl, () =>
+        HttpResponse.json(
+          { error: "upstream timed out" },
+          { status: 504, statusText: "Gateway Timeout" },
+        ),
+      ),
+    );
+
+    await expect(readCollection()).rejects.toMatchObject({
+      status: 504,
+      code: "upstream_timeout",
+      message: "upstream timed out",
+    });
+  });
+
+  it("keeps a gateway 504 page as a 504 naming its title", async () => {
+    server.use(
+      http.get(
+        genomeUrl,
+        () =>
+          new HttpResponse(
+            "<html><head><title>504 Gateway Time-out</title></head><body><h1>504 Gateway Time-out</h1></body></html>",
+            {
+              status: 504,
+              statusText: "Gateway Timeout",
+              headers: { "Content-Type": "text/html" },
+            },
+          ),
+      ),
+    );
+
+    const error = await readCollection().catch((caught: unknown) => caught);
+    expect(error).toMatchObject({ status: 504, code: "upstream_timeout" });
+    expect((error as Error).message).toBe(
+      "The BV-BRC data service is unavailable (HTTP 504 Gateway Timeout: 504 Gateway Time-out).",
+    );
+  });
+
+  it.each(["504 Gateway Time-out", "504 Gateway Timeout"])(
+    "maps a 500 whose page says %s to a 504",
+    async (title) => {
+      server.use(
+        http.get(
+          genomeUrl,
+          () =>
+            new HttpResponse(`<html><title>${title}</title></html>`, {
+              status: 500,
+              statusText: "Internal Server Error",
+              headers: { "Content-Type": "text/html" },
+            }),
+        ),
+      );
+
+      await expect(readCollection()).rejects.toMatchObject({
+        status: 504,
+        code: "upstream_timeout",
+        message: `The BV-BRC data service is unavailable (HTTP 500 Internal Server Error: ${title}).`,
+      });
+    },
+  );
+
   it("names the status of an outage whose body is empty or plain text, without reading the text", async () => {
     server.use(
       http.get(

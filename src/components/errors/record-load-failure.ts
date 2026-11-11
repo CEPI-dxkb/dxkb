@@ -3,15 +3,12 @@ import {
   upstreamServices,
   upstreamTimeoutMs,
 } from "@/lib/api/upstream-failure";
+import { isUpstreamOutageError } from "@/lib/api/upstream-outage";
 import { DataApiError } from "@/lib/data-api/repository";
 import { formatUserFacingErrorMessage } from "@/lib/utils";
 
 export const recordUnavailableFallback =
   "The data service did not respond. This is usually temporary; please try again.";
-
-// Server misconfiguration, not an outage: the message names an env var, so it
-// stays on the server.
-const configurationErrorCodes = new Set(["not_configured", "insecure_upstream"]);
 
 interface UpstreamOutageOptions {
   fallback: string;
@@ -27,14 +24,12 @@ export function upstreamOutageMessage(
   service: string,
   { fallback, timeoutMs }: UpstreamOutageOptions,
 ): string | null {
+  if (!isUpstreamOutageError(error, service)) return null;
   if (error instanceof DataApiError) {
-    if (error.status < 500 || configurationErrorCodes.has(error.code)) {
-      return null;
-    }
     return formatUserFacingErrorMessage(error, fallback);
   }
   const failure = describeUpstreamFailure(error, service, { timeoutMs });
-  if (!failure || failure.status < 500) return null;
+  if (!failure) return null;
   return formatUserFacingErrorMessage(new Error(failure.message), fallback);
 }
 

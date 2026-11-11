@@ -465,6 +465,81 @@ describe("ServerDataRepository", () => {
     });
   });
 
+  it("condenses a nested upstream gateway timeout page", async () => {
+    captureGets(
+      "protein_structure",
+      {
+        status: 500,
+        message:
+          "Unable to parse the query response. <html><body><h1>504 Gateway Time-out</h1>\nThe server didn't respond in time.\n</body></html>",
+      },
+      { status: 500 },
+    );
+
+    const error = await new ServerDataRepository({
+      baseUrl: "https://data.test",
+    })
+      .collection("protein_structure", {
+        operation: "collection",
+        rql: "eq(pdb_id,*)",
+      })
+      .catch((caught: unknown) => caught);
+    expect(error).toMatchObject({
+      message:
+        "The BV-BRC data service is unavailable (HTTP 500 Internal Server Error: 504 Gateway Time-out).",
+      status: 504,
+      code: "upstream_timeout",
+    });
+    expect((error as Error).message).not.toContain("<");
+  });
+
+  it("condenses a nested 502 page in a 500 without changing its mapping", async () => {
+    captureGets(
+      "protein_structure",
+      {
+        status: 500,
+        message:
+          "Unable to parse the query response. <html><body><h1>502 Bad Gateway</h1></body></html>",
+      },
+      { status: 500 },
+    );
+
+    const error = await new ServerDataRepository({
+      baseUrl: "https://data.test",
+    })
+      .collection("protein_structure", {
+        operation: "collection",
+        rql: "eq(pdb_id,*)",
+      })
+      .catch((caught: unknown) => caught);
+    expect(error).toMatchObject({
+      message:
+        "The BV-BRC data service is unavailable (HTTP 500 Internal Server Error: 502 Bad Gateway).",
+      status: 502,
+      code: "upstream_error",
+    });
+    expect((error as Error).message).not.toContain("<");
+  });
+
+  it("maps a page naming both 503 and 504 to a 503", async () => {
+    captureGets(
+      "protein_structure",
+      {
+        status: 500,
+        message:
+          "Unable to parse the query response. <html><body><h1>503 Service Unavailable</h1> after a 504 Gateway Time-out </body></html>",
+      },
+      { status: 500 },
+    );
+
+    await expect(
+      new ServerDataRepository({ baseUrl: "https://data.test" }).collection(
+        "protein_structure",
+        { operation: "collection", rql: "eq(pdb_id,*)" },
+      ),
+    ).rejects.toMatchObject({ status: 503, code: "service_unavailable" });
+  });
+
   it.each([
     [401, "unauthorized"],
     [403, "forbidden"],

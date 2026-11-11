@@ -196,6 +196,31 @@ describe("POST /api/data/search", () => {
     expect(body.error).not.toContain(maintenancePageHtml.slice(0, 40));
   });
 
+  it("answers a gateway 504 as a 504, not a 502", async () => {
+    server.use(
+      http.post(
+        queryUrl,
+        () =>
+          new HttpResponse(
+            "<html><title>504 Gateway Time-out</title></html>",
+            {
+              status: 504,
+              statusText: "Gateway Timeout",
+              headers: { "Content-Type": "text/html" },
+            },
+          ),
+      ),
+    );
+
+    const response = await search({ keyword: "coli" });
+
+    expect(response.status).toBe(504);
+    const body = await json<{ error: string; code: string }>(response);
+    expect(body.code).toBe("upstream_timeout");
+    expect(body.error).toContain("504 Gateway Time-out");
+    expect(body.error).not.toContain("<");
+  });
+
   it("reports an answer that is not keyed by type as malformed", async () => {
     server.use(http.post(queryUrl, () => HttpResponse.json([])));
 

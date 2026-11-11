@@ -10,14 +10,14 @@ vi.mock("@/lib/services/statistics", async () => {
   );
   return {
     ...actual,
-    fetchDbStatistics: vi.fn(),
+    getDbStatistics: vi.fn(),
   };
 });
 
-import { fetchDbStatistics } from "@/lib/services/statistics";
+import { getDbStatistics } from "@/lib/services/statistics";
 import DBStatistics from "@/components/statistics/db-statistics";
 
-const mockedFetch = vi.mocked(fetchDbStatistics);
+const mockedGetDbStatistics = vi.mocked(getDbStatistics);
 
 function allNumeric(): StatisticCounts {
   return {
@@ -39,7 +39,7 @@ async function renderServer(node: Promise<React.ReactElement>) {
 
 describe("DBStatistics", () => {
   it("renders all 8 cards with thousands-separated numbers when every count succeeds", async () => {
-    mockedFetch.mockResolvedValueOnce({
+    mockedGetDbStatistics.mockResolvedValueOnce({
       counts: allNumeric(),
       unavailableReason: null,
     });
@@ -61,7 +61,7 @@ describe("DBStatistics", () => {
   });
 
   it("renders an em dash for any metric whose count is null", async () => {
-    mockedFetch.mockResolvedValueOnce({
+    mockedGetDbStatistics.mockResolvedValueOnce({
       counts: { ...allNumeric(), proteinStructures: null, epitopes: null },
       unavailableReason: null,
     });
@@ -76,7 +76,7 @@ describe("DBStatistics", () => {
   it("says once that the statistics are unavailable, with the reason, when every count failed", async () => {
     const reason =
       "The BV-BRC data service is unavailable (HTTP 503 Service Unavailable: Site Maintenance).";
-    mockedFetch.mockResolvedValueOnce({
+    mockedGetDbStatistics.mockResolvedValueOnce({
       counts: Object.fromEntries(
         Object.keys(allNumeric()).map((key) => [key, null]),
       ) as StatisticCounts,
@@ -95,7 +95,7 @@ describe("DBStatistics", () => {
   });
 
   it("says so without a reason when the failure carried no message", async () => {
-    mockedFetch.mockResolvedValueOnce({
+    mockedGetDbStatistics.mockResolvedValueOnce({
       counts: Object.fromEntries(
         Object.keys(allNumeric()).map((key) => [key, null]),
       ) as StatisticCounts,

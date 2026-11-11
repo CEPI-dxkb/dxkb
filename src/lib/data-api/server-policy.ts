@@ -36,6 +36,11 @@ export interface ResolveServerDataRepositoryOptions {
   readScope: DataApiReadScope;
   notConfigured: DataApiNotConfiguredPolicy;
   anonymous?: true;
+  /**
+   * Skips Next's data cache because the caller caches the result itself, and
+   * a second, longer window would hide that cache's rechecks.
+   */
+  bypassDataCache?: true;
   /** Test seam only: lets a test spy on the `cache`/`next.revalidate` init. */
   fetch?: typeof fetch;
 }
@@ -63,6 +68,7 @@ export async function resolveServerDataRepository({
   readScope,
   notConfigured,
   anonymous,
+  bypassDataCache,
   fetch: fetchOverride,
 }: ResolveServerDataRepositoryOptions): Promise<ResolvedServerDataRepository> {
   const baseUrl = [
@@ -75,8 +81,10 @@ export async function resolveServerDataRepository({
   }
   const session = anonymous ? null : await readSession();
   // Authenticated responses are per-user, E2E ones per-run, and `query` reads
-  // near-unique, so none may be shared.
+  // near-unique, so none may be shared; nor may a read whose caller caches it,
+  // since a route's `s-maxage` would be the same hiding window as Next's.
   const sharedCache =
+    !bypassDataCache &&
     readScope === "member" &&
     !session &&
     process.env.E2E_MOCK_ENABLED !== "1";

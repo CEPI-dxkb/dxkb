@@ -23,6 +23,7 @@ async function loadTaxonomyRecord(
     const repository = await createServerDataRepository({
       readScope: "member",
       anonymous: true,
+      bypassDataCache: true,
     });
     const result = await repository.member("taxonomy", {
       operation: "member",
@@ -39,7 +40,7 @@ async function loadTaxonomyRecord(
 
 // Read anonymously because every visitor shares the result; this relies on
 // taxonomy rows being public. A missing row is rechecked after a minute
-// because a new taxon may appear.
+// because a new taxon may appear, which is why the read skips Next's cache.
 const taxonomyRecordCache = createSharedCache<
   string,
   TaxonomyViewRecord | null

@@ -46,7 +46,10 @@ const notConfiguredForTest = { message: "not configured for this test" };
 
 async function resolve(
   readScope: DataApiReadScope,
-  { anonymous }: { anonymous?: true } = {},
+  {
+    anonymous,
+    bypassDataCache,
+  }: { anonymous?: true; bypassDataCache?: true } = {},
 ) {
   const fetchMock = vi
     .fn<typeof fetch>()
@@ -55,6 +58,7 @@ async function resolve(
     readScope,
     notConfigured: notConfiguredForTest,
     anonymous,
+    bypassDataCache,
     fetch: fetchMock,
   });
   await resolved.repository.member("genome", {
@@ -189,6 +193,41 @@ describe("resolveServerDataRepository anonymous", () => {
       }),
     ).rejects.toMatchObject({ code: "not_configured" });
     expect(cookies).not.toHaveBeenCalled();
+  });
+});
+
+describe("resolveServerDataRepository bypassDataCache", () => {
+  beforeEach(() => {
+    process.env.DATA_API_URL = "https://data.example";
+  });
+
+  it.each([
+    ["an anonymous", { anonymous: true }],
+    ["a session-less", {}],
+  ] as const)(
+    "skips Next's data cache for %s member read whose caller caches it, and reports no shared cache",
+    async (_label, options) => {
+      const { sharedCache, init, authorization } = await resolve("member", {
+        ...options,
+        bypassDataCache: true,
+      });
+
+      expect(sharedCache).toBe(false);
+      expect(init).toMatchObject({ cache: "no-store", next: undefined });
+      expect(authorization).toBeNull();
+    },
+  );
+
+  it("still never reads the session when anonymous", async () => {
+    setTestSession({ token: "secret-token" });
+
+    const { authorization } = await resolve("member", {
+      anonymous: true,
+      bypassDataCache: true,
+    });
+
+    expect(cookies).not.toHaveBeenCalled();
+    expect(authorization).toBeNull();
   });
 });
 

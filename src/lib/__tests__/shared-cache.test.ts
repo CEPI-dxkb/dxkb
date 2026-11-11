@@ -638,12 +638,12 @@ describe("createSharedCache LRU bound", () => {
     expect(load).toHaveBeenCalledTimes(502);
   });
 
-  it("still settles an evicted load for the callers already awaiting it", async () => {
+  it("never evicts a key whose load is running, so a later caller shares that load", async () => {
     const pending = deferred<string>();
     const load = vi
       .fn<Loader>()
       .mockImplementationOnce(() => pending.promise)
-      .mockResolvedValue("other");
+      .mockResolvedValue("b-value");
     const cache = createSharedCache<string, string>({
       name: "taxa",
       load,
@@ -652,13 +652,96 @@ describe("createSharedCache LRU bound", () => {
       maxEntries: 1,
     });
 
-    const evicted = cache.get("a");
-    await cache.get("b");
+    const first = cache.get("a");
+    const other = cache.get("b");
+    const second = cache.get("a");
     pending.resolve("a-value");
-    await expect(evicted).resolves.toBe("a-value");
 
-    await cache.get("b");
+    await expect(first).resolves.toBe("a-value");
+    await expect(second).resolves.toBe("a-value");
+    await expect(other).resolves.toBe("b-value");
+    expect(load.mock.calls.map(([key]) => key)).toEqual(["a", "b"]);
+  });
+
+  it("trims back to maxEntries as the loads settle, evicting the oldest settled entry", async () => {
+    const pending = deferred<string>();
+    const load = vi
+      .fn<Loader>()
+      .mockImplementationOnce(() => pending.promise)
+      .mockResolvedValue("b-value");
+    const cache = createSharedCache<string, string>({
+      name: "taxa",
+      load,
+      freshMs,
+      retryMs,
+      maxEntries: 1,
+    });
+
+    const first = cache.get("a");
+    await expect(cache.get("b")).resolves.toBe("b-value");
+    const second = cache.get("a");
+    pending.resolve("a-value");
+    await Promise.all([first, second]);
+
+    await expect(cache.get("a")).resolves.toBe("a-value");
     expect(load).toHaveBeenCalledTimes(2);
+    await expect(cache.get("b")).resolves.toBe("b-value");
+    expect(load.mock.calls.map(([key]) => key)).toEqual(["a", "b", "b"]);
+  });
+
+  it("trims as a failed load settles, too", async () => {
+    const pending = deferred<string>();
+    const outage = timedOut();
+    const load = vi
+      .fn<Loader>()
+      .mockImplementationOnce(() => pending.promise)
+      .mockRejectedValueOnce(outage)
+      .mockResolvedValue("b-value");
+    const cache = createSharedCache<string, string>({
+      name: "taxa",
+      load,
+      freshMs,
+      retryMs,
+      cacheError,
+      maxEntries: 1,
+    });
+
+    const first = cache.get("a");
+    await expect(cache.get("b")).rejects.toBe(outage);
+    pending.resolve("a-value");
+    await first;
+
+    await expect(cache.get("a")).resolves.toBe("a-value");
+    await expect(cache.get("b")).resolves.toBe("b-value");
+    expect(load.mock.calls.map(([key]) => key)).toEqual(["a", "b", "b"]);
+  });
+
+  it("never evicts a key whose background refresh is running", async () => {
+    const refresh = deferred<string>();
+    const load = vi
+      .fn<Loader>()
+      .mockResolvedValueOnce("v1")
+      .mockImplementationOnce(() => refresh.promise)
+      .mockResolvedValue("b-value");
+    const cache = createSharedCache<string, string>({
+      name: "taxa",
+      load,
+      freshMs,
+      retryMs,
+      maxEntries: 1,
+    });
+
+    await cache.get("a");
+    advance(freshMs);
+    await expect(cache.get("a")).resolves.toBe("v1");
+    await expect(cache.get("b")).resolves.toBe("b-value");
+    await expect(cache.get("a")).resolves.toBe("v1");
+    expect(load.mock.calls.map(([key]) => key)).toEqual(["a", "a", "b"]);
+
+    refresh.resolve("v2");
+    await settle();
+    await expect(cache.get("a")).resolves.toBe("v2");
+    expect(load).toHaveBeenCalledTimes(3);
   });
 });
 
@@ -935,7 +1018,7 @@ describe("createSharedCache circuit breaker", () => {
     await expect(cache.get("cold")).resolves.toBe("cold-value");
   });
 
-  it("settles the breaker for a probe the LRU bound evicted while it ran", async () => {
+  it("keeps a running probe past the LRU bound, so its key shares it, then settles the breaker and trims it", async () => {
     const probe = deferred<string>();
     const load = vi.fn<Loader>();
     const cache = createSharedCache<string, string>({
@@ -952,12 +1035,17 @@ describe("createSharedCache circuit breaker", () => {
     advance(30_000);
     load.mockImplementationOnce(() => probe.promise);
     const probing = cache.get("probe");
+    const sharing = cache.get("probe");
     await expect(cache.get("cold")).rejects.toBe(opening);
 
     probe.resolve("probe-value");
     await expect(probing).resolves.toBe("probe-value");
-    load.mockResolvedValueOnce("cold-value");
+    await expect(sharing).resolves.toBe("probe-value");
+    expect(console.info).toHaveBeenCalledWith("shared-cache taxa: upstream marked back up");
+    load.mockResolvedValueOnce("cold-value").mockResolvedValueOnce("probe-again");
     await expect(cache.get("cold")).resolves.toBe("cold-value");
+    await expect(cache.get("probe")).resolves.toBe("probe-again");
+    expect(load).toHaveBeenCalledTimes(5);
   });
 
   it("leaves the live breaker alone when the probe's cache was cleared while it ran", async () => {

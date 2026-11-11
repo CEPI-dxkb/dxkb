@@ -181,6 +181,68 @@ describe("getSharedPhyloManifest", () => {
     });
   });
 
+  it.each([
+    ["a network error", () => HttpResponse.error()],
+    ["a 429", () => new HttpResponse(null, { status: 429 })],
+    [
+      "a truncated JSON body",
+      () =>
+        new HttpResponse('{"2955291":', {
+          headers: { "Content-Type": "application/json" },
+        }),
+    ],
+  ])("keeps a loaded manifest when a refresh gets %s", async (_label, failure) => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    let respond: () => Response = () => HttpResponse.json(manifest);
+    const requests = serveManifest(() => respond());
+
+    const first = await getSharedPhyloManifest();
+    respond = failure;
+    advance(61 * 60_000);
+    await expect(getSharedPhyloManifest()).resolves.toBe(first);
+    await vi.waitFor(() => {
+      expect(requests()).toBe(2);
+    });
+    await settleBackgroundWork();
+    await expect(getSharedPhyloManifest()).resolves.toBe(first);
+    await settleBackgroundWork();
+    expect(requests()).toBe(2);
+  });
+
+  it.each([
+    ["a 404", () => new HttpResponse(null, { status: 404 })],
+    ["a 410", () => new HttpResponse(null, { status: 410 })],
+    ["a JSON body that is not a manifest", () => HttpResponse.json({ notTrees: 1 })],
+  ])(
+    "replaces a loaded manifest with null when a refresh gets %s, rechecked after 60 s",
+    async (_label, gone) => {
+      vi.useFakeTimers({ toFake: ["Date"] });
+      let respond: () => Response = () => HttpResponse.json(manifest);
+      const requests = serveManifest(() => respond());
+
+      const first = await getSharedPhyloManifest();
+      respond = gone;
+      advance(61 * 60_000);
+      await expect(getSharedPhyloManifest()).resolves.toBe(first);
+      await vi.waitFor(async () => {
+        expect(await getSharedPhyloManifest()).toBeNull();
+      });
+
+      advance(59_000);
+      await expect(getSharedPhyloManifest()).resolves.toBeNull();
+      await settleBackgroundWork();
+      expect(requests()).toBe(2);
+
+      respond = () => HttpResponse.json(manifest);
+      advance(2000);
+      await expect(getSharedPhyloManifest()).resolves.toBeNull();
+      await vi.waitFor(async () => {
+        expect(await getSharedPhyloManifest()).toEqual({ trees: manifest });
+      });
+      expect(requests()).toBe(3);
+    },
+  );
+
   it("keys the manifest by the URL configured when it is read", async () => {
     const requests = serveManifest(() => HttpResponse.json(manifest));
     server.use(

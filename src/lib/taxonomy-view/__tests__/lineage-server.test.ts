@@ -161,6 +161,22 @@ describe("loadLineageCrumbs", () => {
     });
   });
 
+  it("reads past Next's data cache, whose longer window would hide the minute-long recheck", async () => {
+    const cacheModes: RequestCache[] = [];
+    server.use(
+      http.get("https://data.test/taxonomy/", ({ request }) => {
+        cacheModes.push(request.cache);
+        return HttpResponse.json([]);
+      }),
+    );
+
+    await expect(loadLineageCrumbs("83333", "genome/1.1")).resolves.toEqual(
+      [],
+    );
+
+    expect(cacheModes).toEqual(["no-store"]);
+  });
+
   it("serves an outage from the cache and logs it once, without the owner's line", async () => {
     const requests = serveTaxonomy(() => maintenancePage());
 

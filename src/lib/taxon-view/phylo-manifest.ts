@@ -31,10 +31,16 @@ function configuredManifestUrl(): string {
   return process.env.PHYLO_MANIFEST_URL ?? defaultManifestUrl;
 }
 
-/** Fail-open: a missing or broken manifest only disables the viral Phylogeny tab, never the page. */
-export async function fetchPhyloManifest(
-  url = configuredManifestUrl(),
-): Promise<PhyloManifest | null> {
+// The statuses that say the manifest is gone; any other failure may pass.
+const goneStatuses = new Set([404, 410]);
+
+/** `transient` marks a failure a retry may fix, so a manifest already held outlives it. */
+interface ManifestRead {
+  manifest: PhyloManifest | null;
+  transient: boolean;
+}
+
+async function readPhyloManifest(url: string): Promise<ManifestRead> {
   try {
     const response = await fetch(url, {
       headers: { Accept: "application/json" },
@@ -43,9 +49,10 @@ export async function fetchPhyloManifest(
     });
     if (!response.ok) {
       console.error(`phylo-manifest: ${await responseErrorMessage(response)}`);
-      return null;
+      return { manifest: null, transient: !goneStatuses.has(response.status) };
     }
-    return parseManifest(await response.json());
+    // JSON that is not a manifest is an answer; a body that does not parse may be truncated.
+    return { manifest: parseManifest(await response.json()), transient: false };
   } catch (error) {
     // undici's message is only "fetch failed"; name what and which host failed.
     const failure = describeUpstreamFailure(error, "the BV-BRC phylogeny manifest", {
@@ -54,22 +61,34 @@ export async function fetchPhyloManifest(
     const message =
       failure?.message ?? (error instanceof Error ? error.message : String(error));
     console.error(`phylo-manifest (${hostOf(url) ?? url}): ${message}`);
-    return null;
+    return { manifest: null, transient: true };
   }
 }
 
-// `fetchPhyloManifest` never throws, so a failure is a `null` value, retried
-// after a minute; a failed refresh keeps the manifest it already had for
-// another hour.
+/**
+ * The uncached read (pages use `getSharedPhyloManifest`). Fail-open: a missing
+ * or broken manifest only disables the viral Phylogeny tab, never the page.
+ */
+export async function fetchPhyloManifest(
+  url = configuredManifestUrl(),
+): Promise<PhyloManifest | null> {
+  return (await readPhyloManifest(url)).manifest;
+}
+
+// `readPhyloManifest` never throws, so a failure is a `null` value, retried
+// after a minute. A transient failure keeps the manifest already held for
+// another hour; a 404, 410 or JSON that is not a manifest replaces it.
 const phyloManifestCache = createSharedCache<string, PhyloManifest | null>({
   name: "phylo-manifest",
-  load: async (url, previous) =>
-    (await fetchPhyloManifest(url)) ?? previous ?? null,
+  load: async (url, previous) => {
+    const read = await readPhyloManifest(url);
+    return read.transient ? (previous ?? null) : read.manifest;
+  },
   freshMs: (manifest) => (manifest === null ? 60_000 : 60 * 60 * 1000),
   retryMs: 60_000,
 });
 
-/** `fetchPhyloManifest` through the process-wide cache, keyed by the manifest URL. */
+/** The manifest through the process-wide cache, keyed by its URL, which keeps the old one only over a transient failure. */
 export function getSharedPhyloManifest(): Promise<PhyloManifest | null> {
   return phyloManifestCache.get(configuredManifestUrl());
 }

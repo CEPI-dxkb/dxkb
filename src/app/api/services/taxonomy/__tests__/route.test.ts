@@ -1,7 +1,6 @@
 import { http, HttpResponse } from "msw";
 
 import { UpstreamError } from "@/lib/api/upstream-failure";
-import { getRequiredEnv } from "@/lib/env";
 import { server } from "@/test-helpers/msw-server";
 import { settleBackgroundWork } from "@/test-helpers/settle";
 import {
@@ -13,9 +12,7 @@ import {
 import { GET } from "../route";
 import { json, mockNextRequest } from "@/test-helpers/api-route-helpers";
 
-vi.mock("@/lib/env", () => ({
-  getRequiredEnv: vi.fn(() => "http://mock-api"),
-}));
+const originalWebsiteApiUrl = process.env.BVBRC_WEBSITE_API_URL;
 
 function searchRequest() {
   return mockNextRequest({
@@ -47,7 +44,13 @@ function advance(ms: number): void {
   vi.setSystemTime(Date.now() + ms);
 }
 
+beforeEach(() => {
+  process.env.BVBRC_WEBSITE_API_URL = "http://mock-api";
+});
+
 afterEach(() => {
+  if (originalWebsiteApiUrl === undefined) delete process.env.BVBRC_WEBSITE_API_URL;
+  else process.env.BVBRC_WEBSITE_API_URL = originalWebsiteApiUrl;
   vi.useRealTimers();
   vi.restoreAllMocks();
 });
@@ -174,9 +177,9 @@ describe("GET /api/services/taxonomy", () => {
   });
 
   it("never puts a configuration error's env var name in the body", async () => {
-    vi.mocked(getRequiredEnv).mockImplementationOnce(() => {
-      throw new Error("Missing required environment variable: BVBRC_WEBSITE_API_URL");
-    });
+    // A healthy upstream, so only the missing variable can fail the request.
+    serveSearches(() => HttpResponse.json([]));
+    delete process.env.BVBRC_WEBSITE_API_URL;
 
     const res = await GET(searchRequest(), {});
 
@@ -530,9 +533,9 @@ describe("GET /api/services/taxonomy shared cache", () => {
   });
 
   it("logs a missing upstream URL once, from the handler", async () => {
-    vi.mocked(getRequiredEnv).mockImplementationOnce(() => {
-      throw new Error("Missing required environment variable: BVBRC_WEBSITE_API_URL");
-    });
+    // A healthy upstream, so only the missing variable can fail the request.
+    serveSearches(() => HttpResponse.json([]));
+    delete process.env.BVBRC_WEBSITE_API_URL;
 
     const res = await GET(taxonomyRequest("q=noenv"), {});
     await settleBackgroundWork();

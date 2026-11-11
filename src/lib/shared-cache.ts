@@ -28,6 +28,7 @@ export interface SharedCacheOptions<K extends string | number, V> {
   freshMs: number | ((value: V) => number);
   /** How long a cached failure is served, and the wait after a failed refresh. */
   retryMs: number;
+  /** 500 by default; evicts least recently used first, never a key whose load is running. */
   maxEntries?: number;
   /**
    * Which thrown errors may be cached; none when omitted. The cache does not
@@ -232,6 +233,7 @@ export function createSharedCache<K extends string | number, V>(
       } else if (state.entries.get(key) === entry) {
         state.entries.delete(key);
       }
+      trim(state);
       throw error;
     }
 
@@ -253,6 +255,7 @@ export function createSharedCache<K extends string | number, V>(
         }
         entry.settled = { ok: true, value };
         entry.freshUntil = Date.now() + freshMs;
+        trim(state);
         return value;
       },
       (error: unknown) => {
@@ -268,11 +271,16 @@ export function createSharedCache<K extends string | number, V>(
     return loading;
   }
 
-  function insert(state: CacheState, key: K, entry: Entry): void {
-    state.entries.set(key, entry);
-    for (const oldest of state.entries.keys()) {
-      if (state.entries.size <= maxEntries) break;
-      state.entries.delete(oldest);
+  /**
+   * Evicts the least recently used idle entries beyond `maxEntries`. A loading
+   * entry stays, so its key's callers keep sharing the load, and the map may
+   * exceed the bound until a load settles and trims it again.
+   */
+  function trim(state: CacheState): void {
+    if (registry.get(name) !== state) return;
+    for (const [key, entry] of state.entries) {
+      if (state.entries.size <= maxEntries) return;
+      if (!entry.loading) state.entries.delete(key);
     }
   }
 
@@ -301,8 +309,10 @@ export function createSharedCache<K extends string | number, V>(
     const admission = admit(state, now);
     if (admission.blocked) throw admission.error;
     const fresh: Entry = { freshUntil: 0 };
-    insert(state, key, fresh);
-    return run(state, key, fresh, admission.probe, false);
+    state.entries.set(key, fresh);
+    const loading = run(state, key, fresh, admission.probe, false);
+    trim(state);
+    return loading;
   }
 
   return {

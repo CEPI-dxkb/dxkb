@@ -50,12 +50,15 @@ beforeEach(() => {
 });
 
 import { server } from "@/test-helpers/msw-server";
-// The profile cache outlives a request by design, so clear it between tests.
+// The profile and shared upstream caches outlive a request by design, so clear
+// them between tests.
 import { clearProfileCache } from "@/lib/auth/server/profile-cache";
+import { clearAllSharedCaches } from "@/lib/shared-cache";
 beforeAll(() => { server.listen({ onUnhandledRequest: "error" }); });
 afterEach(() => {
   server.resetHandlers();
   clearTestCookies();
   clearProfileCache();
+  clearAllSharedCaches();
 });
 afterAll(() => { server.close(); });

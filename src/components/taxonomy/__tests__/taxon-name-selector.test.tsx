@@ -221,3 +221,38 @@ describe("TaxonNameSelector failed search", () => {
     });
   });
 });
+
+describe("TaxonNameSelector request", () => {
+  it("sends a name with reserved characters as one q value and repeats fq", async () => {
+    let captured: URL | undefined;
+    server.use(
+      http.get("*/api/services/taxonomy", ({ request }) => {
+        captured = new URL(request.url);
+        return HttpResponse.json([]);
+      }),
+    );
+    const user = userEvent.setup();
+    render(
+      <TaxonNameSelector
+        value={null}
+        includeBacteria
+        includeViruses
+      />,
+      { wrapper: createQueryClientWrapper() },
+    );
+
+    await user.type(screen.getByRole("textbox"), "A&B#C+D");
+
+    await waitFor(() => {
+      expect(captured?.searchParams.get("q")).toContain("A&B#C+D");
+    });
+    expect(captured?.searchParams.getAll("q")).toHaveLength(1);
+    expect(captured?.searchParams.get("fl")).toBe(
+      "taxon_name,taxon_id,taxon_rank,lineage_names,division",
+    );
+    expect(captured?.searchParams.getAll("fq")).toEqual([
+      "lineage_ids:2",
+      "lineage_ids:10239",
+    ]);
+  });
+});

@@ -12,12 +12,12 @@ import type {
   OrganismLandingConfig,
   OrganismLandingView,
 } from "@/components/organisms/types";
-import { TaxonomyNotFoundError, fetchOrganismTaxonomy } from "@/lib/services/organisms/taxonomy";
+import { TaxonomyNotFoundError, getSharedOrganismTaxonomy } from "@/lib/services/organisms/taxonomy";
 import type { OrganismTaxonomy } from "@/lib/services/organisms/types";
 
 import { firstSearchParam } from "@/lib/views/search-params";
 
-import { fetchPhyloManifest } from "@/lib/taxon-view/phylo-manifest";
+import { getSharedPhyloManifest } from "@/lib/taxon-view/phylo-manifest";
 import type { PhyloManifest } from "@/lib/taxon-view/tab-context";
 
 import { buildTaxonomyConfig } from "./_config";
@@ -35,13 +35,10 @@ interface TaxonomyPageProps {
   }>;
 }
 
-// generateMetadata and the page share one lookup and manifest fetch per
-// request; Next would not dedupe them, because a timeout signal opts a fetch
-// out of memoization.
-const getOrganismTaxonomy = cache((taxonId: number) =>
-  fetchOrganismTaxonomy(taxonId),
-);
-const getPhyloManifest = cache(fetchPhyloManifest);
+// The shared cache does not hold an uncached failure and is bypassed in E2E,
+// so `cache()` still gives generateMetadata and the page one promise per request.
+const getOrganismTaxonomy = cache(getSharedOrganismTaxonomy);
+const getPhyloManifest = cache(getSharedPhyloManifest);
 
 function routeTaxonId(rawTaxonId: string): number | null {
   const taxonId = Number(rawTaxonId);
@@ -117,7 +114,7 @@ export default async function TaxonomyPage({ params, searchParams }: TaxonomyPag
   const tab = firstSearchParam(await searchParams, "tab");
 
   // Started before the try so notFound/unavailable control flow is unchanged;
-  // fetchPhyloManifest never rejects, so a broken manifest only disables the
+  // the manifest read never rejects, so a broken manifest only disables the
   // Phylogeny tab.
   const phyloManifestPromise = getPhyloManifest();
 
@@ -134,7 +131,6 @@ export default async function TaxonomyPage({ params, searchParams }: TaxonomyPag
       fallback: taxonomyUnavailableFallback,
     });
     if (unavailable === null) throw err;
-    console.error(`taxonomy/${String(taxonId)}: taxonomy lookup failed`, err);
     return <TaxonUnavailable taxonId={taxonId} tab={tab} message={unavailable} />;
   }
   const phyloManifest = await phyloManifestPromise;

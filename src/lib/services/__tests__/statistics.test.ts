@@ -2,6 +2,7 @@ import { http, HttpResponse } from "msw";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { server } from "@/test-helpers/msw-server";
+import { settleBackgroundWork } from "@/test-helpers/settle";
 import {
   connectTimeout,
   maintenancePage,
@@ -13,6 +14,7 @@ import { upstreamTimeoutMs } from "@/lib/api/upstream-failure";
 import {
   dbStatisticsDefinitions,
   fetchDbStatistics,
+  getDbStatistics,
   type StatisticKey,
 } from "@/lib/services/statistics";
 
@@ -24,6 +26,7 @@ beforeEach(() => {
 
 afterEach(() => {
   delete process.env.NEXT_PUBLIC_DATA_API;
+  vi.useRealTimers();
   vi.restoreAllMocks();
 });
 
@@ -219,5 +222,179 @@ describe("fetchDbStatistics", () => {
       "proteinFeatures",
       "genomes",
     ]);
+  });
+});
+
+describe("getDbStatistics", () => {
+  const oneHourMs = 3_600_000;
+  const retryMs = 60_000;
+
+  function countRequests(failCore?: () => boolean) {
+    const state = { requests: 0 };
+    server.use(
+      http.get(`${dataApi}/:core/`, ({ params }) => {
+        state.requests += 1;
+        if (failCore?.() && params.core === "protein_structure") {
+          return HttpResponse.text("down", { status: 500 });
+        }
+        return solrCount(state.requests);
+      }),
+    );
+    return state;
+  }
+
+  /** Each round of eight counts answers `(round + 1) * 100`; `fails` turns a core's answer into a 503. */
+  function roundCounts(fails: (round: number, core: string) => boolean) {
+    const state = { requests: 0 };
+    server.use(
+      http.get(`${dataApi}/:core/`, ({ params }) => {
+        const round = Math.floor(
+          state.requests / dbStatisticsDefinitions.length,
+        );
+        state.requests += 1;
+        if (fails(round, params.core as string)) {
+          return HttpResponse.text("down", { status: 503 });
+        }
+        return solrCount((round + 1) * 100);
+      }),
+    );
+    return state;
+  }
+
+  it("shares one round of the eight counts between concurrent callers", async () => {
+    const state = countRequests();
+
+    const results = await Promise.all([
+      getDbStatistics(),
+      getDbStatistics(),
+      getDbStatistics(),
+    ]);
+
+    expect(state.requests).toBe(dbStatisticsDefinitions.length);
+    expect(results[1]).toBe(results[0]);
+    expect(results[2]).toBe(results[0]);
+    expect(results[0].unavailableReason).toBeNull();
+  });
+
+  it("holds a complete result for an hour, then refreshes in the background", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    const state = countRequests();
+
+    const first = await getDbStatistics();
+    vi.setSystemTime(Date.now() + oneHourMs - 1000);
+    await getDbStatistics();
+    await settleBackgroundWork();
+    expect(state.requests).toBe(dbStatisticsDefinitions.length);
+
+    vi.setSystemTime(Date.now() + 2000);
+    const stale = await getDbStatistics();
+    expect(stale).toBe(first);
+    await vi.waitFor(() => {
+      expect(state.requests).toBe(dbStatisticsDefinitions.length * 2);
+    });
+  });
+
+  it("keeps a count that loaded earlier when a later fetch loses it, and retries after 60 s", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const state = roundCounts(
+      (round, core) => round >= 1 && core === "protein_structure",
+    );
+    const perRound = dbStatisticsDefinitions.length;
+
+    const first = await getDbStatistics();
+    expect(first.counts.proteinStructures).toBe(100);
+
+    vi.setSystemTime(Date.now() + oneHourMs + 1);
+    expect(await getDbStatistics()).toBe(first);
+    await vi.waitFor(async () => {
+      expect(await getDbStatistics()).not.toBe(first);
+    });
+    const merged = await getDbStatistics();
+    await settleBackgroundWork();
+    expect(state.requests).toBe(perRound * 2);
+    expect(merged.counts.proteinStructures).toBe(100);
+    expect(merged.counts.genomes).toBe(200);
+    expect(merged.unavailableReason).toBeNull();
+
+    vi.setSystemTime(Date.now() + retryMs - 1000);
+    await getDbStatistics();
+    await settleBackgroundWork();
+    expect(state.requests).toBe(perRound * 2);
+
+    vi.setSystemTime(Date.now() + 2000);
+    await getDbStatistics();
+    await vi.waitFor(() => {
+      expect(state.requests).toBe(perRound * 3);
+    });
+  });
+
+  it("fills a count that failed before from the next fetch", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    let failing = true;
+    countRequests(() => failing);
+
+    const first = await getDbStatistics();
+    failing = false;
+    vi.setSystemTime(Date.now() + retryMs + 1);
+    await getDbStatistics();
+
+    await vi.waitFor(async () => {
+      const next = await getDbStatistics();
+      expect(next.counts.proteinStructures).not.toBeNull();
+    });
+    expect(first.counts.proteinStructures).toBeNull();
+  });
+
+  it("keeps the earlier counts when a later fetch fails every count, and retries after 60 s", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const state = roundCounts((round) => round >= 1);
+    const perRound = dbStatisticsDefinitions.length;
+
+    const first = await getDbStatistics();
+    vi.setSystemTime(Date.now() + oneHourMs + 1);
+    await getDbStatistics();
+
+    await vi.waitFor(async () => {
+      const next = await getDbStatistics();
+      expect(next).not.toBe(first);
+      expect(next.counts.genomes).toBe(100);
+      expect(next.unavailableReason).toBeNull();
+    });
+    await settleBackgroundWork();
+    expect(state.requests).toBe(perRound * 2);
+
+    vi.setSystemTime(Date.now() + retryMs + 1);
+    await getDbStatistics();
+    await vi.waitFor(() => {
+      expect(state.requests).toBe(perRound * 3);
+    });
+  });
+
+  it("reports the reason when no count has ever loaded", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    server.use(
+      http.get(`${dataApi}/:core/`, () =>
+        HttpResponse.text("everything is on fire", { status: 503 }),
+      ),
+    );
+
+    const { counts, unavailableReason } = await getDbStatistics();
+
+    expect(Object.values(counts).every((value) => value === null)).toBe(true);
+    expect(unavailableReason).toContain("everything is on fire");
+  });
+
+  it("does not cache a missing env var", async () => {
+    delete process.env.NEXT_PUBLIC_DATA_API;
+    await expect(getDbStatistics()).rejects.toThrow("NEXT_PUBLIC_DATA_API");
+
+    process.env.NEXT_PUBLIC_DATA_API = dataApi;
+    mockAllCores({}, 3);
+    const { counts } = await getDbStatistics();
+
+    expect(counts.genomes).toBe(3);
   });
 });

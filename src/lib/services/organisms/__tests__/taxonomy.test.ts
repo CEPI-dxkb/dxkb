@@ -1,14 +1,17 @@
 import { http, HttpResponse } from "msw";
+import type { MockInstance } from "vitest";
 
 import {
   TaxonomyNotFoundError,
   fetchLandingRootTaxonomy,
   fetchOrganismTaxonomy,
+  getSharedOrganismTaxonomy,
   isTaxonomyOutage,
   staticLandingRootTaxonomy,
 } from "@/lib/services/organisms/taxonomy";
 import { UpstreamError } from "@/lib/api/upstream-failure";
 import { server } from "@/test-helpers/msw-server";
+import { settleBackgroundWork } from "@/test-helpers/settle";
 import {
   connectionRefused,
   maintenancePage,
@@ -23,6 +26,273 @@ beforeEach(() => {
 
 afterEach(() => {
   delete process.env.BVBRC_WEBSITE_API_URL;
+  vi.useRealTimers();
+});
+
+function taxonRecord(taxonId: number, taxonName = `Taxon ${String(taxonId)}`) {
+  return HttpResponse.json({
+    taxon_id: taxonId,
+    taxon_name: taxonName,
+    lineage_names: [taxonName],
+    lineage_ids: [taxonId],
+    taxon_rank: "genus",
+    genomes: 42,
+  });
+}
+
+/** Answers every taxonomy lookup with `respond`; the map counts requests per taxon. */
+function serveTaxonomy(respond: (taxonId: number) => Response): Map<number, number> {
+  const requests = new Map<number, number>();
+  server.use(
+    http.get(`${baseUrl}/taxonomy/:taxonId`, ({ params }) => {
+      const taxonId = Number(params.taxonId);
+      requests.set(taxonId, (requests.get(taxonId) ?? 0) + 1);
+      return respond(taxonId);
+    }),
+  );
+  return requests;
+}
+
+function caught(promise: Promise<unknown>): Promise<unknown> {
+  return promise.then(
+    () => undefined,
+    (error: unknown) => error,
+  );
+}
+
+function advance(ms: number): void {
+  vi.setSystemTime(Date.now() + ms);
+}
+
+describe("getSharedOrganismTaxonomy", () => {
+  let logged: MockInstance<typeof console.error>;
+
+  beforeEach(() => {
+    logged = vi.spyOn(console, "error").mockImplementation(() => undefined);
+  });
+
+  function lookupLogs(): unknown[][] {
+    return logged.mock.calls.filter(
+      ([message]) =>
+        typeof message === "string" && message.endsWith("taxonomy lookup failed"),
+    );
+  }
+
+  it("sends one request for concurrent lookups and serves the next from memory", async () => {
+    const requests = serveTaxonomy((taxonId) => taxonRecord(taxonId, "Bacteria"));
+
+    const [first, second] = await Promise.all([
+      getSharedOrganismTaxonomy(2),
+      getSharedOrganismTaxonomy(2),
+    ]);
+
+    expect(first).toMatchObject({ taxonId: 2, taxonName: "Bacteria", genomes: 42 });
+    expect(second).toBe(first);
+    await expect(getSharedOrganismTaxonomy(2)).resolves.toBe(first);
+    await settleBackgroundWork();
+    expect(requests.get(2)).toBe(1);
+  });
+
+  it("serves an outage from the cache without a second request", async () => {
+    const requests = serveTaxonomy(() => maintenancePage());
+
+    const first = await caught(getSharedOrganismTaxonomy(1773));
+    const second = await caught(getSharedOrganismTaxonomy(1773));
+
+    expect(first).toBeInstanceOf(UpstreamError);
+    expect(first).toMatchObject({ status: 503, source: "taxonomy/1773" });
+    expect(second).toBe(first);
+    await settleBackgroundWork();
+    expect(requests.get(1773)).toBe(1);
+  });
+
+  it("logs one line per failed load, not one per request", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    const requests = serveTaxonomy(() => maintenancePage());
+
+    const first = await caught(getSharedOrganismTaxonomy(1773));
+    await caught(getSharedOrganismTaxonomy(1773));
+    expect(lookupLogs()).toEqual([["taxonomy/1773: taxonomy lookup failed", first]]);
+
+    advance(61_000);
+    await caught(getSharedOrganismTaxonomy(1773));
+    await vi.waitFor(() => {
+      expect(requests.get(1773)).toBe(2);
+      expect(lookupLogs()).toHaveLength(2);
+    });
+    await settleBackgroundWork();
+    expect(logged).toHaveBeenCalledTimes(2);
+  });
+
+  it("caches a 404 for 60 s without tripping the breaker", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    let appeared = false;
+    const requests = serveTaxonomy((taxonId) =>
+      taxonId === 2 || (taxonId === 9999 && appeared)
+        ? taxonRecord(taxonId)
+        : HttpResponse.text("not found", { status: 404 }),
+    );
+
+    const missing = await caught(getSharedOrganismTaxonomy(9999));
+    expect(missing).toBeInstanceOf(TaxonomyNotFoundError);
+    await expect(getSharedOrganismTaxonomy(9998)).rejects.toBeInstanceOf(
+      TaxonomyNotFoundError,
+    );
+    await expect(getSharedOrganismTaxonomy(2)).resolves.toMatchObject({ taxonId: 2 });
+    expect(requests.get(2)).toBe(1);
+
+    appeared = true;
+    advance(59_000);
+    await expect(getSharedOrganismTaxonomy(9999)).rejects.toBe(missing);
+    await settleBackgroundWork();
+    expect(requests.get(9999)).toBe(1);
+
+    advance(2000);
+    await expect(getSharedOrganismTaxonomy(9999)).rejects.toBe(missing);
+    await vi.waitFor(async () => {
+      await expect(getSharedOrganismTaxonomy(9999)).resolves.toMatchObject({
+        taxonId: 9999,
+      });
+    });
+    expect(requests.get(9999)).toBe(2);
+    expect(logged).not.toHaveBeenCalled();
+  });
+
+  it("keeps a stale taxon through an outage, but a refresh's 404 replaces it for 60 s", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    let answer: "record" | "outage" | "gone" = "record";
+    const requests = serveTaxonomy((taxonId) => {
+      if (answer === "outage") return maintenancePage();
+      if (answer === "gone") return HttpResponse.text("not found", { status: 404 });
+      return taxonRecord(taxonId);
+    });
+
+    const taxon = await getSharedOrganismTaxonomy(1773);
+    expect(taxon).toMatchObject({ taxonId: 1773 });
+
+    answer = "outage";
+    advance(60 * 60 * 1000);
+    await expect(getSharedOrganismTaxonomy(1773)).resolves.toBe(taxon);
+    await vi.waitFor(() => {
+      expect(lookupLogs()).toHaveLength(1);
+    });
+    await expect(getSharedOrganismTaxonomy(1773)).resolves.toBe(taxon);
+    await settleBackgroundWork();
+    expect(requests.get(1773)).toBe(2);
+
+    answer = "gone";
+    advance(60_000);
+    await expect(getSharedOrganismTaxonomy(1773)).resolves.toBe(taxon);
+    const gone = await vi.waitFor(async () => {
+      const error = await caught(getSharedOrganismTaxonomy(1773));
+      expect(error).toBeInstanceOf(TaxonomyNotFoundError);
+      return error;
+    });
+    await settleBackgroundWork();
+    expect(requests.get(1773)).toBe(3);
+
+    answer = "record";
+    advance(59_000);
+    await expect(getSharedOrganismTaxonomy(1773)).rejects.toBe(gone);
+    await settleBackgroundWork();
+    expect(requests.get(1773)).toBe(3);
+
+    advance(1000);
+    await expect(getSharedOrganismTaxonomy(1773)).rejects.toBe(gone);
+    await vi.waitFor(async () => {
+      await expect(getSharedOrganismTaxonomy(1773)).resolves.toMatchObject({
+        taxonId: 1773,
+      });
+    });
+    await settleBackgroundWork();
+    expect(requests.get(1773)).toBe(4);
+    expect(logged).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not cache a malformed payload", async () => {
+    const requests = serveTaxonomy((taxonId) => HttpResponse.json({ taxon_id: taxonId }));
+
+    await expect(getSharedOrganismTaxonomy(2)).rejects.toThrow(/taxon_name is missing/);
+    await expect(getSharedOrganismTaxonomy(2)).rejects.toThrow(/taxon_name is missing/);
+
+    expect(requests.get(2)).toBe(2);
+    expect(lookupLogs()).toEqual([]);
+  });
+
+  it("does not cache a missing env var", async () => {
+    delete process.env.BVBRC_WEBSITE_API_URL;
+    await expect(getSharedOrganismTaxonomy(2)).rejects.toThrow(
+      "Missing required environment variable: BVBRC_WEBSITE_API_URL",
+    );
+
+    process.env.BVBRC_WEBSITE_API_URL = baseUrl;
+    const requests = serveTaxonomy((taxonId) => taxonRecord(taxonId, "Bacteria"));
+
+    await expect(getSharedOrganismTaxonomy(2)).resolves.toMatchObject({ taxonName: "Bacteria" });
+    expect(requests.get(2)).toBe(1);
+  });
+
+  it("fails a distinct taxon fast once two outages opened the breaker", async () => {
+    const requests = serveTaxonomy(() => maintenancePage());
+
+    await expect(getSharedOrganismTaxonomy(1773)).rejects.toThrow(/503/);
+    const opener = await caught(getSharedOrganismTaxonomy(1774));
+    const fastFail = await caught(getSharedOrganismTaxonomy(561));
+
+    expect(fastFail).toBe(opener);
+    expect(fastFail).toMatchObject({ status: 503, source: "taxonomy/1774" });
+    expect(requests.has(561)).toBe(false);
+    expect(lookupLogs()).toHaveLength(2);
+  });
+
+  it("opens the breaker on two 500s that each took half the 30 s budget", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    const requests = serveTaxonomy(() => {
+      advance(15_000);
+      return HttpResponse.text("taxonomy unavailable", { status: 500 });
+    });
+
+    await expect(getSharedOrganismTaxonomy(1773)).rejects.toThrow("taxonomy unavailable");
+    const opener = await caught(getSharedOrganismTaxonomy(1774));
+    const fastFail = await caught(getSharedOrganismTaxonomy(561));
+    await settleBackgroundWork();
+
+    expect(fastFail).toBe(opener);
+    expect(fastFail).toMatchObject({ status: 502, source: "taxonomy/1774" });
+    expect(requests.has(561)).toBe(false);
+  });
+
+  it("keeps the breaker closed on 500s that answered within half the budget", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    const requests = serveTaxonomy((taxonId) => {
+      advance(14_999);
+      return taxonId === 561
+        ? taxonRecord(561)
+        : HttpResponse.text("taxonomy unavailable", { status: 500 });
+    });
+
+    await expect(getSharedOrganismTaxonomy(1773)).rejects.toThrow("taxonomy unavailable");
+    await expect(getSharedOrganismTaxonomy(1774)).rejects.toThrow("taxonomy unavailable");
+
+    await expect(getSharedOrganismTaxonomy(561)).resolves.toMatchObject({ taxonId: 561 });
+    expect(requests.get(561)).toBe(1);
+  });
+
+  it("does not open the breaker on a generic 500", async () => {
+    const requests = serveTaxonomy((taxonId) =>
+      taxonId === 561
+        ? taxonRecord(561)
+        : HttpResponse.text("taxonomy unavailable", { status: 500 }),
+    );
+
+    await expect(getSharedOrganismTaxonomy(1773)).rejects.toThrow("taxonomy unavailable");
+    await expect(getSharedOrganismTaxonomy(1774)).rejects.toThrow("taxonomy unavailable");
+    await expect(getSharedOrganismTaxonomy(1773)).rejects.toThrow("taxonomy unavailable");
+
+    await expect(getSharedOrganismTaxonomy(561)).resolves.toMatchObject({ taxonId: 561 });
+    await settleBackgroundWork();
+    expect(requests.get(1773)).toBe(1);
+  });
 });
 
 describe("fetchOrganismTaxonomy", () => {
@@ -205,9 +475,75 @@ describe("fetchLandingRootTaxonomy", () => {
       genomes: null,
     });
     expect(console.error).toHaveBeenCalledWith(
-      expect.stringContaining("taxonomy/10239"),
-      expect.anything(),
+      "taxonomy/10239: taxonomy lookup failed",
+      expect.any(UpstreamError),
     );
+  });
+
+  it("falls back to the static root on a 404, unlogged, and rethrows a 404 for any other taxon", async () => {
+    serveTaxonomy(() => HttpResponse.text("not found", { status: 404 }));
+
+    await expect(fetchLandingRootTaxonomy(10239)).resolves.toEqual(
+      staticLandingRootTaxonomy(10239),
+    );
+    await expect(fetchLandingRootTaxonomy(1773)).rejects.toBeInstanceOf(
+      TaxonomyNotFoundError,
+    );
+    expect(console.error).not.toHaveBeenCalled();
+  });
+
+  it("falls back to the static root once a refresh's 404 replaced the cached record", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    let gone = false;
+    const requests = serveTaxonomy((taxonId) =>
+      gone
+        ? HttpResponse.text("not found", { status: 404 })
+        : taxonRecord(taxonId, "Bacteria"),
+    );
+
+    const record = await fetchLandingRootTaxonomy(2);
+    expect(record).toMatchObject({ taxonName: "Bacteria", genomes: 42 });
+
+    gone = true;
+    advance(60 * 60 * 1000);
+    await expect(fetchLandingRootTaxonomy(2)).resolves.toBe(record);
+    await vi.waitFor(async () => {
+      await expect(fetchLandingRootTaxonomy(2)).resolves.toEqual(
+        staticLandingRootTaxonomy(2),
+      );
+    });
+    await settleBackgroundWork();
+    expect(requests.get(2)).toBe(2);
+    expect(console.error).not.toHaveBeenCalled();
+  });
+
+  it("serves the static root at once from a cached outage", async () => {
+    const requests = serveTaxonomy(() => maintenancePage());
+
+    await expect(fetchLandingRootTaxonomy(10239)).resolves.toMatchObject({
+      taxonName: "Viruses",
+      genomes: null,
+    });
+    await expect(fetchLandingRootTaxonomy(10239)).resolves.toMatchObject({
+      taxonName: "Viruses",
+      genomes: null,
+    });
+
+    await settleBackgroundWork();
+    expect(requests.get(10239)).toBe(1);
+  });
+
+  it("serves the static root without a request while the breaker is open", async () => {
+    const requests = serveTaxonomy(() => maintenancePage());
+    await expect(getSharedOrganismTaxonomy(1773)).rejects.toThrow(/503/);
+    await expect(getSharedOrganismTaxonomy(1774)).rejects.toThrow(/503/);
+
+    await expect(fetchLandingRootTaxonomy(2)).resolves.toMatchObject({
+      taxonName: "Bacteria",
+      genomes: null,
+    });
+
+    expect(requests.has(2)).toBe(false);
   });
 
   it("does not hide a configuration error behind the static root", async () => {

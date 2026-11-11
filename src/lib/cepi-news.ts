@@ -1,4 +1,6 @@
-/** CEPI news scraped from cepi.net/news's hydration state (no RSS or API); never throws, returns [] on failure. */
+/** CEPI news scraped from cepi.net/news's hydration state (no RSS or API); never throws, returns [] on failure (and logs it). */
+
+import { createSharedCache } from "@/lib/shared-cache";
 
 export interface CepiNewsItem {
   title: string;
@@ -74,17 +76,47 @@ export function parseCepiNews(html: string, limit = 4): CepiNewsItem[] {
   return items.slice(0, limit);
 }
 
-/** Server-only, cached daily via ISR; never throws. */
+/**
+ * Server-only; never throws. The cepi.net fetch stays in Next's data cache for
+ * a day (`revalidate`); the news page reads through `getSharedCepiNews`.
+ */
 export async function fetchCepiNews(limit = 4): Promise<CepiNewsItem[]> {
   try {
     const response = await fetch(cepiNewsUrl, {
       next: { revalidate: revalidateSeconds },
       signal: AbortSignal.timeout(fetchTimeoutMs),
     });
-    if (!response.ok) return [];
+    if (!response.ok) {
+      console.error("CEPI news fetch failed:", response.status, cepiNewsUrl);
+      return [];
+    }
     const html = await response.text();
-    return parseCepiNews(html, limit);
-  } catch {
+    const items = parseCepiNews(html, limit);
+    if (items.length === 0) {
+      console.warn(
+        `CEPI news page yielded no news items (${cepiNewsUrl}); its layout may have changed`,
+      );
+    }
+    return items;
+  } catch (error) {
+    console.error("CEPI news fetch failed:", error);
     return [];
   }
+}
+
+// `fetchCepiNews` never throws, so a failure is an empty list, retried after
+// 5 min; a failed refresh keeps the list it already had for another hour.
+const cepiNewsCache = createSharedCache<number, CepiNewsItem[]>({
+  name: "cepi-news",
+  load: async (limit, previous) => {
+    const items = await fetchCepiNews(limit);
+    return items.length === 0 && previous && previous.length > 0 ? previous : items;
+  },
+  freshMs: (items) => (items.length > 0 ? 60 * 60 * 1000 : 5 * 60 * 1000),
+  retryMs: 5 * 60 * 1000,
+});
+
+/** `fetchCepiNews` through the process-wide cache, keyed by `limit`. */
+export function getSharedCepiNews(limit = 4): Promise<CepiNewsItem[]> {
+  return cepiNewsCache.get(limit);
 }

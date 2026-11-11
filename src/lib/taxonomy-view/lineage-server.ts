@@ -1,3 +1,6 @@
+import { upstreamServices } from "@/lib/api/upstream-failure";
+import { isUpstreamOutageError } from "@/lib/api/upstream-outage";
+
 import { lineageCrumbs, type LineageCrumb } from "./lineage-crumbs";
 import { isTaxonId } from "./schema";
 import { getTaxonomy } from "./server";
@@ -12,7 +15,10 @@ export async function loadLineageCrumbs(
     const taxon = await getTaxonomy(taxonId);
     return taxon ? lineageCrumbs(taxon) : [];
   } catch (error) {
-    console.error(`${owner}: taxonomy/${taxonId} lookup failed`, error);
+    // The shared loader logs an outage once, so a cached one stays quiet here.
+    if (!isUpstreamOutageError(error, upstreamServices.dataApi)) {
+      console.error(`${owner}: taxonomy/${taxonId} lookup failed`, error);
+    }
     return [];
   }
 }

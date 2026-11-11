@@ -6,6 +6,7 @@ export {
   memberQueryOptions,
 } from "./query-options";
 export {
+  booleanFilterValues,
   resourceRegistry,
   getResourceDefinition,
   isDataResource,

@@ -3,10 +3,7 @@ import type { DataResource, DataSort } from "@/lib/data-api";
 import type { CollectionDownloadSpec } from "@/lib/data-api/downloads";
 import { featureGridDefaultOrder } from "@/lib/feature-view";
 import type { ChildCollectionUrlKey } from "@/lib/views/child-collection-state";
-import {
-  genomeSequenceColumns,
-  proteinDownloadSpec,
-} from "@/lib/views/child-resources";
+import { proteinDownloadSpec } from "@/lib/views/child-resources";
 
 interface GenomeChildCollection {
   urlKey: ChildCollectionUrlKey;
@@ -30,7 +27,6 @@ export const genomeChildCollections = {
     label: "Sequences",
     idField: "sequence_id",
     defaultSort: "sequence_id:asc",
-    columns: genomeSequenceColumns,
   },
   // Legacy order: features run along each sequence from position 1, with no
   // sorted column.

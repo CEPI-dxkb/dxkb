@@ -1,4 +1,5 @@
 import {
+  booleanFilterValues,
   keywordClauses,
   parseRql,
   serializeRql,
@@ -62,7 +63,7 @@ export const genomeCollectionOptions: CollectionStateOptions = {
     ]),
   ],
   // `public` is a boolean field; the gateway rejects any other value.
-  filterValues: { public: ["true", "false"] },
+  filterValues: booleanFilterValues(["public"]),
 };
 
 export function parseGenomeCollectionState(

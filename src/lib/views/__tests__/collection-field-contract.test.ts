@@ -320,6 +320,7 @@ describe("hidden-facet policy", () => {
     expect(featureMetadata.facets.map((facet) => facet.field)).toEqual([
       "annotation",
       "feature_type",
+      "public",
     ]);
   });
 
@@ -331,6 +332,7 @@ describe("hidden-facet policy", () => {
       "genome_id",
       "annotation",
       "feature_type",
+      "public",
       "filter",
     ]);
     for (const name of ["gene", "product", "plfam_id", "pgfam_id", "go", "property"]) {

@@ -79,14 +79,17 @@ describe("Genome view contracts", () => {
     const facets = genomeCollectionProfile.facets ?? [];
     expect(facets.length).toBeGreaterThan(0);
     for (const { field } of facets) {
+      // A closed-value facet (Public: `true`/`false`) drops any other value,
+      // so pick one of its own.
+      const value = genomeCollectionOptions.filterValues?.[field]?.[0] ?? "x";
       const params = updateCollectionSearchParams(
         { keyword: "influenza" },
-        { filters: { [field]: ["x"] } },
+        { filters: { [field]: [value] } },
         genomeCollectionOptions,
       );
       expect({ field, values: params.getAll(field) }).toEqual({
         field,
-        values: ["x"],
+        values: [value],
       });
     }
   });

@@ -69,6 +69,17 @@ export const genomeSequenceFields = {
         facet_hidden: false, 
         search: true 
         },
+    // Facet and filter, not a table column: private rows carry public=false.
+    public: {
+      label: 'Public',
+      field: 'public',
+      hidden: true,
+      show_in_table: false,
+      group: 'Sequence Info',
+      facet: true,
+      facet_hidden: true,
+      search: false
+    },
     sequence_status: { 
         label: 'Sequence Status', 
         field: 'sequence_status', 

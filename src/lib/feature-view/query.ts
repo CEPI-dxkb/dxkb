@@ -1,4 +1,9 @@
-import { eq, validateRql, type DataSort } from "@/lib/data-api";
+import {
+  booleanFilterValues,
+  eq,
+  validateRql,
+  type DataSort,
+} from "@/lib/data-api";
 import {
   parseCollectionState,
   type CollectionState,
@@ -17,8 +22,9 @@ export const featureSorts = featureMetadata.sorts;
 export const featureCollectionOptions: CollectionStateOptions = {
   defaultSort: "unsorted",
   sortAllowlist: ["unsorted", ...featureSorts],
-  friendlyFilters: ["genome_id", "annotation", "feature_type", "filter"],
+  friendlyFilters: ["genome_id", "annotation", "feature_type", "public", "filter"],
   independentFilters: ["filter"],
+  filterValues: booleanFilterValues(["public"]),
 };
 
 /** Legacy FeatureGrid/ProteinGrid row order when no column is sorted; keyword searches keep the backend's relevance order. */
@@ -100,7 +106,12 @@ export function featureStructuralRql(
   state: CollectionState,
 ): string | undefined {
   const clauses: string[] = [];
-  for (const name of ["genome_id", "annotation", "feature_type"] as const) {
+  for (const name of [
+    "genome_id",
+    "annotation",
+    "feature_type",
+    "public",
+  ] as const) {
     const selected = state.filters[name] ?? [];
     if (selected.length === 0) continue;
     const predicates = selected.map((value) => eq("genome_feature", name, value));

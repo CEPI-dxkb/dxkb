@@ -149,8 +149,8 @@ export const genomeFields = {
         hidden: true,
         show_in_table: false,
         group: 'Status',
-        facet: false,
-        facet_hidden: true,
+        facet: true,
+        facet_hidden: false,
         search: false
       },
   

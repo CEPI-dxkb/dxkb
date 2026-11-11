@@ -138,6 +138,17 @@ export const strainFields = {
     search: true,
   },
 
+  // Facet and filter, not a table column: private rows carry public=false.
+  public: {
+    label: "Public",
+    field: "public",
+    hidden: true,
+    show_in_table: false,
+    group: "Strain Info",
+    facet: true,
+    facet_hidden: true,
+    search: false,
+  },
   host_group: {
     label: "Host Group",
     field: "host_group",

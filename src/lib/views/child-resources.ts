@@ -1,9 +1,12 @@
 import { genomeSequenceFields } from "@/constants/datafields/genome_sequence";
 import { ppiFields } from "@/constants/datafields/ppi";
 import { sequenceFeatureFields } from "@/constants/datafields/sequence_feature";
+import type { ResourceCollectionProfile } from "@/components/views/resource-collection";
 import { eq } from "@/lib/data-api";
 import type { CollectionDownloadSpec } from "@/lib/data-api/downloads";
+import type { CollectionState } from "./collection-state";
 import { deriveFieldMetadata } from "./field-metadata";
+import { structuralFilterRql } from "./structural-rql";
 
 /**
  * Child tabs run through the same metadata pass, so columns carry the
@@ -13,9 +16,31 @@ import { deriveFieldMetadata } from "./field-metadata";
  * substitutes the Feature profile (`feature-view/profile.ts`), which uses
  * `hiddenColumns: "omit"` where this module uses the default collapse.
  */
-export const genomeSequenceColumns = deriveFieldMetadata(genomeSequenceFields, {
+const genomeSequenceMetadata = deriveFieldMetadata(genomeSequenceFields, {
   resource: "genome_sequence",
-}).columns;
+});
+export const genomeSequenceColumns = genomeSequenceMetadata.columns;
+
+/**
+ * Legacy SequenceGridContainer: genome_sequence rows faceted on every field
+ * the metadata flags `facet` (Public included). `ResourceChildCollection`
+ * uses this for every Sequences tab, so those tabs pass no columns.
+ */
+export const genomeSequenceCollectionProfile: ResourceCollectionProfile<
+  Record<string, unknown>
+> = {
+  resource: "genome_sequence",
+  label: "Sequences",
+  idField: "sequence_id",
+  columns: genomeSequenceMetadata.columns,
+  detailFields: genomeSequenceMetadata.detailFields,
+  basePredicate: "eq(sequence_id,*)",
+  buildStructuralRql: (state: CollectionState) =>
+    structuralFilterRql("genome_sequence", state),
+  facets: genomeSequenceMetadata.facets,
+  guideUrl:
+    "https://www.bv-brc.org/docs/quick_references/organisms_taxon/sequences.html",
+};
 export const interactionColumns = deriveFieldMetadata(ppiFields, {
   resource: "ppi",
 }).columns;

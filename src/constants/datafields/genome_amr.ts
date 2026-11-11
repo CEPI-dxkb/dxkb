@@ -66,6 +66,17 @@ export const genomeAmrFields = {
         facet_hidden: false, 
         search: true  
         },
+    // Facet and filter, not a table column: private rows carry public=false.
+    public: {
+      label: 'Public',
+      field: 'public',
+      hidden: true,
+      show_in_table: false,
+      group: 'Summary',
+      facet: true,
+      facet_hidden: false,
+      search: false
+    },
     m_sign: { 
         label: 'Measurement Sign', 
         field: 'measurement_sign', 

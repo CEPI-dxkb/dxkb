@@ -277,6 +277,21 @@ export const resourceRegistry = Object.fromEntries(
   ]),
 ) as unknown as Record<DataResource, ResourceDefinition>;
 
+/**
+ * Closed `filterValues` for the boolean fields among `fields`: the gateway
+ * rejects a boolean filter with any value but `true` or `false`, so collection
+ * state drops anything else before it reaches the backend.
+ */
+export function booleanFilterValues(
+  fields: readonly string[],
+): Record<string, readonly string[]> {
+  return Object.fromEntries(
+    fields
+      .filter((field) => booleanFields.has(field))
+      .map((field) => [field, ["true", "false"] as const]),
+  );
+}
+
 export function isDataResource(value: string): value is DataResource {
   return Object.hasOwn(resourceRegistry, value);
 }

@@ -13,7 +13,6 @@ interface FieldProps {
   onChange: (value: string) => void;
 }
 
-/** A titled card; `grid` wraps the children in the two-column content grid. */
 function SearchCard({
   title,
   grid = false,
@@ -39,7 +38,6 @@ function SearchCard({
   );
 }
 
-/** A labelled text input row (`service-card-row-item`). */
 function SearchTextField({
   id,
   label,
@@ -129,7 +127,6 @@ export function GeographyCard({
 
 const datePlaceholder = "YYYY or YYYY-MM or YYYY-MM-DD";
 
-/** One From/To input row; the label and input share `${kind}-${edge}`. */
 function RangeField({
   kind,
   edge,
@@ -159,7 +156,6 @@ function RangeField({
   );
 }
 
-/** From/To card: `year` uses bounded number inputs, `date` free-text dates. */
 export function RangeCard({
   kind,
   from,

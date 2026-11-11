@@ -1,4 +1,3 @@
-// src/app/(views)/taxonomy/[taxonId]/__tests__/nav-items.test.tsx
 import { buildTaxonViews } from "@/components/organisms/taxon-views";
 import { buildTaxonomyConfig } from "../_config";
 import type { OrganismTaxonomy } from "@/lib/services/organisms/types";
@@ -94,9 +93,7 @@ describe("buildTaxonomyNavItems", () => {
   });
 
   it("injects the real data views (not placeholders)", () => {
-    // resolveComponent returns the override Component regardless of gate state,
-    // so any taxon surfaces the real named fn. Catches a dropped override
-    // silently falling back to makePlaceholderView.
+    // Catches a dropped override silently falling back to makePlaceholderView.
     const taxon = tax({ lineageNames: ["Bacteria"] });
     const items = buildItems(taxon);
     const name = (k: string) => items.find((i) => i.key === k)?.Component.name;

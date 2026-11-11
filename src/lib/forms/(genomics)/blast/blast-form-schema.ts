@@ -1,6 +1,5 @@
 import { z } from "zod";
 
-// Base schema with common fields (excluding discriminators)
 export const baseFormSchema = z.object({
   input_type: z.enum(["aa", "dna"]),
   db_type: z.enum(["fna", "ffn", "faa", "frn"]),
@@ -40,7 +39,6 @@ export const baseFormSchema = z.object({
     ),
 });
 
-// Input source discriminated union
 export const inputSourceFormSchema = z.discriminatedUnion("input_source", [
   z.object({
     input_source: z.literal("fasta_data"),
@@ -56,7 +54,6 @@ export const inputSourceFormSchema = z.discriminatedUnion("input_source", [
   }),
 ]);
 
-// Database conditional fields - optional fields that may be present based on db_precomputed_database
 export const databaseConditionalFieldsSchema = z.object({
   db_genome_list: z.array(z.string()).optional(),
   db_genome_group: z.string().optional(),
@@ -65,12 +62,10 @@ export const databaseConditionalFieldsSchema = z.object({
   db_fasta_file: z.string().optional(),
 });
 
-// Combined schema using intersection with conditional validation
 export const completeFormSchema = baseFormSchema
   .and(inputSourceFormSchema)
   .and(databaseConditionalFieldsSchema)
   .superRefine((data, ctx) => {
-    // Validate conditional database fields based on db_precomputed_database
     if (data.db_precomputed_database === "selGenome") {
       if (!data.db_genome_list || data.db_genome_list.length === 0) {
         ctx.addIssue({
@@ -114,10 +109,8 @@ export const completeFormSchema = baseFormSchema
     }
   });
 
-// Type inference for the complete form schema
 export type BlastFormData = z.infer<typeof completeFormSchema>;
 
-// Default form values constant
 export const defaultBlastFormValues = {
   input_type: "dna" as const,
   input_source: "fasta_data" as const,

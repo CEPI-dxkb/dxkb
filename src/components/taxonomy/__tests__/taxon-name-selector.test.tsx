@@ -8,8 +8,8 @@ import { server } from "@/test-helpers/msw-server";
 import { createQueryClientWrapper } from "@/test-helpers/react";
 import type { TaxonomyItem } from "@/types";
 
-// `value` is always passed: the selector syncs `prevValue` (null) against the
-// prop during render, so an omitted (undefined) value never settles.
+// `value` is always passed: the selector syncs `prevValue` (null) against the prop
+// during render, so an omitted value never settles.
 describe("TaxonNameSelector invalid", () => {
   it("draws the error border for a caller-reported failure without adding a message", () => {
     render(<TaxonNameSelector value={null} invalid />, {
@@ -59,8 +59,6 @@ describe("TaxonNameSelector suggestions", () => {
 
     await user.type(screen.getByRole("textbox"), "Bacillus");
 
-    // One text node, so the gap before the dot matches the gap after it
-    // (a flex gap used to put 8px before it and a 4px space after).
     expect(await screen.findByText("ID: 1392 • Bacteria")).toBeVisible();
     expect(screen.getByText("ID: 7")).toBeVisible();
   });
@@ -181,7 +179,6 @@ describe("TaxonNameSelector failed search", () => {
     recover();
     await user.click(screen.getByRole("button", { name: "Retry" }));
 
-    // The retry refocuses the field, which reopens the list with the answer.
     expect(
       await screen.findByText("[genus] Mycobacterium"),
     ).toBeVisible();
@@ -215,12 +212,9 @@ describe("TaxonNameSelector failed search", () => {
       { wrapper: createQueryClientWrapper() },
     );
 
-    // The prefilled name searches on mount. Its failure shows in the list,
-    // which is where the user searches...
     await user.click(screen.getByRole("button", { name: "Show suggestions" }));
     expect(await screen.findByRole("alert")).toHaveTextContent(shownOutage);
 
-    // ...but not under a field that already holds its value.
     await user.click(screen.getByRole("button", { name: "Hide suggestions" }));
     await waitFor(() => {
       expect(screen.queryByRole("alert")).not.toBeInTheDocument();

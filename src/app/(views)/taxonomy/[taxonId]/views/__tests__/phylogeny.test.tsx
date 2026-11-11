@@ -4,9 +4,8 @@ import type { OrganismTaxonomy } from "@/lib/services/organisms/types";
 
 import { makePhylogenyView } from "@/components/organisms/taxon-views/phylogeny";
 
-// Both panels pull in Archaeopteryx/Auspice and live network state, and the
-// factory reaches them through lazy-tab-roots. Stub its wrappers so these tests
-// stay on the factory: lineage routing and the shared frame.
+// Stub the lazy-tab-roots wrappers: both panels pull in Archaeopteryx/Auspice
+// and live network state.
 vi.mock("@/components/organisms/taxon-views/lazy-tab-roots", () => ({
   LazyViralPhylogenyPanel: ({ taxonId, taxonName }: { taxonId: number; taxonName: string }) => (
     <div data-testid="viral-panel" data-taxon-id={taxonId} data-taxon-name={taxonName} />
@@ -57,9 +56,8 @@ describe("makePhylogenyView", () => {
     expect(queryByTestId("bacterial-panel")).toBeNull();
   });
 
-  // The frame lives on the factory, not the panels, so every phylogeny state
-  // (tree picker, Archaeopteryx, Auspice iframe, error, empty) is boxed the same.
-  // Moving it back down to a viewer regresses the states that viewer doesn't own.
+  // The frame lives on the factory, not the panels, so every phylogeny state is
+  // boxed the same.
   it.each([
     ["viral", viralTaxon, "viral-panel"],
     ["bacterial", bacterialTaxon, "bacterial-panel"],

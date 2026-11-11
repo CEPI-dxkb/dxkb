@@ -1,9 +1,4 @@
-/**
- * Reading the agents' progress steps, shared by the stream (`progress`
- * events) and stored answers (`agent_metadata.steps`). The step format is
- * `bvbrc-agents/shared/progress.py`. Plain checks rather than zod, so the
- * browser bundle for the stream stays small.
- */
+/** Plain checks rather than zod, so the stream's browser bundle stays small. */
 import type { CopilotCard, CopilotStep } from "./types";
 
 const phases = new Set<CopilotStep["phase"]>([
@@ -27,7 +22,6 @@ function count(value: unknown): number | null {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
 
-/** A step from its wire form, or null when it has no id or label. */
 export function readCopilotStep(raw: unknown): CopilotStep | null {
   if (!isRecord(raw)) return null;
   const stepId = text(raw.step_id);
@@ -48,7 +42,6 @@ export function readCopilotStep(raw: unknown): CopilotStep | null {
   };
 }
 
-/** Steps from a stored answer, in order, dropping unreadable ones. */
 export function readCopilotSteps(raw: unknown): CopilotStep[] {
   if (!Array.isArray(raw)) return [];
   return raw
@@ -56,7 +49,6 @@ export function readCopilotSteps(raw: unknown): CopilotStep[] {
     .filter((step): step is CopilotStep => step !== null && !step.transient);
 }
 
-/** Inserts or updates `step` by `stepId`, keeping first-seen order. */
 export function mergeCopilotStep(
   steps: CopilotStep[],
   step: CopilotStep,
@@ -68,7 +60,6 @@ export function mergeCopilotStep(
   return next;
 }
 
-/** `{card_type, card_payload}` as a `CopilotCard`, or null. */
 export function readCopilotCard(raw: unknown): CopilotCard | null {
   if (!isRecord(raw)) return null;
   const cardType = text(raw.card_type);

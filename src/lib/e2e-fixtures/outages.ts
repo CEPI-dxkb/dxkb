@@ -1,44 +1,15 @@
 /**
- * Backend outages the e2e loopback mock can answer with, and the two ways a
- * spec asks for one. Shared by the loopback
- * (`src/app/api/e2e-mock/[...path]/outage.ts`) and the specs
- * (through `e2e/fixtures/overrides/outage.ts`), so the name of an outage cannot drift between
- * the side that asks for it and the side that serves it.
- *
- * The Playwright workers share one Next server, so an outage can never be
- * global state: every worker would see it. Each one is carried by the
- * request it applies to instead:
- *
- * - **Session outage.** The session token carries an `e2e-outage=` field
- *   ({@link outageSessionToken}). Every upstream call made with that session
- *   forwards the token as `Authorization`, so the services it names fail for
- *   that test's requests only: the user (profile) service, the workspace and
- *   the app (job) service.
- * - **Record outage.** The Data API is read without a token in e2e (the
- *   loopback is plain HTTP and `ServerDataRepository` sends a token only over
- *   HTTPS, so the record views run signed out). A data request that names
- *   one of {@link outageRecords}' ids or keywords fails instead.
- *
- * Connect-level failures (refused, connect timeout) are not modelled: by the
- * time the loopback can read a request the connection has been accepted.
- * They stay covered by the MSW reproductions in
- * `src/test-helpers/upstream-failures.ts`.
+ * Backend outages the e2e loopback mock can answer with, shared by the loopback and the specs so an outage's name cannot drift.
+ * Workers share one Next server, so an outage rides on the request: a session token's `e2e-outage=` field ({@link outageSessionToken}) fails the user, workspace and job services for that test only, and a data request naming an {@link outageRecords} id or keyword fails the token-less Data API. Connect-level failures are not modelled (see `src/test-helpers/upstream-failures.ts`).
  */
 
 /**
- * - `maintenance`: an immediate 503 with BV-BRC's HTML maintenance page, as
- *   the services answered during the 2026-10-19 maintenance window.
- * - `hang`: the connection is accepted and never answered, so the caller's
- *   own budget has to end the wait (`E2E_UPSTREAM_BUDGET_MS` shortens the
- *   `fetchUpstream` budgets in e2e).
+ * `maintenance`: an immediate 503 with BV-BRC's HTML maintenance page.
+ * `hang`: the connection is accepted and never answered, so the caller's own budget ends the wait.
  */
 export const outageShapes = ["maintenance", "hang"] as const;
 export type OutageShape = (typeof outageShapes)[number];
 
-/**
- * The services a session outage can name, each with the loopback namespaces
- * (the first path segment, one per `.env.e2e.test` URL) it covers.
- */
 export const outageServiceNamespaces = {
   user: [
     "user",
@@ -58,12 +29,7 @@ export type SessionOutages = Partial<Record<OutageService, OutageShape>>;
 const directiveField = "e2e-outage=";
 const entrySeparator = "+";
 
-/**
- * A session token whose upstream calls fail as `outages` says, for the
- * `bvbrc_token` cookie. The `un=` claim keeps `userId` as the token's user.
- * Every character is a valid cookie octet, so the browser sends it back
- * unchanged.
- */
+/** A session token for the `bvbrc_token` cookie whose upstream calls fail as `outages` says; every character is a valid cookie octet. */
 export function outageSessionToken(
   userId: string,
   outages: SessionOutages,
@@ -90,12 +56,7 @@ function isOutageShape(value: string): value is OutageShape {
   return (outageShapes as readonly string[]).includes(value);
 }
 
-/**
- * The outages an `Authorization` header asks for. Reads the token whatever
- * prefix a client put on it (`OAuth `, `Bearer `). An unknown service or
- * shape is `invalid` rather than ignored, so a typo in a spec fails loudly
- * instead of serving a healthy backend.
- */
+/** Reads the token whatever prefix it carries; an unknown service or shape is `invalid` rather than ignored, so a spec typo fails loudly. */
 export function parseOutageDirective(
   authorization: string | null,
 ): OutageDirective {
@@ -125,7 +86,6 @@ export function parseOutageDirective(
   return { kind: "outages", outages };
 }
 
-/** The service a loopback path belongs to, by its first segment. */
 export function outageServiceFor(path: string): OutageService | undefined {
   const namespace = path.split("/").find(Boolean) ?? "";
   return (Object.keys(outageServiceNamespaces) as OutageService[]).find(
@@ -137,18 +97,12 @@ export function outageServiceFor(path: string): OutageService | undefined {
 }
 
 interface OutageRecordIds {
-  /** A genome id the record page accepts (`/^\d+\.\d+$/`). */
   genomeId: string;
-  /** A taxon id the taxonomy page accepts (a positive integer). */
   taxonId: string;
-  /** One search term that survives keyword normalization unchanged. */
   keyword: string;
 }
 
-/**
- * Data records whose reads fail with each shape. No real BV-BRC record uses
- * these ids, and no healthy fixture in `./records.ts` does either.
- */
+/** No real BV-BRC record or healthy fixture uses these ids. */
 export const outageRecords = {
   maintenance: {
     genomeId: "990503.1",
@@ -158,11 +112,7 @@ export const outageRecords = {
   hang: { genomeId: "990504.1", taxonId: "990504", keyword: "outagehang" },
 } as const satisfies Record<OutageShape, OutageRecordIds>;
 
-/**
- * The shape a data request asks for by naming an outage record anywhere in
- * its path, query or body. Matched as whole RQL terms, so `990503.1` does
- * not match the taxon `990503` and neither matches `1990503`.
- */
+/** Matched as whole RQL terms, so `990503.1` does not match taxon `990503`. */
 export function outageRecordShape(text: string): OutageShape | undefined {
   const terms = new Set(text.split(/[^\w.-]+/).filter(Boolean));
   return outageShapes.find((shape) =>
@@ -170,7 +120,6 @@ export function outageRecordShape(text: string): OutageShape | undefined {
   );
 }
 
-/** BV-BRC's maintenance page, as `user.bv-brc.org` and `www.bv-brc.org` served it. */
 export const maintenancePageHtml = `<!doctype html>
 <title>Site Maintenance</title>
 <style>
@@ -186,5 +135,4 @@ export const maintenancePageHtml = `<!doctype html>
     </div>
 </article>`;
 
-/** What `summarizeUpstreamBody` keeps of {@link maintenancePageHtml}. */
 export const maintenanceSummary = "Site Maintenance — We’ll be back soon!";

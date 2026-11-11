@@ -17,7 +17,6 @@ function matrix(scaleX: number, translateX: number): TransformMatrix {
   return { scaleX, scaleY: 1, translateX, translateY: 0, skewX: 0, skewY: 0 };
 }
 
-/** A mirrored row whose service order (contig order) runs right to left on screen. */
 const mirroredPair: CompareRegionRow = {
   ...mirroredRow,
   features: [
@@ -28,14 +27,12 @@ const mirroredPair: CompareRegionRow = {
 
 const layout = layoutCompareRegion([focusRow, mirroredPair]);
 
-/** A placed feature spanning `from`…`to` (bp offsets). */
 function span(from: number, to: number): PlacedFeature {
   return { feature: testGene("fig|9.9.peg.1", 1, 2), from, to, lane: 0 };
 }
 
 describe("screenOrder", () => {
   it("orders a row's features left to right, the upper lane first", () => {
-    // The upstream gene, then the focus gene over its BLAST hit (same middle).
     expect(screenOrder(layout.rows[0])).toEqual([0, 1, 2]);
   });
 
@@ -89,7 +86,6 @@ describe("stepFeature", () => {
       rowIndex: 1,
       featureIndex: 1,
     });
-    // The homolog's middle matches both the focus gene and its BLAST hit.
     expect(
       stepFeature(layout, { rowIndex: 1, featureIndex: 1 }, "up"),
     ).toEqual(focusGene);
@@ -191,7 +187,6 @@ describe("rowName", () => {
 });
 
 describe("revealMatrix", () => {
-  // 1,000 px over 2 kb: at 4×, 2 px a base.
   const domain: [number, number] = [-1000, 1000];
 
   it("leaves a feature already in view where it is", () => {
@@ -200,21 +195,18 @@ describe("revealMatrix", () => {
   });
 
   it("pans the least that brings a feature left of the plot in, 8 px inside", () => {
-    // At −1,000 px the feature spans −800…−200 px.
     expect(revealMatrix(domain, matrix(4, -1000), 1000, span(-900, -600))).toEqual(
       matrix(4, -192),
     );
   });
 
   it("pans the least that brings a feature right of the plot in, 8 px inside", () => {
-    // At −1,000 px the feature spans 800…1,400 px.
     expect(revealMatrix(domain, matrix(4, -1000), 1000, span(-100, 200))).toEqual(
       matrix(4, -1408),
     );
   });
 
   it("brings a feature wider than the plot in at its start", () => {
-    // At 20×, 10 px a base: 3,000 px wide, from −500 px.
     expect(revealMatrix(domain, matrix(20, -9500), 1000, span(200, -100))).toEqual(
       matrix(20, -8992),
     );
@@ -222,13 +214,11 @@ describe("revealMatrix", () => {
 
   it("never pans past the window's ends", () => {
     const whole = matrix(1, 0);
-    // At 1× the window's first bases sit at 0 px, inside the 8 px margin.
     expect(revealMatrix(domain, whole, 1000, span(-1000, -990))).toBe(whole);
   });
 });
 
 describe("revealScroll", () => {
-  // The label column covers 120 px on the left, the ruler 30 px on top.
   const view = { left: 0, top: 100, width: 500, height: 300 };
   const inset = { left: 120, top: 30 };
 

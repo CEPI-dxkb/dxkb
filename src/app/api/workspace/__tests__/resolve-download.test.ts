@@ -23,9 +23,6 @@ afterEach(() => {
 });
 
 describe("buildWorkspacePath", () => {
-  // `segments` are what a catch-all route's already-decoded params.path
-  // array looks like — building the path must not decode them again.
-
   it("joins segments without re-decoding them", () => {
     expect(buildWorkspacePath(["user", "home", "data.fasta"])).toBe(
       "/user/home/data.fasta",
@@ -33,9 +30,7 @@ describe("buildWorkspacePath", () => {
   });
 
   it("preserves a literal %2F inside a segment as one segment, not a new separator", () => {
-    // A second decode here would turn "%2F" into a real "/", splitting
-    // "weird%2Ffile.pdb" into "weird" and "file.pdb" — a different,
-    // nonexistent workspace path.
+    // A second decode would turn "%2F" into a real "/", splitting the path.
     expect(
       buildWorkspacePath(["alice@bvbrc", "home", "weird%2Ffile.pdb"]),
     ).toBe("/alice@bvbrc/home/weird%2Ffile.pdb");
@@ -205,8 +200,7 @@ describe("resolveWorkspaceDownload", () => {
 
   it("answers an error body that times out with 504, not the bare HTTP 500", async () => {
     vi.spyOn(console, "error").mockImplementation(() => undefined);
-    // MSW does not tie the request signal to a mocked body, so the stream
-    // errors the way undici's does when `AbortSignal.timeout` fires mid-body.
+    // MSW does not tie the request signal to a mocked body, so the stream errors as undici's does mid-body.
     server.use(
       http.post(
         workspaceApiUrl,

@@ -47,8 +47,7 @@ function clearIdentity(store: CookieStore, names: CookieNames): void {
 }
 
 /**
- * Drops the cached profile of the token about to be cleared, so a session
- * cleared because the upstream rejected its token, or signed out, is not
+ * So a session cleared after an upstream rejection or a sign-out is not
  * answered from `profile-cache.ts` again.
  */
 function forgetCachedProfile(store: CookieStore, names: CookieNames): void {

@@ -33,18 +33,15 @@ export default function SettingsPage() {
   const profileRetry = useRetryKeepingError({
     error,
     isFetching,
-    // The root layout's `getCurrentUser()` asks the same profile service for
-    // the `<AuthBoundary>` user, and a client refetch does not reach it, so a
-    // Retry that loads the profile re-renders the server components (as the
-    // outage banner's Retry does) to verify the session again.
+    // `<AuthBoundary>` is fed by the root layout's `getCurrentUser()`, which a
+    // client refetch does not reach, so when the session was unverified a
+    // successful Retry re-renders the server components.
     refetch: async () => {
       const result = await refetch();
       if (isSessionUnverified && result.isSuccess) router.refresh();
     },
   });
 
-  // A Retry keeps the failure up ("Retrying…") instead of going back to the
-  // skeletons until it answers.
   if (isLoading && !profileRetry.error) {
     return (
       <div className="grid gap-6">
@@ -54,9 +51,8 @@ export default function SettingsPage() {
     );
   }
 
-  // A failed refetch keeps the profile already loaded, so only a profile that
-  // never arrived replaces the forms. The reason is this request's error, or
-  // why the server could not verify the session (the same profile service).
+  // A failed refetch keeps the profile already loaded; only a profile that
+  // never arrived replaces the forms.
   if (!profile) {
     return (
       <div className="grid gap-6">

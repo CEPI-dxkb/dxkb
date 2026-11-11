@@ -19,31 +19,22 @@ import type { TrackError } from "./circular-viewer-track-list";
 
 const forever = Number.POSITIVE_INFINITY;
 
-/** A query as `useRetriesKeepingErrors` reads it, named by `key`. */
 export interface RetryableQuery {
-  /** Names the query: its kept error belongs to it and to no other. */
   key: string;
   error: Error | null;
-  /** A read is in flight (TanStack's `isFetching`). */
   isFetching: boolean;
   refetch: () => unknown;
 }
 
 /**
- * `useRetryKeepingError` for a list of queries, by key: every failed query's
- * error, kept on screen while its Retry is in flight. That hook holds one
- * query's state, so it cannot be called once per query of a `useQueries`.
- *
- * TanStack resets a query with no data to `pending`, error cleared, the
- * moment it refetches; the error is kept here until the retry answers (with
- * data or a new error), and dropped at once when its query is gone.
+ * TanStack resets a query with no data to `pending` with its error cleared the
+ * moment it refetches; the error is kept until the retry answers.
  */
 export function useRetriesKeepingErrors(
   queries: readonly RetryableQuery[],
 ): ReadonlyMap<string, TrackError> {
   const [kept, setKept] = useState<ReadonlyMap<string, Error>>(new Map());
   const byKey = new Map(queries.map((query) => [query.key, query]));
-  // Settled: the retry has answered (a new error or none), or the query is gone.
   const settled = [...kept].filter(([key, error]) => {
     const query = byKey.get(key);
     return (
@@ -102,36 +93,17 @@ function remoteTrack(genomeId: string, track: CircularTrack): RemoteTrack | null
   return null;
 }
 
-/**
- * A query's answer as the items a track draws. Module-level, so TanStack
- * keeps its result while the answer is unchanged (it re-selects only for new
- * data or a new `select`), and the figure can keep that track's drawing.
- */
+/** Module-level, so TanStack keeps its result while the answer is unchanged. */
 function featureItems(result: CircularTrackResult): TrackItems {
   return { kind: "features", features: result.features, truncated: result.truncated };
 }
 
 export interface CircularTrackData {
-  /**
-   * Every track's data, by id. A ready track's `items` keep their identity
-   * while its answer is unchanged, which `buildTrackDrawings` reuses a
-   * drawing by.
-   */
   data: ReadonlyMap<string, TrackData>;
   gcWindowSize: number | undefined;
-  /**
-   * Every failed track, by id, with its query's retry: also while that retry
-   * runs, when `data` says pending. Both GC tracks share the GC query's.
-   */
   errors: ReadonlyMap<string, TrackError>;
 }
 
-/**
- * Every track's data: one query per distinct preset or custom query (two
- * custom tracks with one query share it), one GC query shared by both GC
- * tracks, and the sequences and uploads already at hand. Nothing is fetched
- * until the genome has sequences to draw on.
- */
 export function useCircularTrackData(
   genomeId: string,
   tracks: readonly CircularTrack[],
@@ -142,7 +114,7 @@ export function useCircularTrackData(
     const entry = remoteTrack(genomeId, track);
     return entry ? [{ ...entry, hash: hashKey(entry.queryKey) }] : [];
   });
-  // One query per key: `useQueries` with a key twice warns and mixes up their results.
+  // `useQueries` with a key twice warns and mixes up their results.
   const distinct = [...new Map(remote.map((entry) => [entry.hash, entry])).values()];
   const features = useQueries({
     queries: distinct.map((entry) => ({
@@ -174,8 +146,6 @@ export function useCircularTrackData(
     [contigs],
   );
 
-  // Keyed by query, not track: two custom tracks with one query share a
-  // TanStack query, and so its error and retry, as both GC tracks do.
   const gcHash = hashKey(gcKey);
   const failures = useRetriesKeepingErrors([
     ...distinct.map((entry, index) => ({

@@ -34,11 +34,6 @@ function SheetOverlay({ className, ...props }: SheetPrimitive.Backdrop.Props) {
   )
 }
 
-// Local edit (keep when regenerating with `shadcn add --overwrite`): `size`
-// widens a left or right sheet (`wide`: the Copilot side panel), merged after
-// the base so it replaces the base `max-w-sm`. From `sm` up, where it no
-// longer spans the viewport, it rounds its inner edge like a dialog
-// (`rounded-xl`) and clips its content to that curve.
 const sheetSizeClasses = {
   default: "",
   wide: "data-[side=left]:w-full data-[side=left]:sm:max-w-xl data-[side=left]:sm:rounded-r-xl data-[side=right]:w-full data-[side=right]:sm:max-w-xl data-[side=right]:sm:rounded-l-xl sm:overflow-hidden",
@@ -96,9 +91,6 @@ function SheetFooter({ className, ...props }: React.ComponentProps<"div">) {
   )
 }
 
-// Local edits (keep when regenerating with `shadcn add --overwrite`): a bottom
-// sheet rounds its top corners (SheetContent base), and SheetTitle has a
-// `variant` axis (`label`: a small muted heading over the sheet's items).
 const sheetTitleVariants = cva("text-base font-medium text-foreground", {
   variants: {
     variant: {

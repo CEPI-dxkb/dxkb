@@ -19,7 +19,6 @@ import { parseGenomeBrowserUrlState } from "@/lib/genome-browser/url-state";
 import { formatUserFacingErrorMessage } from "@/lib/utils";
 import { GenomeBrowserSkeleton } from "./genome-browser-skeleton";
 
-// JBrowse (several MB) loads only here, in parallel with the regions request.
 const GenomeBrowserView = dynamic(
   () =>
     import("./genome-browser-view").then((module) => module.GenomeBrowserView),
@@ -28,7 +27,6 @@ const GenomeBrowserView = dynamic(
 
 export interface GenomeBrowserPanelProps {
   genomeId: string;
-  /** Feature View: where to open, and what to highlight, when the URL names nothing. */
   focus?: GenomeBrowserFocus | null;
 }
 
@@ -70,10 +68,8 @@ export function GenomeBrowserPanel({
       </p>
     );
   }
-  // The URL is hand-editable and may come from another genome, and a feature's
-  // accession may not be among its genome's sequences: a location or highlight
-  // JBrowse cannot read would break the browser, so each falls back, the URL to
-  // the feature's focus and the focus to the genome's default.
+  // The URL is hand-editable, so a location or highlight JBrowse cannot read
+  // falls back to the feature's focus, then the genome's default.
   const location = regions.data
     ? resolveInitialLocation(
         urlState.location,
@@ -85,9 +81,8 @@ export function GenomeBrowserPanel({
         ),
       )
     : undefined;
-  // The focus's highlight is the default; `browser.highlight=none` (a cleared
-  // highlight, parsed as `null`) opts out of it, so a remount (a theme switch,
-  // a return to the tab) does not bring the highlight back.
+  // `browser.highlight=none` (parsed as `null`) opts out of the focus's
+  // highlight so a remount does not bring it back.
   const defaultHighlight = regions.data
     ? resolveInitialLocation(focus?.highlight, regions.data, undefined)
     : undefined;

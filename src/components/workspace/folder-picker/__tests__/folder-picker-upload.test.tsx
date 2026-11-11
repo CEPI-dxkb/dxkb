@@ -27,7 +27,6 @@ function chooseFile(name: string) {
   });
 }
 
-/** The width the info pane is laid out at, from its CSS custom property. */
 function infoPaneWidth() {
   const pane = screen.getByRole("separator", {
     name: "Resize info pane",
@@ -65,7 +64,6 @@ describe("WorkspaceFolderPickerDialog upload pane", () => {
     expect(
       screen.getByRole("button", { name: "Upload here" }),
     ).toBeInTheDocument();
-    // Focus returns to the columns.
     await waitFor(async () => {
       expect(await findOption("Home", "Alpha")).toHaveFocus();
     });
@@ -104,7 +102,6 @@ describe("WorkspaceFolderPickerDialog upload pane", () => {
     const { user } = await openUpload();
 
     expect(infoPaneWidth()).toBe("384px");
-    // The pane's own width is untouched, so it comes back afterwards.
     expect(
       screen.getByRole("separator", { name: "Resize info pane" }),
     ).toHaveAttribute("aria-valuenow", "320");

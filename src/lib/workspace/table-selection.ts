@@ -1,14 +1,10 @@
 import type { WorkspaceItem } from "@/lib/services/workspace/domain";
 
-/**
- * Normalizes a path for consistent comparison in selection (matches table display order).
- */
 export function normalizePath(p: string | undefined): string {
   return (p ?? "").replace(/\/+/g, "/").replace(/^\//, "").replace(/\/$/, "") || "/";
 }
 
 export interface SelectionModifiers {
-  /** ctrlKey || metaKey (Mac Cmd) */
   ctrlOrMeta: boolean;
   shift: boolean;
 }
@@ -18,10 +14,6 @@ export interface SelectionResult {
   nextAnchorPath: string | null;
 }
 
-/**
- * Computes the next selection and anchor from current state and click modifiers.
- * Used for normal click (replace), Ctrl/Cmd+click (toggle), and Shift+click (range).
- */
 export function computeNextSelection(
   orderedItems: WorkspaceItem[],
   currentSelection: WorkspaceItem[],
@@ -57,7 +49,6 @@ export function computeNextSelection(
     };
   }
 
-  // Shift+click: range from anchor to clicked
   const anchorIndex = orderedItems.findIndex(
     (i) => normalizePath(i.path) === normalizePath(anchorPath ?? ""),
   );

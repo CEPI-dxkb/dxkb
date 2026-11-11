@@ -17,14 +17,7 @@ export interface TaxonomyLookupState {
   retry: () => void;
 }
 
-/**
- * What a taxonomy selector shows for its search query: the proxy's reason
- * behind what failed ("Taxonomy search unavailable: BV-BRC Taxonomy API
- * error: 503 Service Unavailable"), and a Retry, which shows as searching:
- * a query with no results yet goes back to pending when it refetches, and
- * one that kept an earlier search's results stays in error while it
- * refetches, so that error is hidden until the Retry answers.
- */
+/** What a taxonomy selector shows for its search: the proxy's reason for a failure, and a Retry whose refetch hides the stale error until it answers. */
 export function taxonomyLookupState(
   query: TaxonomyLookupQuery,
 ): TaxonomyLookupState {

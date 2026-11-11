@@ -19,8 +19,6 @@ describe("strainFields", () => {
   });
 
   it("show_in_table is false for fields excluded from the data table", () => {
-    // These fields have explicit show_in_table: false — they carry data used for
-    // filtering or lineage resolution but should not appear as table columns.
     const excluded = ["taxon_lineage_ids", "taxon_lineage_names"];
     for (const fieldId of excluded) {
       const entry = entries.find((f) => f.field === fieldId);
@@ -30,8 +28,6 @@ describe("strainFields", () => {
   });
 
   it("facet: true on filterable categorical fields", () => {
-    // These fields appear in the filter bar — regression guard against accidentally
-    // removing the facet flag during edits to strain.ts.
     const expectedFaceted = [
       "subtype",
       "h_type",

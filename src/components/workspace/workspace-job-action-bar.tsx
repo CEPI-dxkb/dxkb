@@ -1,7 +1,6 @@
 import type { WorkspaceItem } from "@/lib/services/workspace/domain";
 import type { ResolvedPathObject } from "@/lib/services/workspace/types";
 
-/** App IDs whose job results include an HTML report button. */
 export const reportAppIds = new Set([
   "ComprehensiveGenomeAnalysis",
   "GenomeAssembly",
@@ -16,10 +15,6 @@ export const reportAppIds = new Set([
   "WholeGenomeSNPAnalysis",
 ]);
 
-/**
- * Maps app IDs to the function that identifies their report file by name.
- * Based on BV-BRC WorkspaceBrowser.js button definitions.
- */
 const reportFileMatchers: Partial<Record<string, (filename: string) => boolean>> = {
   GenomeAssembly: (f) => f.endsWith("_assembly_report.html"),
   GenomeAssembly2: (f) => f.endsWith("_assembly_report.html"),
@@ -32,14 +27,6 @@ const reportFileMatchers: Partial<Record<string, (filename: string) => boolean>>
   WholeGenomeSNPAnalysis: (f) => f === "WholeGenomeSNP_Report.html",
 };
 
-/**
- * Finds the workspace path of a job's HTML report file. Returns the full
- * workspace path (e.g. `/user@realm/home/.jobname/report.html`) or null.
- *
- * Resolution order:
- *   1. Specific named-file matcher for the app type
- *   2. Any .html file in output_files (catches non-standard naming)
- */
 export function findReportPath(meta: ResolvedPathObject): string | null {
   const appId = meta.jobSysMeta?.app?.id;
   const outputFiles = meta.jobSysMeta?.output_files ?? [];
@@ -54,7 +41,6 @@ export function findReportPath(meta: ResolvedPathObject): string | null {
     }
   }
 
-  // Broad fallback: any .html file in output_files
   for (const entry of outputFiles) {
     const filePath = entry[0];
     if (typeof filePath !== "string") continue;
@@ -64,19 +50,8 @@ export function findReportPath(meta: ResolvedPathObject): string | null {
   return null;
 }
 
-/** Matches a PATRIC genome ID prefix at the start of a filename, e.g. "1386.5504.RAST.genome". */
 const genomeIdPrefix = /^(\d+\.\d+)\./;
 
-/**
- * Extracts the annotated PATRIC genome ID from a genome annotation job result.
- *
- * Resolution order:
- *   1. sysMeta.job_output.genome_id (BV-BRC annotation output object)
- *   2. sysMeta.genome_id (direct field, older format)
- *   3. parameters.genome_id
- *   4. Folder items whose name starts with a genome ID prefix
- *   5. output_files path stems that embed a genome ID prefix
- */
 export function extractAnnotationGenomeId(
   meta: ResolvedPathObject,
   items: WorkspaceItem[],

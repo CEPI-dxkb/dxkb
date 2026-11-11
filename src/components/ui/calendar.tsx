@@ -46,9 +46,8 @@ function Calendar({
       captionLayout={captionLayout}
       locale={locale}
       labels={{
-        // The default label spells the day as an ordinal ("November 1st,
-        // 2026"), which does not contain the button's visible text ("1"), so a
-        // speech-input user saying "click 1" misses it (WCAG 2.5.3).
+        // The default ordinal day label ("November 1st, 2026") does not contain
+        // the button's visible text, so speech input misses it (WCAG 2.5.3).
         labelDayButton: (date, modifiers, options, dateLib) => {
           const lib = dateLib ?? new DateLib(options);
           let label = lib.format(date, "EEEE, MMMM d, yyyy");

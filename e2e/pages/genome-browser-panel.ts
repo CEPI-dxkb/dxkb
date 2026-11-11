@@ -1,10 +1,8 @@
 import { expect, type Locator, type Page } from "@playwright/test";
 
 /**
- * The embedded JBrowse 5 view on a Genome or Feature View's Genome Browser
- * tab. Readiness and open tracks come from JBrowse's documented ready marker
- * (`[data-testid="app-ready-marker"]`: `data-app-phase`, `data-app-tracks`),
- * not from canvas pixels or label text.
+ * The embedded JBrowse 5 view; readiness and open tracks come from its
+ * `app-ready-marker` attributes, not canvas pixels.
  */
 export class GenomeBrowserPanelPage {
   constructor(private readonly page: Page) {}
@@ -18,15 +16,9 @@ export class GenomeBrowserPanelPage {
   }
 
   /**
-   * The view fills the host's content box (the host's padding excluded): its
-   * bottom edge sits at the host's content-box bottom. Not merely "stays
-   * inside": the host has padding and the view's natural height can be shorter
-   * than the host, so an inside-the-box check passes with or without the
-   * `[data-slot="genome-browser"] .MuiScopedCssBaseline-root { height: 100% }`
-   * rule in `globals.css`. Without it MUI's ScopedCssBaseline wrapper has no
-   * height, and the view is content-height, either short of the host or
-   * (spike item 2) spilling past it. Polls the gap in px, since the view's
-   * layout can still settle after the ready marker.
+   * Asserts the view's bottom edge is at the host's content-box bottom, which
+   * only holds with the `.MuiScopedCssBaseline-root { height: 100% }` rule in
+   * `globals.css`. Polls because layout can settle after the ready marker.
    */
   async expectViewFillsHost(): Promise<void> {
     await expect
@@ -47,11 +39,8 @@ export class GenomeBrowserPanelPage {
   }
 
   /**
-   * Whether `popup` paints over every point of JBrowse's sticky view header
-   * (the overview scale bar and the toolbar, z-index 825-850) that the two
-   * share. Covers every band the popup overlaps, even only at a band's edge.
-   * Returns the points JBrowse still wins, or -1 when they do not overlap at
-   * all (so a moved popup fails instead of passing vacuously).
+   * Returns the points JBrowse's sticky header still wins over the popup, or
+   * -1 when they do not overlap at all.
    */
   async headerPointsAbove(popup: Locator): Promise<number> {
     const popupBox = await popup.boundingBox();
@@ -67,9 +56,8 @@ export class GenomeBrowserPanelPage {
       let above = 0;
       for (const band of header) {
         const rect = band.getBoundingClientRect();
-        // Sample the middle of the band's overlap with the popup, not the
-        // band's own middle: a popup covering only a band's top or bottom edge
-        // still counts.
+        // Sample the middle of the band's overlap with the popup so a popup
+        // covering only a band edge still counts.
         const top = Math.max(rect.top, box.y);
         const bottom = Math.min(rect.bottom, box.y + box.height);
         if (bottom <= top) continue;
@@ -85,7 +73,6 @@ export class GenomeBrowserPanelPage {
     }, popupBox);
   }
 
-  /** JBrowse's location search box. */
   locationBox(): Locator {
     return this.root().getByPlaceholder(/search for location/i);
   }
@@ -94,11 +81,6 @@ export class GenomeBrowserPanelPage {
     return this.root().getByText(name, { exact: true });
   }
 
-  /**
-   * Open a track's settings menu, then each submenu in turn, and click the
-   * checkbox item `checkbox`. Returns that item: JBrowse keeps the menu open
-   * after a checkbox click, so its new state can be read.
-   */
   async toggleTrackMenuCheckbox(
     trackId: string,
     submenus: readonly string[],
@@ -135,11 +117,6 @@ export class GenomeBrowserPanelPage {
     await this.locationBox().press("Enter");
   }
 
-  /**
-   * The engine on screen shows `location` (`ref:start..end`) in its location
-   * box, digit grouping aside. Unlike the URL, which the previous engine wrote,
-   * this is what the current one is actually showing.
-   */
   async expectLocation(location: string): Promise<void> {
     await expect
       .poll(async () =>
@@ -149,18 +126,13 @@ export class GenomeBrowserPanelPage {
   }
 
   /**
-   * Start recording the browser's `features` and `sequence` reads. Call it
-   * before the first navigation: the first reads happen while the view builds.
+   * Call before the first navigation: the first reads happen while the view
+   * builds.
    */
   recordDataRequests(): GenomeBrowserDataRequests {
     return new GenomeBrowserDataRequests(this.page);
   }
 
-  /**
-   * The two surfaces of JBrowse's own MUI chrome that its theme maps from
-   * `--background` (the scoped baseline's fill) and `--card` (a paper), as
-   * the computed `rgb(...)` the browser paints them with.
-   */
   async paintedSurfaces(): Promise<ThemeSurfaces> {
     return this.root().evaluate((root) => {
       const fill = (selector: string) => {
@@ -175,10 +147,8 @@ export class GenomeBrowserPanelPage {
   }
 
   /**
-   * What the app's `--background` and `--card` tokens paint right now, as
-   * `rgb(...)`. The tokens are not `rgb` in a computed style (the build keeps
-   * `lab()`), so the browser converts them by painting one canvas pixel, the
-   * same route a color takes into MUI's palette.
+   * Computed styles keep `lab()`, so convert by painting one canvas pixel,
+   * the route a color takes into MUI's palette.
    */
   async themeTokenSurfaces(): Promise<ThemeSurfaces> {
     return this.page.evaluate(() => {
@@ -204,11 +174,6 @@ export class GenomeBrowserPanelPage {
     });
   }
 
-  /**
-   * JBrowse is painted with the theme that is on `<html>` now. Polls, because
-   * a theme switch remounts the browser: until the new engine has built, the
-   * old (or no) chrome is what is on screen.
-   */
   async expectPaintedWithAppliedTheme(): Promise<ThemeSurfaces> {
     const tokens = await this.themeTokenSurfaces();
     await expect.poll(() => this.paintedSurfaces()).toEqual(tokens);
@@ -221,7 +186,6 @@ export interface ThemeSurfaces {
   card: string;
 }
 
-/** The `features` and `sequence` reads the browser made, from the page's requests. */
 export class GenomeBrowserDataRequests {
   private readonly requests: URL[] = [];
 
@@ -237,7 +201,6 @@ export class GenomeBrowserDataRequests {
     });
   }
 
-  /** The browser has made at least one read of this kind. */
   async expectRead(operation: "features" | "sequence"): Promise<void> {
     await expect
       .poll(() =>
@@ -248,16 +211,11 @@ export class GenomeBrowserDataRequests {
       .toBe(true);
   }
 
-  /**
-   * A guard that every request the adapters send is a well-formed range: a
-   * start of 0 or more and an end past it. The route answers anything else
-   * with a 400.
-   */
   expectWellFormedRanges(): void {
     expect(this.requests.length, "no feature or sequence read was made").toBeGreaterThan(0);
     for (const url of this.requests) {
-      // Digits only, as the route's `parseCoordinate` requires: `Number()`
-      // alone would pass a missing start (0), `1e3` or `0x10`.
+      // Digits only, as the route's `parseCoordinate` requires; `Number()`
+      // would pass a missing start, `1e3` or `0x10`.
       const start = url.searchParams.get("start") ?? "";
       const end = url.searchParams.get("end") ?? "";
       expect(

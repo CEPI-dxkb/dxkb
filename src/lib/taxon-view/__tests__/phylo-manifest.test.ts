@@ -1,4 +1,3 @@
-// src/lib/taxon-view/__tests__/phylo-manifest.test.ts
 import { http, HttpResponse } from "msw";
 
 import { server } from "@/test-helpers/msw-server";

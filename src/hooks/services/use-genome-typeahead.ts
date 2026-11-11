@@ -16,10 +16,6 @@ import {
 } from "@/lib/services/genome";
 import { formatPrefixedErrorMessage } from "@/lib/utils";
 
-/**
- * A failed genome search, prefixed with what failed, keeping the server's
- * reason ("Genome search unavailable: BV-BRC genome search failed: 503 …").
- */
 export function genomeSearchErrorMessage(error: unknown): string {
   return formatPrefixedErrorMessage("Genome search unavailable", error);
 }
@@ -34,11 +30,8 @@ export function shouldSearch(query: string, minLength: number): boolean {
 interface UseGenomeTypeaheadOptions {
   minQueryLength?: number;
   disabled?: boolean;
-  /** Return true to skip the debounced fetch for this query + selected-item combination. */
   skipFetch?: (query: string, selected: GenomeSummary | null) => boolean;
-  /** Additional refs (e.g. toggle buttons) whose clicks should NOT close the dropdown. */
   additionalClickOutsideRefs?: RefObject<Element | null>[];
-  /** Called when the user clicks outside all tracked refs. */
   onClickOutside?: () => void;
 }
 
@@ -59,11 +52,8 @@ export interface UseGenomeTypeaheadReturn {
   dropdownRef: RefObject<HTMLDivElement | null>;
   itemRefs: RefObject<(HTMLButtonElement | null)[]>;
   latestAbortController: RefObject<AbortController | null>;
-  /** Set suggestions + reset itemRefs + highlightedIndex atomically. */
   updateSuggestions: (next: GenomeSummary[]) => void;
-  /** Fire a fetch immediately (no debounce), bypassing shouldSearch. */
   triggerSearch: (overrideQuery: string) => void;
-  /** Runs the search that failed again: the Retry of a failed lookup. */
   retry: () => void;
 }
 
@@ -86,8 +76,7 @@ export function useGenomeTypeahead({
   const dropdownRef = useRef<HTMLDivElement | null>(null);
   const itemRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const latestAbortController = useRef<AbortController | null>(null);
-  // The query the latest search sent, which can differ from the typed one
-  // (the dropdown toggle lists every genome): Retry repeats this one.
+  // The query the latest search sent (the dropdown toggle lists every genome): Retry repeats it.
   const latestSearchQuery = useRef<string | null>(null);
   const onClickOutsideRef = useRef(onClickOutside);
   const additionalRefsRef = useRef(additionalClickOutsideRefs);
@@ -103,9 +92,7 @@ export function useGenomeTypeahead({
     setHighlightedIndex(-1);
   };
 
-  // Debounced fetch. Whichever request started last (this run or a
-  // `triggerSearch`) owns the results and loading state: starting one aborts
-  // the one before, and an aborted request never writes either.
+  // The request that started last owns results and loading state; starting one aborts the previous.
   useEffect(() => {
     latestAbortController.current?.abort();
     const controller = new AbortController();
@@ -115,11 +102,9 @@ export function useGenomeTypeahead({
 
     const timeoutId = window.setTimeout(
       () => {
-        // `triggerSearch` aborts this controller to take over. Running anyway
-        // would set loading for a fetch that can never clear it.
+        // `triggerSearch` aborts this controller to take over; running anyway would set loading that never clears.
         if (controller.signal.aborted) return;
-        // The query is the picked item's name: keep its suggestions, but a
-        // search this run superseded can no longer clear the loading state.
+        // A search this run superseded can no longer clear the loading state.
         if (skipCurrentFetch) {
           setIsLoading(false);
           return;
@@ -165,7 +150,6 @@ export function useGenomeTypeahead({
     };
   }, [query, minQueryLength, disabled, selectedItem, skipCurrentFetch]);
 
-  // Click-outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as Node;
@@ -186,7 +170,6 @@ export function useGenomeTypeahead({
     };
   }, []);
 
-  // Scroll highlighted item into view
   useEffect(() => {
     if (highlightedIndex >= 0 && itemRefs.current[highlightedIndex]) {
       itemRefs.current[highlightedIndex]?.scrollIntoView({

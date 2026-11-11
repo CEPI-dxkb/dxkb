@@ -129,8 +129,7 @@ export function CopilotPanelHeader({
       className="flex shrink-0 items-center gap-1 border-b px-2 py-1.5"
       onPointerDown={onPointerDown}
     >
-      {/* The full page lists chats in its sidebar; on a phone the sidebar
-          is hidden, so this button stands in for it there. */}
+      {/* On a phone the sidebar is hidden, so this button stands in for it. */}
       <Button
         variant="ghost"
         size="sm"

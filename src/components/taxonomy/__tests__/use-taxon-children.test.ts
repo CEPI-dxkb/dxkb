@@ -8,17 +8,6 @@ import {
   taxonChildrenKey,
 } from "../use-taxon-children";
 
-/**
- * These fetchers now go through the same-origin `/api/taxonomy-tree` route, so
- * MSW intercepts a relative path rather than an external Data API host. That
- * is the point of the change: the transport carries no `NEXT_PUBLIC_DATA_API`
- * origin baked in at build time, so it can be redirected at runtime (which is
- * what makes the E2E loopback reachable).
- *
- * The malformed-`facet_counts` rejections these tests used to own now live
- * server-side in `src/lib/data-api/__tests__/taxonomy-tree.test.ts`. What is
- * covered here is that their messages still reach the caller intact.
- */
 const childrenPath = "/api/taxonomy-tree/children";
 const childCountsPath = "/api/taxonomy-tree/child-counts";
 
@@ -166,13 +155,9 @@ describe("fetchTaxonChildCounts", () => {
   });
 
   /**
-   * The eight distinct messages the route's eleven malformed-facet rejections
-   * produce (several shapes share one message — see
-   * `src/lib/data-api/__tests__/taxonomy-tree.test.ts`, which owns the
-   * rejection-by-rejection coverage). The assertion here is narrower: whatever
-   * the route diagnosed, the caller still sees that exact text, prefix
-   * included, rather than a generic failure — a malformed payload must never
-   * degrade into "this parent has no children".
+   * The distinct messages the route's malformed-facet rejections produce (owned by
+   * `src/lib/data-api/__tests__/taxonomy-tree.test.ts`): the caller must see that exact
+   * text, never a generic failure.
    */
   it.each([
     "missing facet_counts header",

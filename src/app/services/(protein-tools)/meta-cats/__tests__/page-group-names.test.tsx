@@ -95,10 +95,6 @@ async function openGroupNames(user: ReturnType<typeof userEvent.setup>) {
   await user.click(screen.getByRole("button", { name: "Show group names" }));
 }
 
-/**
- * Serves one feature group whose two genomes have these host names. Returns
- * the genome lookups' request bodies.
- */
 function serveFeatureGroup(hostNames: [string | undefined, string | undefined]) {
   const genomeRequests: unknown[] = [];
   server.use(
@@ -126,7 +122,6 @@ function serveFeatureGroup(hostNames: [string | undefined, string | undefined]) 
 }
 
 async function addFeatureGroup(user: ReturnType<typeof userEvent.setup>) {
-  // The Auto Grouping section's selector and + button come first.
   await user.click(
     screen.getAllByRole("button", { name: "Pick featureGroup" })[0],
   );
@@ -138,7 +133,6 @@ async function addFeatureGroup(user: ReturnType<typeof userEvent.setup>) {
 
 function groupCell(patricId: string) {
   const row = screen.getByText(patricId).closest("tr");
-  // Select, Genbank Accession, Strain, Metadata, Group: the fifth cell.
   return row?.children[4];
 }
 
@@ -190,7 +184,6 @@ describe("META-Cats Group Names field", () => {
     await user.keyboard("{Escape}");
     await user.click(screen.getByRole("button", { name: "Change group" }));
 
-    // Trimmed: the padded name would be a group of its own.
     expect(groupCell("fig|11320.1.peg.1")?.textContent).toBe("Mammal");
     expect(groupCell("fig|11320.2.peg.1")).toHaveTextContent("Swine");
 
@@ -224,7 +217,6 @@ describe("META-Cats Group Names field", () => {
         /None of the features in the grid has a metadata value/,
       ),
     ).toBeVisible();
-    // The blank group is not offered as a name.
     expect(screen.queryByRole("option")).not.toBeInTheDocument();
   });
 
@@ -251,7 +243,6 @@ describe("META-Cats Groups Grid", () => {
     render(<MetaCATSPage />, { wrapper: createQueryClientWrapper() });
     await addFeatureGroup(user);
 
-    // The lookup asks for the grouping metadata and the accession.
     expect(genomeRequests).toEqual([
       expect.objectContaining({
         fields: ["genbank_accessions", "host_name"],

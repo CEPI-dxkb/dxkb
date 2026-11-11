@@ -2,97 +2,25 @@ import type { Page } from "@playwright/test";
 
 export interface SettleOptions {
   /**
-   * Load state to wait for. Defaults to "networkidle".
-   * Use "domcontentloaded" for pages with continuous RSC prefetch cycles
-   * that prevent networkidle from ever being reached.
+   * Defaults to "networkidle"; use "domcontentloaded" on pages with
+   * continuous RSC prefetch.
    */
   loadState?: "load" | "domcontentloaded" | "networkidle";
-  /** Extra ms after load state + fonts.ready. For streaming/animated routes. */
   extraMs?: number;
-  /** Selector that must detach before scanning (zero-skeleton contract). */
   skeletonSelector?: string;
-  /**
-   * Wait for every resizable panel group to commit its layout before the page
-   * counts as settled. See {@link awaitPanelLayoutCommitted}. Defaults to true:
-   * every page that renders a resize handle has the gap, and the wait is a
-   * no-op on pages that render none. It was opt-in once, and each workspace or
-   * jobs route that had not opted in flaked on `aria-required-attr` under a
-   * slow CI runner. Pass false only to observe a layout mid-commit on purpose.
-   */
+  /** Defaults to true; a no-op on pages without a resize handle. */
   awaitPanelLayout?: boolean;
 }
 
-/** Selector for the shell's resizable panel group and its separator handle. */
 const panelGroupSelector = '[data-slot="resizable-panel-group"]';
 const panelHandleSelector = '[data-slot="resizable-handle"]';
 
 /**
- * Wait until the `ResizablePanelGroup` has committed its client-side layout.
- *
- * Neither networkidle nor skeleton-detach covers layout that the library's own
- * store or a *client effect* commits after the data has landed. The workspace
- * shell seeds its layout snapshot from `panelExpanded`, so a closed panel (the
- * state every load starts in) is server-rendered at 100/0 and hydrates to that
- * same split: there is no load-time collapse left to wait out. What still lands
- * late is:
- *
- *   - the separator's `aria-valuenow`, which react-resizable-panels only
- *     computes once its store has registered the group on the client;
- *   - a `ResizeObserver` callback that discards a committed layout and
- *     recomputes it from each panel's `defaultSize`;
- *   - an open panel, which the shell's `useLayoutEffect` sizes with `resize()`
- *     only after hydration (a selection or a click on Show opens it).
- *
- * All three run once the store has settled, well after the fetches go quiet.
- * The one measurement on record predates the seeding: the shell then
- * server-rendered the panel open and collapsed it in that effect, ~4.4s into
- * the load under a 20x CPU throttle, against an `awaitSettled()` that returned
- * at ~3.2s.
- *
- * Two distinct CI failures come out of that one gap, which is why this lives in
- * `settle` rather than in either spec:
- *
- *   - Scanning early catches the separator before the group has assigned it an
- *     `aria-valuenow`. The server-rendered markup carries `role="separator"`
- *     with no value, so axe's `aria-required-attr` fires `critical` on a state
- *     that is gone a few hundred ms later.
- *   - Clicking early puts `mousedown` on a toolbar button and `mouseup`
- *     wherever that button used to be, because a late layout change shifts the
- *     whole toolbar between the two (x=377 -> 1094 in the reproduction, which
- *     was the old load-time collapse; opening the panel now moves it the other
- *     way). No `click` is synthesised at all, so the dialog never opens and the
- *     failure reads as "element(s) not found" against the *dialog* — pointing
- *     away from the layout that actually caused it.
- *
- * The post-condition is the commit itself. Three conditions together stand in
- * for it, and the third is what makes the set sufficient:
- *
- *   1. Every handle carries `aria-valuenow`. react-resizable-panels computes
- *      that value from the same store update that applies a layout, so its
- *      absence means no layout has been applied yet.
- *   2. That value agrees with measured geometry — the `aria-controls` panel's
- *      share of the group's panel extent, within 1.5pp. Presence alone is the
- *      weaker claim: the library re-derives the attribute on every store
- *      update, including ones that *revert* a layout (a `ResizeObserver`
- *      callback arriving while `defaultLayoutDeferred` is still set discards
- *      the committed layout and recomputes from `defaultSize`). Agreement ties
- *      the attribute to the boxes the toolbar is actually positioned by.
- *   3. Geometry is unchanged from the previous animation frame, so a layout
- *      still in motion does not satisfy 1 and 2 mid-flight.
- *
- * Polling the group's own box would prove nothing — it spans the viewport and
- * never moves (`0,72,1280` throughout) while its children reflow underneath. A
- * fixed `extraMs` would mask both symptoms, but only while the pause happens to
- * outlast the commit.
- *
- * On a closed load the seeded 100/0 leaves nothing to reflow once the attribute
- * exists, so conditions 2 and 3 cost at most two frames there. They are not
- * dead weight: they remove the dependence on that holding, because a
- * `ResizeObserver` recompute from `defaultSize` or an open panel's
- * post-hydration `resize()` can still move the geometry after the attribute has
- * appeared.
- *
- * No-ops on pages with no panel group, so it is safe on any route.
+ * Waits until every `ResizablePanelGroup` handle carries `aria-valuenow`,
+ * that value matches the measured panel geometry (within 1.5pp), and geometry
+ * is unchanged for a frame. Scanning earlier hits a critical
+ * `aria-required-attr` on the server-rendered separator, and clicking earlier
+ * loses the click when the toolbar shifts between mousedown and mouseup.
  */
 export async function awaitPanelLayoutCommitted(
   page: Page,
@@ -101,15 +29,13 @@ export async function awaitPanelLayoutCommitted(
   if ((await page.locator(panelGroupSelector).count()) === 0) return;
   await page.waitForFunction(
     ([handleSel, groupSel]) => {
-      // A group may legitimately render no handle (single panel, or a details
-      // panel gated behind an expanded flag); treat that as committed rather
-      // than hanging until timeout.
+      // A group with no handle counts as committed.
       if (!document.querySelector(groupSel)) return true;
       const handles = Array.from(document.querySelectorAll(handleSel));
       if (handles.length === 0) return true;
 
-      // Panel extent along the group's main axis, as a fraction of the group's
-      // total panel extent. Vertical groups size by height, horizontal by width.
+      // Panel extent as a fraction of the group's total panel extent (height
+      // for vertical groups, width for horizontal).
       const extentOf = (el: Element, vertical: boolean) => {
         const box = el.getBoundingClientRect();
         return vertical ? box.height : box.width;
@@ -130,7 +56,6 @@ export async function awaitPanelLayoutCommitted(
           (sum, panel) => sum + extentOf(panel, vertical),
           0,
         );
-        // A group with no measurable extent has not been laid out at all.
         if (total <= 0) return false;
         const target = panels.find((panel) => panel.id === controls);
         if (!target) return false;
@@ -139,14 +64,13 @@ export async function awaitPanelLayoutCommitted(
         signature.push(
           panels.map((p) => Math.round(extentOf(p, vertical))).join(","),
         );
-        // 1.5pp absorbs the library's own rounding plus subpixel layout; it is
-        // far tighter than the 60 -> 100 transitions this needs to exclude.
+        // 1.5pp absorbs rounding and subpixel layout.
         return Math.abs(Number(valueNow) - measured) <= 1.5;
       });
       if (!agreed) return false;
 
-      // Require the same geometry twice running, so a layout mid-flight cannot
-      // satisfy the agreement check on a single frame and pass.
+      // Same geometry two frames running, so a layout mid-flight cannot pass
+      // on one frame.
       const w = window as unknown as { __panelLayoutSignature?: string };
       const current = signature.join("|");
       const stable = w.__panelLayoutSignature === current;
@@ -158,13 +82,6 @@ export async function awaitPanelLayoutCommitted(
   );
 }
 
-/**
- * Wait for a stable page state before running axe:
- *   1. networkidle  — no in-flight requests for 500ms
- *   2. fonts.ready  — prevents false-positive contrast failures from unloaded fonts
- *   3. Skeleton gone — avoids scanning transient loading states
- *   4. Panel layout committed — avoids scanning (or clicking) mid-reflow
- */
 export async function awaitSettled(page: Page, options: SettleOptions = {}): Promise<void> {
   await page.waitForLoadState(options.loadState ?? "networkidle");
   await page.evaluate(() => document.fonts.ready);

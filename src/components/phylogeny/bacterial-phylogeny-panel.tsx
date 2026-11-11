@@ -20,8 +20,6 @@ export function BacterialPhylogenyPanel({
   taxonName: string;
 }) {
   const tree = useBacterialTreeXml(taxonId);
-  // A Retry keeps the failure up ("Retrying…") instead of going back to the
-  // loading skeleton until it answers.
   const treeRetry = useRetryKeepingError(tree, String(taxonId));
   const [selection, setSelection] = useState<{
     taxonId: number;

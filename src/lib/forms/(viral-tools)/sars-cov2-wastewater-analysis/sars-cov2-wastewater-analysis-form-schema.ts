@@ -39,15 +39,9 @@ export const recipeOptions: { value: Recipe; label: string }[] = [
 const minYear = 2000;
 const maxYear = 2099;
 
-/** Exact MM/DD/YYYY token pattern: two digits, slash, two digits, slash, four digits. */
 const mmDdYyyyRegex = /^(\d{2})\/(\d{2})\/(\d{4})$/;
 
-/**
- * Validates a date string in MM/DD/YYYY format with real calendar rules
- * and year range 2000–2099. Use for sample_level_date validation.
- * Requires the full string to match the exact token pattern so trailing
- * characters (e.g. "01/15/2024xyz") are rejected.
- */
+/** MM/DD/YYYY with real calendar rules, years 2000-2099; the full string must match. */
 export function isValidDate(dateStr: string): boolean {
   const trimmed = dateStr.trim();
   const match = trimmed.match(mmDdYyyyRegex);
@@ -71,10 +65,6 @@ export interface LibraryDateValidationResult {
   code?: z.core.$ZodIssueCode;
 }
 
-/**
- * Validates sample_level_date on a library item (paired/single/SRA).
- * Returns a result that callers can use to add a schema issue when valid is false.
- */
 export function validateLibraryDate(lib: {
   sample_level_date?: string;
 }): LibraryDateValidationResult {

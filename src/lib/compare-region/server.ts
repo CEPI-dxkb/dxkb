@@ -1,10 +1,5 @@
 import "server-only";
 
-/**
- * Server side of `/api/compare-region`: validates the request, calls the SEED
- * compare_regions service and maps its answer to `CompareRegionRow`s.
- * Contract in `docs/architecture.md` → "Compare Region route contract".
- */
 import { z } from "zod";
 import {
   UpstreamError,
@@ -25,7 +20,6 @@ import {
 
 const maxPegLength = 200;
 
-/** The request's query as a `CompareRegionQuery`, or null when any part is invalid. */
 export function parseCompareRegionQuery(
   params: Pick<URLSearchParams, "get">,
 ): CompareRegionQuery | null {
@@ -35,7 +29,6 @@ export function parseCompareRegionQuery(
   return settings ? { peg, ...settings } : null;
 }
 
-/** The service's names for our genome-set tokens. */
 const serviceFilters: Record<CompareRegionFilter, string> = {
   reference: "representative+reference",
   all: "all",
@@ -43,10 +36,6 @@ const serviceFilters: Record<CompareRegionFilter, string> = {
   featureGroup: "feature_group",
 };
 
-/**
- * The service's options argument: a group filter names its group's workspace
- * path there, as legacy BV-BRC sends it (`{genome_group: path}`).
- */
 function serviceOptions(query: CompareRegionQuery): Record<string, string> {
   if (query.group === null) return {};
   if (query.filter === "genomeGroup") return { genome_group: query.group };
@@ -64,11 +53,9 @@ export class CompareRegionBusyError extends Error {
 }
 
 /**
- * The service answers one request at a time per client address: a request
- * that overlaps another gets nginx's 503 at once (measured 2026-10-23). Every
- * DXKB user reaches it from this server, so requests take turns here. At most
- * `maxInLine` are in line, the running one included; one more is refused
- * rather than left waiting minutes.
+ * The service answers one request at a time per client address (an overlapping
+ * one gets nginx's 503), so requests take turns here. At most `maxInLine` are
+ * in line; one more is refused rather than left waiting minutes.
  */
 const maxInLine = 4;
 let inLine = 0;
@@ -79,7 +66,6 @@ function takeTurn<T>(task: () => Promise<T>, signal?: AbortSignal): Promise<T> {
   inLine += 1;
   const run = lastTurn
     .then(() => {
-      // A caller that left while waiting starts nothing.
       signal?.throwIfAborted();
       return task();
     })
@@ -93,7 +79,6 @@ function takeTurn<T>(task: () => Promise<T>, signal?: AbortSignal): Promise<T> {
 function serviceUrl(): string {
   const url = process.env.COMPARE_REGION_SERVICE_URL;
   if (url) return url;
-  // The variable's name is for the server log; the user reads the reason.
   console.error(
     "The Compare Region Viewer needs COMPARE_REGION_SERVICE_URL, which is not set.",
   );
@@ -106,7 +91,6 @@ function serviceUrl(): string {
 
 const strand = z.enum(["+", "-"]);
 
-/** Coordinates and identity arrive as strings or numbers; coerce them. */
 const rawFeatureSchema = z.object({
   fid: z.string().min(1),
   type: z.string(),
@@ -133,9 +117,7 @@ const rawRowSchema = z.object({
 });
 type RawRow = z.infer<typeof rawRowSchema>;
 
-/** Never drawn: legacy skipped active sites, and intergenic gaps are not features. */
 const skippedTypes = new Set(["site_annotation", "intergenic"]);
-/** The service numbers its rows in the name ("(0) Brucella suis …"); the order already says it. */
 const rowNumber = /^\(\d+\)\s*/;
 
 function toFeature(raw: RawFeature, method: CompareRegionMethod): CompareRegionFeature {
@@ -156,7 +138,6 @@ function toFeature(raw: RawFeature, method: CompareRegionMethod): CompareRegionF
 function toRow(raw: RawRow, method: CompareRegionMethod): CompareRegionRow | null {
   const { genome_id: genomeId, pinned_peg: pinnedFid } = raw;
   if (!genomeId || !pinnedFid) return null;
-  // A feature the schema cannot read is dropped, not the whole answer.
   const features = raw.features.flatMap((item) => {
     const parsed = rawFeatureSchema.safeParse(item);
     return parsed.success ? [parsed.data] : [];
@@ -190,13 +171,9 @@ function unreadableAnswer(): UpstreamError {
 }
 
 /**
- * The service's rows as the route answers them. Every row is aligned against
- * the first (the focus gene's), so without it there is nothing to show. An
- * unknown gene comes back as one row with no genome and no pinned gene
- * (measured 2026-10-23), which reads as no rows. No rows at all, a focus row
- * that names only one of the two, and one that names both but cannot be read
- * are failures, so a changed answer is not reported as an unknown gene. Any
- * other row that lost its pinned gene is dropped.
+ * An unknown gene comes back as one row with no genome and no pinned gene,
+ * which reads as no rows. A focus row that cannot be read is a failure, so a
+ * changed answer is not reported as an unknown gene.
  */
 export function normalizeCompareRegionRows(
   raw: unknown,
@@ -213,13 +190,9 @@ export function normalizeCompareRegionRows(
 }
 
 /**
- * The focus gene's neighborhood in `query.genomes` other genomes. `token` is
- * the caller's session token (private genomes); anonymous callers see public
- * data. A group filter needs the token too: the service reads the group from
- * the caller's workspace with it, so the route refuses one without a session.
- * Throws `CompareRegionBusyError` when too many requests are in line,
- * and `UpstreamError`/`JsonRpcError` when the service fails, is not
- * configured, or sends an answer this module cannot read.
+ * Throws `CompareRegionBusyError` when too many requests are in line, and
+ * `UpstreamError`/`JsonRpcError` when the service fails, is not configured, or
+ * sends an unreadable answer.
  */
 export async function readCompareRegion(
   query: CompareRegionQuery,
@@ -242,7 +215,6 @@ export async function readCompareRegion(
       ]),
     signal,
   );
-  // The rows come as `[rows]`; any other result (`null`) is unreadable.
   return normalizeCompareRegionRows(
     Array.isArray(result) ? result.at(0) : undefined,
     query.method,

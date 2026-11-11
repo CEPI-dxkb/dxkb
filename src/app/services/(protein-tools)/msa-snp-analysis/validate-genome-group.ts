@@ -10,7 +10,6 @@ export type GenomeGroupValidationResult =
   | { status: "too-large"; genomeCount: number }
   | { status: "invalid"; message: string };
 
-/** The toast title and the field's message for a group that did not pass. */
 export function genomeGroupRejection(
   result: Exclude<GenomeGroupValidationResult, { status: "valid" }>,
   maxGenomes: number,
@@ -40,10 +39,7 @@ export async function validateGenomeGroup(
   path: string,
   { maxGenomes, maxGenomeLength }: ValidateGenomeGroupOptions,
 ): Promise<GenomeGroupValidationResult> {
-  // Read the group's id list directly: fetchGenomeGroupMembers() resolves
-  // metadata through /api/services/genome/by-ids, which caps the query at 100
-  // rows, so groups of 101+ genomes reported a truncated count and skipped
-  // validation for every genome past the first 100.
+  // Read the id list directly: fetchGenomeGroupMembers() goes through a by-ids route capped at 100 rows.
   const genomeIds = await getGenomeIdsFromGroup(path);
   if (genomeIds.length === 0) return { status: "empty" };
   if (genomeIds.length > maxGenomes) {

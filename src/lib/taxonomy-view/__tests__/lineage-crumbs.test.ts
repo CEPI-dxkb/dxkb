@@ -6,7 +6,6 @@ import {
   taxonViewHeader,
 } from "../lineage-crumbs";
 
-// Live BV-BRC `lineage_ranks` for E. coli K-12 (taxon 83333), 2026-10-28.
 const ecoliK12 = {
   lineageIds: [131567, 2, 3379134, 1224, 1236, 91347, 543, 561, 562, 83333],
   lineageNames: [
@@ -35,7 +34,6 @@ const ecoliK12 = {
   ],
 };
 
-// Live lineage for Influenza A virus (A/California/07/2009(H1N1)), 641809.
 const h1n1 = {
   lineageIds: [
     10239, 2559587, 2732396, 2497569, 2497571, 2497577, 2499411, 11308,
@@ -264,8 +262,6 @@ describe("taxonViewCrumbs (Taxon View)", () => {
   });
 
   it("shows nothing when the parsed lineage arrays no longer line up", () => {
-    // fetchOrganismTaxonomy drops a malformed id or name but keeps every
-    // rank, which would shift each later rank onto the wrong taxon.
     expect(
       taxonViewCrumbs({
         ...ecoliK12,

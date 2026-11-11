@@ -30,9 +30,8 @@ export interface EntityViewShellProps<Key extends string = string> {
   defaultTab: Key;
   layout?: "scroll" | "fill";
   /**
-   * Set when `activeTab` is the server page's canonical `tab` param (member
-   * pages redirect to it). Keeps the tab's content on its own URL while Back or
-   * Forward replaces it.
+   * Set when `activeTab` is the server page's canonical `tab` param; keeps the
+   * tab's content on its own URL while Back or Forward replaces it.
    */
   serverTab?: boolean;
   children: ReactNode;
@@ -63,7 +62,6 @@ export function EntityViewShell<Key extends string>({
     if (tab?.enabled === false) return;
     const url = new URL(window.location.href);
     const params = new URLSearchParams(url.search);
-    // A page number or sort from one tab's table must not land on another's.
     if (key !== activeTab) deleteChildCollectionParams(params);
     if (key === defaultTab) params.delete("tab");
     else params.set("tab", key);

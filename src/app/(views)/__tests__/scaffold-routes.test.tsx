@@ -6,8 +6,6 @@ const { notFoundSpy } = vi.hoisted(() => ({
   }),
 }));
 
-// The singular render path mounts OrganismLandingShell → LandingShellClient, which uses
-// these navigation hooks; mock them as the taxonomy page test does.
 vi.mock("next/navigation", () => ({
   notFound: () => notFoundSpy(),
   useRouter: () => ({ push: vi.fn(), replace: vi.fn(), back: vi.fn() }),
@@ -16,7 +14,6 @@ vi.mock("next/navigation", () => ({
   redirect: vi.fn(),
 }));
 
-// LandingShellClient also calls useHotkey; stub it so the render path doesn't throw.
 vi.mock("@tanstack/react-hotkeys", () => ({ useHotkey: vi.fn() }));
 
 import DomainsAndMotifsPage from "../domains-and-motifs/page";
@@ -44,7 +41,6 @@ vi.mock("@/lib/genome-view/server", () => ({
     }),
   ),
 }));
-// The breadcrumb's lineage lookup (`loadLineageCrumbs`); the scaffold genome names no taxon.
 vi.mock("@/lib/taxonomy-view/server", () => ({
   getTaxonomy: vi.fn(() => Promise.resolve(null)),
 }));

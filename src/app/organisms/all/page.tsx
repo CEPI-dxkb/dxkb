@@ -22,8 +22,6 @@ interface AllOrganismsPageProps {
 export default async function AllOrganismsPage({ searchParams }: AllOrganismsPageProps) {
   const [resolvedParams, roots] = await Promise.all([
     searchParams,
-    // Each root falls back to its static record during an outage, so one
-    // failing root no longer takes the whole page down.
     Promise.all(allOrganismRootIds.map((taxonId) => fetchLandingRootTaxonomy(taxonId))),
   ]);
   const scope = { kind: "composite" as const, displayName: "All Organisms", roots };

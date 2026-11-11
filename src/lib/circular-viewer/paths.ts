@@ -1,9 +1,7 @@
 /**
- * SVG path data for the Circular Viewer's marks, from visx's d3-shape
- * factories. A track's marks are joined into one `d` (one per color for a
- * heatmap): a CDS track holds thousands of features, and one element each
- * made every repaint and hover walk them all. Hover is answered by
- * `./hit-test.ts` from the same spans, not by the DOM.
+ * A track's marks are joined into one `d` (one per color for a heatmap): a CDS
+ * track holds thousands of features, and one element each made every repaint
+ * and hover walk them all.
  */
 import { arc, radialLine } from "@visx/shape";
 import { curveLinear } from "@visx/vendor/d3-shape";
@@ -59,7 +57,6 @@ const polyline = radialLine<RadialPoint>({
   curve: curveLinear,
 });
 
-/** One subpath per line; a line needs two points. */
 export function polylinesPath(lines: Iterable<readonly RadialPoint[]>): string {
   let path = "";
   for (const line of lines) {
@@ -68,11 +65,6 @@ export function polylinesPath(lines: Iterable<readonly RadialPoint[]>): string {
   return path;
 }
 
-/**
- * A score's radius: `[min, max]` mapped onto `[inner, outer]`. That is legacy
- * `LineTrack`'s `[0, max]` from the inner edge and `[-m, m]` about the middle,
- * and reads its unhandled scales too.
- */
 export function scoreRadius(
   score: number,
   scale: ScoreScale,
@@ -85,7 +77,6 @@ export function scoreRadius(
   return innerRadius + ((clamped - scale.min) / span) * (outerRadius - innerRadius);
 }
 
-/** Legacy `HistogramTrack`'s baseline: the inner edge for `[0, max]`, the middle for `[-m, m]`. */
 export function baselineRadius(
   scale: ScoreScale,
   innerRadius: number,
@@ -94,7 +85,6 @@ export function baselineRadius(
   return scoreRadius(0, scale, innerRadius, outerRadius);
 }
 
-/** Legacy line and histogram guide circles: ¼, ½ and ¾ across the ring. */
 export function gridRadii(innerRadius: number, outerRadius: number): number[] {
   const width = outerRadius - innerRadius;
   return [innerRadius + width / 4, innerRadius + width / 2, innerRadius + (3 * width) / 4];

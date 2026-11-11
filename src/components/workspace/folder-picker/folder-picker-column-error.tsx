@@ -7,7 +7,6 @@ interface FolderPickerColumnErrorProps {
   onRetry: () => void;
 }
 
-/** A column whose listing failed: the backend's message and a Retry. */
 export function FolderPickerColumnError({
   error,
   retrying,

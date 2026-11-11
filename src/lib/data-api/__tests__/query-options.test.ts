@@ -92,7 +92,6 @@ describe("memberQueryOptions", () => {
 describe("facetCountQueryOptions", () => {
   const scope = { keyword: "coli", pageSize: 1, fields: ["genome_id"] };
 
-  /** A repository whose reads stay pending until their signal aborts. */
   function pendingRepository() {
     const repository = new DataRepository();
     const collection = vi
@@ -146,7 +145,6 @@ describe("facetCountQueryOptions", () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(collection).not.toHaveBeenCalled();
 
-    // A later read of the same scope is a new request, not the abandoned one.
     void client.query(status).catch(noop);
     await vi.waitFor(() => {
       expect(collection).toHaveBeenCalledOnce();

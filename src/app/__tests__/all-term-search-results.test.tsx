@@ -23,9 +23,8 @@ import {
   createUiPreferencesWrapper,
 } from "@/test-helpers/react";
 
-// The page asks the same-origin search route with the keyword alone; the route
-// builds each type's query (`allTypesSearchQueries`), so these tests read the
-// queries it would send for the keyword the page sent.
+// The page sends the keyword alone; the route builds each type's query
+// (`allTypesSearchQueries`).
 const searchRoute = `*${allTypesSearchPath}`;
 
 type Doc = Record<string, unknown>;
@@ -53,7 +52,6 @@ const influenzaA = {
   ],
 };
 
-/** Taxa, Genomes and Experiments match; nothing else does. */
 const influenzaMatches = {
   taxonomy: solr(
     [
@@ -120,7 +118,6 @@ async function findRail() {
   );
 }
 
-/** The page header (inside `<main>`, so not a landmark). */
 function header() {
   const element = screen.getByRole("heading", { level: 1 }).closest("header");
   if (!element) throw new Error("No page header");
@@ -221,7 +218,6 @@ describe("SearchResults", () => {
     expect(
       await screen.findByRole("menuitem", { name: "Genomes" }),
     ).toHaveAttribute("href", "/taxonomy/11320?tab=genomes");
-    // A tab only some taxa have would land on the Overview.
     expect(
       screen.queryByRole("menuitem", { name: "Strains" }),
     ).not.toBeInTheDocument();
@@ -245,17 +241,16 @@ describe("SearchResults", () => {
   });
 
   it.each([
-    // Legacy's search box quotes an id-like word: keyword("Rv0001") is 4
-    // features, keyword(Rv0001) 341,272.
+    // Legacy quotes an id-like word: keyword("Rv0001") is 4 features,
+    // keyword(Rv0001) 341,272.
     ["Rv0001", "keyword(%22Rv0001%22)", "/feature?keyword=%22Rv0001%22"],
     [
       "kinase not hypothetical",
       "and(keyword(kinase),not(keyword(hypothetical)))",
       "/feature?keyword=kinase+NOT+hypothetical",
     ],
-    // A quote left open closes at the end of the text, as a list's keyword box
-    // closes it: the phrase, 16,285,620 PATRIC features, not the 22,504,678
-    // that match the words apart.
+    // A quote left open closes at the end of the text: the phrase matches
+    // 16,285,620 features, not 22,504,678.
     [
       '"DNA polymerase',
       "keyword(%22DNA%20polymerase%22)",
@@ -349,7 +344,6 @@ describe("SearchResults", () => {
 
     await user.click(within(alert).getByRole("button", { name: "Retry" }));
 
-    // In flight: the same error stays, with a disabled "Retrying…", no skeletons.
     const retrying = await within(alert).findByRole("button", {
       name: "Retrying…",
     });
@@ -389,8 +383,6 @@ describe("SearchResults", () => {
     expect(screen.getByRole("button", { name: "Retry" })).toBeEnabled();
   });
 
-  // The top results can share a genome ("kinase" returns two of genome
-  // 2993654.5's features), and one protein can have many structures.
   it.each([
     [
       "genome_feature",
@@ -454,7 +446,6 @@ describe("SearchResults", () => {
 
     renderResults("influenza");
 
-    // Collapsed, not left out: the rows still size the table's columns.
     const sixth = (await screen.findByText("Genome 6")).closest("tr");
     expect(sixth).toHaveAttribute("inert");
     expect(sixth).toHaveClass("collapse");
@@ -491,12 +482,10 @@ describe("SearchResults", () => {
 
     (await screen.findByText("Genome 5")).focus();
     await user.keyboard("{ArrowDown}");
-    // Past the collapsed sixth genome, to the next type's first result.
     expect(screen.getByText("RNA response")).toHaveFocus();
     await user.keyboard("{ArrowUp}");
     expect(screen.getByText("Genome 5")).toHaveFocus();
 
-    // From a type's heading link or fold button, to the nearest result.
     const heading = screen.getByRole("heading", { name: "Experiments" });
     within(heading).getByRole("link").focus();
     await user.keyboard("{ArrowUp}");
@@ -505,7 +494,6 @@ describe("SearchResults", () => {
     await user.keyboard("{ArrowDown}");
     expect(screen.getByText("RNA response")).toHaveFocus();
 
-    // From "Show more", not back to the top of its type.
     const showMore = screen.getByRole("button", { name: "Show 1 more genomes" });
     showMore.focus();
     await user.keyboard("{ArrowUp}");
@@ -514,7 +502,6 @@ describe("SearchResults", () => {
     await user.keyboard("{ArrowDown}");
     expect(screen.getByText("RNA response")).toHaveFocus();
 
-    // With no result that way, the key is left to scroll the page.
     expect(
       fireEvent.keyDown(screen.getByText("RNA response"), { key: "ArrowDown" }),
     ).toBe(true);
@@ -582,7 +569,6 @@ describe("SearchResults", () => {
     expect(area?.lastElementChild).toBe(screen.getByText("Site footer"));
     const pinned = screen.getByRole("heading", { level: 1 }).closest(".sticky");
     expect(pinned).not.toBeNull();
-    // A jump stops the section below the pinned header.
     Object.defineProperty(pinned, "offsetHeight", { value: 150 });
     const genomes = document.getElementById("search-genome");
     if (genomes) genomes.getBoundingClientRect = () => ({ top: 600 }) as DOMRect;

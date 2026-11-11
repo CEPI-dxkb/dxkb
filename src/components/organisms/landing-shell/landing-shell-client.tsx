@@ -26,16 +26,9 @@ interface LandingShellClientProps {
   defaultView: OrganismViewKey;
   navItems: readonly OrganismLandingNavItem[];
   headerContent?: ReactNode;
-  /**
-   * "scroll": content region scrolls vertically (default, doc-style views).
-   * "fill": content region is a bounded non-scrolling flex box the view fills
-   * (table views own their own scroll).
-   */
+  /** "scroll": the region scrolls (doc-style); "fill": a bounded box the view fills (table views own their scroll). */
   layout?: "scroll" | "fill";
-  /**
-   * The `tab` search param the server rendered this page for (null: none).
-   * Keeps the active view on its own URL while Back or Forward replaces it.
-   */
+  /** The `tab` search param the server rendered for (null: none); keeps the active view on its URL while Back/Forward replaces it. */
   tabParam?: string | null;
   children: ReactNode;
 }
@@ -71,7 +64,6 @@ export function LandingShellClient({
       )) {
         params.delete(name);
       }
-      // Nested tables' params belong to the view being left.
       deleteChildCollectionParams(params);
     }
     if (nextView === defaultView) {
@@ -96,7 +88,6 @@ export function LandingShellClient({
 
   return (
     <>
-      {/* Mobile nav — fixed-position pill, lives outside the flex row so it doesn't contribute a phantom gap-3 gutter. */}
       <div className="lg:hidden">
         <LandingMobileNav
           items={navItems}
@@ -105,7 +96,6 @@ export function LandingShellClient({
         />
       </div>
       <div className="mx-auto flex min-h-0 w-full max-w-none flex-1 flex-row gap-3 px-2 sm:px-3 lg:px-4">
-        {/* Desktop rail — hidden below lg, where the mobile nav takes over. */}
         <div className="hidden lg:block">
           <LandingNav
             items={navItems}
@@ -133,25 +123,18 @@ export function LandingShellClient({
             )}
           </div>
           {layout === "fill" ? (
-            // Bounded, non-scrolling region: the view fills it exactly and owns
-            // its own internal scroll (e.g. a virtualized table). No page scroll,
-            // so no forced overflow-x and no inset page scrollbar. The negative
-            // right margin cancels the outer row's px-* so the table (and its
-            // right-flush action strip) reach the viewport edge — no right gutter.
+            // Bounded non-scrolling region; the negative right margin cancels the outer
+            // row's px-* so the table reaches the viewport edge.
             <div className="-mr-2 flex min-h-0 flex-1 overflow-hidden sm:-mr-3 lg:-mr-4">
               <div className="flex min-h-0 min-w-0 flex-1 flex-col">
                 {content}
               </div>
             </div>
           ) : (
-            // Doc-style scroll region. The negative right margin cancels the outer
-            // row's px-* so the scrollbar rides on the true viewport edge, while the
-            // matching right padding (pr-2/3/4 == the outer px) insets the content
-            // back to the header card's right edge. The thin themed scrollbar (6px)
-            // is narrower than that padding, so it sits in the padding gutter and
-            // the cards line up with the header instead of the viewport edge.
-            // pl-1/py-4 keep the left/top/bottom borders + shadows off the clip box
-            // edge (overflow-y:auto forces overflow-x:auto).
+            // Doc-style scroll region. The negative right margin cancels the outer px-* so
+            // the scrollbar rides the viewport edge; the matching right padding insets the
+            // content back to the header card. pl-1/py-4 keep borders and shadows off the
+            // clip edge.
             <div
               ref={restoreHistoryScroll}
               data-testid="landing-scroll-region"

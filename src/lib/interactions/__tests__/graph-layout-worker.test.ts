@@ -1,8 +1,7 @@
 type Listener = (event: { data: unknown }) => void;
 
-// The worker entry registers on its global scope at import time. jsdom's window
-// stands in for the worker scope: capture the listener it adds and the replies
-// it posts.
+// The worker entry registers on its global scope at import time; jsdom's window stands in, so
+// capture the listener it adds and the replies it posts.
 async function loadWorker() {
   const listeners: Listener[] = [];
   const addEventListener = vi
@@ -44,7 +43,6 @@ describe("graph-layout.worker", () => {
   it("posts the error message when the layout throws", async () => {
     const { listeners, postMessage } = await loadWorker();
 
-    // An edge to a node index that does not exist.
     listeners[0]({
       data: { nodeCount: 1, edges: new Uint32Array([0, 5]), layout: "grid" },
     });
@@ -53,7 +51,6 @@ describe("graph-layout.worker", () => {
       Partial<{ positions: Float64Array; error: string }>,
     ];
     expect(reply.positions).toBeUndefined();
-    // graphology's own message, naming the missing node.
     expect(reply.error).toContain('"5"');
   });
 });

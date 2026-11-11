@@ -1,11 +1,4 @@
-/*
- * Archaeopteryx 3 injects its own panel, menu, dialog and tooltip styles from
- * CSS custom properties, one light and one dark set, chosen by an aptx-light /
- * aptx-dark class that syncViewerTheme keeps in step with data-theme. These
- * rules map those properties to the DXKB theme tokens. The :is(.aptx-light,
- * .aptx-dark) qualifier lifts them above the injected rules, which are added
- * to the document after this stylesheet.
- */
+/* The :is(.aptx-light, .aptx-dark) qualifier outranks Archaeopteryx's injected styles, which load after this stylesheet. */
 :root
   :is(
     .aptx-panel,
@@ -38,7 +31,6 @@
   --p-bg: var(--popover);
 }
 
-/* DXKB's primary is too dark to read as text on the dark palette. */
 :root
   :is(
     .aptx-panel,
@@ -53,12 +45,10 @@
   --p-accent-weak: color-mix(in oklab, var(--primary) 32%, transparent);
 }
 
-/* The canvas background is painted inline; the export keeps its own white. */
 .archaeopteryx-dxkb :is(rect.basebackground, rect.aptx-overview-bg) {
   fill: color-mix(in oklab, var(--input) 30%, var(--card)) !important;
 }
 
-/* The site header owns light/dark; the viewer's own switch would drift from it. */
 .archaeopteryx-dxkb .aptx-panel .aptx-theme-btn {
   display: none;
 }

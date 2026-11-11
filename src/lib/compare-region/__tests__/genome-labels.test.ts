@@ -47,7 +47,6 @@ describe("genomeLabelLines", () => {
       const spec = densitySpecs[density];
       for (const row of measureFigure(layout, spec).rows) {
         const lines = genomeLabelLines(spec, row, true);
-        // The ink: the tag or the species' caps, down to the strain's baseline.
         const inkTop =
           lines.middle -
           Math.max(spec.tagHeight / 2, (capHeight * spec.speciesSize) / 2);

@@ -224,7 +224,6 @@ describe("cached profile eviction", () => {
     await clearCurrentSession();
 
     expect(readCachedProfile("user", "user-token")).toBeUndefined();
-    // The SU backup cookies are kept, and so is their profile.
     expect(readCachedProfile("admin", "admin-token")).toEqual(profile("admin"));
   });
 

@@ -6,7 +6,6 @@ import type { CompareRegionQuery } from "../contract";
 
 const serviceUrl = "http://compare-region.test/services/compare_regions";
 
-/** A focus row as the service sends it (2026-10-23), trimmed: string coordinates, a numbered name. */
 const rawFocusRow = {
   beg: -4931,
   end: 5069,
@@ -61,7 +60,6 @@ const rawFocusRow = {
   ],
 };
 
-/** What the service answers for a gene it does not know (2026-10-23). */
 const unknownGeneRows = [
   {
     mid: 0,
@@ -100,7 +98,6 @@ function rpcAnswer(rows: unknown) {
   return HttpResponse.json({ jsonrpc: "2.0", id: 1, result: [rows] });
 }
 
-/** What the route answers, as a 502, for an answer this module cannot read. */
 const unreadableAnswer = {
   name: "UpstreamError",
   status: 502,
@@ -109,7 +106,6 @@ const unreadableAnswer = {
     "The BV-BRC compare region service sent an answer DXKB could not read.",
 };
 
-/** The error `run` throws; fails the test when it throws nothing. */
 function thrownBy(run: () => unknown): unknown {
   try {
     run();

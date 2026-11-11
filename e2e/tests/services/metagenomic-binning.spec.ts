@@ -78,9 +78,6 @@ test.describe("metagenomic-binning submission", () => {
       app_params?: Record<string, unknown>;
     };
     expect(payload.app_name).toBe("MetagenomeBinning");
-    // The transform drops `start_with` (it's an internal discriminator) and emits
-    // `assembler` only for the `reads` branch; organism="bacteria" becomes
-    // `perform_bacterial_annotation: true`.
     expect(payload.app_params).toMatchObject({
       output_path: "/e2e-test-user@patricbrc.org/home",
       output_file: "binning-e2e",

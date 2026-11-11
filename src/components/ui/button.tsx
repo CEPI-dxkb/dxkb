@@ -6,9 +6,8 @@ import type { VariantProps } from "class-variance-authority";
 import { buttonVariants } from "@/components/ui/button-variants";
 import { cn } from "@/lib/utils";
 
-// Local edit: `variant` is rendered as data-variant, as Card does, so a
-// layout can restyle one variant's states from CSS (the services layout's
-// outline-button hover, see .service-surface in globals.css).
+// `variant` is rendered as data-variant so CSS can restyle one variant's states
+// (.service-surface in globals.css).
 function Button({
   className,
   variant = "default",

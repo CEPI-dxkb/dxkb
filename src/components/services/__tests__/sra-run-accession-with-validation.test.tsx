@@ -12,11 +12,8 @@ vi.mock("sonner", () => ({
 }));
 
 /**
- * Lets a test replace the transport for the duration of that test. Most tests
- * leave this null and drive the real transport through MSW; the staleness
- * tests install a stub that deliberately ignores the abort signal, so the
- * component's request-id guard — not the abort — is what has to reject the
- * superseded response.
+ * Lets a test replace the transport; the staleness tests stub one that ignores
+ * the abort signal, so only the request-id guard can reject the stale response.
  */
 const transport = vi.hoisted(() => ({
   override: null as
@@ -52,7 +49,6 @@ function xmlForRuns(runs: string[], studyTitle = "A study"): string {
 </EXPERIMENT_PACKAGE_SET>`;
 }
 
-/** A promise plus its resolver, used to hold a response open mid-test. */
 function deferred() {
   let release: () => void = () => {
     throw new Error("deferred released before it was initialized");
@@ -65,7 +61,6 @@ function deferred() {
   return { promise, release: () => { release(); } };
 }
 
-/** Resolves every validation request with the XML for `runs[accession]`. */
 function respondWithRuns(
   runsByAccession: Record<string, string[] | undefined>,
 ) {
@@ -95,10 +90,6 @@ interface HarnessProps {
   onChange?: (value: string) => void;
 }
 
-/**
- * Mirrors how service pages use the component: `selectedLibraries` is owned by
- * the parent, so `setSelectedLibraries` actually re-renders with new state.
- */
 function Harness({
   initialLibraries = [],
   allowDuplicates,
@@ -146,7 +137,6 @@ function libraryIds(): string[] {
   ).map((node) => node.textContent);
 }
 
-/** Types into the input and lets the debounce timer fire. */
 async function typeAndSettleDebounce(value: string) {
   fireEvent.change(input(), { target: { value } });
   await act(async () => {
@@ -215,7 +205,6 @@ describe("SraRunAccessionWithValidation", () => {
     await waitFor(() => {
       expect(screen.getByText("Timeout exceeded.")).toBeInTheDocument();
     });
-    // Accepted, so its message is a warning and the field is not invalid.
     expect(screen.getByText("Timeout exceeded.")).toHaveClass("text-warning");
     expect(input()).not.toHaveAttribute("aria-invalid");
     expect(input()).not.toHaveClass("border-success");
@@ -228,7 +217,6 @@ describe("SraRunAccessionWithValidation", () => {
   });
 
   it("rejects a malformed accession without contacting the backend", async () => {
-    // No MSW handler registered: a request would fail the suite outright.
     render(<Harness />);
 
     await typeAndSettleDebounce("not-an-accession");
@@ -308,8 +296,6 @@ describe("SraRunAccessionWithValidation", () => {
       });
       expect(libraryIds()).toEqual(["SRR100"]);
       expect(onAdd).not.toHaveBeenCalled();
-      // Asymmetric with the multi-run branch: nothing is added, and the input
-      // is left intact for the user to correct.
       expect(input()).toHaveValue("SRR100");
     });
 
@@ -375,7 +361,6 @@ describe("SraRunAccessionWithValidation", () => {
         expect(libraryIds()).toEqual(["SRR201", "SRR202"]);
       });
       expect(onAdd).toHaveBeenCalledWith(["SRR201", "SRR202"], "A study");
-      // skipClear: the input keeps the accession the user typed.
       expect(input()).toHaveValue("SRX200");
       expect(
         screen.queryByRole("button", {
@@ -437,7 +422,6 @@ describe("SraRunAccessionWithValidation", () => {
       await waitFor(() => {
         expect(libraryIds()).toEqual(["SRR700"]);
       });
-      // Enter goes through handleAdd, which clears the input.
       expect(input()).toHaveValue("");
       expect(onAdd).toHaveBeenCalledTimes(1);
     });
@@ -496,9 +480,6 @@ describe("SraRunAccessionWithValidation", () => {
         await vi.advanceTimersByTimeAsync(50);
       });
 
-      // Styling comes from validationStatus, not from matching the message
-      // text, so a settled message that happens to contain "Validating" still
-      // reads as an error.
       expect(
         screen.getByText("Validating is not a real result"),
       ).toHaveClass("text-destructive");
@@ -507,8 +488,6 @@ describe("SraRunAccessionWithValidation", () => {
     it("marks the field invalid or valid with its message line always present", async () => {
       respondWithRuns({ SRR100: ["SRR100"] });
       const { container } = render(<Harness />);
-      // The message line is the field's sibling `<p>`; it exists, empty and one
-      // line tall, before any validation so the card never changes height.
       const messageLine = () => {
         const line = input().parentElement?.querySelector("p");
         if (!line) throw new Error("message line is missing");
@@ -541,8 +520,8 @@ describe("SraRunAccessionWithValidation", () => {
   describe("stale responses", () => {
     /**
      * Installs a transport that holds the named accession's response open and
-     * deliberately ignores `signal`. Aborting therefore cannot be what saves
-     * the component — only the request-id guard can reject the stale outcome.
+     * ignores `signal`, so only the request-id guard can reject the stale
+     * outcome.
      */
     function holdTransport(
       heldAccession: string,
@@ -570,9 +549,7 @@ describe("SraRunAccessionWithValidation", () => {
       });
       render(<Harness showAddButton={false} />);
 
-      // First accession: request starts but is held open.
       await typeAndSettleDebounce("SRR801");
-      // Second accession supersedes it before the first response lands.
       await typeAndSettleDebounce("SRR802");
       await waitFor(() => {
         expect(
@@ -580,14 +557,11 @@ describe("SraRunAccessionWithValidation", () => {
         ).toBeInTheDocument();
       });
 
-      // Now let the stale first response resolve.
       releaseFirst.release();
       await act(async () => {
         await vi.advanceTimersByTimeAsync(50);
       });
 
-      // The stale success must not overwrite the newer failure, mark the
-      // field valid, or auto-add its run.
       expect(
         screen.getByText("Accession SRR802 is not valid"),
       ).toBeInTheDocument();
@@ -595,9 +569,8 @@ describe("SraRunAccessionWithValidation", () => {
       expect(libraryIds()).toEqual([]);
     });
 
-    // Locks in that manual add keys off the accession currently in the input.
     // The cache is keyed by accession, so a late outcome for an older one can
-    // never be read back — this asserts that property rather than the guard.
+    // never be read back.
     it("manual add uses the newest validated result, not an older in-flight one", async () => {
       const releaseFirst = holdTransport("SRR901", {
         SRR901: { status: "valid", result: { runs: ["SRR901"], title: "" } },

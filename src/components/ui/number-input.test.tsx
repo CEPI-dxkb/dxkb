@@ -266,8 +266,8 @@ describe("NumberInput", () => {
 
 describe("NumberInput stepper arrows", () => {
   it("wraps the input and both arrows in one number-input slot", () => {
-    // globals.css hovers the whole field (border round the arrows too) from
-    // this slot, so the input and arrows must stay inside it.
+    // globals.css hovers the whole field from this slot, so the input and
+    // arrows must stay inside it.
     const { container } = render(
       <NumberInput aria-label="Iterations" defaultValue={2} min={0} max={4} />,
     );

@@ -1,4 +1,3 @@
-// JSON-RPC types for BV-BRC API communication
 export interface JsonRpcRequest {
   id: number;
   method: string;
@@ -17,7 +16,6 @@ export interface JsonRpcResponse<T = unknown> {
   jsonrpc: "2.0";
 }
 
-// Job/Job Status types
 export type JobStatus =
   | "pending"
   | "queued"
@@ -41,7 +39,6 @@ export interface JobBase {
   output_file?: string;
 }
 
-// Job enumeration response
 export interface JobListItem extends JobBase {
   app_spec?: {
     id: string;
@@ -55,7 +52,6 @@ export interface JobListItem extends JobBase {
   req_runtime?: string;
 }
 
-// Job summary response
 export interface JobSummary extends JobBase {
   stdout_shock_node?: string;
   stderr_shock_node?: string;
@@ -68,7 +64,6 @@ export interface JobSummary extends JobBase {
   wall_clock?: number;
 }
 
-// Job details response
 export interface JobDetails extends JobSummary {
   monitor_url?: string;
   app_definition?: {
@@ -84,12 +79,10 @@ export interface JobDetails extends JobSummary {
       type: string;
     }[];
   };
-  // Raw stdout/stderr content if available
   stdout?: string;
   stderr?: string;
 }
 
-// API method specific types
 export interface QueryJobDetailsParams {
   job_id: string;
   include_logs?: boolean;
@@ -109,7 +102,6 @@ export interface SubmitServiceParams {
   app_params: Record<string, unknown>;
 }
 
-// Response types for each API method
 export type QueryJobDetailsResponse = JobDetails;
 // Raw JSON-RPC result is [status_code, message], e.g. [1, "Canceled 18978105"]
 export type KillJobRawResponse = [number, string];
@@ -131,7 +123,6 @@ export interface SubmitServiceResponse {
   ];
 }
 
-// Filtered jobs API types (server-side pagination + archived support)
 export interface EnumerateTasksFilteredParams {
   offset: number;
   limit: number;
@@ -158,7 +149,6 @@ export interface QueryAppSummaryFilteredParams {
 }
 export type QueryAppSummaryFilteredResponse = Record<string, number>;
 
-// Error types
 export interface WorkspaceError {
   code: number;
   message: string;

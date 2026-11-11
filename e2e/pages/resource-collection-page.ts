@@ -2,7 +2,6 @@ import { expect, type Page } from "@playwright/test";
 import { CollectionToolbar } from "./collection-toolbar";
 
 export class ResourceCollectionPage {
-  /** The filter toolbar above the table: keyword, Filters, pills, Columns. */
   readonly toolbar: CollectionToolbar;
 
   constructor(
@@ -54,25 +53,21 @@ export class ResourceCollectionPage {
   }
 
   /**
-   * The selection column's header checkbox. Its name follows what a click would do
-   * ("Select all rows on this page", "Deselect all results", ...), so it is found by
-   * where it sits instead.
+   * Found by position: its name follows what a click would do ("Select all
+   * rows on this page", ...).
    */
   headerCheckbox() {
     return this.page.getByRole("columnheader").getByRole("checkbox");
   }
 
-  /** The table's scroll region; its body holds the rows or the loading skeleton. */
   tableRegion() {
     return this.page.getByRole("region", { name: /results table$/ });
   }
 
-  /** Skeleton rows the table shows while the page on screen is loading. */
   rowSkeletons() {
     return this.tableRegion().locator('tbody [data-slot="skeleton"]');
   }
 
-  /** The selection column's skeleton in the first loading row. */
   selectionCellSkeleton() {
     return this.tableRegion()
       .locator("tbody tr")
@@ -88,14 +83,12 @@ export class ResourceCollectionPage {
     });
   }
 
-  /** The footer's range, like "Showing 401-600 of 650 results". */
   resultRange(first: number, last: number, total: number) {
     return this.page.getByText(
       `Showing ${String(first)}-${String(last)} of ${String(total)} results`,
     );
   }
 
-  /** From the page-selected banner, select every matching result. */
   async selectAllResults(total: number) {
     await this.page
       .getByRole("button", {
@@ -104,26 +97,22 @@ export class ResourceCollectionPage {
       .click();
   }
 
-  /** The action bar's count while every matching result is selected. */
   allResultsSelectedCount(total: number) {
     return this.page.getByText(`All ${String(total)} selected`, {
       exact: true,
     });
   }
 
-  /** The banner that confirms every matching result is selected. */
   allResultsSelectedNotice(total: number) {
     return this.page.getByText(
       `All ${String(total)} results are selected across all pages.`,
     );
   }
 
-  /** The action rail's Download tile; its name ends in the selection badge. */
   downloadTile() {
     return this.page.getByRole("button", { name: /^DOWNLOAD/ });
   }
 
-  /** The Download tile's popover. */
   downloadPanel() {
     return this.page
       .getByRole("dialog")
@@ -135,17 +124,13 @@ export class ResourceCollectionPage {
     await expect(this.downloadPanel()).toBeVisible();
   }
 
-  /** A scope radio, "Selected" or "All", named with its count. */
   downloadScope(scope: "Selected" | "All") {
     return this.downloadPanel().getByRole("radio", {
       name: new RegExp(`^${scope}`),
     });
   }
 
-  /**
-   * A format row ("Text", "CSV", "Excel", "DNA FASTA", "Protein FASTA"). A
-   * disabled row's name goes on with its reason, so the match is on the start.
-   */
+  /** A disabled row's name continues with its reason, so match on the start. */
   downloadFormat(label: string) {
     return this.downloadPanel().getByRole("button", {
       name: new RegExp(`^${label}`),

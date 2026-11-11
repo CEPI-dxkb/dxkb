@@ -5,10 +5,8 @@ import { ErrorAlert } from "./error-alert";
 import { PanelSplit } from "./panel-split";
 
 /**
- * Page object for the `/jobs` list view. Covers the heading, the status, search and date
- * filters, column sorting, the query params they keep in the address, row selection, the
- * details panel that appears on click, the KILL action, and the column resize handles. Rows are
- * matched by `job.id` which renders verbatim in the table's id column.
+ * Page object for the `/jobs` list; rows are matched by `job.id`, which
+ * renders verbatim in the id column.
  */
 export class JobsListPage {
   readonly page: Page;
@@ -16,9 +14,7 @@ export class JobsListPage {
   readonly searchInput: Locator;
   readonly statusTrigger: Locator;
   readonly panels: PanelSplit;
-  /** The list failed with nothing to show; replaces the table. */
   readonly loadError: ErrorAlert;
-  /** The header's job pill when the job summary failed, instead of the counts. */
   readonly statusPillUnavailable: Locator;
 
   constructor(page: Page) {
@@ -30,14 +26,13 @@ export class JobsListPage {
     });
     this.searchInput = page.getByPlaceholder(/search by name, id, or service/i);
     // Named by the trigger's aria-label, so it is the same element whichever
-    // status is chosen (its visible text changes from "All Status").
+    // status is chosen.
     this.statusTrigger = page.getByRole("combobox", {
       name: "Filter by status",
     });
     this.panels = new PanelSplit(page);
   }
 
-  /** Open the list; `query` is a raw query string (e.g. "?status=failed") for a shared link. */
   async goto(query = ""): Promise<void> {
     await this.page.goto(`/jobs${query}`);
     await expect(this.heading).toBeVisible();
@@ -50,14 +45,14 @@ export class JobsListPage {
   }
 
   async waitForRows(): Promise<void> {
-    // Any tbody row. The DataTable's skeleton and empty rows are server-rendered, so
-    // this can pass before hydration; use waitForJob before interacting.
+    // Skeleton and empty rows are server-rendered, so this can pass before
+    // hydration; use waitForJob first.
     await expect(this.page.locator("tbody tr").first()).toBeVisible();
   }
 
   /**
-   * A job's row is on screen. Jobs are fetched client-side, so a real row proves the
-   * page has hydrated: a click made before that (a Select trigger, say) is lost.
+   * Jobs load client-side, so a real row proves hydration; a click made
+   * earlier is lost.
    */
   async waitForJob(jobId: string): Promise<void> {
     await expect(this.rowById(jobId)).toBeVisible();
@@ -68,31 +63,26 @@ export class JobsListPage {
   }
 
   /**
-   * Filter the table by one of the status dropdown values. The page has multiple comboboxes
-   * (the banner search dropdown, the service filter, and this one), so the trigger is matched
-   * by its accessible name, which stays "Filter by status" once a status is chosen. That lets
-   * a second call change the status again.
+   * The trigger is matched by its accessible name, which stays "Filter by
+   * status" once a status is chosen, so a second call works.
    */
   async filterByStatus(label: string | RegExp): Promise<void> {
     await this.statusTrigger.click();
     await this.page.getByRole("option", { name: label }).click();
   }
 
-  /** Type into the search box. The URL's `q` follows after the debounce, not per keystroke. */
   async search(term: string): Promise<void> {
     await this.searchInput.fill(term);
   }
 
-  /** Polls the address for the given query params (`null` = absent). */
   async expectUrlParams(
     expected: Record<string, string | null>,
   ): Promise<void> {
     await expectUrlParams(this.page, expected);
   }
 
-  /** The status trigger shows the chosen option (its label, e.g. "Completed"). */
   async expectStatus(label: string): Promise<void> {
-    // Contains, not equals: the trigger also renders a chevron glyph after the label.
+    // Contains, not equals: the trigger also renders a chevron glyph.
     await expect(this.statusTrigger).toContainText(label);
   }
 
@@ -100,10 +90,6 @@ export class JobsListPage {
     await expect(this.searchInput).toHaveValue(term);
   }
 
-  /**
-   * The date filter's trigger reads its applied range, e.g.
-   * "Between Sep 1, 2026 → Sep 10, 2026", or "All dates" when none is set.
-   */
   async expectDateFilter(label: string): Promise<void> {
     await expect(
       this.page.getByRole("button", { name: label, exact: true }),
@@ -117,14 +103,13 @@ export class JobsListPage {
     });
   }
 
-  /** Click a column's sort button (first click sorts ascending). */
   async sortBy(label: string): Promise<void> {
     await this.sortButton(label).click();
   }
 
   /**
-   * A column's sort direction. The jobs table sets no `aria-sort`; its sort button shows a
-   * lucide arrow instead: up-down (unsorted), up (ascending) or down (descending).
+   * The table sets no `aria-sort`; the sort button's lucide arrow shows the
+   * direction.
    */
   async sortState(label: string): Promise<"ascending" | "descending" | "none"> {
     const iconClasses =
@@ -133,7 +118,7 @@ export class JobsListPage {
     if (tokens.includes("lucide-arrow-up")) return "ascending";
     if (tokens.includes("lucide-arrow-down")) return "descending";
     if (tokens.includes("lucide-arrow-up-down")) return "none";
-    // An icon rename must fail loudly, not read as "unsorted" and pass a "none" check.
+    // An icon rename must fail loudly, not read as "unsorted".
     throw new Error(
       `Sort button for "${label}" shows an unrecognised icon (class="${iconClasses}")`,
     );
@@ -147,10 +132,8 @@ export class JobsListPage {
   }
 
   /**
-   * Leave through the navbar's Workspace menu, Home. The menu link goes through the client
-   * router, so Back afterwards is a Next popstate, not a document load. The menu opens in a
-   * portal outside the banner; the trigger's `aria-controls` names it once open, which scopes
-   * "Home" to this menu so another "Home" link on the page cannot make it ambiguous.
+   * The menu link uses the client router, so Back afterwards is a popstate.
+   * The menu opens in a portal, scoped via the trigger's `aria-controls`.
    */
   async openWorkspaceHomeFromNavbar(): Promise<void> {
     const trigger = this.page
@@ -165,15 +148,12 @@ export class JobsListPage {
       .click();
   }
 
-  /** Click the KILL action on the currently selected row. */
   async killSelected(): Promise<void> {
     await this.page.getByRole("button", { name: /^kill$/i }).click();
   }
 
   /**
-   * The drag handle on a column header. FileTable renders it as a vertical
-   * separator named "Resize <label> column"; the name keeps it apart from the
-   * panel separator, which is also a separator.
+   * Named "Resize <label> column" to tell it apart from the panel separator.
    */
   private columnResizeHandle(label: string): Locator {
     return this.page.getByRole("separator", {
@@ -188,27 +168,23 @@ export class JobsListPage {
       .filter({ has: this.columnResizeHandle(label) });
   }
 
-  /** Rendered width of a column header in whole pixels (0 before it renders). */
   async columnWidth(label: string): Promise<number> {
     const box = await this.columnHeader(label).boundingBox();
     return Math.round(box?.width ?? 0);
   }
 
-  /** Left edge of a column header (px from the viewport's left). */
   async columnLeft(label: string): Promise<number> {
     const box = await this.columnHeader(label).boundingBox();
     if (!box) throw new Error(`${label} column header not rendered`);
     return box.x;
   }
 
-  /** A column's width setting, as its resize handle reports it. */
   async columnSetting(label: string): Promise<number> {
     return Number(
       await this.columnResizeHandle(label).getAttribute("aria-valuenow"),
     );
   }
 
-  /** Drag a column's resize handle horizontally; positive widens the column. */
   async dragColumnHandle(label: string, deltaX: number): Promise<void> {
     const box = await this.columnResizeHandle(label).boundingBox();
     if (!box) throw new Error(`resize handle for ${label} not rendered`);
@@ -221,9 +197,8 @@ export class JobsListPage {
   }
 
   /**
-   * Polls: a saved width is read after hydration, so it can land a render after
-   * the rows do. Sub-pixel rounding can move a column by a pixel; anything more
-   * is a reset.
+   * Polls: a saved width is read after hydration; a pixel of rounding is
+   * tolerated, more is a reset.
    */
   async expectColumnWidth(label: string, expected: number): Promise<void> {
     await expect

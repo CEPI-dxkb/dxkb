@@ -1,12 +1,5 @@
-/**
- * Files attached to a question: read in the browser, checked against the
- * gateway's limits (`BV-BRC-Copilot-API/routes/chatRoutes.js`), and sent with
- * the turn. Nothing is uploaded anywhere else; the gateway does not keep the
- * content, only the names.
- */
 import type { CopilotChatRequest, CopilotModel } from "./types";
 
-/** Images, text files and PDFs together. */
 export const maxCopilotAttachments = 3;
 export const maxCopilotImageBytes = 6 * 1024 * 1024;
 export const maxCopilotFileBytes = 10 * 1024 * 1024;
@@ -23,7 +16,6 @@ export type CopilotAttachment =
       mimeType: string;
     };
 
-/** What the file picker offers; anything else is still checked when read. */
 export const copilotAttachmentAccept = [
   "image/png",
   "image/jpeg",
@@ -64,10 +56,6 @@ const imageExtensions: Record<string, string> = {
   webp: "image/webp",
 };
 
-/**
- * The image MIME type of a file: its supported `type`, or, when the browser
- * gave none, the one its extension names. Null for anything else.
- */
 function imageTypeOf(file: File): string | null {
   if (imageTypes.has(file.type)) return file.type;
   if (file.type !== "") return null;
@@ -82,10 +70,8 @@ function isPdf(file: File): boolean {
 }
 
 /**
- * Reads one file as an attachment, or explains why it cannot be one. Images
- * (PNG, JPEG, GIF, WebP) up to 6 MB; PDFs and text files up to 10 MB. A
- * "PDF" must start with `%PDF-`; a text file must not hold a null byte (it
- * would be binary).
+ * Images up to 6 MB; PDFs and text files up to 10 MB. A "PDF" must start with `%PDF-`; a text file
+ * must not hold a null byte.
  */
 export async function readCopilotAttachment(
   file: File,
@@ -140,7 +126,6 @@ export async function readCopilotAttachment(
   };
 }
 
-/** The attachments in the chat request's shape. */
 export function copilotAttachmentFields(
   attachments: CopilotAttachment[],
 ): Pick<CopilotChatRequest, "images" | "files" | "pdfs"> {
@@ -168,11 +153,6 @@ export function copilotAttachmentFields(
   };
 }
 
-/**
- * The model a question goes to: the chosen one, unless it carries images the
- * chosen model cannot read, when it is the default image model (or the first
- * one that reads images). Null when no model reads images.
- */
 export function copilotModelFor(
   models: CopilotModel[],
   chosen: string,
@@ -186,5 +166,4 @@ export function copilotModelFor(
   return (readers.find((model) => model.isDefault) ?? readers.at(0))?.model ?? null;
 }
 
-/** The question sent when only files were attached. */
 export const attachmentOnlyQuery = "Please look at the attached file.";

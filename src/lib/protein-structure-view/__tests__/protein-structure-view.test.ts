@@ -91,10 +91,7 @@ describe("Protein Structure view contracts", () => {
   });
 
   it("passes already-decoded workspace paths straight through (Next decodes searchParams once)", () => {
-    // `%20`/`%2E` here are literal characters the workspace item is named
-    // with — this is what a real `searchParams.path` value looks like after
-    // Next.js has already decoded it once. `parseProteinStructureMode` must
-    // not decode it again.
+    // `%20`/`%2E` are literal characters in the item name, as a `searchParams.path` looks after Next's single decode; it must not be decoded again.
     const mode = parseProteinStructureMode({
       path: "/user name/home/model.bcif",
     });
@@ -129,8 +126,6 @@ describe("Protein Structure view contracts", () => {
     if (compressedPath.kind === "invalid") {
       expect(compressedPath.reason).toContain("uncompressed");
     }
-    // An actual ".." segment (what Next would hand us after decoding a real
-    // `%2e%2e` traversal attempt in the raw URL) is still rejected.
     expect(
       parseProteinStructureMode({ path: "/user/../model.pdb" }),
     ).toMatchObject({ kind: "invalid" });
@@ -140,26 +135,18 @@ describe("Protein Structure view contracts", () => {
   });
 
   it("treats literal percent text and traversal-looking names as valid, not corrupted or rejected", () => {
-    // A folder literally named "%2e%2e" is not an actual ".." segment and
-    // must not be decoded into one.
     expect(
       parseProteinStructureMode({ path: "/user/%2e%2e/model.pdb" }),
     ).toEqual({ kind: "path", path: "/user/%2e%2e/model.pdb" });
 
-    // A filename containing literal "%2F" text must not be split into two
-    // segments — that would resolve a different file than the one named.
     expect(
       parseProteinStructureMode({ path: "/user/folder%2f../model.pdb" }),
     ).toEqual({ kind: "path", path: "/user/folder%2f../model.pdb" });
 
-    // Percent text that looks malformed, but was never re-decoded, must not
-    // be rejected as an invalid segment.
     expect(
       parseProteinStructureMode({ path: "/user/%E0%A4%A/model.pdb" }),
     ).toEqual({ kind: "path", path: "/user/%E0%A4%A/model.pdb" });
 
-    // A name that merely contains ".." (not an exact ".." segment) is a
-    // valid name, not a traversal attempt.
     expect(
       parseProteinStructureMode({ path: "/user/..hidden/model.pdb" }),
     ).toEqual({ kind: "path", path: "/user/..hidden/model.pdb" });
@@ -167,7 +154,6 @@ describe("Protein Structure view contracts", () => {
       parseProteinStructureMode({ path: "/user/home/model..old.pdb" }),
     ).toEqual({ kind: "path", path: "/user/home/model..old.pdb" });
 
-    // Spaces are valid.
     expect(
       parseProteinStructureMode({ path: "/user/my folder/model.pdb" }),
     ).toEqual({ kind: "path", path: "/user/my folder/model.pdb" });
@@ -189,9 +175,6 @@ describe("Protein Structure view contracts", () => {
       label: "weird%2Ffile.pdb",
       kind: "workspace",
     });
-    // A single decode (what the workspace proxy route/Next.js itself
-    // performs) must land back on the exact original file name, not split
-    // it into an extra path segment.
     expect(resolved.url.split("/").map(decodeURIComponent).join("/")).toBe(
       "/api/workspace/view/user/home/weird%2Ffile.pdb",
     );
@@ -282,10 +265,7 @@ describe("Protein Structure view contracts", () => {
     });
 
     it("mirrors the catch-all viewer route's path-array-to-source pipeline", () => {
-      // The `/viewer/structure/[[...path]]` route hands page.tsx an array of
-      // already per-segment-decoded strings; the page joins them with "/"
-      // and builds the same source. A literal "%2F" inside one segment must
-      // survive as text, not be misread as an extra separator.
+      // The `[[...path]]` route hands page.tsx already-decoded segments; a literal "%2F" must survive as text.
       const segments = ["alice@bvbrc", "home", "weird%2Ffile.pdb"];
       expect(buildWorkspaceStructureSource(segments.join("/"))).toEqual({
         url: "/api/workspace/view/alice%40bvbrc/home/weird%252Ffile.pdb",

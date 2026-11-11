@@ -55,8 +55,6 @@ describe("submitServiceJob", () => {
 
     const result = await submitServiceJob(appName, appParams);
 
-    // The API facade's parseErrorBody catches JSON parse failures and falls back
-    // to "HTTP {status} {statusText}" format.
     expect(result).toEqual(
       expect.objectContaining({
         success: false,
@@ -112,8 +110,6 @@ describe("submitServiceJob", () => {
 
     const result = await submitServiceJob(appName, appParams);
 
-    // The API facade's parseErrorBody catches body-read errors and falls back
-    // to "HTTP {status} {statusText}" format.
     expect(result.error).toMatch(/^HTTP 502/);
   });
 

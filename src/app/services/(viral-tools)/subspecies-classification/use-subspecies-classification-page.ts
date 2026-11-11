@@ -11,9 +11,7 @@ import { subspeciesClassificationService } from "@/lib/forms/(viral-tools)/subsp
 
 export function useSubspeciesClassificationPage() {
   const [isOutputNameValid, setIsOutputNameValid] = useState(true);
-  // The text that last passed `validateFasta` on blur, or "" while none has.
-  // The textarea shows its valid border only while its value still equals it,
-  // so the cue goes as soon as the text changes, as the error does.
+  // The text that last passed `validateFasta` on blur; the valid border shows only while the value equals it.
   const [validatedFasta, setValidatedFasta] = useState("");
   const form = useForm({
     defaultValues: defaultSubspeciesClassificationFormValues,

@@ -14,11 +14,8 @@ interface WorkspaceBreadcrumbsProps {
   username: string;
   itemCount?: number;
   viewMode?: WorkspaceBreadcrumbViewMode;
-  /** When provided, segments matching this user are shown without @bvbrc / @patricbrc.org */
   currentUsername?: string;
-  /** When viewMode is "shared", first breadcrumb links here (current user's workspace root) */
   workspaceRootUsername?: string;
-  /** When provided, renders a star button before the breadcrumbs to favorite/unfavorite the current folder */
   isFavorite?: boolean;
   isFavoritePending?: boolean;
   onToggleFavorite?: () => void;
@@ -43,9 +40,8 @@ export function WorkspaceBreadcrumbs({
     workspaceRootUsername,
   });
 
-  // One line at every width: segments truncate (full name in `title`) rather
-  // than wrap, so narrowing the pane (opening the details panel) cannot push
-  // the table rows down under the pointer.
+  // One line at every width: segments truncate rather than wrap, so narrowing the pane
+  // cannot push table rows under the pointer.
   return (
     <nav
       aria-label="Workspace path"

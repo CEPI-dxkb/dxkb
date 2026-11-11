@@ -69,7 +69,6 @@ export class DataApiError extends Error {
 
 const dataService = upstreamServices.dataApi;
 
-/** One search of `ServerDataRepository.multiQuery`. */
 export interface DataApiMultiQuery {
   dataType: string;
   accept: string;
@@ -77,11 +76,8 @@ export interface DataApiMultiQuery {
 }
 
 /**
- * A network failure or spent budget as the `DataApiError` the routes answer
- * with: 504 `upstream_timeout` or 502 `service_unavailable`, naming the
- * cause in the shared wording every backend uses. The `UpstreamError` stays
- * as `cause`, so the route's log still shows its host. Anything else (a
- * caller's `AbortError` included) is returned as is.
+ * Keeps the `UpstreamError` as `cause` so the route log shows its host; other
+ * errors, including a caller's `AbortError`, pass through.
  */
 function dataApiFailure(
   error: unknown,
@@ -94,23 +90,16 @@ function dataApiFailure(
   });
 }
 
-/** Resources whose reads outlast the shared `upstreamTimeoutMs.dataApi` budget. */
 const resourceTimeoutMs: Partial<Record<DataResource, number>> = {
   genome_amr: upstreamTimeoutMs.dataApiGenomeAmr,
   genome_feature: upstreamTimeoutMs.dataApiGenomeFeature,
 };
 
-/** Where one upstream request goes, and how long it may take to answer. */
 interface Endpoint {
   url: URL;
   timeoutMs: number;
 }
 
-/**
- * The HTML error page a JSON error message quotes ("Unable to parse the query
- * response. <html>…<h1>503 Service Unavailable</h1>…"), or "" when it quotes
- * none.
- */
 function quotedHtmlPage(message: string): string {
   const start = message.search(/<(html|head|body|title|h1)\b/i);
   return start === -1 ? "" : message.slice(start);
@@ -144,8 +133,8 @@ function addFields(
   idField: string,
 ): boolean {
   if (!fields?.length) return false;
-  // The upstream RQL parser misreads identifiers such as `1_pb2` in select().
-  // Omit its projection, then project the full response locally.
+  // The upstream RQL parser misreads identifiers such as `1_pb2` in select();
+  // omit the projection and project locally.
   if (unselectableFields(fields).length > 0) return true;
   appendQuery(url, `select(${[...new Set([...fields, idField])].join(",")})`);
   return false;
@@ -167,9 +156,8 @@ function projectRows(
 }
 
 /**
- * `body` once its first bytes have arrived, or `null` when it ends without
- * any. The bytes read to find out are sent first, so the stream is otherwise
- * untouched.
+ * Re-emits the bytes read to detect emptiness, so the stream is otherwise
+ * unchanged.
  */
 async function nonEmptyBody(
   body: ReadableStream<Uint8Array> | null,
@@ -272,10 +260,8 @@ function upstreamMessage(payload: unknown, status: number): string {
 function normalizeRows(payload: unknown): unknown[] {
   if (Array.isArray(payload)) return payload;
   if (!payload || typeof payload !== "object") {
-    // A successful response whose body is `null`, a bare string/number/
-    // boolean, or unparseable JSON (the request layer maps a JSON parse
-    // failure to `null`) is an upstream protocol failure, not an empty
-    // result — surface it instead of caching/rendering a fake "no results".
+    // A null, primitive or unparseable body is an upstream protocol failure,
+    // not an empty result.
     throw new DataApiError(
       "Malformed data service response.",
       502,
@@ -335,11 +321,8 @@ export class ServerDataRepository {
   }
 
   /**
-   * One collection read. Several facets are counted in parallel, one upstream
-   * read each, and merged: the upstream counts the fields of one request one
-   * after another (Genome's 14 default facets took ~3.2 s combined and ~1.2 s
-   * apart). The rows ride with the first facet; the others read one id each.
-   * A facet named twice is counted once. Any failed part fails the whole read.
+   * Facets are counted in parallel because the upstream counts one request's
+   * fields serially; the rows ride with the first facet.
    */
   async collection(
     resource: DataResource,
@@ -540,26 +523,10 @@ export class ServerDataRepository {
   }
 
   /**
-   * Ranged read whose *response headers* the caller needs, with rows validated
-   * by the resource schema. The generic operations above expose only a parsed
-   * body, because their contract is entirely in the body; the Taxa Tree's is
-   * not — it pages on `Content-Range`.
-   *
-   * `clause` is appended to the query verbatim and does NOT pass through
-   * `validateRql`, so every caller must build it from values it has already
-   * validated server-side. Its callers today are `./taxonomy-tree.ts`, whose
-   * two clauses are built from positive integers that
-   * `/api/taxonomy-tree/[operation]` parsed with a digits-only pattern, and
-   * `src/lib/genome-browser/server.ts`, whose clauses are built from validated
-   * genome ids, integers, an annotation allowlist, and a `refName`
-   * constrained by `refNamePattern` and then passed through `escapeRqlValue`.
-   *
-   * `start`/`end` go straight into the `Range`/`X-Range` headers, so the
-   * caller owns its own window — including the upstream's *exclusive* range
-   * end, the same convention `collection` relies on when it asks for
-   * `start+size` to get `size` rows. This method knows no row limit of its
-   * own and therefore shares none with `collection` (`pageSize`) or `export`
-   * (`maxExportRows`).
+   * `clause` is appended verbatim and skips `validateRql`, so callers must
+   * build it only from server-validated values.
+   * `start`/`end` go into the Range headers unchanged, including the upstream's
+   * exclusive range end.
    */
   async rangedRows(
     resource: DataResource,
@@ -582,14 +549,9 @@ export class ServerDataRepository {
   }
 
   /**
-   * Ranged read for a query whose answer is entirely in the response headers
-   * and whose body the caller does not read — a facet-only request. The body
-   * is still consumed, because an error response carries its message there,
-   * but it is neither normalized nor schema-validated: a facet request asks
-   * for the narrowest range there is, so whatever row the upstream happens to
-   * include is incidental and must not be able to fail the request.
-   *
-   * Same `clause` contract as {@link rangedRows}.
+   * Same `clause` contract as `rangedRows`. The body is consumed for error
+   * messages but never validated, so an incidental row cannot fail a facet-only
+   * request.
    */
   async rangedHeaders(
     resource: DataResource,
@@ -612,18 +574,9 @@ export class ServerDataRepository {
   }
 
   /**
-   * FASTA for the given ids, as the upstream's own response stream so a
-   * multi-megabase contig is never buffered on this server. The ids go in a
-   * POST body (`in(idField,(…))`, escaped by `serializeRql`) for the same
-   * reason {@link rows} sends them that way: a GET URL cannot carry 500 of
-   * them.
-   *
-   * An id that matches nothing simply contributes no record, and a feature
-   * with no translation contributes no protein record, so the stream can be
-   * empty on success. Deciding what an empty download means is the caller's
-   * call — `DataRepository.fasta()` reports it, this layer does not.
-   *
-   * `request` must already have passed `validateFastaRequest`.
+   * Streams the upstream response unbuffered; it can be empty on success, which
+   * the caller must interpret.
+   * `request` must have passed `validateFastaRequest`.
    */
   async fasta(
     resource: FastaResource,
@@ -650,34 +603,9 @@ export class ServerDataRepository {
   }
 
   /**
-   * A table or FASTA download, as the upstream's own response stream so a
-   * multi-gigabyte file is never buffered on this server. Legacy BV-BRC's
-   * request, without the token in the body: one POST whose body is the whole
-   * query (`<predicate>&select(…)&sort(…)&limit(N)`) and whose `Accept` names
-   * the format.
-   *
-   * - The predicate is `in(<idField>,(…))` for a selection, else the query's
-   *   rql and keyword (`eq(<idField>,*)` when it has neither, since the
-   *   upstream rejects a bare `sort()`).
-   * - No `select()` without `fields`, so the upstream returns every stored
-   *   field, as legacy does. `validateDownloadRequest` refuses `fields` the
-   *   upstream cannot select (`unselectableFields`), since a stream cannot be
-   *   projected here.
-   * - The table's sort, then the primary key; the primary key alone when the
-   *   table is unsorted.
-   * - A resource whose sequences live elsewhere (`sequenceDownloads[…].via`:
-   *   a genome's contigs) reads that resource with `in(<key>,(<ids>))` sorted
-   *   by its own key. A query scope there first reads the matching ids, one
-   *   past `maxSequenceQueryRows`, and is refused when that extra id arrives:
-   *   the query grew past the cap after its recount.
-   * - A query is counted again first (`recountQueryDownload`), and its
-   *   `limit()` is the format's cap, not `request.total`: that is the count
-   *   the table last loaded, and records added since would fall past it.
-   * - An upstream body with no bytes (ids that match nothing, features with
-   *   no translation) is a 404 with `emptyDownloadMessage`, not an empty
-   *   file: the native transport saves whatever it is sent, and cannot check.
-   *
-   * `request` must already have passed `validateDownloadRequest`.
+   * Streams the upstream response unbuffered. An empty body is a 404, not an
+   * empty file, because the native transport saves whatever it is sent.
+   * `request` must have passed `validateDownloadRequest`.
    */
   async download(
     resource: DataResource,
@@ -745,7 +673,6 @@ export class ServerDataRepository {
         serializeInClause(via.resource, via.key, ids, maxSelectionDownloadRows),
         `sort(+${via.sort})`,
       );
-      // A genome has any number of contigs, so the cap is legacy's own.
       limit = maxQueryDownloadRows;
     } else {
       clauses.push(
@@ -758,8 +685,8 @@ export class ServerDataRepository {
             )
           : (predicateClause(request.scope) ?? `eq(${definition.idField},*)`),
       );
-      // Exactly the visible columns: the file streams through unread, so the
-      // primary key that JSON reads add for row lookups would be an extra column.
+      // Exactly the visible columns: the primary key JSON reads add would be an
+      // extra column in a streamed file.
       if (format.kind === "table" && request.fields?.length) {
         clauses.push(`select(${[...new Set(request.fields)].join(",")})`);
       }
@@ -796,12 +723,9 @@ export class ServerDataRepository {
   }
 
   /**
-   * Counts a query download's rows now and checks the caps on that count.
-   * `validateDownloadRequest` checked them on `request.total`, the count the
-   * table last loaded, so a query that has grown past a cap since is refused
-   * here instead of downloading short. The read that follows asks for the
-   * format's whole cap rather than this count, so a record added in between
-   * is not cut either.
+   * Refuses a query that grew past a cap since `request.total` was checked.
+   * The read that follows asks for the format's whole cap, so later additions
+   * are not cut.
    */
   private async recountQueryDownload(
     resource: DataResource,
@@ -838,13 +762,6 @@ export class ServerDataRepository {
       );
   }
 
-  /**
-   * The Data API's multi-query endpoint (`POST {base}/query/`): several
-   * `{dataType, accept, query}` searches in one round trip, answered keyed as
-   * sent. It reads a JSON body and ignores Range. Same HTTPS-with-token guard,
-   * budget and error mapping as every other read; the all-data-types search
-   * route (`/api/data/search`) is its caller.
-   */
   async multiQuery(
     queries: Readonly<Record<string, DataApiMultiQuery>>,
     signal?: AbortSignal,
@@ -938,10 +855,8 @@ export class ServerDataRepository {
   }
 
   /**
-   * One upstream round trip: the HTTPS-with-token guard, the Range and auth
-   * headers, and the upstream error mapping. Returns the response only when it
-   * succeeded, with its body unread, so a JSON read and a FASTA stream share
-   * every rule up to the point where they consume the body differently.
+   * Returns the response with its body unread, so JSON reads and FASTA streams
+   * share every rule up to body consumption.
    */
   private async send(
     { url, timeoutMs }: Endpoint,
@@ -952,7 +867,6 @@ export class ServerDataRepository {
     method = "GET",
     body?: string,
     streamBody = false,
-    // Every resource endpoint reads an RQL body; `multiQuery` sends JSON.
     contentType = "application/rqlquery+x-www-form-urlencoded",
   ): Promise<Response> {
     if (this.options.token && url.protocol !== "https:") {
@@ -987,8 +901,8 @@ export class ServerDataRepository {
         {
           service: dataService,
           timeoutMs,
-          // FASTA and table downloads stream through unread and may run far
-          // past any budget; JSON reads are bounded through the body.
+          // Downloads stream unread and may outlast any budget; JSON reads are
+          // bounded through the body.
           streamBody,
           fetcher: this.fetcher,
         },
@@ -1002,10 +916,9 @@ export class ServerDataRepository {
       try {
         payload = text ? JSON.parse(text) : null;
       } catch {
-        // An HTML error page; summarized below, never forwarded.
+        // non-JSON body
       }
-      // Only an HTML page's title and heading; a plain-text body stays
-      // unread as before, since it can carry upstream internals.
+      // A plain-text body stays unread because it can carry upstream internals.
       const contentType = response.headers.get("content-type");
       const detail =
         payload === null && isHtmlBody(text, contentType)
@@ -1038,11 +951,8 @@ export class ServerDataRepository {
                 : safeStatus === 503
                   ? "service_unavailable"
                   : "upstream_error";
-      // An outage reads as every backend's does ("The BV-BRC data service is
-      // unavailable (HTTP 503 Service Unavailable: Site Maintenance)."): its
-      // status, then only the title and heading of an HTML page behind it,
-      // or of one a JSON error quotes. A 5xx with a JSON error of the
-      // service's own ("Invalid query near …") keeps that message.
+      // A 5xx with the service's own JSON error keeps that message; otherwise
+      // only an HTML page's title and heading are summarized.
       const isOutage =
         serviceUnavailable || (payload === null && response.status >= 500);
       const message = isOutage

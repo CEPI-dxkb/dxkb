@@ -3,7 +3,6 @@ import type {
   GraphLayoutResponse,
 } from "./layout-positions";
 
-/** The part of `Worker` the layout runner uses, so tests can pass a fake. */
 export interface GraphLayoutWorker {
   postMessage(message: GraphLayoutRequest, transfer: Transferable[]): void;
   addEventListener(
@@ -16,24 +15,20 @@ export interface GraphLayoutWorker {
 
 export interface GraphLayoutOptions {
   signal?: AbortSignal;
-  /** Starts the worker. Tests pass a fake; the default loads graph-layout.worker.ts. */
   createWorker?: () => GraphLayoutWorker;
 }
 
-// The `new Worker(new URL(…, import.meta.url), { type: "module" })` form is the
-// one Turbopack recognizes and emits as its own chunk; keep it literal.
+// The literal `new Worker(new URL(…, import.meta.url), { type: "module" })` form is the one
+// Turbopack emits as its own chunk.
 const defaultCreateWorker = (): GraphLayoutWorker =>
   new Worker(new URL("./graph-layout.worker.ts", import.meta.url), {
     type: "module",
   });
 
 /**
- * The graph still has to render when the worker is unavailable (no `Worker`, as
- * in jsdom or an old browser; a worker that cannot start; a worker chunk that
- * failed to load), so lay it out here instead and say why once. The layout code
- * loads on demand: `useGraphLayout` imports the same module, so the browser
- * fetches it once (as its own chunk) instead of a copy inside this one.
- * Rejects with `signal.reason` when the caller aborts before the layout runs.
+ * The graph still has to render when the worker is unavailable (jsdom, old browser, failed chunk),
+ * so lay it out here and say why once. Rejects with `signal.reason` when the caller aborts before
+ * the layout runs.
  */
 async function layOutOnMainThread(
   request: GraphLayoutRequest,
@@ -44,7 +39,6 @@ async function layOutOnMainThread(
     `Interactions graph: laying out on the main thread because ${cause}.`,
   );
   const { computeLayoutPositions } = await import("./layout-positions");
-  // The caller can abort while the layout code loads; then nobody wants it.
   signal?.throwIfAborted();
   return computeLayoutPositions(request);
 }
@@ -67,10 +61,8 @@ function startWorker(
 }
 
 /**
- * Lay out a graph in a Web Worker, one worker per request. Resolves with
- * positions `[x0, y0, x1, y1, …]` in node order; rejects with the worker's own
- * error message, or with `signal.reason` on abort. The worker is terminated
- * whichever way the request settles.
+ * Resolves with positions `[x0, y0, x1, y1, …]` in node order; rejects with the worker's error
+ * message, or `signal.reason` on abort.
  */
 export function requestGraphLayout(
   request: GraphLayoutRequest,
@@ -119,8 +111,8 @@ export function requestGraphLayout(
     });
     signal?.addEventListener("abort", onAbort, { once: true });
 
-    // Transfer a copy of the edges: the transfer detaches the buffer it moves,
-    // and the main-thread fallback above still needs the original.
+    // Transfer a copy: the transfer detaches the buffer, and the main-thread fallback still needs
+    // the original.
     const edges = request.edges.slice();
     worker.postMessage({ ...request, edges }, [edges.buffer]);
   });

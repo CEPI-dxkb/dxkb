@@ -1,13 +1,11 @@
 import { expect, type Download, type Locator, type Page } from "@playwright/test";
 
 /**
- * The taxonomy Phylogeny tab rendering a phyloXML tree in Archaeopteryx.js.
- * The viewer draws its SVG and its floating control panel inside the host
- * element; the node menu and hover tooltip are appended to the body.
+ * The taxonomy Phylogeny tab rendering a phyloXML tree in Archaeopteryx.js;
+ * the node menu and hover tooltip are appended to the body.
  */
 export class ArchaeopteryxPage {
   readonly page: Page;
-  /** The bounded box the viewer is drawn in, loading overlay included. */
   readonly frame: Locator;
   readonly host: Locator;
   readonly svg: Locator;
@@ -44,7 +42,6 @@ export class ArchaeopteryxPage {
     await expect(this.loadingOverlay).toHaveCount(0);
   }
 
-  /** The drawn node group whose label reads `name`. */
   node(name: string): Locator {
     return this.svg.locator("g.node").filter({
       has: this.page.locator("text", { hasText: name }),
@@ -56,9 +53,8 @@ export class ArchaeopteryxPage {
   }
 
   /**
-   * Opens the node menu on `name` and chooses Select/Deselect Node. The
-   * viewer finds nodes by pointer position rather than by event target, so
-   * this clicks the node's own point, not its label.
+   * The viewer finds nodes by pointer position, not event target, so click
+   * the node's own point rather than its label.
    */
   async selectLeaf(name: string): Promise<void> {
     const point = await this.node(name).evaluate((node) => {
@@ -73,10 +69,7 @@ export class ArchaeopteryxPage {
       .click();
   }
 
-  /**
-   * Opens the panel's Download… menu. The Download section starts folded, and
-   * the format menu is the only way to pick a format.
-   */
+  /** The Download section starts folded. */
   async openDownloadMenu(): Promise<void> {
     const section = this.panel.locator("fieldset.aptx-download");
     if ((await section.getAttribute("class"))?.includes("aptx-collapsed")) {
@@ -85,7 +78,6 @@ export class ArchaeopteryxPage {
     await section.getByRole("button", { name: "Download…", exact: true }).click();
   }
 
-  /** Opens the Download… menu and chooses `format` from it. */
   async download(format: string): Promise<Download> {
     await this.openDownloadMenu();
     const download = this.page.waitForEvent("download");
@@ -102,7 +94,6 @@ export class ArchaeopteryxPage {
       .evaluate((element) => getComputedStyle(element).fill);
   }
 
-  /** The color the DXKB theme CSS paints the canvas with. */
   expectedCanvasBackground(): Promise<string> {
     return this.page.evaluate(() => {
       const probe = document.createElement("div");

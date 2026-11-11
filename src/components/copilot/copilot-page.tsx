@@ -8,10 +8,6 @@ import { useCopilot } from "./copilot-provider";
 import { CopilotSessionList } from "./copilot-session-list";
 import { copilotName } from "@/lib/copilot/name";
 
-/**
- * The full-page Copilot: the user's chats on the left, the open chat beside
- * them. Shares its state with the side panel and floating window.
- */
 export function CopilotPage() {
   const copilot = useCopilot();
   const running = isCopilotTurnActive(copilot.chat.active?.turn ?? null);

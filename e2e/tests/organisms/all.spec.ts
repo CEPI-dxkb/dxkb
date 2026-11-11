@@ -21,11 +21,8 @@ test.describe("all organisms landing page", () => {
         },
         ...workspaceOverrides,
         ...genomeScenarioOverrides,
-        // The "Taxa Tree" tab fetches its children and child counts from the
-        // same-origin /api/taxonomy-tree route. This spec only asserts that the
-        // two server-provided root rows render, so the data-free bundle is
-        // enough — but it is not optional: the strict guard aborts any unmocked
-        // /api/** request and fails the test on the leaked-request check.
+        // The strict guard aborts any unmocked /api/** request, so the Taxa Tree's
+        // /api/taxonomy-tree route needs the data-free bundle.
         ...taxonomyTreeScenarioOverrides,
         ...emptyBackendFallbackOverrides,
       ],

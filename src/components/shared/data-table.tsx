@@ -87,10 +87,8 @@ function DataTableReset({
   return useDataTableContent(props, sizingByKey, setSizingByKey);
 }
 
-// Varied bar widths for skeleton cells so loading rows read as content, not blocks.
 const skeletonWidthPcts = [60, 80, 50, 75, 90, 45, 70];
 
-// Stable identity for the "no sizing yet" case.
 const emptyColumnSizing: Record<string, number> = {};
 
 export type DataTableRow = Record<string, unknown>;
@@ -131,20 +129,13 @@ type DataTableFeatures = typeof dataTableFeatures;
 type DataRow = DataTableRow;
 export type DataTableInstance = ReactTable<DataTableFeatures, DataRow>;
 
-/** Resolved pixel width of each column, keyed by column id. */
 export type ColumnWidths = Record<string, number>;
 
-/**
- * The custom properties each header and body cell sizes itself from, keyed by
- * column id (see `columnSizes` in useDataTableContent): `size` is its
- * `--col-size` (px), `grow` its `--col-grow` (a flex-grow factor).
- */
 export type ColumnSizes = Record<string, { size: string; grow: string }>;
 
 /**
- * How far a header's resize handle reaches past the cell's right edge (px).
- * The last cell's `last:mr-2` keeps this much room after it, so it must stay
- * equal to that margin.
+ * Must equal the last cell's `last:mr-2` margin, which leaves this much room
+ * after it.
  */
 const handleOverhang = 8;
 
@@ -198,8 +189,8 @@ function toggleRowSelection(
 }
 
 /**
- * Whether Shift was held for an event. React dispatches a checkbox's `onChange`
- * from its `click`, so a checkbox change's native event is that MouseEvent.
+ * React dispatches a checkbox's `onChange` from its `click`, so the native
+ * event is that MouseEvent.
  */
 function shiftKeyOf(nativeEvent: Event) {
   return "shiftKey" in nativeEvent && nativeEvent.shiftKey === true;
@@ -217,7 +208,6 @@ function SelectionCell({
         aria-label={`Select row ${row.id}`}
         checked={selected}
         onChange={(event) => {
-          // A memoized row can still show a row the table no longer has.
           const current = currentRow(table, row.id);
           if (current) {
             toggleRowSelection(current, table, shiftKeyOf(event.nativeEvent));
@@ -237,11 +227,9 @@ function SelectionHeader({
 }: {
   table: TanStackTable<DataTableFeatures, DataRow>;
 }) {
-  // The column header context passes the core table, which useTable creates once.
-  // Compiled, everything below would be cached on that one value and the checkbox
-  // would never leave its first state (unchecked, "Select all rows on this page").
-  // SelectionCell gets its state as a prop instead; this header reads several values
-  // and the meta callbacks, so it opts out like DataTableHeader.
+  // The header context passes the core table, which useTable creates once;
+  // compiled, the checkbox would never leave its first state, so this opts out
+  // like DataTableHeader.
   "use no memo";
   const meta = getTableMeta(table);
   const allPageRowsSelected = table.getIsAllPageRowsSelected();
@@ -434,58 +422,43 @@ export interface DataTableProps {
   resource: string;
   idField?: string;
   errorMessage?: string;
-  /** Shown in place of rows when there are none (and no error). */
   emptyMessage?: string;
   onSelectionChange?: (rows: Record<string, unknown>[]) => void;
   onGenomeSelect?: (id: string | null) => void;
   selectedIds?: string[];
 
-  // Pagination
   pageIndex?: number;
   pageSize?: number;
   onPageChange?: (pageIndex: number) => void;
 
-  // Sorting
   sorting?: SortingState;
   onSortingChange?: (newSorting: SortingState) => void;
 
-  // column ordering
   columnOrder?: string[];
   onColumnOrderChange?: (order: string[]) => void;
 
-  // column visibility
   columnVisibility?: Record<string, boolean>;
   onColumnVisibilityChange?: (newVis: Record<string, boolean>) => void;
 
-  // column widths
   /**
-   * Widths the user set on an earlier visit, in px; they win over auto-measured sizes.
-   * Columns are measured once per data set, so saved widths must arrive before the
-   * first non-empty `data` (true for every caller today: rows load client-side).
+   * Saved widths must arrive before the first non-empty `data`, since columns
+   * are measured once per data set.
    */
   savedColumnWidths?: Record<string, number>;
-  /**
-   * Called with the columns whose width the user changed — once per pointer drag,
-   * on release, and once per keyboard step.
-   */
   onColumnWidthsCommit?: (widths: Record<string, number>) => void;
 
-  // row selection (controlled)
   rowSelection?: RowSelectionState;
   onRowSelectionChange?: (selection: RowSelectionState) => void;
 
-  // Cross-page selection
   /**
    * Offer "Select all N results across all pages" once a page is fully
-   * selected (default). Turn it off when the owner holds every row and the
-   * selection is just the rows checked, page by page.
+   * selected; turn off when the owner holds every row.
    */
   crossPageSelection?: boolean;
   isAllPagesSelected?: boolean;
   onAllPagesSelectionChange?: (selected: boolean) => void;
   totalSelectedCount?: number;
 
-  // Optional download handler
   onDownloadAll?: (
     format: "csv" | "txt",
     visibleColumns: string[] | null,
@@ -496,18 +469,12 @@ export interface DataTableProps {
     visibleColumns: string[] | null,
   ) => void | Promise<void>;
   showExportControls?: boolean;
-  /**
-   * The owner draws its own Columns control (`ResourceCollection`'s toolbar),
-   * so the table's row of controls is left out.
-   */
   hideColumnControls?: boolean;
   scrollRegionLabel?: string;
-  // Loading indicator: parent can set this while data is being fetched
   isLoading?: boolean;
   /**
-   * The rows handed in belong to a previous query (another sort, filter or
-   * keyword on the same page) while the current one loads. They stay on screen,
-   * dimmed and marked busy, under a visible loading notice. `isLoading` wins.
+   * Rows from a previous query stay on screen, dimmed and busy, under a loading
+   * notice; `isLoading` wins.
    */
   isRefreshing?: boolean;
 
@@ -560,13 +527,9 @@ function useDataTableContent(
 ) {
   "use no memo";
 
-  // Column sizing kept per resource+columns. The persisted instance keeps this across
-  // tab switches, so: (a) gating on the key in the render path means shared column IDs
-  // never inherit another resource's widths (no stale-width frame), and (b) returning
-  // to an already-sized tab reuses its widths immediately (no revisit snap).
-  // resource makes shared column IDs distinct across tabs. Labels are static per
-  // resource (derived from the module-level resourceFields[resource]), so id-order
-  // alone pins the header estimates too — no need to include labels in the key.
+  // Column sizing is kept per resource+columns: gating on the key means shared
+  // column IDs never inherit another resource's widths, and a revisited tab
+  // reuses its own.
   const sizingKey = `${resource}:${columns.map((c) => c.id).join(",")}`;
   const [internalColumnVisibility, setInternalColumnVisibility] = useState<
     Record<string, boolean>
@@ -580,10 +543,6 @@ function useDataTableContent(
       ? controlledRowSelection
       : internalRowSelection;
 
-  // Pagination state: support both controlled (via pageIndex/pageSize props)
-  // and uncontrolled usage. If parent provides pageIndex/pageSize we treat
-  // pagination as controlled for that value; otherwise we keep internal state
-  // so actions like resizing columns don't reset the current page to 0.
   const [internalPagination, setInternalPagination] = useState<PaginationState>(
     () => ({
       pageIndex: pageIndex ?? 0,
@@ -599,22 +558,16 @@ function useDataTableContent(
 
   const lastSelectedIdRef = useRef<string | null>(null);
 
-  // The scroll container, in state rather than a ref so the body re-renders
-  // once it exists. React runs the body's layout effects before this
-  // component's ref attaches, so on the first commit a ref would still be null
-  // when the virtualizer looks for its scroll element. The setter is a stable
-  // callback ref: React calls it on attach and detach only, never per render
-  // or scroll.
+  // State rather than a ref so the body re-renders once it exists: React runs
+  // the body's layout effects before this component's ref attaches, so a ref
+  // would be null when the virtualizer looks for its scroll element.
   const [scrollElement, setScrollElement] = useState<HTMLDivElement | null>(
     null,
   );
 
-  // What the table shows before this key's data has been measured (and what a
-  // resize starts from): the widths the user saved, else nothing.
   const initialColumnSizing = savedColumnWidths ?? emptyColumnSizing;
   const activeColumnSizing = sizingByKey[sizingKey] ?? initialColumnSizing;
   const measuredSizingKeysRef = useRef(new Set<string>());
-  // Columns the user resized since the owner was last told; see the commit effect.
   const pendingWidthCommitRef = useRef(new Set<string>());
   useEffect(() => {
     if (
@@ -636,12 +589,9 @@ function useDataTableContent(
 
   const [columnDefs] = useState(() => createColumnDefs(columns));
 
-  // This options object MUST stay a fresh literal per render. `useTable`
-  // returns a new instance whenever the options or state change, and
-  // DataTableHeader/Controls/Footer are compiled with "use no memo" precisely
-  // because they key derived values (sort chevrons, Prev/Next disabled state,
-  // the column menu) off `table` identity. Memoizing this object would look
-  // like a harmless optimisation and would silently freeze those controls.
+  // Keep this options object a fresh literal per render:
+  // DataTableHeader/Controls/Footer are "use no memo" because they key derived
+  // values off `table` identity, and memoizing it would freeze them.
   const table = useTable({
     features: dataTableFeatures,
     data,
@@ -662,9 +612,6 @@ function useDataTableContent(
     } satisfies DataTableMeta,
     state: {
       sorting: controlledSorting ?? [],
-      // use the internal pagination state (which is kept in sync with
-      // controlled props when provided). This prevents ephemeral UI
-      // operations like column-resize from resetting the active page.
       pagination,
       ...(columnOrder !== undefined && { columnOrder }),
       columnVisibility,
@@ -675,16 +622,13 @@ function useDataTableContent(
       const newSelection =
         typeof updater === "function" ? updater(rowSelection) : updater;
 
-      // If any individual row selection changes, clear the "all pages selected" state
       if (isAllPagesSelected) {
         onAllPagesSelectionChange?.(false);
       }
 
-      // If controlled, call the parent handler
       if (onRowSelectionChange) {
         onRowSelectionChange(newSelection);
       } else {
-        // Otherwise update internal state
         setInternalRowSelection(newSelection);
       }
 
@@ -703,10 +647,8 @@ function useDataTableContent(
           ? updater(controlledSorting ?? [])
           : updater;
 
-      // Reset to first page
       table.setPageIndex(0);
 
-      // Notify parent (parent will handle clearing selection)
       onSortingChange?.(newSorting);
     },
 
@@ -722,7 +664,6 @@ function useDataTableContent(
         onColumnVisibilityChangeProp(newVis);
       }
 
-      // Trigger a recalculation of column sizing on visibility toggle
       setSizingByKey((prev) => {
         const base = { ...(prev[sizingKey] ?? {}) };
         table.getAllLeafColumns().forEach((col) => {
@@ -737,10 +678,8 @@ function useDataTableContent(
       const next =
         typeof updater === "function" ? updater(pagination) : updater;
 
-      // Preserve uncontrolled fields during interactions such as resizing.
       setInternalPagination(next);
 
-      // Notify parent of page change (if provided)
       onPageChange?.(next.pageIndex);
     },
     onColumnOrderChange: onColumnOrderChange
@@ -759,8 +698,6 @@ function useDataTableContent(
     enableColumnResizing: true,
     onColumnSizingChange: (updater) => {
       setSizingByKey((prev) => {
-        // Same fallback as activeColumnSizing, so a resize before the first
-        // measurement starts from the widths actually on screen.
         const base = prev[sizingKey] ?? initialColumnSizing;
         const next = typeof updater === "function" ? updater(base) : updater;
         for (const [columnId, width] of Object.entries(next)) {
@@ -775,12 +712,9 @@ function useDataTableContent(
     enableRowRangeSelection: false,
     enableSortingRemoval: false,
     enableMultiRowSelection: true,
-    //    getRowId: (row, index) => String((row as any).genome_id ?? `${index}`)
     getRowId: (row) => String(row[idField]),
   });
 
-  // Rendered widths during a pointer drag (see startPointerResize), and the
-  // settings the handles report meanwhile.
   const [pointerResize, setPointerResize] = useState<{
     columnId: string;
     widths?: ColumnWidths;
@@ -788,8 +722,6 @@ function useDataTableContent(
   } | null>(null);
   const resizingColumnId = pointerResize?.columnId;
 
-  // Hand keyboard resizes to the owner as they happen (a pointer drag commits
-  // itself on release). The width sent is the column's clamped getSize().
   useEffect(() => {
     if (!onColumnWidthsCommit) return;
     const pending = pendingWidthCommitRef.current;
@@ -803,31 +735,13 @@ function useDataTableContent(
     if (Object.keys(widths).length > 0) onColumnWidthsCommit(widths);
   });
 
-  // How every column's header and body cells size themselves (they re-render
-  // with this component, the memoized body rows when the body's
-  // `columnSignature` of these values changes). Columns stretch to
-  // fill the container: when the width settings leave room, every resizable
-  // column is scaled up by the same factor (`columnScale` in column-resize.ts).
-  // When they already exceed the container (e.g. a column dragged very wide)
-  // widths are the settings and the container scrolls horizontally.
-  //
-  // The browser does the stretch, not React. Header and body rows are flex
-  // rows, and a resting resizable cell is `--col-size` (its setting) wide with
-  // a flex-grow of that same setting, so the spare room is shared in
-  // proportion to the settings: every one ends up setting × factor, and none
-  // shrinks below its setting. A container resize is then layout only. The
-  // view rail's collapse animation and a detail-panel drag resize the
-  // container on every frame; recomputing the widths in React and rewriting
-  // each visible cell's inline width instead cost a ~100 ms commit per frame in
-  // dev (25–50 ms frames in prod), and a container-level scale variable still
-  // restyled every cell (~13 ms per frame in prod). The last cell's `last:mr-2`
-  // stops the stretch `handleOverhang` short of the edge, where the last
-  // handle overhangs its cell: filling the box exactly would put a phantom
-  // horizontal scrollbar under it.
-  //
-  // A pointer drag sets the rendered widths directly, with no grow (see
-  // startPointerResize), so the dragged edge stays under the pointer; they are
-  // drawn from the settings it saves on release, so nothing moves when it ends.
+  // The browser does the column stretch, not React: rows are flex rows and a
+  // resting resizable cell is `--col-size` wide with a flex-grow of the same
+  // setting, so spare room is shared in proportion.
+  // Recomputing widths in React cost a ~100 ms commit per frame while the view
+  // rail animates.
+  // The last cell's `last:mr-2` stops the stretch `handleOverhang` short of the
+  // edge, so filling the box exactly does not add a phantom scrollbar.
   const columnSizes: ColumnSizes = {};
   for (const { column } of table.getFlatHeaders()) {
     const dragged = pointerResize?.widths?.[column.id];
@@ -852,7 +766,6 @@ function useDataTableContent(
       maxSizes: leafColumns.map((c) => c.columnDef.maxSize ?? 1000),
       fixed: leafColumns.map((c) => !c.getCanResize()),
       index,
-      // Short of the last handle's overhang, as the resting columns stretch.
       containerWidth: Math.max(
         0,
         (scrollElement?.clientWidth ?? 0) - handleOverhang,
@@ -866,8 +779,6 @@ function useDataTableContent(
         settings = next.settings;
         setPointerResize({
           columnId,
-          // Every visible column. Anything else keeps its resting size, which
-          // the drag does not change until release.
           widths: Object.fromEntries(
             start.columnIds.map((id, i) => [id, next.widths[i]]),
           ),
@@ -896,15 +807,11 @@ function useDataTableContent(
 
   const rows = table.getRowModel().rows;
 
-  // Skeleton rows fill the body at any resolution. The scroll container's height
-  // isn't known at first render (its ResizeObserver effect only fires once data
-  // arrives), so derive an upper bound from the viewport: window.innerHeight is
-  // always ≥ the table body, and the container's overflow-hidden clips surplus
-  // rows — a slight overestimate fills the space with no scrollbar or gap.
-  // Reading window during render would break SSR hydration, so start from a fixed
-  // fallback (matches server render) and bump to the real viewport count in a
-  // mount effect. The skeleton lives far longer than one frame, so the bump is
-  // applied well before data lands.
+  // Skeleton row count is an upper bound from window.innerHeight (the
+  // container's height is unknown at first render, and overflow-hidden clips
+  // the surplus).
+  // Reading window during render would break SSR hydration, so start from a
+  // fixed fallback and bump it in a mount effect.
   const [skeletonRowCount, setSkeletonRowCount] = useState(30);
   useEffect(() => {
     const update = () => {
@@ -917,11 +824,8 @@ function useDataTableContent(
     };
   }, []);
 
-  // Now that all the setup is done, let's render the table!
   return (
     <div className="relative flex min-h-0 w-full flex-1 flex-col items-center overflow-hidden border-0 text-xs">
-      {/* This is the main container. Full width and content centered. */}
-      {/* Banner for selecting all results across pages */}
       {crossPageSelection &&
         !isAllPagesSelected &&
         table.getIsAllPageRowsSelected() && (
@@ -983,7 +887,7 @@ function useDataTableContent(
       <div className="relative flex min-h-0 w-full flex-1 flex-col overflow-hidden rounded border border-border">
         {isRefreshing && !isLoading && (
           // Not a live region: the owner announces the refresh (see
-          // ResourceCollection), and a second status would repeat it.
+          // ResourceCollection).
           <div className="pointer-events-none absolute top-12 left-1/2 z-20 flex -translate-x-1/2 items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow-lg">
             <Loader2 aria-hidden="true" className="size-4 animate-spin" />
             Loading results...
@@ -992,19 +896,15 @@ function useDataTableContent(
         <div
           className={clsx(
             "relative max-h-full flex-1",
-            // During load, clip the overestimated skeleton rows (no scrollbar);
-            // switch to auto once real rows/virtualizer drive the height.
             isLoading ? "overflow-hidden" : "overflow-auto",
-            // A drag outruns its handle whenever the column stops at its
-            // minimum or maximum width; keep the resize cursor until release.
+            // A drag outruns its handle when the column stops at its minimum or
+            // maximum width, so keep the resize cursor until release.
             resizingColumnId &&
               "cursor-col-resize select-none **:cursor-col-resize",
           )}
           ref={setScrollElement}
           role="region"
           aria-label={scrollRegionLabel ?? `${resource} results`}
-          // The skeleton rows are not results: assistive tech waits for the
-          // read. (A refresh marks the body busy instead, which dims it.)
           aria-busy={isLoading || undefined}
           tabIndex={0}
         >
@@ -1060,7 +960,6 @@ interface DataTableBodyProps {
   table: ReactTable<DataTableFeatures, DataRow>;
   columnSizes: ColumnSizes;
   rows: TanStackRow<DataTableFeatures, DataRow>[];
-  /** The scroll container the rows are virtualized against. */
   scrollElement: HTMLDivElement | null;
   idField: string;
   lastSelectedIdRef: React.RefObject<string | null>;
@@ -1073,7 +972,6 @@ interface DataTableBodyProps {
   skeletonRowCount?: number;
 }
 
-/** What the body's stable row handlers read when they run. */
 interface BodyRowLatest {
   table: ReactTable<DataTableFeatures, DataRow>;
   scrollElement: HTMLDivElement | null;
@@ -1099,10 +997,6 @@ function isCheckboxTarget(event: React.MouseEvent<HTMLElement>) {
 const pressFocusableSelector =
   "a[href], button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]";
 
-/**
- * What a plain press on a row would focus: the control under the pointer (the
- * row checkbox, or a link or button in a cell), else the scroll region.
- */
 function pressFocusTarget(
   event: React.MouseEvent<HTMLElement>,
   scrollElement: HTMLElement | null,
@@ -1116,9 +1010,8 @@ function pressFocusTarget(
 }
 
 /**
- * The row the table holds under `rowId` now, or undefined when it no longer
- * has it: a transition can hand the table new data and then suspend, leaving
- * the old rows on screen to be clicked.
+ * A transition can hand the table new data and then suspend, leaving the old
+ * rows on screen to be clicked.
  */
 function currentRow(
   table: TanStackTable<DataTableFeatures, DataRow>,
@@ -1128,18 +1021,16 @@ function currentRow(
 }
 
 /**
- * The row handlers, created once per body so the memoized rows never re-render
- * for a new handler. They read the live table and callbacks from `latestRef`,
- * and the live row from the table: a memoized row can hold a row object from
- * an earlier render. Modifier keys come from the event itself.
+ * Created once per body so memoized rows never re-render for a new handler;
+ * they read the live table and row via `latestRef` because a memoized row can
+ * hold a stale row object.
  */
 function createBodyRowHandlers(
   latestRef: React.RefObject<BodyRowLatest>,
 ): BodyRowHandlers {
   return {
-    // Clicking a row notifies listeners about the active row (used to open side
-    // panels). A click from a checkbox is left to the checkbox, which already
-    // calls onActiveRowChange/onGenomeSelect.
+    // A click from a checkbox is left to the checkbox, which already calls
+    // onActiveRowChange/onGenomeSelect.
     onRowClick: (rowId, event) => {
       if (isCheckboxTarget(event)) return;
       const {
@@ -1154,7 +1045,6 @@ function createBodyRowHandlers(
       const anchorId = lastSelectedIdRef.current;
 
       if (event.shiftKey && anchorId) {
-        // Exclusive range (replace existing selection)
         const rangeIds = computeShiftRangeIds(
           table.getRowModel().rows,
           anchorId,
@@ -1166,7 +1056,6 @@ function createBodyRowHandlers(
           table.setRowSelection(next);
           return;
         }
-        // stale anchor (off-page/re-sorted): fall through to single-select
       }
 
       lastSelectedIdRef.current = rowId;
@@ -1193,10 +1082,8 @@ function createBodyRowHandlers(
       const row = currentRow(table, rowId);
       if (row) toggleRowSelection(row, table, event.shiftKey);
     },
-    // A modifier-click selects rows; keep it from starting a text selection.
-    // Preventing the default also stops the press from moving focus, so focus
-    // what a plain press would (the control pressed, else the scroll region),
-    // without scrolling it.
+    // Preventing the default stops the press from moving focus, so focus what a
+    // plain press would, without scrolling.
     onRowMouseDown: (event) => {
       if (event.shiftKey || event.ctrlKey || event.metaKey) {
         event.preventDefault();
@@ -1219,14 +1106,9 @@ interface DataTableBodyRowProps extends BodyRowHandlers {
 }
 
 /**
- * A row re-renders only when what it shows changes: its data (`original` by
- * identity), its selection, its position, or the columns (`columnSignature`,
- * which stands for `columnSizes`: visibility, order, sizes and grow factors).
- * It deliberately ignores `columnSizes`, a fresh object every body
- * render while the signature is unchanged, the handlers, which are created
- * once per body, and `row`, whose rendered output those other props already
- * cover (a new row object for the same data must not re-render the row; a
- * re-render for another reason takes the current one).
+ * A row re-renders only when its data, selection, position or `columnSignature`
+ * changes; it ignores `columnSizes` (a fresh object each render), the handlers,
+ * and `row` (whose output those props already cover).
  */
 function areBodyRowPropsEqual(
   previous: DataTableBodyRowProps,
@@ -1251,8 +1133,8 @@ const DataTableBodyRow = memo(function DataTableBodyRow({
   onSelectCellClick,
   onRowMouseDown,
 }: DataTableBodyRowProps) {
-  // Compiled, row.getVisibleCells() would be cached on `row`, which can be the
-  // same object after a column is hidden or reordered, and go stale.
+  // Compiled, row.getVisibleCells() would be cached on `row`, which stays the
+  // same object after a column is hidden or reordered.
   "use no memo";
   return (
     <TableRow
@@ -1279,14 +1161,12 @@ const DataTableBodyRow = memo(function DataTableBodyRow({
                 }
               : undefined
           }
-          // The sticky select cell needs an opaque background (scrolled
-          // cells would show through a transparent one), keyed on the
-          // row's data-state; see TableCell `sticky-select`.
+          // The sticky select cell needs an opaque background so scrolled cells
+          // do not show through; see TableCell `sticky-select`.
           variant={cell.column.id === "__select__" ? "sticky-select" : "grid"}
           className={clsx(
-            // No ellipsis: text-overflow has no effect on a flex
-            // container, so overflow-hidden is all `truncate` did here
-            // (the cell is already whitespace-nowrap).
+            // No ellipsis: text-overflow has no effect on a flex container, so
+            // overflow-hidden is all `truncate` did.
             "flex h-6 w-(--col-size) min-w-(--col-size) grow-(--col-grow) items-center overflow-hidden last:mr-2",
             cell.column.id === "__select__"
               ? "sticky left-0 z-1 justify-center p-0"
@@ -1322,10 +1202,8 @@ function DataTableBody({
   skeletonRowCount = 20,
 }: DataTableBodyProps) {
   "use no memo";
-  // The virtualizer lives here so a scroll tick re-renders only the body, and
-  // its memoized rows only those entering the window. useFlushSync stays at
-  // its default (true): false would defer that render past the scroll frame
-  // and flash blank rows on a fast scroll.
+  // useFlushSync stays at its default (true): false would defer the render past
+  // the scroll frame and flash blank rows on a fast scroll.
   const rowVirtualizer = useVirtualizer({
     count: rows.length,
     getScrollElement: () => scrollElement,
@@ -1354,12 +1232,12 @@ function DataTableBody({
       onActiveRowChange,
     };
   });
-  // Created once: the body is opted out of the compiler, so nothing else keeps
-  // their identity, and the memoized rows compare on it.
+  // Created once: the body is opted out of the compiler, and the memoized rows
+  // compare on this identity.
   const [handlers] = useState(() => createBodyRowHandlers(latestRef));
 
-  // From the headers, in their order: `columnSizes` is keyed by column id, and
-  // integer-like keys ("1", "2") iterate in numeric order whatever the order.
+  // Integer-like column ids ("1", "2") iterate in numeric order whatever the
+  // header order.
   const columnSignature = table
     .getFlatHeaders()
     .map(({ column }) => {
@@ -1370,15 +1248,12 @@ function DataTableBody({
 
   return (
     <TableBody
-      // TableBody dims itself while busy.
       aria-busy={isRefreshing && !isLoading ? true : undefined}
       style={{ "--body-height": `${String(totalSize)}px` } as CSSProperties}
       className={clsx(
         "relative z-10 border-collapse",
-        // While loading, fill the container (height:100%) so the absolute skeleton
-        // rows have a full-height positioning context. The scroll container is set
-        // to overflow:hidden during load (see DataTable), so the intentionally
-        // overestimated rows are clipped to reach the footer with no gap/scrollbar.
+        // Fill the container while loading so the absolute skeleton rows have a
+        // full-height positioning context.
         isLoading ? "h-full" : "h-(--body-height)",
       )}
     >
@@ -1395,7 +1270,6 @@ function DataTableBody({
                 variant="grid"
                 className={clsx(
                   "flex h-6 w-(--col-size) min-w-(--col-size) grow-(--col-grow) items-center last:mr-2",
-                  // Centered like the header and row checkboxes it stands in for.
                   col.id === "__select__" ? "justify-center p-0" : "p-0.5",
                 )}
                 style={
@@ -1435,7 +1309,6 @@ function DataTableBody({
           </TableCell>
         </TableRow>
       ) : (
-        // If there ARE results...
         virtualRows.map((virtualRow) => {
           const row = rows[virtualRow.index];
           return (
@@ -1459,21 +1332,6 @@ function DataTableBody({
   );
 }
 
-// Given the visible row list and an anchor/target id pair, return the ids of the
-// contiguous range between them (inclusive). Empty when either id isn't present.
-// Shared by the checkbox and row-body shift-click handlers, which intentionally
-// differ in how they *apply* this range (checkbox merges into the existing
-// selection; row body replaces it) but compute it identically.
-// SSR-safe header-width estimate (pure string math — no canvas/document), so the
-// server and the client's first render agree and columns paint at header width
-// immediately instead of the 250px columnDef default. Approximates the header branch
-// of computeAutoColumnSizes: headers wrap, so only the longest single word sets the
-// minimum width. ~7px/char at bold 12px system-ui + 32px th padding, clamped to
-// [60, 250]. This is an approximation, not a pixel mirror of the canvas measurement;
-// exact fit is applied once by computeAutoColumnSizes when data arrives.
-// Array-valued fields (e.g. treatment_duration: [3,6,12,18]) must not render as
-// raw React children — React joins array children with no separator, reading as
-// "361218" instead of "3, 6, 12, 18".
 function computeAutoColumnSizes(
   columns: DataTableColumn[],
   data: Record<string, unknown>[],
@@ -1489,15 +1347,13 @@ function computeAutoColumnSizes(
 
   const sizes: Record<string, number> = {};
 
-  // Layout overhead beyond raw glyph width:
-  //   Header: th px-2(16) + pr-2(8) + gap when sorted(~8) = 32px
-  //   Cell:   td px-0.5(4)
+  // Layout overhead beyond glyph width: header th px-2 + pr-2 + sorted gap =
+  // 32px, cell px-0.5 = 4px.
   const headerOverhead = 32;
   const cellOverhead = 4;
 
   for (const col of columns) {
     ctx.font = headerFont;
-    // Headers wrap, so only the longest single word dictates the minimum column width.
     const longestWord = col.label
       .split(/\s+/)
       .reduce(

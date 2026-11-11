@@ -39,11 +39,7 @@ const legendUnits: Record<GeoMapView, string> = {
   state: "Genomes per county",
 };
 
-/**
- * The counts of the regions a view draws, which its color steps divide: the
- * countries, the US states (the state facet also counts other countries'
- * provinces, which the US map never draws), or the selected state's counties.
- */
+/** The counts of the regions a view draws, which its color steps divide. */
 function visibleCounts(
   data: OrganismGeoDistribution,
   mapState: GeoMapState,
@@ -82,9 +78,8 @@ export function GeoDistributionClient({
   const containerRef = useRef<HTMLDivElement>(null);
   const choroplethRef = useRef<ChoroplethHandle>(null);
 
-  // States-only TopoJSON loads on mount for the default US view. The full
-  // counties topology is much larger (~842 KB) and is only fetched when the
-  // user drills into a state.
+  // Only the states TopoJSON loads on mount; the much larger counties topology
+  // (~842 KB) is fetched when the user drills into a state.
   const statesQuery = useQuery({
     queryKey: ["geo-distribution", "states-topo"],
     queryFn: () => fetchTopoJson("/maps/states-10m.json"),
@@ -148,8 +143,6 @@ export function GeoDistributionClient({
     stateOptions.sort((a, b) => a.name.localeCompare(b.name));
   }
 
-  // Each view divides its own regions' counts, so a state's counties are not
-  // all pale beside the USA's national total.
   const colorScale = makeGeoColorScale(
     visibleCounts(
       data,
@@ -179,7 +172,6 @@ export function GeoDistributionClient({
           selectedStateName: null,
         };
       }
-      // view === "state" — default to Illinois if no state is already selected
       if (prev.selectedStateFips) return { ...prev, view: "state" };
       return {
         view: "state",
@@ -282,7 +274,6 @@ export function GeoDistributionClient({
             </TooltipWithBounds>
           )}
         </div>
-        {/* 12px above the legend, as the card's py-3 leaves below it. */}
         <div className="mt-3 flex flex-wrap items-start justify-between gap-x-4 gap-y-3">
           <span className="text-xs text-muted-foreground">{helperMessage}</span>
           <ColorLegend scale={colorScale} unit={legendUnits[mapState.view]} />

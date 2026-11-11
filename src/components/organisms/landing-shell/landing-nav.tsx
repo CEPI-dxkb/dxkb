@@ -114,8 +114,6 @@ export function LandingNav<Key extends string>({
                   type="button"
                   tabIndex={-1}
                   variant={isActive ? "secondary" : "ghost"}
-                  // size="nav" sets the semibold weight from aria-current and
-                  // the muted text from aria-disabled.
                   size="nav"
                   aria-current={isActive ? "page" : undefined}
                   aria-disabled
@@ -123,9 +121,8 @@ export function LandingNav<Key extends string>({
                   onClick={() => {
                     /* no-op: button is disabled */
                   }}
-                  // w-full: the focusable wrapper span is the flex item, so
-                  // without it the button shrinks to its content and the
-                  // count sits beside the label instead of at the right.
+                  // w-full: the focusable wrapper span is the flex item, so without it the count
+                  // sits beside the label.
                   className="pointer-events-none w-full cursor-not-allowed justify-start opacity-50"
                 >
                   {buttonContent}

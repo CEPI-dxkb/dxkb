@@ -189,11 +189,7 @@ export function useFastqUtilitiesPage() {
       removed?.action === "align" &&
       !actions.some((action) => action.action === "align")
     ) {
-      // Clearing the genome with the Align action must not mark the field
-      // touched, or "Target Genome is required" shows the moment Align is
-      // added again. `dontUpdateMeta` alone is not enough: `setFieldValue`
-      // still validates a mounted field, and that marks it touched. This
-      // field stays mounted, disabled, while Align is absent.
+      // Clearing must not mark the field touched; `setFieldValue` validates a mounted field even with `dontUpdateMeta`.
       form.setFieldValue("reference_genome_id", "", {
         dontUpdateMeta: true,
         dontValidate: true,

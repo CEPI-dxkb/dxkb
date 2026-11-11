@@ -52,7 +52,6 @@ describe("CircularViewerPanel", () => {
       expect(figure.querySelector('[data-track="gc-content"]')).toHaveAttribute("data-state", "ready");
       expect(screen.getByRole("listitem", { name: "AMR Genes" })).toHaveTextContent("None found");
     });
-    // An empty default track says so in its row only (deviation 5).
     expect(toast.error).not.toHaveBeenCalled();
     // On the card surface, where muted text meets 4.5:1 (the page background gives 4.42:1).
     expect(screen.getByTestId("circular-viewer")).toHaveClass("flex", "min-h-0", "flex-1", "bg-card");
@@ -197,7 +196,6 @@ describe("CircularViewerPanel", () => {
     render(<CircularViewerPanel genomeId="1.1" />, { wrapper: createQueryClientWrapper() });
     const figure = await screen.findByRole("img", { name: "Circular view of genome 1.1" });
     const exportButton = screen.getByRole("button", { name: "Export SVG" });
-    // A loading ring would be exported mid-pulse.
     expect(figure.querySelector('[data-track="gc-content"]')).toHaveAttribute("data-state", "pending");
     expect(exportButton).toBeDisabled();
     await waitFor(() => {
@@ -223,7 +221,6 @@ describe("CircularViewerPanel", () => {
     const sidebar = card.querySelector("aside");
     expect(sidebar).toHaveClass("md:w-80", "md:shrink-0", "md:overflow-y-auto", "md:border-r");
     expect(sidebar).not.toHaveClass("w-80");
-    // A square figure when stacked, so its measured size is never zero.
     expect(screen.getByTestId("circular-viewer-figure-area")).toHaveClass("max-md:aspect-square", "max-md:shrink-0", "md:flex-1");
   });
 });

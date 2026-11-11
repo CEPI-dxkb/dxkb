@@ -66,7 +66,6 @@ describe("viralFacetCounts", () => {
   });
 
   it("returns zero for a viewer with no trees under the chosen strain", () => {
-    // Strain A is Archaeopteryx-only, so Auspice is a dead end there.
     const counts = viralFacetCounts(trees, { ...noFilters, strain: "a" });
     expect(counts.viewer("nextstrain")).toBe(0);
     expect(counts.viewer("archaeopteryx")).toBe(1);
@@ -74,7 +73,6 @@ describe("viralFacetCounts", () => {
   });
 
   it("narrows segment counts by both strain and viewer", () => {
-    // Strain B has All (archaeopteryx) and HA (nextstrain).
     const strainOnly = viralFacetCounts(trees, { ...noFilters, strain: "b" });
     expect([strainOnly.segment("All"), strainOnly.segment("HA")]).toEqual([1, 1]);
 
@@ -83,15 +81,13 @@ describe("viralFacetCounts", () => {
   });
 
   it("ignores the segment filter so a checked segment never zeroes its own count", () => {
-    // Segments are a union: checking HA must not make the others read 0 and
-    // disable themselves, which would strand the user on one segment.
+    // Segments are a union: checking HA must not make the others read 0 and disable themselves.
     const counts = viralFacetCounts(trees, { ...noFilters, segments: new Set(["HA"]) });
     expect(counts.segment("M1")).toBe(1);
     expect(counts.segment("All")).toBe(1);
   });
 
   it("leaves strain counts unconstrained by the chosen viewer", () => {
-    // Otherwise picking Auspice would disable strain A and trap the user.
     const counts = viralFacetCounts(trees, { ...noFilters, viewer: "nextstrain" });
     expect(counts.strain("a")).toBe(1);
     expect(counts.strain("b")).toBe(2);
@@ -106,7 +102,6 @@ describe("viralFacetCounts", () => {
   });
 
   it("agrees with pruneViralFilters: a zero-count option is one prune would drop", () => {
-    // The counts exist to pre-empt the prune, so the two must not disagree.
     const filters: ViralFilters = { ...noFilters, strain: "a" };
     expect(viralFacetCounts(trees, filters).viewer("nextstrain")).toBe(0);
     expect(pruneViralFilters(trees, { ...filters, viewer: "nextstrain" }).viewer).toBeNull();

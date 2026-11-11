@@ -103,14 +103,7 @@ function parseGetRequest(request: NextRequest): DataApiRequest {
   };
 }
 
-/**
- * `data:${clientIp}:${resourceName}` is the rate-limit key, so a resource
- * name straight from the URL must be allowlist-checked before it ever reaches
- * `limited()` — otherwise an attacker can mint one rate-limit bucket per
- * garbage path segment: the same unbounded-map growth that
- * `src/lib/rate-limit.ts`'s `pruneExpiredBuckets` sweep (gated on
- * `pruneThreshold` and `pruneIntervalMs`) exists to bound.
- */
+/** Allowlist-check the resource before `limited()`: the rate-limit key includes it, so a raw URL segment would mint unbounded buckets. */
 function unsupportedResourceResponse(resourceName: string): NextResponse {
   return NextResponse.json(
     { error: `Unsupported data resource: ${resourceName}`, code: "not_found" },
@@ -125,20 +118,8 @@ async function execute(
 ): Promise<NextResponse> {
   try {
     const validated = validateDataApiRequest(resourceName, operation);
-    // Session lookup, env resolution, missing-configuration handling,
-    // repository construction, and cache policy all come from
-    // `resolveServerDataRepository`, shared with the page factory
-    // (`createServerDataRepository`) and the Taxa Tree route. This route used
-    // to reimplement all five, and disagreed with the factory on anonymous
-    // collections and on E2E mode.
-    //
-    // What stays here: the sanitized client-facing message paired with an
-    // operator-facing log. The actionable detail is the env var name, which
-    // belongs in the operator's log rather than in a response any caller —
-    // signed in or not — can read. The distinct `not_configured` code is what
-    // tells a client this is a deployment problem and not a failed request;
-    // without it the catch-all below would answer "The data service request
-    // failed." with nothing to act on.
+    // The env var name goes to the operator log, not the response; the distinct
+    // `not_configured` code marks a deployment problem rather than a failed request.
     const { repository, sharedCache } = await resolveServerDataRepository({
       readScope: readScopeForOperation(validated.operation),
       notConfigured: {
@@ -151,11 +132,8 @@ async function execute(
       validated,
       request.signal,
     );
-    // `sharedCache` is true only for an anonymous, non-E2E member read; the
-    // shared window below is the same constant the repository's own
-    // `next.revalidate` uses, so the two cannot drift. `Vary: Cookie` stays on
-    // both branches: a response that is private today becomes shareable the
-    // moment the caller signs out, and the cache has to be told that.
+    // `Vary: Cookie` stays on both branches: a private response becomes
+    // shareable once the caller signs out.
     return NextResponse.json(result, {
       headers: {
         "Cache-Control": sharedCache
@@ -191,8 +169,6 @@ export async function POST(
   const { resource } = await context.params;
   if (!isDataResource(resource)) return unsupportedResourceResponse(resource);
 
-  // Admission checks — rate limit, then declared size — run before any body
-  // read, so a rejected request never pays for one.
   const blocked = limited(request, resource);
   if (blocked) return blocked;
 

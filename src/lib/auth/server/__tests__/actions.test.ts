@@ -436,7 +436,6 @@ describe("auth actions", () => {
       invoke: () => verifyEmailToken("verification-token", "alice"),
       adapter: mocks.verifyEmailToken,
       args: ["verification-token", "alice"],
-      // To drop the session's cached profile once the email is verified.
       readsSession: true,
     },
   ])("delegates $name without changing session state", async (testCase) => {

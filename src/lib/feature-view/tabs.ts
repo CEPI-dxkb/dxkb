@@ -17,7 +17,6 @@ export const featureTabKeys = [
 ] as const;
 export type FeatureTab = (typeof featureTabKeys)[number];
 
-/** Legacy BV-BRC tab names (`#view_tab=genomeBrowser`) the server redirects. */
 const legacyFeatureTabs: Partial<Record<string, FeatureTab>> = {
   genomeBrowser: "genome-browser",
   compareRegionViewer: "compare-region",
@@ -33,13 +32,7 @@ export function parseFeatureTab(
     : "overview";
 }
 
-/**
- * What the Genome Browser tab opens on: the feature's genome, framed and
- * highlighted (`featureBrowserFocus`), or null when the feature has no genome
- * or no sequence location. The one predicate for both the tab's `enabled` and
- * the panel the member renders, so a `?tab=genome-browser` link can never show
- * a browser behind a disabled tab.
- */
+/** The Genome Browser tab's focus, or null without a genome or sequence location; shared by `enabled` and the panel. */
 export function featureGenomeBrowserTarget(
   feature: FeatureViewRecord,
 ): { genomeId: string; focus: GenomeBrowserFocus } | null {
@@ -49,12 +42,7 @@ export function featureGenomeBrowserTarget(
     : null;
 }
 
-/**
- * The gene the Compare Region Viewer centers on, or null when the tab is
- * unavailable. Legacy BV-BRC offered it only for CDS features, and the
- * compare_regions service takes the BRC ID (`patric_id`). It is the one
- * predicate for both the tab's `enabled` and the panel the member renders.
- */
+/** The gene the Compare Region Viewer centers on (CDS only, as in legacy; the service takes the BRC ID), or null. Shared by `enabled` and the panel. */
 export function featureCompareRegionPeg(feature: FeatureViewRecord): string | null {
   const peg = feature.patric_id;
   return feature.feature_type === "CDS" && peg && isPatricFeatureId(peg)

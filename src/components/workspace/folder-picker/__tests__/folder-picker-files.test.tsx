@@ -40,7 +40,6 @@ describe("picking a file", () => {
         "Alpha",
         "Assembly1",
         "Experiments",
-        // A file's row also shows its size.
         "draft.fasta4.0 KB",
       ]),
     );
@@ -101,7 +100,6 @@ describe("picking a file", () => {
   });
 
   it("opens a hidden output folder inside a job result", async () => {
-    // A Comprehensive Genome Analysis keeps its annotation in `.annotation`.
     const repository = makeFilePickerRepository();
     repository.addItem(`${home}/.Assembly1`, {
       name: ".annotation",
@@ -156,7 +154,6 @@ describe("picking a file", () => {
       { initialPath: `${home}/draft.fasta` },
       repository,
     );
-    // The info pane is Home's, not the file's as though it were a folder.
     expect(screen.getByText(home, { selector: "p" })).toBeInTheDocument();
     expect(screen.queryByText(`${home}/draft.fasta`)).toBeNull();
     await user.click(screen.getByRole("button", { name: "Upload here" }));
@@ -193,7 +190,6 @@ describe("picking a file", () => {
   it("hides a job's other outputs behind Show 1 other file", async () => {
     const { user } = pickContigs();
     await user.click(await findOption("Home", "Assembly1"));
-    // The job folder holds 1 contigs file and 1 html report.
     const job = await screen.findByRole("listbox", { name: "Assembly1" });
     expect(within(job).getAllByRole("option")).toHaveLength(1);
     expect(screen.queryByRole("option", { name: /report\.html/ })).toBeNull();
@@ -251,7 +247,6 @@ describe("picking a file", () => {
     const { user } = pickContigs();
     await user.click(await findOption("Home", "Alpha"));
     await user.click(screen.getByRole("button", { name: "Upload here" }));
-    // The real panel; its Select trigger shows the chosen type's label.
     expect(
       screen.getByRole("combobox", { name: "Upload type" }),
     ).toHaveTextContent("Contigs");
@@ -275,14 +270,11 @@ describe("picking a file", () => {
 
     it("arrows move over folders and matching files; → on a file does nothing", async () => {
       const { user } = pickContigs();
-      // Clicking selects and focuses, so the next arrow moves on rather than
-      // selecting the focused row first.
       const draft = await findOption("Home", /draft\.fasta/);
       await user.click(draft);
       await user.keyboard("{ArrowRight}");
       expect(draft).toHaveFocus();
       expect(columnLabels()).toEqual(["Home"]);
-      // Home in file mode: Alpha, Assembly1, Experiments, draft.fasta.
       await user.keyboard("{ArrowUp}");
       expect(await findOption("Home", "Experiments")).toHaveFocus();
       await user.keyboard("{End}");
@@ -325,7 +317,6 @@ describe("picking a file", () => {
     const { user } = pickContigs();
     await user.click(await findOption("Home", "Assembly1"));
     await user.click(await findOption("Assembly1", /Assembly1_contigs\.fasta/));
-    // The file's own folder: the chain stays, so only the jump clears the file.
     await user.click(
       within(screen.getByRole("navigation", { name: "Selected file" })).getByRole(
         "button",

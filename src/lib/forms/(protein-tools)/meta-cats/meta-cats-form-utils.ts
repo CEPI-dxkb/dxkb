@@ -17,9 +17,8 @@ export interface MetaCatsGenomeLike extends Record<string, unknown> {
 }
 
 /**
- * The Groups Grid's columns, as BV-BRC's Meta-CATS grid lists them
- * (MetaCATSStore.js). BRC ID is the feature's `patric_id`, which also keys the
- * grid's selection.
+ * The Groups Grid's columns, as BV-BRC's Meta-CATS grid lists them.
+ * BRC ID is the feature's `patric_id`, which also keys the grid's selection.
  */
 export const metaCatsGroupsGridColumns: DataTableColumn[] = [
   { id: "genbank_accessions", label: "Genbank Accession" },
@@ -32,19 +31,11 @@ export const metaCatsGroupsGridColumns: DataTableColumn[] = [
 
 export const metaCatsGroupsGridPageSize = 200;
 
-/**
- * Genome fields to look up beyond the default summary (which has `strain`):
- * the grid's Genbank Accession, plus the metadata field rows are grouped by.
- */
+/** Genome fields looked up beyond the default summary: Genbank Accession and the grouping metadata field. */
 export function metaCatsGenomeFields(metadataGroup: string): string[] {
   return ["genbank_accessions", metadataGroup];
 }
 
-/**
- * Parse year ranges string into array of ranges
- * Input format: "1998,1999-2005,2006"
- * Output: [[1998], [1999, 2005], [2006]]
- */
 export function parseYearRanges(yearRangesStr: string): number[][] {
   if (!yearRangesStr || yearRangesStr.trim() === "") {
     return [];
@@ -71,23 +62,18 @@ export function parseYearRanges(yearRangesStr: string): number[][] {
   return ranges;
 }
 
-/**
- * Get year group labels from parsed ranges
- * First range gets "<=" prefix, last range gets ">=" prefix for single values
- */
+/** First range gets a "<=" prefix, last gets ">=" for single values. */
 export function getYearGroupLabels(ranges: number[][]): string[] {
   if (ranges.length === 0) return [];
 
   const labels: string[] = [];
 
-  // First range
   if (ranges[0].length === 1) {
     labels.push(`<=${String(ranges[0][0])}`);
   } else {
     labels.push(`${String(ranges[0][0])}-${String(ranges[0][1])}`);
   }
 
-  // Middle ranges
   for (let i = 1; i < ranges.length - 1; i++) {
     const range = ranges[i];
     if (range.length === 1) {
@@ -97,7 +83,6 @@ export function getYearGroupLabels(ranges: number[][]): string[] {
     }
   }
 
-  // Last range (if more than one range)
   if (ranges.length > 1) {
     const last = ranges[ranges.length - 1];
     if (last.length === 1) {
@@ -110,9 +95,6 @@ export function getYearGroupLabels(ranges: number[][]): string[] {
   return labels;
 }
 
-/**
- * Determine which year group a value belongs to
- */
 export function getYearGroupForValue(
   value: number,
   ranges: number[][],
@@ -147,27 +129,17 @@ export function getYearGroupForValue(
   return null;
 }
 
-/**
- * Count unique groups in auto_groups array
- */
 export function countUniqueGroups(autoGroups: AutoGroupItem[]): number {
   const uniqueGroups = new Set(autoGroups.map((item) => item.group));
   return uniqueGroups.size;
 }
 
-/**
- * Get all unique group names from auto_groups array
- */
 export function getUniqueGroupNames(autoGroups: AutoGroupItem[]): string[] {
   const uniqueGroups = new Set(autoGroups.map((item) => item.group));
   return Array.from(uniqueGroups);
 }
 
-/**
- * Where the Group Names dropdown's names come from, for its empty state: the
- * value of the chosen metadata on each grid feature's genome (or, for
- * Collection Year with Year Ranges set, the range the year falls in).
- */
+/** Source of the Group Names dropdown's names, for its empty state. */
 export function groupNamesSourceText(
   metadataGroup: string | undefined,
 ): string {
@@ -181,9 +153,6 @@ export function groupNamesSourceText(
   return `Group names come from the Groups Grid, where each added feature is grouped by its genome's ${label}${yearRange}.`;
 }
 
-/**
- * Transform MetaCATS form data to API parameters
- */
 export function transformMetaCatsParams(
   data: MetaCatsFormData
 ): Record<string, unknown> {
@@ -194,17 +163,14 @@ export function transformMetaCatsParams(
     input_type: data.input_type,
   };
 
-  // Set alphabet based on input type
   if (data.input_type === "auto") {
     params.alphabet = data.auto_alphabet === "aa" ? "aa" : "na";
     params.metadata_group = data.metadata_group;
 
-    // Add year ranges if collection_year is selected
     if (data.metadata_group === "collection_year" && data.year_ranges) {
       params.year_ranges = data.year_ranges;
     }
 
-    // Transform auto_groups to API format
     if (data.auto_groups && data.auto_groups.length > 0) {
       params.auto_groups = data.auto_groups.map((item) => ({
         id: item.patric_id,
@@ -217,11 +183,9 @@ export function transformMetaCatsParams(
     params.alphabet = data.group_alphabet === "aa" ? "aa" : "na";
     params.groups = data.groups;
   } else {
-    // data.input_type === "files"
     params.alignment_file = data.alignment_file;
     params.group_file = data.group_file;
 
-    // Determine alphabet from alignment file type
     if (data.alignment_type?.includes("protein")) {
       params.alphabet = "aa";
     } else {
@@ -232,9 +196,6 @@ export function transformMetaCatsParams(
   return params;
 }
 
-/**
- * Validate year ranges format
- */
 export function validateYearRanges(yearRanges: string): {
   valid: boolean;
   message: string;
@@ -373,10 +334,7 @@ export function updateAutoGroupsGroupByRowIds(
   );
 }
 
-/**
- * The grid selects rows by BRC ID (`patric_id`); the delete and change-group
- * helpers work on each row's own `id`.
- */
+/** The grid selects by BRC ID (`patric_id`); delete and change-group helpers use each row's `id`. */
 export function selectedAutoGroupRowIds(
   autoGroups: AutoGroupItem[],
   selection: RowSelectionState,
@@ -393,11 +351,7 @@ const naturalOrder = new Intl.Collator(undefined, {
   sensitivity: "base",
 });
 
-/**
- * The Groups Grid sorts in the browser: it holds every row, and DataTable
- * leaves sorting to its owner. Numbers inside values compare numerically
- * (729.9 before 729.10), and empty values stay last in either direction.
- */
+/** Sorts in the browser; numbers inside values compare numerically (729.9 before 729.10) and empty values stay last. */
 export function sortMetaCatsAutoGroups(
   autoGroups: AutoGroupItem[],
   sorting: SortingState,

@@ -33,7 +33,6 @@ describe("WorkspaceToolbar", () => {
   it("names each action by its label, which folds out of sight in a narrow pane", () => {
     renderToolbar();
 
-    // The label stays in the button (sr-only when folded), so the name holds.
     for (const name of ["Show hidden", "Refresh", "New Folder", "Upload"]) {
       expect(screen.getByRole("button", { name })).toBeInTheDocument();
     }

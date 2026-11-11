@@ -7,11 +7,7 @@ interface LinkModifiers {
   shiftKey: boolean;
 }
 
-/**
- * Follow a chart mark's link as an anchor would: a plain click navigates in
- * place and a modified one (⌘, Ctrl or Shift) opens a new tab. The marks sit
- * under the chart's pointer overlay, so they cannot be anchors themselves.
- */
+/** Follow a chart mark's link as an anchor would: a plain click navigates, ⌘/Ctrl/Shift opens a new tab. */
 export function useChartLink() {
   const router = useRouter();
 

@@ -5,20 +5,14 @@ import type { ReactNode } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 
 /**
- * The client root of every taxon and organism landing tab, each as its own
- * chunk. The landing shell renders only the active tab, but Turbopack puts every
- * Client Component the page's server module graph imports into the route's
- * chunk group, rendered or not, so static imports in the tab factories shipped
- * all ten collections, the Interactions shell, both phylogeny panels and the
- * taxonomy tree with every tab. The factories are Server Components, and
- * `next/dynamic` called from one does not code-split a Client Component, so the
- * dynamic imports live here (as in `lazy-compare-region-panel.tsx`). SSR stays
- * on: the active tab still renders on the server.
+ * The client root of every taxon and organism landing tab, each as its own chunk.
+ * Turbopack puts every Client Component a server module imports into the route's
+ * chunk group, rendered or not, and `next/dynamic` called from a Server Component
+ * does not code-split one, so the dynamic imports live here.
  *
- * A new taxon tab reaches its client root through here, by the root's own
- * module path (never the `@/components/views` barrel), and only `import type`
- * may name a target module: a value import would put it back in the route's
- * chunk group. `lazy-tab-roots-imports.test.ts` guards the factories.
+ * A new tab reaches its root through here by the root's own module path (never the
+ * `@/components/views` barrel); only `import type` may name a target module.
+ * `lazy-tab-roots-imports.test.ts` guards the factories.
  */
 
 /** The fill-layout frame every tab fallback shares. */

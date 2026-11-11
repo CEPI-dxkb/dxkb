@@ -1,10 +1,9 @@
 import type { JsonOverride } from "../../mocks/backends";
 
 /**
- * `/api/copilot/*` as the routes answer them: one model, no saved chats, and
- * an empty session, so the Copilot opens on its empty state ("Try asking").
- * The browser calls these same-origin routes, so this browser-side override
- * is the whole mock; the gateway is never reached.
+ * Same-origin `/api/copilot/*` answers (one model, no saved chats, empty
+ * session) so the Copilot opens on its empty state; the gateway is never
+ * reached.
  */
 export const copilotOverrides: JsonOverride[] = [
   {

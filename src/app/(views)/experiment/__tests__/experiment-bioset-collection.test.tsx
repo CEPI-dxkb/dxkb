@@ -125,7 +125,6 @@ describe("ExperimentBiosetCollection", () => {
     const alert = await screen.findByRole("alert");
     fireEvent.click(within(alert).getByRole("button", { name: "Retry" }));
 
-    // The alert, not the loading skeleton, until the retry answers.
     expect(
       await within(alert).findByRole("button", { name: "Retrying…" }),
     ).toBeDisabled();

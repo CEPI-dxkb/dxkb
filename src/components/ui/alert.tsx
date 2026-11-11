@@ -12,8 +12,6 @@ const alertVariants = cva(
         destructive:
           "bg-card text-destructive *:data-[slot=alert-description]:text-destructive/90 [&>svg]:text-current",
       },
-      // Local edit (keep when regenerating with `shadcn add --overwrite`):
-      // `sm` is a slimmer alert for inline form feedback.
       size: {
         default: "",
         sm: "py-2",

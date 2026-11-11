@@ -63,10 +63,6 @@ const genomeCollectionTabs: readonly EntityViewTab<GenomeCollectionTab>[] = [
   { key: "serology", label: "Serology", icon: viewIcons.serology },
 ];
 
-/**
- * The related tabs whose records carry no genome ID, so they follow only the
- * keyword and taxon parts of the list's query (`genomeTaxonScope`).
- */
 const taxonScopedCollections = {
   epitopes: {
     urlKey: "epitopes",
@@ -109,7 +105,6 @@ export function GenomeCollection({
   overview,
 }: {
   initialState: CollectionState;
-  /** The Overview tab's content, rendered by the page while that tab is open. */
   overview?: ReactNode;
 }) {
   const searchParams = useSearchParams();
@@ -138,25 +133,19 @@ export function GenomeCollection({
     tabs.find((tab) => tab.key === requestedTab && tab.enabled !== false)
       ?.key ?? "genomes";
   const scope = genomeRelatedScope(initialState);
-  // A related tab's predicate, following legacy GenomeList where it works
-  // (`genomeRelatedScope`). An unscoped tab still sends its collection's own
-  // match-all, as every collection profile does: the Data API answers HTTP 400
+  // An unscoped tab sends its collection's match-all: the Data API answers 400
   // to an empty query once a sort or facet is added.
   const relatedRql = (idField: string, extra?: string): string => {
     if (!scope) return extra ?? `eq(${idField},*)`;
     if (scope.join) return genomesChildRql(scope.rql, extra);
     return extra ? rqlAnd(scope.rql, extra) : scope.rql;
   };
-  // Legacy's global search opens GenomeList with #defaultSort=-score, which
-  // every tab's grid inherits, so a keyword search's tabs keep the backend's
-  // relevance order; any other list's tabs take their grid's own order. Text
-  // without terms searches for nothing (`genomeBaseRql`), so it is not one.
+  // A global search adds #defaultSort=-score, so a keyword search's tabs keep
+  // relevance order; other lists take their grid's own order.
   const gridOrder = (order: DataSort) =>
     keywordQuery(initialState.keyword ?? "").length > 0 ? undefined : order;
-  // Legacy GenomeList sends the keyword exactly as typed: keyword(coli) finds
-  // 134,274 genomes, the token-prefix keyword(coli*) 137,836. The related tabs'
-  // own keyword boxes are exact too (`serverKeywordMode="exact"`), so no
-  // prefix keyword reaches the Data API from this page.
+  // Legacy sends the keyword exactly as typed (coli finds 134,274 genomes,
+  // coli* 137,836), so no prefix keyword reaches the Data API.
   let content = (
     <GenomeResourceCollection
       baseRql={genomeBaseRql(initialState)}
@@ -177,8 +166,6 @@ export function GenomeCollection({
       />
     );
   } else if (activeTab === "features") {
-    // Legacy's Features tab: the Feature list's removable annotation=PATRIC
-    // default, and FeatureGrid's order unless a keyword search opened the list.
     content = (
       <ResourceChildCollection
         {...genomeChildCollections.features}
@@ -190,8 +177,6 @@ export function GenomeCollection({
       />
     );
   } else if (activeTab === "proteins") {
-    // `proteinFeatureRql` is shared with the member Proteins view and the
-    // Feature list's `filter=protein`, so all three mean the same "protein".
     content = (
       <ResourceChildCollection
         {...genomeChildCollections.proteins}
@@ -214,7 +199,6 @@ export function GenomeCollection({
       />
     );
   } else if (activeTab === "strains") {
-    // Strains join to the listed genomes through their multi-valued genome_ids.
     content = (
       <ResourceChildCollection
         urlKey="strains"
@@ -239,12 +223,9 @@ export function GenomeCollection({
       />
     );
   } else if (activeTab === "structures") {
-    // Not ProteinStructureResourceCollection (which the member page uses): that
-    // wrapper owns URL collection state, which would collide with this page's own
-    // rql/page/sort params. ResourceChildCollection keeps its tab state under its
-    // own `<urlKey>.` params, so they never collide with this page's, and it
-    // supplies the canonical protein-structure profile (columns, detail fields,
-    // facets and row links) from its own `protein_structure` branch.
+    // ProteinStructureResourceCollection owns URL state that would collide with
+    // this page's rql/page/sort params; ResourceChildCollection keeps its state
+    // under `<urlKey>.` params.
     content = (
       <ResourceChildCollection
         urlKey="structures"

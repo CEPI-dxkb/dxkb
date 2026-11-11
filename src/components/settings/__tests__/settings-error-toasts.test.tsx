@@ -111,7 +111,6 @@ describe("settings save failures", () => {
         `Failed to change password: ${reason}`,
       );
     });
-    // Kept, so a retry is one click.
     expect(screen.getByLabelText(/^New Password/)).toHaveValue("new-password");
   });
 });

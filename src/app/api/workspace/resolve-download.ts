@@ -14,11 +14,6 @@ import { isWorkspaceObjectMissing } from "@/lib/services/workspace/workspace-err
 import { getRequiredEnv } from "@/lib/env";
 import { getMimeType } from "@/components/workspace/file-viewer/file-viewer-registry";
 
-/**
- * Build a safe Content-Disposition header value.
- * Produces an ASCII-safe `filename=` parameter and, when the name contains
- * non-ASCII characters, an RFC 6266 `filename*=UTF-8''...` extended parameter.
- */
 export function contentDisposition(
   disposition: "inline" | "attachment",
   filename: string,
@@ -37,19 +32,8 @@ export function contentDisposition(
 }
 
 /**
- * The response sandbox for a workspace file. Its bytes are whatever a user
- * uploaded, and a readable file may be someone else's (shared and public
- * folders), so a document rendered from it must never run as the app:
- * `sandbox` without `allow-same-origin` gives it an opaque origin, which
- * cannot read app responses or storage and whose requests are cross-site,
- * so the `SameSite=Strict` session cookie stays home.
- * - HTML keeps `allow-scripts` (job reports are interactive, as in the
- *   preview iframe) and `allow-popups` (report links that open a tab;
- *   a popup inherits the sandbox).
- * - PDF gets none: Chrome's PDF viewer will not render under any sandbox,
- *   and PDF script runs in the viewer, not the page origin.
- * - Everything else gets a bare `sandbox`: SVG and XML can carry script,
- *   and nothing else needs it.
+ * Sandbox for user-uploaded bytes: no `allow-same-origin`, so the document gets an opaque origin that cannot reach app storage or cookies.
+ * HTML keeps `allow-scripts` and `allow-popups` (job reports), PDF gets none (Chrome's viewer won't render under a sandbox), the rest a bare `sandbox` (SVG/XML can carry script).
  */
 export function workspaceFileSandbox(contentType: string): string | null {
   if (contentType === "application/pdf") return null;
@@ -57,11 +41,6 @@ export function workspaceFileSandbox(contentType: string): string | null {
   return "sandbox";
 }
 
-/**
- * Content headers for a workspace file served under the app origin. Every
- * route that answers with a file's bytes uses these, so none can forget the
- * sandbox. `nosniff` holds the browser to the extension-derived type.
- */
 export function workspaceFileHeaders(
   filename: string,
   contentType: string,
@@ -83,26 +62,13 @@ export interface ResolvedDownload {
 }
 
 /**
- * `segments` come from a catch-all ROUTE HANDLER's `params.path`. Route
- * handlers never go through `getDynamicParam()`, so they receive the route
- * matcher's already-decoded segments — do not decode again here, or a
- * literal `%2F` in a file name becomes a real `/`, splitting one segment
- * into two and resolving a different (nonexistent) workspace path.
- *
- * This is NOT true of a page component's params, which arrive re-encoded.
- * Do not copy this comment onto one — see `readRouteParam` in
- * `src/lib/views/route-params.ts`.
+ * Catch-all route-handler segments arrive already decoded: do not decode again, or a literal `%2F` becomes a `/`.
+ * Page params are the opposite; see `readRouteParam`.
  */
 export function buildWorkspacePath(segments: string[]): string {
   return "/" + segments.join("/");
 }
 
-/**
- * Resolve a workspace file path to a Shock download response.
- *
- * Returns either a `ResolvedDownload` on success, or a `NextResponse` error
- * that the caller should return directly.
- */
 /** The `error.message` of a JSON-RPC envelope, or null for any other body. */
 function jsonRpcErrorMessage(body: string): string | null {
   try {
@@ -150,9 +116,8 @@ export async function resolveWorkspaceDownload(
     },
   );
 
-  // The budget also bounds the Workspace's body. A budget spent (or a socket
-  // dropped) mid-body is the Workspace's failure, described here: the routes'
-  // catch-alls would otherwise blame file storage for it.
+  // The budget also bounds the Workspace's body, so a mid-body failure is
+  // reported as the Workspace's, not file storage's.
   const bodyFailure = (error: unknown): never => {
     const failure = describeUpstreamFailure(error, upstreamServices.workspace, {
       timeoutMs: upstreamTimeoutMs.workspace,
@@ -169,9 +134,8 @@ export async function resolveWorkspaceDownload(
       wsResponse.statusText,
       responseText,
     );
-    // The Workspace reports its own errors ("_ERROR_Object not found!_") as a
-    // JSON-RPC error inside an HTTP 500: pass that message on, as a 404 when
-    // the object is missing, so the viewer can say what went wrong.
+    // The Workspace reports its own errors as a JSON-RPC error inside an HTTP
+    // 500: pass the message on, as a 404 when the object is missing.
     const rpcMessage = jsonRpcErrorMessage(responseText);
     if (rpcMessage) {
       const status = isWorkspaceObjectMissing(new Error(rpcMessage))
@@ -205,8 +169,7 @@ export async function resolveWorkspaceDownload(
     );
   }
 
-  // Only the wait for Shock to start answering is bounded: the file itself
-  // streams through to the browser and may take as long as it takes.
+  // Only the wait for Shock to start answering is bounded; the file streams unbounded.
   const shockResponse = await fetchUpstream(
     downloadUrl,
     {},

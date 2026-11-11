@@ -24,19 +24,7 @@ export interface CollectionDownloadVariables {
   request: DownloadRequest;
 }
 
-/**
- * The one way a collection's Download tile saves a file. A selection, and a
- * query of at most `maxBufferedDownloadRows`, is fetched through the gateway
- * and saved from memory; a larger query, and any file of whole contigs, is a
- * native form POST the browser streams to disk (`usesNativeDownload`). A
- * failure toasts the server's own message, and an empty file is a failure
- * too (the gateway refuses one, and a buffered one is checked here again), so
- * a click never saves a zero-byte file.
- *
- * `pending` is the format being downloaded, so the tile can show which row is
- * busy. The mutation lives with whoever calls this hook — the collection
- * shell — so a remounted tile still sees it.
- */
+/** Saves a collection's download: a selection or a small query is buffered through the gateway, a larger query or whole-contig file is a native form POST (`usesNativeDownload`). An empty file is a failure. */
 export function useCollectionDownload() {
   const mutation = useMutation({
     mutationFn: async ({ resource, request }: CollectionDownloadVariables) => {

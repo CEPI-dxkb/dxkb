@@ -1,7 +1,6 @@
 /**
- * HTTP implementation of `WorkspaceRepository`. Thin wrapper around `rpc()`
- * with method-specific parsers in `./parsers.ts`. No JSON-RPC envelope logic
- * or tuple parsing lives in individual methods — it's all delegated.
+ * HTTP implementation of `WorkspaceRepository`: a thin wrapper around `rpc()`
+ * with parsers from `./parsers.ts`.
  */
 
 import type {
@@ -407,8 +406,8 @@ export class HttpWorkspaceRepository implements WorkspaceRepository {
 }
 
 /**
- * Default HTTP repository used by production code. Public workspace consumers
- * should pass `{ baseUrl: "/api/workspace/public" }`.
+ * Default HTTP repository for production; public workspace consumers pass `{
+ * baseUrl: "/api/workspace/public" }`.
  */
 export const httpWorkspaceRepository = new HttpWorkspaceRepository();
 export const publicHttpWorkspaceRepository = new HttpWorkspaceRepository({

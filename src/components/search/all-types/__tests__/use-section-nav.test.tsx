@@ -78,7 +78,6 @@ describe("useSectionNav", () => {
     scrollTo.mockClear();
     Element.prototype.scrollTo = scrollTo;
     reducedMotion = false;
-    // jsdom has no matchMedia.
     Object.defineProperty(window, "matchMedia", {
       configurable: true,
       value: (query: string) => ({
@@ -160,12 +159,10 @@ describe("useSectionNav", () => {
     expect(target).not.toHaveAttribute("data-flash");
     vi.useRealTimers();
 
-    // The smooth scroll's own events leave the jump highlighted…
     fireEvent.scroll(column);
     await new Promise((resolve) => requestAnimationFrame(resolve));
     expect(screen.getByRole("status")).toHaveTextContent("a");
 
-    // …a hand scroll hands it back to the scroll position.
     fireEvent.wheel(column);
     await waitFor(() => {
       expect(screen.getByRole("status")).toHaveTextContent("b");
@@ -178,7 +175,6 @@ describe("useSectionNav", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Jump to a" }));
 
-    // The smooth scroll closing in on its target keeps the jump highlighted…
     for (const scrollTop of [500, 684]) {
       column.scrollTop = scrollTop;
       fireEvent.scroll(column);
@@ -186,7 +182,6 @@ describe("useSectionNav", () => {
       expect(screen.getByRole("status")).toHaveTextContent("a");
     }
 
-    // …and a scroll back from it, with no wheel, touch or key, releases it.
     column.scrollTop = 600;
     fireEvent.scroll(column);
     await waitFor(() => {

@@ -8,8 +8,6 @@ import {
   type OrganismRequest,
 } from "./utils";
 
-// Unlabelled: each place that shows the summary names it ("Data summary could
-// not be loaded", "Taxon counts could not be loaded: …").
 const summaryRequest: OrganismRequest = { source: "summary_by_taxon" };
 
 export async function fetchOrganismSummary(

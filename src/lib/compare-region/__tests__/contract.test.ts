@@ -36,7 +36,6 @@ describe("Compare Region contract", () => {
     expect(parseCompareRegionSettings(reader({ size: "12345" }))).toBeNull();
     expect(parseCompareRegionSettings(reader({ genomes: "7" }))).toBeNull();
     expect(parseCompareRegionSettings(reader({ method: "figfam" }))).toBeNull();
-    // The service's own token is not ours: its "+" would read as a space.
     expect(
       parseCompareRegionSettings(reader({ filter: "representative+reference" })),
     ).toBeNull();
@@ -63,8 +62,6 @@ describe("Compare Region contract", () => {
   );
 
   it("names the sources as legacy BV-BRC does", () => {
-    // "All genomes", not "All public genomes": signed in, the service may
-    // also compare the caller's private genomes.
     expect(compareRegionFilterLabels).toEqual({
       reference: "Reference & representative",
       all: "All genomes",
@@ -111,7 +108,6 @@ describe("Compare Region group filters", () => {
 
   it("refuses a group on a filter that is not a group filter", () => {
     expect(parseCompareRegionSettings(reader({ filter: "all", group: path }))).toBeNull();
-    // An empty group is no group.
     expect(parseCompareRegionSettings(reader({ filter: "all", group: "" }))).toEqual({
       ...defaultCompareRegionSettings,
       filter: "all",

@@ -1,19 +1,10 @@
 import type { useResourceCollection as useResourceCollectionHook } from "@/hooks/views/use-resource-collection";
 
-/**
- * A minimal, valid `useResourceCollection` return value: every field a test does not
- * override stays at its "nothing loaded yet" default. Shared by every
- * `resource-collection*.test.tsx` suite (including `resource-child-collection.test.tsx`,
- * where it was first extracted as `realCollectionResult`) so there is one typed builder
- * for this hook's shape, not a near-identical one per file. Not promoted to
- * `src/test-helpers/` — nothing outside these suites stubs this hook.
- */
 export function createResourceCollectionResult(
   overrides: Partial<ReturnType<typeof useResourceCollectionHook>> = {},
 ): ReturnType<typeof useResourceCollectionHook> {
   return {
     activeId: null,
-    // The total on screen is the current query's unless a test overrides it.
     currentTotal: () => Promise.resolve(overrides.total ?? 0),
     detail: null,
     detailError: null,

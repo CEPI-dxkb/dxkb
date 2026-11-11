@@ -151,14 +151,11 @@ describe("useWorkspacePickerListing", () => {
       expect.objectContaining({ name: "Beta", ownerId: "alice@bvbrc" }),
     ]);
     expect(result.current.isLoading).toBe(false);
-    // The user's own folders are always writable, so nothing more is fetched.
     expect(listedPaths(repository)).toEqual([]);
   });
 
   it("gives a favorite in another user's workspace that workspace's permissions", async () => {
     serveFavorites([`${home}/Alpha`, "/bob@bvbrc/ws/Results"]);
-    // In-memory `/` rows are `/${name}`, so the name carries the owner to give
-    // the row the real `/owner/workspace` path.
     const repository = new InMemoryWorkspaceRepository({
       directories: {
         "/": [
@@ -231,8 +228,6 @@ describe("useWorkspacePickerListing", () => {
   });
 
   it("does not fail recent folders on reads they do not use", async () => {
-    // Another observer (the navbar's favorites, the Shared column's `/`)
-    // owns the failed reads this listing shares cache keys with.
     server.use(
       http.post("*/api/services/workspace", () =>
         HttpResponse.json(

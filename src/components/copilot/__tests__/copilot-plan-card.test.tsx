@@ -102,7 +102,6 @@ describe("PlanCardView editor", () => {
     };
     const { rerender } = render(ui(plan, actions));
     await user.click(screen.getByRole("button", { name: /edit remaining steps/i }));
-    // The first step changed while the editor was open.
     rerender(
       ui(plan, {
         ...actions,

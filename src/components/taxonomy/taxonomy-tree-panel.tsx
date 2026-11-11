@@ -25,13 +25,7 @@ interface TaxonomyTreePanelProps {
   readonly phylogenyTaxonIds: readonly number[];
 }
 
-/**
- * Client shell for the taxonomy tab: the tree plus a detail panel for the
- * selected node. Kept separate from the make…View factory so the factory module
- * stays server-callable (buildTaxonomyNavItems invokes it during SSR), and so
- * ResourceWorkspace's resizable panels (which need ResizeObserver) live outside the
- * tree's jsdom unit tests.
- */
+/** Client shell for the taxonomy tab, kept apart from the factory so the factory stays server-callable and ResourceWorkspace's panels stay out of jsdom tests. */
 export function TaxonomyTreePanel({
   taxa,
   phylogenyTaxonIds,
@@ -55,10 +49,7 @@ export function TaxonomyTreePanel({
     }
   }
 
-  // No wrapper div: the shell's fill region already bounds height
-  // (flex-1 min-h-0 overflow-hidden), and ResourceWorkspace wraps its children in a
-  // flex-col overflow-hidden box of its own. Extra wrappers only risk breaking
-  // the min-h-0 chain.
+  // No wrapper div: extra wrappers risk breaking the shell's min-h-0 chain.
   return (
     <ResourceWorkspace
       hasSidePanel={selectedRows.length > 0}
@@ -68,7 +59,6 @@ export function TaxonomyTreePanel({
           searchType="taxonomy"
           guideUrl={taxonomyGuideUrl}
           enabledActions={["genomes", "features"]}
-          // Legacy's Taxa Tree runs no service, unlike the Taxa list's BLAST.
           disabledActions={{
             services: noServicesReason("Taxon", "Taxa", selectedRows.length),
           }}

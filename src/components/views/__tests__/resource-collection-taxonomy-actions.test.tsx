@@ -11,13 +11,6 @@ import type { useResourceCollection as useResourceCollectionHook } from "@/hooks
 import { ResourceCollection } from "../resource-collection";
 import { createResourceCollectionResult } from "./fixtures/resource-collection-result";
 
-// Taxonomy is the one resource whose action bar is dispatched directly by
-// `useResourceCollectionActions` rather than through `CollectionSelectionActions` (see
-// `enabledActionsByResource` in resource-collection-actions.tsx), so its workflow —
-// reserving a tab before an all-pages ID resolution, rejecting an overlapping second
-// action, and the taxonomy chooser's own overlap guard — is exercised on its own here
-// rather than folded into the shared selection-action tests.
-
 const { useResourceCollection } = vi.hoisted(() => ({
   useResourceCollection: vi.fn<typeof useResourceCollectionHook>(),
 }));
@@ -68,10 +61,6 @@ vi.mock("../resource-filter-bar", async () =>
     await import("./fixtures/resource-collection-mocks")
   ).resourceFilterBarMock(),
 );
-// The `SearchActionBar` fake shared with every resource-collection*.test.tsx suite.
-// It calls the same `visibleSearchActions` / `isSearchActionDisabled` policy
-// production does (search-action-policy.ts), so a control this suite can query or
-// click is one the real bar would have rendered, in the same enabled state.
 vi.mock("@/components/search/search-action-bar", async () =>
   (await import("./fixtures/resource-collection-mocks")).searchActionBarMock(
     (props) => {
@@ -130,8 +119,6 @@ describe("ResourceCollection Taxonomy actions", () => {
       selectedIds: ["234"],
       sorting: [],
     });
-    // The tab is reserved synchronously on click and navigated once IDs resolve, so
-    // an all-pages selection's export cannot get the popup blocked.
     const close = vi.fn();
     const links: {
       href: string;
@@ -195,7 +182,6 @@ describe("ResourceCollection Taxonomy actions", () => {
     );
     expect(close).not.toHaveBeenCalled();
 
-    // SERVICES opens an in-page dialog, so it must not reserve a tab.
     await user.click(screen.getByRole("button", { name: "services" }));
     expect(screen.getByTestId("taxonomy-services")).toHaveTextContent("234");
     expect(open).toHaveBeenCalledTimes(3);
@@ -284,7 +270,6 @@ describe("ResourceCollection Taxonomy actions", () => {
     );
 
     await user.click(screen.getByRole("button", { name: "Genomes action" }));
-    // SERVICES would otherwise overwrite the IDs the first action is resolving.
     await user.click(screen.getByRole("button", { name: "services" }));
     expect(exportAll).toHaveBeenCalledTimes(1);
     expect(screen.queryByTestId("taxonomy-services")).not.toBeInTheDocument();
@@ -297,7 +282,6 @@ describe("ResourceCollection Taxonomy actions", () => {
       expect(click).toHaveBeenCalledTimes(1);
     });
 
-    // The guard releases once the first action settles.
     await user.click(screen.getByRole("button", { name: "services" }));
     expect(exportAll).toHaveBeenCalledTimes(2);
   });
@@ -457,10 +441,6 @@ describe("ResourceCollection Taxonomy actions", () => {
       />,
     );
 
-    // The overlap guard is a ref inside the actions boundary, so a re-render
-    // driven by the selection change does not release it. Without the guard the
-    // narrowed selection needs no request and would open the chooser on "999"
-    // straight away, replacing the IDs the first run is still resolving.
     await user.click(screen.getByRole("button", { name: "services" }));
     expect(exportAll).toHaveBeenCalledTimes(1);
     expect(screen.queryByTestId("taxonomy-services")).not.toBeInTheDocument();
@@ -507,7 +487,6 @@ describe("ResourceCollection Taxonomy actions", () => {
     it("waits for the current query's total, then resolves all matching Taxa for SERVICES", async () => {
       const user = userEvent.setup();
       const currentTotal = Promise.withResolvers<number>();
-      // The previous query's total is over the ID limit; this query's is not.
       const data = renderAllPagesTaxa({
         isPlaceholderData: true,
         total: maxTaxonomyActionIds + 1,
@@ -590,8 +569,8 @@ describe("ResourceCollection Taxonomy actions", () => {
       });
 
       await user.click(screen.getByRole("button", { name: "Genomes action" }));
-      // Reserved before the wait: once it is over, the browser would no longer
-      // treat the open as user-initiated and would block it.
+      // Reserved before the wait: afterward the browser no longer treats the
+      // open as user-initiated.
       expect(open).toHaveBeenCalledWith("about:blank", "_blank");
       expect(links).toHaveLength(0);
 
@@ -651,8 +630,6 @@ describe("ResourceCollection Taxonomy actions", () => {
 
     it("refuses SERVICES when the read returns more Taxa than the count on screen allowed", async () => {
       const user = userEvent.setup();
-      // The refreshed total was within the ID limit, but the data outgrew it.
-      // `normalizeTaxonIds` checks the IDs that were read, not the total.
       renderAllPagesTaxa(
         { isRefreshing: true, total: maxTaxonomyActionIds },
         repository(

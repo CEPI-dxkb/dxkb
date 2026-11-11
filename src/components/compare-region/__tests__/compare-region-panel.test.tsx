@@ -30,17 +30,15 @@ vi.mock("@/lib/utils", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/utils")>()),
   downloadBlob: download.blob,
 }));
-// Signed out (useAuth throws outside AuthBoundary).
 vi.mock("@/lib/auth/provider", () => ({
   useAuth: () => ({ isAuthenticated: false }),
 }));
-// The real selector searches the workspace on interaction (MSW is strict).
 vi.mock("@/components/workspace/workspace-object-selector", () => ({
   WorkspaceObjectSelector: ({ id, value }: { id?: string; value?: string }) => (
     <input id={id} value={value} readOnly />
   ),
 }));
-// jsdom has no canvas: the figure measures its labels with the estimate (D9).
+// jsdom has no canvas: the figure measures its labels with the estimate.
 vi.mock("@/lib/compare-region/text-measure", async (importOriginal) => {
   const actual =
     await importOriginal<typeof import("@/lib/compare-region/text-measure")>();
@@ -48,7 +46,6 @@ vi.mock("@/lib/compare-region/text-measure", async (importOriginal) => {
 });
 
 const densityCookie = "dxkb-compare-region-density";
-/** The figure, named for its genome count. */
 const figureName = /^Compared regions of/;
 
 function answer(body: JsonBodyType, status = 200) {
@@ -101,8 +98,6 @@ describe("CompareRegionPanel", () => {
     await screen.findByRole("group", { name: figureName });
     const card = screen.getByRole("region", { name: "Compare regions" });
     expect(card).toHaveClass("border", "bg-card", "shadow-sm");
-    // It fills the tab down to the page's bottom edge, as the data tables do:
-    // rounded at the top only, open at the bottom, with no padding under it.
     expect(card).toHaveClass("flex-1", "rounded-t-xl", "border-b-0");
     expect(card).not.toHaveClass("rounded-xl");
     expect(card.parentElement).toHaveClass("pt-3");
@@ -117,7 +112,6 @@ describe("CompareRegionPanel", () => {
 
   it("re-joins the request in flight when the tab comes back", async () => {
     let calls = 0;
-    // The service answers only once the tab is back.
     const serviceAnswers = Promise.withResolvers<undefined>();
     server.use(
       http.get("/api/compare-region", async () => {
@@ -126,7 +120,6 @@ describe("CompareRegionPanel", () => {
         return HttpResponse.json({ rows: [focusRow] });
       }),
     );
-    // One query client for both mounts, as on a tab switch.
     const wrapper = createQueryClientWrapper();
     const panel = <CompareRegionPanel patricId="fig|1.1.peg.2" />;
     const first = render(panel, { wrapper });
@@ -145,12 +138,10 @@ describe("CompareRegionPanel", () => {
   it("says what it is doing while the service works", async () => {
     answer({ rows: [focusRow] });
     renderPanel();
-    // Awaited, so the slider thumb measures itself inside act.
     const message = await screen.findByText(
       "Comparing regions across 10 genomes. This takes from a few seconds to over a minute.",
     );
     expect(message.closest('[role="status"]')).not.toBeNull();
-    // The bar is there, but nothing to zoom or export yet.
     expect(screen.getByRole("button", { name: "Zoom in" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "Export SVG" })).toBeDisabled();
   });
@@ -225,7 +216,6 @@ describe("CompareRegionPanel", () => {
     await user.click(await screen.findByRole("option", { name: "20 genomes" }));
     expect(screen.getByRole("button", { name: "Update" })).toBeEnabled();
 
-    // Back to an address with other settings, the unapplied draft still open.
     search.value = "tab=compare-region&compare.method=plfam";
     rerender(<CompareRegionPanel patricId="fig|1.1.peg.2" />);
     await screen.findByRole("group", { name: figureName });
@@ -264,7 +254,6 @@ describe("CompareRegionPanel", () => {
     );
     await user.click(await screen.findByRole("option", { name: "20 genomes" }));
 
-    // The status gives way to the figure; the bar's draft stays.
     await user.click(screen.getByRole("button", { name: "Retry" }));
     await screen.findByRole("group", { name: figureName });
     expect(calls).toBe(2);
@@ -296,9 +285,7 @@ describe("CompareRegionPanel", () => {
     expect(alert).toHaveTextContent(
       'Sign in, or choose "Reference & representative" or "All genomes" under Genomes.',
     );
-    // Retrying would only answer 401 again.
     expect(screen.queryByRole("button", { name: "Retry" })).toBeNull();
-    // Signed out, Update stays off until a public source is chosen.
     expect(screen.getByRole("button", { name: "Update" })).toBeDisabled();
   });
 
@@ -317,7 +304,6 @@ describe("CompareRegionPanel", () => {
     expect(alert).toHaveTextContent("Could not compare regions");
     expect(alert).toHaveTextContent(/busy with other requests/);
     expect(screen.getByRole("button", { name: "Retry" })).toBeInTheDocument();
-    // Inside the card, below the bar.
     expect(
       screen.getByRole("region", { name: "Compare regions" }),
     ).toContainElement(alert);
@@ -329,7 +315,6 @@ describe("CompareRegionPanel", () => {
     const message = await screen.findByText(
       "No comparable regions were found for this gene.",
     );
-    // The status area pads it, as it pads the Alert and the loading message.
     expect(message.className).not.toMatch(/\bp-\d/);
     expect(message.parentElement).toHaveClass("p-3");
   });
@@ -369,7 +354,6 @@ describe("CompareRegionPanel", () => {
     await user.click(
       screen.getByRole("button", { name: "Switch to Compact density" }),
     );
-    // Preference cookies hold JSON.
     expect(decodeURIComponent(document.cookie)).toContain(
       `${densityCookie}="compact"`,
     );
@@ -377,8 +361,7 @@ describe("CompareRegionPanel", () => {
 
   it("exports the figure as an SVG file", async () => {
     const user = userEvent.setup();
-    // jsdom has no canvas: the export's color converter finds no 2D context
-    // and keeps the colors (the browser check covers the conversion).
+    // jsdom has no canvas: the export's color converter finds no 2D context and keeps the colors.
     const getContext = vi
       .spyOn(HTMLCanvasElement.prototype, "getContext")
       .mockReturnValue(null);

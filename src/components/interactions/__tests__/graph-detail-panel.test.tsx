@@ -59,7 +59,6 @@ describe("GraphDetailPanel", () => {
     it("renders every node field with its value", () => {
       renderPanel({ selection: { nodes: [nodeA], edges: [] } });
 
-      // Labels (dt) are the bright headers post-flip.
       for (const label of ["BRC ID", "Genome", "Locus tag", "Gene", "Product"]) {
         expect(screen.getByText(label)).toBeInTheDocument();
       }
@@ -71,12 +70,10 @@ describe("GraphDetailPanel", () => {
     });
 
     it("shows an em-dash for each missing optional field", () => {
-      // Only id + kind; genome/locus/gene/desc all fall back to em-dash.
       const bare: GNode = { id: "fig|3.3", kind: "microbial" };
       renderPanel({ selection: { nodes: [bare], edges: [] } });
 
       expect(screen.getByText(bare.id)).toBeInTheDocument();
-      // Four missing fields (Genome, Locus tag, Gene, Product) → four em-dashes.
       expect(screen.getAllByText("—")).toHaveLength(4);
     });
 
@@ -91,7 +88,6 @@ describe("GraphDetailPanel", () => {
       renderPanel({ selection: { nodes: [nodeA], edges: [] }, incidentEdges: [edge] });
 
       expect(screen.getByText("Interactions (1)")).toBeInTheDocument();
-      // Other endpoint of the edge from nodeA is nodeB → its gene "ftsA".
       expect(
         screen.getByRole("button", { name: "ftsA · predicted interaction" }),
       ).toBeInTheDocument();
@@ -110,7 +106,6 @@ describe("GraphDetailPanel", () => {
       const bare: GEdge = { ...edge, interactionType: "" };
       renderPanel({ selection: { nodes: [nodeA], edges: [] }, incidentEdges: [bare] });
 
-      // Just the endpoint gene, no " · ..." suffix.
       expect(screen.getByRole("button", { name: "ftsA" })).toBeInTheDocument();
     });
 
@@ -134,7 +129,6 @@ describe("GraphDetailPanel", () => {
       renderPanel({ selection: { nodes: [], edges: [edge] } });
 
       expect(screen.getByText("Interaction")).toBeInTheDocument();
-      // From/To resolve to endpoint gene labels.
       expect(screen.getByText("From")).toBeInTheDocument();
       expect(screen.getByText("dnaA")).toBeInTheDocument();
       expect(screen.getByText("To")).toBeInTheDocument();

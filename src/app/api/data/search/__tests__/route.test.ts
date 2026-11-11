@@ -1,5 +1,4 @@
-// `server-only` throws outside Next's bundler; the route reaches it through
-// `@/lib/data-api/server-policy` (see the gateway's own route spec).
+// `server-only` throws outside Next's bundler (see the gateway's route spec).
 vi.mock("server-only", () => ({}));
 
 import { http, HttpResponse } from "msw";
@@ -24,7 +23,6 @@ import { POST } from "../route";
 const dataApiOrigin = "https://data.test";
 const queryUrl = `${dataApiOrigin}/query/`;
 
-// One client IP per test, so the shared rate-limit bucket never spills over.
 let nextIpOctet = 40;
 function freshIp(): string {
   nextIpOctet += 1;
@@ -108,7 +106,6 @@ describe("POST /api/data/search", () => {
       accept: "application/solr+json",
       query: "keyword(influenza)&gt(genomes,1)&limit(10)&sort(-genomes)",
     });
-    // Anonymous: no token is sent.
     expect(seen[0].authorization).toBeNull();
   });
 

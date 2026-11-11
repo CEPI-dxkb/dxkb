@@ -52,7 +52,6 @@ describe("layoutCompareRegion", () => {
   });
 
   it("keeps the pinned gene in the first lane and its BLAST hit below it when a neighbor overlaps it", () => {
-    // In contig order, as the service sends them: the neighbor comes first.
     const row = {
       ...focusRow,
       features: [
@@ -73,8 +72,6 @@ describe("layoutCompareRegion", () => {
   });
 
   it("packs the other features in the service's order, not left to right on screen", () => {
-    // Mirrored, so contig order runs right to left: peg.1 is drawn right of
-    // peg.2, and the two overlap. Legacy packed peg.1 first.
     const row = {
       ...mirroredRow,
       features: [
@@ -99,7 +96,6 @@ describe("layoutCompareRegion", () => {
       contigStartShown: false,
       contigEndShown: false,
     });
-    // Mirrored: contig position 5500 (its end) lands left of center.
     expect(mirrored).toMatchObject({
       baselineFrom: 1000,
       baselineTo: -500,
@@ -120,14 +116,12 @@ describe("layoutCompareRegion", () => {
 describe("constrainToTrack", () => {
   type Matrix = typeof identity;
 
-  /** What `@visx/zoom`'s `scale` asks for: `matrix` zoomed by `factor` about pixel `x`. */
   const zoomAbout = (matrix: Matrix, factor: number, x: number): Matrix => ({
     ...matrix,
     scaleX: matrix.scaleX * factor,
     translateX: x - (x - matrix.translateX) * factor,
   });
 
-  /** The unscaled position drawn at pixel `x`. */
   const contentAt = (matrix: Matrix, x: number) =>
     (x - matrix.translateX) / matrix.scaleX;
 
@@ -163,7 +157,6 @@ describe("constrainToTrack", () => {
   });
 
   it("hands back the matrix it was given when nothing moves", () => {
-    // A drag at 1× (the whole window in view) and one against the window's end.
     expect(
       constrainToTrack({ ...identity, translateX: 40 }, identity, 800),
     ).toBe(identity);
@@ -171,10 +164,8 @@ describe("constrainToTrack", () => {
     expect(
       constrainToTrack({ ...atEnd, translateX: -900 }, atEnd, 800),
     ).toBe(atEnd);
-    // A zoom past the cap, about the point already under it.
     const atCap = { ...identity, scaleX: maxZoom, translateX: -4000 };
     expect(constrainToTrack({ ...atCap, scaleX: 30 }, atCap, 800)).toBe(atCap);
-    // A pan that moves is a new matrix.
     const moved = constrainToTrack({ ...atEnd, translateX: -700 }, atEnd, 800);
     expect(moved).not.toBe(atEnd);
     expect(moved).toMatchObject({ scaleX: 2, translateX: -700 });

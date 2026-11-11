@@ -81,7 +81,6 @@ describe("ActiveFilterPill", () => {
     });
     await user.click(within(list).getByRole("option", { name: /^WGS/ }));
 
-    // A dashed pill holds the popover's anchor; the checklist stays open.
     const held = screen.getByRole("button", { name: "Filter by Genome Status" });
     expect(held).toHaveAttribute("aria-expanded", "true");
     expect(list).toBeInTheDocument();
@@ -106,12 +105,10 @@ describe("ActiveFilterPill", () => {
     const list = await screen.findByRole("listbox", { name: "strain values" });
     await user.click(within(list).getByRole("option", { name: /^K-12/ }));
 
-    // No facet names the field, yet its pill still anchors the checklist.
     expect(
       screen.getByRole("button", { name: "Filter by strain" }),
     ).toHaveAttribute("aria-expanded", "true");
     expect(list).toBeInTheDocument();
-    // Nothing counts the field, so the list cannot say no record has it.
     expect(within(list).getByText("No values picked")).toBeInTheDocument();
     expect(
       within(list).getByText("Without a facet, only picked values are listed."),

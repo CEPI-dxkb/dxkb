@@ -24,7 +24,6 @@ export async function GET(request: NextRequest) {
   }
 
   const type = request.nextUrl.searchParams.get("type");
-  // The store uses an omitted sidecar for the main tree JSON.
   const sidecar = type === null || type === "tree" ? undefined : type;
   if (sidecar !== undefined && !isSidecar(sidecar)) {
     return NextResponse.json(

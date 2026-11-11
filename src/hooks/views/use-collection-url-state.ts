@@ -28,7 +28,6 @@ export function useCollectionUrlState<Sort extends string>(
   const state = parseCollectionState(current, options);
 
   const setState = (next: CollectionState<Sort>) => {
-    // A new parent query is a new scope for every nested table.
     const merged = replaceCollectionSearchParams(
       withoutChildCollectionParams(current),
       next,
@@ -43,9 +42,7 @@ export function useCollectionUrlState<Sort extends string>(
   };
 
   const canonical = canonicalizeCollectionSearchParams(current, options);
-  // Compare in URLSearchParams form: useSearchParams().toString() re-escapes
-  // whatever the address bar holds, so comparing the readable string would
-  // never match and the effect would replace the URL forever.
+  // Compare in URLSearchParams form: `useSearchParams().toString()` re-escapes the address bar, so the readable string would never match and the effect would loop.
   const canonicalSearch = canonical.toString();
   const currentSearch = searchParams.toString();
   const readableSearch = toQueryString(canonical);

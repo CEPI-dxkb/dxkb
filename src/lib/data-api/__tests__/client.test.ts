@@ -12,10 +12,6 @@ interface GatewayRequest {
   body: string;
 }
 
-/**
- * Answer the gateway's `method` requests for `path` with `respond(hit)`, where
- * `hit` counts from 1, recording each request and its body.
- */
 function captureGateway(
   method: "get" | "post",
   path: string,
@@ -59,8 +55,6 @@ describe("DataRepository", () => {
       },
       controller.signal,
     );
-    // The Request's signal follows the caller's, so aborting it now shows the
-    // two are linked.
     controller.abort();
 
     expect(requested).toHaveLength(1);

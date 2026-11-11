@@ -11,7 +11,10 @@ import { authenticate, getProfile, updateProfile } from "../bvbrc-identity";
 
 const secrets = ["alice", "s3cret-password", "un=alice|tok-123", "Site Maintenance"];
 
-/** This module's lines; MSW also reports a handler's thrown error there. */
+/**
+ * MSW also reports a handler's thrown error to console.error, so keep only this
+ * module's lines.
+ */
 function loggedLines(): string[] {
   return vi
     .mocked(console.error)
@@ -28,7 +31,6 @@ function expectNoSecrets(lines: string[]) {
 beforeEach(() => {
   process.env.USER_AUTH_URL = "https://auth.test/auth/";
   process.env.USER_URL = "https://user.test/user/";
-  // vitest.setup.ts silences console.error; start each test from no calls.
   vi.mocked(console.error).mockClear();
 });
 

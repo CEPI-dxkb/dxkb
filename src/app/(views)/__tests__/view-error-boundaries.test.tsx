@@ -28,7 +28,6 @@ const boundaries: [string, ComponentType<RouteErrorProps>, string][] = [
   ["taxonomy", TaxonomyError, "/taxonomy"],
 ];
 
-// What production hands a boundary for a thrown server-component error.
 function redactedServerError(): Error & { digest: string } {
   return Object.assign(
     new Error(
@@ -50,7 +49,7 @@ describe("(views) error boundaries", () => {
       );
 
       // reset() alone re-renders the same failed server payload; retry() also
-      // refreshes the route so the server data is fetched again.
+      // refreshes the route.
       await userEvent.click(screen.getByRole("button", { name: "Retry" }));
       expect(retry).toHaveBeenCalledOnce();
       expect(reset).not.toHaveBeenCalled();

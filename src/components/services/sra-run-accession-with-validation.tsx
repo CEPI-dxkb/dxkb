@@ -32,15 +32,11 @@ interface SraRunAccessionWithValidationProps {
   disabled?: boolean;
   allowDuplicates?: boolean;
   onAdd?: (srrIds: string[], title?: string) => void;
-  /** Called when the accession input value changes */
   onChange?: (value: string) => void;
   label?: React.ReactNode;
   addButton?: React.ReactNode;
-  /** Whether to show the label. Defaults to true. */
   showLabel?: boolean;
-  /** Whether to show the add button. Defaults to true. When false, add via Enter key. */
   showAddButton?: boolean;
-  /** Pre-populate the accession input (e.g. for rerun). */
   defaultValue?: string;
 }
 
@@ -49,7 +45,7 @@ interface SraInputViewProps {
   showAddButton: boolean;
   /**
    * `unverified`: the backend timed out on NCBI, so the accession is accepted
-   * as a run, but its message is a warning, not an error.
+   * but its message is a warning.
    */
   validationStatus: "idle" | "validating" | "invalid" | "unverified" | "valid";
   title: string;
@@ -80,8 +76,6 @@ function SraInputView({
   onKeyDown,
 }: SraInputViewProps) {
   const isValidating = validationStatus === "validating";
-  // The divider is part of the header, so the header disappears only when
-  // neither the label nor the add button is rendered.
   const showHeader = showLabel || showAddButton;
 
   return (
@@ -111,10 +105,8 @@ function SraInputView({
           aria-invalid={validationStatus === "invalid" || undefined}
           variant={validationStatus === "valid" ? "valid" : "default"}
         />
-        {/* The message line is always rendered at one line's height, so the
-            card does not grow when a message first appears. It is always
-            mounted, so it is also a polite live region: a screen reader
-            announces the result when it arrives. */}
+        {/* Always mounted at one line's height, so the card does not grow and a
+            screen reader hears results as a polite live region. */}
         <p
           role="status"
           className={cn(
@@ -159,9 +151,8 @@ const SraRunAccessionWithValidation = ({
   } | null>(null);
   const validationTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   /**
-   * Monotonic id of the most recently started validation. A response may only
-   * touch validation state or the cache while its id is still the current one,
-   * so an older in-flight request cannot overwrite a newer accession's result.
+   * Monotonic id of the latest validation; a response may only touch state or
+   * the cache while its id is current.
    */
   const validationRequestIdRef = useRef(0);
   const validationAbortRef = useRef<AbortController | null>(null);
@@ -170,11 +161,6 @@ const SraRunAccessionWithValidation = ({
     selectedLibrariesRef.current = selectedLibraries;
   }, [selectedLibraries]);
 
-  /**
-   * Invalidates the in-flight request (if any) so its response is ignored, and
-   * aborts the underlying fetch. Also clears any debounce timer that has not
-   * fired yet.
-   */
   const cancelPendingValidation = () => {
     if (validationTimerRef.current) {
       clearTimeout(validationTimerRef.current);
@@ -186,7 +172,6 @@ const SraRunAccessionWithValidation = ({
   };
 
   useEffect(() => {
-    // Unmount only: stop any in-flight response from updating state.
     return () => {
       validationRequestIdRef.current += 1;
       validationAbortRef.current?.abort();
@@ -203,7 +188,6 @@ const SraRunAccessionWithValidation = ({
     const skipClear = options?.skipClear ?? false;
     const current = selectedLibrariesRef.current;
 
-    // Timeout case: accession is a single run
     if (runs.length === 1 && runs[0] === accession) {
       const isDuplicate = current.some(
         (lib) => lib.id === accession && lib.type === "sra",
@@ -247,9 +231,8 @@ const SraRunAccessionWithValidation = ({
     }
 
     if (!skipClear) {
-      // Emptying the input must also drop any debounce timer or in-flight
-      // request for the accession just added, or it would repopulate the
-      // message for an accession the user can no longer see.
+      // Emptying the input also drops any debounce timer or in-flight request,
+      // or it would repopulate the message for an accession no longer visible.
       cancelPendingValidation();
       setSraAccession("");
       onChange?.("");
@@ -260,11 +243,6 @@ const SraRunAccessionWithValidation = ({
     }
   };
 
-  /**
-   * Shared automatic-add decision for both the debounced input path and the
-   * `defaultValue` path: when the caller renders no add button, a freshly
-   * validated accession is added unless every run is already selected.
-   */
   const autoAddValidatedResult = (
     accession: string,
     result: SraValidationResult,
@@ -279,11 +257,6 @@ const SraRunAccessionWithValidation = ({
     applyValidationResult(accession, result, { skipClear: true });
   };
 
-  /**
-   * Validates one accession and, when the request is still the current one,
-   * reflects the outcome in validation state. Returns the result only for the
-   * current request, so callers never act on a superseded response.
-   */
   const validateAccession = async (
     accession: string,
   ): Promise<SraValidationResult | null> => {
@@ -408,8 +381,8 @@ const SraRunAccessionWithValidation = ({
     }
   };
 
-  // An accepted accession can still carry a message (a timeout's), so
-  // acceptance is checked before the message is read as a failure.
+  // An accepted accession can still carry a message (a timeout's), so check
+  // acceptance before reading the message as a failure.
   const validationStatus = isValidating
     ? "validating"
     : isValidSra

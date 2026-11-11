@@ -5,9 +5,8 @@ import { ErrorAlert } from "./error-alert";
 import { ViewNavRail } from "./view-nav-rail";
 
 /**
- * A genome member page (`/genome/<id>`): the view rail's tabs and the nested table a data tab
- * shows (Features, Sequences, ...). The table's page and sort live in the address under the
- * tab's `<urlKey>.` prefix (`features.sort`, `features.page`).
+ * A genome member page (`/genome/<id>`); a data tab's table keeps its page
+ * and sort under the tab's `<urlKey>.` prefix.
  */
 export class GenomeMemberPage {
   readonly page: Page;
@@ -21,9 +20,8 @@ export class GenomeMemberPage {
   }
 
   /**
-   * Open a genome member page, on `tab` if given. Opening a data tab by URL lets its table rows
-   * (fetched client-side) prove the page has hydrated before any tab click: a click that lands
-   * before hydration is lost, because the view rail switches tabs only from a click handler.
+   * Opening a data tab by URL lets its client-fetched rows prove hydration
+   * before any tab click, which would otherwise be lost.
    */
   async goto(genomeId: string, tab?: string): Promise<void> {
     await this.page.goto(
@@ -33,44 +31,33 @@ export class GenomeMemberPage {
   }
 
   /**
-   * The view rail has hydrated, so a click on one of its tabs will be handled. For a tab with no
-   * client-loaded table to wait on (the overview is server-rendered throughout). Before this, the
-   * rail's buttons have no handlers and a click is lost. The navbar is no proxy: it sits outside
-   * the page's Suspense boundary (`genome/loading.tsx`), and React commits that shell before it
-   * hydrates the streamed page, so the navbar can be live while the rail is not.
+   * For tabs with no client-loaded table to wait on. The navbar is no proxy:
+   * it sits outside the page's Suspense boundary and can hydrate before the
+   * rail.
    */
   async waitForHydration(): Promise<void> {
     await this.viewNav.waitForHydration();
   }
 
-  /** The in-shell error a genome page shows when the data service could not load its record. */
   unavailable(genomeId: string): ErrorAlert {
     return new ErrorAlert(this.page, `Genome ${genomeId} could not be loaded`);
   }
 
-  /** Switch tab from the view rail (a router navigation, so one history entry). */
   async openTab(label: string): Promise<void> {
     await this.page.getByRole("button", { name: label, exact: true }).click();
   }
 
-  /**
-   * A data row is on screen: the nested table has loaded, not just its skeleton. The rows are
-   * fetched client-side, so this also means the page has hydrated and a click will be handled.
-   */
+  /** Rows load client-side, so a row also proves the page has hydrated. */
   async expectRow(name: string | RegExp): Promise<void> {
     await expect(this.page.getByRole("row", { name })).toBeVisible();
   }
 
   /**
-   * Give the page's own follow-up requests time to finish, as a heuristic. After a history step
-   * that loads a document (a Back or Forward over entries from an earlier document), Next
-   * re-fetches the page's RSC payload once it has hydrated, and WebKit cancels the next history
-   * step ("Navigation canceled by policy check") if it is taken while that fetch is pending.
-   * `networkidle` resolves after the first 500 ms with no network activity following the content
-   * wait that precedes this call. It does not know about the fetch, so a request that starts
-   * after that quiet spell is missed, and it resolves at once after a same-document step. If CI
-   * shows "Navigation canceled by policy check", replace it with deterministic `?_rsc=` in-flight
-   * tracking, as `trackPrefetches` in `e2e/tests/organisms/view-rail.spec.ts` does.
+   * Heuristic wait. After a document-loading history step Next re-fetches the
+   * RSC payload, and WebKit cancels the next step if taken while it is
+   * pending; `networkidle` cannot see that fetch. If CI shows "Navigation
+   * canceled by policy check", track `?_rsc=` requests as `trackPrefetches`
+   * in `e2e/tests/organisms/view-rail.spec.ts` does.
    */
   async settle(): Promise<void> {
     await this.page.waitForLoadState("networkidle");
@@ -90,8 +77,8 @@ export class GenomeMemberPage {
   }
 
   /**
-   * Click a column's sort button; it also resets the page. The first click sorts a text column
-   * ascending but a numeric one descending, so tests sort by a text column.
+   * The first click sorts a text column ascending but a numeric one
+   * descending, so tests sort by a text column.
    */
   async sortBy(label: string): Promise<void> {
     await this.sortButton(label).click();
@@ -104,10 +91,6 @@ export class GenomeMemberPage {
     await expect(this.columnHeader(label)).toHaveAttribute("aria-sort", state);
   }
 
-  /**
-   * The `sort` param of the open table's next rows read (not its facet counts' read), which
-   * `action` starts: the order the rows are asked for, or `null` to leave it to the backend.
-   */
   async rowsReadSort(
     resource: string,
     action: () => Promise<void>,
@@ -125,12 +108,7 @@ export class GenomeMemberPage {
     return new URL((await read).url()).searchParams.get("sort");
   }
 
-  /**
-   * How the header of `sorted` shows its sort, against the unsorted `other`: a sorted column's
-   * header takes an `info` tint and an `info` rule along its bottom edge (an inset shadow), and
-   * its chevron is drawn in that same color. `sorted` null checks that `other` shows none of it.
-   * jsdom computes no Tailwind styles, so only a browser can check them.
-   */
+  /** Checked in a browser because jsdom computes no Tailwind styles. */
   async expectSortHighlight(
     sorted: string | null,
     other: string,
@@ -158,7 +136,6 @@ export class GenomeMemberPage {
     expect(highlighted.rule).toContain(highlighted.chevron ?? "a chevron");
   }
 
-  /** Polls the address for the given query params (`null` = absent). */
   async expectUrlParams(
     expected: Record<string, string | null>,
   ): Promise<void> {
@@ -166,8 +143,8 @@ export class GenomeMemberPage {
   }
 
   /**
-   * Entries in the session history. A user action that adds more than one has left an
-   * intermediate entry that Back would stop on.
+   * A user action that adds more than one entry leaves an intermediate one
+   * that Back would stop on.
    */
   async historyLength(): Promise<number> {
     return this.page.evaluate(() => window.history.length);

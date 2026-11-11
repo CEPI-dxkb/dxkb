@@ -5,11 +5,6 @@ import { ServerDataRepository } from "../repository";
 
 const emptyPage = { response: { numFound: 0, docs: [] } };
 
-/**
- * Answer every upstream GET for `resource` with `body` as JSON (an empty Solr
- * page by default), recording each request so a test can read it off the
- * wire.
- */
 function captureGets(
   resource: string,
   body: JsonBodyType = emptyPage,
@@ -92,8 +87,6 @@ describe("ServerDataRepository", () => {
 
     expect(requested).toHaveLength(3);
     const urls = requested.map((request) => decodeURIComponent(request.url));
-    // The rows ride with the first facet; the others read one id each over
-    // the same predicate, unsorted.
     expect(urls[0]).toContain("facet(genus,");
     expect(requested[0].headers.get("Range")).toBe("items=200-400");
     for (const [index, field] of ["genome_status", "host_name"].entries()) {
@@ -147,7 +140,6 @@ describe("ServerDataRepository", () => {
       host_name: [{ value: "host_name value", count: 3 }],
     });
 
-    // One distinct facet is one read, which names it once.
     requested.length = 0;
     await repository.collection("genome", {
       operation: "collection",
@@ -302,9 +294,8 @@ describe("ServerDataRepository", () => {
   });
 
   it("anchors a keyword of only negations beside a scope", async () => {
-    // The Data API brackets the keyword clauses, and a bracketed group with no
-    // positive clause matches nothing: genome 83332.12's features without
-    // hypothetical and putative are 8,141, and(not(...),not(...)) nested 0.
+    // The Data API brackets keyword clauses, and a bracketed group with no
+    // positive clause matches nothing.
     const requested = captureGets("genome_feature");
 
     await new ServerDataRepository({
@@ -467,7 +458,6 @@ describe("ServerDataRepository", () => {
         { operation: "collection", rql: "eq(pdb_id,*)" },
       ),
     ).rejects.toMatchObject({
-      // The real cause stays: the gateway's 500, and the 503 page it quoted.
       message:
         "The BV-BRC data service is unavailable (HTTP 500 Internal Server Error: 503 Service Unavailable).",
       status: 503,
@@ -518,8 +508,7 @@ describe("ServerDataRepository", () => {
   it("forwards abort signals and cache options to the upstream request", async () => {
     const requested = captureGets("genome", [{ genome_id: "1.1" }]);
     // `next` is Next.js's extension to fetch's init: it never reaches the
-    // Request MSW sees, so only the call shows it. The spy passes through to
-    // MSW, so the request still goes over the intercepted wire.
+    // Request MSW sees, so only the call shows it.
     const fetchSpy = vi.spyOn(globalThis, "fetch");
     onTestFinished(() => {
       fetchSpy.mockRestore();
@@ -531,8 +520,6 @@ describe("ServerDataRepository", () => {
       cache: "force-cache",
       revalidate: 300,
     }).member("genome", { operation: "member", id: "1.1" }, controller.signal);
-    // The Request's signal follows the caller's, so aborting it now shows the
-    // two are linked.
     controller.abort();
 
     expect(requested).toHaveLength(1);
@@ -544,16 +531,6 @@ describe("ServerDataRepository", () => {
     );
   });
 
-  // `operation: "selected"` is the selected-row export path. It used to live in
-  // DataTable as a hand-built raw GET against NEXT_PUBLIC_DATA_API; plan item 20A
-  // deleted that fallback and routed the behaviour through here, so these four
-  // cases are the successors to the ones deleted with it — including the named
-  // ERR_FAILED regression guard, which is why the request must be a POST with the
-  // predicate in the body rather than a GET with it in the URL.
-  //
-  // MSW rather than an injected fetcher: the assertions are about the request on
-  // the wire (method, body, Range header), so they have to be read off a real
-  // Request.
   describe("selected-row export (rows)", () => {
     function repository(): ServerDataRepository {
       return new ServerDataRepository({ baseUrl: "https://data.test" });
@@ -567,7 +544,6 @@ describe("ServerDataRepository", () => {
       contentType: string | null;
     }
 
-    /** Capture the single upstream request `selected` makes for `resource`. */
     function captureSelected(
       resource: string,
       rows: Record<string, unknown>[] | { items: Record<string, unknown>[] },
@@ -593,8 +569,6 @@ describe("ServerDataRepository", () => {
     }
 
     it("POSTs the id predicate in the body, keyed off the registry idField", async () => {
-      // genome's idField is genome_id, not the literal "id" — the deleted
-      // DataTable fallback got this from a per-resource table of its own.
       const captured = captureSelected("genome", [
         { genome_id: "1234.1", genome_name: "One" },
       ]);
@@ -614,8 +588,6 @@ describe("ServerDataRepository", () => {
       expect(captured.contentType).toBe(
         "application/rqlquery+x-www-form-urlencoded",
       );
-      // The predicate must not also travel in the URL — that is the shape that
-      // blew the length limit.
       expect(captured.url).not.toContain("in(genome_id");
     });
 
@@ -661,8 +633,6 @@ describe("ServerDataRepository", () => {
     });
 
     it("regression: 200 selected ids travel intact in the POST body", async () => {
-      // The GET-with-RQL-in-the-URL shape this replaced exceeded browser and
-      // server URL limits at this volume and failed with net::ERR_FAILED.
       const ids = Array.from(
         { length: 200 },
         (_, index) => `id-${String(index).padStart(4, "0")}`,
@@ -686,10 +656,6 @@ describe("ServerDataRepository", () => {
     });
   });
 
-  // These use MSW (real network-level interception via global fetch) rather
-  // than an injected fetcher, so `response.json()` runs against a genuine
-  // HTTP response — exercising the actual parse-failure-to-null path in
-  // `request()`, not a stand-in for it.
   describe("normalizeRows rejects malformed successful responses", () => {
     const genomeUrl = "https://data.test/genome/";
 
@@ -783,11 +749,6 @@ describe("ServerDataRepository", () => {
       ).resolves.toEqual({ rows: [] });
     });
   });
-  // genome_amr is the one registry resource with no row fixture anywhere in
-  // this repo, and `parseRows` turns a schema mismatch into a 502 that blanks
-  // the whole AMR list. These pin the shapes its columns actually arrive in, so
-  // the deliberately-minimal `genomeAmrRecordSchema` is a checked contract
-  // rather than an untested guess.
   describe("genome_amr row shapes", () => {
     const amrUrl = "https://data.test/genome_amr/";
     const amrRepository = () =>
@@ -800,12 +761,10 @@ describe("ServerDataRepository", () => {
       antibiotic: "ampicillin",
       resistant_phenotype: "Resistant",
       // Non-numeric by design: AMR measurements carry the comparison in the
-      // value, which is why measurement_value is left string-typed in the
-      // registry.
+      // value.
       measurement_value: ">=32",
       measurement_sign: ">=",
       measurement_unit: "mg/L",
-      // Lists on rows that cite more than one source.
       pmid: ["12345", "67890"],
       evidence: ["Laboratory Method"],
       laboratory_typing_method: "Broth dilution",
@@ -875,9 +834,6 @@ describe("ServerDataRepository", () => {
   });
 });
 
-// MSW for the same reason as the selected-row block above: the contract is the
-// request on the wire (method, body, Accept, Range) and a body that is passed
-// through rather than parsed.
 describe("ServerDataRepository.fasta", () => {
   const record =
     ">fig|644340.17.peg.16| Flagellar biosynthesis protein FliQ\nMNEADALDIV\n";

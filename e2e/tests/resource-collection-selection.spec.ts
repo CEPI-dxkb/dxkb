@@ -9,11 +9,8 @@ import { ResourceCollectionPage } from "../pages";
 test.use({ storageState: { cookies: [], origins: [] } });
 
 /**
- * The selection column's header checkbox in the production build. The unit suite
- * renders DataTable without the React Compiler, which once memoized this header on
- * the table instance (created once, so never a new value) and froze it in its first
- * state: unchecked, labelled "Select all rows on this page", and toggling the page
- * on again when clicked. Only a compiled build shows that.
+ * The selection column's header checkbox in the production build: the React Compiler
+ * once froze it unchecked, which only a compiled build shows.
  */
 
 const firstRow = { genome_id: "1282460.2049", genome_name: "Selected genome" };
@@ -54,22 +51,18 @@ test("the header checkbox follows the page selection and the all-results selecti
   await expect(header).toHaveAccessibleName("Select all rows on this page");
   await expect(header).not.toBeChecked();
 
-  // Part of the page.
   await collection.rowCheckbox(firstRow.genome_id).check();
   await expect(header).toBeChecked({ indeterminate: true });
 
-  // The whole page; `check` fails if the header does not turn checked.
   await header.check();
   await expect(header).toHaveAccessibleName("Deselect all rows on this page");
   await expect(collection.rowCheckbox(secondRow.genome_id)).toBeChecked();
 
-  // And clicked again, the page is cleared rather than selected a second time.
   await header.uncheck();
   await expect(header).toHaveAccessibleName("Select all rows on this page");
   await expect(collection.rowCheckbox(firstRow.genome_id)).not.toBeChecked();
   await expect(collection.rowCheckbox(secondRow.genome_id)).not.toBeChecked();
 
-  // Every matching result.
   await header.check();
   await collection.selectAllResults(401);
   await expect(header).toHaveAccessibleName("Deselect all results");

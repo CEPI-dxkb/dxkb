@@ -32,10 +32,9 @@ const treeXml = `<?xml version="1.0" encoding="UTF-8"?>
 
 async function openPhylogeny(page: Page) {
   await applyBackendMocks(page);
-  // The tree lookup runs for real: this route goes to the app's server, whose
-  // tree index downloads PHYLO_TREE_DICTIONARY_URL, the e2e loopback's
-  // `phylo-tree-dictionary` ({ "234": "regression.xml" }). Registered after
-  // applyBackendMocks, so it wins over the strict guard.
+  // This route reaches the app's server, whose tree index downloads
+  // PHYLO_TREE_DICTIONARY_URL (the loopback's `phylo-tree-dictionary`). Registered
+  // after applyBackendMocks, so it beats the strict guard.
   await page.route("**/api/phylogeny/bacterial-trees/**", (route) =>
     route.continue(),
   );
@@ -77,8 +76,6 @@ test.describe("Archaeopteryx phylogeny viewer", () => {
     const tree = await openPhylogeny(page);
 
     await expect(tree.node("Leaf B")).toBeVisible();
-    // 3.25 retired custom node-label checkboxes: the tree's own properties
-    // are offered through the Metadata checkbox instead.
     for (const label of ["Node Name", "Metadata"]) {
       await expect(tree.displayCheckbox(label)).toBeAttached();
     }

@@ -18,9 +18,8 @@ import { formatCount, type TaxonMatch } from "@/lib/search/all-types-search";
 import { cn } from "@/lib/utils";
 
 /**
- * The taxon views "Explore taxon" offers: only tabs every taxon has. Strains,
- * Surveillance, Serology and Phylogeny depend on the taxon, and a link to a
- * tab it lacks lands on the Overview.
+ * Only tabs every taxon has: Strains, Surveillance, Serology and Phylogeny
+ * depend on the taxon, and a link to a missing tab lands on the Overview.
  */
 const exploredViews: readonly OrganismViewKey[] = [
   "genomes",
@@ -105,10 +104,6 @@ function BestMatch({ match }: { match: TaxonMatch }) {
   );
 }
 
-/**
- * The page header, in the entity views' header card: the search, its totals,
- * and the best-matching taxon with links into its views.
- */
 export function SearchResultsHeader({
   keyword,
   summary,
@@ -120,7 +115,6 @@ export function SearchResultsHeader({
   summary: string;
   bestMatch: TaxonMatch | null;
   actions?: ReactNode;
-  /** A deeper shadow, for while results scroll under the pinned header. */
   raised?: boolean;
 }) {
   return (

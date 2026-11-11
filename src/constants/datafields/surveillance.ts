@@ -121,7 +121,6 @@ export const surveillanceFields = {
         search: true 
         },
         
-    // Sample Collection
     collector_name: { 
         label: 'Collector Name', 
         field: 'collector_name', 
@@ -249,7 +248,6 @@ export const surveillanceFields = {
         search: true  
         },
         
-    // Sample Tests
     pathogen_test_type: { 
         label: 'Pathogen Test Type', 
         field: 'pathogen_test_type', 
@@ -314,7 +312,6 @@ export const surveillanceFields = {
         search: true  
         },
         
-    // Host Info
     host_identifier: { 
         label: 'Host Identifier', 
         field: 'host_identifier', 
@@ -433,7 +430,6 @@ export const surveillanceFields = {
         search: true 
         },
         
-    // Environmental Exposure
     exposure: { 
         label: 'Exposure', 
         field: 'exposure', 
@@ -525,7 +521,6 @@ export const surveillanceFields = {
         search: true 
         },
         
-    // Clinical Data
     pregnancy: { 
         label: 'Pregnancy', 
         field: 'pregnancy', 
@@ -680,7 +675,6 @@ export const surveillanceFields = {
         search: true 
         },
         
-    // Medical History
     chronic_conditions: { 
         label: 'Chronic Conditions', 
         field: 'chronic_conditions', 
@@ -736,7 +730,6 @@ export const surveillanceFields = {
         search: true 
         },
         
-    // Symptoms/Diagnosis
     symptoms: { 
         label: 'Symptoms', 
         field: 'symptoms', 
@@ -792,7 +785,6 @@ export const surveillanceFields = {
         search: true 
         },
         
-    // Treatment
     treatment_type: { 
         label: 'Treatment Type', 
         field: 'treatment_type', 
@@ -839,7 +831,6 @@ export const surveillanceFields = {
         search: true 
         },
         
-    // Vaccination
     vaccination_type: { 
         label: 'Vaccination Type', 
         field: 'vaccination_type', 
@@ -904,7 +895,6 @@ export const surveillanceFields = {
         search: true 
         },
         
-    // Other
     additional_metadata: { 
         label: 'Additional Metadata', 
         field: 'additional_metadata', 

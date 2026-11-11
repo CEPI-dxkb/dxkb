@@ -98,7 +98,7 @@ describe("loadChunks", () => {
       .mockResolvedValue({ start: 0, end: 10 });
     const request = { ...options(0, 10), fetchSpan };
     const staleRead = loadChunks(request);
-    request.cache.clear(); // an account change, while the first read is in flight
+    request.cache.clear();
     await expect(loadChunks(request)).resolves.toEqual(["0-10"]);
     stale.reject(new Error("Could not reach the data service"));
     await expect(staleRead).rejects.toThrow("Could not reach the data service");

@@ -127,7 +127,6 @@ export function DataRow({
   }
 
   function handleIconClick(e: React.MouseEvent) {
-    // Only fire when the click target is the icon itself (data-icon-action).
     const target = e.target as HTMLElement;
     if (!target.closest("[data-icon-action]")) return;
     e.stopPropagation();
@@ -145,7 +144,6 @@ export function DataRow({
   function handleIconDoubleClick(e: React.MouseEvent) {
     const target = e.target as HTMLElement;
     if (!target.closest("[data-icon-action]")) return;
-    // Suppress the row dblclick — the first click already navigated.
     e.stopPropagation();
   }
 

@@ -2,10 +2,8 @@ import { glob, readFile } from "node:fs/promises";
 import { resolve, sep } from "node:path";
 
 /**
- * Line-anchored so a commented-out or otherwise unreachable call cannot satisfy
- * the guard assertion. The optional binding prefix covers the destructuring form
- * (`const { id } = await requireCurrentUserOrRedirect(...)`); the import line has
- * no `await` and no open paren after the name, so it never matches.
+ * Line-anchored so a commented-out call cannot satisfy the guard; the import
+ * line has no `await`, so it never matches.
  */
 const guardCallPattern =
   /^\s*(?:(?:const|let|var)\s+[^=]+=\s*)?await\s+requireCurrentUserOrRedirect\(/m;
@@ -24,10 +22,6 @@ const protectedLayouts = [
   "src/app/workspace/layout.tsx",
 ] as const;
 
-/**
- * Layouts that must stay unguarded — hence the symmetric assertion, not just an
- * omission.
- */
 const publicLayouts = [
   "src/app/layout.tsx",
   "src/app/(auth)/layout.tsx",
@@ -40,10 +34,6 @@ const publicLayouts = [
   "src/app/services/layout.tsx",
 ] as const;
 
-/**
- * Workspace pages that only redirect to another workspace page, which runs the
- * check itself. Every other workspace page must validate the user.
- */
 const workspaceRedirectPages = new Set<string>([
   "src/app/workspace/home/[[...path]]/page.tsx",
   "src/app/workspace/shared/[[...path]]/page.tsx",
@@ -63,7 +53,6 @@ describe("protected route server boundaries", () => {
       discovered.push(match.split(sep).join("/"));
     }
 
-    // A new layout is unclassified until it is added to one of the two lists.
     expect(discovered.toSorted()).toEqual(
       [...protectedLayouts, ...publicLayouts].toSorted(),
     );
@@ -77,9 +66,8 @@ describe("protected route server boundaries", () => {
   );
 
   it("validates the current user in every workspace page that renders", async () => {
-    // Layouts are not re-rendered on client-side navigation, so the workspace
-    // layout guard alone would miss a folder-to-folder move on an expired
-    // session. Each rendering page repeats the check.
+    // Layouts are not re-rendered on client-side navigation, so each rendering
+    // page repeats the check.
     const discovered: string[] = [];
     for await (const match of glob("src/app/workspace/**/page.tsx")) {
       discovered.push(match.split(sep).join("/"));

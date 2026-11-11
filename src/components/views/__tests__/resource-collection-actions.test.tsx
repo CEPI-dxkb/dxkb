@@ -14,35 +14,19 @@ import { ResourceCollection } from "../resource-collection";
 import { createResourceCollectionResult } from "./fixtures/resource-collection-result";
 
 /**
- * Where the action bar and its dialogs *mount*, rather than what they do —
- * `resource-collection.test.tsx` covers behaviour, but it replaces
- * `ResourceWorkspace` with a flat stand-in, so it cannot see this at all.
- *
- * Two separate guarantees are exercised, and the real workspace plus the real action
- * bar are used on purpose because only that pair can show either:
- *
- * 1. Crossing the `md` breakpoint re-styles the workspace's slots instead of
- *    re-parenting them. `ResourceWorkspace` renders one subtree at every width, so a
- *    window resize or a tablet rotation must not remount the table or the bar, and
- *    must not discard table-local state. It used to return two structurally different
- *    trees and did exactly that.
- * 2. A collection error still drops the action bar, and the retry alert takes the
- *    table's place. The Taxonomy launch resolves IDs over the network first, so
- *    anything it kept inside that slot would be thrown away mid-flight: no chooser, no
- *    error, no spinner, just a click that vanished. That is why the chooser is a
- *    sibling of the workspace rather than a descendant.
+ * Real workspace and action bar: only that pair shows that crossing `md`
+ * re-styles slots instead of remounting them.
  */
 const { useResourceCollection, slotLog } = vi.hoisted(() => ({
   useResourceCollection: vi.fn<typeof useResourceCollectionHook>(),
-  /** Mount/cleanup entries recorded by the table stand-in below. */
   slotLog: [] as string[],
 }));
 
 vi.mock("@/hooks/views/use-resource-collection", () => ({
   useResourceCollection,
 }));
-// Panel primitives only (jsdom has no ResizeObserver); the responsive
-// `ResourceWorkspace` itself stays real, because it is what is under test.
+// Panel primitives only (jsdom has no ResizeObserver); `ResourceWorkspace`
+// stays real.
 vi.mock("@/components/ui/resizable", () => ({
   ResizablePanelGroup: ({
     children,
@@ -61,9 +45,6 @@ vi.mock("@/components/ui/resizable", () => ({
   ),
 }));
 vi.mock("@/components/shared/data-table", () => ({
-  // Carries state of its own, standing in for the real table's row selection,
-  // scroll offset and column sizing — none of which the shell owns, so only the
-  // table's own mount can preserve them.
   DataTable: () => {
     const [localState, setLocalState] = useState("");
     useEffect(() => {
@@ -98,9 +79,6 @@ vi.mock("../taxonomy-service-chooser", async () =>
     await import("./fixtures/resource-collection-mocks")
   ).taxonomyServiceChooserMock(),
 );
-// The dependencies `CollectionSelectionActions` brings with it, for the non-Taxonomy
-// half of the suite. Its COPY / SERVICES / GROUP progress lives in its own instance
-// inside the `actionBar` slot, which is exactly what a slot remount would destroy.
 vi.mock("@tanstack/react-query", async () =>
   (await import("./fixtures/resource-collection-mocks")).reactQueryMock(),
 );
@@ -136,7 +114,6 @@ vi.mock("@/components/workspace/selection-to-group-dialog", async () =>
   ).selectionToGroupDialogMock(),
 );
 
-/** A `matchMedia` whose `matches` can change and notify, like a real resize. */
 function mockViewport(initiallyNarrow = false) {
   const listeners = new Set<() => void>();
   const state = { matches: initiallyNarrow };
@@ -205,7 +182,6 @@ function renderTaxonomyCollection(repository: DataRepository) {
   return render(taxonomyCollection(repository));
 }
 
-/** Two explicitly selected Genome rows, so COPY, SERVICES and GROUP are all live. */
 function selectedGenomeCollection() {
   const rows = [{ genome_id: "83332.12" }, { genome_id: "83332.13" }];
   return {
@@ -235,8 +211,8 @@ function renderGenomeCollection(repository: DataRepository) {
   );
 }
 
-// Loose match: the bar swaps SERVICES' icon for a spinner while it resolves, and
-// the spinner's own "Loading" label joins the button's accessible name.
+// Loose match: the spinner's "Loading" label joins the button's accessible
+// name.
 const servicesButton = () => screen.getByRole("button", { name: /services/i });
 const resolvingSpinner = () =>
   screen.queryByRole("status", { name: "Loading" });
@@ -271,12 +247,9 @@ describe("ResourceCollection action mounting across the workspace breakpoint", (
 
     await user.click(servicesButton());
     expect(exportAll).toHaveBeenCalledTimes(1);
-    // The bar shows a spinner and disables the entry while the IDs resolve.
     expect(resolvingSpinner()).toBeInTheDocument();
     expect(servicesButton()).toBeDisabled();
 
-    // The window crosses the md breakpoint mid-resolution, which turns the
-    // workspace's panel group through 90 degrees without re-parenting its slots.
     act(() => {
       viewport.crossBreakpoint(true);
     });
@@ -284,8 +257,6 @@ describe("ResourceCollection action mounting across the workspace breakpoint", (
       "data-layout",
       "stacked",
     );
-    // The bar still reports the pending launch rather than quietly going idle on
-    // one that is still running.
     expect(resolvingSpinner()).toBeInTheDocument();
     expect(servicesButton()).toBeDisabled();
     expect(slotLog).toStrictEqual(["mount:table"]);
@@ -295,7 +266,6 @@ describe("ResourceCollection action mounting across the workspace breakpoint", (
       await Promise.resolve();
     });
 
-    // The launch lands: chooser open, on the IDs the request returned.
     expect(await screen.findByTestId("taxonomy-services")).toHaveTextContent(
       "234,235",
     );
@@ -328,8 +298,6 @@ describe("ResourceCollection action mounting across the workspace breakpoint", (
       viewport.crossBreakpoint(true);
     });
 
-    // The chooser is rendered at section level, outside the workspace, so the
-    // layout switch cannot close it or drop what it is working with.
     expect(document.querySelector("[data-layout]")).toHaveAttribute(
       "data-layout",
       "stacked",
@@ -347,9 +315,6 @@ describe("ResourceCollection action mounting across the workspace breakpoint", (
       selected: vi.fn(() => Promise.resolve({ rows: [] })),
     } as unknown as DataRepository);
 
-    // `isNarrow` can only become true once the effect has read `matchMedia`, so a
-    // layout picked by branching mounted the whole collection wide and then threw
-    // it away on the very first paint of every phone-sized page load.
     expect(document.querySelector("[data-layout]")).toHaveAttribute(
       "data-layout",
       "stacked",
@@ -391,13 +356,10 @@ describe("ResourceCollection action mounting across the workspace breakpoint", (
           "data-orientation",
           narrow ? "vertical" : "horizontal",
         );
-        // One mount, no cleanup, in either direction — so the table keeps the
-        // state only its own instance holds.
         expect(slotLog).toStrictEqual(["mount:table"]);
         expect(screen.getByLabelText("table local state")).toHaveValue(
           "scrolled-to-row-40",
         );
-        // And the bar is re-styled, not duplicated into a hidden second copy.
         expect(
           screen.getAllByRole("button", { name: /services/i }),
         ).toHaveLength(1);
@@ -421,8 +383,6 @@ describe("ResourceCollection action mounting across the workspace breakpoint", (
       "234",
     );
 
-    // A background refetch failing swaps the table for an error alert and
-    // takes the action bar with it.
     useResourceCollection.mockReturnValue({
       ...allPagesTaxonomyCollection(),
       error: new Error("Data service is unavailable (503)"),
@@ -433,18 +393,10 @@ describe("ResourceCollection action mounting across the workspace breakpoint", (
     expect(
       screen.queryByRole("button", { name: /services/i }),
     ).not.toBeInTheDocument();
-    // The chooser is not in the workspace, so it stays open on its own IDs.
     expect(screen.getByTestId("taxonomy-services")).toHaveTextContent("234");
   });
 });
 
-/**
- * `CollectionSelectionActions` is the other half of the action bar, and unlike the
- * Taxonomy workflow it deliberately keeps its own state — `isCopyOpen`,
- * `isServiceOpen`, `isGroupOpen`, `selectionIds`, `loadingActionIds` and the overlap
- * ref — inside the `actionBar` slot. Hoisting all of that into every consumer is not
- * the fix (see the item's stop condition); the workspace not re-parenting the slot is.
- */
 describe("CollectionSelectionActions progress across the workspace breakpoint", () => {
   const copyButton = () => screen.getByRole("button", { name: /^copy$/i });
   const groupButton = () => screen.getByRole("button", { name: /^group$/i });
@@ -480,8 +432,6 @@ describe("CollectionSelectionActions progress across the workspace breakpoint", 
         act(() => {
           viewport.crossBreakpoint(narrow);
         });
-        // The spinner is `loadingActionIds`, owned by the bar itself, so seeing it
-        // here means the bar's own instance survived the layout change.
         expect(resolvingSpinner()).toBeInTheDocument();
         expect(servicesButton()).toBeDisabled();
       }
@@ -532,7 +482,6 @@ describe("CollectionSelectionActions progress across the workspace breakpoint", 
           "data-layout",
           narrow ? "stacked" : "resizable",
         );
-        // Both dialogs render inside the bar, under `isCopyOpen`/`isGroupOpen`.
         expect(screen.getByTestId("copy-dialog")).toBeInTheDocument();
         expect(screen.getByTestId("selection-group")).toHaveTextContent(
           "83332.12,83332.13",

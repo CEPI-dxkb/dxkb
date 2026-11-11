@@ -39,7 +39,8 @@ describe("mapLegacyViewPath", () => {
     });
   });
   it("leaves the lineage field alone in value position", () => {
-    // A bare token is a value here, not a field, so renaming it would change the query.
+    // A bare token is a value here, not a field, so renaming it would change
+    // the query.
     expect(
       mapLegacyViewPath("/view/TaxonList/", "keyword(taxon_lineage_ids)"),
     ).toEqual({
@@ -176,18 +177,6 @@ describe("mapLegacyViewPath", () => {
       search: "keyword=mycobacterium+tuberculosis",
     });
   });
-  // Legacy's own links carry a lone keyword(x) (`/view/FeatureList/?keyword(Dnak)`),
-  // and its search box sends a multi-word search as one clause per word
-  // (`and(keyword(coli),keyword(Salmonella))`). As `?keyword=` the Feature list
-  // applies its PATRIC default and the Genome list's related tabs run the
-  // keyword themselves, as legacy does; as `?rql=` neither would. `?keyword=`
-  // sends one exact clause per word or quoted phrase, so it keeps a link's
-  // meaning wherever the keyword reads back as written: unquoted words (the
-  // Data API matches keyword(coli Salmonella) like the per-word clauses: 1,933
-  // genomes on alpha), a quoted single word, whose quotes it keeps
-  // (keyword("Rv0001") is 1 PATRIC feature, keyword(Rv0001) 341,190), and a
-  // quoted phrase, which it sends whole (keyword("DNA polymerase"): 16,285,620
-  // PATRIC features, the words apart 22,504,678).
   it.each([
     ["/view/FeatureList/", "keyword(Dnak)", "/feature", "keyword=Dnak"],
     ["/view/GenomeList/", "keyword(Dnak)", "/genome", "keyword=Dnak"],
@@ -253,16 +242,9 @@ describe("mapLegacyViewPath", () => {
       "/feature",
       "keyword=%22Rv0001%22+coli",
     ],
-    // `?keyword=` reads Solr syntax as spaces (`keywordQuery`). Solr splits a
-    // word at these anyway (keyword(coli-K12) and the parts ANDed are both
-    // 1,666 genomes), and keyword(GO:0003677) is an HTTP 400 as written.
     ["/view/GenomeList/", "keyword(coli-K12)", "/genome", "keyword=coli-K12"],
     ["/view/GenomeList/", "keyword(H1N1/2009)", "/genome", "keyword=H1N1/2009"],
     ["/view/FeatureList/", "keyword(GO:0003677)", "/feature", "keyword=GO:0003677"],
-    // ?keyword= reads Solr's operators as Solr does inside one clause
-    // (keyword(coli -Salmonella) and keyword(coli NOT Salmonella) are both
-    // 132,341 genomes, keyword(coli OR Salmonella) and keyword(coli ||
-    // Salmonella) 195,658), and sends them as RQL, so the OR cannot leak out.
     ["/view/GenomeList/", "keyword(coli -Salmonella)", "/genome", "keyword=coli+-Salmonella"],
     [
       "/view/GenomeList/",
@@ -284,10 +266,6 @@ describe("mapLegacyViewPath", () => {
     expect(mapLegacyViewPath(path, rawSearch)).toEqual({ pathname, search });
   });
 
-  // Anything `?keyword=` would not send as written stays RQL: a keyword beside
-  // another clause, keyword(*), a list without the keyword redirect, and a
-  // quote `?keyword=` would rebalance (an open quote, which Solr rejects, or a
-  // quote inside a word).
   it.each([
     ["/view/FeatureList/", "and(keyword(Dnak),eq(feature_type,CDS))", "/feature", "rql=and(keyword(Dnak),eq(feature_type,CDS))"],
     ["/view/GenomeList/", "keyword(*)", "/genome", "rql=keyword(*)"],
@@ -311,11 +289,6 @@ describe("mapLegacyViewPath", () => {
       "/genome",
       "rql=keyword(RNA%22pol%22)",
     ],
-    // Legacy's search box puts a NOT inside an OR only by mistake, and the Data
-    // API reads or(not(keyword(coli)),keyword(Salmonella)) as Lucene does
-    // (Salmonella AND NOT coli, 61,384 genomes) where ?keyword= offers the NOT
-    // as an OR (16,901,125). A search of only NOTs, and(not(...),not(...)), is
-    // 0 rows as written and anchored on ?keyword=.
     [
       "/view/GenomeList/",
       "or(not(keyword(coli)),keyword(Salmonella))",
@@ -328,8 +301,6 @@ describe("mapLegacyViewPath", () => {
       "/genome",
       "rql=and(not(keyword(coli)),not(keyword(Salmonella)))",
     ],
-    // A lone keyword with a NOT inside its OR is sent as Solr reads it, coli
-    // AND NOT Salmonella (132,341 genomes), as RQL, so the OR cannot leak.
     [
       "/view/GenomeList/",
       "keyword(coli OR NOT Salmonella)",
@@ -342,15 +313,12 @@ describe("mapLegacyViewPath", () => {
       "/genome",
       "rql=or(keyword(coli),not(keyword(Salmonella)))",
     ],
-    // A value's dangling operator must not join the next value.
     [
       "/view/GenomeList/",
       "and(keyword(coli OR),keyword(Salmonella))",
       "/genome",
       "rql=and(keyword(coli+OR),keyword(Salmonella))",
     ],
-    // A multi-word OR option would read differently as text: `E coli OR x` is
-    // E AND (coli OR x).
     [
       "/view/GenomeList/",
       "or(keyword(E%20coli),keyword(Salmonella))",
@@ -363,10 +331,6 @@ describe("mapLegacyViewPath", () => {
       "/feature",
       "rql=keyword(Dnak)&keyword=GroEL",
     ],
-    // Solr syntax that works as written and that `?keyword=` would read as a
-    // space: a boost (keyword(coli^2) is coli's 134,274 genomes, coli and 2
-    // ANDed 130,072), a range (keyword(<coli): 129) and a regular expression
-    // (keyword(/col/): 3,382).
     ["/view/GenomeList/", "keyword(coli^2)", "/genome", "rql=keyword(coli%5E2)"],
     ["/view/GenomeList/", "keyword(<coli)", "/genome", "rql=keyword(%3Ccoli)"],
     ["/view/GenomeList/", "keyword(/col/)", "/genome", "rql=keyword(/col/)"],
@@ -374,9 +338,6 @@ describe("mapLegacyViewPath", () => {
     expect(mapLegacyViewPath(path, rawSearch)).toEqual({ pathname, search });
   });
 
-  // Alpha's search box sends or(...) and not(...) of keywords (searchToQuery);
-  // as ?keyword= the Genome list's related tabs run them on their own
-  // collections, as alpha's do, where ?rql= would join through genome().
   it.each([
     ["or(keyword(coli),keyword(Salmonella))", "coli OR Salmonella"],
     ["and(keyword(kinase),not(keyword(hypothetical)))", "kinase NOT hypothetical"],
@@ -393,7 +354,6 @@ describe("mapLegacyViewPath", () => {
       pathname: "/genome",
       search: `keyword=${encodeQueryComponent(keyword)}`,
     });
-    // The keyword reads back as the link's own query.
     const query = rawSearch.replace(/&sort\([^()]*\)$/, "");
     expect(decodeURIComponent(rqlAnd(...keywordClauses(keyword, "exact")))).toBe(
       decodeURIComponent(query),
@@ -414,8 +374,8 @@ describe("mapLegacyViewPath", () => {
 });
 
 describe("legacySearchFromParams", () => {
-  // Each input is the form-encoded query Next.js hands the proxy after parsing
-  // and re-serializing the raw legacy URL (see the helper's doc comment).
+  // Each input is the form-encoded query Next hands the proxy after
+  // re-serializing the raw legacy URL.
   it.each([
     ["an RQL fragment", "eq%28genome_status%2CComplete%29=", "eq(genome_status,Complete)"],
     ["an unnormalized RQL fragment", "eq(taxon_id,1763)", "eq(taxon_id,1763)"],
@@ -454,7 +414,6 @@ describe("legacySearchFromParams", () => {
   });
 
   it("keeps an encoded comma inside the destination's comparison value", () => {
-    // Next hands the proxy ?eq(genome_name,foo%2Cbar) as this normalized form.
     const normalized = new URLSearchParams("eq%28genome_name%2Cfoo%2Cbar%29=");
     const mapped = mapLegacyViewPath(
       "/view/GenomeList/",

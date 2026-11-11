@@ -14,28 +14,22 @@ import {
 } from "@/components/ui/table";
 
 export interface SelectedSequenceRow {
-  /** Unique within the table (the tree forms use `type:path`). */
   id: string;
-  /** The first line, e.g. the file name. */
   name: string;
-  /** The workspace path, on one line cut from the start. */
   path: string;
-  /** The Type column's label. */
   typeLabel: string;
 }
 
 interface SelectedSequencesTableProps {
-  /** The first column's header. */
   heading: string;
   rows: SelectedSequenceRow[];
   onRemove: (index: number) => void;
-  /** A line under the table, set off by a rule. */
   note?: ReactNode;
 }
 
 /**
- * The phylogenetic tree forms' selected inputs (Gene / Protein Tree, Viral
- * Genome Tree): name and path, type, and a remove button per row.
+ * The tree forms' selected inputs: name and path, type, and a remove button per
+ * row.
  */
 export function SelectedSequencesTable({
   heading,
@@ -48,15 +42,12 @@ export function SelectedSequencesTable({
   );
   return (
     // The container is this wrapper, not the scrolling box, so a scrollbar
-    // appearing inside the box does not flip the layout.
+    // appearing inside it does not flip the layout.
     <div className="@container">
       <div className="max-h-84 overflow-y-auto rounded-md border bg-background">
-        {/* The Type column is as wide as its longest label, and the path
-          column (`w-full`) takes the rest. Its cells' `max-w-0` keeps a long
-          name or path from widening the table past the box and hiding Remove:
-          the name wraps (`wrap` cell) and the path truncates. Below 32rem the
-          Type column would squeeze the path (and its header) to a strip, so
-          the type moves under the path and the column is hidden. */}
+        {/* The path column (`w-full`) takes the rest; its cells' `max-w-0` keep
+            a long name from widening the table past the box and hiding Remove.
+            Below 32rem the type moves under the path and its column is hidden. */}
         <Table>
           <TableHeader>
             <TableRow variant="static">
@@ -69,7 +60,7 @@ export function SelectedSequencesTable({
             {rows.length === 0 ? (
               <TableRow variant="static">
                 {/* A cell spanning a hidden column would add a column of its
-                  own, so the narrow and wide layouts each get their span. */}
+                    own, so each layout gets its own span. */}
                 <TableCell colSpan={2} className="text-center @lg:hidden">
                   {emptyMessage}
                 </TableCell>
@@ -85,8 +76,6 @@ export function SelectedSequencesTable({
                 <TableRow key={row.id} variant="static-striped">
                   <TableCell variant="wrap" className="max-w-0">
                     <div>{row.name}</div>
-                    {/* One line, cut from the start so the file end stays
-                      visible; the title holds the whole path. */}
                     <div
                       title={row.path}
                       className="truncate-start text-xs text-muted-foreground"
@@ -120,7 +109,6 @@ export function SelectedSequencesTable({
         </Table>
         {note != null && (
           <>
-            {/* The table drops its last row's rule, so the note gets its own. */}
             <Separator />
             <p className="px-3 py-2 text-xs text-muted-foreground">{note}</p>
           </>

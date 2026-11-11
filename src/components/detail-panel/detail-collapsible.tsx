@@ -12,9 +12,7 @@ export function DetailCollapsibleSection({
 }: {
   label: string;
   defaultExpanded?: boolean;
-  /** Optional action buttons rendered to the right of the label (outside the toggle button to avoid nesting) */
   actions?: ReactNode;
-  /** "default" uses muted bg; "primary" uses the primary bg from search info panel */
   variant?: "default" | "primary";
   children: ReactNode;
 }) {

@@ -32,7 +32,6 @@ vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockImplementation(
   () => hostWidth,
 );
 
-/** Resizes the host the way the side panel or a window resize would. */
 async function resizeHost(width: number) {
   hostWidth = width;
   for (const observer of ResizeObserverStub.instances) observer.callback();
@@ -41,14 +40,12 @@ async function resizeHost(width: number) {
 
 interface FakeViewerOptions {
   ready?: Promise<void>;
-  /** Like a big tree: nothing is drawn until the next frame. */
   drawWhen?: Promise<void>;
   launchError?: Error;
   selectedNodes?: ArchaeopteryxNode[];
 }
 
-// Stands in for Archaeopteryx: draws a panel whose theme switch behaves like
-// the real one, and records what the component launched it with.
+// Stands in for Archaeopteryx; records what the component launched it with.
 function createFakeArchaeopteryx({
   ready,
   drawWhen,
@@ -66,7 +63,6 @@ function createFakeArchaeopteryx({
       (container: Element, _tree: unknown, config: ArchaeopteryxConfig) => {
         configs.push(config);
         if (launchError) throw launchError;
-        // Like the real viewer, the theme is read at launch, not at draw time.
         const theme = localStorage.getItem("aptx-panel-theme") ?? "light";
         const draw = () => {
           const panel = document.createElement("div");
@@ -81,7 +77,6 @@ function createFakeArchaeopteryx({
               dark ? "aptx-light" : "aptx-dark",
             );
           });
-          // Like the real header button, it folds the panel to its header.
           const hide = document.createElement("button");
           hide.className = "aptx-hide-btn";
           hide.addEventListener("click", () => {
@@ -200,15 +195,12 @@ describe("ArchaeopteryxPhylogeny", () => {
     const panel = container.querySelector(".aptx-panel");
     const hide = container.querySelector<HTMLButtonElement>(".aptx-hide-btn");
 
-    // Opened by hand in a narrow host, it stays open as the host narrows
-    // further and once it widens.
     hide?.click();
     await resizeHost(400);
     expect(panel).not.toHaveClass("aptx-hidden");
     await resizeHost(1024);
     expect(panel).not.toHaveClass("aptx-hidden");
 
-    // Folded by hand, it is not reopened by a round trip through narrow.
     hide?.click();
     await resizeHost(480);
     await resizeHost(1024);
@@ -278,7 +270,6 @@ describe("ArchaeopteryxPhylogeny", () => {
     await waitFor(() => {
       expect(renderer.launch).toHaveBeenCalledOnce();
     });
-    // Launched light, with no panel yet for the theme observer to switch.
     document.documentElement.dataset.theme = "dxkb-dark";
     await new Promise(requestAnimationFrame);
     drawNextFrame();

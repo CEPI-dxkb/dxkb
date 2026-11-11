@@ -11,7 +11,6 @@ import {
 } from "@/lib/copilot/floating-rect";
 import { CopilotPanel } from "./copilot-panel";
 
-/** Where each handle sits and the cursor it shows. */
 const handles: { direction: ResizeDirection; className: string }[] = [
   { direction: "n", className: "inset-x-3 top-0 h-1.5 cursor-ns-resize" },
   { direction: "s", className: "inset-x-3 bottom-0 h-1.5 cursor-ns-resize" },
@@ -37,22 +36,15 @@ type Gesture =
       start: CopilotFloatingRect;
     };
 
-/**
- * A non-modal window over the page, so the page stays usable while chatting.
- * Drag it by its header; resize it from any edge or corner. Its position is
- * kept per device (anchored to the bottom-right corner). Escape closes it.
- */
 export function CopilotFloatingWindow({ onClose }: { onClose: () => void }) {
   const titleId = useId();
   const [saved, setSaved] = useUiPreference("copilotFloatingRect");
   const [rect, setRect] = useState<CopilotFloatingRect>(saved);
   const gesture = useRef<Gesture | null>(null);
-  // The latest rect of the gesture in progress, so end() saves it even when
-  // pointerup arrives before the render that follows the last move.
+  // Latest gesture rect, so end() saves it even when pointerup arrives before the next render.
   const gestureRect = useRef<CopilotFloatingRect | null>(null);
   const windowRef = useRef<HTMLDivElement>(null);
 
-  // Fit the saved rect to this viewport, and keep it fitting.
   useEffect(() => {
     const fit = () => {
       setRect((current) => clampFloatingRect(current, viewport()));
@@ -64,17 +56,11 @@ export function CopilotFloatingWindow({ onClose }: { onClose: () => void }) {
     };
   }, []);
 
-  // Focus moves into the window when it opens, as a dialog's would.
   useEffect(() => {
     windowRef.current?.querySelector<HTMLElement>("textarea")?.focus();
   }, []);
 
-  /**
-   * Whether an event happened inside the window's own DOM. React delivers
-   * events from portals (the options menu) to their React parents too; a press
-   * on a menu item must not start a drag, and Escape in a menu must not close
-   * the window.
-   */
+  // React delivers portal events (the options menu) to React parents too, so check the real DOM.
   const isInside = (target: EventTarget) =>
     windowRef.current?.contains(target as Node) ?? false;
 
@@ -83,7 +69,6 @@ export function CopilotFloatingWindow({ onClose }: { onClose: () => void }) {
     event: React.PointerEvent<HTMLElement>,
   ) => {
     if (event.button !== 0 || !isInside(event.target)) return;
-    // Buttons in the header keep their own clicks.
     if (
       next.kind === "move" &&
       (event.target as HTMLElement).closest("button, a, input, textarea")
@@ -127,7 +112,6 @@ export function CopilotFloatingWindow({ onClose }: { onClose: () => void }) {
     const latest = gestureRect.current;
     gesture.current = null;
     gestureRect.current = null;
-    // A press that never moved leaves the saved rect alone.
     if (latest && latest !== current.start) setSaved(latest);
   };
 

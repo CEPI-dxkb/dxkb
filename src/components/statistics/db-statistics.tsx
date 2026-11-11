@@ -25,8 +25,7 @@ const StatisticCard = ({ definition, count }: StatisticCardProps) => {
 const DBStatistics = async () => {
   const { counts, unavailableReason } = await fetchDbStatistics();
 
-  // Every count failed: one line saying so, with the cause, rather than eight
-  // unexplained dashes. A single failed count keeps its own "—".
+  // Every count failed: one line with the cause rather than eight dashes.
   if (unavailableReason !== null) {
     return (
       <DBStatisticsShell>

@@ -1,18 +1,10 @@
 import { proteinStructureFields } from "@/constants/datafields/protein_structure";
 import { deriveFieldMetadata } from "@/lib/views/field-metadata";
 
-/**
- * `sequence` and `alignments` are whole-molecule payloads: projecting them blows the
- * collection response up, so they are excluded from every derived output, detail
- * projection included.
- */
+/** `sequence` and `alignments` are whole-molecule payloads, excluded from every derived output. */
 const unsafeProjectionFields = ["sequence", "alignments"];
 
-/**
- * The single field-metadata pass behind Protein Structure's columns, details, facets and
- * sorts. `pdb_id`'s metadata link points at RCSB; suppressing it lets the profile's
- * canonical `rowHref` open the internal structure viewer instead.
- */
+/** `pdb_id`'s metadata link points at RCSB; it is suppressed so the profile's `rowHref` opens the internal viewer. */
 export const proteinStructureMetadata = deriveFieldMetadata(
   proteinStructureFields,
   {

@@ -26,8 +26,6 @@ export const POST = withAuth(async (request: NextRequest, { token }) => {
       ? NextResponse.json(answer.body)
       : NextResponse.json(answer.body, { status: answer.status });
   } catch (error) {
-    // The variable's name is for the server log; the client gets the
-    // user-facing reason.
     if (error instanceof MinhashConfigurationError) {
       console.error(error.message);
       return NextResponse.json(

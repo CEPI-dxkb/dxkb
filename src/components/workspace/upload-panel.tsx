@@ -37,10 +37,8 @@ export interface UploadedFile {
 }
 
 /**
- * Uploads the files one after another and reports failures as toasts. Lives
- * outside the component because a `throw` inside `try`, or a ternary or `??`
- * inside one, makes the React Compiler skip the component. Returns how many
- * files went in and whether anything failed.
+ * Module-level: a `throw` inside `try`, or a ternary or `??` inside one, makes the
+ * React Compiler skip the component.
  */
 async function uploadFilesToWorkspace({
   files,
@@ -69,15 +67,12 @@ async function uploadFilesToWorkspace({
         filename: file.name,
         type: uploadType,
       });
-      // Workspace.create has made the object (it refuses an existing name,
-      // so this is ours). If the data never reaches Shock it is an empty
-      // entry that cannot be opened, so take it back out. Best effort: the
-      // upload error is what the user needs to see.
+      // If the data never reaches Shock the created object is an empty entry that cannot
+      // be opened, so remove it (best effort; the upload error is what the user needs).
       const discardObject = () =>
         repository.delete([fullPath]).catch(() => undefined);
-      // The route streams this body to Shock unchanged, so it carries only
-      // the field Shock reads; the node URL travels in a header. The
-      // browser sets the multipart Content-Type with its boundary.
+      // The route streams this body to Shock unchanged, so it carries only the field Shock
+      // reads; the node URL travels in a header.
       const formData = new FormData();
       formData.append("upload", file);
       let res: Response;
@@ -114,7 +109,6 @@ async function uploadFilesToWorkspace({
       onUploadComplete(uploaded);
     }
   } catch (err) {
-    // Name the file and keep the reason, as the Shock-failure toast does.
     toast.error(
       currentFileName ? `Upload failed: ${currentFileName}` : "Upload failed",
       {
@@ -131,22 +125,13 @@ async function uploadFilesToWorkspace({
 
 export interface WorkspaceUploadPanelProps {
   targetPath: string;
-  /** The upload type to start with; defaults to "unspecified". */
   initialUploadType?: string;
   onCancel: () => void;
-  /** Called once every file is in, with each one's path and upload type. */
   onUploadComplete: (uploaded: UploadedFile[]) => void;
-  /** Reports when an upload starts and ends, e.g. to hide a close button. */
   onUploadingChange?: (uploading: boolean) => void;
   cancelLabel?: string;
 }
 
-/**
- * Upload form (type, file picker, file list) with its Cancel / Start Upload
- * footer, for use inside a dialog: `UploadDialog` in the workspace browser, and
- * the upload pane of `WorkspaceFolderPickerDialog`. State lives here, so it
- * resets whenever the panel mounts.
- */
 export function WorkspaceUploadPanel({
   targetPath,
   initialUploadType,
@@ -189,14 +174,14 @@ export function WorkspaceUploadPanel({
     e.target.value = "";
   };
 
-  // A running upload works through the files and type it started with, so the
-  // form is frozen until it ends: anything added meanwhile would be dropped.
+  // A running upload uses the files and type it started with, so the form is frozen until
+  // it ends.
   const openFilePicker = () => {
     if (!isUploading) fileInputRef.current?.click();
   };
 
-  // Drops are still handled while uploading, only refused, so the browser
-  // does not open the dropped file in place of the page.
+  // Drops are still handled while uploading, only refused, so the browser does not open
+  // the dropped file in place of the page.
   const onDrop = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -226,8 +211,8 @@ export function WorkspaceUploadPanel({
       repository,
       onUploadComplete,
     });
-    // The files before the one that failed stay uploaded, and the panel stays
-    // open without onUploadComplete, so refresh the listings that show them.
+    // Files before the one that failed stay uploaded and onUploadComplete is not called,
+    // so refresh the listings that show them.
     if (hasError && uploadedCount > 0) invalidateWorkspace(queryClient);
     setIsUploading(false);
   };
@@ -236,8 +221,6 @@ export function WorkspaceUploadPanel({
 
   return (
     <>
-      {/* Fills and, if it must, scrolls the space above the footer when the
-          panel sits in a fixed-height dialog; -mx-1/px-1 keep focus rings. */}
       <div className="-mx-1 flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-1 py-2">
         <div className="flex flex-col gap-1">
           <span className="text-xs font-medium text-muted-foreground">

@@ -1,10 +1,5 @@
 "use client";
 
-/**
- * The command bar's zoom cluster: − / slider / + / level / Fit. Each button
- * disables at its limit (1× and `maxZoom`), and everything disables while
- * there is no chart.
- */
 import { Maximize2, Minus, Plus } from "lucide-react";
 import { useId } from "react";
 import { Button } from "@/components/ui/button";
@@ -16,13 +11,11 @@ import {
   zoomStep,
 } from "@/lib/compare-region/zoom";
 
-/** What the bar needs from the chart's `<Zoom>`; null while there is no chart. */
 export interface ZoomControls {
   level: number;
   maxZoom: number;
   canZoomIn: boolean;
   canZoomOut: boolean;
-  /** Multiply the zoom, about the focus line when it is in view. */
   zoomBy: (factor: number) => void;
   fit: () => void;
 }
@@ -54,7 +47,6 @@ export function ZoomCluster({ zoom }: { zoom: ZoomControls | null }) {
           step={1}
           disabled={!zoom}
           value={[zoomSliderValue(level, max)]}
-          // Its position is a log scale: it reads out as the zoom, "2.0×".
           getAriaValueText={() => formatZoomLevel(level)}
           onValueChange={(value: number | readonly number[]) => {
             const next = typeof value === "number" ? value : value.at(0);

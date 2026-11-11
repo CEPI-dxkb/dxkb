@@ -1,19 +1,8 @@
 /**
- * Idempotent provisioning of a user's BV-BRC workspace home.
- *
- * BV-BRC's reference frontend creates a user's `/home/` folder + four
- * conventional sub-folders on first workspace access. This module mirrors
- * that behavior so DXKB users don't see "_ERROR_User lacks permission" when
- * landing on `/workspace/[username]/home`.
- *
- * The transport layer is injected via `WorkspaceRpcPort` so the same logic
- * runs server-side (sign-up flow, direct fetch to `WORKSPACE_API_URL`) and
- * client-side (workspace browser, through the existing proxy).
- *
- * Folders are created only when `Workspace.ls` says the home is missing. Any
- * other `ls` failure (an outage, a maintenance page) is rethrown: it says
- * nothing about whether the home exists, and writes driven by it were
- * reported as success during the 2026-10-19 outage.
+ * Idempotent provisioning of a user's BV-BRC workspace home: the `/home/`
+ * folder plus four conventional sub-folders, as BV-BRC's reference frontend
+ * does. Folders are created only when `Workspace.ls` says the home is missing;
+ * any other `ls` failure is rethrown.
  */
 
 import { UpstreamError } from "@/lib/api/upstream-failure";
@@ -37,9 +26,11 @@ export interface EnsureUserWorkspaceInput {
 }
 
 export interface EnsureUserWorkspaceResult {
-  /** Paths actually created during this call (excludes already-existing folders). */
   created: string[];
-  /** Per-path error messages for batches the Workspace rejected. Non-empty means setup is incomplete. */
+  /**
+   * Per-path errors for batches the Workspace rejected; non-empty means setup
+   * is incomplete.
+   */
   failures: Record<string, string>;
 }
 
@@ -79,8 +70,8 @@ export async function ensureUserWorkspace(
     homeExists = true;
     existingSubfolders = parseExistingFolderNames(lsResult, homePath);
   } catch (error) {
-    // "_ERROR_User lacks permission" is how the Workspace says /home/ does
-    // not exist yet. Anything else is not evidence of a missing home.
+    // "_ERROR_User lacks permission" is how the Workspace says /home/ does not
+    // exist yet; anything else is not evidence of a missing home.
     if (!isWorkspaceHomeMissing(error)) throw error;
     homeExists = false;
   }

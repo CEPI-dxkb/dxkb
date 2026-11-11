@@ -16,8 +16,9 @@ import type { WorkspaceSortConfig } from "@/types/workspace-browser";
 import { hasWorkspaceWritePermission } from "./path-utils";
 
 /**
- * Parse raw Workspace.get result for a single path into ResolvedPathObject.
- * Raw shape: result[0][pathIndex][0] = [name, type, path (parent), creation_time, id, owner_id, size, userMeta, sysMeta, ...].
+ * Parses a raw Workspace.get result for one path into ResolvedPathObject;
+ * tuple: [name, type, parent path, creation_time, id, owner_id, size, userMeta,
+ * sysMeta, ...].
  */
 export function parseWorkspaceGetSingle(
   raw: WorkspaceGetRawResult,
@@ -57,8 +58,8 @@ export function parseWorkspaceGetSingle(
 }
 
 /**
- * Compute the dot-folder path for a job_result (hidden folder containing output files).
- * e.g. /user/home/folder/jobname -> /user/home/folder/.jobname
+ * Dot-folder path of a job_result (the hidden folder with its outputs):
+ * /user/home/folder/jobname -> /user/home/folder/.jobname
  */
 export function getJobResultDotPath(
   resolved: Pick<ResolvedPathObject, "path" | "name">,
@@ -126,7 +127,8 @@ export function hasWriteAccess(item: WorkspaceItem): boolean {
   );
 }
 
-// Hoisted collators: options passed to localeCompare build an ICU collator per call.
+// Hoisted collators: options passed to localeCompare build an ICU collator per
+// call.
 const nameBaseCollator = new Intl.Collator(undefined, {
   sensitivity: "base",
   numeric: true,
@@ -149,15 +151,15 @@ export function sortItems(
     let comparison = 0;
     switch (sort.field) {
       case "name": {
-        // Text-starting names sort before digit-starting names, matching BV-BRC's
-        // default workspace sort (e.g. "Bacillus anthracis" before "1386.5504").
+        // Text-starting names sort before digit-starting names, matching
+        // BV-BRC's default workspace sort.
         const aDigit = /^\d/.test(a.name);
         const bDigit = /^\d/.test(b.name);
         if (aDigit !== bDigit) {
           comparison = aDigit ? 1 : -1;
         } else {
-          // Primary: case-insensitive alphabetical + natural numeric order.
-          // Tiebreaker: uppercase before lowercase (e.g. "Alpha" before "alpha").
+          // Case-insensitive natural order, with uppercase before lowercase as
+          // tiebreaker.
           comparison =
             nameBaseCollator.compare(a.name, b.name) ||
             nameCaseCollator.compare(a.name, b.name);
@@ -202,7 +204,8 @@ const dateTimeFormat = new Intl.DateTimeFormat("en-US", {
 export function formatDate(dateString: string): string {
   if (!dateString) return "";
   const date = new Date(dateString);
-  // DateTimeFormat#format throws on an invalid date; toLocaleDateString did not.
+  // DateTimeFormat#format throws on an invalid date; toLocaleDateString did
+  // not.
   if (Number.isNaN(date.getTime())) return "Invalid Date";
   return dateTimeFormat.format(date);
 }
@@ -222,7 +225,7 @@ export function formatFileSize(
 }
 
 export function normalizeWsPath(p: string | null | undefined): string {
-  const trimmed = (p ?? "").trim(); // runtime guard: API can return null for path fields
+  const trimmed = (p ?? "").trim();
   if (!trimmed) return "";
   const withLeading = trimmed.startsWith("/") ? trimmed : `/${trimmed}`;
   return withLeading.replace(/\/+$/, "").replace(/\/+/g, "/");
@@ -242,8 +245,8 @@ export function dedupeKeepOrder(values: string[]): string[] {
 }
 
 /**
- * Returns normalized paths for items that are folders (type folder/directory/modelfolder).
- * Used to know which paths to check for "non-empty" when confirming delete.
+ * Normalized paths of folder items, to check which are non-empty when
+ * confirming delete.
  */
 export function getFolderPathsFromItems(items: WorkspaceItem[]): string[] {
   const paths: string[] = [];
@@ -256,8 +259,8 @@ export function getFolderPathsFromItems(items: WorkspaceItem[]): string[] {
 }
 
 /**
- * Given folder paths and a function that lists a folder's contents, returns which paths
- * are non-empty (have at least one child). Uses optional AbortSignal to cancel when dialog closes.
+ * Which folder paths are non-empty, given a function that lists a folder; the
+ * AbortSignal cancels when the dialog closes.
  */
 export async function getNonEmptyFolderPaths(
   folderPaths: string[],
@@ -286,10 +289,7 @@ export async function getNonEmptyFolderPaths(
   return results.filter((p): p is string => p !== null);
 }
 
-/**
- * Given a dot-folder path (e.g. /user/home/.jobname) and the current items list,
- * returns the path of the sibling job_result item if present.
- */
+/** Path of the sibling job_result item for a dot-folder path, if present. */
 export function getSiblingJobResultPathForDotFolder(
   dotFolderPath: string,
   items: WorkspaceItem[],
@@ -313,8 +313,8 @@ export function getSiblingJobResultPathForDotFolder(
 }
 
 /**
- * Expands a selection of downloadable items into the full list of paths to download,
- * handling job_result dot-folders and sibling job_result paths. Returns deduplicated paths.
+ * Expands a selection into the full deduplicated list of paths to download,
+ * including job_result dot-folders and siblings.
  */
 export function expandDownloadPaths(
   downloadableItems: WorkspaceItem[],
@@ -348,9 +348,8 @@ export interface EnsureDestinationWriteAccessResult {
 }
 
 /**
- * Verifies that the current user has write access to the given destination path
- * (or its parent, if the destination is a new name). Uses the provided listFolder
- * to fetch the parent listing. Returns { ok: true } or { ok: false, errorMessage }.
+ * Verifies write access to the destination (or its parent, for a new name);
+ * returns { ok: true } or { ok: false, errorMessage }.
  */
 export async function ensureDestinationWriteAccess(
   destinationPath: string,
@@ -406,7 +405,6 @@ export async function ensureDestinationWriteAccess(
   }
 }
 
-/** Dot path relative to workspace for URL (e.g. "ProteinMPNN_tests/.1e08_dwnld_d10010111"). */
 export function getDotPathRelative(path: string, jobName: string): string {
   const segments = path.split("/").map(sanitizePathSegment).filter(Boolean);
   const withoutLast = segments.slice(0, -1);
@@ -416,8 +414,8 @@ export function getDotPathRelative(path: string, jobName: string): string {
 }
 
 /**
- * Success-toast text for an action on a named workspace object, in the one
- * format every such confirmation uses: `Created Genome Group: "My Group"`.
+ * Success-toast text for an action on a named object: `Created Genome Group:
+ * "My Group"`.
  */
 export function namedObjectConfirmation(
   action: "Created" | "Updated",

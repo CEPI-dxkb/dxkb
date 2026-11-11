@@ -63,7 +63,6 @@ import {
   type MatchingRowsRead,
 } from "./use-resource-collection-row-resolution";
 
-/** Actions each resource enables. Read by both visibility and dispatch. */
 const taxonomyActionIds = [
   "services",
   "taxonOverview",
@@ -75,17 +74,8 @@ const enabledActionsByResource: Partial<
   Record<DataResource, readonly SearchActionId[]>
 > = {
   taxonomy: taxonomyActionIds,
-  // Every resource in selectionActionsConfigByResource lives with
-  // CollectionSelectionActions instead, which owns its bar.
 };
 
-/**
- * Resources whose selection actions live with `CollectionSelectionActions`.
- * `idField` names the row field SERVICES, GENOMES and GROUP resolve from and `idKind`
- * says what it holds, so both are inert where `hasSelectableServices` is false and no
- * ID-backed action is owned. `extraEnabledActionIds` lists entries this component
- * dispatches but the shared config disables by default.
- */
 const selectionActionsConfigByResource = {
   strain: {
     searchType: "strain",
@@ -108,8 +98,6 @@ const selectionActionsConfigByResource = {
   genome_feature: {
     searchType: "genome_feature",
     actionIds: featureSelectionActionIds,
-    // FEATURE and GENOME are enabled by default; FASTA and ID MAP stay
-    // disabled until a later PR wires them.
     extraEnabledActionIds: [],
     idField: "feature_id",
     idKind: "feature",
@@ -119,8 +107,6 @@ const selectionActionsConfigByResource = {
   genome_sequence: {
     searchType: "genome_sequence",
     actionIds: sequenceSelectionActionIds,
-    // GENOME is enabled by default; FEATURES is not, and FASTA and Browser stay
-    // disabled until a later PR wires them.
     extraEnabledActionIds: ["features"],
     idField: "genome_id",
     idKind: "genome",
@@ -130,8 +116,6 @@ const selectionActionsConfigByResource = {
   genome_amr: {
     searchType: "genome_amr",
     actionIds: copyAndServicesSelectionActionIds,
-    // GENOME is enabled by default; legacy's ANTIBIOTIC waits for an
-    // Antibiotic page.
     extraEnabledActionIds: [],
     idField: "genome_id",
     idKind: "genome",
@@ -144,7 +128,6 @@ const selectionActionsConfigByResource = {
     extraEnabledActionIds: [],
     idField: "genome_id",
     idKind: "genome",
-    // "Domains and Motifs" has no plural suffix to strip.
     singularLabel: "Domain or Motif",
     hasSelectableServices: false,
   },
@@ -160,7 +143,6 @@ const selectionActionsConfigByResource = {
   sequence_feature: {
     searchType: "sequence_feature",
     actionIds: copyAndServicesSelectionActionIds,
-    // VARIANT TYPES stays disabled until a later PR wires it.
     extraEnabledActionIds: [],
     idField: "id",
     idKind: "genome",
@@ -170,7 +152,6 @@ const selectionActionsConfigByResource = {
   epitope: {
     searchType: "epitope",
     actionIds: copyAndServicesSelectionActionIds,
-    // EPITOPE is enabled by default.
     extraEnabledActionIds: [],
     idField: "epitope_id",
     idKind: "genome",
@@ -180,33 +161,25 @@ const selectionActionsConfigByResource = {
   serology: {
     searchType: "serology",
     actionIds: copyAndServicesSelectionActionIds,
-    // SEROLOGY is enabled by default.
     extraEnabledActionIds: [],
     idField: "id",
     idKind: "genome",
-    // "Serology" is already the singular the copied-rows toast wants.
     singularLabel: "Serology",
     hasSelectableServices: false,
   },
   surveillance: {
     searchType: "surveillance",
     actionIds: copyAndServicesSelectionActionIds,
-    // SRVLNCE is enabled by default; MAP stays disabled until a later PR wires
-    // it.
     extraEnabledActionIds: [],
     idField: "id",
     idKind: "genome",
-    // "Surveillance" is already the singular the copied-rows toast wants.
     singularLabel: "Surveillance",
     hasSelectableServices: false,
   },
   ppi: {
     searchType: "ppi",
     actionIds: interactionSelectionActionIds,
-    // FASTA stays disabled until a later PR wires it.
     extraEnabledActionIds: [],
-    // One Interaction row names two interactors, and legacy's FEATURES and GROUP both
-    // pool them.
     idField: ["feature_id_a", "feature_id_b"],
     idKind: "feature",
     singularLabel: "Interaction",
@@ -215,8 +188,6 @@ const selectionActionsConfigByResource = {
   experiment: {
     searchType: "experiment",
     actionIds: servicesOnlySelectionActionIds,
-    // EXPRMNT is enabled by default; BIOSETS stays disabled until a later PR
-    // wires the experiment-side gene list.
     extraEnabledActionIds: [],
     idField: "exp_id",
     idKind: "genome",
@@ -226,8 +197,6 @@ const selectionActionsConfigByResource = {
   bioset: {
     searchType: "bioset",
     actionIds: servicesOnlySelectionActionIds,
-    // BIOSETS is dispatched by this component even though the shared config
-    // disables it.
     extraEnabledActionIds: ["biosets"],
     idField: "bioset_id",
     idKind: "genome",
@@ -263,7 +232,6 @@ const selectionActionsConfigByResource = {
   >
 >;
 
-/** Where a taxonomy action opens, or null when the selection has no target. */
 function taxonomyResultsHref(
   actionId: SearchActionId,
   ids: readonly string[],
@@ -278,7 +246,6 @@ function taxonomyResultsHref(
   return null;
 }
 
-/** The experiment IDs of the rows that have one, in row order. */
 function biosetExperimentIds(rows: readonly DataTableRow[]): string[] {
   return rows.flatMap((row) => {
     const experimentId = experimentIdFromRow(row);
@@ -292,10 +259,6 @@ function missingExperimentsMessage(experimentCount: number): string {
     : "Some selected Biosets are not associated with experiments.";
 }
 
-/**
- * Resolve the experiment IDs of every matching Bioset, refusing a selection over
- * the export limit (by this query's total, then by what the read returned).
- */
 async function readBiosetExperimentIds({
   matchingTotal,
   resolveAllMatchingRows,
@@ -333,24 +296,16 @@ function openMemberTab(
 }
 
 /**
- * Per-sink fallback for `formatUserFacingErrorMessage`, used for a non-`Error`
- * rejection and for an `Error` whose message is empty or whitespace-only. The shared
- * helper owns the emptiness, non-`Error` and length decisions; only the wording is
- * decided here. It may not be blank: an empty string would be falsy and suppress the
- * collection shell's `{actionError && (...)}` render guard entirely.
+ * Fallback wording for `formatUserFacingErrorMessage`; it may not be blank,
+ * since an empty string is falsy and suppresses the shell's `{actionError &&
+ * (...)}` guard.
  */
 const genericActionErrorMessage =
   "The requested action could not be completed. Please try again.";
 
-/** Why BIOSETS cannot run when only some selected Biosets name an experiment. */
 const incompleteBiosetSelectionReason =
   "Some selected Biosets are not associated with experiments";
 
-/**
- * The part of `ResourceCollectionProfile` the action bar reads. Declared here rather
- * than imported so the boundary states its own requirements and the dependency runs
- * one way, from the collection shell to its actions.
- */
 export interface ResourceCollectionActionsProfile<Row extends DataTableRow> {
   resource: DataResource;
   label: string;
@@ -359,61 +314,35 @@ export interface ResourceCollectionActionsProfile<Row extends DataTableRow> {
   rowHref?: (row: Row) => string | undefined;
 }
 
-/** What the collection shell knows about the current selection. */
 export interface ResourceCollectionActionsSelection<Row extends DataTableRow> {
-  /** Count the bar reports: the all-pages total, or the displayed selection size. */
   count: number;
   /**
-   * Every explicitly selected ID, including rows a loaded keyword currently hides.
-   * Only the Bioset experiment lookup reads this; every other action reaches for
-   * `displayedIds`. The two coincide wherever Bioset is actually mounted (no caller
-   * gives it `keywordMode="loaded"`), so both are carried rather than collapsed —
-   * picking one for everything would be a behaviour change dressed as a cleanup.
+   * Only the Bioset experiment lookup reads this; every other action uses
+   * `displayedIds`.
    */
   ids: readonly string[];
-  /** Selected IDs a loaded keyword leaves visible. */
   displayedIds: readonly string[];
   isAllPagesSelected: boolean;
-  /** Rows matching the query on screen, which bounds the all-pages resolutions. */
   total: number;
-  /**
-   * The rows and `total` belong to a previous query while this one loads, so an
-   * all-pages resolution waits for `currentTotal` rather than being sized by it.
-   */
   isPlaceholderData: boolean;
-  /**
-   * This query's total once its read lands. Rejects with `CancelledError` when
-   * the query is replaced first, which drops the action.
-   */
   currentTotal: () => Promise<number>;
-  /** The row behind a selected ID, remembered across pages by the shell. */
   rowById: (id: string) => Row | undefined;
 }
 
-/**
- * Identifiers and member destinations a resource's own row selection resolves to, so
- * the disabled-reason policy and dispatch read one description of what the current
- * selection can actually reach.
- */
 interface ResourceCollectionActionTargets {
   selectedGenomeId: string | null;
-  /** The one selected Strain is known to carry no genomes, so its actions are dead. */
   knownSingleStrainHasNoGenomes: boolean;
   selectedFeatureId: string | null;
   selectedSequenceId: string;
   selectedEpitopeId: string | null;
   selectedExperimentId: string | null;
   selectedStructureHref: string | undefined;
-  /** The detail row's own canonical route, used by SRVLNCE and SEROLOGY. */
   selectedMemberHref: string | undefined;
   selectedBiosetExperimentIds: string[];
-  /** Every selected Bioset has an experiment behind it, so BIOSETS can run. */
   hasBiosetSelection: boolean;
-  /** Some but not all selected Biosets have one, so BIOSETS says why it cannot. */
   hasIncompleteBiosetSelection: boolean;
 }
 
-/** Pure: every input arrives as an argument, so there is nothing to mock. */
 function resolveActionTargets<Row extends DataTableRow>({
   profile,
   selection,
@@ -436,8 +365,6 @@ function resolveActionTargets<Row extends DataTableRow>({
     selectedBiosetExperimentIds.length === selection.ids.length;
 
   return {
-    // A Genome collection's rows *are* genomes, so the active row's own ID is the
-    // destination; every other resource carries its genome in a column.
     selectedGenomeId:
       profile.resource === "genome" ? activeId : genomeIdFromRow(detail),
     knownSingleStrainHasNoGenomes:
@@ -471,11 +398,6 @@ function resolveActionTargets<Row extends DataTableRow>({
   };
 }
 
-/**
- * Reasons a collection's own rows cannot reach an action it otherwise dispatches:
- * structure rows only reach the Genome, Feature and Structure members they carry,
- * and Bioset rows need an experiment behind every selected row.
- */
 function resolveDisabledActions(
   resource: DataResource,
   targets: ResourceCollectionActionTargets,
@@ -499,10 +421,8 @@ function resolveDisabledActions(
   return undefined;
 }
 
-/** What the shell knows about downloading its rows (`CollectionDownloadAction`). */
 export interface ResourceCollectionDownloadOptions {
   spec: ResolvedCollectionDownloadSpec;
-  /** What *All results* downloads, and how many rows it covers. */
   allResults: { scope: DownloadScope; total: number };
   sort?: DataSort;
   visibleColumnIds: readonly string[];
@@ -513,60 +433,26 @@ export interface ResourceCollectionDownloadOptions {
 export interface ResourceCollectionActionsOptions<Row extends DataTableRow> {
   profile: ResourceCollectionActionsProfile<Row>;
   selection: ResourceCollectionActionsSelection<Row>;
-  /** The detail row, or null while a loaded keyword hides it. */
   detail: Row | null;
-  /** The detail row's ID, or null while a loaded keyword hides it. */
   activeId: string | null;
   columnVisibility: Record<string, boolean>;
-  /** Fetch the selected rows (or every matching row) with the supplied fields. */
   resolveActionRows: (
     fields: readonly string[],
     maxRows: number,
     actionLabel: string,
   ) => Promise<Record<string, unknown>[]>;
-  /**
-   * Fetch every row matching the current query, for the two all-pages workflows that
-   * resolve an ID column the table does not hold. The shell owns the query, so scope,
-   * keyword and sort stay in one place.
-   */
   resolveAllMatchingRows: (
     fields: readonly string[],
   ) => Promise<MatchingRowsRead>;
-  /**
-   * The Download tile's inputs, which the shell owns because it owns the
-   * query. Omitted, or with `spec.enabled` false, the rail has no tile.
-   */
   download?: ResourceCollectionDownloadOptions;
-  /** Report an action failure to the collection shell, which renders it. */
   onError: (message: string | null) => void;
 }
 
 /**
- * Everything the collection action bar needs to know about a specific resource:
- * which actions each one owns, what its row selection resolves to, why an action is
- * a dead end, and the Taxonomy and Bioset workflows that need a network round-trip
- * before they can navigate.
- *
- * Kept out of `ResourceCollection` so adding a resource touches this file instead of
- * the generic query and table code. The shell keeps querying, URL and filter state,
- * loaded-keyword behaviour, and table and detail rendering; it passes in the current
- * selection and what the Download tile downloads, and takes back only an error
- * message. The running download lives here (`useCollectionDownload`), in the shell's
- * instance, for the same reason the Taxonomy chooser does.
- *
- * **A hook returning two slots, deliberately, not a component.** A collection error
- * (including one from a background refetch) drops the action bar and its rail, and
- * an alert takes the table's place; only the toolbar stays. The Taxonomy launch resolves IDs over the network before it can navigate, so
- * a chooser living inside the bar would vanish mid-flight the moment that happened —
- * no chooser, no error, no spinner. Running here puts `loadingActionIds`, the overlap
- * ref and the chooser's own state in the shell's instance, and hands the chooser back
- * as `actionDialogs` for the shell to render at section level, as a sibling of the
- * workspace rather than a descendant.
- *
- * Crossing the `md` breakpoint is *not* one of the reasons: `ResourceWorkspace` renders
- * one stable subtree at every width, so a resize re-styles the `actionBar` slot instead
- * of re-parenting it. That was not always true, and the guarantees above are what stood
- * in for it; they still earn their keep on the error path.
+ * A hook returning two slots, not a component: a collection error drops the
+ * action bar, so the Taxonomy chooser (which resolves IDs over the network)
+ * must live in the shell's instance and render as `actionDialogs` beside the
+ * workspace.
  */
 export function useResourceCollectionActions<Row extends DataTableRow>({
   profile,
@@ -579,18 +465,11 @@ export function useResourceCollectionActions<Row extends DataTableRow>({
   download,
   onError,
 }: ResourceCollectionActionsOptions<Row>): {
-  /** The workspace's action-bar slot. Safe to remount; holds no state. */
   actionBar: ReactNode;
-  /** Dialogs the shell must render as a sibling of `ResourceWorkspace`, not inside it. */
   actionDialogs: ReactNode;
 } {
   const [taxonomyServiceIds, setTaxonomyServiceIds] = useState<string[]>([]);
   const [isTaxonomyServiceOpen, setIsTaxonomyServiceOpen] = useState(false);
-  /**
-   * The Taxonomy action currently resolving IDs. Overlapping runs would let the
-   * first one's cleanup clear the second one's spinner, and a later SERVICES
-   * resolution would replace the IDs an already-open chooser is working with.
-   */
   const pendingTaxonomyActionRef = useRef<SearchActionId | null>(null);
   const pendingBiosetActionRef = useRef(false);
   const [loadingActionIds, setLoadingActionIds] = useState<SearchActionId[]>(
@@ -610,13 +489,9 @@ export function useResourceCollectionActions<Row extends DataTableRow>({
         ]
       : undefined;
 
-  /** The current query's total, waiting for it while `total` is a previous query's. */
   const matchingTotal = async () =>
     selection.isPlaceholderData ? selection.currentTotal() : selection.total;
 
-  // Reachable only for `profile.resource === "taxonomy"`: `dispatchAction` gates
-  // `runTaxonomyAction` on the resource, and `resolveAllMatchingRows` queries
-  // `profile.resource`, so that gate is what keeps this pointed at the taxonomy core.
   const resolveSelectedTaxonIds = async (): Promise<string[]> => {
     if (!selection.isAllPagesSelected) {
       return normalizeTaxonIds(selection.displayedIds);
@@ -632,7 +507,6 @@ export function useResourceCollectionActions<Row extends DataTableRow>({
     onError(null);
     if (pendingTaxonomyActionRef.current) return;
     if (actionId === "services") {
-      // Opens an in-page dialog, so there is no tab to reserve.
       pendingTaxonomyActionRef.current = actionId;
       setLoadingActionIds([actionId]);
       try {
@@ -649,10 +523,8 @@ export function useResourceCollectionActions<Row extends DataTableRow>({
       setLoadingActionIds([]);
       return;
     }
-    // Resolving an all-pages selection needs a network round-trip (and, while the
-    // rows on screen are a previous query's, a wait for this query's total), after
-    // which browsers no longer treat window.open as user-initiated and block it.
-    // Reserve the tab inside the click and navigate it once the IDs are known.
+    // Reserve the tab inside the click: after a network round-trip browsers no
+    // longer treat `window.open` as user-initiated.
     const resultsWindow = window.open("about:blank", "_blank");
     if (!resultsWindow) {
       onError(`Allow pop-ups to open the selected ${profile.label}.`);
@@ -682,15 +554,8 @@ export function useResourceCollectionActions<Row extends DataTableRow>({
   const openBiosetResults = async () => {
     onError(null);
     if (!selection.isAllPagesSelected) {
-      // Reserved and navigated exactly like the other two paths (see
-      // `navigateReservedTab`), even though this one awaits nothing first.
-      //
-      // It cannot be `window.open(href, "_blank", "noopener,noreferrer")` with a null
-      // check bolted on: the spec makes `window.open` return null whenever `noopener`
-      // is set (and `noreferrer` implies it), so that handle says nothing about
-      // whether the pop-up was allowed. That is how this branch came to swallow a
-      // blocked pop-up. Opening the final href with no feature string would restore
-      // the check but give up `noreferrer`; reserving keeps both.
+      // Reserved like the other paths: `noopener` makes `window.open` return
+      // null, so a null check cannot tell a blocked pop-up from an allowed one.
       const resultsWindow = window.open("about:blank", "_blank");
       if (!resultsWindow) {
         onError("Allow pop-ups to open the selected Bioset results.");
@@ -706,9 +571,6 @@ export function useResourceCollectionActions<Row extends DataTableRow>({
     if (pendingBiosetActionRef.current) return;
     const limitMessage = (count: number) =>
       `This selection contains ${count.toLocaleString()} Biosets. Narrow the results to ${maxExportRows.toLocaleString()} or fewer and try again.`;
-    // With this query's total on screen, refuse before reserving a tab that would
-    // only be closed again. A previous query's is checked once this one's lands,
-    // inside the reserved tab's lifetime below.
     if (!selection.isPlaceholderData && selection.total > maxExportRows) {
       onError(limitMessage(selection.total));
       return;
@@ -735,9 +597,8 @@ export function useResourceCollectionActions<Row extends DataTableRow>({
       }
     } catch (error) {
       resultsWindow.close();
-      // Through the shared formatter, not `error.message`: an `Error("")` here used
-      // to hand the shell a falsy string, which its `{actionError && (...)}` guard
-      // renders as nothing at all — a closed tab and no explanation.
+      // Through the shared formatter: an `Error("")` message is falsy and the
+      // shell's guard would render nothing.
       if (!(error instanceof CancelledError)) {
         onError(
           formatUserFacingErrorMessage(
@@ -751,7 +612,6 @@ export function useResourceCollectionActions<Row extends DataTableRow>({
     setLoadingActionIds([]);
   };
 
-  /** Dispatch for action-bar entries backed by the current selection. */
   const dispatchAction = (actionId: SearchActionId) => {
     if (
       profile.resource === "taxonomy" &&
@@ -806,8 +666,6 @@ export function useResourceCollectionActions<Row extends DataTableRow>({
   };
 
   const collectionDownload = useCollectionDownload();
-  // The tile heads the rail. It wraps the bar rather than living in it, so
-  // `SearchActionBar` and `CollectionSelectionActions` stay unaware of it.
   const withDownloadTile = (actions: ReactNode) =>
     download?.spec.enabled ? (
       <div className="flex flex-col gap-1 max-md:flex-row">
@@ -858,13 +716,8 @@ export function useResourceCollectionActions<Row extends DataTableRow>({
       onOtherAction={dispatchAction}
     />
   ) : (
-    // Reached only for a resource with no `selectionActionsConfigByResource`
-    // entry, which today means Taxonomy alone. `bioset` has an entry, so this
-    // branch can never see one — which is why it carries no Bioset fallback for
-    // `enabledActions` and no Bioset `disabledActions`: both `hasBiosetSelection`
-    // and `hasIncompleteBiosetSelection` require `profile.resource === "bioset"`
-    // and are therefore always false here. `CollectionSelectionActions` owns the
-    // Bioset bar, and `resolveDisabledActions` above owns its disabled reason.
+    // Reached only for resources with no `selectionActionsConfigByResource`
+    // entry (Taxonomy), so no Bioset fallbacks are needed.
     <SearchActionBar
       selectedCount={selection.count}
       searchType={profile.resource}

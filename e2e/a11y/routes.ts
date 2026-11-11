@@ -2,97 +2,47 @@ import type { Page } from "@playwright/test";
 import { awaitSettled, type SettleOptions } from "./settle";
 
 /**
- * Route-specific readiness hook, run AFTER awaitSettled().
- *
- * Reserve these for *observable, page-specific* readiness — an element that must
- * exist before axe scans, or a redirect that must have landed. Generic readiness
- * (load state, fonts, skeleton detach) belongs in `settle` / `awaitSettled()`,
- * and for an entry that lands on the page it scans *and* leaves
- * `settle.loadState` at its default, a bare `waitForLoadState("networkidle")`
- * here is redundant because awaitSettled() has already awaited it.
- *
- * That carve-out is load-bearing. `awaitSettled` forwards the entry's override
- * (`settle.ts` — `options.loadState ?? "networkidle"`), so the four entries
- * setting `loadState: "domcontentloaded"` never await networkidle at all. On
- * those pages networkidle never opens its 500 ms quiet window, which is why
- * they opt out — so a bare networkidle in their `prepare` would hang to
- * timeout rather than duplicate work already done.
- *
- * **Exception: an entry whose `prepare` awaits a redirect.** `settle` runs
- * before `prepare` (`routes-sweep.spec.ts`), so for such an entry there is no
- * ordering guarantee that the settle covered the *destination's* fetches
- * rather than the pre-redirect page's. It may happen to — measured on
- * chromium against the loopback mocks, `/workspace`'s redirect has already
- * landed and its skeletons have already detached by the time `prepare` is
- * entered — but that is a property of how fast the mocks answer, not
- * something the ordering enforces, and a slower browser or machine has no
- * such luck. So a redirect entry should not stop at `waitForURL`: end it on
- * observable readiness for the page axe will actually scan, which is what
- * re-calling `awaitSettled()` with a `skeletonSelector` gives it. Prefer that
- * to a bare `networkidle`, which cannot tell a resolved table from one still
- * rendering `<Skeleton>` rows.
+ * Runs after awaitSettled(); for page-specific readiness only. A redirect
+ * entry should end on observable readiness (re-call awaitSettled with a
+ * skeletonSelector), and an entry with loadState "domcontentloaded" must not
+ * wait for networkidle, which never opens there.
  */
 export type PrepareHook = (page: Page) => Promise<void>;
 
 interface RouteVariant {
-  /** Appended to parent name: e.g. "brucella" → scanned as "taxonomy/brucella". */
   nameSuffix: string;
   path: string;
-  /**
-   * Variant-specific readiness. Runs AFTER the parent entry's `prepare`, not
-   * instead of it — put anything true of every variant on the parent.
-   */
+  /** Runs after the parent entry's `prepare`, not instead of it. */
   prepare?: PrepareHook;
 }
 
 export interface RouteEntry {
-  /** Unique name — baseline key (route dimension). */
   name: string;
-  /** URL path to navigate to. */
   path: string;
   /**
-   * Every page.tsx file this entry accounts for, relative to `src/app/`.
-   *
-   * This is the ONLY coverage list: `coveredPageFiles` is derived from it and
-   * `coverage.meta.spec.ts` diffs that against the files on disk in both
-   * directions. Most entries name exactly one file; name more when one scan
-   * genuinely covers several (a redirect target, or the same component mounted
-   * under a different segment). Required, so a new entry cannot skip accounting.
+   * Every page.tsx this entry covers, relative to `src/app/`; the only
+   * coverage list, diffed against disk by `coverage.meta.spec.ts`.
    */
   pages: string[];
-  /** Skip auth cookies + use unauthenticated session override. Default: false. */
   unauthenticated?: boolean;
-  /**
-   * Always redirects — counted in meta-test accounting but NOT scanned.
-   * The redirect target must be covered by another entry in this table.
-   */
   redirectOnly?: boolean;
-  /** Add workspace RPC overrides to mock stack. */
   needsWorkspace?: boolean;
-  /** Add jobs overrides to mock stack. */
   needsJobs?: boolean;
-  /** Add Copilot (`/api/copilot/*`) overrides to mock stack. */
   needsCopilot?: boolean;
-  /** Include in webkit/firefox thin tripwire project. */
   tripwire?: boolean;
-  /** Include in mobile-thin project (375px viewport). */
   mobile?: boolean;
-  /** Variants for dynamic routes — one scan per variant. */
   variants?: RouteVariant[];
   /**
-   * Options forwarded to awaitSettled(). Use loadState: "domcontentloaded" for
-   * pages with continuous Next.js RSC prefetch cycles that prevent networkidle.
+   * Forwarded to awaitSettled(); use loadState "domcontentloaded" on pages
+   * whose RSC prefetch never lets networkidle settle.
    */
   settle?: SettleOptions;
-  /** Observable page-specific readiness. See {@link PrepareHook}. */
   prepare?: PrepareHook;
 }
 
-// e2e test username — matches auth cookie values set in backends.ts
 const e2eUsername = "e2e-test-user@patricbrc.org";
 
 export const routes: RouteEntry[] = [
-  // ── Public / home ────────────────────────────────────────────────────────────
   {
     name: "home",
     path: "/",
@@ -102,7 +52,6 @@ export const routes: RouteEntry[] = [
     mobile: true,
   },
 
-  // ── Auth pages ────────────────────────────────────────────────────────────────
   {
     name: "sign-in",
     path: "/sign-in",
@@ -128,7 +77,6 @@ export const routes: RouteEntry[] = [
     unauthenticated: true,
   },
 
-  // ── Footer / static pages (unauthenticated) ─────────────────────────────────
   {
     name: "about",
     path: "/about",
@@ -182,8 +130,8 @@ export const routes: RouteEntry[] = [
     path: "/publications",
     pages: ["(footer)/publications/page.tsx"],
     unauthenticated: true,
-    // Next.js prefetches all <Link> elements continuously with rolling RSC tokens,
-    // preventing networkidle from ever opening a 500ms quiet window on this page.
+    // Rolling RSC prefetch tokens keep networkidle from ever settling on this
+    // page.
     settle: { loadState: "domcontentloaded" },
   },
   {
@@ -205,7 +153,6 @@ export const routes: RouteEntry[] = [
     unauthenticated: true,
   },
 
-  // ── Organism landing pages ────────────────────────────────────────────────────
   {
     name: "organisms-all",
     path: "/organisms/all",
@@ -229,7 +176,6 @@ export const routes: RouteEntry[] = [
     mobile: true,
   },
 
-  // ── Search ───────────────────────────────────────────────────────────────────
   {
     name: "search",
     path: "/search",
@@ -237,11 +183,8 @@ export const routes: RouteEntry[] = [
     unauthenticated: true,
     tripwire: true,
     mobile: true,
-    // Two states of the same page, both produced by `search/page.tsx`'s own
-    // branch table rather than by a different route: the Overview prompt (no
-    // params) and the explicit "no search view for this type" panel. They are
-    // variants instead of separate entries because coverage accounting allows a
-    // `page.tsx` exactly one owning entry.
+    // Both states come from `search/page.tsx` branches, so they are variants
+    // (coverage allows one entry per page.tsx).
     variants: [
       { nameSuffix: "default", path: "/search" },
       {
@@ -251,7 +194,6 @@ export const routes: RouteEntry[] = [
     ],
   },
 
-  // ── Advanced Search (dynamic — one variant per type, one sampled for coverage)
   {
     name: "advanced-search",
     path: "/advanced-search/genomes",
@@ -259,22 +201,12 @@ export const routes: RouteEntry[] = [
     unauthenticated: true,
   },
 
-  // ── Taxonomy (dynamic — two variants for multi-param coverage) ───────────────
-  // Both variants are bacterial genera — 234 is Brucella, 1763 is
-  // Mycobacterium — so they are named for those taxa. They were previously
-  // "virus" and "bacteria", which named neither taxon correctly, and the 1763
-  // scan reached the framework error boundary because the loopback mock had no
-  // taxonomy fixture for that taxon (a fixture gap recorded in
-  // baseline.generated.ts as if it were a page defect). Both now render the
-  // real landing page, so the Metadata Distributions readiness signal is true
-  // of every variant and belongs on the parent.
   {
     name: "taxonomy",
     path: "/taxonomy/234",
     pages: ["(views)/taxonomy/[taxonId]/page.tsx"],
     unauthenticated: true,
     mobile: true,
-    // The section's <h2> renders synchronously; chart cards stream in after.
     prepare: async (page) => {
       await page
         .getByTestId("metadata-distributions")
@@ -286,7 +218,6 @@ export const routes: RouteEntry[] = [
     ],
   },
 
-  // ── Views — list pages ─────────────────────────────────────────────────────
   {
     name: "taxonomy-list",
     path: "/taxonomy",
@@ -395,7 +326,6 @@ export const routes: RouteEntry[] = [
     },
   },
 
-  // ── Views — singular pages ─────────────────────────────────────────────────
   {
     name: "genome",
     path: "/genome/1282460.2049",
@@ -452,7 +382,6 @@ export const routes: RouteEntry[] = [
     ],
   },
 
-  // ── Jobs ─────────────────────────────────────────────────────────────────────
   {
     name: "jobs",
     path: "/jobs",
@@ -461,7 +390,6 @@ export const routes: RouteEntry[] = [
     tripwire: true,
   },
 
-  // ── Copilot ──────────────────────────────────────────────────────────────────
   {
     name: "copilot",
     path: "/copilot",
@@ -469,14 +397,12 @@ export const routes: RouteEntry[] = [
     needsCopilot: true,
   },
 
-  // ── Settings ─────────────────────────────────────────────────────────────────
   {
     name: "settings",
     path: "/settings",
     pages: ["settings/page.tsx"],
   },
 
-  // ── Services index ───────────────────────────────────────────────────────────
   {
     name: "services",
     path: "/services",
@@ -485,7 +411,6 @@ export const routes: RouteEntry[] = [
     mobile: true,
   },
 
-  // ── Genomics service forms ───────────────────────────────────────────────────
   {
     name: "genome-assembly",
     path: "/services/genome-assembly",
@@ -523,7 +448,6 @@ export const routes: RouteEntry[] = [
     pages: ["services/(genomics)/variation-analysis/page.tsx"],
   },
 
-  // ── Metagenomics service forms ───────────────────────────────────────────────
   {
     name: "metagenomic-binning",
     path: "/services/metagenomic-binning",
@@ -540,14 +464,12 @@ export const routes: RouteEntry[] = [
     pages: ["services/(metagenomics)/taxonomic-classification/page.tsx"],
   },
 
-  // ── Phylogenomics service forms ──────────────────────────────────────────────
   {
     name: "viral-genome-tree",
     path: "/services/viral-genome-tree",
     pages: ["services/(phylogenomics)/viral-genome-tree/page.tsx"],
   },
 
-  // ── Protein tools service forms ──────────────────────────────────────────────
   {
     name: "gene-protein-tree",
     path: "/services/gene-protein-tree",
@@ -569,14 +491,12 @@ export const routes: RouteEntry[] = [
     pages: ["services/(protein-tools)/proteome-comparison/page.tsx"],
   },
 
-  // ── Utilities service forms ──────────────────────────────────────────────────
   {
     name: "fastq-utilities",
     path: "/services/fastq-utilities",
     pages: ["services/(utilities)/fastq-utilities/page.tsx"],
   },
 
-  // ── Viral tools service forms ────────────────────────────────────────────────
   {
     name: "influenza-ha-subtype",
     path: "/services/influenza-ha-subtype",
@@ -603,11 +523,8 @@ export const routes: RouteEntry[] = [
     pages: ["services/(viral-tools)/viral-assembly/page.tsx"],
   },
 
-  // ── Workspace (authenticated) ────────────────────────────────────────────────
-  // Navigating to /workspace triggers a server redirect to /workspace/username/home.
-  // The prepare hook waits for the redirect so the scan runs on the workspace browser.
-  // The redirect target and the sibling [folder] route render the same component off
-  // a different root, so all three page files are accounted for by this one scan.
+  // /workspace redirects to /workspace/<user>/home; this one scan accounts
+  // for all three page files.
   {
     name: "workspace",
     path: "/workspace",
@@ -622,35 +539,13 @@ export const routes: RouteEntry[] = [
     prepare: async (page) => {
       await page.waitForURL(/\/workspace\/[^/]+\/home/, { timeout: 10_000 });
       await page.getByPlaceholder(/search files/i).waitFor({ timeout: 10_000 });
-      // The two waits above are not sufficient cover on their own. The search
-      // box lives in workspace-toolbar.tsx, and on *this* route its appearance
-      // proves nothing about the data: workspace-browser.tsx's
-      // `resolveQuery.isLoading` skeleton early return is gated on a non-empty
-      // path, and `/workspace/<user>/home` renders with `path === ""` because
-      // the optional catch-all is absent, so the toolbar comes from the main
-      // return without passing that gate at all. Either way the file listing
-      // is a separate query whose `isLoading` reaches WorkspaceDataTable,
-      // which renders `<Skeleton>` rows until it resolves.
-      //
-      // This is defensive rather than a fix for a reproduced local failure:
-      // on chromium against the loopback mocks both the redirect and the
-      // skeleton detach are already done before this hook runs, so this call
-      // resolves immediately. It is here because `settle` runs before
-      // `prepare`, so nothing *guarantees* that for a redirecting entry —
-      // see {@link PrepareHook}. Exposure is largest on the tripwire
-      // projects, whose firefox half cannot be launched on this machine at all
-      // (`e2e/README.md`), so the combined script only ever runs green in CI.
-      //
-      // Re-settling also covers a second, later gap that skeleton-detach does
-      // not: the shell's ResizablePanelGroup collapses the details panel from a
-      // client effect *after* the rows have painted, and the server-rendered
-      // separator carries `role="separator"` with no `aria-valuenow` until that
-      // commit lands — a `critical` aria-required-attr hit on a state that is
-      // gone a few hundred ms later. See `awaitPanelLayoutCommitted` in ./settle.
+      // settle runs before prepare, so re-settle on the redirect destination:
+      // the file listing renders skeleton rows, and the details panel
+      // collapses from a client effect that leaves a role="separator" without
+      // aria-valuenow (see awaitPanelLayoutCommitted).
       await awaitSettled(page, { skeletonSelector: '[data-slot="skeleton"]' });
     },
   },
-  // Public workspace listing (signed in, like every workspace route)
   {
     name: "workspace-public",
     path: "/workspace/public",
@@ -659,7 +554,6 @@ export const routes: RouteEntry[] = [
   {
     name: "workspace-public-user",
     path: `/workspace/public/${e2eUsername}`,
-    // The [...path] route below it is the same component with a deeper segment.
     pages: [
       "workspace/public/[username]/page.tsx",
       "workspace/public/[username]/[...path]/page.tsx",
@@ -684,7 +578,6 @@ export const routes: RouteEntry[] = [
     },
   },
 
-  // Redirect-only workspace routes — not scanned, just counted for meta-test accounting.
   {
     name: "workspace-home-redirect",
     path: "/workspace/home",
@@ -698,8 +591,6 @@ export const routes: RouteEntry[] = [
     redirectOnly: true,
   },
 
-  // ── Structure viewer ─────────────────────────────────────────────────────────
-  // Molstar 3D canvas is excluded from axe; the wrapper element must carry an accessible name.
   {
     name: "structure-viewer",
     path: "/viewer/structure",
@@ -708,30 +599,23 @@ export const routes: RouteEntry[] = [
 ];
 
 /**
- * Every src/app page.tsx path accounted for by the route table, derived from the
- * per-entry `pages` declarations. `coverage.meta.spec.ts` globs the real files and
- * diffs them against this set in both directions, so this is not a second list to
- * maintain — edit the owning route entry's `pages` instead.
+ * Every src/app page.tsx accounted for by the route table; edit an entry's
+ * `pages`, not a second list.
  */
 export const coveredPageFiles: ReadonlySet<string> = new Set(
   routes.flatMap((route) => route.pages),
 );
 
 export interface ScanTarget {
-  /** Owning route entry — carries the mock/project flags for the scan. */
   route: RouteEntry;
-  /** Baseline + reflowSkip key. Variants read `${route.name}/${nameSuffix}`. */
   name: string;
   path: string;
   prepare?: PrepareHook;
 }
 
 /**
- * Run the parent hook first, then the variant's, forwarding the same argument to
- * both. Either side may be absent, in which case the other is returned as-is.
- *
- * Generic in the argument so the ordering contract can be asserted without
- * launching a browser — `buildScanTargets` always instantiates it at `Page`.
+ * Runs the parent hook, then the variant's, with the same argument; either
+ * may be absent.
  */
 export function composePrepare<T>(
   parent: ((target: T) => Promise<void>) | undefined,
@@ -746,9 +630,8 @@ export function composePrepare<T>(
 }
 
 /**
- * Flatten routes × variants into individual scan targets, skipping redirect-only
- * entries. A parent with variants is not scanned on its own — only its variants —
- * so its `prepare` is composed into each variant's rather than replaced by it.
+ * Flatten routes x variants into scan targets, skipping redirect-only
+ * entries; a parent's `prepare` is composed into each variant's.
  */
 export function buildScanTargets(entries: readonly RouteEntry[]): ScanTarget[] {
   return entries.flatMap((route) => {

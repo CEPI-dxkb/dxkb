@@ -143,8 +143,6 @@ describe("parseJobsResponse", () => {
   });
 
   it("names the failing field path in the thrown message", () => {
-    // An unknown status inside a row is reported against the tuple-or-array union
-    // that holds the rows, so the path is "jobs", not "jobs[0].status".
     expect(() =>
       parseJobsResponse({
         jobs: [{ ...validJob, status: "killed" }],
@@ -357,8 +355,7 @@ describe("useJobsData client default staleTime", () => {
     );
     await waitFor(() => { expect(result.current.isSuccess).toBe(true); });
 
-    // With the client's 60 s window the fresh read is not stale (a 0 window
-    // from an explicit `staleTime: undefined` would make it stale at once).
+    // The client's 60 s window keeps the fresh read not stale; an explicit `staleTime: undefined` would make it stale at once.
     expect(result.current.isStale).toBe(false);
   });
 });

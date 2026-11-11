@@ -1,10 +1,5 @@
 "use client";
 
-// The toolbar's Columns control. Shown columns are listed in display order and
-// reorder by dragging their grip (pointer events, with a drop line) or by
-// Alt+↑/↓ on the highlighted row; hidden columns are listed A–Z below and come
-// back at the end of the shown order. Every change is one table-layout write.
-
 import {
   useEffect,
   useId,
@@ -31,30 +26,19 @@ import type { CollectionColumnControls, CollectionColumnOption } from "./types";
 
 type ColumnRow = CollectionColumnOption & { group: "shown" | "hidden" };
 
-/** Distance from the list's top/bottom edge where a drag scrolls it, in px. */
 const autoScrollZone = 32;
-/** Fastest auto-scroll step per frame, in px. */
 const autoScrollStep = 12;
-/** How long a moved row keeps its highlight, in ms. */
 const movedFlashMs = 700;
 
-/**
- * The shown-list index a row dragged from `from` lands at for the insertion
- * index `to`: past its own slot, one earlier.
- */
 function dropIndex(from: number, to: number) {
   return to > from ? to - 1 : to;
 }
 
 interface DragState {
   id: string;
-  /** Index in the shown list the row was picked up from. */
   from: number;
-  /** Insertion index (0..shown.length) the drop line marks. */
   to: number;
-  /** Ghost row's top, in the list's scroll coordinates. */
   ghostY: number;
-  /** Drop line's top, in the list's scroll coordinates. */
   lineY: number;
 }
 
@@ -142,10 +126,6 @@ export function ColumnsMenu({
     });
   };
 
-  /**
-   * Writes a new shown order. Hidden columns keep their slots in the full
-   * order, so "Show all" later puts them back where they were.
-   */
   const writeShownOrder = (nextShown: string[]) => {
     const queue = [...nextShown];
     setColumns({
@@ -168,10 +148,6 @@ export function ColumnsMenu({
     );
   };
 
-  /**
-   * A row leaving its group hands the highlight to the next row in that group
-   * (else the previous one), if it had the highlight or nothing did.
-   */
   const highlightNeighbour = (row: ColumnRow, group: ColumnRow[]) => {
     if (row.id !== activeId && activeId !== null) return;
     const index = group.findIndex((candidate) => candidate.id === row.id);
@@ -190,7 +166,6 @@ export function ColumnsMenu({
   };
 
   const show = (row: ColumnRow) => {
-    // Appended after the last shown column; every other slot stays.
     const rest = columns.filter((column) => column.id !== row.id);
     const lastShown = rest.findLastIndex((column) => column.visible);
     const order = rest.map((column) => column.id);
@@ -210,7 +185,6 @@ export function ColumnsMenu({
 
   const onSearchKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
     if (event.key === "Escape" && query) {
-      // Clear the search first; a second Escape closes the menu.
       event.preventDefault();
       event.stopPropagation();
       setQuery("");
@@ -250,10 +224,6 @@ export function ColumnsMenu({
     }
   };
 
-  // -------------------------------------------------------------------------
-  // Pointer drag (shown rows only, from the grip)
-
-  /** Where the drop line goes for a pointer at `clientY`, 0..shown.length. */
   const insertionIndex = (clientY: number) => {
     const list = listRef.current;
     if (!list) return 0;
@@ -351,8 +321,6 @@ export function ColumnsMenu({
   const dropLineVisible =
     drag !== null && drag.to !== drag.from && drag.to !== drag.from + 1;
   const dragged = drag ? columns.find((column) => column.id === drag.id) : undefined;
-
-  // -------------------------------------------------------------------------
 
   const renderRow = (row: ColumnRow) => {
     const isActive = row.id === activeRow?.id;
@@ -457,7 +425,7 @@ export function ColumnsMenu({
         render={
           <button
             type="button"
-            // Starts with the visible text ("Columns 3/5"): WCAG 2.5.3.
+            // Starts with the visible text (WCAG 2.5.3).
             aria-label={`Columns ${String(shown.length)}/${String(columns.length)} shown${customised ? ", customised" : ""}`}
             className="relative inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md border border-input bg-background pr-1.5 pl-2 text-xs font-medium text-foreground shadow-xs outline-none hover:bg-foreground/5 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 aria-expanded:bg-foreground/5"
           />
@@ -722,7 +690,6 @@ function FooterAction({
   );
 }
 
-/** The label with the first match of the search emphasised. */
 function Highlight({ text, needle }: { text: string; needle: string }) {
   const at = needle ? text.toLowerCase().indexOf(needle) : -1;
   if (at < 0) return <>{text}</>;

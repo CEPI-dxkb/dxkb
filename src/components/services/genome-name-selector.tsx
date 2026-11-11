@@ -44,9 +44,8 @@ export function GenomeNameSelector({
 
   const existingGenomeIds = new Set(selectedGenomeIds.map((id) => id.trim()));
   const toggleRef = useRef<HTMLButtonElement | null>(null);
-  // Set while the list was opened from the toggle, which searches whatever
-  // has been typed (an empty query lists genomes) without the typing
-  // threshold. Typing, picking, closing or clicking outside clears it.
+  // Set while the list was opened from the toggle, which searches whatever is
+  // typed (even nothing) without the typing threshold.
   const [isManualTrigger, setIsManualTrigger] = useState(false);
 
   const {
@@ -171,8 +170,7 @@ export function GenomeNameSelector({
     suggestions.length === 0;
 
   // Focus alone sets showDropdown, so the toggle follows the list actually on
-  // screen; otherwise it would read "Hide" over nothing and its first click
-  // would do nothing.
+  // screen.
   const isListOpen =
     showDropdown &&
     (suggestions.length > 0 || isLoading || !!error || showEmptyState);

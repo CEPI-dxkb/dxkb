@@ -106,8 +106,6 @@ export function BarStackChart({
 
   const yTicks = yScale.ticks(4);
 
-  // A literal style object with static keys: the lint rule allows the
-  // runtime left/right/top, but not a style computed by a call.
   const tooltipPosition = chartTooltipStyle(
     tooltipLeft ?? 0,
     tooltipTop ?? 0,
@@ -136,7 +134,6 @@ export function BarStackChart({
                 innerWidth={yearInnerWidth}
               />
 
-              {/* X-axis baseline */}
               <line
                 x1={0}
                 x2={yearInnerWidth}
@@ -146,7 +143,6 @@ export function BarStackChart({
                 strokeWidth={1}
               />
 
-              {/* Column hover highlight — rendered behind the bars */}
               {hoveredYear !== null && (
                 <rect
                   x={(xScale(hoveredYear) ?? 0) - xScale.step() * 0.125}
@@ -160,7 +156,6 @@ export function BarStackChart({
                 />
               )}
 
-              {/* Stacked bars — pointer-events handled by overlay below */}
               <BarStack<SerotypeYear, string>
                 data={data.years}
                 keys={data.serovars}
@@ -187,8 +182,7 @@ export function BarStackChart({
                           width={bar.width}
                           fill={bar.color}
                           rx={barStack.index === barStacks.length - 1 ? 2 : 0}
-                          // SVG <rect> has no implicit ARIA role; graphics-symbol permits
-                          // aria-label without tripping axe aria-prohibited-attr on WebKit/Firefox.
+                          // SVG <rect> has no implicit ARIA role; graphics-symbol permits aria-label without axe aria-prohibited-attr.
                           role="graphics-symbol"
                           aria-label={label}
                           pointerEvents="none"
@@ -206,12 +200,7 @@ export function BarStackChart({
                 }
               </BarStack>
 
-              {/*
-               * Transparent overlay — covers the full inner chart area.
-               * Detects mouse position to determine the nearest year column,
-               * then shows the column highlight and tooltip for the whole area
-               * (not just where bars exist). Click locks/unlocks a serovar.
-               */}
+              {/* Transparent overlay over the full inner area: finds the nearest year column for the highlight and tooltip; click locks a serovar. */}
               <rect
                 data-testid="chart-overlay"
                 x={0}
@@ -255,12 +244,10 @@ export function BarStackChart({
                   hideTooltip();
                 }}
                 onClick={() => {
-                  // Click in empty space releases any serovar lock
                   highlight.clearHighlight();
                 }}
               />
 
-              {/* X-axis year labels */}
               {data.years.map((d) => {
                 const x = (xScale(d.year) ?? 0) + xScale.bandwidth() / 2;
                 return (
@@ -280,7 +267,6 @@ export function BarStackChart({
           </svg>
         </div>
 
-        {/* Legend pills */}
         <div className="mt-2 flex flex-wrap gap-1.5">
           {data.serovars.map((sv, idx) => {
             const isActive = activeIdx === idx;
@@ -306,7 +292,6 @@ export function BarStackChart({
         </div>
       </CardContent>
 
-      {/* Tooltip — shows all serovars for the hovered year */}
       {tooltipData && (
         <div
           role="status"

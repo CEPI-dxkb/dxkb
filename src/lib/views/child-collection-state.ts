@@ -7,19 +7,11 @@ import {
 import type { SearchParamsRecord } from "./rql";
 
 /**
- * URL state for a collection nested inside a page that already owns the top-level
- * collection params. Each child's params carry a `<urlKey>.` prefix
- * (`?tab=features&features.page=2`), so they can never collide with the page's own.
- *
- * Every `urlKey` is listed here, and `ResourceChildCollection` accepts only these,
- * so cleanup recognizes child state by a known prefix rather than by any dot: an
- * unrelated dotted param (`source.id=123`) survives a tab switch or a parent
- * collection write like every other param those navigations do not own. A new
- * nested table adds its key to this list. Two keys are not tables, but
- * tab-owned state the same cleanup must drop: `browser`, the Genome Browser's
- * (`browser.loc`, `browser.tracks`, `browser.highlight`), and `compare`, the
- * Compare Region Viewer's settings (`compare.size`, `compare.genomes`,
- * `compare.method`, `compare.filter`, `compare.group`).
+ * Each child's params carry a `<urlKey>.` prefix so they cannot collide with
+ * the page's own. Only listed keys are recognized, so an unrelated dotted param
+ * (`source.id=123`) survives a tab switch.
+ * `browser` and `compare` are not tables but tab-owned state the same cleanup
+ * must drop.
  */
 export const childCollectionUrlKeys = [
   "amr",
@@ -59,26 +51,20 @@ export function withoutChildCollectionParams(
   );
 }
 
-/**
- * The in-place form of `withoutChildCollectionParams`, for a caller that already
- * holds the `URLSearchParams` it is about to navigate with (a tab or view switch,
- * where a page number from one tab must not land on another).
- */
 export function deleteChildCollectionParams(params: URLSearchParams): void {
   for (const name of [...params.keys()]) {
     if (isChildCollectionParam(name)) params.delete(name);
   }
 }
 
-// Nothing in the UI gives a child table structural RQL or a refine term, and an
-// unvalidated `rql` from the URL would reach the data API, so neither is accepted.
+// An unvalidated `rql` from the URL would reach the data API, and nothing in
+// the UI gives a child table structural RQL, so neither is accepted.
 const urlOnlyParamNames = new Set(["rql", "refine"]);
 
 /**
- * This table's own params, prefix stripped. `rql` and `refine` are dropped here,
- * before parsing, not from the parsed state: an explicit `rql` makes
- * `parseCollectionState` skip the friendly filters, so a stray `features.rql`
- * would otherwise still erase `features.feature_type`.
+ * `rql` and `refine` are dropped before parsing: an explicit `rql` makes
+ * `parseCollectionState` skip friendly filters, so a stray `features.rql` would
+ * erase `features.feature_type`.
  */
 function ownParams(
   params: SearchParamsRecord,
@@ -127,10 +113,6 @@ export function replaceChildCollectionSearchParams(
   return result;
 }
 
-/**
- * What a child table may carry in the URL, derived from what its profile can do,
- * plus any default filters its caller selects (`CollectionStateOptions`).
- */
 export function childCollectionOptions(
   columns: readonly { id: string; sortable?: boolean }[],
   facets: readonly { field: string }[] | undefined,

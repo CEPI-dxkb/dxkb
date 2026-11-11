@@ -29,15 +29,14 @@ describe("normalizeLegacyKeyword", () => {
   });
 
   it("leaves an identifier-like word inside a phrase unquoted", () => {
-    // Quoting 2.1.1.1 here would break the phrase; legacy's search box then
-    // searches kinase and "enzyme" only.
+    // Quoting 2.1.1.1 here would break the phrase.
     expect(normalizeLegacyKeyword('kinase "EC 2.1.1.1 enzyme"')).toBe(
       'kinase "EC 2.1.1.1 enzyme"',
     );
   });
 
-  // Legacy's parser reads and/or/not in any case, but only before another
-  // word; ?keyword= reads Solr's uppercase operators.
+  // Legacy reads and/or/not in any case, only before another word; ?keyword=
+  // reads uppercase operators.
   it.each([
     ["coli or Salmonella", "coli OR Salmonella"],
     ["kinase Not hypothetical", "kinase NOT hypothetical"],
@@ -53,9 +52,8 @@ describe("normalizeLegacyKeyword", () => {
   });
 
   describe("stray quotes", () => {
-    // The parser's opening-quote branch assigns instead of appending, so any
-    // quote it sees mid-token throws away the text before it. These keywords
-    // must reach the parser with the unusable quotes already gone.
+    // The parser's opening-quote branch assigns instead of appending, so a
+    // mid-token quote discards the text before it.
     it.each([
       ['foo"bar', "foobar", "keyword(foobar)"],
       ["foo bar\" baz", "foo bar baz", "and(keyword(foo),keyword(bar),keyword(baz))"],
@@ -91,9 +89,8 @@ describe("normalizeLegacyKeyword", () => {
       },
     );
 
-    // A list's keyword box closes a quote left open (`keywordTerms`), the
-    // phrase being typed: "DNA polymerase is 17 genomes, the words apart 55.
-    // Legacy sends the open quote to Solr, which rejects it.
+    // A list's keyword box closes an open quote; legacy sends it to Solr, which
+    // rejects it.
     it.each([
       ['"foo bar', '"foo bar"'],
       ['kinase "EC 2.1.1.1', 'kinase "EC 2.1.1.1"'],
@@ -112,16 +109,12 @@ describe("normalizeLegacyKeyword", () => {
   });
 });
 
-/** The RQL a list sends for ?keyword=<text>, as the exact lists build it. */
 function listRql(keyword: string): string {
   const clauses = keywordClauses(keyword, "exact");
   return clauses.length === 1 ? clauses[0] : `and(${clauses.join(",")})`;
 }
 
 describe("the ?keyword= the search bar writes", () => {
-  // Alpha's search box sends searchToQuery(normalized text); a DXKB list sends
-  // keywordClauses(normalized text). Both read the same (DXKB-normalized)
-  // text, so this checks the reading; the normalization's own cases are above.
   // Compared decoded: the two encode `*` differently.
   it.each([
     "Rv0001",
@@ -153,9 +146,8 @@ describe("the ?keyword= the search bar writes", () => {
   });
 
   it("offers a NOT inside an OR as the OR of everything else", () => {
-    // Legacy sends or(not(keyword(coli)),keyword(Salmonella)), which the Data
-    // API reads as Lucene does, Salmonella AND NOT coli: 61,384 genomes. Not
-    // coli, or Salmonella, is 16,901,125.
+    // Legacy's or(not(keyword(coli)),keyword(Salmonella)) reads as Salmonella
+    // AND NOT coli (61,384 genomes).
     const keyword = normalizeLegacyKeyword("not coli or Salmonella");
     expect(listRql(keyword)).toBe(
       "or(and(keyword(*),not(keyword(coli))),keyword(Salmonella))",

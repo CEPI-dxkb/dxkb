@@ -8,7 +8,6 @@ interface MobileDecoratedSubSectionProps {
   curveColor?: string;
 }
 
-/** Adds the dot and connector used to group mobile navigation subsections. */
 export function MobileDecoratedSubSection({
   children,
   alwaysShow = false,

@@ -1,20 +1,9 @@
-/**
- * The Compare Region Viewer figure's vertical frame: each row's lanes, the
- * slot it owns between dividers, and every glyph's vertical extent, as pure
- * functions of the layout and a density. Horizontal positions come from the
- * zoom (`ruler.ts`); a layout is measured once per answer and density.
- */
 import type { CompareRegionFeature } from "./contract";
 import { rulerHeight, type DensitySpec } from "./density";
 import type { CompareRegionLayout, PlacedFeature } from "./layout";
 
 export type GlyphKind = "gene" | "orphan" | "blast" | "pseudo" | "other";
 
-/**
- * Genes (`peg`, `domain_hit`) are arrows, an orphan being a gene in no
- * family; BLAST hits are pills, pseudogenes dashed arrows, and anything else
- * (tRNA, repeats, assembly gaps) a rounded bar. The split is legacy BV-BRC's.
- */
 export function glyphKind(feature: CompareRegionFeature): GlyphKind {
   if (feature.type === "peg" || feature.type === "domain_hit") {
     return feature.family === null ? "orphan" : "gene";
@@ -25,30 +14,20 @@ export function glyphKind(feature: CompareRegionFeature): GlyphKind {
 }
 
 export interface RowFrame {
-  /** Top of each lane. */
   laneTops: number[];
-  /** Top of lane 0 and bottom of the lowest lane. */
   top: number;
   bottom: number;
-  /** Lane 0's middle: where the contig baseline runs (the label centers on the slot instead). */
   center: number;
-  /** The row's slot, divider to divider (the ruler above row 1, the figure's end below the last). */
   slotTop: number;
   slotBottom: number;
 }
 
 export interface FigureFrame {
   rows: RowFrame[];
-  /** y of the hairline between each pair of rows. */
   dividers: number[];
   height: number;
 }
 
-/**
- * Each row's lanes, slot and center, and the dividers between rows. Lane 0
- * is a gene tall, lanes holding only BLAST hits are a thin bar, and the other
- * lanes are `overlapHeight` (in Comfortable, a gene tall too).
- */
 export function measureFigure(
   layout: CompareRegionLayout,
   spec: DensitySpec,
@@ -96,7 +75,6 @@ export function measureFigure(
   return { rows, dividers, height };
 }
 
-/** A glyph's vertical extent within its lane. */
 export function glyphBox(
   spec: DensitySpec,
   frame: RowFrame,
@@ -117,7 +95,6 @@ export function glyphBox(
   }
 }
 
-/** The row whose slot holds `y` (svg px), or null above the first and below the last. */
 export function rowAt(frame: FigureFrame, y: number): number | null {
   const index = frame.rows.findIndex(
     (row) => y >= row.slotTop && y < row.slotBottom,

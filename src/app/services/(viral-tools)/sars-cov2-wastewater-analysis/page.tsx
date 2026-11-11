@@ -126,7 +126,6 @@ export default function SarsCov2WastewaterAnalysisPage() {
       srr: "srr_libs",
     },
     normalizeLibraries: (nextLibraries, previousLibraries) => {
-      // Skip normalization when called from the rerun effect — libs already have correct sampleId
       if (skipSraNormalization.current) {
         skipSraNormalization.current = false;
         return nextLibraries;
@@ -316,7 +315,6 @@ export default function SarsCov2WastewaterAnalysisPage() {
           />
         </div>
 
-        {/* Form controls */}
         <div className="md:col-span-12">
           <ServiceFormFooter
             form={form}

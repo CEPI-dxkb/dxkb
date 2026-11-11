@@ -301,7 +301,6 @@ describe("useTableKeyboardNavigation", () => {
         }),
       );
 
-      // First ArrowDown should focus the leading special row
       const event1 = createKeyEvent({ key: "ArrowDown" });
       act(() => {
         result.current.handleKeyDown(event1);
@@ -332,13 +331,11 @@ describe("useTableKeyboardNavigation", () => {
         }),
       );
 
-      // First ArrowDown goes to leading row
       act(() => {
         result.current.handleKeyDown(createKeyEvent({ key: "ArrowDown" }));
       });
       expect(result.current.focusedSpecialRow).toBe("leading");
 
-      // Second ArrowDown should go to parent row
       act(() => {
         result.current.handleKeyDown(createKeyEvent({ key: "ArrowDown" }));
       });
@@ -364,13 +361,11 @@ describe("useTableKeyboardNavigation", () => {
         }),
       );
 
-      // Navigate to leading row
       act(() => {
         result.current.handleKeyDown(createKeyEvent({ key: "ArrowDown" }));
       });
       expect(result.current.focusedSpecialRow).toBe("leading");
 
-      // Press Enter on leading row
       const enterEvent = createKeyEvent({ key: "Enter" });
       act(() => {
         result.current.handleKeyDown(enterEvent);
@@ -400,13 +395,11 @@ describe("useTableKeyboardNavigation", () => {
         }),
       );
 
-      // Navigate to parent row (with no leading offset, first ArrowDown goes to parent)
       act(() => {
         result.current.handleKeyDown(createKeyEvent({ key: "ArrowDown" }));
       });
       expect(result.current.focusedSpecialRow).toBe("parent");
 
-      // Press Enter on parent row
       const enterEvent = createKeyEvent({ key: "Enter" });
       act(() => {
         result.current.handleKeyDown(enterEvent);

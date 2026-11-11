@@ -48,21 +48,17 @@ interface DonutChartProps {
   errorMessage?: string;
 }
 
-// Donut uses up to 10 distinct accents plus a muted color for the "Others" bucket.
-// chart-1..5 are brand-derived per theme (primary/secondary/accent/violet/coral);
-// chart-6..10 are shared fills from globals.css.
-// Sequence (dxkb): navy(267)→amber(37)→teal(195)→coral(15)→gold(85)→pink(340)→green(140)→violet(310)→orange(50)→cyan-green(175)→gray
 const donutPalette = [
-  sharedChartColors[0], // chart-1:  primary      h≈267
-  sharedChartColors[1], // chart-2:  secondary    h≈37
-  sharedChartColors[5], // chart-6:  teal         h=195
-  sharedChartColors[4], // chart-5:  coral        h≈15
-  sharedChartColors[2], // chart-3:  gold         h≈85
-  sharedChartColors[8], // chart-9:  pink         h=340
-  sharedChartColors[7], // chart-8:  green        h=140
-  sharedChartColors[3], // chart-4:  violet       h≈310
-  sharedChartColors[6], // chart-7:  orange       h=50
-  sharedChartColors[9], // chart-10: cyan-green   h=175
+  sharedChartColors[0],
+  sharedChartColors[1],
+  sharedChartColors[5],
+  sharedChartColors[4],
+  sharedChartColors[2],
+  sharedChartColors[8],
+  sharedChartColors[7],
+  sharedChartColors[3],
+  sharedChartColors[6],
+  sharedChartColors[9],
   donutFallbackColor,
 ];
 
@@ -117,8 +113,6 @@ function chartData(data: DonutDatum[]): DonutChartDatum[] {
   ];
 }
 
-// Standard donut arc path. Paths are centered at (0,0); the parent <g> handles
-// translation to the chart center.
 function arcPath(
   innerR: number,
   outerR: number,
@@ -128,8 +122,7 @@ function arcPath(
   const sweep = endAngle - startAngle;
   const f = (n: number) => Math.round(n * 1000) / 1000;
 
-  // Full-circle slice (single positive datum): SVG arc with identical start/end
-  // points renders nothing. Build the ring as two semicircles using even-odd fill.
+  // A single-datum slice is a full circle, whose identical arc endpoints render nothing: build the ring as two semicircles with even-odd fill.
   if (sweep >= Math.PI * 2 - 1e-6) {
     return [
       `M ${String(f(outerR))} 0`,
@@ -270,8 +263,6 @@ interface ArcInterp {
   toOpacity: number;
 }
 
-// An arc's angles at animation progress `t`, shared by the frames that draw it
-// and the pointer hit-test.
 function interpAngles(arc: ArcInterp, t: number) {
   return {
     startAngle: arc.fromStart + (arc.toStart - arc.fromStart) * t,
@@ -581,10 +572,7 @@ function useDonutChart({
   const prevArcsRef = useRef<AnimatedArcDatum[]>([]);
   const pathRefs = useRef(new Map<string, SVGPathElement>());
   const animRef = useRef<ReturnType<typeof animate> | null>(null);
-  // The arcs as the paths show them right now. The animation writes its frames
-  // straight to the path elements, so `displayedArcs` holds frame 0 until it
-  // completes and `arcData` is where the slices settle; pointer hit-testing
-  // reads this instead.
+  // The arcs as the paths show them now: the animation writes frames straight to the path elements, so hit-testing reads this, not `displayedArcs` or `arcData`.
   const drawnArcsRef = useRef<{ interp: ArcInterp[]; progress: number }>({
     interp: [],
     progress: 1,
@@ -644,9 +632,6 @@ function useDonutChart({
   const [activationSource, setActivationSource] = useState<"cursor" | "legend">(
     "cursor",
   );
-  // Horizontal offset (px) of the ▼ caret from the tooltip center.
-  // Non-zero only when the tooltip is pushed horizontally to stay within
-  // the SVG bounds (prevents overlap with the legend column).
   const [legendCaretOffsetPx, setLegendCaretOffsetPx] = useState(0);
   const activeId = hoveredId;
   const { showTooltip, hideTooltip, tooltipData, tooltipLeft, tooltipTop } =
@@ -713,16 +698,10 @@ function useDonutChart({
     });
   };
 
-  // Anchor the tooltip to the arc's outer-edge midpoint. Used when the user
-  // activates a slice via legend hover or keyboard focus, where no cursor
-  // coordinate is available. Without this, keyboard users see the slice pop
-  // but miss the percentage + count that mouse users get — violates WCAG
-  // 1.4.13 (Content on Hover or Focus).
+  // Anchors the tooltip to the arc's outer-edge midpoint for legend or keyboard activation, where no cursor coordinate exists (WCAG 1.4.13).
   const showTooltipForArcAnchoredToSvg = (arc: ArcDatum) => {
     const svgEl = svgRef.current;
     const rect = svgEl?.getBoundingClientRect();
-    // If the SVG has no measurable layout (jsdom under tests, or pre-mount),
-    // still show the tooltip — `chartTooltipStyle` will clamp it to viewport.
     if (!rect || !rect.width || !rect.height) {
       showTooltipForArc(arc, 0, 0);
       return;
@@ -740,9 +719,6 @@ function useDonutChart({
     if (arc) showTooltipForArcAnchoredToSvg(arc);
   };
 
-  // Where a pointer event falls on the donut: off it (`null`), or in the ring
-  // (or on the popped-out slice's rim past it), on an arc or in the gap between
-  // two (`arc` undefined).
   const pointerTarget = (
     event: React.MouseEvent<SVGCircleElement>,
   ): { arc?: ArcDatum } | null => {
@@ -751,9 +727,7 @@ function useDonutChart({
 
     const rect = svgEl.getBoundingClientRect();
     if (!rect.width || !rect.height) return null;
-    // xMidYMid meet applies a single uniform scale; compute it from whichever
-    // axis is the bottleneck and subtract the resulting letterbox offset before
-    // mapping to SVG space.
+    // xMidYMid meet applies one uniform scale; subtract the letterbox offset before mapping to SVG space.
     const uniformScale = Math.min(
       rect.width / chartSize,
       rect.height / chartSize,
@@ -766,23 +740,18 @@ function useDonutChart({
       (event.clientY - rect.top - letterboxY) / uniformScale - chartCenter;
     const dist = Math.sqrt(svgX * svgX + svgY * svgY);
 
-    // Only the ring is live — the inner hole is a dead zone, and so is the
-    // outside, but for the popped-out slice's rim
     if (dist < innerRadius) return null;
 
-    // Test the angles the slices are drawn at, which trail `arcData` while they
-    // animate, so hover and click resolve to the slice under the pointer.
+    // Test the angles the slices are drawn at, which trail `arcData` while they animate.
     const { interp, progress } = drawnArcsRef.current;
     const inSweep = (drawn: ArcInterp, x: number, y: number) => {
       const { startAngle, endAngle } = interpAngles(drawn, progress);
-      const angle = Math.atan2(x, -y); // angle from 12 o'clock, clockwise
+      const angle = Math.atan2(x, -y);
       const a = angle < startAngle ? angle + Math.PI * 2 : angle;
       return a >= startAngle && a <= endAngle;
     };
 
     if (dist > outerRadius) {
-      // The active slice pops out by popDistance, so its rim crosses the outer
-      // edge. Undo its offset and test the point against the slice itself.
       const arc = arcData.find((a) => a.slice.id === activeId);
       const drawn = interp.find((d) => d.id === activeId);
       if (!arc || !drawn) return null;
@@ -793,8 +762,7 @@ function useDonutChart({
         : null;
     }
 
-    // Later paths paint on top, so the last match wins. A slice missing from
-    // `arcData` is leaving (just hidden from the legend) and never matches.
+    // Later paths paint on top, so the last match wins; a slice missing from `arcData` is leaving and never matches.
     let hit: ArcDatum | undefined;
     for (const drawn of interp) {
       const arc = arcData.find((a) => a.slice.id === drawn.id);
@@ -818,7 +786,6 @@ function useDonutChart({
       activateHover(arc.slice.id);
       return;
     }
-    // Cursor is in a gap — keep current active slice without flickering
     if (tooltipData) {
       showTooltip({
         tooltipData,
@@ -828,10 +795,7 @@ function useDonutChart({
     }
   };
 
-  // Legend activation centers the tooltip on the anchor (the
-  // -translate-x-1/2 below avoids width-estimation error) and floats it above
-  // with room for the ▼ caret. Kept as left/right/top so the tooltip's style
-  // is a literal object with static keys, which the lint rule can check.
+  // Kept as left/right/top so the style is a literal object with static keys, which the lint rule can check.
   const tooltipPosition: { left?: number; right?: number; top: number } =
     activationSource === "legend"
       ? {
@@ -873,14 +837,7 @@ function useDonutChart({
                 : "flex-col items-center justify-center",
             )}
           >
-            {/*
-             * Side layout: SVG takes half the card width and the full available
-             * height. preserveAspectRatio="xMidYMid meet" (SVG default) renders
-             * the donut as large as possible within that rectangle — no wrapper
-             * div needed, no fixed cap that prevents growth on wide monitors.
-             */}
-            {/* Linked slices are focusable links, which an img's presentational
-                children could not hold, so a linked donut is a group. */}
+            {/* Linked slices are focusable links, so a linked donut is a group, not an img. */}
             <svg
               ref={svgRef}
               viewBox={`0 0 ${String(chartSize)} ${String(chartSize)}`}
@@ -916,13 +873,8 @@ function useDonutChart({
                           else pathRefs.current.delete(arc.slice.id);
                         }}
                         suppressHydrationWarning
-                        // SVG <path> has no implicit ARIA role, so aria-label is a
-                        // prohibited attribute (axe aria-prohibited-attr, fires on
-                        // WebKit/Firefox which expose no computed role). role="img"
-                        // would collide with the parent svg's role="img"; the WAI-ARIA
-                        // graphics-symbol role permits a name and keeps the svg as the
-                        // sole img-role node. A linked slice is a link, focused
-                        // like a legend entry and followed with Enter.
+                        // SVG <path> has no implicit ARIA role; graphics-symbol permits aria-label without axe
+                        // aria-prohibited-attr, and role="img" would collide with the parent svg's.
                         role={href ? "link" : "graphics-symbol"}
                         tabIndex={href ? 0 : undefined}
                         onFocus={
@@ -946,12 +898,7 @@ function useDonutChart({
                     </g>
                   );
                 })}
-                {/*
-                 * Single transparent overlay intercepts all mouse events.
-                 * Angle + distance math in onMouseMove eliminates gap/hole flicker.
-                 * It reaches the popped-out slice's rim, so the pointer stays on
-                 * it (and the slice stays out) over that edge too.
-                 */}
+                {/* One transparent overlay takes all mouse events; angle and distance math avoids gap/hole flicker and reaches the popped-out slice's rim. */}
                 <circle
                   data-testid="chart-overlay"
                   r={outerRadius + popDistance}
@@ -995,10 +942,7 @@ function useDonutChart({
             top: tooltipPosition.top,
           }}
         >
-          {/* ▼ caret at tooltip bottom, pointing down toward the arc.
-              calc(50% + offset) shifts the caret when the tooltip is pushed
-              sideways to stay within the SVG bounds, so it still points at
-              the arc rather than the tooltip center. */}
+          {/* ▼ caret; calc(50% + offset) keeps it pointing at the arc when the tooltip is pushed sideways. */}
           {activationSource === "legend" && (
             <span
               aria-hidden="true"

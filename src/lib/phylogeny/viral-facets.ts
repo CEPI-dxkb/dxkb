@@ -100,12 +100,7 @@ export function pruneViralFilters(
   };
 }
 
-/**
- * Counts for each facet option, cascading strain -> viewer -> segment to match
- * pruneViralFilters. A zero count means the option is a dead end and should be
- * disabled. Strain is intentionally counted against every tree so choosing a
- * viewer can never lock a strain out — the cascade relaxes the viewer instead.
- */
+/** Counts per facet option, cascading strain -> viewer -> segment like pruneViralFilters; strain is counted against every tree so choosing a viewer cannot lock a strain out. */
 export function viralFacetCounts(
   trees: ViralTreeChoice[],
   filters: ViralFilters,
@@ -169,7 +164,6 @@ function hashSegment(value: string): number {
   return out;
 }
 
-/** Segment -> chart colour var, so the same segment reads the same everywhere. */
 export function segmentColor(segment: string | null): string {
   if (!segment) return "var(--muted-foreground)";
   const index = segmentOrder.indexOf(segment);

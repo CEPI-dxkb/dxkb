@@ -16,7 +16,7 @@ describe("BoundedCache", () => {
     const cache = new BoundedCache<string>({ maxWeight: 2 });
     cache.set("a", "1");
     cache.set("b", "2");
-    expect(cache.get("a")).toBe("1"); // a is now the most recent
+    expect(cache.get("a")).toBe("1");
     cache.set("c", "3");
     expect(cache.get("b")).toBeUndefined();
     expect(cache.get("a")).toBe("1");
@@ -65,12 +65,12 @@ describe("BoundedCache", () => {
       ttlMs: 100,
       now: () => now,
     });
-    cache.set("a", "1"); // expires at 100
+    cache.set("a", "1");
     now = 50;
-    cache.set("b", "2"); // expires at 150
+    cache.set("b", "2");
     now = 90;
-    expect(cache.get("a")).toBe("1"); // a is now the most recent, b the oldest
-    now = 120; // a has expired, b has not
+    expect(cache.get("a")).toBe("1");
+    now = 120;
     cache.set("c", "3");
     expect(cache.get("b")).toBe("2");
     expect(cache.get("c")).toBe("3");

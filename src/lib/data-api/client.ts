@@ -40,12 +40,10 @@ function jsonBytes(value: unknown): number {
 }
 
 /**
- * The FASTA route's request bodies for `request`, in order: at most
- * `maxFastaIds` ids each, and at most `maxRequestBytes` serialized. Long ids
- * reach the byte cap first (a feature id runs to 60-odd characters, and the
- * route admits up to 1,000), so counting ids alone would draw a 413. Repeats
- * are dropped first: the route drops them within one request, but an id whose
- * repeats fell in different batches would be in the file twice.
+ * Long ids reach the byte cap before the id cap, so counting ids alone would
+ * draw a 413.
+ * Repeats are dropped first because an id repeated across batches would be in
+ * the file twice.
  */
 function fastaBodies(request: FastaRequest): string[] {
   const emptyBytes = jsonBytes({ type: request.type, ids: [] });
@@ -62,7 +60,6 @@ function fastaBodies(request: FastaRequest): string[] {
       batch = [];
       bytes = emptyBytes;
     }
-    // A comma before every id but the first.
     bytes += idBytes + (batch.length > 0 ? 1 : 0);
     batch.push(id);
   }
@@ -105,10 +102,8 @@ function wait(ms: number, signal?: AbortSignal): Promise<void> {
 }
 
 /**
- * `attempt`, retried when the gateway answers 429: after its `Retry-After`, or
- * an exponential backoff without one, up to `maxRateLimitRetries` times. Any
- * other error, and the last 429, is thrown as it came. `startNativeDownload`
- * shares it, so both download paths wait out a throttled request alike.
+ * `startNativeDownload` shares this, so both download paths wait out a
+ * throttled request alike.
  */
 export async function retryRateLimited<T>(
   attempt: () => Promise<T>,
@@ -133,7 +128,6 @@ export async function retryRateLimited<T>(
   }
 }
 
-/** The gateway's `{error, code}` body as a `DataRepositoryError`. */
 async function responseError(response: Response): Promise<DataRepositoryError> {
   const payload: unknown = await response.json().catch(() => null);
   const body =
@@ -242,13 +236,10 @@ export class DataRepository {
   }
 
   /**
-   * FASTA for any number of ids, as one file. Lists longer than one request
-   * holds (`fastaBodies`) go out as consecutive requests (sequential, so a
-   * large selection cannot burst through the route's rate limit) and are
-   * joined record-aligned. A batch the rate limit refuses is retried after its
-   * `Retry-After`, so the batches already fetched are not lost. An empty
-   * `Blob` means nothing matched or no record had a sequence of this type; the
-   * caller decides how to say so.
+   * Batches go out sequentially so a large selection cannot burst through the
+   * route's rate limit, and a rate-limited batch is retried so batches already
+   * fetched are not lost.
+   * An empty `Blob` means nothing matched; the caller decides how to say so.
    */
   async fasta(
     resource: FastaResource,
@@ -268,22 +259,17 @@ export class DataRepository {
         if (!response.ok) throw await responseError(response);
         return response.text();
       }, signal);
-      // A part that does not end in a newline would glue its last sequence
-      // line onto the next part's first `>` header.
+      // A part without a trailing newline would glue its last line onto the
+      // next part's header.
       if (text) parts.push(text.endsWith("\n") ? text : `${text}\n`);
     }
     return new Blob(parts, { type: fastaContentType });
   }
 
   /**
-   * A table or FASTA file through `POST /api/data/<resource>/download`, held in
-   * memory as a `Blob` for the caller to save. For selections and queries of
-   * at most `maxBufferedDownloadRows`; a larger query, and any file of whole
-   * contigs, streams to disk through `startNativeDownload` instead
-   * (`usesNativeDownload`). A 429 is retried after its `Retry-After`,
-   * as in {@link exportAll}; any other failure throws the gateway's own
-   * `{error}` message. An empty `Blob` means nothing matched; the caller
-   * decides how to say so.
+   * Held in memory for the caller to save; larger queries and whole-contig
+   * files stream through `startNativeDownload`.
+   * An empty `Blob` means nothing matched.
    */
   download(
     resource: DataResource,

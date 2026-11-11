@@ -12,8 +12,7 @@ import {
 } from "@/components/organisms/geo-distribution/color-scale";
 
 describe("makeGeoColorScale", () => {
-  // Shaped like Influenza A's US states: fifty with 5K–115K genomes and one
-  // with 8, which a log ramp from 1 squeezed into a fifth of its colors.
+  // Shaped like Influenza A's US states: fifty with 5K–115K genomes and one with 8.
   const states = [
     8,
     ...Array.from({ length: 50 }, (_, index) => 5000 + index * 2200),
@@ -63,7 +62,6 @@ describe("makeGeoColorScale", () => {
     expect(makeGeoColorScale([3, 3, 3]).steps).toEqual([
       { from: 3, fill: geoStepFills[6] },
     ]);
-    // Every quantile below the top one is 1, so two steps: lightest and darkest.
     expect(makeGeoColorScale([1, 1, 1, 1, 100]).steps).toEqual([
       { from: 1, fill: geoStepFills[0] },
       { from: 43, fill: geoStepFills[6] },
@@ -78,7 +76,6 @@ describe("makeGeoColorScale", () => {
   }
 
   it("gives the most genomes a step of their own when every quantile ties", () => {
-    // Every quantile is 1, the fewest, so the quantiles alone give one step.
     const scale = makeGeoColorScale([1, 1, 1, 1, 1, 1, 1, 100]);
 
     expect(scale.steps).toEqual([
@@ -92,7 +89,6 @@ describe("makeGeoColorScale", () => {
   });
 
   it("starts that step at the most genomes, not at their rounded count", () => {
-    // Two significant figures would put it at 110, past every region.
     const scale = makeGeoColorScale([1, 1, 1, 1, 1, 1, 1, 105]);
 
     expect(scale.steps.map((step) => step.from)).toEqual([1, 105]);
@@ -101,17 +97,14 @@ describe("makeGeoColorScale", () => {
   });
 
   it("merges a step no region reaches into the one below", () => {
-    // Rounded quantiles of [1, 3] start steps at 1, 2 and 3; none has 2.
     expect(makeGeoColorScale([1, 3]).steps).toEqual([
       { from: 1, fill: geoStepFills[0] },
       { from: 3, fill: geoStepFills[6] },
     ]);
-    // 5197 rounds up to 5.2K, which would start a step past both of them.
     expect(makeGeoColorScale([5197, 5197, 5300]).steps).toEqual([
       { from: 5197, fill: geoStepFills[0] },
       { from: 5300, fill: geoStepFills[6] },
     ]);
-    // Bounds at 16 and 44 hold no region; the three left span the ramp.
     expect(makeGeoColorScale([1, 2, 100]).steps).toEqual([
       { from: 1, fill: geoStepFills[0] },
       { from: 2, fill: geoStepFills[3] },
@@ -175,7 +168,6 @@ describe("the map's color ramps in globals.css", () => {
       expect(light).toHaveLength(geoStepFills.length);
       expect(dark).toHaveLength(geoStepFills.length);
       for (let index = 1; index < geoStepFills.length; index += 1) {
-        // Light to dark on a light theme; dark to light on a dark one.
         expect(light[index - 1].lightness - light[index].lightness).toBeCloseTo(0.09);
         expect(dark[index].lightness - dark[index - 1].lightness).toBeCloseTo(0.09);
       }

@@ -11,13 +11,11 @@ import { formatFileSize } from "@/lib/services/workspace/helpers";
 import { getProxyUrl } from "../file-viewer-registry";
 import { LoadingProgress } from "./loading-progress";
 
-const largeFileThreshold = 10 * 1024 * 1024; // 10 MB
+const largeFileThreshold = 10 * 1024 * 1024;
 
-// The helpers below are module-level on purpose: a dynamic `import()`, a
-// `throw` or ternary inside `try`, and a `for (;;)` loop each make the React
-// Compiler skip the whole component, so they must not move back into it.
+// Module-level on purpose: a dynamic import(), a throw or ternary inside try, and a for
+// (;;) loop each make the React Compiler skip the component.
 
-// Loaded lazily so the editor bundle stays out of the initial chunk.
 function loadCodeMirror() {
   return import("./codemirror-loader");
 }
@@ -44,10 +42,6 @@ function truncationMarker(fileSize: number | undefined): string {
   return `\n${divider}\n  Preview truncated at ${formatFileSize(largeFileThreshold)} of ${sizeLabel}. Download for complete content.\n${divider}`;
 }
 
-/**
- * Reads the body chunk by chunk, handing each decoded chunk and the running
- * byte count to `onChunk`. Stops early at the large-file threshold.
- */
 async function readStream(
   reader: ReadableStreamDefaultReader<Uint8Array>,
   decoder: TextDecoder,
@@ -236,7 +230,6 @@ export function CodeMirrorViewer({
             err instanceof Error ? err.message : "An unknown error occurred",
           );
           setStatus("error");
-          // Don't cache failed loads
           codeMirror.viewCache.delete(filePath);
         }
       }
@@ -253,7 +246,6 @@ export function CodeMirrorViewer({
 
     return () => {
       lifecycle.destroyed = true;
-      // Completed entries stay in cache for instant re-display.
       if (entry?.wrapper.parentNode === container) {
         container.removeChild(entry.wrapper);
       }

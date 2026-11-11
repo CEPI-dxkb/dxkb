@@ -7,7 +7,6 @@ interface GetAllIdsBody {
 }
 
 export const POST = withAuth(async (request: NextRequest, { token }) => {
-  // Parse optional limit from request body (default: 10000, max: 10000)
   const body = (await request.json().catch(() => ({}))) as GetAllIdsBody;
   const rawLimit = typeof body.limit === "string" || typeof body.limit === "number" ? body.limit : 10000;
   const requestedLimit = Number.parseInt(String(rawLimit), 10);

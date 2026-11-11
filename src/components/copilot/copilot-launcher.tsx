@@ -6,11 +6,6 @@ import { isCopilotTurnActive } from "@/lib/copilot/turn";
 import { useOptionalCopilot } from "./copilot-provider";
 import { copilotName } from "@/lib/copilot/name";
 
-/**
- * The navbar's Copilot button: opens the chat where the user last had it
- * (side panel or floating window), or closes it. Hidden when signed out and
- * on the full Copilot page (and outside the provider).
- */
 export function CopilotLauncher({ compact = false }: { compact?: boolean }) {
   const copilot = useOptionalCopilot();
   if (!copilot?.available || copilot.onCopilotPage) return null;

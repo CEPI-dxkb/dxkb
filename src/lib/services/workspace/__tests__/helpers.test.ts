@@ -205,20 +205,20 @@ describe("sortItems", () => {
 
   it("sorts by size", () => {
     const sorted = sortItems([fileA, fileB], { field: "size", direction: "asc" });
-    expect(sorted[0].name).toBe("beta.txt");  // 100
-    expect(sorted[1].name).toBe("alpha.txt");  // 500
+    expect(sorted[0].name).toBe("beta.txt");
+    expect(sorted[1].name).toBe("alpha.txt");
   });
 
   it("sorts by createdAt (timestamp)", () => {
     const sorted = sortItems([fileA, fileB], { field: "createdAt", direction: "asc" });
-    expect(sorted[0].name).toBe("beta.txt");  // timestamp 150
-    expect(sorted[1].name).toBe("alpha.txt");  // timestamp 300
+    expect(sorted[0].name).toBe("beta.txt");
+    expect(sorted[1].name).toBe("alpha.txt");
   });
 
   it("respects desc direction", () => {
     const sorted = sortItems([fileA, fileB], { field: "size", direction: "desc" });
-    expect(sorted[0].name).toBe("alpha.txt");  // 500
-    expect(sorted[1].name).toBe("beta.txt");  // 100
+    expect(sorted[0].name).toBe("alpha.txt");
+    expect(sorted[1].name).toBe("beta.txt");
   });
 
   it("sorts text-starting names before digit-starting names", () => {
@@ -395,15 +395,15 @@ describe("parseWorkspaceGetSingle", () => {
       [
         [
           [
-            "myfile.fasta",       // 0: name
-            "contigs",            // 1: type
-            "/user/home/",        // 2: parent path
-            "2024-01-15T00:00:00Z", // 3: creation_time
-            "abc123",             // 4: id
-            "owner@test.com",     // 5: owner_id
-            1024,                 // 6: size
-            {},                   // 7: userMeta
-            {},                   // 8: sysMeta
+            "myfile.fasta",
+            "contigs",
+            "/user/home/",
+            "2024-01-15T00:00:00Z",
+            "abc123",
+            "owner@test.com",
+            1024,
+            {},
+            {},
           ],
         ],
       ],
@@ -654,8 +654,8 @@ describe("getFolderPathsFromItems", () => {
 describe("getNonEmptyFolderPaths", () => {
   it("returns paths of folders that have children", async () => {
     const listFolder = vi.fn()
-      .mockResolvedValueOnce([makeItem({ name: "child.txt" })]) // non-empty
-      .mockResolvedValueOnce([]); // empty
+      .mockResolvedValueOnce([makeItem({ name: "child.txt" })])
+      .mockResolvedValueOnce([]);
 
     const result = await getNonEmptyFolderPaths(
       ["/user/home/full", "/user/home/empty"],
@@ -765,8 +765,8 @@ describe("ensureDestinationWriteAccess", () => {
 
   it("checks parent write access for new destinations", async () => {
     const listFolder = vi.fn()
-      .mockResolvedValueOnce([]) // target not in listing
-      .mockResolvedValueOnce([ // grandparent listing has parent with write
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([
         makeItem({ path: "/user/home", permissions: { user: "o", global: "n" } }),
       ]);
 
@@ -776,8 +776,8 @@ describe("ensureDestinationWriteAccess", () => {
 
   it("returns error when parent lacks write access for new destination", async () => {
     const listFolder = vi.fn()
-      .mockResolvedValueOnce([]) // target not in listing
-      .mockResolvedValueOnce([ // parent has no write
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([
         makeItem({ path: "/user/home", permissions: { user: "r", global: "r" } }),
       ]);
 

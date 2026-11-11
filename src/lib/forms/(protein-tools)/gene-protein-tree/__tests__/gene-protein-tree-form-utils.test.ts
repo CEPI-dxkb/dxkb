@@ -198,7 +198,6 @@ describe("transformGeneProteinTreeParams", () => {
   it("sends every metadata field as a genome field and leaves the gene fields to the app", () => {
     const result = transformGeneProteinTreeParams({
       ...baseFormData,
-      // Fields outside the frequent list used to go out as feature fields.
       metadata_fields: ["genome_name", "taxon_id", "host_name"],
     });
 

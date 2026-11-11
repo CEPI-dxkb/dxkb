@@ -148,7 +148,6 @@ describe("LandingNav — disabled tabs", () => {
     render(
       <LandingNav items={withDisabled} activeView="overview" collapsed onChange={vi.fn()} onCollapseToggle={vi.fn()} />,
     );
-    // The wrapping span carries the aria-label with the reason when collapsed + disabled
     expect(screen.getByLabelText(/No phylogenetic tree available/)).toBeInTheDocument();
   });
 });

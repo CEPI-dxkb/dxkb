@@ -27,7 +27,6 @@ describe("SelectedSequencesTable", () => {
       screen.getByRole("columnheader", { name: "Selected file" }),
     ).toBeInTheDocument();
     const path = screen.getByText(rows[1].path);
-    // The whole path stays in the DOM and the title; CSS cuts its start.
     expect(path).toHaveAttribute("title", rows[1].path);
     expect(path).toHaveClass("truncate-start");
     const row = path.closest("tr");
@@ -61,7 +60,6 @@ describe("SelectedSequencesTable", () => {
       />,
     );
 
-    // One empty cell per layout; CSS shows one.
     expect(screen.getAllByText("No items selected.")).toHaveLength(2);
     const note = screen.getByText(
       "No mixing of DNA and Protein FASTA files is allowed.",

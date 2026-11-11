@@ -1,19 +1,7 @@
-/**
- * Molstar theme overrides — maps Molstar's compiled CSS to our design tokens
- * so the 3D structure viewer matches the site's shadcn/Tailwind design system.
- *
- * Uses doubled `.msp-plugin.msp-plugin` selectors to guarantee higher
- * specificity than Molstar's compiled SCSS regardless of CSS load order.
- */
-
-/* ---------------------------------------------------------------------------
- * Root container
- * ------------------------------------------------------------------------- */
+/* The doubled .msp-plugin selector outranks Molstar's compiled SCSS regardless of load order. */
 
 .msp-plugin.msp-plugin {
-  /* The color of hovered and toggled-on controls. --primary is a button fill,
-     too dark to read as text or a glyph on a dark theme's panels (2.1-3.0:1),
-     so dark themes use --link instead. */
+  /* --primary is too dark as text on dark panels (2.1-3.0:1), so dark themes use --link. */
   --msp-accent: var(--primary);
   font-family: inherit;
   background: var(--background);
@@ -29,10 +17,6 @@
   color: var(--foreground);
 }
 
-/* ---------------------------------------------------------------------------
- * Layout — outer border & regions
- * ------------------------------------------------------------------------- */
-
 .msp-plugin.msp-plugin .msp-layout-standard {
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
@@ -43,7 +27,6 @@
   background: var(--background);
 }
 
-/* Side panels get muted bg to contrast with the white viewport */
 .msp-plugin.msp-plugin .msp-layout-left {
   background: var(--muted);
   border-right: 1px solid var(--border);
@@ -54,7 +37,6 @@
   border-left: 1px solid var(--border);
 }
 
-/* Top/bottom panels */
 .msp-plugin.msp-plugin .msp-layout-top {
   background: var(--muted);
   border-bottom: 1px solid var(--border);
@@ -65,15 +47,10 @@
   border-top: 1px solid var(--border);
 }
 
-/* ---------------------------------------------------------------------------
- * Viewport (3D canvas area)
- * ------------------------------------------------------------------------- */
-
 .msp-plugin.msp-plugin .msp-viewport {
   background: var(--background);
 }
 
-/* Viewport control buttons (top-right overlay) */
 .msp-plugin.msp-plugin .msp-viewport-controls-buttons button {
   color: var(--muted-foreground);
   background: color-mix(in oklch, var(--background) 80%, transparent);
@@ -102,7 +79,6 @@
   color: var(--msp-accent);
 }
 
-/* Viewport control panel (popover) */
 .msp-plugin.msp-plugin .msp-viewport-controls-panel {
   background: var(--background);
   border: 1px solid var(--border);
@@ -110,10 +86,6 @@
   box-shadow: 0 4px 16px color-mix(in oklch, var(--foreground) 10%, transparent);
   overflow: hidden;
 }
-
-/* ---------------------------------------------------------------------------
- * Section headers (e.g. "Structure Tools") — primary color accent
- * ------------------------------------------------------------------------- */
 
 .msp-plugin.msp-plugin .msp-section-header {
   background: var(--primary);
@@ -126,10 +98,6 @@
   fill: var(--primary-foreground);
 }
 
-/* ---------------------------------------------------------------------------
- * Transform headers (collapsible sections like "Structure", "Components")
- * ---------------------------------------------------------------------------*/
-
 .msp-plugin.msp-plugin .msp-transform-wrapper > .msp-transform-header > button {
   background: var(--background);
   color: var(--foreground);
@@ -140,7 +108,6 @@
   color: var(--msp-accent);
 }
 
-/* Brand accent bottom borders on section headers */
 .msp-plugin.msp-plugin .msp-transform-header-brand {
   margin-bottom: 0;
 }
@@ -150,7 +117,6 @@
   stroke: var(--foreground);
 }
 
-/* Override individual brand colors with primary */
 .msp-plugin.msp-plugin .msp-transform-header-brand-purple,
 .msp-plugin.msp-plugin .msp-transform-header-brand-purple:active,
 .msp-plugin.msp-plugin .msp-transform-header-brand-purple:focus {
@@ -193,15 +159,10 @@
   border-bottom-color: var(--destructive);
 }
 
-/* Update wrappers (collapsed state tree items) */
 .msp-plugin.msp-plugin .msp-transform-update-wrapper > .msp-transform-header > button,
 .msp-plugin.msp-plugin .msp-transform-update-wrapper-collapsed > .msp-transform-header > button {
   background: var(--muted);
 }
-
-/* ---------------------------------------------------------------------------
- * Left panel icon strip & controls
- * ------------------------------------------------------------------------- */
 
 .msp-plugin.msp-plugin .msp-left-panel-controls-buttons {
   background: var(--background);
@@ -219,10 +180,6 @@
 .msp-plugin.msp-plugin .msp-left-panel-controls-buttons .msp-btn-link-toggle-on {
   color: var(--msp-accent);
 }
-
-/* ---------------------------------------------------------------------------
- * Right panel icon strip & controls
- * ------------------------------------------------------------------------- */
 
 .msp-plugin.msp-plugin .msp-right-panel-controls-buttons {
   background: var(--background);
@@ -250,10 +207,6 @@
   color: var(--msp-accent) !important;
   background: transparent !important;
 }
-
-/* ---------------------------------------------------------------------------
- * Control rows (label + value rows in settings)
- * ------------------------------------------------------------------------- */
 
 .msp-plugin.msp-plugin .msp-control-row {
   background: var(--background);
@@ -286,10 +239,6 @@
   background: var(--background);
 }
 
-/* ---------------------------------------------------------------------------
- * Flex rows (button groups like "Default Cartoon Spacefill Surface")
- * ------------------------------------------------------------------------- */
-
 .msp-plugin.msp-plugin .msp-flex-row {
   background: var(--background);
 }
@@ -297,10 +246,6 @@
 .msp-plugin.msp-plugin .msp-flex-row > button.msp-control-button-label {
   background: var(--background);
 }
-
-/* ---------------------------------------------------------------------------
- * Form controls (inputs, selects, dropdowns)
- * ------------------------------------------------------------------------- */
 
 .msp-plugin.msp-plugin .msp-form-control {
   background: var(--input);
@@ -319,10 +264,6 @@
   background-color: var(--input);
 }
 
-/* ---------------------------------------------------------------------------
- * Buttons — general
- * ------------------------------------------------------------------------- */
-
 .msp-plugin.msp-plugin .msp-btn {
   color: var(--foreground);
   transition: color 0.15s, background-color 0.15s;
@@ -332,7 +273,6 @@
   color: var(--msp-accent);
 }
 
-/* Link-style buttons */
 .msp-plugin.msp-plugin .msp-btn-link,
 .msp-plugin.msp-plugin .msp-btn-link:active,
 .msp-plugin.msp-plugin .msp-btn-link:focus {
@@ -358,7 +298,6 @@
   color: var(--msp-accent);
 }
 
-/* Commit (apply) buttons — primary accent */
 .msp-plugin.msp-plugin .msp-btn-commit-on,
 .msp-plugin.msp-plugin .msp-btn-commit-on:active,
 .msp-plugin.msp-plugin .msp-btn-commit-on:focus {
@@ -378,7 +317,6 @@
   background: var(--muted);
 }
 
-/* Action buttons */
 .msp-plugin.msp-plugin .msp-btn-action,
 .msp-plugin.msp-plugin .msp-btn-action:active,
 .msp-plugin.msp-plugin .msp-btn-action:focus {
@@ -391,7 +329,6 @@
   background: color-mix(in oklch, var(--primary) 8%, var(--input));
 }
 
-/* Remove/delete buttons */
 .msp-plugin.msp-plugin .msp-btn-remove,
 .msp-plugin.msp-plugin .msp-btn-remove:active,
 .msp-plugin.msp-plugin .msp-btn-remove:focus {
@@ -403,7 +340,6 @@
   opacity: 0.9;
 }
 
-/* Icon buttons */
 .msp-plugin.msp-plugin .msp-btn-icon {
   color: var(--muted-foreground);
 }
@@ -411,10 +347,6 @@
 .msp-plugin.msp-plugin .msp-btn-icon:hover {
   color: var(--msp-accent);
 }
-
-/* ---------------------------------------------------------------------------
- * Toggle buttons (expand/collapse section headers)
- * ------------------------------------------------------------------------- */
 
 .msp-plugin.msp-plugin .msp-toggle-button > div > button {
   background: var(--muted);
@@ -425,10 +357,6 @@
   outline-color: var(--primary) !important;
   color: var(--msp-accent);
 }
-
-/* ---------------------------------------------------------------------------
- * Control group headers (collapsible sections within panels)
- * ------------------------------------------------------------------------- */
 
 .msp-plugin.msp-plugin .msp-control-group-header {
   background: color-mix(in oklch, var(--primary) 6%, var(--muted));
@@ -443,10 +371,6 @@
 .msp-plugin.msp-plugin .msp-control-group-wrapper {
   background: var(--background);
 }
-
-/* ---------------------------------------------------------------------------
- * Highlight info (hover tooltip on 3D canvas)
- * ------------------------------------------------------------------------- */
 
 .msp-plugin.msp-plugin .msp-highlight-info {
   color: var(--popover-foreground);
@@ -463,10 +387,6 @@
 .msp-plugin.msp-plugin .msp-highlight-info-hr {
   background-color: var(--border);
 }
-
-/* ---------------------------------------------------------------------------
- * Sequence viewer (top panel)
- * ------------------------------------------------------------------------- */
 
 .msp-plugin.msp-plugin .msp-sequence {
   background: var(--muted);
@@ -505,10 +425,6 @@
   color: var(--msp-accent);
 }
 
-/* ---------------------------------------------------------------------------
- * Log panel (bottom)
- * ------------------------------------------------------------------------- */
-
 .msp-plugin.msp-plugin .msp-log-entry {
   color: var(--foreground);
 }
@@ -517,10 +433,6 @@
   color: var(--muted-foreground);
 }
 
-/* ---------------------------------------------------------------------------
- * Scrollbars
- * ------------------------------------------------------------------------- */
-
 .msp-plugin.msp-plugin ::-webkit-scrollbar-track {
   background-color: var(--muted);
 }
@@ -528,10 +440,6 @@
 .msp-plugin.msp-plugin ::-webkit-scrollbar-thumb {
   background-color: color-mix(in oklch, var(--foreground) 20%, transparent);
 }
-
-/* ---------------------------------------------------------------------------
- * Semi-transparent overlays & descriptions
- * ------------------------------------------------------------------------- */
 
 .msp-plugin.msp-plugin .msp-semi-transparent-background {
   background: var(--background);
@@ -552,17 +460,9 @@
   color: var(--msp-accent);
 }
 
-/* ---------------------------------------------------------------------------
- * Slider controls
- * ------------------------------------------------------------------------- */
-
 .msp-plugin.msp-plugin .msp-slider input[type="text"] {
   color: var(--foreground);
 }
-
-/* ---------------------------------------------------------------------------
- * Hover-box panels
- * ------------------------------------------------------------------------- */
 
 .msp-plugin.msp-plugin .msp-hover-box-body {
   background-color: var(--popover);
@@ -571,10 +471,6 @@
   box-shadow: 0 4px 12px color-mix(in oklch, var(--foreground) 10%, transparent);
 }
 
-/* ---------------------------------------------------------------------------
- * Toast notifications
- * ------------------------------------------------------------------------- */
-
 .msp-plugin.msp-plugin .msp-toast-message {
   background: var(--popover);
   color: var(--popover-foreground);
@@ -582,17 +478,9 @@
   border-radius: var(--radius-md);
 }
 
-/* ---------------------------------------------------------------------------
- * Logo — hide Molstar branding
- * ------------------------------------------------------------------------- */
-
 .msp-plugin.msp-plugin .msp-logo {
   display: none;
 }
-
-/* ---------------------------------------------------------------------------
- * SVG fills
- * ------------------------------------------------------------------------- */
 
 .msp-plugin.msp-plugin .msp-svg-text {
   fill: var(--foreground);
@@ -608,10 +496,6 @@
   stroke: var(--foreground);
 }
 
-/* ---------------------------------------------------------------------------
- * Tree rows (state tree in left panel)
- * ------------------------------------------------------------------------- */
-
 .msp-plugin.msp-plugin .msp-tree-row {
   background: transparent;
 }
@@ -619,10 +503,6 @@
 .msp-plugin.msp-plugin .msp-tree-row .msp-btn-tree-label > small {
   color: var(--muted-foreground);
 }
-
-/* ---------------------------------------------------------------------------
- * Simple help section & current header
- * ------------------------------------------------------------------------- */
 
 .msp-plugin.msp-plugin .msp-simple-help-section {
   background: var(--background);
@@ -633,10 +513,6 @@
   background: var(--background);
   color: var(--foreground);
 }
-
-/* ---------------------------------------------------------------------------
- * Animation & top-left viewport controls
- * ------------------------------------------------------------------------- */
 
 .msp-plugin.msp-plugin .msp-viewport-top-left-controls .msp-traj-controls {
   background-color: color-mix(in oklch, var(--background) 80%, transparent);
@@ -654,10 +530,6 @@
   border-radius: var(--radius-md);
 }
 
-/* ---------------------------------------------------------------------------
- * Selection controls
- * ------------------------------------------------------------------------- */
-
 .msp-plugin.msp-plugin .msp-selection-viewport-controls-actions {
   background: var(--background);
   border: 1px solid var(--border);
@@ -668,34 +540,18 @@
   background: var(--input);
 }
 
-/* ---------------------------------------------------------------------------
- * Collapsed left panel tab strip
- * ------------------------------------------------------------------------- */
-
 .msp-plugin.msp-plugin .msp-layout-left-collapsed {
   background: var(--background);
   border-right: 1px solid var(--border);
 }
 
-/* ---------------------------------------------------------------------------
- * Representation entry headers
- * ------------------------------------------------------------------------- */
-
 .msp-plugin.msp-plugin .msp-representation-entry > .msp-control-group-header > .msp-btn {
   font-weight: 600;
 }
 
-/* ---------------------------------------------------------------------------
- * 25% lower contrast text
- * ------------------------------------------------------------------------- */
-
 .msp-plugin.msp-plugin .msp-25-lower-contrast-text {
   color: var(--muted-foreground);
 }
-
-/* ---------------------------------------------------------------------------
- * Help panel
- * ------------------------------------------------------------------------- */
 
 .msp-plugin.msp-plugin .msp-help-text {
   color: var(--muted-foreground);
@@ -706,10 +562,6 @@
   color: var(--foreground);
 }
 
-/* ---------------------------------------------------------------------------
- * Task state & drag-drop overlay
- * ------------------------------------------------------------------------- */
-
 .msp-plugin.msp-plugin .msp-task-state {
   color: var(--muted-foreground);
 }
@@ -719,10 +571,6 @@
   background: color-mix(in oklch, var(--primary) 20%, transparent);
   color: var(--msp-accent);
 }
-
-/* ---------------------------------------------------------------------------
- * Preset button
- * ------------------------------------------------------------------------- */
 
 .msp-plugin.msp-plugin .msp-control-group-presets-wrapper button {
   color: var(--muted-foreground);

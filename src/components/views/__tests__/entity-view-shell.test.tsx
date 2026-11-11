@@ -124,8 +124,6 @@ it("drops nested-table params on a tab change and keeps the rest", async () => {
     within(desktopNav).getByRole("button", { name: "Summary" }),
   );
 
-  // A page number from one tab's table can't land on another tab's, and a dotted
-  // param no nested table owns is carried through like any other.
   expect(pushSpy).toHaveBeenCalledWith(
     "/records/alpha?source.id=123&keep=1#results",
   );
@@ -225,7 +223,6 @@ it("keeps the rail collapsed when moving from an organism page to an entity view
     screen.getByRole("button", { name: "Collapse view navigation" }),
   );
 
-  // Same provider, different shell: what a client navigation to /taxonomy/1386 does.
   rerender(
     <UiPreferencesProvider initialPreferences={defaultUiPreferences}>
       <EntityViewShell
@@ -272,7 +269,7 @@ describe("serverTab", () => {
   it("keeps the leaving tab on its own URL while Back replaces it", () => {
     searchParamsRef.current = new URLSearchParams("tab=records&records.page=2");
     const { rerender } = render(shell(true));
-    // Next's stale popstate frame: the default tab's URL, the Records RSC.
+    // Next's stale popstate frame: the default tab's URL with the Records RSC.
     searchParamsRef.current = new URLSearchParams();
     rerender(shell(true));
     expect(screen.getByRole("status")).toHaveTextContent(

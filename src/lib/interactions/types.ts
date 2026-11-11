@@ -1,7 +1,5 @@
 import type { RefObject } from "react";
 
-// A PPI row's shape is owned by the zod schema that validates it, so the graph
-// cannot drift from what it actually accepts off the wire.
 export type { PpiRecord } from "./schema";
 
 export interface GNode {
@@ -50,14 +48,9 @@ export interface GraphCanvasHandle {
 export interface GraphCanvasProps {
   nodes: GNode[];
   edges: GEdge[];
-  /**
-   * Laid-out positions `[x0, y0, x1, y1, …]` in `nodes` order (`useGraphLayout`),
-   * or null while none are ready for these nodes.
-   */
   positions: Float64Array | null;
-  // Controlled selection: the canvas highlight reducer reads this so keyboard
-  // selection (node list / edge list) highlights the same node/edge a canvas
-  // click would. onSelect reports selections back out.
+  // Controlled selection: the highlight reducer reads this so keyboard selection highlights what a
+  // canvas click would.
   selection: GraphSelection;
   onSelect: (sel: GraphSelection) => void;
   handleRef: RefObject<GraphCanvasHandle | null>;

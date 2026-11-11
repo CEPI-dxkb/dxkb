@@ -40,9 +40,6 @@ function makeAutoGroupItem(overrides: Partial<AutoGroupItem> = {}): AutoGroupIte
   };
 }
 
-// ---------------------------------------------------------------------------
-// parseYearRanges
-// ---------------------------------------------------------------------------
 describe("parseYearRanges", () => {
   it("returns empty array for empty string", () => {
     expect(parseYearRanges("")).toEqual([]);
@@ -82,9 +79,6 @@ describe("parseYearRanges", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// getYearGroupLabels
-// ---------------------------------------------------------------------------
 describe("getYearGroupLabels", () => {
   it("returns empty array for no ranges", () => {
     expect(getYearGroupLabels([])).toEqual([]);
@@ -125,9 +119,6 @@ describe("getYearGroupLabels", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// getYearGroupForValue
-// ---------------------------------------------------------------------------
 describe("getYearGroupForValue", () => {
   const ranges = [[1998], [1999, 2005], [2006]];
   const groups = ["<=1998", "1999-2005", ">=2006"];
@@ -163,9 +154,6 @@ describe("getYearGroupForValue", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// countUniqueGroups
-// ---------------------------------------------------------------------------
 describe("countUniqueGroups", () => {
   it("returns 0 for empty array", () => {
     expect(countUniqueGroups([])).toBe(0);
@@ -189,9 +177,6 @@ describe("countUniqueGroups", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// getUniqueGroupNames
-// ---------------------------------------------------------------------------
 describe("getUniqueGroupNames", () => {
   it("returns empty array for empty input", () => {
     expect(getUniqueGroupNames([])).toEqual([]);
@@ -210,9 +195,6 @@ describe("getUniqueGroupNames", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// groupNamesSourceText
-// ---------------------------------------------------------------------------
 describe("groupNamesSourceText", () => {
   it("names the chosen metadata by its label", () => {
     expect(groupNamesSourceText("host_name")).toBe(
@@ -233,9 +215,6 @@ describe("groupNamesSourceText", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// transformMetaCatsParams
-// ---------------------------------------------------------------------------
 describe("transformMetaCatsParams", () => {
   const baseData = {
     p_value: 0.05,
@@ -362,9 +341,6 @@ describe("transformMetaCatsParams", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// validateYearRanges
-// ---------------------------------------------------------------------------
 describe("validateYearRanges", () => {
   it("returns valid for empty string", () => {
     const result = validateYearRanges("");
@@ -400,9 +376,6 @@ describe("validateYearRanges", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// createGenomeIdMapFromFeatures
-// ---------------------------------------------------------------------------
 describe("createGenomeIdMapFromFeatures", () => {
   it("returns empty map for empty array", () => {
     const result = createGenomeIdMapFromFeatures([]);
@@ -432,9 +405,6 @@ describe("createGenomeIdMapFromFeatures", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// buildMetaCatsAutoGroupsFromGenomes
-// ---------------------------------------------------------------------------
 describe("buildMetaCatsAutoGroupsFromGenomes", () => {
   let idCounter: number;
   const createId = () => `id-${String(idCounter++)}`;
@@ -620,9 +590,6 @@ describe("buildMetaCatsAutoGroupsFromGenomes", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// removeAutoGroupsByRowIds
-// ---------------------------------------------------------------------------
 describe("removeAutoGroupsByRowIds", () => {
   it("returns the original array when selectedRowIds is empty", () => {
     const items = [makeAutoGroupItem({ id: "1" })];
@@ -651,9 +618,6 @@ describe("removeAutoGroupsByRowIds", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// updateAutoGroupsGroupByRowIds
-// ---------------------------------------------------------------------------
 describe("updateAutoGroupsGroupByRowIds", () => {
   it("returns the original array when selectedRowIds is empty", () => {
     const items = [makeAutoGroupItem({ id: "1", group: "A" })];
@@ -681,9 +645,6 @@ describe("updateAutoGroupsGroupByRowIds", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// selectedAutoGroupRowIds
-// ---------------------------------------------------------------------------
 describe("selectedAutoGroupRowIds", () => {
   it("maps the grid's BRC ID selection to the rows' own ids", () => {
     const items = [
@@ -701,9 +662,6 @@ describe("selectedAutoGroupRowIds", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// sortMetaCatsAutoGroups
-// ---------------------------------------------------------------------------
 describe("sortMetaCatsAutoGroups", () => {
   const items = [
     makeAutoGroupItem({ id: "1", genome_id: "729.10", strain: "B" }),

@@ -5,16 +5,10 @@ import { Checkbox as CheckboxPrimitive } from "@base-ui/react/checkbox"
 import { cn } from "@/lib/utils"
 import { CheckIcon } from "lucide-react"
 
-// Local edit (keep when regenerating with `shadcn add --overwrite`): the
-// unchecked box uses `border-muted-foreground bg-background` instead of
-// upstream's `border-input`. The light theme's `--input` is nearly white, so
-// an empty box disappeared, most of all on muted surfaces such as the
-// influenza HA subtype scheme grid. muted-foreground keeps the border above
-// the 3:1 non-text contrast WCAG 1.4.11 asks of a control's boundary. An
-// unchecked, enabled and valid box darkens its border to `foreground` on hover,
-// so the checkbox shows it reacts to the pointer. The box is a <span> (Base
-// UI's input is a hidden 1px one), which `:disabled` never matches, so its
-// not-allowed cursor and its dimming key on `data-disabled:`.
+// Local edit: the unchecked border is `muted-foreground` because the light
+// theme's `--input` is nearly white (WCAG 1.4.11 needs 3:1).
+// The box is a <span>, which `:disabled` never matches, so its cursor and
+// dimming key on `data-disabled:`.
 function Checkbox({ className, ...props }: CheckboxPrimitive.Root.Props) {
   return (
     <CheckboxPrimitive.Root

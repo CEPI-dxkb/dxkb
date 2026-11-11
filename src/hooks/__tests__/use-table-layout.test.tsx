@@ -52,7 +52,6 @@ describe("useTableLayout", () => {
   it("resolves a function patch against the layout stored at write time", () => {
     const key = "dxkb-table-layout:v1:workspace";
     const { result } = renderHook(() => useTableLayout("workspace"));
-    // Another tab saves a width after this render.
     localStorage.setItem(key, JSON.stringify({ widths: { ownerId: 90 } }));
     act(() => {
       result.current[1]((current) => ({

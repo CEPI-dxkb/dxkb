@@ -13,10 +13,8 @@ interface FeatureOverviewProps {
 }
 
 /**
- * A field whose formatted value doubles as a link when a destination resolves,
- * and renders as plain text when none does. The destination goes through the
- * shared `MetadataLink` boundary rather than a local `<Link>`, so an unsafe
- * href renders nothing instead of an unclassified anchor.
+ * Falls back to plain text when no destination resolves; goes through
+ * `MetadataLink` so an unsafe href renders nothing.
  */
 function linkField(
   label: string,
@@ -56,8 +54,7 @@ export function FeatureOverview({ feature }: FeatureOverviewProps) {
       <OverviewSection
         title="Identifiers"
         fields={[
-          // No "Feature ID" row: `feature_id` is the internal Solr key, not
-          // an identifier anyone searches by (see `featureDisplayName`).
+          // `feature_id` is the internal Solr key, not a searchable identifier.
           { label: "BRC ID", value: feature.patric_id },
           { label: "RefSeq locus tag", value: feature.refseq_locus_tag },
           { label: "Protein ID", value: feature.protein_id },
@@ -79,8 +76,8 @@ export function FeatureOverview({ feature }: FeatureOverviewProps) {
           { label: "Nucleotide length", value: feature.na_length },
           { label: "Amino acid length", value: feature.aa_length },
           { label: "Nucleotide MD5", value: feature.na_sequence_md5 },
-          // `aa_sequence_md5` stays inert text. The plan forbids inventing a
-          // destination for it without domain confirmation.
+          // `aa_sequence_md5` stays inert text; no destination is confirmed for
+          // it.
           { label: "Amino acid MD5", value: feature.aa_sequence_md5 },
         ]}
       />

@@ -9,9 +9,8 @@ import { DataTableFooter } from "../data-table-footer";
 import { DataTableHeader } from "../data-table-header";
 import { formatCellValue } from "../data-table-utils";
 
-// A virtualizer whose visible window the test moves: the range lives in a store
-// read through useSyncExternalStore, so a change re-renders only the component
-// that called useVirtualizer, as a real scroll tick does.
+// A virtualizer whose visible window the test moves, so a change re-renders
+// only the component that called useVirtualizer, as a real scroll tick does.
 vi.mock("@tanstack/react-virtual", async () => {
   const { useSyncExternalStore } = await import("react");
   let range = { start: 0, end: 10 };
@@ -183,7 +182,6 @@ describe("DataTable scrolling", () => {
     render(<ControlledTable />);
     const before = formatCalls();
 
-    // Five rows leave and five enter; the five that stay keep their cells.
     moveWindow(5, 5 + visibleRowCount);
 
     expect(formatCalls() - before).toBe(5 * dataCellsPerRow);
@@ -206,7 +204,6 @@ describe("DataTable row selection render scope", () => {
     fireEvent.click(rowOf(2));
     const before = formatCalls();
 
-    // Row 2's `selected` turns false, so it renders again beside row 5.
     fireEvent.click(rowOf(5));
 
     expect(selectedIndexes()).toEqual([5]);
@@ -234,7 +231,6 @@ describe("DataTable modifier keys", () => {
     fireEvent.click(rowOf(1), { metaKey: true });
     expect(selectedIndexes()).toEqual([1, 7]);
 
-    // The range from the anchor (row 1) replaces the selection, row 7 too.
     fireEvent.click(rowOf(4), { shiftKey: true });
 
     expect(selectedIndexes()).toEqual([1, 2, 3, 4]);
@@ -361,9 +357,6 @@ describe("DataTable data changes", () => {
     expect(formatCalls() - before).toBe(visibleRowCount * dataCellsPerRow);
   });
 
-  // A transition can render new data (useTable hands it to the table during
-  // render) and then suspend, leaving the old rows on screen. A click on one
-  // of them names a row the table no longer has.
   it("ignores a click on a row the table no longer has", () => {
     const pending = createPendingNavigation();
     const onGenomeSelect = vi.fn();
@@ -438,8 +431,6 @@ describe("DataTable column changes reach the memoized rows", () => {
     expect(cellTexts(0)).toEqual(["", "Country 0", "Strain 0", "Host 0"]);
   });
 
-  // Object keys that look like array indices iterate in numeric order, not
-  // insertion order, so the row signature must follow the headers.
   it("renders cells in the new order of integer-like column ids", () => {
     const numericColumns = [
       { id: "1", label: "One" },

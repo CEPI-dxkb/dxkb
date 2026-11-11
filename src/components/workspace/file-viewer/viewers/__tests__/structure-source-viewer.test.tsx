@@ -5,10 +5,6 @@ import { http, HttpResponse } from "msw";
 import type { StructureSource } from "@/lib/protein-structure-view/source";
 import { server } from "@/test-helpers/msw-server";
 
-// ---------------------------------------------------------------------------
-// jsdom stubs — ResizeObserver is not implemented in jsdom.
-// ---------------------------------------------------------------------------
-
 class ResizeObserverStub {
   observe = vi.fn();
   unobserve = vi.fn();
@@ -20,16 +16,8 @@ class ResizeObserverStub {
 }
 vi.stubGlobal("ResizeObserver", ResizeObserverStub);
 
-// ---------------------------------------------------------------------------
-// Mol* mocks — jsdom has no WebGL, so we mock the entire plugin lifecycle.
-// ---------------------------------------------------------------------------
-
 const mockDispose = vi.fn();
-// Every structure file request, by URL (same-origin ones by path). The hook
-// fetches the file itself and hands Mol* the contents.
 const mockDownload = vi.fn<(url: string) => Response | Promise<Response>>();
-// Mol* gets the downloaded contents; answering with them lets the parse
-// assertions see exactly what was downloaded.
 const mockRawData = vi.fn(({ data }: { data: unknown }) => Promise.resolve(data));
 const mockParseTrajectory = vi.fn();
 const mockApplyPreset = vi.fn();
@@ -59,12 +47,7 @@ vi.mock("molstar/lib/mol-plugin-ui/spec", () => ({
   DefaultPluginUISpec: vi.fn(() => ({})),
 }));
 
-// CSS import is a no-op in vitest (css: false in config)
 vi.mock("molstar/lib/mol-plugin-ui/skin/light.scss", () => ({}));
-
-// ---------------------------------------------------------------------------
-// Tests
-// ---------------------------------------------------------------------------
 
 import { StructureSourceViewer } from "../structure-source-viewer";
 
@@ -75,7 +58,6 @@ function requestedUrl(url: string): string {
     : url;
 }
 
-/** What the app's routes answer when the upstream behind them is down. */
 function routeFailure(error: string, status = 503): Response {
   return HttpResponse.json({ error, code: "service_unavailable" }, { status });
 }
@@ -182,7 +164,6 @@ describe("StructureSourceViewer", () => {
         "Could not download 6VXX from your workspace: The BV-BRC workspace service did not respond (timed out after 30 s) (HTTP 504).",
       );
     });
-    // Nothing was handed to Mol* to fail parsing.
     expect(mockRawData).not.toHaveBeenCalled();
     expect(mockParseTrajectory).not.toHaveBeenCalled();
     expect(screen.getByRole("button", { name: "Retry" })).toBeInTheDocument();
@@ -267,7 +248,6 @@ describe("StructureSourceViewer", () => {
     });
 
     resolveSecondDownload?.("second-data");
-    // BinaryCIF reaches Mol* as bytes, parsed as mmCIF.
     await waitFor(() => {
       expect(mockParseTrajectory).toHaveBeenCalledTimes(2);
     });
@@ -276,8 +256,8 @@ describe("StructureSourceViewer", () => {
       string,
     ];
     expect(typeof contents).not.toBe("string");
-    // Compared as numbers: the response's bytes come from another realm than
-    // jsdom's TextEncoder.
+    // Compared as numbers: the response's bytes come from another realm than jsdom's
+    // TextEncoder.
     expect(Array.from(contents)).toEqual(
       Array.from(new TextEncoder().encode("second-data")),
     );
@@ -327,14 +307,6 @@ describe("StructureSourceViewer", () => {
     });
   });
 
-  // -------------------------------------------------------------------------
-  // Hook lifecycle assertions migrated from the deleted `StructureViewer`
-  // wrapper (removed as dead code — it was only reachable from its own test).
-  // `useMolstarPlugin` is shared by this component and the dedicated
-  // `/viewer/structure` route, so its dispose/error-handling guarantees stay
-  // covered here rather than only through the now-gone wrapper.
-  // -------------------------------------------------------------------------
-
   it("passes the layout spec through to createPluginUI", async () => {
     const { createPluginUI } = await import("molstar/lib/mol-plugin-ui");
 
@@ -366,7 +338,6 @@ describe("StructureSourceViewer", () => {
       <StructureSourceViewer source={directSource()} layout={testLayout} />,
     );
 
-    // Wait for plugin to be created
     await waitFor(() => {
       expect(mockApplyPreset).toHaveBeenCalled();
     });
@@ -394,17 +365,12 @@ describe("StructureSourceViewer", () => {
   });
 
   it("disposes the plugin exactly once when the download fails", async () => {
-    // Plugin creation succeeds (WebGL context allocated); the failure
-    // happens afterwards, in the download step.
     mockDownload.mockImplementationOnce(() => routeFailure("Network unavailable", 502));
 
     render(
       <StructureSourceViewer source={directSource()} layout={testLayout} />,
     );
 
-    // By the time the terminal error is on screen, the plugin (and its
-    // WebGL context) must already be disposed — not merely disposed later
-    // on retry or unmount.
     await waitFor(() => {
       expect(screen.getByRole("alert")).toHaveTextContent(
         "Could not download model.cif: Network unavailable (HTTP 502).",
@@ -412,7 +378,6 @@ describe("StructureSourceViewer", () => {
       expect(mockDispose).toHaveBeenCalledTimes(1);
     });
 
-    // No further disposal should happen once the error state has settled.
     expect(mockDispose).toHaveBeenCalledTimes(1);
   });
 
@@ -432,8 +397,6 @@ describe("StructureSourceViewer", () => {
       <StructureSourceViewer source={directSource()} layout={testLayout} />,
     );
 
-    // Wait until the plugin has been created and the (still-pending)
-    // download has been kicked off.
     await waitFor(() => {
       expect(mockDownload).toHaveBeenCalled();
       expect(createPluginUI).toHaveBeenCalled();
@@ -445,13 +408,10 @@ describe("StructureSourceViewer", () => {
 
     unmount();
 
-    // The effect cleanup disposes the plugin exactly once on unmount.
     expect(mockDispose).toHaveBeenCalledTimes(1);
 
-    // The in-flight download now rejects *after* unmount. The async
-    // catch's own disposal must see the lifecycle as already disposed and
-    // skip disposing again — asserting on the call count (not just "no
-    // throw") is what actually proves the race is closed.
+    // The in-flight download rejects after unmount; asserting the dispose count proves the
+    // race is closed.
     failDownload?.();
     await new Promise((resolve) => setTimeout(resolve, 0));
 

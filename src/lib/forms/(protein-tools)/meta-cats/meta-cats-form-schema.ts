@@ -1,12 +1,9 @@
 import { z } from "zod";
 
-// Input type enum (auto grouping, feature groups, alignment file)
 export const metaCatsInputTypeSchema = z.enum(["auto", "groups", "files"]);
 
-// Alphabet enum
 export const metaCatsAlphabetSchema = z.enum(["na", "aa"]);
 
-// Metadata field options for auto grouping
 export const metadataOptions = [
   { value: "accession", label: "Accession" },
   { value: "collection_date", label: "Collection Date" },
@@ -34,7 +31,6 @@ export const metadataOptions = [
 
 export type MetadataOption = (typeof metadataOptions)[number]["value"];
 
-// Auto group item schema (for grid rows)
 export const autoGroupItemSchema = z.object({
   id: z.string(),
   patric_id: z.string(),
@@ -47,36 +43,28 @@ export const autoGroupItemSchema = z.object({
 
 export type AutoGroupItem = z.infer<typeof autoGroupItemSchema>;
 
-// Main form schema
 export const metaCatsFormSchema = z
   .object({
-    // Parameters
     p_value: z.number().min(0).max(1),
 
-    // Input type
     input_type: metaCatsInputTypeSchema,
 
-    // Auto grouping specific fields
     metadata_group: z.string().optional(),
     year_ranges: z.string().optional(),
     auto_groups: z.array(autoGroupItemSchema).optional(),
     auto_alphabet: metaCatsAlphabetSchema.optional(),
 
-    // Feature groups specific fields
     groups: z.array(z.string()).optional(),
     group_alphabet: metaCatsAlphabetSchema.optional(),
 
-    // Alignment file specific fields
     alignment_file: z.string().optional(),
     alignment_type: z.string().optional(),
     group_file: z.string().optional(),
 
-    // Output
     output_path: z.string().min(1, "Output folder is required"),
     output_file: z.string().min(1, "Output name is required"),
   })
   .superRefine((data, ctx) => {
-    // Validate p_value
     if (data.p_value <= 0 || data.p_value > 1) {
       ctx.addIssue({
         code: "custom",
@@ -85,7 +73,6 @@ export const metaCatsFormSchema = z
       });
     }
 
-    // Validation for auto grouping mode
     if (data.input_type === "auto") {
       if (!data.auto_groups || data.auto_groups.length === 0) {
         ctx.addIssue({
@@ -96,7 +83,6 @@ export const metaCatsFormSchema = z
         return;
       }
 
-      // Count unique groups
       const uniqueGroups = new Set(data.auto_groups.map((item) => item.group));
       if (uniqueGroups.size < minGroups) {
         ctx.addIssue({
@@ -114,7 +100,6 @@ export const metaCatsFormSchema = z
       }
     }
 
-    // Validation for feature groups mode
     if (data.input_type === "groups") {
       if (!data.groups || data.groups.length === 0) {
         ctx.addIssue({
@@ -141,7 +126,6 @@ export const metaCatsFormSchema = z
       }
     }
 
-    // Validation for alignment file mode
     if (data.input_type === "files") {
       if (!data.alignment_file || data.alignment_file.trim() === "") {
         ctx.addIssue({
@@ -162,11 +146,9 @@ export const metaCatsFormSchema = z
 
 export type MetaCatsFormData = z.infer<typeof metaCatsFormSchema>;
 
-// Constants
 export const maxGroups = 10;
 export const minGroups = 2;
 
-// Default form values
 export const defaultMetaCatsFormValues: MetaCatsFormData = {
   p_value: 0.05,
   input_type: "auto",

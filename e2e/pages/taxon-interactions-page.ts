@@ -37,9 +37,8 @@ export class TaxonInteractionsPage {
   }
 
   /**
-   * The graph lays out in a Web Worker after its rows load, behind a "Laying
-   * out…" status over the canvas. Wait for it to clear before measuring or
-   * clicking the canvas.
+   * The graph lays out in a Web Worker behind a "Laying out…" status; wait
+   * for it to clear before measuring or clicking.
    */
   async waitForLayout(): Promise<void> {
     await expect(
@@ -47,7 +46,6 @@ export class TaxonInteractionsPage {
     ).toHaveCount(0, { timeout: 15_000 });
   }
 
-  /** The layout reported no failure (its Alert would sit over the canvas). */
   async expectNoLayoutError(): Promise<void> {
     await expect(
       this.page.getByRole("tabpanel", { name: "Graph" }).getByText("Could not lay out the graph"),
@@ -66,7 +64,6 @@ export class TaxonInteractionsPage {
     await expect(graphPanel.getByLabel("Selection details")).toBeVisible();
   }
 
-  /** Table subview's own FilterBar keyword box (top of the Table tabpanel). */
   async filterByKeyword(text: string): Promise<void> {
     await this.page
       .getByRole("tabpanel", { name: "Table" })
@@ -74,7 +71,6 @@ export class TaxonInteractionsPage {
       .fill(text);
   }
 
-  /** Graph subview's keyword box, rendered in its own GraphToolbar. */
   async filterGraphByKeyword(text: string): Promise<void> {
     await this.page
       .getByRole("tabpanel", { name: "Graph" })
@@ -94,7 +90,6 @@ export class TaxonInteractionsPage {
     ).toHaveValue(text);
   }
 
-  /** The Graph action bar's layout Select trigger. */
   private layoutTrigger() {
     return this.page.getByRole("tabpanel", { name: "Graph" }).getByRole("combobox", { name: "Layout" });
   }
@@ -108,7 +103,6 @@ export class TaxonInteractionsPage {
     await this.page.getByRole("option", { name: label }).click();
   }
 
-  /** A protein row in the Graph subview's node list, by its visible label. */
   async selectNodeInList(label: string): Promise<void> {
     await this.page.getByRole("tabpanel", { name: "Graph" }).getByRole("option", { name: label }).click();
   }
@@ -121,7 +115,6 @@ export class TaxonInteractionsPage {
     await expect(this.detailPanel().getByText(text, { exact: false }).first()).toBeVisible();
   }
 
-  /** Click the first incident-edge button listed in the node's detail panel. */
   async selectFirstIncidentEdge(): Promise<void> {
     await this.detailPanel().getByRole("button").first().click();
   }

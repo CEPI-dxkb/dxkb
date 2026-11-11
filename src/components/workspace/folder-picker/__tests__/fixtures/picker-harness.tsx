@@ -1,9 +1,6 @@
 /**
- * Shared harness for the folder picker's component tests: an in-memory
- * workspace with a `/` listing of other users' workspaces, hooks to hold or
- * fail individual backend calls, and a host that really opens and closes the
- * dialog. Each test file still mocks `@/lib/auth/provider` and `sonner`
- * itself, because `vi.mock` only applies to the file that calls it.
+ * Each test file must still mock `@/lib/auth/provider` and `sonner`, because `vi.mock`
+ * only applies to the file that calls it.
  */
 
 import { useState, type ComponentProps, type ReactNode } from "react";
@@ -29,10 +26,8 @@ export const pickerUser = { id: "alice", realm: "bvbrc" };
 export const pickerHome = "/alice@bvbrc/home";
 
 /**
- * jsdom has no element scrolling (`Element.scrollTo`), no pointer capture, no
- * `matchMedia` and no Web Animations API. Reporting reduced motion keeps the
- * column animations out of the component tests;
- * `folder-picker-motion.test.ts` covers them.
+ * jsdom has no Element.scrollTo, pointer capture, matchMedia or Web Animations API;
+ * reporting reduced motion keeps column animations out of the component tests.
  */
 export function stubPickerBrowserApis() {
   Element.prototype.scrollTo = vi.fn();
@@ -84,10 +79,8 @@ const defaultRootItems = [
 ];
 
 /**
- * The real `/` listing returns other users' workspaces with their own paths,
- * which the in-memory fixture (paths built from parent + name) cannot
- * express, so it is overridden here. Listings, folder creation and uploads
- * can also be held open or failed, to see the picker while they are pending.
+ * The real `/` listing returns other users' workspaces with their own paths, which the
+ * in-memory fixture cannot express, so it is overridden here.
  */
 export class PickerTestRepository extends InMemoryWorkspaceRepository {
   rootItems: WorkspaceItem[] = defaultRootItems;
@@ -97,7 +90,6 @@ export class PickerTestRepository extends InMemoryWorkspaceRepository {
   private uploadGate: Gate | null = null;
   private addedItems = new Map<string, WorkspaceItem[]>();
 
-  /** Lists `item` in `parentPath` from the next listing on, as an upload would. */
   addItem(
     parentPath: string,
     item: Pick<WorkspaceItem, "name" | "type"> & Partial<WorkspaceItem>,
@@ -110,30 +102,25 @@ export class PickerTestRepository extends InMemoryWorkspaceRepository {
     ]);
   }
 
-  /** Every listing of `path` waits until the gate is released. */
   holdListing(path: string): Gate {
     const gate = createGate();
     this.listingGates.set(path, gate);
     return gate;
   }
 
-  /** Every listing of `path` fails with `error`. */
   failListing(path: string, error: Error) {
     this.listingFailures.set(path, error);
   }
 
-  /** Listings of `path` succeed again, as after an outage. */
   restoreListing(path: string) {
     this.listingFailures.delete(path);
   }
 
-  /** The next folder creation waits until the gate is released. */
   holdCreateFolder(): Gate {
     this.createFolderGate = createGate();
     return this.createFolderGate;
   }
 
-  /** The next upload waits (before its first request) until released. */
   holdUpload(): Gate {
     this.uploadGate = createGate();
     return this.uploadGate;
@@ -204,7 +191,6 @@ export function makePickerRepository(
   });
 }
 
-/** The default tree plus what file mode needs: a job result, files of several types, public data. */
 export const filePickerDirectories: InMemoryFixtures["directories"] = {
   ...defaultPickerDirectories,
   [pickerHome]: [
@@ -224,7 +210,6 @@ export function makeFilePickerRepository(): PickerTestRepository {
   return makePickerRepository({ directories: filePickerDirectories });
 }
 
-/** Query client plus the given repository, for rendering anything that opens the picker. */
 export function pickerRepositoryWrapper(
   repository: PickerTestRepository = makePickerRepository(),
 ) {
@@ -245,7 +230,6 @@ export function pickerRepositoryWrapper(
 type PickerProps = ComponentProps<typeof WorkspaceFolderPickerDialog>;
 type HostProps = Omit<PickerProps, "open">;
 
-/** Owns `open` the way a caller does, so Close really closes the dialog. */
 function PickerHost(props: HostProps) {
   const [open, setOpen] = useState(true);
   return (
@@ -286,7 +270,6 @@ export function renderPicker(
     ...props,
     repository,
     user,
-    /** Opens the dialog again after it closed. */
     reopen: async () => {
       await user.click(screen.getByRole("button", { name: "Open picker" }));
     },
@@ -301,12 +284,10 @@ export async function findOption(
   return within(column).findByRole("option", { name: optionName });
 }
 
-/** The footer's Select button: "Select" or "Select “Name”". */
 export function selectButton() {
   return screen.getByRole("button", { name: /^Select( “.*”)?$/ });
 }
 
-/** The footer's breadcrumb: "Selected folder", or "Selected file" when picking files. */
 export function breadcrumb() {
   return screen.getByRole("navigation", { name: /^Selected (folder|file)$/ });
 }
@@ -317,7 +298,6 @@ export function breadcrumbLabels() {
     .map((crumb) => crumb.textContent);
 }
 
-/** Column headers in order, read from their resize handles. */
 export function columnLabels() {
   return screen
     .getAllByRole("separator", { name: /^Resize .* column$/ })

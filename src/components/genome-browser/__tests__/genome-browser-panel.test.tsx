@@ -46,7 +46,6 @@ function renderPanel(props: Parameters<typeof GenomeBrowserPanel>[0]) {
   });
 }
 
-/** Waits until the view opens at `location`, then returns it. */
 async function viewOpenedAt(location: string): Promise<HTMLElement> {
   await vi.waitFor(() =>
     expect(screen.getByTestId("view")).toHaveAttribute(
@@ -130,8 +129,8 @@ describe("GenomeBrowserPanel", () => {
   });
 
   it("opens on the genome's default when the feature's focus names a sequence it does not have", async () => {
-    // A feature row whose accession is not among the genome's sequences (the
-    // two Data API cores disagree): JBrowse would throw on it.
+    // A feature row whose accession is not among the genome's sequences:
+    // JBrowse would throw on it.
     regions({ regions: [{ refName: "ATGO01000001", start: 0, end: 33406 }] });
     renderPanel({
       genomeId: "1328357.3",

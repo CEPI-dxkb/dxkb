@@ -10,7 +10,6 @@ export interface OverviewCardProps {
   children: ReactNode;
 }
 
-/** Card shell for an entity overview section: title header plus body content. */
 export function OverviewCard({ title, children }: OverviewCardProps) {
   return (
     <Card>
@@ -24,21 +23,12 @@ export function OverviewCard({ title, children }: OverviewCardProps) {
 
 export interface OverviewFieldProps {
   label: string;
-  /** Raw value used to derive availability and, absent `children`, display text. */
   value?: unknown;
-  /** Overrides the value-based availability check, e.g. for a field whose visibility depends on entity-specific logic (a recognized ID shape) rather than the raw value alone. */
   available?: boolean;
-  /** Overrides the default `<dd>` className for entity-specific layouts (e.g. wrapped link lists). */
   className?: string;
-  /** Custom content for the `<dd>` (e.g. a link) instead of the formatted value. */
   children?: ReactNode;
 }
 
-/**
- * A single definition-list field/value pair (`<dt>`/`<dd>`). Renders
- * nothing when the field is unavailable, so callers never end up with an
- * empty `<dd>` under a populated `<dt>`.
- */
 export function OverviewField({
   label,
   value,

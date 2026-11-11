@@ -76,10 +76,7 @@ export function ClassificationInputCard({
                 }}
               />
             </div>
-            {/* A FieldItem, not a bare div: a sub-label that is a direct child
-                of a field container loses its own `mb-2` (globals.css), so
-                the grid's `gap-2` is the whole 8px to the input. A bare div
-                kept the margin and the input's `mt-1.5` on top: 14px. */}
+            {/* A FieldItem, not a bare div: only a direct child of a field container loses the sub-label's `mb-2`. */}
             <FieldItem>
               <ServiceSubLabel htmlFor="paired-sample-id">
                 Sample Identifier
@@ -129,9 +126,6 @@ export function ClassificationInputCard({
               />
             </FieldItem>
           </div>
-          {/* Grouped like the two libraries above (`space-y-4`, not the
-              card's `space-y-6`), so the sample identifier sits with the
-              accession it names. */}
           <div className="space-y-4">
             <SraRunAccessionWithValidation
               key={state.sraResetKey}

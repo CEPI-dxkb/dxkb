@@ -7,7 +7,6 @@ const length = 50_000;
 const windowSize = 50;
 const windows = length / windowSize;
 
-/** Covers the first half of the circle, so a spec can hover it at 3 o'clock. */
 const forwardFeature = {
   featureId: `PATRIC.${genomeId}.${accession}.CDS.1.25000.fwd`,
   patricId: `fig|${genomeId}.peg.1`,
@@ -39,11 +38,8 @@ export const circularViewerFixture = {
 };
 
 /**
- * `/api/circular-viewer/*` for `bacterialGenomeRecord`: one 50 kb sequence,
- * one forward CDS over its first half, no other preset features, a custom
- * search that finds one gene, and smooth GC windows. The panel fetches the
- * route from the browser, so these overrides are its whole mock; the
- * loopback only serves the Genome page's own record lookup.
+ * The panel fetches these from the browser, so they are its whole mock; the
+ * loopback only serves the Genome page's record lookup.
  */
 export const circularViewerScenarioOverrides: JsonOverride[] = [
   {

@@ -115,7 +115,6 @@ describe("genomeListValueHref", () => {
     expect(
       genomeListValueHref(taxonGenomes, "host_common_name", " "),
     ).toBeUndefined();
-    // The Data API refuses a parenthesis in a value, encoded or not.
     expect(
       genomeListValueHref(
         taxonGenomes,

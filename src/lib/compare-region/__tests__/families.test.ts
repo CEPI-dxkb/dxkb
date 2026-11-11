@@ -14,7 +14,6 @@ import { measureFigure } from "../figure-frame";
 import { layoutCompareRegion } from "../layout";
 import rows10 from "./fixtures/rows-10.json";
 
-/** A plus-strand row centered at 1000 over a 2 kb window, aligned on its first feature. */
 function testRow(
   genomeId: string,
   features: CompareRegionFeature[],
@@ -133,7 +132,6 @@ describe("indexFamilies", () => {
       testGene("fig|2.1.peg.3", 1350, 1550, { family: 5 }),
     ]);
     const families = indexFamilies(layoutCompareRegion([three, two]));
-    // Three ribbons across a gap of five genes, not all six pairs.
     expect(
       families.ribbons
         .filter((ribbon) => ribbon.family === 5)

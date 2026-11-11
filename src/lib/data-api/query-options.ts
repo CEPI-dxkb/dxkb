@@ -18,9 +18,6 @@ export const dataQueryKeys = {
   ) => [...dataQueryKeys.resource(resource), "collection", request] as const,
   member: (resource: DataResource, request: Omit<MemberRequest, "operation">) =>
     [...dataQueryKeys.resource(resource), "member", request] as const,
-  // Bulk row reads (the Interactions graph asks for its whole dataset in one
-  // request). Keyed on the full request like its siblings, so a changed
-  // predicate, projection or limit cannot serve a previous answer.
   export: (resource: DataResource, request: Omit<ExportRequest, "operation">) =>
     [...dataQueryKeys.resource(resource), "export", request] as const,
 };
@@ -57,13 +54,11 @@ type FacetCountRequest = Omit<CollectionRequest, "operation" | "facets">;
 
 interface FacetCountBatch {
   fields: Set<string>;
-  // The reads waiting on this request; the last one cancelled aborts it.
   members: number;
   controller: AbortController;
   result: Promise<CollectionResult<Record<string, unknown>>>;
 }
 
-// Facet reads waiting to be sent, per repository and scope.
 const facetCountBatches = new WeakMap<
   DataRepository,
   Map<string, FacetCountBatch>
@@ -79,13 +74,8 @@ function facetCountBatchesFor(repository: DataRepository) {
 }
 
 /**
- * One facet's counts, sent together with every other facet of the same scope
- * asked for in the same task: one HTTP request per scope, which the server
- * fans out upstream in parallel (`ServerDataRepository.collection`). Each
- * field stays its own query, so a newly shown facet reads alone and a Retry
- * re-reads only the failed ones. The request has its own signal, aborted once
- * every read waiting on it is cancelled (its scope left the screen); one
- * cancelled read, such as an unpinned facet, leaves it to the others.
+ * Facets of one scope asked for in the same task share one HTTP request, whose
+ * signal is aborted only once every read waiting on it is cancelled.
  */
 function readFacetCounts(
   repository: DataRepository,
@@ -102,7 +92,6 @@ function readFacetCounts(
     controller: new AbortController(),
     result: new Promise((resolve) => setTimeout(resolve, 0)).then(() => {
       if (batches.get(key) === batch) batches.delete(key);
-      // Every read was cancelled before it went out: nothing waits on it.
       batch.controller.signal.throwIfAborted();
       return repository.collection(
         resource,
@@ -126,11 +115,6 @@ function readFacetCounts(
   return batch.result;
 }
 
-/**
- * Counts for one facet in a scope: one id and that field's buckets. Reads
- * started together for one scope share a request (`readFacetCounts`), which
- * is aborted when none of them is wanted any more.
- */
 export function facetCountQueryOptions(
   repository: DataRepository,
   resource: DataResource,

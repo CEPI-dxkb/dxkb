@@ -47,8 +47,7 @@ function buildGraph(
     g.addNode(n.id, {
       ...n,
       label: n.gene || n.id,
-      // Small nodes so ~1,900 points don't overlap when zoomed out, and so the
-      // connecting edges of tight 2–4 node clusters stay visible at any zoom.
+      // Small nodes so ~1,900 points don't overlap and tight clusters keep their edges visible.
       size: 2.5,
       color: n.kind === "host" ? colors.host : colors.microbial,
       x: positions[2 * i],
@@ -60,12 +59,8 @@ function buildGraph(
       g.addEdgeWithKey(e.id, e.source, e.target, {
         ...e,
         size: 1,
-        // Translucent (premultiplied) so ~4,400 overlapping edges read as
-        // individual threads and accumulate into a density gradient instead of a
-        // solid disk. Derived from the theme in graph-theme.ts so dense-region
-        // color matches the legend swatches; see renderEdge for the alpha/
-        // premultiply rationale. Wider rectangle edges give pointer events a
-        // usable hit target without making the mesh opaque.
+        // Translucent (premultiplied) edges accumulate into a density gradient; wider rectangles
+        // give pointer events a usable hit target.
         color: e.experimental ? renderEdgeExperimental : renderEdge,
       });
     }
@@ -73,13 +68,9 @@ function buildGraph(
   return g;
 }
 
-// Sigma's hover renderer (drawDiscNodeHover) paints a hardcoded #FFF pill, then
-// draws the label in `labelColor`. Since we drive labelColor off the theme
-// foreground (white in dark mode), the hover/selected label went white-on-white.
-// Force the pill's label dark so it's readable on the always-white pill in every
-// theme, while flat (non-hovered) labels keep their theme-aware color. Declared
-// at module scope so its identity is stable — SigmaContainer deep-diffs settings
-// and recreates the instance (resetting pan/zoom) if this changed each render.
+// Sigma's hover pill is hardcoded white, so force a dark label to stay readable in every theme.
+// Module scope keeps its identity stable: SigmaContainer deep-diffs settings and resets pan/zoom if
+// it changes.
 const drawNodeHover: NodeHoverDrawingFunction = (context, data, settings) => {
   drawDiscNodeHover(context, data, {
     ...settings,
@@ -97,12 +88,9 @@ interface LoadedGraph extends GraphLoaderProps {
   sigma: ReturnType<typeof useSigma>;
 }
 
-// Positions are computed off the main thread (useGraphLayout), so they arrive
-// after the nodes. Nothing is drawn until positions for these exact nodes exist:
-// new nodes clear the previous graph until their positions arrive (so a failed
-// layout never leaves a stale, clickable graph beside its error), then load a
-// new graph, and new positions for the same nodes (a layout switch) move the
-// loaded nodes in place.
+// Positions arrive after nodes; new nodes clear the previous graph until their positions exist (so
+// a failed layout never leaves a stale clickable graph), and new positions for the same nodes move
+// them in place.
 function GraphLoader({ nodes, edges, positions }: GraphLoaderProps) {
   const sigma = useSigma();
   const loadGraph = useLoadGraph();
@@ -132,10 +120,8 @@ function GraphLoader({ nodes, edges, positions }: GraphLoaderProps) {
       graph.setNodeAttribute(node.id, "y", positions[2 * i + 1]);
     });
     sigma.refresh();
-    // Sigma auto-frames only on initial load. Switching layout in place can
-    // shift the graph's normalized extent (packed layouts especially), so
-    // reset the camera to re-fit the new positions instead of leaving it
-    // panned/zoomed to the previous layout.
+    // Sigma auto-frames only on initial load; reset the camera so a layout switch re-fits the new
+    // extent.
     void sigma.getCamera().animatedReset();
   }, [nodes, edges, positions, loadGraph, sigma]);
   return null;
@@ -207,12 +193,9 @@ function GraphEvents({
     });
   }, [setSettings, selectedNodeIds, selectedEdgeIds, hoveredEdge]);
 
-  // Sigma's flat node labels default to labelColor #000 — invisible on the dark
-  // canvas (the selected label rides its own white hover-pill, so it stayed
-  // legible). Drive labelColor off the theme's --foreground. Canvas 2D can't
-  // parse var(), so resolve the computed value; re-resolve on data-theme changes
-  // (next-themes toggles that attribute, and this effect commits before its
-  // provider effect, so observe the attribute rather than a theme prop).
+  // Flat labels default to #000, invisible on the dark canvas. Canvas 2D can't parse var(), so
+  // resolve --foreground and re-resolve on data-theme changes (observe the attribute: this effect
+  // commits before next-themes' provider effect).
   useEffect(() => {
     const apply = () => {
       const color = getComputedStyle(document.documentElement)
@@ -253,8 +236,8 @@ function HandleBridge({
     [sigma],
   );
 
-  // Runs after useImperativeHandle's layout effect commits handleRef.current,
-  // so the parent only learns "ready" once the handle is actually callable.
+  // Runs after useImperativeHandle commits handleRef.current, so "ready" means the handle is
+  // callable.
   useEffect(() => {
     onReady?.();
   }, [onReady]);
@@ -279,12 +262,8 @@ export function SigmaCanvas({
     <div className="relative size-full">
       <SigmaContainer
         className="size-full"
-        // react-sigma paints the container div with --sigma-background-color
-        // (default #fff) behind its transparent WebGL canvases. Match the
-        // "Search proteins" box (bg-input/30 over the bg-card column) so the
-        // canvas reads as the same surface: --graph-surface in globals.css is
-        // that input/30-over-card composite. Plain var(--card) fails in light
-        // themes where --card is pure white — the composite never is.
+        // Match the "Search proteins" box: --graph-surface is the input/30-over-card composite,
+        // whereas plain var(--card) is pure white in light themes.
         style={
           {
             "--sigma-background-color": "var(--graph-surface)",
@@ -292,14 +271,11 @@ export function SigmaCanvas({
         }
         settings={{
           renderEdgeLabels: false,
-          // Sort draw order by node/edge zIndex so the reducer's zIndex:1 on the
-          // selected element paints it above the ~1,900-node mesh. Off by default,
-          // which left the selection buried under later-inserted neighbors.
+          // Sort draw order by zIndex so the selected element paints above the mesh (off by
+          // default).
           zIndex: true,
-          // "rectangle" (thick, hit-testable edges) isn't auto-registered — Sigma
-          // only ships "line" and "arrow" by default — so register the program
-          // for that type key here, or loadGraph throws "could not find a suitable
-          // program for edge type rectangle".
+          // Sigma ships only "line" and "arrow"; register the "rectangle" program or loadGraph
+          // throws "could not find a suitable program for edge type rectangle".
           defaultEdgeType: "rectangle",
           edgeProgramClasses: { rectangle: EdgeRectangleProgram },
           enableEdgeEvents: true,

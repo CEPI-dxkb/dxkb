@@ -20,8 +20,6 @@ interface BacteriaPageProps {
 export default async function BacteriaPage({ searchParams }: BacteriaPageProps) {
   const [resolvedParams, taxon] = await Promise.all([
     searchParams,
-    // Falls back to the static root during an outage, so the shell, rail and
-    // static sections still render and only the data sections fail.
     fetchLandingRootTaxonomy(bacteriaLandingConfig.taxonId),
   ]);
   const views = buildTaxonViews({

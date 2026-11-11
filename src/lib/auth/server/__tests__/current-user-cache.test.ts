@@ -14,9 +14,8 @@ import {
 } from "../actions";
 import { forgetProfile } from "../profile-cache";
 
-// React's `cache()` memoizes only inside a server render; outside one (as here)
-// every `getCurrentUser()` call runs `readCurrentUser` again, so two calls stand
-// in for two requests and any reuse comes from the cross-request profile cache.
+// React's `cache()` memoizes only inside a server render, so two calls here
+// stand in for two requests.
 
 const userUrl = "http://mock-user-url";
 const userAuthUrl = "http://mock-user-auth-url";
@@ -50,7 +49,6 @@ const bobProfile = {
   roles: [],
 };
 
-/** User ids of every profile request the user service received. */
 let profileRequests: string[];
 
 function profileFor(userId: string, token: string | null) {
@@ -66,7 +64,6 @@ function profileFor(userId: string, token: string | null) {
   return null;
 }
 
-/** Answers profile lookups; `failFirst` answers the first one with that status. */
 function serveProfiles(failFirst?: number): void {
   server.use(
     http.get(`${userUrl}/:userId`, ({ params, request }) => {
@@ -172,14 +169,12 @@ describe("getCurrentUser across requests", () => {
 
     const pending = getCurrentUser();
     await requestArrived.promise;
-    // A sign-out or profile save handled by another request meanwhile.
     forgetProfile(aliceToken);
     releaseAnswer.resolve(undefined);
     await expect(pending).resolves.toMatchObject({ id: aliceProfile.id });
 
     await getCurrentUser();
     expect(profileRequests).toHaveLength(2);
-    // The lookup after the forget is stored as usual.
     await getCurrentUser();
     expect(profileRequests).toHaveLength(2);
   });
@@ -222,7 +217,6 @@ describe("getCurrentUser across requests", () => {
 
     await signOut();
     await expect(getCurrentUser()).resolves.toBeNull();
-    // A copy of the cleared cookie presented again is not answered from cache.
     signInAsAlice();
     await getCurrentUser();
 
@@ -263,7 +257,6 @@ describe("getCurrentUser across requests", () => {
     await expect(startImpersonation("bob", "pw")).resolves.toMatchObject({
       error: null,
     });
-    // The admin check, then the target's profile.
     expect(profileRequests).toEqual([aliceProfile.id, "bob"]);
     await expect(getCurrentUser()).resolves.toMatchObject({
       id: bobProfile.id,

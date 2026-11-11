@@ -1,10 +1,5 @@
 "use client";
 
-/**
- * One column of the folder picker: its own listing, vertical scroll and
- * roving-focus rows, plus the inline new-folder row it can host.
- */
-
 import {
   useEffect,
   useId,
@@ -39,34 +34,27 @@ import { PaneResizeHandle } from "./folder-picker-resize-handle";
 import { columnWidthLimitsFor } from "./folder-picker-utils";
 
 export interface NewFolderRowHandlers {
-  /** Rejects with the backend's error, which the row shows as-is. */
   onCreate: (name: string) => Promise<void>;
   onCancel: () => void;
 }
 
 interface FolderPickerColumnProps {
-  /** Identifies the column across renders for the open/close motion. */
   transitionKey: string;
   index: number;
   location: PickerLocation;
   label: string;
   username: string;
-  /** What the picker chooses; picking files, files are rows too. */
   target: PickerTarget;
   showFiles: boolean;
   onShowFiles: () => void;
   width: number;
   onResize: (width: number) => void;
-  /** The row selected in this column (an ancestor of, or, the selection). */
   selectedPath: string | null;
-  /** This column's selected row is the picker's selection (active styling). */
   isCurrent: boolean;
-  /** This column holds the strip's single Tab stop. */
   hasTabStop: boolean;
   folderVariant: FolderIconVariant;
   showOwner: boolean;
   inert: boolean;
-  /** Shows the inline new-folder row at the top of the column. */
   newFolder: NewFolderRowHandlers | null;
   isRowWritable: (item: WorkspaceItem, siblings: WorkspaceItem[]) => boolean;
   isRowUsable: (item: WorkspaceItem) => boolean;
@@ -75,10 +63,6 @@ interface FolderPickerColumnProps {
   onExitToParent: (index: number) => void;
   onCommit: (item: WorkspaceItem, siblings: WorkspaceItem[]) => void;
   focusRow: (index: number, path: string) => void;
-  /**
-   * Called once this column has loaded without its selected row: the folder
-   * is gone (a stale value, or deleted elsewhere).
-   */
   onSelectionMissing: (index: number) => void;
 }
 
@@ -111,9 +95,8 @@ export function FolderPickerColumn({
 }: FolderPickerColumnProps) {
   const listing = useWorkspacePickerListing({ location, username });
   const queryClient = useQueryClient();
-  // Retry reloads every workspace read on screen that failed, not just this
-  // column's: an outage fails the columns and the info pane together, and
-  // they share these reads. The error stays up, "Retrying…", until it answers.
+  // Retry reloads every failed workspace read on screen, not just this column's: an outage
+  // fails the columns and the info pane together.
   const retry = useRetryKeepingError(
     {
       error: listing.error,
@@ -143,7 +126,6 @@ export function FolderPickerColumn({
     target,
     showAll: showFiles,
   });
-  /** Rows the keyboard moves over: folders, and files the picker can choose. */
   const interactiveRows = rows.filter((item) =>
     isPickerItemInteractive(item, target),
   );
@@ -155,8 +137,6 @@ export function FolderPickerColumn({
       ? selectedPath
       : (interactivePaths.at(0) ?? null)
     : null;
-  // Files this directory holds but the column hides. (List views also drop
-  // rows on purpose, e.g. read-only shares; those don't count.)
   const hiddenFileCount =
     location.kind === "path" && !showFiles
       ? listing.items.filter(
@@ -167,9 +147,8 @@ export function FolderPickerColumn({
       : 0;
   const isPickingFiles = target.kind === "object";
 
-  // Keep the selected row in view when the column (re)loads or the selection
-  // moves. Only this column scrolls: `scrollIntoView` would also scroll the
-  // strip sideways and fight the strip's own auto-scroll.
+  // Only this column scrolls: `scrollIntoView` would also scroll the strip sideways and
+  // fight its own auto-scroll.
   useEffect(() => {
     const scroller = scrollerRef.current;
     if (!scroller || !selectedPath || listing.isLoading) return;
@@ -177,7 +156,6 @@ export function FolderPickerColumn({
       `[data-picker-path="${CSS.escape(selectedPath)}"]`,
     );
     if (!row) return;
-    // Scroll just enough to show it, the way arrowing through a list does.
     const top = row.offsetTop - 4;
     const bottom = row.offsetTop + row.offsetHeight + 4;
     if (top < scroller.scrollTop) scroller.scrollTop = top;
@@ -191,8 +169,6 @@ export function FolderPickerColumn({
   ) => {
     const path = pickerRowKey(item, target);
     const position = interactivePaths.indexOf(path);
-    // A focused row that is not selected yet (nothing picked in this column)
-    // gets selected by the first arrow press instead of being skipped.
     const step = path === selectedPath ? 1 : 0;
     const moveTo = (nextIndex: number) => {
       const next = interactiveRows.at(nextIndex);
@@ -227,8 +203,6 @@ export function FolderPickerColumn({
         break;
       case "Enter":
         event.preventDefault();
-        // Picking files, Enter opens a folder (choosing it is not an option)
-        // and chooses a file.
         if (isPickingFiles && isPickerItemNavigable(item, target)) {
           onEnterChild(index, item);
         } else {
@@ -347,10 +321,6 @@ function ColumnSkeleton() {
   );
 }
 
-/**
- * Editable row at the top of a column: Enter creates, Esc cancels. The name
- * rule shows inline; a backend error shows with its original message.
- */
 function NewFolderRow({ onCreate, onCancel }: NewFolderRowHandlers) {
   const errorId = useId();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -373,7 +343,6 @@ function NewFolderRow({ onCreate, onCancel }: NewFolderRowHandlers) {
     setIsCreating(true);
     setBackendError(null);
     try {
-      // On success the column unmounts this row.
       await onCreate(name);
     } catch (error) {
       setBackendError(

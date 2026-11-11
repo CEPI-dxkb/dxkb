@@ -52,7 +52,6 @@ export default async function SerologyPage({
     { source: "page", isSampleId: isSerologySampleId, lookup: getSerology },
   );
   if ("unavailable" in loaded) {
-    // An outage is rendered, not thrown: production would redact its message.
     return (
       <RecordUnavailable
         viewLabel="Serology View"

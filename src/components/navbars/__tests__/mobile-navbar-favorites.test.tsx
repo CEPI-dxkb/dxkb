@@ -88,7 +88,6 @@ describe("MobileNavbar favorites", () => {
     expect(alert).toHaveTextContent(`Couldn't load favorites: ${timedOut}`);
     await user.click(within(alert).getByRole("button", { name: "Retry" }));
 
-    // The Favorites subsection and its failure stay up while the retry is in flight.
     expect(
       await within(alert).findByRole("button", { name: "Retrying…" }),
     ).toBeDisabled();
@@ -126,7 +125,6 @@ describe("MobileNavbar favorites", () => {
     await user.click(screen.getByRole("button", { name: "Open navigation menu" }));
     await user.click(await screen.findByRole("button", { name: /^Workspace\d+$/ }));
 
-    // Pending: the Favorites subsection holds its place, not "no favorites".
     expect(await screen.findByText("Favorites")).toBeInTheDocument();
     expect(document.querySelector('[data-slot="skeleton"]')).not.toBeNull();
     expect(calls).toBe(1);

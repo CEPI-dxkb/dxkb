@@ -28,8 +28,6 @@ import {
 } from "./contact-form-utils";
 
 const ContactForm = () => {
-  // Shown under the button until the next submit; the form keeps what the
-  // user typed, so trying again is one click.
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   const form = useForm({
@@ -63,7 +61,6 @@ const ContactForm = () => {
       <div className="container mx-auto px-4">
         <div className="mx-auto max-w-6xl">
           <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
-            {/* Contact Info Sidebar */}
             <div className="md:col-span-1">
               <div className="sticky top-24">
                 <h2 className="mb-6 text-xl font-bold">Contact Information</h2>
@@ -87,7 +84,6 @@ const ContactForm = () => {
               </div>
             </div>
 
-            {/* Contact Form */}
             <div className="md:col-span-2">
               <Card>
                 <CardContent className="px-8 py-4">
@@ -104,11 +100,8 @@ const ContactForm = () => {
                       <form.Field name="inquiryType">
                         {(field) => (
                           <FieldItem>
-                            {/*
-                              Group label: uses id + aria-labelledby rather than
-                              htmlFor, since a radio group has no single input to
-                              associate with.
-                            */}
+                            {/* A radio group has no single input, so the label uses id +
+                aria-labelledby. */}
                             <span
                               id="inquiryType-label"
                               className="text-base font-medium"

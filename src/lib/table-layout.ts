@@ -1,11 +1,6 @@
 import { z } from "zod";
 
-/**
- * A user's changes to one table's layout, stored per table in localStorage (see
- * useTableLayout). Only differences from the table's own defaults are kept, so a
- * column added to a profile later still shows with its default visibility, and ids
- * that no longer exist are ignored rather than breaking the table.
- */
+/** A user's changes to one table's layout; only differences from defaults are kept, so new columns keep default visibility and stale ids are ignored. */
 export interface TableLayout {
   visibility?: Record<string, boolean>;
   order?: string[];
@@ -13,8 +8,7 @@ export interface TableLayout {
   facets?: Record<string, boolean>;
 }
 
-// Each field is validated on its own: one that is malformed (say a width outside
-// 20-4000) reads as absent, so it can never cost the user the fields around it.
+// Each field validates on its own, so one malformed field cannot cost the user the others.
 const tableLayoutSchema = z.object({
   visibility: z.record(z.string(), z.boolean()).optional().catch(undefined),
   order: z.array(z.string()).max(500).optional().catch(undefined),
@@ -52,10 +46,7 @@ const knownLayoutKeys: ReadonlySet<string> = new Set(
   Object.keys(tableLayoutSchema.shape),
 );
 
-/**
- * Every stored top-level field this build has no schema for, verbatim. A later
- * build may add fields under the same `v1` key; a write here must not erase them.
- */
+/** Stored top-level fields this build has no schema for, kept verbatim so a write does not erase a later build's fields. */
 function unknownLayoutFields(raw: string | null): Record<string, unknown> {
   if (raw === null) return {};
   try {
@@ -71,12 +62,7 @@ function unknownLayoutFields(raw: string | null): Record<string, unknown> {
   }
 }
 
-/**
- * The string to store after applying `patch` to the stored `raw` value, or null
- * when nothing is left to keep. A patch field set to undefined is removed, a known
- * stored field that fails validation is dropped (as `parseTableLayout` reads it),
- * and fields this build does not know are carried through unchanged.
- */
+/** The string to store after applying `patch` to `raw`, or null when nothing is left; undefined removes a field and unknown fields carry through. */
 export function mergeTableLayout(
   raw: string | null,
   patch: Partial<TableLayout>,
@@ -115,12 +101,7 @@ export function diffBooleanOverrides(
   return Object.keys(diff).length > 0 ? diff : undefined;
 }
 
-/**
- * Which facets show, by field: each facet's own default, with the user's saved
- * choices applied (ids no facet has are ignored). `ResourceFilterBar` renders
- * these and `ResourceCollection` requests counts for exactly these, so both read
- * them through here; `defaults` is what a toggle is diffed against.
- */
+/** Which facets show, by field; `defaults` is what a toggle is diffed against. */
 export function resolveFacetVisibility(
   facets: readonly { field: string; initiallyVisible?: boolean }[],
   saved: TableLayout["facets"],
@@ -131,11 +112,7 @@ export function resolveFacetVisibility(
   return { defaults, visibility: applyBooleanOverrides(defaults, saved) };
 }
 
-/**
- * The saved order over the table's columns: stale ids are dropped, a repeated id
- * keeps only its first place (a column rendered twice would give the drag controls
- * two items with one id), and columns the saved order lacks follow in default order.
- */
+/** Saved order with stale ids dropped, repeated ids kept at their first place (duplicates would break drag controls), and new columns appended. */
 export function applyColumnOrder(
   defaultOrder: readonly string[],
   saved: readonly string[] | undefined,

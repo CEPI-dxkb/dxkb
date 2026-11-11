@@ -4,26 +4,11 @@ import { workspaceOverrides } from "./workspace";
 import { jobsOverrides } from "./jobs";
 
 /**
- * Explicit override bundle for end-to-end journey specs. Contains the same
- * authoritative session, workspace, and jobs mocks that journey tests need —
- * but intentionally OMITS any named resource scenario bundle or broad
- * aggregate. New backend traffic surfaced by a code change must show up as a
- * strict-mode failure here so the spec can declare it explicitly, not be
- * silently swallowed by a `{}`/`{result: [[]]}` catch-all.
- *
- * Use:
- *   - view/journey/smoke/visual specs    → import the specific named
- *     scenario bundle(s) the page under test exercises (e.g.
- *     `epitopeScenarioOverrides`), plus `emptyBackendFallbackOverrides` for
- *     everything else
- *   - accessibility sweep
- *     (e2e/tests/a11y/**)                → use `a11yBackendOverrides` (the
- *     one broad, unscoped aggregate — every other spec has been converted
- *     off it)
- *   - hand-written auth, workspace, jobs, and service journeys
- *                                          → use `journeyOverrides`
- *   - HAR canary journeys                  → use endpoint-specific overrides
- *     plus `harOverridesFor(...)`; do not layer `journeyOverrides` over replay
+ * Session, workspace and jobs mocks for journey specs, deliberately omitting
+ * resource bundles and broad aggregates so new backend traffic fails strict
+ * mode. View specs import their named bundles, the a11y sweep uses
+ * `a11yBackendOverrides`, and HAR canaries use endpoint-specific overrides
+ * plus `harOverridesFor(...)` instead of this.
  */
 export const journeyOverrides: JsonOverride[] = [
   ...authSessionOverrides,

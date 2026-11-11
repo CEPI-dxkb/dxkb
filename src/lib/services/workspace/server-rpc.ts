@@ -1,11 +1,8 @@
 /**
- * Server-side `WorkspaceRpcPort` for use from route handlers and the auth
- * server module. Hits `WORKSPACE_API_URL` directly with a bearer token rather
- * than going through the `/api/services/workspace` proxy (which only resolves
- * inside a request context with cookies).
- *
- * Mirrors the JSON-RPC envelope in `src/app/api/services/workspace/route.ts`
- * so error messages and headers stay consistent with the client transport.
+ * Server-side `WorkspaceRpcPort` for route handlers and the auth server module;
+ * hits `WORKSPACE_API_URL` directly with a bearer token, since the
+ * `/api/services/workspace` proxy only resolves inside a request context with
+ * cookies.
  */
 
 import { isUpstreamOutage } from "@/lib/api/query-retry";
@@ -45,9 +42,8 @@ export function createServerWorkspaceRpc(token: string): WorkspaceRpcPort {
         },
       );
 
-      // `fetchUpstream`'s budget also bounds the body, and a budget spent (or
-      // a socket dropped) mid-body rejects the read: that is an outage too,
-      // so setup.ts stops writing and the route answers 504/502.
+      // `fetchUpstream`'s budget also bounds the body, so a budget spent or
+      // socket dropped mid-body rejects the read, which is an outage too.
       const bodyFailure = (error: unknown): never => {
         const failure = describeUpstreamFailure(
           error,
@@ -67,17 +63,13 @@ export function createServerWorkspaceRpc(token: string): WorkspaceRpcPort {
           const parsed = text ? (JSON.parse(text) as JsonRpcEnvelope) : null;
           upstreamMessage = parsed?.error?.message ?? null;
         } catch {
-          // Non-JSON upstream body (HTML error page, stack trace, etc.).
-          // Logged here in full; the thrown message below carries only the
-          // status and `summarizeUpstreamBody`'s condensed summary (an HTML
-          // page's title/heading, a JSON error/message, or at most 200
-          // characters of text).
+          // Non-JSON upstream body: logged here in full; the thrown message
+          // carries only the status and a condensed summary.
           console.error("Workspace API non-JSON error body:", text);
         }
-        // The Workspace's own JSON-RPC message ("User lacks permission")
-        // stays a plain Error: setup.ts reads it to tell a missing home from
-        // an outage. A 502/503/504 is an outage whatever its body says; the
-        // summary below still carries that message.
+        // The Workspace's own JSON-RPC message stays a plain Error because
+        // setup.ts reads it to tell a missing home from an outage; a
+        // 502/503/504 is an outage whatever its body says.
         if (upstreamMessage && !isUpstreamOutage(response)) {
           throw new Error(upstreamMessage);
         }

@@ -24,13 +24,11 @@ import { CompareRegionChart } from "../compare-region-chart";
 import { ZoomCluster } from "../compare-region-zoom-controls";
 import { hoverGrace } from "../use-chart-pointer";
 
-// Spied, to count the label column's renders: it reads every row's identity.
 vi.mock("@/lib/compare-region/genome-labels", async (importOriginal) => {
   const actual =
     await importOriginal<typeof import("@/lib/compare-region/genome-labels")>();
   return { ...actual, rowIdentity: vi.fn(actual.rowIdentity) };
 });
-// Spied, to count glyph placements: a pan slides what is drawn, placing none.
 vi.mock("@/lib/compare-region/glyph-placement", async (importOriginal) => {
   const actual =
     await importOriginal<
@@ -38,13 +36,12 @@ vi.mock("@/lib/compare-region/glyph-placement", async (importOriginal) => {
     >();
   return { ...actual, placeGlyph: vi.fn(actual.placeGlyph) };
 });
-// Spied, to count the ruler's renders: it follows every zoom render.
 vi.mock("@/lib/compare-region/ruler", async (importOriginal) => {
   const actual =
     await importOriginal<typeof import("@/lib/compare-region/ruler")>();
   return { ...actual, rulerTicks: vi.fn(actual.rulerTicks) };
 });
-// jsdom has no canvas: the figure measures its labels with the estimate (D9).
+// jsdom has no canvas: the figure measures its labels with the estimate.
 vi.mock("@/lib/compare-region/text-measure", async (importOriginal) => {
   const actual =
     await importOriginal<typeof import("@/lib/compare-region/text-measure")>();
@@ -53,8 +50,7 @@ vi.mock("@/lib/compare-region/text-measure", async (importOriginal) => {
 
 const twoRows = [focusRow, mirroredRow];
 
-// A click on a gene opens its summary, which reads the gene's record; these
-// tests are about the figure, so the read never answers.
+// The gene's record read never answers; these tests are about the figure.
 beforeEach(() => {
   server.use(
     http.get("*/api/data/genome_feature", () => new Promise(() => undefined)),
@@ -63,14 +59,12 @@ beforeEach(() => {
 
 interface ChartProps {
   rows?: readonly CompareRegionRow[];
-  /** A 900 px card: Comfortable's plot is 662 px, Compact's 696 px. */
   width?: number;
   density?: CompareRegionDensity;
   onDensityChange?: (density: CompareRegionDensity) => void;
   onExport?: (svg: SVGSVGElement) => void;
 }
 
-/** The chart with the bar's zoom cluster and an export button, as the panel's bar gets them. */
 function Chart({
   rows = twoRows,
   width = 900,
@@ -102,7 +96,6 @@ function Chart({
   );
 }
 
-/** The chart with its density in state, as the panel holds the preference. */
 function SwitchableChart(
   props: Omit<ChartProps, "density" | "onDensityChange">,
 ) {
@@ -110,7 +103,7 @@ function SwitchableChart(
   return <Chart {...props} density={density} onDensityChange={setDensity} />;
 }
 
-/** Renders, then lets Base UI's slider thumb measure itself (a microtask after mount) inside act. */
+/** Lets Base UI's slider thumb measure itself (a microtask after mount) inside act. */
 async function renderChart(props: ChartProps = {}) {
   const result = render(<Chart {...props} />, {
     wrapper: createQueryClientWrapper(),
@@ -134,7 +127,6 @@ async function renderSwitchable(
   return result;
 }
 
-/** The tracks viewport: Zoom's container, which holds every glyph. */
 function tracksSvg(container: HTMLElement): SVGSVGElement {
   const tracks = container
     .querySelector("[data-track-background]")
@@ -143,7 +135,6 @@ function tracksSvg(container: HTMLElement): SVGSVGElement {
   return tracks;
 }
 
-/** Glyph by layout position (see the fixture's comments for the order). */
 function glyph(container: HTMLElement, row: number, feature: number): Element {
   const element = container.querySelector(
     `[data-row="${String(row)}"][data-feature="${String(feature)}"]`,
@@ -157,19 +148,16 @@ function clickAt(element: Element, from: number, to = from) {
   fireEvent.click(element, { clientX: to });
 }
 
-/** The pinned gene's card, or null while it is put away. */
 function featureCard(): HTMLElement | null {
   return screen.queryByRole("dialog", { name: "Feature details" });
 }
 
-/** The selection strip while a gene is pinned (the card repeats its lines and links). */
 function strip(): HTMLElement {
   const found = document.querySelector<HTMLElement>("[data-selection-strip]");
   if (!found) throw new Error("no gene pinned in the strip");
   return found;
 }
 
-/** Whether a wheel over a glyph reaches the tracks svg, where Zoom listens. */
 function wheelReachesTracks(
   container: HTMLElement,
   init: WheelEventInit = {},
@@ -185,12 +173,10 @@ function wheelReachesTracks(
   return reached;
 }
 
-/** The hover tooltip, or null while it is closed. */
 function tooltip(): HTMLElement | null {
   return document.querySelector<HTMLElement>("[data-feature-tooltip]");
 }
 
-/** The dashed focus line's x, px from the plot's left edge. */
 function focusLineX(container: HTMLElement): number {
   const line = container.querySelector('line[stroke-dasharray="4 3"]');
   if (!line) throw new Error("no focus line");
@@ -234,14 +220,11 @@ describe("CompareRegionChart", () => {
       await renderChart({ width: 300 });
       expect(scroller()).toHaveAttribute("tabindex", "0");
       expect(scroller()).toHaveClass("overflow-auto");
-      // The narrow label column and the plot's 420 px floor: wider than the card.
       expect(figureSvg()).toHaveAttribute("width", "628");
     });
 
     it("fills the card, with the legend at its foot", async () => {
       await renderChart();
-      // The scroller takes the room the figure leaves, so the legend sits at
-      // the card's bottom edge however few genomes there are.
       expect(scroller()).toHaveClass("min-h-0", "flex-1");
       const frame = scroller().parentElement;
       expect(frame).toHaveClass("min-h-0", "flex-1");
@@ -254,8 +237,6 @@ describe("CompareRegionChart", () => {
     it("lays the identity info button over the header corner, outside the figure", async () => {
       await renderChart();
       const info = screen.getByRole("button", { name: "About identity" });
-      // Outside the scroller (it stays put while the figure scrolls) and the
-      // SVG (an export carries none of it).
       expect(scroller()).not.toContainElement(info);
       expect(figureSvg()).not.toContainElement(info);
       expect(scroller().parentElement).toContainElement(info);
@@ -273,7 +254,6 @@ describe("CompareRegionChart", () => {
       view.scrollTop = 40;
       view.scrollLeft = 15;
       fireEvent.scroll(view);
-      // In document order: the ruler, the label column, its header.
       const [ruler, labels, header] =
         container.querySelectorAll("[data-sticky]");
       expect(ruler).toHaveAttribute("transform", "translate(0 40)");
@@ -313,7 +293,6 @@ describe("CompareRegionChart", () => {
       clickAt(glyph(container, 0, 1), 10);
       const card = featureCard();
       if (!card) throw new Error("no feature card");
-      // Its first line, and its record's BRC ID.
       expect(within(card).getAllByText("fig|1.1.peg.2")).toHaveLength(2);
       expect(
         within(card).getByText("900…1,200 (301 bp, +)"),
@@ -347,7 +326,6 @@ describe("CompareRegionChart", () => {
       clickAt(glyph(container, 0, 0), 10);
       const card = featureCard();
       if (!card) throw new Error("no feature card");
-      // Its first line, and its record's BRC ID.
       expect(within(card).getAllByText("fig|1.1.peg.1")).toHaveLength(2);
       expect(screen.getAllByRole("dialog")).toHaveLength(1);
     });
@@ -378,7 +356,6 @@ describe("CompareRegionChart", () => {
       clickAt(glyph(container, 0, 0), 10);
       const next = featureCard();
       if (!next) throw new Error("no feature card");
-      // Focus in the card (its Collapse button), then Escape.
       await user.click(
         within(next).getByRole("button", { name: "Collapse details" }),
       );
@@ -402,7 +379,6 @@ describe("CompareRegionChart", () => {
     it("clears the pin with Escape while focus is on the body", async () => {
       const user = userEvent.setup();
       const { container } = await renderChart();
-      // As after a press on the card's text, where nothing takes focus.
       clickAt(glyph(container, 0, 1), 10);
       expect(featureCard()).not.toBeNull();
       expect(document.body).toHaveFocus();
@@ -492,7 +468,6 @@ describe("CompareRegionChart", () => {
       if (!box) throw new Error("no tooltip");
       expect(within(box).getByText("No product")).toBeInTheDocument();
 
-      // The press hides the tooltip; the click pins the gene.
       clickAt(glyph(container, 0, 0), 10);
       expect(tooltip()).toBeNull();
       const pinned = within(strip());
@@ -527,7 +502,6 @@ describe("CompareRegionChart", () => {
         });
         expect(tooltip()).toHaveTextContent("fig|1.1.peg.1");
 
-        // Left on the empty track, it lets go.
         fireEvent.pointerOver(background, { clientX: 60, clientY: 40 });
         act(() => {
           vi.advanceTimersByTime(hoverGrace);
@@ -566,7 +540,6 @@ describe("CompareRegionChart", () => {
       return screen.getByRole("button", { name });
     }
 
-    /** Focuses the focus gene from the scroller, as Tab does. */
     async function tabToFigure(user: ReturnType<typeof userEvent.setup>) {
       act(() => {
         scroller().focus();
@@ -630,7 +603,6 @@ describe("CompareRegionChart", () => {
       expect(glyph(container, 0, 0)).toHaveFocus();
       await user.keyboard("{ArrowRight}");
       expect(gene(focusGeneName)).toHaveFocus();
-      // The tab stop moves with the focus.
       expect(gene(focusGeneName)).toHaveAttribute("tabindex", "0");
       expect(glyph(container, 0, 0)).toHaveAttribute("tabindex", "-1");
     });
@@ -667,7 +639,6 @@ describe("CompareRegionChart", () => {
       await user.keyboard("{Enter}");
       expect(featureCard()).not.toBeNull();
       expect(within(strip()).getByText("fig|1.1.peg.2")).toBeInTheDocument();
-      // Focus stays on the gene, so the arrows still move on.
       expect(gene(focusGeneName)).toHaveFocus();
       await user.keyboard("{Escape}");
       expect(featureCard()).toBeNull();
@@ -719,7 +690,6 @@ describe("CompareRegionChart", () => {
       await user.keyboard("{Enter}");
       const card = featureCard();
       if (!card) throw new Error("no feature card");
-      // Closed with a click: focus goes back to the gene, but no tooltip opens.
       await user.click(
         within(card).getByRole("button", { name: "Close details" }),
       );
@@ -731,14 +701,11 @@ describe("CompareRegionChart", () => {
       const user = userEvent.setup();
       const { container } = await renderChart();
       zoomIn(2);
-      // 2.25× about the focus line leaves the upstream gene left of the window.
       expect(container.querySelector('[data-row="0"][data-feature="0"]')).toBeNull();
       expect(focusLineX(container)).toBeCloseTo(331, 0);
       await tabToFigure(user);
       await user.keyboard("{ArrowLeft}");
       expect(glyph(container, 0, 0)).toHaveFocus();
-      // Panned right, at the same zoom, until the upstream gene's 5′ end is 8
-      // px inside the plot (where it was last placed).
       expect(zoomLevel()).toHaveTextContent("2.3×");
       const [, , item, x] =
         vi
@@ -752,7 +719,6 @@ describe("CompareRegionChart", () => {
 
   describe("a classic scrollbar (I1)", () => {
     const scrollerName = "Compared regions (scrollable)";
-    /** The scroller's widths: its box and the part a scrollbar leaves for content. */
     const scrollerSize = { offset: 900, client: 900 };
     let resized: (() => void) | undefined;
     const spies: { mockRestore: () => void }[] = [];
@@ -796,11 +762,9 @@ describe("CompareRegionChart", () => {
     });
 
     it("draws the figure as wide as the scroller leaves room for", async () => {
-      // A 15 px vertical scrollbar beside a tall figure.
       scrollerSize.client = 885;
       const { container } = await renderChart();
       expect(figureSvg()).toHaveAttribute("width", "885");
-      // 885 px: the same 238 px label column, a 647 px plot.
       expect(tracksSvg(container)).toHaveAttribute("width", "647");
     });
 
@@ -816,7 +780,6 @@ describe("CompareRegionChart", () => {
       });
       expect(figureSvg()).toHaveAttribute("width", "885");
       expect(zoomLevel()).toHaveTextContent("2.3×");
-      // Still the window's middle: 647 / 2.
       expect(focusLineX(container)).toBeCloseTo(323.5, 6);
     });
   });
@@ -849,7 +812,6 @@ describe("CompareRegionChart", () => {
     });
 
     it("zooms about the focus line, which stays put", async () => {
-      // Centered off the window's middle: domain −500…1,500 bp, so the focus line is at 165.5 of 662 px.
       const { container } = await renderChart({
         rows: [{ ...focusRow, center: 500 }],
       });
@@ -862,7 +824,6 @@ describe("CompareRegionChart", () => {
     it("skips glyphs zoomed out of view, and fits the whole region again", async () => {
       const { container } = await renderChart();
       zoomIn(2);
-      // 2.25× about the focus line leaves the upstream gene left of the window.
       expect(
         container.querySelector('[data-row="0"][data-feature="0"]'),
       ).toBeNull();
@@ -875,9 +836,7 @@ describe("CompareRegionChart", () => {
     });
 
     describe("a drag", () => {
-      // use-gesture captures the pointer on the pressed glyph, which jsdom
-      // cannot do: removing that glyph would lose the capture, and with it
-      // the drag's end.
+      // use-gesture captures the pointer on the pressed glyph, which jsdom cannot do.
       const pointerCapture = {
         setPointerCapture: vi.fn(),
         releasePointerCapture: vi.fn(),
@@ -893,7 +852,6 @@ describe("CompareRegionChart", () => {
       });
 
       const pointer = { pointerId: 1, buttons: 1, clientY: 30 };
-      /** Press `element` at `from`, then move to each x in turn: the first move starts the drag. */
       function drag(element: Element, from: number, ...moves: number[]) {
         fireEvent.pointerDown(element, { ...pointer, clientX: from });
         for (const clientX of moves) {
@@ -903,7 +861,6 @@ describe("CompareRegionChart", () => {
       function release(element: Element, at: number) {
         fireEvent.pointerUp(element, { ...pointer, buttons: 0, clientX: at });
       }
-      /** The transform sliding `element`'s layer, or null when it is drawn where it stands. */
       function slideOf(element: Element): string | null {
         return element.closest("[data-pan]")?.getAttribute("transform") ?? null;
       }
@@ -911,7 +868,6 @@ describe("CompareRegionChart", () => {
       it("draws a plot's width past either edge while it pans, then only what is in view", async () => {
         const { container } = await renderChart();
         zoomIn(2);
-        // 2.25×: the upstream gene is 118 px left of the window.
         const upstream = '[data-row="0"][data-feature="0"]';
         expect(container.querySelector(upstream)).toBeNull();
 
@@ -927,7 +883,6 @@ describe("CompareRegionChart", () => {
       it("draws nothing further than a plot's width off the plot", async () => {
         const { container } = await renderChart();
         zoomIn(4);
-        // 5.06×: the upstream gene is 674 px left of the window, past the 662 px reach.
         const focusGene = glyph(container, 0, 1);
         drag(focusGene, 400, 390);
         expect(
@@ -940,7 +895,6 @@ describe("CompareRegionChart", () => {
         const { container } = await renderChart();
         zoomIn(2);
         const focusGene = glyph(container, 0, 1);
-        // Pinned: its ring and its family's trace slide with the glyphs.
         clickAt(focusGene, 400);
         const outline = focusGene.getAttribute("d");
         const focusLine = container.querySelector(
@@ -958,12 +912,10 @@ describe("CompareRegionChart", () => {
         expect(slideOf(focusGene)).toBe("translate(-40 0)");
         expect(focusLine && slideOf(focusLine)).toBe("translate(-40 0)");
         expect(ring && slideOf(ring)).toBe("translate(-40 0)");
-        // The veil under the trace covers the plot: it does not slide.
         expect(
           slideOf(container.querySelector("[data-trace-veil]") ?? focusGene),
         ).toBeNull();
 
-        // At rest the layers are drawn where they stand, with nothing left to slide.
         release(focusGene, 350);
         expect(placed).toHaveBeenCalled();
         expect(slideOf(glyph(container, 0, 1))).toBeNull();
@@ -973,14 +925,11 @@ describe("CompareRegionChart", () => {
       it("draws again once it pans past what was drawn, keeping the pressed glyph", async () => {
         const { container } = await renderChart();
         zoomIn(4);
-        // The focus gene's BLAST hit: the focus gene itself is the tab stop,
-        // which is drawn wherever it is.
         const hit = glyph(container, 0, 2);
         drag(hit, 400, 390);
         const placed = vi.mocked(placeGlyph);
         placed.mockClear();
 
-        // 700 px: past the 662 px drawn beyond the edge, so it draws again there.
         fireEvent.pointerMove(hit, { ...pointer, clientX: -310 });
         expect(placed).toHaveBeenCalled();
         expect(slideOf(hit)).toBeNull();
@@ -989,19 +938,16 @@ describe("CompareRegionChart", () => {
         expect(placed).not.toHaveBeenCalled();
         expect(slideOf(hit)).toBe("translate(-10 0)");
 
-        // A pan to the track's end leaves the pressed hit far off the plot: still drawn.
         fireEvent.pointerMove(hit, { ...pointer, clientX: -2000 });
         expect(hit.isConnected).toBe(true);
         expect(glyph(container, 0, 2)).toBe(hit);
         release(hit, -2000);
         expect(hit.isConnected).toBe(false);
-        // The tab stop stays, off the plot.
         expect(glyph(container, 0, 1)).toHaveAttribute("tabindex", "0");
       });
 
       it("re-renders nothing for a drag the track holds still", async () => {
         const { container } = await renderChart();
-        // At 1× the whole window is in view: a drag cannot pan.
         const focusGene = glyph(container, 0, 1);
         drag(focusGene, 400, 390);
         const ruler = vi.mocked(rulerTicks);
@@ -1031,11 +977,9 @@ describe("CompareRegionChart", () => {
       expect(zoomLevel()).toHaveTextContent("2.3×");
       expect(focusLineX(container)).toBeCloseTo(331, 6);
 
-      // 1,000 px: the same 238 px label column, a 762 px plot.
       rerenderChart({ width: 1000 });
       expect(zoomLevel()).toHaveTextContent("2.3×");
       expect(screen.getByRole("button", { name: "Zoom out" })).toBeEnabled();
-      // Still the window's middle.
       expect(focusLineX(container)).toBeCloseTo(381, 6);
     });
   });
@@ -1049,7 +993,6 @@ describe("CompareRegionChart", () => {
       rerenderChart({ density: "compact" });
       expect(zoomLevel()).toHaveTextContent("2.3×");
       expect(screen.getByRole("button", { name: "Zoom out" })).toBeEnabled();
-      // Compact's narrower label column leaves a 696 px plot; the focus line stays in its middle.
       expect(tracksSvg(container)).toHaveAttribute("width", "696");
       expect(focusLineX(container)).toBeCloseTo(348, 6);
     });
@@ -1103,7 +1046,6 @@ describe("CompareRegionChart", () => {
         expect(tint).toHaveAttribute("y", "64");
         expect(tint).toHaveAttribute("height", "30");
       }
-      // The label column's has the 2 px edge.
       expect(
         container.querySelectorAll(String.raw`rect.fill-primary\/70`),
       ).toHaveLength(1);

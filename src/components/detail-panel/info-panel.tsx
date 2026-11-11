@@ -32,7 +32,6 @@ import { WorkspaceItemDetails } from "@/components/workspace/workspace-item-deta
 export type InfoPanelProps =
   | {
       variant: "workspace";
-      /** When multiple items are selected, single-file details are not shown. */
       selection: WorkspaceItem[];
       onClose?: () => void;
       onAction?: (actionId: string, selection: WorkspaceItem[]) => void;
@@ -46,13 +45,10 @@ export type InfoPanelProps =
       isAllPagesSelected?: boolean;
       totalItems?: number;
       /**
-       * Leave out a section none of whose fields has a value, instead of
-       * showing it as "None available". For a partial row standing in for a
-       * record still loading (or one with no record), where an empty section
-       * says nothing about the record.
+       * Leave out a section with no field values instead of showing "None
+       * available".
        */
       hideEmptySections?: boolean;
-      /** Leave out the title line, for a host that already names the record. */
       hideHeader?: boolean;
     };
 
@@ -146,7 +142,6 @@ export function InfoPanel(props: InfoPanelProps) {
   return renderSearchInfoPanel(props);
 }
 
-/** Whether a field shows a value, by `DetailKeyValueTable`'s rule. */
 function hasDetailValue({ value }: DetailField): boolean {
   return value !== undefined && value !== null && value !== "";
 }
@@ -869,10 +864,8 @@ function renderSearchInfoPanel(
                       fieldId,
                     ),
                   }));
-                // Every item resolved to nothing (e.g. every value was an empty
-                // string): fall back to `value: undefined` so the row is
-                // suppressed like any other unavailable field, instead of
-                // rendering a populated label next to an empty <span>.
+                // Every item resolved to nothing: use `undefined` so the row is
+                // suppressed.
                 if (!resolvedValues.some((entry) => entry.href !== undefined)) {
                   return { label: item.label, value: undefined };
                 }

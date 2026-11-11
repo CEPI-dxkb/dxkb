@@ -7,19 +7,10 @@ interface PolledQuery {
   state: Pick<QueryState, "status" | "errorUpdateCount">;
 }
 
-// The query's errorUpdateCount when it last succeeded. TanStack resets
-// fetchFailureCount at the start of every fetch, so it only counts the retries
-// of one poll; the distance from this baseline counts failed polls in a row.
+// TanStack resets fetchFailureCount on every fetch, so failed polls in a row are counted from the `errorUpdateCount` at the last success.
 const errorCountAtLastSuccess = new WeakMap<PolledQuery, number>();
 
-/**
- * Polling interval for a query whose last poll failed, or `undefined` when it
- * did not (use the normal interval then). Starts at 30 s and doubles with each
- * failed poll in a row up to 5 min, so a dead backend is not polled at the
- * fast "jobs running" rate. The next successful poll restores the normal rate.
- *
- * Call it from a `refetchInterval` function, which runs on every query update.
- */
+/** Polling interval after a failed poll, or `undefined` (use the normal interval): 30 s doubling to 5 min per failed poll in a row. Call from a `refetchInterval` function. */
 export function errorBackoffPollInterval(query: PolledQuery): number | undefined {
   const { status, errorUpdateCount } = query.state;
   if (status !== "error") {

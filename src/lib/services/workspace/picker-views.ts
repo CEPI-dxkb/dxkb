@@ -1,13 +1,8 @@
 /**
  * Pure rules for the workspace folder picker
- * (`src/components/workspace/folder-picker/`).
- *
- * Each column of the picker shows one location: either a real directory, or
- * one of the top-level listings the sidebar offers (My Workspaces, Shared,
- * Public, Favorites, Recently Used). This module owns where each view points,
- * which view a path belongs to, where the picker opens, which rows show, and
- * whether the current choice can be committed. The component keeps state and
- * queries; everything decidable from data lives here.
+ * (`src/components/workspace/folder-picker/`): where each view points, which
+ * view a path belongs to, where the picker opens, which rows show, and whether
+ * the choice can be committed.
  */
 
 import type { WorkspaceItem } from "./domain";
@@ -20,16 +15,13 @@ import { isFolder, isFolderType, normalizeWorkspaceObjectType } from "./utils";
 export type PickerView =
   "home" | "myWorkspaces" | "shared" | "public" | "favorites" | "recent";
 
-/** Views that are a listing rather than a directory. */
 export type PickerListView = Exclude<PickerView, "home">;
 
-/** The listing another user's workspace was reached from. */
 export type PickerForeignOrigin = "shared" | "public";
 
 export type PickerLocation =
   { kind: "path"; path: string } | { kind: "list"; view: PickerListView };
 
-/** What the picker is choosing: a destination folder, or a file of some types. */
 export type PickerTarget =
   { kind: "folder" } | { kind: "object"; types: readonly string[] };
 
@@ -37,7 +29,6 @@ export type PickerTarget =
 export type PickerSelectablePredicate = (object: {
   name: string;
   path: string;
-  /** The row's type, when known (always for files). */
   type?: string;
 }) => boolean;
 
@@ -46,9 +37,8 @@ const nameCollator = new Intl.Collator(undefined, { sensitivity: "base" });
 const folderTarget: PickerTarget = { kind: "folder" };
 
 /**
- * Picking files, a job result is opened (through its hidden folder, where its
- * outputs live) unless it is itself a requested type, when it is a file to
- * choose like any other.
+ * Picking files, a job result opens (through its hidden folder, where its
+ * outputs live) unless it is itself a requested type.
  */
 function opensJobResult(item: WorkspaceItem, target: PickerTarget): boolean {
   return (
@@ -58,10 +48,6 @@ function opensJobResult(item: WorkspaceItem, target: PickerTarget): boolean {
   );
 }
 
-/**
- * Rows the picker opens as a column: folders, and, picking files, job
- * results that are not themselves a requested type.
- */
 export function isPickerItemNavigable(
   item: WorkspaceItem,
   target: PickerTarget = folderTarget,
@@ -69,7 +55,6 @@ export function isPickerItemNavigable(
   return isFolder(item.type) || opensJobResult(item, target);
 }
 
-/** A file the picker can choose: picking files, one of the requested types. */
 export function isPickerItemChoosable(
   item: WorkspaceItem,
   target: PickerTarget,
@@ -91,8 +76,8 @@ export function isPickerItemInteractive(
 }
 
 /**
- * The path a row stands for in the selection: its own, except a job result
- * the picker opens, which stands for its hidden folder (`/a/J` -> `/a/.J`).
+ * The path a row stands for in the selection; a job result the picker opens
+ * stands for its hidden folder (`/a/J` -> `/a/.J`).
  */
 export function pickerRowKey(
   item: WorkspaceItem,
@@ -122,7 +107,6 @@ export const pickerViewOptions: readonly {
   { value: "recent", label: "Recently Used" },
 ];
 
-/** The sidebar label of a view, e.g. "Shared Workspaces". */
 export function viewLabel(view: PickerView): string {
   return pickerViewOptions.find((option) => option.value === view)?.label ?? "";
 }
@@ -144,7 +128,6 @@ function isWithin(path: string, root: string): boolean {
   return normalized === root || normalized.startsWith(`${root}/`);
 }
 
-/** True for the user's own workspaces and everything inside them. */
 export function isOwnPath(path: string, username: string): boolean {
   return !!username && isWithin(path, `/${username}`);
 }
@@ -157,7 +140,6 @@ export function locationForView(
   return { kind: "list", view };
 }
 
-/** The view (sidebar place) a location belongs to. */
 export function viewForLocation(
   location: PickerLocation,
   username: string,
@@ -170,12 +152,10 @@ export function viewForLocation(
 }
 
 /**
- * Where the picker opens: the view the current value lives in, and the chain
- * of folders selected from that view's first column down to the value. Home's
- * first column is a directory (`/owner/home`); every other view starts with a
- * listing of workspaces, so its first column already holds
- * `/owner/workspace`. With no usable value it opens on Home with nothing
- * selected, which makes Home itself the destination.
+ * Where the picker opens: the view of the current value and the chain of
+ * folders from its first column down to the value. Home's first column is a
+ * directory (`/owner/home`); every other view starts with a workspace listing,
+ * so its first column already holds `/owner/workspace`.
  */
 export function initialColumnChain(
   initialPath: string | undefined,
@@ -241,7 +221,7 @@ function isPublicWorkspace(item: WorkspaceItem): boolean {
 }
 
 /**
- * Shared and Public both come from the `/` listing. A folder destination has to
+ * Shared and Public both come from the `/` listing; a folder destination must
  * be writable, so Shared drops read-only workspaces when picking a folder.
  */
 export function filterListing({
@@ -268,9 +248,8 @@ function matchesTargetType(item: WorkspaceItem, target: PickerTarget): boolean {
 }
 
 /**
- * Rows to show of the items given. By default: folders, plus files of the
- * requested types. "Show all" lifts that filter. Folder-like items sort first.
- * Hidden items are `visiblePickerRows`'s call.
+ * Rows to show: folders plus files of the requested types ("Show all" lifts the
+ * filter), folder-like items first.
  */
 export function buildPickerItems({
   items,
@@ -300,11 +279,10 @@ export function buildPickerItems({
 }
 
 /**
- * Whether the picker leaves a row out for being hidden (a dot name). Hidden
- * items stay out, with one exception: picking files inside a job's hidden
- * folder, a hidden folder holds outputs too (a Comprehensive Genome Analysis
- * keeps its annotation in `.annotation`), so it shows, unless a job result
- * listed beside it already opens it, which would list the folder twice.
+ * Whether the picker leaves a row out for being hidden (a dot name). Picking
+ * files inside a job's hidden folder is the exception, since hidden folders
+ * hold outputs too (e.g. `.annotation`), unless a job result listed beside it
+ * already opens it, which would list it twice.
  */
 export function isHiddenPickerItem({
   item,
@@ -314,7 +292,6 @@ export function isHiddenPickerItem({
 }: {
   item: WorkspaceItem;
   location: PickerLocation;
-  /** The listing `item` is in. */
   items: readonly WorkspaceItem[];
   target: PickerTarget;
 }): boolean {
@@ -331,11 +308,6 @@ export function isHiddenPickerItem({
   );
 }
 
-/**
- * Rows a picker column shows: folders (and, picking files, job results and
- * files of the requested types), plus every other file with `showAll`.
- * Hidden (dot) items show only as `isHiddenPickerItem` allows.
- */
 export function visiblePickerRows({
   location,
   items,
@@ -359,8 +331,8 @@ export function visiblePickerRows({
 }
 
 /**
- * Where the picker opens. Picking files, the value is a file: open its folder
- * (a job result's hidden folder included) with the file selected.
+ * Where the picker opens; picking files, the value is a file, so open its
+ * folder (a job result's hidden folder included) with the file selected.
  */
 export function initialPickerSelection(
   initialPath: string | undefined,
@@ -371,7 +343,6 @@ export function initialPickerSelection(
     return { ...initialColumnChain(initialPath, username), file: null };
   }
   const segments = pathSegments(initialPath ?? "");
-  // A file sits at least one level below a workspace: /owner/workspace/file.
   if (segments.length < 3) return { view: "home", chain: [], file: null };
   const { view, chain } = initialColumnChain(
     `/${segments.slice(0, -1).join("/")}`,
@@ -380,7 +351,6 @@ export function initialPickerSelection(
   return { view, chain, file: `/${segments.join("/")}` };
 }
 
-/** A folder's name in columns and crumbs; a job folder drops its dot. */
 export function pickerPathLabel(
   path: string,
   homePath: string,
@@ -397,7 +367,6 @@ const uploadTypeLabels: Record<string, { label: string } | undefined> =
   knownUploadTypes;
 const typeListFormat = new Intl.ListFormat("en", { type: "disjunction" });
 
-/** "contigs" -> "Contigs"; types with no upload label read from their name. */
 export function pickerTypeLabel(type: string): string {
   const known = uploadTypeLabels[type]?.label;
   if (known) return known;
@@ -405,24 +374,21 @@ export function pickerTypeLabel(type: string): string {
   return words.charAt(0).toUpperCase() + words.slice(1);
 }
 
-/** "Contigs or Reads". */
 export function pickerTypeList(types: readonly string[]): string {
   return typeListFormat.format(pickerTypeLabels(types));
 }
 
-/** Each type's label once, in the order given. */
 export function pickerTypeLabels(types: readonly string[]): string[] {
   return [...new Set(types.map(pickerTypeLabel))];
 }
 
 /**
- * The most types a picker names in a sentence. Every service preset is within
- * it; a longer list (the Copilot's "any file") would bury the instructions,
- * so the dialog offers it behind a button and the reasons leave it out.
+ * The most types a picker names in a sentence; a longer list (the Copilot's
+ * "any file") would bury the instructions, so the dialog offers it behind a
+ * button.
  */
 export const maxListedPickerTypes = 4;
 
-/** Whether these types are too many to name in a sentence. */
 export function isLongPickerTypeList(types: readonly string[]): boolean {
   return pickerTypeLabels(types).length > maxListedPickerTypes;
 }
@@ -434,8 +400,7 @@ const groupKindByType: Record<string, string | undefined> = {
 
 /**
  * The kinds of group ("genome", "feature") when every type is a group type,
- * otherwise null. A group is picked as a unit, so it reads as a group, not as
- * a file of some type.
+ * else null; a group is picked as a unit.
  */
 function groupKinds(types: readonly string[]): string[] | null {
   const kinds = new Set<string>();
@@ -447,7 +412,6 @@ function groupKinds(types: readonly string[]): string[] | null {
   return kinds.size > 0 ? [...kinds] : null;
 }
 
-/** What a picker of this target is titled: "Select a File", "Select a Genome Group". */
 export function pickerTitleFor(target: PickerTarget): string {
   if (target.kind === "folder") return "Select a Folder";
   const kinds = groupKinds(target.types);
@@ -456,7 +420,6 @@ export function pickerTitleFor(target: PickerTarget): string {
   return `Select a ${typeListFormat.format(names)} Group`;
 }
 
-/** What a picker of these types accepts: "Contigs or Reads files", "genome groups". */
 export function pickerTypePhrase(types: readonly string[]): string {
   const kinds = groupKinds(types);
   return kinds
@@ -464,13 +427,11 @@ export function pickerTypePhrase(types: readonly string[]): string {
     : `${pickerTypeList(types)} files`;
 }
 
-/** `/owner/workspace` for a path inside a workspace; null above that. */
 function workspaceRootOf(path: string): string | null {
   const [owner, workspace] = pathSegments(path);
   return owner && workspace ? `/${owner}/${workspace}` : null;
 }
 
-/** Whether rows for these paths need the `/` listing for their permissions. */
 export function stubsNeedWorkspaces(
   paths: readonly string[],
   username: string,
@@ -479,10 +440,9 @@ export function stubsNeedWorkspaces(
 }
 
 /**
- * Rows for path-only listings (favorites, recent folders). A bare path carries
- * no permission, so each row takes its workspace's row from `workspaces` (the
- * `/` listing), because permissions are per workspace. A row with no match
- * stays unknown, which `canWriteTo` reads as no.
+ * Rows for path-only listings (favorites, recent). A bare path carries no
+ * permission, so each row takes its workspace's permissions from `workspaces`
+ * (the `/` listing); no match stays unknown, which `canWriteTo` reads as no.
  */
 export function folderStubItems(
   paths: readonly string[],
@@ -510,9 +470,9 @@ export function folderStubItems(
 }
 
 /**
- * Whether the user can write into `path`. Own paths always can. Otherwise the
- * item's permission decides; failing that, a sibling's does, because listing
- * permissions are per workspace. With no evidence the answer is no.
+ * Whether the user can write into `path`: own paths always; otherwise the
+ * item's permission, then a sibling's, since permissions are per workspace;
+ * with no evidence, no.
  */
 export function canWriteTo({
   path,
@@ -541,7 +501,6 @@ export function pickerCommitState({
 }: {
   target: PickerTarget;
   path: string | null;
-  /** The selected row; object targets need it to judge the file. */
   item?: WorkspaceItem | null;
   writable: boolean;
   isSelectable?: PickerSelectablePredicate;
@@ -589,7 +548,7 @@ export function pickerCommitState({
 
 /**
  * What a selector of these types picks: a folder when every type is a folder
- * type, otherwise objects of those types. A job result is an object here.
+ * type, otherwise objects of those types.
  */
 export function pickerTargetFor(types: readonly string[]): PickerTarget {
   return types.length > 0 && types.every((type) => isFolder(type))
@@ -597,7 +556,6 @@ export function pickerTargetFor(types: readonly string[]): PickerTarget {
     : { kind: "object", types };
 }
 
-/** Output folders can't be, or sit inside, a hidden (dot) folder. */
 export function isSelectableOutputFolder(object: {
   name: string;
   path: string;
@@ -609,9 +567,8 @@ export function isSelectableOutputFolder(object: {
 }
 
 /**
- * Why a new folder's name won't do, or null. The picker never lists hidden
- * (dot) folders, so one created here could not be seen or chosen; that rule
- * also covers "." and "..".
+ * Why a new folder's name won't do, or null; hidden (dot) folders are never
+ * listed, so one created here could not be seen or chosen.
  */
 export function folderNameError(name: string): string | null {
   const sanitizedName = sanitizePathSegment(name);

@@ -8,13 +8,10 @@ const PrivacyPolicy = () => {
     <div>
       <FooterHeader title="Privacy Policy" />
 
-      {/* Main Content */}
       <div className="container mx-auto px-4 py-8">
         <div className="flex flex-col gap-8 md:flex-row">
-          {/* Sidebar */}
           <PrivacySidebar />
 
-          {/* Main Content */}
           <main className="max-w-3xl grow">
             <section id="introduction" className="mb-10">
               <div className="mb-6 border-l-4 border-secondary bg-secondary/20 p-4">

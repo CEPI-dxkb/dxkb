@@ -3,9 +3,8 @@ import { server } from "@/test-helpers/msw-server";
 import { DataRepository, DataRepositoryError } from "../client";
 import type { DownloadRequest } from "../downloads";
 
-// Its own file because `client.test.ts` replaces `global.fetch` and restores
-// the pre-MSW original after each case, which would leave these requests
-// unintercepted.
+// Own file because `client.test.ts` replaces `global.fetch` and restores the
+// pre-MSW original, which would leave these requests unintercepted.
 describe("DataRepository.download", () => {
   const request: DownloadRequest = {
     format: "csv",

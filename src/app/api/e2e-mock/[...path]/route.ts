@@ -43,35 +43,9 @@ import {
 } from "./query";
 
 /**
- * Loopback mock for Playwright e2e only.
- *
- * Server components and API route handlers call backends (APP_SERVICE_URL,
- * WORKSPACE_API_URL, USER_URL, ...) at request time. Those outbound fetches
- * never pass through `page.route()`, so without this catch-all the test
- * server emits "HTTP error! status: 500" for every render. During e2e,
- * .env.e2e.test points every backend URL here and this handler returns
- * endpoint-specific identity responses plus deterministic service fixtures.
- *
- * Guarded by E2E_MOCK_ENABLED=1 so a production deploy that somehow ships
- * this file still can't be tricked into serving fake backend responses.
- *
- * ## Dispatch is fail-closed
- *
- * Every method answers ONLY the path / RPC-method combinations named below.
- * Anything else gets a diagnostic non-2xx naming the combination that was
- * missing, never an empty success. A silent `{}` is worse than a failure
- * here: it renders a real page with no data, so a spec passes while
- * asserting nothing, or — as `/taxonomy/1763` did for the a11y suite —
- * renders an error boundary that gets recorded as a page defect.
- *
- * The retained empty results are named, per-method, with the reason each one
- * is legitimately empty. They were found by instrumenting this handler and
- * running the full Chromium suite plus `pnpm a11y`; anything they did not
- * observe is rejected. Browser-side strict mode cannot substitute for that
- * measurement — `page.route()` never sees a Server Component's fetch, and the
- * browser fallback bundle (`emptyBackendFallbackOverrides`) deliberately
- * swallows broad auth/services/workspace families before they ever leave the
- * page. The two accommodations are separate on purpose.
+ * Loopback mock for Playwright e2e only; guarded by E2E_MOCK_ENABLED=1.
+ * Dispatch is fail-closed: any path or RPC method not named below gets a
+ * diagnostic non-2xx, never an empty success.
  */
 
 function isEnabled(): boolean {
@@ -94,43 +68,7 @@ function logHit(method: string, path: string, extra?: string): void {
   console.log(`[api/e2e-mock] ${method} /${path}${tail}`);
 }
 
-/**
- * Prefix on every rejection this mock emits.
- *
- * `e2e/README.md` documents `grep '[api/e2e-mock] e2e-mock: '` as the way to
- * find out whether a Playwright run hit a fixture gap. That grep is only
- * trustworthy if no branch can answer non-2xx without it, so the label
- * callers pass is never the whole string — {@link rejectionError} builds it.
- * A caller cannot opt out by writing its own `error` string, which is exactly
- * how the `genome_amr` body-validation branch ended up outside the grep for a
- * round while a comment claimed every branch was inside it.
- *
- * Deliberately NOT carried by two other kinds of non-2xx in this module:
- *
- *   - {@link disabledResponse}'s 404 — the `E2E_MOCK_ENABLED` runtime guard,
- *     which is a refusal to serve at all, not a missing fixture.
- *   - `identity.ts`'s 401/404s — MODELLED responses (bad credentials, unknown
- *     user) that specs assert on. They are fixture behaviour, not gaps, and
- *     surfacing them as diagnostics would make the grep useless.
- *   - `outage.ts`'s 503 maintenance page and hang — the same: an outage a
- *     spec asked for (`src/lib/e2e-fixtures/outages.ts`). Only a malformed
- *     request for one is a gap, answered through {@link unhandledResponse}.
- *
- * `src/app/api/e2e-mock/[...path]/__tests__/route.test.ts` pins both halves:
- * it drives every rejection branch through the prefix, and it scans this
- * module's source so a future branch cannot add a bare `status:` literal
- * outside these helpers without failing.
- */
-/**
- * Every rejection this module answers carries this prefix, because callers
- * pass a bare label and {@link rejectionError} builds the string.
- *
- * The completeness test in `__tests__/route.test.ts` enforces that by scanning
- * *this file*, so the guarantee ends at the module boundary: `identity.ts`
- * already returns its own 401/404 from this directory, and `outage.ts` its
- * 503/504. A rejection helper has to stay here, or that scan has to grow to
- * cover wherever it moves.
- */
+// Prefix on every rejection so `grep '[api/e2e-mock] e2e-mock: '` finds fixture gaps.
 const rejectionPrefix = "e2e-mock: ";
 
 function rejectionError(label: string): string {
@@ -141,14 +79,6 @@ function logRejection(error: string, reason: string): void {
   console.error(`[api/e2e-mock] ${error}: ${reason}`);
 }
 
-/**
- * The diagnostic body this mock returns for a non-JSON-RPC rejection.
- *
- * `reason` always names the specific combination that was missing, because
- * `JsonRpcClient` and `ServerDataRepository` both collapse a non-2xx into
- * their own generic message — the webServer log is where whoever is reading a
- * failing Playwright run will actually find out what to add.
- */
 function unhandledResponse(
   label: string,
   reason: string,
@@ -159,13 +89,6 @@ function unhandledResponse(
   return NextResponse.json({ error, reason, ...context }, { status: 400 });
 }
 
-/**
- * The same rejection for a JSON-RPC caller, in its own transport's error
- * shape. `JsonRpcClient` throws `HTTP error! status: 400` on a non-2xx
- * without reading the body, so the reason reaches a human through the log
- * line above; the envelope keeps the wire contract honest for anything that
- * does read it.
- */
 function unhandledRpcResponse(label: string, reason: string): NextResponse {
   const error = rejectionError(label);
   logRejection(error, reason);
@@ -242,9 +165,7 @@ function maybeSolrCount(
     const requestedTestType = equalsValue(query, "test_type");
     const isAmbiguous =
       sampleIdentifier === ambiguousSerologyRecords[0].sample_identifier;
-    // An unmatched discriminator filters to zero rows rather than falling
-    // back to the whole ambiguous set — that is what makes the "no such test
-    // type" branch of the ambiguity page reachable.
+    // An unmatched discriminator yields zero rows, not the whole ambiguous set.
     const docs = isAmbiguous
       ? requestedTestType === undefined
         ? ambiguousSerologyRecords
@@ -278,8 +199,6 @@ function maybeSolrCount(
     return buildLoopbackSolrEnvelope(docs);
   }
   if (core === "strain") {
-    // The Strain member page looks one record up by `id`; the collection
-    // itself is served browser-side (`strainScenarioOverrides`).
     const strainId = equalsValue(query, "id");
     const docs =
       strainId && strainId !== "*"
@@ -349,9 +268,6 @@ function maybeSolrCount(
   const isEpitopeFixtureQuery =
     core === "epitope" &&
     equalsValue(query, "epitope_id") === epitopeRecord.epitope_id;
-  // The Feature member page looks one record up by id (`feature_id`, or
-  // `patric_id` for a `fig|…` link); its collection is served browser-side
-  // (`genomeFeatureScenarioOverrides`).
   const isFeatureFixtureQuery =
     core === "genome_feature" &&
     (equalsValue(query, "feature_id") === genomeFeatureRecord.feature_id ||
@@ -558,12 +474,7 @@ function pivotKeyFromQuery(query: FixtureQuery): PivotKey | null {
   return null;
 }
 
-// Shared county fixture consumed by BOTH the 2-level state_province,county pivot
-// AND the 3-level state_province,county,genus pivot. Having a single source of
-// truth ensures county names match across both pivots so fetchOrganismGeoDistribution
-// can successfully join count data to tooltip genera. "Park" county appears in
-// both Wyoming and Idaho to exercise state-scoped lookups (same county name,
-// different state → different genus set).
+// Shared by the 2- and 3-level county pivots so county names join across both.
 const countyGeoFixtures: {
   state: string;
   county: string;
@@ -683,11 +594,7 @@ function solrStateCountyGenusPivot(fixtures: typeof countyGeoFixtures) {
   };
 }
 
-// Exact pivot keys the app constructs today. Anything not in this set returns
-// 400 so e2e surfaces typos in pivot field names instead of silently rendering
-// synthesized data for a shape the app never asks for. Update this when a new
-// pivot caller is added (cross-reference the `(pivot,(` matches in
-// src/lib/services/organisms/).
+// Pivot keys outside this set return 400 so typos in field names surface.
 const supportedPivotKeys = new Set<string>([
   "isolation_country,genus",
   "isolation_country,host_common_name",
@@ -699,11 +606,6 @@ const supportedPivotKeys = new Set<string>([
 ]);
 
 function solrSerotypePivot() {
-  // collection_year,serovar uses numeric outer keys in real SOLR responses;
-  // the parser at parseSolrFacetPivot coerces them to string keys. Build a
-  // small window of years × two serovars so the serotype reducer in
-  // src/lib/services/organisms/serotype-distribution.ts has something to
-  // collapse into "top serovars" rows.
   const years = [2019, 2020, 2021, 2022, 2023];
   const pivots = years.map((year, idx) => ({
     field: "collection_year",
@@ -728,10 +630,6 @@ function solrSerotypePivot() {
 }
 
 function solrFacet(field: string, count: number) {
-  // The geographic isolation_country fixture uses different fixture data than
-  // the metadata-distribution one (real values from BV-BRC for Brucella), so
-  // detect "geo" callers by their use of the geo-specific pivot helpers.
-  // Here we serve the regular fixture by name and a richer one keyed on _geo.
   const values = sharedFacetFixtures[field] ?? [];
   return {
     response: { numFound: count, docs: [] },
@@ -888,9 +786,6 @@ function maybeBvBrcWebsite(
   if (segments[0] !== "bvbrc-website") return null;
   const endpoint = segments.slice(1).join("/");
 
-  // Both landing-page endpoints are table lookups keyed by taxon id, so
-  // "which taxa this mock knows" is one fact in
-  // src/lib/e2e-fixtures/records.ts rather than a branch per taxon here.
   const summaryTaxonId = endpoint.match(
     /^data\/summary_by_taxon\/(\d+)\/?$/,
   )?.[1];
@@ -917,13 +812,8 @@ function maybeBvBrcWebsite(
   if (endpoint === "genome" || endpoint === "genome/") {
     const query = parseFixtureQuery(request);
 
-    // Reference-genomes endpoint: SOLR envelopes. The summary read
-    // (`eq(reference_genome,*)`) carries numFound and the per-type facet (a
-    // flat [name, count, ...] list); each per-type read (`eq(reference_genome,
-    // <Type>)`) carries that type's docs. Like the backend, equalities follow
-    // RQL grouping (see matchesReferenceGenome): the request puts its own
-    // after the scope, which can filter by one type or `or(...)` several. `*`
-    // matches any doc that has a type; a type the fixture lacks falls through.
+    // Reference-genomes endpoint; equalities follow RQL grouping (see
+    // matchesReferenceGenome) and `*` matches any doc with a type.
     const referenceTypes = query.equals
       .filter(({ field }) => field === "reference_genome")
       .map(({ value }) => value);
@@ -958,17 +848,13 @@ function maybeBvBrcWebsite(
       };
     }
 
-    // Parsed equality, not a substring: a fixture taxon "234" must not match
-    // a request for taxon "1234".
+    // Parsed equality, not a substring: taxon "234" must not match "1234".
     const rawTaxonId = equalsValue(query, "taxon_lineage_ids");
     const taxonId = /^\d+$/.test(rawTaxonId ?? "") ? Number(rawTaxonId) : null;
 
-    // The Taxonomy header's genome count (`fetchTaxonGenomeCount`): one
-    // `genome_id` and no facet, read for `numFound`. It counts the lineage
-    // less Deprecated genomes, so it is answered from taxonGenomeCounts (below
-    // the summary count, which includes them) and only for a request that
-    // leaves them out. The scope is spelled out here rather than imported from
-    // genome-scope.ts, so a product regression cannot drag the mock along.
+    // Taxonomy header genome count: answered only for a request that leaves
+    // out Deprecated genomes. The scope is spelled out, not imported, so a
+    // product regression cannot drag the mock along.
     if (
       !hasCall(query, "facet") &&
       hasClause(query, "select(genome_id)") &&
@@ -1015,10 +901,6 @@ function maybeBvBrcWebsite(
         };
       }
       if (pivot.tertiary) {
-        // This branch is unreachable today — supportedPivotKeys only allows
-        // state_province,county,genus as a 3-level pivot, which is handled above.
-        // Kept as a safety net if a new 3-level pivot is ever added without a
-        // dedicated builder.
         return {
           kind: "unhandled",
           reason: `no dedicated builder for 3-level pivot '${pivotKey}'`,
@@ -1058,12 +940,6 @@ function maybeBvBrcWebsite(
   };
 }
 
-/**
- * The answer of a backend this request asked to be down, or `null` to run the
- * fixture dispatch. It comes before every fixture, because a service in an
- * outage answers every path the same way; a request that asks for no outage
- * still reaches the fail-closed dispatch below.
- */
 async function maybeOutage(
   path: string,
   request: NextRequest,
@@ -1092,10 +968,6 @@ export async function GET(
     return NextResponse.json({ trees: { "2955291": "influenza" } });
   }
   if (path === "phylo-tree-dictionary") {
-    // PHYLO_TREE_DICTIONARY_URL: the taxon-to-tree dictionary the server-side
-    // tree index (src/lib/phylogeny/bacterial-tree-index.ts) downloads. Taxon
-    // 234 names the tree file e2e/tests/organisms/archaeopteryx.spec.ts
-    // serves in the browser.
     return NextResponse.json({ "234": "regression.xml" });
   }
   const identityResponse = handleIdentityGet(path);
@@ -1126,52 +998,12 @@ export async function GET(
   });
 }
 
-/**
- * The JSON-RPC calls this mock answers, full path → method → `result`.
- *
- * Keyed on the WHOLE path, not its first segment: the old allowlist tested
- * only the first segment, so `POST /workspace/anything` was accepted as
- * readily as `POST /workspace`.
- *
- * This replaces a blanket `{result: [[]]}` for any POST landing in one of
- * nine namespaces. Every entry here was OBSERVED reaching the loopback during
- * an instrumented run of the full Chromium suite and `pnpm a11y`; every
- * method absent from it is rejected, including inside these two namespaces.
- * The other seven namespaces the old allowlist carried — `service`,
- * `services`, `data`, `data-service`, `sra-validation`, `minhash`, `upload` —
- * were never reached by a POST in that run and are gone rather than kept
- * "just in case". Five of them (`services`, `data`, `data-service`,
- * `sra-validation`, `minhash`) still have a `.env.e2e.test` variable pointing
- * here, so a real caller can still arrive and will get a diagnostic naming
- * itself instead of a fake success. `service` and `upload` never had one and
- * were unreachable even before this change.
- *
- * `bvbrc-website` is deliberately not here: its one POST endpoint,
- * `genome_amr`, is handled by `maybeBvBrcWebsitePost` with its own body
- * validation, and it is not JSON-RPC.
- *
- * Each result is empty, and each is empty for a stated reason. An empty
- * result that is merely *convenient* belongs in a named fixture instead.
- */
 const loopbackRpcResults: Record<string, Record<string, unknown>> = {
   workspace: {
-    // Server-rendered workspace surfaces (favourites, path resolution) list a
-    // path before any spec-specific browser override exists. `result[0]` is
-    // the path → tuples map; an empty map is "this path holds nothing", which
-    // is what every `parseLsResult*` caller renders as an empty folder. Specs
-    // that need real items mock `/api/services/workspace` in the browser.
     "Workspace.ls": [{}],
-    // `result[0]` is the per-requested-object array. Empty means "no object
-    // metadata", which resolve/availability callers treat as "not present" —
-    // the same answer the real service gives for an unknown path.
     "Workspace.get": [[]],
   },
   "app-service": {
-    // `/api/services/app-service/jobs/task-summary` and `/app-summary` are
-    // server routes that reach the loopback on every jobs render unless a
-    // browser override answers first (task-summary has one in the default
-    // mocks and the jobs fixtures; app-summary has none). Both contracts are
-    // `Record<string, number>`; an empty record is "no jobs in any state".
     "AppService.query_task_summary_filtered": {},
     "AppService.query_app_summary_filtered": {},
   },
@@ -1187,14 +1019,6 @@ function findRpcResult(
   return { result: methods[method] };
 }
 
-/**
- * The download gateway's upstream request (`ServerDataRepository.download`):
- * `POST /data/<core>/` whose body is an RQL query and whose `Accept` names a
- * table or FASTA format. Answered from `src/lib/e2e-fixtures/downloads.ts`;
- * a core or format with no registered file is rejected with a diagnostic, not
- * answered with an empty file a spec could mistake for a real download.
- * `null` for any other request, so the rest of the dispatch runs.
- */
 async function maybeDataDownloadPost(
   path: string,
   request: NextRequest,
@@ -1236,7 +1060,7 @@ export async function POST(
     const body = (await request.clone().json()) as { method?: unknown } | null;
     if (body && typeof body.method === "string") rpcMethod = body.method;
   } catch {
-    // Non-JSON body (e.g. form upload) — fine, just skip method logging.
+    // Non-JSON body (e.g. form upload).
   }
 
   logHit("POST", path, rpcMethod ? `method=${rpcMethod}` : "");
@@ -1264,8 +1088,6 @@ export async function POST(
 
   const endpoint = path.split("/").filter(Boolean).join("/");
   if (rpcMethod === undefined) {
-    // Not JSON-RPC at all (a form upload, or a malformed body). There is no
-    // method name to dispatch on, so answer in the plain diagnostic shape.
     return unhandledResponse(
       "unhandled POST endpoint",
       "request body carried no JSON-RPC method",
@@ -1284,21 +1106,8 @@ export async function POST(
   return NextResponse.json(buildLoopbackRpcSuccess(matched.result));
 }
 
-/**
- * No PUT or DELETE fixture exists, so both reject everything.
- *
- * These used to return `{}` unconditionally, with no path check at all.
- * Instrumenting the handler and running the full Chromium suite plus
- * `pnpm a11y` recorded not one PUT or DELETE reaching it, so there is no
- * behaviour to preserve — only a hole to close. Both handlers stay exported:
- * without them Next answers 405 with no explanation of why, and the point is
- * for the first real caller to be told what to add and where.
- *
- * There is deliberately no empty fixture table to "add an entry to" — the
- * first real caller needs a handler shaped like its own contract, the way
- * `loopbackRpcResults` is shaped like JSON-RPC, not a row in a map whose
- * value type nobody has designed yet.
- */
+// No PUT or DELETE fixture exists; both reject so the first real caller is
+// told what to add.
 function rejectMutation(method: string, path: string): NextResponse {
   return unhandledResponse(
     `unhandled ${method} endpoint`,

@@ -4,8 +4,8 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { loadEnvFile, substitutePort } from "../env-loader.mjs";
 
-// Plain string-map for the env fixture — avoids NodeJS.ProcessEnv, which Next's type
-// augmentation narrows to require NODE_ENV. We only care about key/value semantics here.
+// Plain string map: NodeJS.ProcessEnv is narrowed by Next's type augmentation
+// to require NODE_ENV.
 type EnvFixture = Record<string, string | undefined>;
 
 describe("substitutePort", () => {
@@ -70,9 +70,7 @@ describe("loadEnvFile", () => {
     const env: EnvFixture = {};
     loadEnvFile(".env.e2e.local", { required: false, port: "3030", env });
     loadEnvFile(".env.e2e.test", { required: true, port: "3030", env });
-    // Local wins for the key both files declare.
     expect(env.APP_SERVICE_URL).toBe("http://local-win:3030/api");
-    // .test fills in keys local did not declare.
     expect(env.WORKSPACE_API_URL).toBe("http://committed:3030/ws");
   });
 

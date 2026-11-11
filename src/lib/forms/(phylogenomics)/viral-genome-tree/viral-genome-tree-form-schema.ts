@@ -1,20 +1,17 @@
 import { z } from "zod";
 import { defaultMetadataFields } from "@/lib/forms/genome-metadata-fields";
 
-// Sequence type enum for viral genome tree (genome groups and FASTA files)
 export const viralGenomeSequenceTypeSchema = z.enum([
   "genome_group",
   "aligned_dna_fasta",
   "feature_dna_fasta",
 ]);
 
-// Sequence item schema
 export const viralGenomeSequenceItemSchema = z.object({
   filename: z.string().min(1, "Sequence path is required"),
   type: viralGenomeSequenceTypeSchema,
 });
 
-// Main form schema
 export const viralGenomeTreeFormSchema = z
   .object({
     recipe: z.enum(["RAxML", "PhyML", "FastTree"], {
@@ -48,7 +45,6 @@ export const viralGenomeTreeFormSchema = z
     output_file: z.string().min(1, "Output name is required"),
   })
   .superRefine((data, ctx) => {
-    // Validate substitution model (DNA models only for genomes)
     const dnaModels = ["GTR", "TN93", "HKY85", "F84", "F81", "K80", "JC69"];
 
     if (!dnaModels.includes(data.substitution_model)) {
@@ -65,7 +61,6 @@ export type ViralGenomeSequenceItem = z.infer<
   typeof viralGenomeSequenceItemSchema
 >;
 
-// Constants
 export const maxSequences = 5000;
 
 export const dnaModels = [
@@ -78,7 +73,6 @@ export const dnaModels = [
   { value: "JC69", label: "JC69" },
 ] as const;
 
-// Default form values
 export const defaultViralGenomeTreeFormValues: ViralGenomeTreeFormData = {
   recipe: "RAxML",
   substitution_model: "GTR",

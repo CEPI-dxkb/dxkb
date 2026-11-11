@@ -95,7 +95,6 @@ describe("Feature view contracts", () => {
     ).not.toBe(false);
     expect(canonicalFeatureTab("interactions", feature)).toBe("interactions");
     expect(canonicalFeatureTab("domains", feature)).toBe("domains");
-    // No sequence location: nothing for the browser to open on.
     expect(canonicalFeatureTab("genome-browser", feature)).toBe("overview");
     const located = featureViewRecordSchema.parse({
       feature_id: "PATRIC.1",
@@ -113,10 +112,8 @@ describe("Feature view contracts", () => {
     const location = { accession: "ATGO01000001", start: 9610, end: 10707 };
     const cases = [
       { feature_id: "PATRIC.1", genome_id: "1328357.3", ...location },
-      // A genome but no sequence location: the panel used to render anyway.
       { feature_id: "PATRIC.1", genome_id: "1328357.3" },
       { feature_id: "PATRIC.1", genome_id: "1328357.3", ...location, end: 5 },
-      // A location but no genome.
       { feature_id: "PATRIC.1", ...location },
     ].map((record) => featureViewRecordSchema.parse(record));
     const [located, ...unlocated] = cases;
@@ -161,8 +158,7 @@ describe("Feature view contracts", () => {
 });
 
 describe("Feature list URL schema", () => {
-  // Legacy FeatureList: `keyword(Dnak)&and(eq(annotation,"PATRIC"))` returns
-  // 2,122,831 rows; with the PATRIC value removed, 3,005,987 (alpha, 2026-10-05).
+  // Legacy FeatureList: Dnak returns 2,122,831 rows with the PATRIC default, 3,005,987 without (alpha, 2026-10-05).
   it("selects legacy FeatureList's annotation=PATRIC default", () => {
     const state = parseFeatureCollectionState(
       { keyword: "Dnak" },
@@ -188,8 +184,7 @@ describe("Feature list URL schema", () => {
   });
 
   it("counts facets over the scope filter alone while the default is untouched", () => {
-    // `filter=CDS` is an independent scope, not something the user picked: the
-    // annotation facet still counts the values the PATRIC default hides.
+    // `filter=CDS` is an independent scope, so the annotation facet still counts the values the PATRIC default hides.
     const state = parseFeatureCollectionState(
       { keyword: "Dnak", filter: "CDS" },
       featureListCollectionOptions,
@@ -212,9 +207,6 @@ describe("Feature list URL schema", () => {
   });
 
   it("gives the Proteins search no removable default", () => {
-    // `proteinFeatureRql` already pins eq(annotation,PATRIC): removing a PATRIC
-    // chip there would change nothing. Legacy ProteinList's removal
-    // (#filter=false) sends the same query too, 2,122,451 rows for Dnak.
     for (const filter of ["protein", '"protein"']) {
       const state = parseFeatureListState({ keyword: "Dnak", filter });
       const options = featureListOptionsFor(state);
@@ -234,9 +226,7 @@ describe("Feature list URL schema", () => {
   });
 
   it("keeps the default beside an explicit RQL that does not pick an annotation", () => {
-    // Alpha's FeatureList/?eq(genome_id,83332.12) lists the genome's 5,425
-    // PATRIC features, not all 10,940; the Genome overview's CDS count links
-    // here and counts PATRIC CDS (4,367 of 8,356).
+    // Alpha's FeatureList lists 5,425 PATRIC features for this genome, not all 10,940.
     const linked = parseFeatureListState({
       rql: "and(eq(genome_id,83332.12),eq(feature_type,CDS))",
     });
@@ -262,8 +252,7 @@ describe("Feature list URL schema", () => {
   });
 
   it("reads the validated RQL to see whether it picks an annotation", () => {
-    // The parser accepts a space after `(`; the default must still give way,
-    // or PATRIC and RefSeq together list 0 rows behind a stuck chip.
+    // The parser accepts a space after `(`; the default must still give way.
     const state = parseFeatureListState({
       rql: "and(eq(genome_id,83332.12),eq( annotation,RefSeq))",
     });
@@ -272,7 +261,6 @@ describe("Feature list URL schema", () => {
   });
 
   it("lets an RQL that picks an annotation replace the default", () => {
-    // DXKB's sequence and taxon FEATURES links pin eq(annotation,PATRIC).
     const state = parseFeatureListState({
       rql: "and(eq(sequence_id,NC_000962),eq(annotation,PATRIC),eq(feature_type,CDS))",
     });

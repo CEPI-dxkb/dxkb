@@ -29,14 +29,10 @@ function sessionStorageKey(username: string): string {
 }
 
 interface CopilotContextValue {
-  /** Signed in: the Copilot needs the user's BV-BRC session. */
   available: boolean;
-  /** The signed-in user's name, which keys their drafts; null signed out. */
   username: string | null;
   onCopilotPage: boolean;
-  /** The surface showing now, outside the full page. */
   openSurface: CopilotSurface | null;
-  /** Where the navbar button opens the chat. */
   preferredSurface: CopilotSurface;
   open: (surface?: CopilotSurface) => void;
   close: () => void;
@@ -53,12 +49,7 @@ interface CopilotContextValue {
 
 const CopilotContext = createContext<CopilotContextValue | null>(null);
 
-/**
- * Chat state shared by the side panel, the floating window and the `/copilot`
- * page, so switching between them keeps the conversation and a running
- * answer. Mounted once in the root layout; it fetches nothing until a surface
- * opens.
- */
+/** Mounted once in the root layout; fetches nothing until a surface opens. */
 export function CopilotProvider({ children }: PropsWithChildren) {
   const { user } = useAuth();
   const pathname = usePathname();
@@ -66,9 +57,7 @@ export function CopilotProvider({ children }: PropsWithChildren) {
   const [preferredSurface, setPreferredSurface] = useUiPreference("copilotSurface");
   const [openSurface, setOpenSurface] = useState<CopilotSurface | null>(null);
 
-  // The full page replaces the panel or window; leaving it does not reopen
-  // them. (State adjusted during render, as React advises for a change of
-  // input, rather than in an effect.)
+  // The full page replaces the panel or window; leaving it does not reopen them.
   const [wasOnCopilotPage, setWasOnCopilotPage] = useState(onCopilotPage);
   if (onCopilotPage !== wasOnCopilotPage) {
     setWasOnCopilotPage(onCopilotPage);
@@ -82,8 +71,6 @@ export function CopilotProvider({ children }: PropsWithChildren) {
   const storedSession = useStorageItem(storageKey ?? sessionStorageKey(""));
   const sessionId = storageKey ? storedSession : null;
 
-  // A user who has never chatted on this device starts with a fresh id; the
-  // gateway creates the session with the first question.
   useEffect(() => {
     if (active && storageKey && storedSession === null) {
       writeStorageItem(storageKey, crypto.randomUUID());
@@ -133,7 +120,6 @@ export function CopilotProvider({ children }: PropsWithChildren) {
   );
 }
 
-/** The Copilot, or null outside `<CopilotProvider>` (a navbar rendered alone). */
 export function useOptionalCopilot(): CopilotContextValue | null {
   return useContext(CopilotContext);
 }

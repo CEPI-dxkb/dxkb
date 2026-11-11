@@ -105,10 +105,8 @@ interface UseJobsDataParams {
   app?: string;
   startTime?: string;
   endTime?: string;
-  /** Healthy polling interval in ms, or `false` to fetch only on demand. */
   refetchInterval?: number | false;
   enabled?: boolean;
-  /** How long a read counts as fresh on mount, e.g. after a prefetch. */
   staleTime?: number;
 }
 
@@ -117,7 +115,6 @@ interface UseJobsDataResult {
   totalTasks: number;
 }
 
-/** Key and fetcher for one page of jobs, shared by `useJobsData` and prefetches. */
 export function jobsDataQueryOptions(
   params: Omit<UseJobsDataParams, "refetchInterval" | "enabled" | "staleTime">,
 ) {
@@ -164,8 +161,7 @@ export function useJobsData(params: UseJobsDataParams) {
     ...(staleTime === undefined ? {} : { staleTime }),
     placeholderData: keepPreviousData,
     refetchInterval: (query) => {
-      // Called first even when not polling, so the back-off keeps its
-      // record of the last success for when polling resumes.
+      // Called first even when not polling so the back-off keeps its last-success record.
       const backoff = errorBackoffPollInterval(query);
       if (refetchInterval === false) return false;
       return backoff ?? refetchInterval;

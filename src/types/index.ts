@@ -5,7 +5,6 @@ export interface TimelineItemType {
     time: string;
   }
 
-// Taxonomy-related interfaces
 export interface TaxonomyItem {
   taxon_id: number;
   taxon_name: string;

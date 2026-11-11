@@ -30,8 +30,8 @@ export interface AuthBoundaryProps {
 }
 
 export function AuthBoundary({ children, user }: AuthBoundaryProps) {
-  // Held here rather than in the banner because every layout mounts its own
-  // navbar, while the root layout's boundary lives for the whole visit.
+  // Held here, not in the banner: every layout mounts its own navbar, but this
+  // boundary lives for the whole visit.
   const [noticeDismissed, setNoticeDismissed] = useState(false);
   const notice = {
     dismissed: noticeDismissed,
@@ -66,10 +66,6 @@ export function useAuth() {
   };
 }
 
-/**
- * The outage notice for a session the profile service could not verify: shown
- * until dismissed, and dismissed for the rest of the visit.
- */
 export function useSessionUnverifiedNotice() {
   const { user, isSessionUnverified } = useAuth();
   const notice = useContext(SessionNoticeContext);

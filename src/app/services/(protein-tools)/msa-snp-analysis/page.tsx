@@ -70,14 +70,6 @@ const featureOptionsToastId = "msa-feature-options-error";
 const genomeOptionsErrorTitle = "Failed to fetch genome IDs";
 const genomeOptionsToastId = "msa-genome-options-error";
 
-/**
- * A FASTA textarea with the one status line under it, as BLAST's
- * `FastaTextarea` draws them: the border turns destructive (`aria-invalid`) or
- * success (`valid`), and a single message names the problem or the valid
- * count. `error` is the FASTA's own message, or the form's when the FASTA has
- * none, so the "required" error does not stack under it. The line is always
- * present, so the card does not resize as the state changes.
- */
 function FastaTextareaStatus({
   value,
   onChange,
@@ -150,7 +142,6 @@ function useMSAandSNPAnalysisPage() {
     setFastaValidationResult(null);
     setReferenceFastaValidationResult(null);
     setShowStrategy(false);
-    // Clear feature group selection
     form.setFieldValue("feature_groups", "");
   }
 
@@ -258,8 +249,7 @@ function useMSAandSNPAnalysisPage() {
   });
   const { isSubmitting, jobParamsDialogProps } = runtime;
 
-  // Swap-clears must not touch or validate the field a choice swaps in, or it
-  // opens on "required" in production (BLAST's `untouched`; docs/architecture.md).
+  // Swap-clears must not touch or validate the field a choice swaps in (BLAST's `untouched`).
   const untouched = { dontUpdateMeta: true, dontValidate: true };
 
   function handleFastaInputChange(
@@ -269,11 +259,7 @@ function useMSAandSNPAnalysisPage() {
   ) {
     setFastaInputText(value);
     if (!value.trim()) {
-      // A re-check from the reference controls must not mark an untouched
-      // textarea touched, or "FASTA sequence input is required" shows before
-      // the user has typed. `dontUpdateMeta` alone is not enough:
-      // `setFieldValue` still validates a mounted field, and that marks it
-      // touched. Typing keeps the default, so clearing the textarea shows it.
+      // A re-check must not mark an untouched textarea touched; `setFieldValue` validates a mounted field even with `dontUpdateMeta`.
       form.setFieldValue(
         "fasta_keyboard_input",
         "",
@@ -329,7 +315,6 @@ function useMSAandSNPAnalysisPage() {
     form.setFieldValue("ref_string", valid ? validation.trimFasta : "");
   }
 
-  /** Drops the reference picked from a group, when the group changes. */
   function clearGroupReference(kind: "feature_id" | "genome_id") {
     if (kind === "feature_id") setSelectedFeatureId("");
     else setSelectedGenomeId("");
@@ -338,19 +323,12 @@ function useMSAandSNPAnalysisPage() {
     }
   }
 
-  /**
-   * A picked group enters the form only once it validates. Until then the
-   * form holds none, so neither Submit nor the Genome ID list can use the
-   * group picked before it, and a rejected group stays on screen in its
-   * error state, with its message under it.
-   */
   function selectGenomeGroup(object: WorkspaceObject | null) {
     const path = object?.path;
     if (form.state.values.select_genomegroup?.[0] !== path) {
       clearGroupReference("genome_id");
     }
     if (!path) {
-      // Typing in the selector drops the pick.
       genomeGroupCheck.cancel();
       form.setFieldValue("select_genomegroup", []);
       return;
@@ -384,11 +362,6 @@ function useMSAandSNPAnalysisPage() {
     });
   }
 
-  /**
-   * A picked unaligned FASTA file is read and checked as legacy checks it,
-   * and enters the form, as a group does, only once it passes. Aligned files
-   * go straight in: legacy checks only these.
-   */
   function selectFastaFile(object: WorkspaceObject | null) {
     if (!object?.path) {
       fastaFileCheck.cancel();
@@ -424,8 +397,6 @@ function useMSAandSNPAnalysisPage() {
     refType === "genome_id" && selectGenomegroup.length > 0,
   );
 
-  // A load error's toast stays until it is closed, or until the load
-  // succeeds; the field keeps its summary.
   useEffect(() => {
     if (featureOptionsError) {
       toast.error(featureOptionsErrorTitle, {
@@ -493,7 +464,6 @@ function useMSAandSNPAnalysisPage() {
         }}
         className="flex flex-col gap-4"
       >
-        {/* Start with */}
         <Card>
           <ServiceCardHeader>
             <RequiredFormCardTitle>
@@ -518,19 +488,15 @@ function useMSAandSNPAnalysisPage() {
                       field.handleChange(
                         value as MsaSnpAnalysis.MsaSnpAnalysisFormData["input_status"],
                       );
-                      // Reset input type when status changes
                       if (value === "aligned") {
                         form.setFieldValue("input_type", undefined);
                       } else {
                         form.setFieldValue("input_type", "input_feature_group");
                       }
-                      // Reset reference type to "none" when input status changes
                       if (previousStatus !== value) {
                         form.setFieldValue("ref_type", "none");
                         form.setFieldValue("ref_string", "", untouched);
-                        // Unaligned and aligned files share `fasta_files`;
-                        // one the other selector does not show must not be
-                        // submitted from it.
+                        // Unaligned and aligned files share `fasta_files`; drop the one the hidden selector owns.
                         form.setFieldValue("fasta_files", [], untouched);
                         fastaFileCheck.cancel();
                         setSelectedFeatureId("");
@@ -555,7 +521,6 @@ function useMSAandSNPAnalysisPage() {
           </ServiceCardContent>
         </Card>
 
-        {/* Select sequences */}
         <MsaSequenceSelectionCard>
             {inputStatus === "unaligned" ? (
               <div className="space-y-4">
@@ -566,13 +531,11 @@ function useMSAandSNPAnalysisPage() {
                         value={field.state.value}
                         onValueChange={(value) => {
                           if (value == null) return;
-                          // Reset reference type to "none" when input type changes
                           const previousInputType = field.state.value;
                           field.handleChange(
                             value as MsaSnpAnalysis.MsaSnpAnalysisFormData["input_type"],
                           );
 
-                          // Only reset if the input type actually changed
                           if (previousInputType !== value) {
                             form.setFieldValue("ref_type", "none");
                             form.setFieldValue("ref_string", "", untouched);
@@ -622,7 +585,6 @@ function useMSAandSNPAnalysisPage() {
                   )}
                 </form.Field>
 
-                {/* Feature Group Input */}
                 {inputType === "input_feature_group" && (
                   <div className="space-y-4">
                     <form.Field name="feature_groups">
@@ -676,7 +638,6 @@ function useMSAandSNPAnalysisPage() {
                   </div>
                 )}
 
-                {/* Genome Group Input */}
                 {inputType === "input_genome_group" && (
                   <form.Field name="select_genomegroup">
                     {(field) => {
@@ -716,7 +677,6 @@ function useMSAandSNPAnalysisPage() {
                   </form.Field>
                 )}
 
-                {/* FASTA File Input */}
                 {inputType === "input_fasta" && (
                   <form.Field name="fasta_files">
                     {(field) => (
@@ -753,7 +713,6 @@ function useMSAandSNPAnalysisPage() {
                   </form.Field>
                 )}
 
-                {/* Input Sequence */}
                 {inputType === "input_sequence" && (
                   <form.Field name="fasta_keyboard_input">
                     {(field) => (
@@ -787,8 +746,6 @@ function useMSAandSNPAnalysisPage() {
                       onSelectedObjectChange={(
                         object: WorkspaceObject | null,
                       ) => {
-                        // Only one file allowed: a pick replaces it, and
-                        // typing over it drops it.
                         field.handleChange(
                           object?.path
                             ? [
@@ -810,7 +767,6 @@ function useMSAandSNPAnalysisPage() {
             )}
         </MsaSequenceSelectionCard>
 
-        {/* Reference Sequence */}
         <MsaReferenceSequenceCard>
             <div className="space-y-4">
               <form.Field name="ref_type">
@@ -829,7 +785,6 @@ function useMSAandSNPAnalysisPage() {
                             referenceFastaText.trim() !== "",
                           true,
                         );
-                        // Clear ref_string when changing ref_type
                         if (value === "none" || value === "first") {
                           form.setFieldValue("ref_string", "", untouched);
                           setSelectedFeatureId("");
@@ -880,7 +835,6 @@ function useMSAandSNPAnalysisPage() {
                 )}
               </form.Field>
 
-              {/* Feature ID Reference */}
               {refType === "feature_id" && (
                 <form.Field name="ref_string">
                   {(field) => {
@@ -893,7 +847,6 @@ function useMSAandSNPAnalysisPage() {
                           onValueChange={(value) => {
                             if (value == null) return;
                             setSelectedFeatureId(value);
-                            // Find the selected feature and use patric_id for ref_string
                             const selectedFeature = featureOptions.find(
                               (f) => f.feature_id === value,
                             );
@@ -975,12 +928,10 @@ function useMSAandSNPAnalysisPage() {
                 </form.Field>
               )}
 
-              {/* Genome ID Reference */}
               {refType === "genome_id" && (
                 <form.Field name="ref_string">
                   {(field) => {
                     const loadError = genomeOptionsError;
-                    // Only a group that passed validation is in the form.
                     const hasGenomeGroup = selectGenomegroup.length > 0;
                     return (
                       <FieldItem>
@@ -1066,7 +1017,6 @@ function useMSAandSNPAnalysisPage() {
                 </form.Field>
               )}
 
-              {/* Input Reference Sequence */}
               {refType === "string" && (
                 <form.Field name="ref_string">
                   {(field) => (
@@ -1091,11 +1041,8 @@ function useMSAandSNPAnalysisPage() {
             </div>
         </MsaReferenceSequenceCard>
 
-        {/* Parameters */}
         <MsaParametersCard>
             <div className="space-y-4">
-              {/* Legacy hides the aligner for an aligned file, which App-MSA
-                  does not realign. */}
               {inputStatus === "unaligned" && (
               <form.Field name="aligner">
                 {(field) => (
@@ -1110,7 +1057,6 @@ function useMSAandSNPAnalysisPage() {
                       onValueChange={(value) => {
                         if (value == null) return;
                         field.handleChange(value);
-                        // Reset strategy when aligner changes to Muscle
                         if (value === "Muscle") {
                           form.setFieldValue("strategy", undefined);
                           setShowStrategy(false);
@@ -1141,7 +1087,6 @@ function useMSAandSNPAnalysisPage() {
               </form.Field>
               )}
 
-              {/* Strategy Options (only for Mafft and unaligned) */}
               {aligner === "Mafft" && inputStatus === "unaligned" && (
                 <ServiceCollapsible
                   open={showStrategy}
@@ -1221,7 +1166,6 @@ function useMSAandSNPAnalysisPage() {
             </div>
         </MsaParametersCard>
 
-        {/* Form Controls */}
         <ServiceFormFooter
           form={form}
           onReset={handleReset}

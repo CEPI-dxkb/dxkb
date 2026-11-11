@@ -2,10 +2,6 @@ import { render } from "@testing-library/react";
 
 import { ThemeProvider } from "@/components/theme-provider";
 
-/**
- * The pre-paint script's source, taken from a render with nothing stored so
- * the provider's own after-load reset cannot do the script's work.
- */
 function prePaintScriptSource() {
   const { container, unmount } = render(<ThemeProvider />);
   const source = container.querySelector("script")?.textContent ?? "";
@@ -14,8 +10,8 @@ function prePaintScriptSource() {
 }
 
 /**
- * React never executes a script it renders on the client, so run the source
- * the way the browser runs it from the server HTML: as a fresh script element.
+ * React never executes a script it renders on the client, so run the source as
+ * a fresh script element.
  */
 function runScript(source: string) {
   const script = document.createElement("script");
@@ -27,7 +23,7 @@ function runScript(source: string) {
 describe("ThemeProvider pre-paint script", () => {
   beforeEach(() => {
     localStorage.clear();
-    // next-themes watches prefers-color-scheme; jsdom has no matchMedia.
+    // jsdom has no matchMedia, which next-themes needs.
     vi.stubGlobal(
       "matchMedia",
       vi.fn(() => ({

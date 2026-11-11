@@ -1,7 +1,6 @@
 import type { ViralGenomeTreeFormData, ViralGenomeSequenceItem } from "./viral-genome-tree-form-schema";
 import * as ViralGenomeTreeSchema from "./viral-genome-tree-form-schema";
 
-// Utility functions
 export function getDisplayName(name: string): string {
   const maxName = 36;
   if (name.length <= maxName) return name;
@@ -20,9 +19,6 @@ export function getSequenceTypeLabel(
   return "Unaligned DNA FASTA";
 }
 
-/**
- * Check if a sequence with the given filename and type already exists
- */
 export function checkDuplicateSequence(
   sequences: ViralGenomeSequenceItem[],
   filename: string,
@@ -31,16 +27,10 @@ export function checkDuplicateSequence(
   return sequences.some((seq) => seq.filename === filename && seq.type === type);
 }
 
-/**
- * Check if the sequence limit has been reached
- */
 export function checkSequenceLimit(sequences: ViralGenomeSequenceItem[]): boolean {
   return sequences.length >= ViralGenomeTreeSchema.maxSequences;
 }
 
-/**
- * Remove a sequence at the given index
- */
 export function removeSequenceAtIndex(
   sequences: ViralGenomeSequenceItem[],
   index: number,
@@ -48,9 +38,6 @@ export function removeSequenceAtIndex(
   return sequences.filter((_, i) => i !== index);
 }
 
-/**
- * Create a new sequence item
- */
 export function createSequenceItem(
   filename: string,
   type: ViralGenomeSequenceItem["type"],
@@ -58,13 +45,9 @@ export function createSequenceItem(
   return { filename, type };
 }
 
-/**
- * Transform viral genome tree form data to API parameters
- */
 export function transformViralGenomeTreeParams(
   data: ViralGenomeTreeFormData,
 ): Record<string, unknown> {
-  // All metadata fields for viral genome tree are genome-related
   const metadataFields = data.metadata_fields || [];
   
   return {

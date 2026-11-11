@@ -113,7 +113,6 @@ export function useViralGenomeTree() {
     },
     new Set(),
   );
-  // A field already in the table is not offered again.
   const metadataSections = availableMetadataFieldSections(selectedMetadataIds);
   const selectedMetadataFields = metadataFields.filter(
     (field) => field.selected,

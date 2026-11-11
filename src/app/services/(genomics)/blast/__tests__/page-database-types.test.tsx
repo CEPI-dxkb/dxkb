@@ -106,9 +106,6 @@ describe("BLAST page database type transitions", () => {
     );
     expect(requiredMessages()).toHaveLength(0);
 
-    // The return visit: before the picker was keyed by its source, the field
-    // that stayed mounted while the other source was chosen was validated by
-    // the clear, and its error showed again here.
     await chooseOption(
       user,
       "Database Source",
@@ -153,8 +150,6 @@ describe("BLAST page database type transitions", () => {
       ).toHaveTextContent("Search within a taxon");
     });
 
-    // The point of the prefill: both Taxon IDs are visible and removable, not just
-    // the database source that implies them.
     const selectedTaxa = await screen.findByRole("list", {
       name: "Selected taxa",
     });

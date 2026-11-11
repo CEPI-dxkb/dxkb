@@ -1,11 +1,4 @@
-/**
- * jsdom has no layout engine. The collection toolbar's menus scroll rows into
- * view (checking `matchMedia` for reduced motion) and its pill row measures
- * itself through a ResizeObserver, so stub those and give every element a
- * `clientWidth`, which the pill row reads as its free space (jsdom reports 0,
- * which would put every pill behind "+N").
- * Call once per file; `setClientWidth` changes the width for one test.
- */
+/** jsdom has no layout: stub `matchMedia`, ResizeObserver and `clientWidth` (0 would hide every pill behind "+N"). */
 export function stubMenuLayout(initialWidth = 1000) {
   let width = initialWidth;
   const patched = [

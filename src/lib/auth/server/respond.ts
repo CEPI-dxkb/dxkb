@@ -72,11 +72,9 @@ export function respondWithAck(
 }
 
 /**
- * The error envelope for a failed upstream call a route makes with the session
- * token itself, rather than through a named action (the profile proxy). An
- * `unauthorized` failure means the upstream rejected that token, so the session is
- * cleared and the code is `session_expired`, as the actions and `respondWithAck`'s
- * `sessionExpired` option do together for the other routes.
+ * For a failed upstream call a route makes with the session token itself.
+ * `unauthorized` means the upstream rejected that token, so the session is
+ * cleared and the code is `session_expired`.
  */
 export async function respondWithUpstreamFailure(
   error: AuthError,

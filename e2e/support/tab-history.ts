@@ -1,29 +1,18 @@
 import type { Page, Request } from "@playwright/test";
 
-// Back or Forward from a server-rendered tab renders the leaving tab one more
-// time against the destination's URL: React flushes the popstate transition at
-// sync priority, Next's InnerLayoutRouter keeps the previous page RSC for that
-// commit (useDeferredValue), and useSearchParams() already returns the new URL.
-// A collection in that frame used to drop its filter or page, show "Loading
-// results..." and fetch rows for a URL that is not its own. The tab shells hold
-// the content on the search it was rendered for (TabContentSearchParams).
-// Only a browser reproduces the timing, so the specs that use these helpers
-// watch every frame and every Data API read around the history step.
+// Back or Forward from a server-rendered tab renders the leaving tab once
+// more against the destination's URL (popstate flushes at sync priority while
+// Next keeps the previous RSC), so a collection could drop its filter or
+// page. Only a browser reproduces the timing, so these helpers sample every
+// frame and Data API read around the step.
 
-/** What one animation frame shows. */
 export interface Frame {
   search: string;
-  /** Label of the view rail's `aria-current` tab. */
   current: string;
   loading: boolean;
-  /** The table's "Showing X-Y of Z" summary, if one is on screen. */
   summary: string | null;
 }
 
-/**
- * Push `href` through the app router, as a tab or chart link does. The page must have hydrated.
- * `window.next.router` is Next's public router instance, exposed for debugging.
- */
 export async function routerPush(page: Page, href: string): Promise<void> {
   await page.evaluate((target) => {
     const { next } = window as unknown as {
@@ -33,11 +22,6 @@ export async function routerPush(page: Page, href: string): Promise<void> {
   }, href);
 }
 
-/**
- * Take a history step and sample every frame until the rail has shown `destination` as the
- * current tab for half a second. The sampler starts in the same evaluate as the step, so it
- * sees the first frame after the popstate.
- */
 export async function stepAndSampleFrames(
   page: Page,
   step: "back" | "forward",
@@ -77,7 +61,6 @@ export async function stepAndSampleFrames(
   );
 }
 
-/** Data API collection reads of `resource` made while `action` runs. */
 export async function collectionReads(
   page: Page,
   resource: string,

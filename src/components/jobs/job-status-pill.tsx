@@ -36,13 +36,10 @@ import {
   getOutputFile,
 } from "@/lib/jobs/formatting";
 
-/** `formatUserFacingErrorMessage` fallback for a failed job summary read. */
 const summaryErrorFallback = "The job service did not answer.";
 
-/** A warmed list counts as fresh this long, so opening does not refetch it. */
 const recentJobsWarmMs = 10_000;
 
-/** The popover's list: the 5 most recent jobs. */
 const recentJobsParams = {
   offset: 0,
   limit: 5,
@@ -71,15 +68,13 @@ export function JobStatusPill() {
   const [isOpen, setIsOpen] = useState(false);
   const queryClient = useQueryClient();
 
-  // While the session could not be verified, the job service may well reject
-  // the token too: fetch once and then only when the user asks, rather than
-  // polling a request that keeps failing.
+  // While the session is unverified the job service may reject the token too: fetch once, then only
+  // on request.
   const polls = !isSessionUnverified;
   const summaryQuery = useJobsTaskSummary(false, { poll: polls });
   const summary = summaryQuery.data;
-  // A refetch of a summary that never loaded (a back-off poll or a Retry)
-  // puts it back to pending. Keep its error, so the unavailable pill and its
-  // open popover stay up until the refetch answers.
+  // A refetch of a summary that never loaded puts it back to pending; keep its error so the
+  // unavailable pill stays up.
   const keptSummaryError = useKeptQueryError({
     error: summaryQuery.error,
     hasData: summary !== undefined,
@@ -98,8 +93,6 @@ export function JobStatusPill() {
     (taskSummary["queued"] ?? 0) + (taskSummary["pending"] ?? 0);
   const displayableCount = completedCount + runningCount + queuedCount;
 
-  // Running and queued counts always show, so a zero reads as "nothing in
-  // flight" rather than leaving the user to infer it from a missing icon.
   const statusGroups = [
     {
       key: "queued",
@@ -127,8 +120,6 @@ export function JobStatusPill() {
   const activeRefetchInterval =
     runningCount > 0 || queuedCount > 0 ? 3_000 : 30_000;
 
-  // The list is only read in the popover, so it loads on open (or on
-  // hover/focus of the trigger, below) rather than polling while closed.
   const { data: jobsResult, isPending } = useJobsData({
     ...recentJobsParams,
     refetchInterval: polls ? activeRefetchInterval : false,
@@ -137,11 +128,9 @@ export function JobStatusPill() {
   });
 
   const warmRecentJobs = () => {
-    // Covers focus/hover while open. Base UI returns focus to the trigger after
-    // close, so a close may fire one cheap extra read when the list is >10 s old
-    // (accepted).
+    // Base UI returns focus to the trigger after close, so a close may fire one extra read when the
+    // list is >10 s old (accepted).
     if (isOpen) return;
-    // A failed warm-up is not an error: opening the popover reads it again.
     void queryClient
       .query({
         ...jobsDataQueryOptions(recentJobsParams),
@@ -159,7 +148,6 @@ export function JobStatusPill() {
     ? formatUserFacingErrorMessage(summaryRetry.error, summaryErrorFallback)
     : undefined;
 
-  // A failed summary is not "no jobs": say the status is unavailable, and why.
   if (summaryErrorMessage && !summary) {
     return (
       <Popover open={isOpen} onOpenChange={setIsOpen}>
@@ -202,8 +190,6 @@ export function JobStatusPill() {
     );
   }
 
-  // First load: hold the pill's place rather than leaving the header without
-  // one for as long as the job service takes to answer.
   if (!summary) {
     return (
       <span

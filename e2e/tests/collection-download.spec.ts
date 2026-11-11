@@ -17,11 +17,8 @@ import {
 import { ResourceCollectionPage } from "../pages";
 
 /**
- * The action rail's shared Download tile, end to end: the browser POSTs to the
- * real gateway route (`downloadGatewayOverrides` lets it through), the route's
- * own upstream request reaches the loopback mock, and the file the browser
- * saves is what the loopback answered. Signed out, because the loopback is
- * plain HTTP and the repository sends a token over HTTPS only.
+ * The action rail's Download tile end to end. Signed out: the loopback is plain HTTP
+ * and the repository sends a token over HTTPS only.
  */
 test.use({ storageState: { cookies: [], origins: [] } });
 
@@ -96,7 +93,6 @@ test("downloads the selected Features as Protein FASTA, in selection order", asy
   );
   await collection.goto("replicase");
 
-  // The second row first: the file follows the selection's order.
   await collection.rowCheckbox(second.feature_id).check();
   await collection.rowCheckbox(first.feature_id).check();
   await expect(collection.downloadTile()).toHaveText(/^DOWNLOAD\s*2$/);
@@ -122,7 +118,6 @@ test("downloads the selected Features as Protein FASTA, in selection order", asy
   expect(download.suggestedFilename()).toBe(
     "genome_feature-selected.protein.fasta",
   );
-  // One record per id, in the in() the gateway sent upstream.
   expect(await savedText(download)).toBe(
     `>${second.feature_id}\n${e2eProteinResidues}\n>${first.feature_id}\n${e2eProteinResidues}\n`,
   );
@@ -176,7 +171,6 @@ test("streams an all-results download above 10,000 rows straight to disk", async
   const saved = page.waitForEvent("download");
   await collection.downloadFormat("Text").click();
 
-  // A native form POST, not a fetch: one `request` field holding the JSON.
   const request = await sent;
   expect(request.headers()["content-type"]).toContain(
     "application/x-www-form-urlencoded",
@@ -189,10 +183,8 @@ test("streams an all-results download above 10,000 rows straight to disk", async
     nonce: expect.stringMatching(/^[0-9a-f]{32}$/),
   });
   const download = await saved;
-  // Named by the gateway's Content-Disposition this time.
   expect(download.suggestedFilename()).toBe("genome.txt");
   expect(await savedText(download)).toBe(genomeDownloadTsv);
-  // The nonce cookie ends the wait, so the rows are usable again.
   await expect(collection.downloadFormat("Text")).toBeEnabled();
 });
 
@@ -220,7 +212,6 @@ test("streams a selected Genome's contigs straight to disk, however few rows", a
   const saved = page.waitForEvent("download");
   await collection.downloadFormat("DNA FASTA").click();
 
-  // One genome, yet a native form POST: its contigs have no size bound.
   const request = await sent;
   expect(request.headers()["content-type"]).toContain(
     "application/x-www-form-urlencoded",

@@ -8,9 +8,7 @@ import {
 function parseSerotypeDistributionPivot(
   payload: Record<string, unknown>,
 ): { year: number; serovars: Record<string, number> }[] {
-  // Use the shared facet-pivot parser; serotype just narrows the outer key from
-  // string to numeric year. SOLR with `application/solr+json` may emit those
-  // years as strings, so coerce here.
+  // SOLR may emit years as strings, so coerce here.
   const generic = parseSolrFacetPivot(payload, "collection_year,serovar");
   const rows: { year: number; serovars: Record<string, number> }[] = [];
   for (const [outerKey, inner] of Object.entries(generic)) {
@@ -32,7 +30,6 @@ function transformPivot(
 
   const filtered = rows.filter((r) => r.year >= startYear);
 
-  // Sum each serovar across the filtered window
   const serovarTotals: Record<string, number> = {};
   for (const row of filtered) {
     for (const [sv, count] of Object.entries(row.serovars)) {

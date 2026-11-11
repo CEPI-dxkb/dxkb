@@ -33,17 +33,12 @@ import {
 } from "@/lib/search/all-types-search";
 import { cn, formatUserFacingErrorMessage } from "@/lib/utils";
 
-/** `formatUserFacingErrorMessage` fallback for a search error with no message. */
 const genericSearchErrorMessage =
   "The search could not be completed. Please try again.";
 
 /**
- * A concave corner in the page's color, under one bottom corner of the pinned
- * header: a card scrolled under the header is cut by its straight lower edge,
- * and these round the cut to the cards' own radius (`--radius`, `rounded-lg`),
- * the curve of the header above. They reach 4 units past the card's edge to
- * cover its side shadow along the curve. Over the gap between cards they match
- * the page and do not show.
+ * A concave corner in the page color that rounds a card's cut under the pinned
+ * header; it reaches 4 units past the card edge to cover its side shadow.
  */
 function HeaderFillet({ side }: { side: "left" | "right" }) {
   const corner = "M-4 0H10A10 10 0 0 0 0 10H-4Z";
@@ -63,36 +58,23 @@ function HeaderFillet({ side }: { side: "left" | "right" }) {
 }
 
 interface SearchResultsProps {
-  /** The search text (`q`). */
   query: string;
-  /**
-   * Keep the header at the top while the results scroll under it, until the
-   * site footer at the page's end pushes it up. With `false` the header
-   * scrolls away with the results; the Data types rail stays pinned either way.
-   */
+  /** With `false` the header scrolls away; the Data types rail stays pinned either way. */
   pinnedHeader?: boolean;
 }
 
-/**
- * The all-data-types results (`/search?type=everything&q=…`): a Data types rail
- * that jumps to each type, a header with the best-matching taxon, and one
- * foldable card per type with matches.
- */
 export function SearchResults({
   query,
   pinnedHeader = true,
 }: SearchResultsProps) {
-  // The text as the links write it (`searchHref`), legacy's normalization.
   const keyword = normalizeLegacyKeyword(query);
   const { user } = useAuth();
   const search = useQuery(
     allTypesSearchQueryOptions(keyword, user?.id ?? "anonymous"),
   );
   const { data, isFetching } = search;
-  // A Retry keeps the failure on screen, marked "Retrying…", until it answers.
   const { error, retrying, retry } = useRetryKeepingError(search, keyword);
-  // Any read in flight while an error shows (a Retry, or a re-submitted
-  // search) is a retry of it: the error stays, the button says so.
+  // Any read in flight while an error shows is a retry: the error stays.
   const busy = retrying || (Boolean(error) && isFetching);
   const isLoading = search.isLoading && !error;
   const { types, total, bestMatch } = toAllTypesResults(data, keyword);
@@ -103,7 +85,6 @@ export function SearchResults({
   const headerRef = useRef<HTMLDivElement>(null);
   const { collapsed, toggle } = useViewNavCollapsed();
   const [closed, setClosed] = useState<ReadonlySet<string>>(new Set());
-  // Results are scrolled under the pinned header.
   const [scrolled, setScrolled] = useState(false);
   const nav = useSectionNav({
     ref: scrollRef,
@@ -119,7 +100,6 @@ export function SearchResults({
     setClosed(next);
   };
 
-  // A folded type opens first, and is scrolled to once it has laid out.
   const select = (id: string) => {
     if (!closed.has(id)) {
       nav.select(id);
@@ -233,11 +213,8 @@ export function SearchResults({
     </Card>
   ) : (
     found.map((type) => (
-      // The scroll target, outlined for a moment when the rail jumps to it:
-      // inside its edge, which can sit right under the pinned header, and on
-      // an overlay, which paints over the table's positioned scroll area (an
-      // outline on the target itself paints under it, and under its header
-      // row's fill).
+      // Outlined on an inner overlay: an outline on the target itself would
+      // paint under the table's positioned scroll area and header fill.
       <div
         key={type.id}
         id={sectionAnchorId(type.id)}
@@ -254,14 +231,13 @@ export function SearchResults({
     ))
   );
 
-  // Rendered here, not passed in by the (server) page: passed in as a
-  // server-rendered element, it made the React DevTools extension log "The
-  // children should not have changed if we pass in the same set" on every load.
+  // Rendered here, not passed in by the server page: a server-rendered element
+  // prop made React DevTools log a "children should not have changed" warning
+  // on every load.
   const footer = <Footer />;
 
-  // One scroll area, the footer spanning its end. `relative` keeps the
-  // footer's absolutely positioned parts inside it; outside, they would
-  // stretch the page past the viewport.
+  // `relative` keeps the footer's absolutely positioned parts inside the scroll
+  // area, or they stretch the page past the viewport.
   return (
     <div
       ref={scrollRef}
@@ -274,12 +250,8 @@ export function SearchResults({
       <div className="flex w-full flex-1 gap-3 px-2 pb-8 sm:px-3 lg:px-4">
         {rail}
         <div className="min-w-0 flex-1">
-          {/* Pinned, it is opaque in the page's own color (the page's tint
-              over the body background), so results scroll out of sight
-              under it, and 8px wider than the column on each side, so their
-              shadows do too. Its 6px foot is the gap left above a section
-              jumped to; at rest the results' own 6px margin doubles it to the
-              12px between cards. */}
+          {/* Opaque in the page's own color so results scroll out of sight under
+              it; 8px wider than the column per side to cover shadows. */}
           <div
             ref={headerRef}
             className={cn(

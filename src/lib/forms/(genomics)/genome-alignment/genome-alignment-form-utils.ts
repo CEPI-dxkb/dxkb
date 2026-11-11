@@ -1,9 +1,6 @@
 import { GenomeAlignmentFormData } from "./genome-alignment-form-schema";
 import type { GenomeSummary } from "@/lib/services/genome";
 
-/**
- * Transform genome alignment form data into the payload expected by the App Service
- */
 export function transformGenomeAlignmentParams(
   data: GenomeAlignmentFormData,
 ) {
@@ -23,9 +20,6 @@ export function transformGenomeAlignmentParams(
   return params;
 }
 
-/**
- * Helper to create genome alignment form values with overrides
- */
 export function createGenomeAlignmentFormValues(
   currentValues: GenomeAlignmentFormData,
   overrides: Partial<GenomeAlignmentFormData>,
@@ -41,10 +35,7 @@ export function idOnlyGenome(genomeId: string): GenomeSummary {
   return { genome_id: genomeId, genome_name: genomeId };
 }
 
-/**
- * Restored genomes whose names could not be confirmed: the lookup failed
- * (`error`), or it answered without these IDs.
- */
+/** Restored genomes whose names could not be confirmed (lookup failed or omitted these IDs). */
 export interface UnverifiedGenomes {
   ids: string[];
   error: string | null;

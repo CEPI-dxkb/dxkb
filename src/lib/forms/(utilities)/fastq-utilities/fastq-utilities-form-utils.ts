@@ -13,9 +13,6 @@ export const actionColors = [
   "bg-yellow-500",
 ] as const;
 
-/**
- * Transform FASTQ utilities form data to API parameters
- */
 export function transformFastqUtilitiesParams(
   data: FastqUtilitiesFormData,
 ): Record<string, unknown> {
@@ -25,12 +22,10 @@ export function transformFastqUtilitiesParams(
     recipe: data.recipe,
   };
 
-  // Add target genome if align is selected
   if (data.recipe.includes("align") && data.reference_genome_id) {
     params.reference_genome_id = data.reference_genome_id.trim();
   }
 
-  // Add paired end libraries
   if (data.paired_end_libs && data.paired_end_libs.length > 0) {
     params.paired_end_libs = data.paired_end_libs.map((lib) => ({
       read1: lib.read1,
@@ -38,7 +33,6 @@ export function transformFastqUtilitiesParams(
     }));
   }
 
-  // Add single end libraries with platform
   if (data.single_end_libs && data.single_end_libs.length > 0) {
     params.single_end_libs = data.single_end_libs.map((lib) => ({
       read: lib.read,
@@ -46,7 +40,6 @@ export function transformFastqUtilitiesParams(
     }));
   }
 
-  // Add SRA libraries
   if (data.srr_ids && data.srr_ids.length > 0) {
     params.srr_libs = data.srr_ids.map((srrId) => ({
       srr_accession: srrId,
@@ -56,31 +49,19 @@ export function transformFastqUtilitiesParams(
   return params;
 }
 
-/**
- * Check if the Align action is in the recipe
- */
 export function isAlignSelected(recipe: PipelineAction[]): boolean {
   return recipe.includes("align");
 }
 
-/**
- * Get the label for a pipeline action (internal helper)
- */
 function getActionLabel(action: PipelineAction): string {
   const option = pipelineActionOptions.find((opt) => opt.value === action);
   return option?.label || action;
 }
 
-/**
- * Get a deterministic color for a pipeline action index
- */
 function getColorForIndex(index: number): string {
   return actionColors[index % actionColors.length];
 }
 
-/**
- * Create a new pipeline action item with visual properties
- */
 export function createPipelineActionItem(
   action: PipelineAction,
   index = 0,
@@ -93,9 +74,6 @@ export function createPipelineActionItem(
   };
 }
 
-/**
- * Reassign colors based on current array position to keep sequence compact
- */
 function renormalizePipelineActions(
   items: PipelineActionItem[],
 ): PipelineActionItem[] {
@@ -105,9 +83,6 @@ function renormalizePipelineActions(
   }));
 }
 
-/**
- * Remove a pipeline action item by ID and renormalize visuals
- */
 export function removePipelineActionItem(
   items: PipelineActionItem[],
   id: string,
@@ -116,9 +91,6 @@ export function removePipelineActionItem(
   return renormalizePipelineActions(filtered);
 }
 
-/**
- * Convert pipeline action items to recipe array for form
- */
 export function actionItemsToRecipe(
   items: PipelineActionItem[],
 ): PipelineAction[] {

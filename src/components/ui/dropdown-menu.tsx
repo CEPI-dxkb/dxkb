@@ -76,9 +76,6 @@ function DropdownMenuGroup({ ...props }: MenuPrimitive.Group.Props) {
   return <MenuPrimitive.Group data-slot="dropdown-menu-group" {...props} />
 }
 
-// Local edit (keep when regenerating with `shadcn add --overwrite`): the
-// DropdownMenuLabel `variant` axis (`heading`: a one-line title at the top of
-// a menu, such as the signed-in user's greeting).
 const dropdownMenuLabelVariants = cva(
   "px-1.5 py-1 text-xs font-medium text-muted-foreground data-inset:pl-7",
   {
@@ -113,11 +110,6 @@ function DropdownMenuLabel({
   )
 }
 
-// Local edit (keep when regenerating with `shadcn add --overwrite`): every
-// highlightable row (Item, SubTrigger, CheckboxItem, RadioItem) fades its
-// highlight in and out over 150ms (`transition-colors duration-150 ease-out`)
-// instead of snapping. Reduced motion turns it off through the global rule in
-// globals.css.
 function DropdownMenuItem({
   className,
   inset,
@@ -224,12 +216,6 @@ function DropdownMenuCheckboxItem({
   )
 }
 
-// Local edit (keep when regenerating with `shadcn add --overwrite`): the
-// radio group and radio item `variant` axes.
-// - `segmented` group + `segment` items: a two-or-three-way toggle drawn as a
-//   track whose checked segment is raised (the theme menu's Light/Dark mode).
-// - `preview` items: a radio circle at the start and room for a picture of
-//   the choice before its label (the theme menu's theme list).
 const dropdownMenuRadioGroupVariants = cva("", {
   variants: {
     variant: {

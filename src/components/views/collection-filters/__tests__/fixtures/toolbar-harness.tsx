@@ -5,7 +5,6 @@ import type { ResourceCollectionFacet } from "../../../resource-collection";
 import { CollectionToolbar } from "../../collection-toolbar";
 import type { CollectionToolbarProps, FacetStatus } from "../../types";
 
-/** Two pinned facets, two in More (one of them never counted). */
 export const toolbarDefinitions: ResourceCollectionFacet[] = [
   { field: "genome_status", label: "Genome Status" },
   { field: "host_name", label: "Host Name" },
@@ -38,7 +37,6 @@ type Filters = Record<string, string[]>;
 interface ToolbarOptions {
   definitions?: ResourceCollectionFacet[];
   facets?: ResourceFacets;
-  /** Defaults to "ready" for a counted field, else "loading". */
   statuses?: Partial<Record<string, FacetStatus>>;
   filters?: Filters;
   pinned?: string[];
@@ -46,10 +44,6 @@ interface ToolbarOptions {
   overrides?: Partial<CollectionToolbarProps>;
 }
 
-/**
- * The toolbar over real state: picks, pins and peeks land as a page's would,
- * and every callback is also a spy.
- */
 export function renderToolbar({
   definitions = toolbarDefinitions,
   facets = toolbarFacets,

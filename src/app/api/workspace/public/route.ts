@@ -11,12 +11,7 @@ import { getRequiredEnv } from "@/lib/env";
 
 const allowedMethods = new Set(["Workspace.ls", "Workspace.get"]);
 
-/**
- * Public workspace API proxy route.
- * - Does NOT require authentication (no 401 on missing token).
- * - Only allows read-only methods (Workspace.ls, Workspace.get).
- * - Optionally forwards auth token if user happens to be logged in.
- */
+/** Public proxy: no auth required (the token is forwarded if present) and only `Workspace.ls` and `Workspace.get` are allowed. */
 export async function POST(request: NextRequest) {
   try {
     const body = (await request.json()) as { method?: unknown; params?: unknown };

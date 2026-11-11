@@ -166,11 +166,6 @@ async function deleteTemporaryGroup(
   }
 }
 
-/**
- * Runs after a result tab has been reserved synchronously by the click handler.
- * Keeping this exact cleanup sequence outside React restores compiler coverage for
- * the hook and chooser without changing stale-session or temporary-group behavior.
- */
 async function launchGroupBackedService({
   service,
   session,
@@ -184,8 +179,8 @@ async function launchGroupBackedService({
   onSettled,
 }: GroupBackedLaunchOptions): Promise<void> {
   let groupPath: string | undefined;
-  // Reads `groupPath` at call time: it is still undefined on the catch path when
-  // createTemporaryGroup itself threw, and deleteTemporaryGroup no-ops on that.
+  // Reads `groupPath` at call time: it is still undefined on the catch path
+  // when createTemporaryGroup itself threw.
   const teardown = async () => {
     closeRerunWindow(resultWindow);
     await deleteTemporaryGroup(groupPath);
@@ -305,7 +300,7 @@ export function useSelectionServiceLaunch({
     }
 
     setFailure(null);
-    // This must remain before any async work so popup blockers see the click gesture.
+    // Must stay before any async work so popup blockers see the click gesture.
     const resultWindow = reserveRerunWindow();
     if (!resultWindow) {
       setFailure({ message: rerunPopupBlockedMessage });

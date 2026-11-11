@@ -1,9 +1,3 @@
-/**
- * Each track as what the figure draws: its ring, a background aligned to the
- * sequences (legacy `renderAlignedBackground`), guide circles, and its marks
- * as a few path strings plus a span index for hover. Pure, so the figure can
- * memoize it and a hover re-renders nothing but the tooltip.
- */
 import type { CircularContig, CircularFeature } from "./contract";
 import { heatmapColor } from "./heatmap";
 import { indexSpans, spanAt, visibleSegments, type IndexedSpan, type SpanIndex } from "./hit-test";
@@ -44,9 +38,8 @@ export type HoverItem =
   | { kind: "score"; point: ScorePoint };
 
 /**
- * A histogram bar's radii: `innerRadius` is the baseline and `outerRadius`
- * the score's radius, below the baseline for a negative score (d3's arc
- * draws either way round).
+ * `innerRadius` is the baseline, below `outerRadius` for a negative score (d3's
+ * arc draws either way round).
  */
 export type BarRadii = Pick<RadialSpan, "innerRadius" | "outerRadius">;
 
@@ -68,12 +61,9 @@ export type TrackBody =
   | { kind: "labels"; ticks: readonly TickMark[] }
   | {
       kind: "marks";
-      /** `darkColor`: the color in a dark theme (`CircularTrack.darkForeground`); null: `color` there too. */
       layers: readonly { color: string | null; darkColor: string | null; d: string }[];
-      /** Null for a line: legacy's line tracks had no popup. */
       hits: SpanIndex | null;
       items: readonly HoverItem[];
-      /** A histogram's bars, by item index, so the highlight is the hovered bar rather than the ring. */
       bars?: readonly BarRadii[];
     }
   | { kind: "pending" }
@@ -94,7 +84,6 @@ export interface TrackDrawing {
 
 const defaultScale: ScoreScale = { min: 0, max: 1 };
 
-/** A whole ring, for a track that is loading or failed. */
 export function ringPath(ring: Ring): string {
   return sectorsPath(
     [{ startAngle: 0, endAngle: fullTurn }],
@@ -103,10 +92,6 @@ export function ringPath(ring: Ring): string {
   );
 }
 
-/**
- * 0-based half-open regions as angle spans; a region off the genome, or past
- * a sequence's end (clamped to a zero-width span there), is dropped.
- */
 function regionSpans(
   layout: GenomeLayout,
   regions: readonly { accession: string; start: number; end: number }[],
@@ -123,7 +108,6 @@ function regionSpans(
 function tickMarks(layout: GenomeLayout, ring: Ring): TickMark[] {
   const width = ring.outerRadius - ring.innerRadius;
   return positionTicks(layout).map((tick) => {
-    // Legacy: minor ticks a tenth of the ring, others a fifth; labels from there out.
     const reach =
       ring.innerRadius + (tick.size === "minor" ? width / 10 : width / 5);
     const from = toCartesian(tick.angle, ring.innerRadius);
@@ -132,7 +116,6 @@ function tickMarks(layout: GenomeLayout, ring: Ring): TickMark[] {
     if (tick.label === undefined) return mark;
     const at = toCartesian(tick.angle, reach + 2);
     const degrees = (tick.angle * 180) / Math.PI - 90;
-    // On the left half, turned to read upright and anchored at its end, so it still runs outward.
     const flipped = tick.angle > Math.PI;
     return {
       ...mark,
@@ -201,13 +184,11 @@ function scoreBody(
   const scale = track.scale ?? defaultScale;
   const { innerRadius, outerRadius } = ring;
   if (track.plot === "line") {
-    // Legacy LineTrack: one line per sequence through each window's start.
     const lines = new Map<string, RadialPoint[]>();
     for (const point of points) {
       const contig = layout.byAccession.get(point.accession);
       // A 0-based start at or past the sequence's end has no base to stand on
-      // (`offsetAngle` would clamp it to a vertex at the end); the rest are
-      // on the sequence, so their angle needs no clamp.
+      // (`offsetAngle` would clamp it to a vertex at the end).
       if (contig === undefined || point.start >= contig.length) continue;
       const angle = contig.startAngle + point.start * layout.radiansPerBase;
       const line = lines.get(point.accession) ?? [];
@@ -249,8 +230,8 @@ function scoreBody(
       bars,
     };
   }
-  // The hits keep whole spans, one per item, for the keyboard and its count;
-  // only the paint is cut into the pieces that show.
+  // The hits keep whole spans for the keyboard and its count; only the paint is
+  // cut into the pieces that show.
   const hits = indexSpans(spans);
   const byColor = new Map<string, IndexedSpan[]>();
   for (const segment of visibleSegments(hits)) {
@@ -311,10 +292,8 @@ function buildTrackDrawing(
   };
 }
 
-/** A track with no answer yet; one object, so it is never a change. */
 export const pendingTrackData: TrackData = { status: "pending" };
 
-/** Whether two answers draw alike: the same status and, once ready, the same items. */
 function drawsAlike(a: TrackData | undefined, b: TrackData | undefined): boolean {
   const left = a ?? pendingTrackData;
   const right = b ?? pendingTrackData;
@@ -333,11 +312,6 @@ interface CachedDrawing {
   drawing: TrackDrawing;
 }
 
-/**
- * The last drawing of each track, with what it was drawn from. A figure
- * holds one, so a change to one track (its color, say, on every move of the
- * picker) rebuilds only that track's marks.
- */
 export interface DrawingCache {
   readonly entries: Map<string, CachedDrawing>;
 }
@@ -346,11 +320,6 @@ export function createDrawingCache(): DrawingCache {
   return { entries: new Map() };
 }
 
-/**
- * Every track's drawing. With a `cache`, a track whose object, answer
- * (`drawsAlike`), layout and ring are those of its last drawing keeps that
- * drawing, the same object; the cache then holds only these tracks'.
- */
 export function buildTrackDrawings(
   tracks: readonly CircularTrack[],
   data: ReadonlyMap<string, TrackData>,
@@ -385,20 +354,13 @@ export function buildTrackDrawings(
 export interface FigureHit {
   trackId: string;
   item: HoverItem;
-  /** The hovered mark's sector, drawn as the red highlight (legacy set the mark's fill to `#ff0000`). */
   path: string;
 }
 
-/** A bar's far radius for its highlight: at least 1 px from the baseline, so a zero bar still shows. */
 function highlightReach({ innerRadius: baseline, outerRadius: reach }: BarRadii): number {
   return reach < baseline ? Math.min(reach, baseline - 1) : Math.max(reach, baseline + 1);
 }
 
-/**
- * One of a ring's marks as a hit: its item, and its sector for the
- * highlight. A histogram's is its bar, as legacy's red bar, which shows the
- * score; the hit itself still takes the ring's whole width.
- */
 export function spanHit(
   drawing: TrackDrawing,
   items: readonly HoverItem[],
@@ -416,7 +378,6 @@ export function spanHit(
   };
 }
 
-/** The mark under a polar point; `tolerancePx` widens sub-pixel marks. */
 export function hitTest(
   drawings: readonly TrackDrawing[],
   point: PolarPoint,

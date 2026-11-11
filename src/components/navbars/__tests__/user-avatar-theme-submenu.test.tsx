@@ -3,10 +3,6 @@ import userEvent from "@testing-library/user-event";
 
 import { ThemeProvider } from "@/components/theme-provider";
 
-// The real dropdown menu and theme options: for a signed-in user (desktop and
-// mobile navbars alike) this submenu is the only theme control, so the test
-// drives the whole path from the avatar to a stored theme.
-
 vi.mock("@/lib/auth/provider", () => ({
   useAuth: () => ({
     user: { id: "alice", username: "alice", email: "alice@example.com" },
@@ -42,16 +38,14 @@ import { UserAvatarDropdown } from "../user-avatar-dropdown";
 type User = ReturnType<typeof userEvent.setup>;
 
 /**
- * A touch tap, as on a phone. A mouse click would also hover: every element is
- * zero-sized in jsdom, so moving the mouse onto a submenu item reads as leaving
- * the submenu and Base UI closes it before the click lands. A real browser
- * keeps it open.
+ * A touch tap: a mouse click would also hover, and in jsdom (zero-sized
+ * elements) that reads as leaving the submenu, so Base UI closes it before the
+ * click lands.
  */
 async function tap(user: User, target: Element) {
   await user.pointer({ keys: "[TouchA]", target });
 }
 
-/** Moves menu focus down until it reaches `target`. */
 async function arrowDownTo(user: User, target: Element) {
   for (let step = 0; step < 10 && document.activeElement !== target; step++) {
     await user.keyboard("{ArrowDown}");

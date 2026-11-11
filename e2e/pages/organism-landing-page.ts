@@ -5,7 +5,6 @@ import { ViewNavRail } from "./view-nav-rail";
 export class OrganismLandingPage {
   readonly page: Page;
   readonly viewNav: ViewNavRail;
-  /** Links into taxon pages (the genus cards), which Next prefetches. */
   readonly taxonomyLinks: Locator;
 
   constructor(page: Page) {
@@ -19,12 +18,8 @@ export class OrganismLandingPage {
     await expect(this.page.getByRole("heading", { level: 1 })).toBeVisible();
   }
 
-  // Visible cards only. The KPI cards stream in through a Suspense boundary,
-  // and React can render them in place while its hidden staged copy of the
-  // same markup (`<div hidden id="S:n">` at the end of <body>) is still waiting
-  // for the queued reveal script to remove it. CSS and test-id locators match
-  // hidden elements (role locators don't), so without the filter this resolves
-  // to two cards and fails strict mode.
+  // Visible only: React's hidden staged copy (`div[hidden]#S:n`) of streamed
+  // cards matches CSS and test-id locators and trips strict mode.
   getKpi(label: string): Locator {
     return this.page
       .locator('[data-testid^="organism-kpi-"]')
@@ -35,9 +30,8 @@ export class OrganismLandingPage {
     return this.page.getByRole("link", { name: `View ${name} genomes` });
   }
 
-  // A donut whose slices link to their records is a group (an img's children
-  // are presentational, so it could not hold the links); one without links is
-  // an img.
+  // A donut with linked slices is a group (an img's children are
+  // presentational); one without links is an img.
   expectDonut(title: string): Promise<void> {
     const name = `${title} distribution`;
     return expect(

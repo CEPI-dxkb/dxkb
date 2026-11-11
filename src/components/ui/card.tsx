@@ -3,11 +3,6 @@ import { cva, type VariantProps } from "class-variance-authority"
 
 import { cn } from "@/lib/utils"
 
-// Local edit: `variant` is rendered as data-variant, like `size`, and the
-// base classes key on it. panel: organism chart and section cards. tile:
-// compact KPI and genus tiles. panel-error: a panel reporting a failed
-// section (CardTitle turns destructive inside it). raised: a bordered,
-// shadowed results card.
 function Card({
   className,
   size = "default",
@@ -41,17 +36,13 @@ function CardHeader({ className, ...props }: React.ComponentProps<"div">) {
   )
 }
 
-// Local edit: title variants. The variant's text size merges after the base,
-// so it drops `leading-snug` for the size's own line height.
 const cardTitleVariants = cva(
   "text-base leading-snug font-medium group-data-[size=sm]/card:text-sm group-data-[variant=panel-error]/card:text-destructive",
   {
     variants: {
       variant: {
         default: "",
-        // The title of a full-page card (the auth pages).
         page: "text-2xl font-bold",
-        // The title of a results section card.
         section: "text-xl font-semibold",
       },
     },

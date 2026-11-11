@@ -182,7 +182,6 @@ describe("describeRows", () => {
   it.each([
     [["PCR"], "/surveillance/S-1?pathogen_test_type=PCR"],
     ["PCR", "/surveillance/S-1?pathogen_test_type=PCR"],
-    // Tested more than one way: the member page asks which.
     [["PCR", "Culture"], "/surveillance/S-1"],
   ])(
     "links a Surveillance sample tested %j to %s",

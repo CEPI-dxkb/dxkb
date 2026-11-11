@@ -6,8 +6,6 @@ import {
 } from "./search-info";
 
 describe("search descriptors", () => {
-  // The all-data-types page shows only what DXKB has a view for: a type with
-  // no list would be a count that links nowhere.
   it("searches only types with a DXKB list view on the all-data-types page", () => {
     expect(allTermSearchTypes.map((descriptor) => descriptor.id)).toEqual([
       "taxonomy",
@@ -63,9 +61,7 @@ describe("search descriptors", () => {
   });
 
   it("writes a canonical search's keyword as legacy's search box reads it", () => {
-    // A list reads ?keyword= as written; legacy's search box quotes an id-like
-    // word (keyword("Rv0001"): 4 features, unquoted 341,272) and reads `or` as
-    // Solr's OR. The /search page normalizes its own q.
+    // A list reads ?keyword= as written; legacy quotes id-like words (unquoted "Rv0001" matches 341,272 features, quoted 4) and reads `or` as Solr's OR.
     const feature = searchDescriptors.find((item) => item.id === "genome_feature");
     const everything = searchDescriptors.find((item) => item.id === "everything");
     expect(feature && searchHref(feature, "Rv0001")).toBe(
@@ -117,7 +113,6 @@ describe("search descriptors", () => {
       (item) => item.id === "surveillance",
     );
     const serology = searchDescriptors.find((item) => item.id === "serology");
-    // Legacy's search box reads `/` as a space.
     expect(strain && searchHref(strain, "A/B strain")).toBe(
       "/strain?keyword=A+B+strain",
     );

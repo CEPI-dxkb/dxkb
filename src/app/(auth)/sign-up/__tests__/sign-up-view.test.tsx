@@ -76,7 +76,6 @@ describe("SignupView", () => {
     expect(alert).toHaveFocus();
     expect(scrollIntoView).toHaveBeenCalledWith({ block: "center" });
     expect(scrollIntoView.mock.contexts).toContain(alert);
-    // The form keeps what the user typed.
     expect(screen.getByPlaceholderText("john.doe")).toHaveValue("alice");
   });
 

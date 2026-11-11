@@ -14,7 +14,6 @@ interface EndpointTracker {
   calls: number;
 }
 
-/** `respond` gets the 1-based number of the call it answers. */
 function trackEndpoint(
   respond: (call: number) => Response = () =>
     HttpResponse.json({ success: true, created: [], failures: {} }),
@@ -145,12 +144,10 @@ describe("useEnsureUserWorkspace", () => {
     first.rerender({ ...options, listError: null, homeAppearsEmpty: true });
     first.unmount();
 
-    // Coming back to home mounts the browser again, with a fresh cache.
     renderEnsure(options);
     await settle();
     expect(tracker.calls).toBe(1);
 
-    // Another user on the same page still gets their setup.
     renderEnsure({ ...options, userKey: nextUser() });
     await waitFor(() => {
       expect(tracker.calls).toBe(2);

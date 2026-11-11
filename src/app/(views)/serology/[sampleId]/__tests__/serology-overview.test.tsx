@@ -30,8 +30,8 @@ describe("SerologyOverview", () => {
     render(
       <SerologyOverview
         serology={serologyRecord({
-          // Row keys are in neither the field map's order nor alphabetical
-          // order, so the expectation below can only be met by the field map.
+          // Row keys follow neither the field map's order nor alphabetical
+          // order, so only the field map satisfies the expectation.
           sample_identifier: "S-1",
           contributing_institution: "Argonne",
           project_identifier: "P-9",
@@ -73,7 +73,6 @@ describe("SerologyOverview", () => {
 
   it("applies the empty-section policy to every section with no populated field", () => {
     render(<SerologyOverview serology={serologyRecord()} />);
-    // Only Sample Info has a value (the required sample_identifier).
     expect(emptyOverviewSectionTitles()).toEqual([
       "Host",
       "Collection",

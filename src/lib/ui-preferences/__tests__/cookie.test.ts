@@ -32,8 +32,6 @@ describe("parseUiPreference", () => {
     ["a missing panel id", '{"workspace-main":30}'],
     ["an unknown panel id", '{"workspace-main":30,"workspace-details":70,"x":1}'],
     ["an out-of-range size", '{"workspace-main":-5,"workspace-details":105}'],
-    // The app never saves a share <= 0. Show would call resize("0%") and do nothing,
-    // and {0, 0} makes the library compute a NaN width.
     ["a zero details share", '{"workspace-main":100,"workspace-details":0}'],
     ["a zero main share", '{"workspace-main":0,"workspace-details":100}'],
     ["both shares zero", '{"workspace-main":0,"workspace-details":0}'],

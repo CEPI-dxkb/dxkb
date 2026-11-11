@@ -19,7 +19,6 @@ export default defineConfig({
       "e2e/scripts/**/*.{test,spec}.{ts,mts}",
       "scripts/**/*.{test,spec}.{ts,mts}",
     ],
-    // Exclude Playwright specs and their helpers; keep e2e/scripts/ tests in scope.
     exclude: [
       "node_modules",
       ".next",
@@ -30,7 +29,6 @@ export default defineConfig({
       "e2e/mocks/**",
       "e2e/fixtures/**",
       "e2e/__snapshots__/**",
-      // Browser-mode a11y primitive specs — run via pnpm a11y:primitives (vitest.a11y.config.mts).
       "src/**/__a11y__/**",
     ],
     css: false,
@@ -51,26 +49,13 @@ export default defineConfig({
         "src/**/types/**",
         "src/components/ui/**",
         "src/**/__tests__/fixtures/**",
-        // Test fixture data, not product code. It lives under src/lib/ only so
-        // the e2e-mock route handler and the Playwright override bundles can
-        // both import one source of truth, so `include`'s "src/lib/**" swept it
-        // in and its near-total coverage inflated every metric above.
+        // Fixture data under src/lib/, excluded because its near-total
+        // coverage inflated every metric.
         "src/lib/e2e-fixtures/**",
       ],
-      // Floors set just below the measured baseline so unrelated PRs don't
-      // randomly trip on rounding drift. Bump these incrementally as new tests
-      // raise the measured numbers; never lower them. When these were last
-      // raised, `pnpm test:coverage` measured lines 88.38, statements 87.08,
-      // functions 91.78, branches 78.81 — each floor sits 1-2 points under its
-      // measurement, which absorbs drift without leaving the several-point gap
-      // the previous floors had accumulated.
-      //
-      // These percentages describe ONLY the server/library subset `include`
-      // names above. All of src/components/** except the ui/** exclusion is
-      // outside the measurement, so a high number here says nothing about the
-      // UI layer. Adding the component layer is a separate, separately
-      // baselined coverage-policy change — do not widen `include` and reuse
-      // these floors.
+      // Floors sit 1-2 points under the measured baseline; raise them, never
+      // lower them. They cover only the server/library subset `include`
+      // names; widening to components needs its own baselined change.
       thresholds: {
         lines: 87,
         statements: 86,

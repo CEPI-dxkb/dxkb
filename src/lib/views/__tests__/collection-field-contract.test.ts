@@ -47,10 +47,8 @@ interface DerivedCase {
   fieldMap: DataFieldMap;
   metadata: DerivedFieldMetadata;
   /**
-   * One column this resource must render. The column-projection assertion
-   * below iterates `metadata.columns` and so passes vacuously for a resource
-   * that derives none; a named member makes "derived nothing" fail loudly
-   * instead of quietly.
+   * A named member makes "derived nothing" fail loudly: the column-projection
+   * assertion passes vacuously for a resource that derives none.
    */
   knownColumn: string;
 }
@@ -130,7 +128,7 @@ describe.each(derived)(
 
   it("accepts a sort with no column only for a field the resource hides", () => {
     // Feature omits its hidden columns; the sorts survive because `hidden` is a
-    // visibility flag, not a permission. No other shape of unbacked sort is allowed.
+    // visibility flag, not a permission.
     const columnIds = new Set(metadata.columns.map((column) => column.id));
     for (const sort of metadata.sorts) {
       const [name] = sort.split(":");
@@ -167,8 +165,6 @@ describe.each(derived)(
     (column) => column.sortable === false,
   );
 
-  // Skipped rather than silently vacuous: a resource with no unsortable column has
-  // nothing to assert here, and that should be visible in the run.
   it.skipIf(refusedColumns.length === 0)(
     "rejects every unsortable column's sort at the Data API boundary too",
     () => {
@@ -198,9 +194,8 @@ describe.each(derived)(
   });
 
   it("projects every column it renders", () => {
-    // Non-vacuity guard, matching the siblings above: the loop below is
-    // satisfied by a resource that derives zero columns, which is the one
-    // outcome this assertion most needs to catch.
+    // Non-vacuity guard: the loop below passes for a resource that derives zero
+    // columns.
     expect(metadata.columns.length).toBeGreaterThan(0);
     expect(metadata.columns.map((column) => column.id)).toContain(knownColumn);
     for (const column of metadata.columns) {
@@ -228,10 +223,8 @@ describe.each(derived)(
     }
   });
 
-  // Pins facet *composition*, not just membership: only Feature omits facets, so every
-  // other resource must request every field it flags `facet`. Without this, adding
-  // `hiddenFacets: "omit"` to a resource would silently drop facets (17 for
-  // Surveillance, 24 for Genome) with every other invariant here still passing.
+  // Pins facet composition: adding `hiddenFacets: "omit"` to a resource would
+  // silently drop facets with every other invariant still passing.
   it.skipIf(resource === "genome_feature")(
     "requests every facet field it flags, collapsed rather than omitted",
     () => {
@@ -245,17 +238,14 @@ describe.each(derived)(
 
 describe("hidden-field policy", () => {
   it("omits Feature's hidden fields from columns while keeping their sorts", () => {
-    // `plfam_id` is hidden, show_in_table, and a registry-sortable scalar. Feature
-    // renders no column for it, but `sort=plfam_id:asc` orders rows correctly, so the
-    // allowlist must keep accepting it — dropping it would turn a working URL into a
-    // silent fallback to unsorted.
+    // `plfam_id` is hidden but registry-sortable: Feature renders no column,
+    // yet `sort=plfam_id:asc` works, so the allowlist must keep accepting it.
     expect(resourceRegistry.genome_feature.fields.plfam_id.sortable).toBe(true);
     expect(featureMetadata.columns.map((column) => column.id)).not.toContain(
       "plfam_id",
     );
     expect(featureMetadata.sorts).toContain("plfam_id:asc");
     expect(featureMetadata.sorts).toContain("plfam_id:desc");
-    // The detail panel still projects it.
     expect(featureMetadata.detailFields).toContain("plfam_id");
   });
 
@@ -317,17 +307,14 @@ describe("hidden-field policy", () => {
 
 describe("hidden-facet policy", () => {
   it("drops Feature's high-cardinality hidden facets from the combined query", () => {
-    // Fetching the gene/product/plfam_id/pgfam_id/go/property facets times the upstream
-    // combined query out.
+    // Fetching these facets times the upstream combined query out.
     for (const name of ["gene", "product", "plfam_id", "pgfam_id", "go", "property"]) {
       expect(resourceRegistry.genome_feature.fields[name].facet).toBe(true);
       expect(featureMetadata.facets.map((facet) => facet.field)).not.toContain(
         name,
       );
-      // `facetFields` still lists it, because that list is derived from the `facet` flag
-      // alone. That does NOT make it a legal Feature URL filter: Feature hard-codes
-      // `friendlyFilters` in query.ts and never consumes `facetFields`. This assertion is
-      // a shape check on the derivation, not a statement about accepted filters.
+      // `facetFields` still lists it (derived from the `facet` flag alone), but
+      // that does not make it a legal Feature URL filter.
       expect(featureMetadata.facetFields).toContain(name);
     }
     expect(featureMetadata.facets.map((facet) => facet.field)).toEqual([
@@ -337,8 +324,6 @@ describe("hidden-facet policy", () => {
   });
 
   it("is the only resource whose facetFields exceed its facets, and does not consume them", () => {
-    // The one place `facets` and `facetFields` diverge is also the one place the wider
-    // list is unused, so no resource today turns an omitted facet into a URL filter.
     expect(featureMetadata.facetFields).not.toEqual([
       ...featureMetadata.facets.map((facet) => facet.field),
     ]);
@@ -391,7 +376,6 @@ describe("multi-value fields", () => {
       ]),
     );
     expect(epitopeMetadata.sorts).not.toContain("host_name:asc");
-    // It remains a facet and a projected field.
     expect(epitopeMetadata.facets.map((facet) => facet.field)).toContain(
       "host_name",
     );
@@ -482,8 +466,6 @@ describe("profile column adapters", () => {
     expect(columns.get("1_pb2")?.valueHref).toBe(
       "https://www.ncbi.nlm.nih.gov/nuccore/{value}",
     );
-    // A metadata link always wins over the fallback. Item 20B canonicalized
-    // this from the stale `/view/Taxonomy/{value}` onto `/taxonomy/{value}`.
     expect(columns.get("taxon_id")?.valueHref).toBe("/taxonomy/{value}");
     expect(columns.get("genome_ids")?.valueHref).toBe("/genome/{value}");
     expect(columns.get("species")?.valueHref).toBeUndefined();
@@ -532,14 +514,6 @@ describe("child-resource columns", () => {
   );
 
   it("has no genome_feature entry: the feature tabs reuse the Feature profile", () => {
-    // ResourceChildCollection substitutes `feature-view/profile.ts` for its
-    // genome_feature tabs, so a child column set here would be dead code, and it would
-    // disagree on policy with that profile's columns anyway (Feature passes
-    // `hiddenColumns: "omit"`; every derivation in this module uses the default collapse
-    // policy). The Feature column contract is covered by the genome_feature case in the
-    // derived-metadata suite above; the GO terms a child set used to guard never reach a
-    // Feature column or sort at all, since `go` is both hidden (and Feature omits
-    // hidden columns) and metadata-unsortable.
     expect(childCases.map(([, resource]) => resource)).not.toContain(
       "genome_feature",
     );
@@ -551,10 +525,8 @@ describe("child-resource columns", () => {
 });
 
 describe("URL parameter names", () => {
-  // A nested table's params are `<urlKey>.page`, and a tab switch or a top-level
-  // write deletes every param `isChildCollectionParam` claims. A top-level name that
-  // gained a dot could start with a registered `urlKey` and silently vanish on every
-  // switch, so these names stay dot-free altogether.
+  // A top-level name that gained a dot could start with a registered `urlKey`
+  // and silently vanish on every tab switch, so these names stay dot-free.
   const everyCollectionOptions = [
     epitopeCollectionOptions,
     experimentCollectionOptions,

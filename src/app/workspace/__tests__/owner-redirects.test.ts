@@ -17,10 +17,8 @@ vi.mock("@/components/workspace/workspace-browser", () => ({
 }));
 
 /**
- * The profile's login name (`l_id`) can differ from its canonical `id`. The
- * workspace is provisioned and owned under `id@realm`, matching the session
- * user id the `/workspace/home` and `/workspace/shared` shortcuts redirect
- * with, so these pages must not send the user to `l_id@realm`.
+ * The profile's `l_id` can differ from its canonical `id`; the workspace is
+ * owned under `id@realm`, so redirects must not use `l_id@realm`.
  */
 const user: AuthUser = {
   id: "Clark.Cucinell",

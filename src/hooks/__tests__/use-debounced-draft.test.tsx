@@ -96,7 +96,6 @@ describe("useDebouncedDraft", () => {
     });
     expect(commit).toHaveBeenLastCalledWith("ec");
 
-    // The user types again while the write of "ec" is still pending.
     act(() => {
       result.current[1]("eco");
     });
@@ -126,7 +125,6 @@ describe("useDebouncedDraft", () => {
     });
     expect(commit).toHaveBeenLastCalledWith("eco");
 
-    // The normalized value landing is this hook's own write, not an outside one.
     act(() => {
       result.current[1]("eco k");
     });
@@ -172,7 +170,6 @@ describe("useDebouncedDraft", () => {
     });
     rerender({ committed: "eco" });
 
-    // Back to the entry before the search, then Forward to the entry after it.
     rerender({ committed: "" });
     expect(result.current[0]).toBe("");
     rerender({ committed: "eco" });

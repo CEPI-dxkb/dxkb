@@ -2,10 +2,8 @@ import { fireEvent, render, screen } from "@testing-library/react";
 
 import { GenomeTable, ReferenceGenomesClient } from "../reference-genomes-client";
 
-// useVirtualizer measures the scroll container via ResizeObserver / getBoundingClientRect,
-// neither of which works in jsdom. Mock it to return all items synchronously so tests
-// can assert on row content and sort order without fighting the virtualizer's async
-// measurement lifecycle.
+// useVirtualizer needs ResizeObserver/getBoundingClientRect, which jsdom lacks;
+// the mock returns every item synchronously.
 vi.mock("@tanstack/react-virtual", () => ({
   useVirtualizer: ({
     count,
@@ -44,7 +42,6 @@ const complete = {
   hrefs: { byType: {} },
 };
 
-// 21,329 Representative genomes exist but only two came with the page.
 const truncated = {
   rows: genomes,
   counts: { Reference: 2, Representative: 21329 },
@@ -130,7 +127,6 @@ describe("ReferenceGenomesClient", () => {
   it("sort button is accessible via aria-sort (none → ascending → descending → none)", () => {
     render(<ReferenceGenomesClient {...complete} />);
 
-    // Use the All tab panel; there are 3 panels but only one visible.
     const sortButton = screen.getAllByRole("button", { name: /Sort by genome name/ })[0];
     const sortHeader = sortButton.closest("th");
     expect(sortHeader).not.toBeNull();
@@ -152,7 +148,6 @@ describe("ReferenceGenomesClient", () => {
     const sortButton = screen.getAllByRole("button", { name: /Sort by genome name/ })[0];
     fireEvent.click(sortButton);
 
-    // The 'All' panel is the first visible TabsContent
     const links = screen.getAllByRole("link");
     const orderedNames = links.slice(0, 4).map((el) => el.textContent);
     expect(orderedNames).toEqual([
@@ -166,8 +161,8 @@ describe("ReferenceGenomesClient", () => {
   it("descending sort reorders rows reverse-alphabetically", () => {
     render(<ReferenceGenomesClient {...complete} />);
     const sortButton = screen.getAllByRole("button", { name: /Sort by genome name/ })[0];
-    fireEvent.click(sortButton); // → asc
-    fireEvent.click(sortButton); // → desc
+    fireEvent.click(sortButton);
+    fireEvent.click(sortButton);
 
     const links = screen.getAllByRole("link");
     const orderedNames = links.slice(0, 4).map((el) => el.textContent);
@@ -209,7 +204,6 @@ describe("ReferenceGenomesClient", () => {
     it("notes the shortfall and links the All and Representative tabs", () => {
       render(<ReferenceGenomesClient {...truncated} />);
 
-      // Only the selected tab's panel is mounted.
       expect(screen.getByText("Showing 4 of 21,331.")).toBeInTheDocument();
       const all = screen.getByRole("link", { name: "View all 21,331 in the Genomes tab" });
       expect(all).toHaveAttribute("href", truncated.hrefs.all);
@@ -248,11 +242,9 @@ describe("ReferenceGenomesClient", () => {
     it("shows the Genome Name header as plain text in incomplete tabs only", () => {
       render(<ReferenceGenomesClient {...truncated} />);
 
-      // All is incomplete: plain header, no aria-sort, no button.
       expect(screen.getByText("Genome Name").closest("th")).not.toHaveAttribute("aria-sort");
       expect(screen.queryByRole("button", { name: /Sort by genome name/ })).not.toBeInTheDocument();
 
-      // Reference is complete: sortable.
       fireEvent.click(screen.getByRole("tab", { name: /Reference \(2\)/ }));
       expect(screen.getByRole("button", { name: /Sort by genome name/ })).toBeInTheDocument();
 

@@ -34,20 +34,16 @@ import {
 import { displayFacetValue, navigationTarget } from "./facet-values";
 import type { FacetActions } from "./use-facet-actions";
 
-/** Where a facet sits in the menu's left pane. */
 export type FacetGroup = "active" | "pinned" | "more";
 
 type MenuFocus = "left" | "right";
 
 /**
- * The Filters menu's state, owned by the toolbar so "+N" can open it on a
- * facet. `snapshotGroups` runs on every opening: while the menu is open each
- * facet keeps the group it opened in, so a pick, pin or peek never makes the
- * rows jump.
+ * `snapshotGroups` runs on every opening: while open each facet keeps the group
+ * it opened in, so rows never jump.
  */
 export function useFiltersMenuState(
   menuFields: readonly string[],
-  /** Shown on the right when nothing else is (first active, else pinned). */
   defaultField: string | null,
   snapshotGroups: () => Map<string, FacetGroup>,
 ) {
@@ -83,7 +79,6 @@ export function useFiltersMenuState(
       setGroups(snapshotGroups());
       setOpenState(true);
     },
-    /** The group a facet opened in, while the menu is open. */
     groupAtOpen: (target: string) => groups?.get(target),
     shownField,
     setField,
@@ -93,12 +88,10 @@ export function useFiltersMenuState(
     setRightQuery,
     moreOpen,
     setMoreOpen,
-    /** Which search box the menu focuses when it opens. */
     focusTarget: () => focusRef.current,
     setFocusTarget: (target: MenuFocus) => {
       focusRef.current = target;
     },
-    /** Open on a given facet with its checklist focused ("+N"). */
     openAt: (target: string) => {
       const snapshot = snapshotGroups();
       setGroups(snapshot);
@@ -116,7 +109,6 @@ export type FiltersMenuState = ReturnType<typeof useFiltersMenuState>;
 
 type LeftRow =
   | { kind: "facet"; key: string; field: string; group: FacetGroup }
-  /** The folded More group's header: a row of its own in the key order. */
   | { kind: "more"; key: string; count: number }
   | { kind: "value"; key: string; field: string; value: string; count?: number };
 
@@ -133,7 +125,6 @@ interface FiltersMenuProps {
   labelFor: (field: string) => string;
   filters: Readonly<Partial<Record<string, readonly string[]>>>;
   facetActions: FacetActions;
-  /** Counts refreshing for this scope: the menu's one busy signal. */
   refreshing: boolean;
   activeCount: number;
   toggleValue: (field: string, value: string) => void;
@@ -143,13 +134,6 @@ interface FiltersMenuProps {
   onPrefetchFacets: () => void;
 }
 
-/**
- * The toolbar's Filters button and its two-pane menu. Left: the facets,
- * grouped Active · Facets (the pinned set) · a folded MORE group whose
- * counts all load together when it is unfolded, plus values matching the
- * search. Right: the current facet's checklist. Hovering or arrowing switches
- * the right pane at once to any counted facet; hovering never starts a read.
- */
 export function FiltersMenu({
   menu,
   menuFields,
@@ -174,8 +158,7 @@ export function FiltersMenu({
   const [activeKey, setActiveKey] = useState<string | null>(null);
   const lastPointer = useRef<{ x: number; y: number } | null>(null);
 
-  // Opened on a facet far down the list ("+N"): bring it into view once per
-  // opening. The popup mounts a frame after the open state flips.
+  // The popup mounts a frame after the open state flips.
   const openedOn = menu.open ? menu.shownField : null;
   const scrolledToOpened = useRef(false);
   useEffect(() => {
@@ -197,8 +180,6 @@ export function FiltersMenu({
     };
   }, [openedOn]);
 
-  // Rows in key order: Active, the pinned facets, then More (its header row,
-  // and its facets when unfolded; a search always unfolds it), then values.
   const buildRows = (query: string, moreOpen: boolean): LeftRow[] => {
     const needle = query.trim().toLowerCase();
     const matched = menuFields.filter(
@@ -254,15 +235,13 @@ export function FiltersMenu({
   );
   const optionId = (index: number) => `${listId}-${String(index)}`;
 
-  /** Count every More facet, in one read, before one of them is shown. */
   const countMoreFacets = () => {
     facetActions.peek(menuFields.filter((field) => groupOf(field) === "more"));
   };
 
   /**
-   * Make a row the highlighted one and show its facet on the right. A More
-   * facet not yet counted (a search lists it while More is folded) is only
-   * highlighted: hovering or arrowing never starts a read.
+   * A More facet not yet counted is only highlighted: hovering or arrowing
+   * never starts a read.
    */
   const preview = (row: LeftRow, queryArg?: string) => {
     const query = queryArg ?? menu.leftQuery;
@@ -272,7 +251,6 @@ export function FiltersMenu({
     menu.setRightQuery(row.kind === "value" ? query.trim() : "");
   };
 
-  /** A click, Enter or → on a facet: show it, counting More first if needed. */
   const openFacet = (row: Extract<LeftRow, { kind: "facet" }>) => {
     setActiveKey(row.key);
     if (!facetActions.isCounted(row.field)) countMoreFacets();
@@ -288,7 +266,6 @@ export function FiltersMenu({
     });
     if (!opening) return;
     countMoreFacets();
-    // Bring the header to the top so the facets it just revealed are in view.
     const list = leftListRef.current;
     const header = list?.querySelector<HTMLElement>("[data-more-header]");
     if (!list || !header) return;
@@ -305,8 +282,7 @@ export function FiltersMenu({
     rightInputRef.current?.focus();
   };
   /**
-   * Enter or → on a facet. The checklist is keyed by its field, so opening a
-   * facet the pane is not showing (an uncounted one is only highlighted)
+   * The checklist is keyed by field, so opening a facet the pane is not showing
    * replaces it: commit that first, then focus the new one.
    */
   const openFacetAndFocus = (row: Extract<LeftRow, { kind: "facet" }>) => {
@@ -341,7 +317,6 @@ export function FiltersMenu({
       (event.key === "Enter" ||
         (event.key === " " && event.currentTarget.value === ""))
     ) {
-      // Space types into a non-empty search; on the header it folds.
       event.preventDefault();
       toggleMore();
     } else if (event.key === "Enter") {
@@ -382,8 +357,6 @@ export function FiltersMenu({
 
   const renderRow = (row: LeftRow) => {
     const index = rows.indexOf(row);
-    // The tint follows the pointer or the arrows only; the current facet is
-    // marked by its bar, not by a second fill.
     const isActive = index === activeIndex && activeKey !== null;
     const common = {
       id: optionId(index),
@@ -393,9 +366,8 @@ export function FiltersMenu({
         event.preventDefault();
       },
       onMouseMove: (event: { clientX: number; clientY: number }) => {
-        // WebKit fires mousemove on rows scrolling under a still pointer
-        // (unfolding More scrolls the list); only a real move previews, so
-        // the pane never jumps to a facet the user never pointed at.
+        // WebKit fires mousemove on rows scrolling under a still pointer; only
+        // a real move previews.
         const last = lastPointer.current;
         lastPointer.current = { x: event.clientX, y: event.clientY };
         if (last?.x === event.clientX && last.y === event.clientY) return;
@@ -452,8 +424,6 @@ export function FiltersMenu({
           onClick={() => {
             openFacet(row);
           }}
-          // One height for every row (applied values sit inline), so a pick
-          // never pushes the rows below it.
           className="group/row relative mx-1.5 flex h-7 shrink-0 cursor-pointer items-center gap-1.5 rounded-md pr-1 pl-2.5 text-xs text-muted-foreground data-active:bg-foreground/5 data-active:text-foreground data-current:font-medium data-current:text-foreground"
         >
           <span
@@ -469,8 +439,6 @@ export function FiltersMenu({
             )}
           </span>
           {isDefined(row.field) ? (
-            // A mouse shortcut; the keyboard path is the Pin button in the
-            // right pane's header. Shown on the hovered and current rows.
             <span
               aria-hidden="true"
               title={
@@ -527,7 +495,6 @@ export function FiltersMenu({
   };
 
   const shownPinned = shownView ? facetActions.isPinned(shownView.field) : false;
-  // Counts refreshing after a pick, or a peeked facet's first counts.
   const busy =
     refreshing ||
     (shownView !== null &&
@@ -576,8 +543,6 @@ export function FiltersMenu({
             : leftInputRef.current
         }
       >
-        {/* Two panes side by side; in a popup narrower than @lg (a phone)
-            the facets sit above the values instead. */}
         <div className="relative flex h-120 max-h-(--available-height) flex-col @lg:h-90 @lg:flex-row">
           <RefreshHairline active={busy} />
           <div className="flex h-44 shrink-0 flex-col border-b border-border @lg:h-auto @lg:w-56 @lg:border-r @lg:border-b-0">
@@ -593,9 +558,6 @@ export function FiltersMenu({
               }}
               onChange={(query) => {
                 menu.setLeftQuery(query);
-                // Land on the first match: a facet whose label matches, else
-                // a value ("germany" shows Isolation Country › Germany on the
-                // right, its search seeded).
                 const first = buildRows(query, menu.moreOpen).at(0);
                 if (first) preview(first, query);
                 else setActiveKey(null);
@@ -634,7 +596,6 @@ export function FiltersMenu({
                   <RowGroup
                     label="Facets"
                     count={pinnedRows.length}
-                    // A lone facet list needs no heading.
                     bare={
                       activeRows.length === 0 &&
                       moreRows.length === 0 &&
@@ -646,10 +607,6 @@ export function FiltersMenu({
                   </RowGroup>
                   {moreHeader ? (
                     <>
-                      {/* Sticky, so "Show less" stays in reach. It sticks
-                          above the list's top padding (6px) and its own
-                          border (1px), so no row shows through above it and
-                          its border tucks under the search row's divider. */}
                       <div
                         data-more-header
                         className="sticky -top-1.75 z-10 mt-1.5 shrink-0 border-t border-border bg-popover py-1 first:mt-0 first:border-t-0"
@@ -710,7 +667,6 @@ export function FiltersMenu({
                 }}
                 headerAction={
                   isDefined(shownView.field) ? (
-                    // Fixed width for "Pinned", so the toggle never moves Clear.
                     <button
                       type="button"
                       aria-pressed={shownPinned}
@@ -720,7 +676,6 @@ export function FiltersMenu({
                           : "Keep this facet in your set"
                       }
                       onClick={() => {
-                        // Hold the pane here even if it was only the default.
                         menu.setField(shownView.field);
                         facetActions.togglePin(shownView.field);
                       }}
@@ -756,7 +711,6 @@ export function FiltersMenu({
   );
 }
 
-/** A labelled run of options in the facet list; nothing when it is empty. */
 function RowGroup({
   label,
   count,

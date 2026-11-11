@@ -17,7 +17,6 @@ import type { CollectionState } from "@/lib/views/collection-state";
 
 const repository = new DataRepository();
 const maxScopedExperiments = 500;
-/** `formatUserFacingErrorMessage` fallback for a failure that says nothing. */
 const genericScopeErrorMessage =
   "The matching experiments could not be loaded. Please try again.";
 
@@ -29,8 +28,6 @@ export function ExperimentBiosetCollection({
   experimentState,
 }: ExperimentBiosetCollectionProps) {
   const experimentRql = experimentCollectionScopeRql(experimentState);
-  // Text without terms (blank, `""`, a lone `OR`, only syntax) searches for
-  // nothing.
   const keyword =
     keywordQuery(experimentState.keyword ?? "").length > 0
       ? experimentState.keyword?.trim()
@@ -44,8 +41,6 @@ export function ExperimentBiosetCollection({
         {
           rql: experimentRql,
           keyword,
-          // As the Experiments tab sends it, so both tabs cover the same
-          // experiments.
           keywordMode: "exact",
           fields: ["exp_id"],
           limit: maxScopedExperiments + 1,
@@ -54,15 +49,13 @@ export function ExperimentBiosetCollection({
       ),
     enabled: hasExperimentScope,
   });
-  // A Retry keeps the failure up ("Retrying…") instead of going back to the
-  // loading skeleton until it answers.
   const scopeRetry = useRetryKeepingError(
     experimentIds,
     JSON.stringify([experimentRql, keyword]),
   );
 
-  // The alerts sit in padding rather than taking a margin: an Alert is
-  // `w-full`, so a horizontal margin pushed it past the content's right edge.
+  // An Alert is `w-full`, so a horizontal margin would push it past the content
+  // edge; use padding.
   if (scopeRetry.error) {
     return (
       <div className="p-4">

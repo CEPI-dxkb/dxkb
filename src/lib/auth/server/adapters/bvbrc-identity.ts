@@ -25,11 +25,8 @@ function joinUrl(base: string, path = ""): string {
 }
 
 /**
- * One server log line per failed identity call, so an operator can tell "the
- * account service hangs" from "users mistyped passwords": the service, host,
- * method, what failed (an HTTP status, a timeout or the socket error code) and
- * how long it took. Never the URL path, headers, body or error text, which
- * carry usernames, credentials and tokens.
+ * Never logs the URL path, headers, body or error text, which carry usernames,
+ * credentials and tokens.
  */
 function logUpstreamFailure(
   service: string,
@@ -46,10 +43,9 @@ function logUpstreamFailure(
 }
 
 /**
- * `service` is the lower-case phrase failure messages name ("the BV-BRC
- * authentication service"): a timeout reads "… did not respond (timed out
- * after 15 s)" and a network failure "Could not reach …: <cause>", never a
- * fallback sentence with a suffix glued on.
+ * `service` is the lower-case phrase failure messages name, so a timeout reads
+ * "… did not respond (timed out after 15 s)" rather than a fallback sentence
+ * with a suffix glued on.
  */
 async function request(
   input: string,
@@ -71,8 +67,8 @@ async function request(
       signal: controller.signal,
     });
     const body = response.body ? await response.arrayBuffer() : null;
-    // A 4xx is the caller's (a wrong password, a taken username), not an
-    // outage, and logging it would only add noise.
+    // A 4xx is the caller's (wrong password, taken username), not an outage;
+    // logging it adds noise.
     if (response.status >= 500) {
       logUpstreamFailure(
         service,
@@ -127,10 +123,8 @@ function codeForStatus(status: number): AuthErrorCode {
 }
 
 /**
- * A non-OK answer. A 4xx keeps the operation's own wording ("Authentication
- * failed"); a 5xx says the service is unavailable, with the status and an
- * HTML page's title ("… is unavailable (HTTP 503 Service Unavailable: Site
- * Maintenance)"), so an outage never reads as a wrong password.
+ * A 4xx keeps the operation's own wording; a 5xx says the service is
+ * unavailable, so an outage never reads as a wrong password.
  */
 async function httpFailure<T>(
   response: Response,
@@ -217,9 +211,9 @@ export async function authenticate(
 export async function registerUser(
   input: SignupCredentials,
 ): Promise<Result<{ token: string }>> {
-  // Several frontends share one user service, which records the site an
-  // account was created from only if the caller declares it, so the value
-  // comes from server config and never from the request.
+  // The user service records the site an account was created from only if the
+  // caller declares it, so the value comes from server config, never the
+  // request.
   const siteUrl = getAppBaseUrl();
   const result = await request(
     getRequiredEnv("USER_REGISTER_URL"),

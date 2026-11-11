@@ -1,7 +1,4 @@
-// See src/lib/phylogeny/__tests__/dataset-store.test.ts: `server-only` throws
-// unconditionally outside Next's bundler, so any test importing a module
-// gated by it (this file imports the real `getSurveillance`/`getSerology`,
-// which now pull in `@/lib/data-api/server-repository`) neutralizes the
+// `server-only` throws outside Next's bundler, so this mock neutralizes the
 // guard.
 vi.mock("server-only", () => ({}));
 
@@ -14,11 +11,8 @@ import { getSerology } from "@/lib/serology-view/server";
 import { isSurveillanceSampleId } from "@/lib/surveillance-view";
 import { getSurveillance } from "@/lib/surveillance-view/server";
 
-// The shared setup mock for "next/navigation" (vitest.setup.ts) only covers
-// client-side navigation hooks. Override it here with the same `notFound`
-// convention used by the Surveillance/Serology page tests so this module's
-// real `notFound()` call is observable without depending on Next's internal
-// digest format.
+// Override the shared `next/navigation` mock so the real `notFound()` call is
+// observable without Next's digest format.
 vi.mock("next/navigation", () => ({
   notFound: () => {
     throw new Error("NEXT_NOT_FOUND");
@@ -33,14 +27,6 @@ import {
   loadCompoundSampleState,
 } from "../compound-sample-page";
 import { connectTimeout, maintenancePage } from "@/test-helpers/upstream-failures";
-
-/**
- * Full-stack tests for the shared page loader: real `getSurveillance` /
- * `getSerology` (session + ServerDataRepository) with the Data API itself
- * intercepted via MSW, so the errors exercised here are genuine
- * `DataApiError` instances produced by the real request/response mapping —
- * not hand-built stand-ins.
- */
 
 const dataApiUrl = "https://data.compound-sample-page.test";
 
@@ -183,11 +169,8 @@ describe.each(views)(
     });
 
     /**
-     * The guard for the param-encoding asymmetry documented on
-     * `readRouteParam` (src/lib/views/route-params.ts). Next hands the page component
-     * `encodeURIComponent(id)` and `generateMetadata` the bare `id`, so the
-     * two sources must be fed DIFFERENT strings and still resolve to the same
-     * identifier. A loader that normalised neither, or both, fails here.
+     * The two entry points get different strings (`encodeURIComponent(id)` and
+     * the bare id) and must still resolve to the same identifier.
      */
     describe.each([
       ["a slash", "sample/1"],
@@ -226,8 +209,6 @@ describe.each(views)(
 
           expect(fromPage.sampleId).toBe(identifier);
           expect(fromMetadata.sampleId).toBe(identifier);
-          // Same identifier in, same query out: the wire clauses must match, or
-          // the two entry points are asking the backend different questions.
           expect(new Set(requested).size).toBe(1);
         });
       },

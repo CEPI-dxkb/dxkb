@@ -8,7 +8,6 @@ test.describe("workspace (signed in)", () => {
   test.beforeEach(async ({ page }) => {
     await applyBackendMocks(page, {
       overrides: [
-        // Workspace.ls / Workspace.get / Workspace.list_permissions fired when loading workspace pages.
         ...workspacePopulatedOverrides,
         ...journeyOverrides,
       ],

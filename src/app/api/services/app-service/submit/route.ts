@@ -7,16 +7,10 @@ interface SubmitRequestBody {
   app_params?: unknown;
 }
 
-/**
- * Submit a service job
- * POST /api/services/app-service/submit
- */
 export const POST = withAuth(async (request: NextRequest, { token }) => {
-  // Parse request body
   const body = (await request.json()) as SubmitRequestBody;
   const { app_name, app_params } = body;
 
-  // Validate required fields
   if (!app_name || typeof app_name !== "string") {
     return NextResponse.json(
       { error: "app_name is required" },
@@ -31,10 +25,8 @@ export const POST = withAuth(async (request: NextRequest, { token }) => {
     );
   }
 
-  // Create app service
   const appService = createAppService(token);
 
-  // Submit the service job
   const result = await appService.submitService({
     app_name,
     app_params: app_params as Record<string, unknown>,

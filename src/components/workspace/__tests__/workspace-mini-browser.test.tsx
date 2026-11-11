@@ -5,21 +5,20 @@ import { WorkspaceRepositoryProvider } from "@/contexts/workspace-repository-con
 import { InMemoryWorkspaceRepository } from "@/lib/services/workspace/adapters/in-memory-workspace-repository";
 import { createQueryClientWrapper } from "@/test-helpers/react";
 
-// jsdom does not implement scrollIntoView; the focus effect calls it directly.
+// jsdom does not implement scrollIntoView.
 const scrollIntoViewMock = vi.fn();
 Element.prototype.scrollIntoView = scrollIntoViewMock;
 
-// jsdom 30 does provide CSS.escape (used by the focus-scroll effect's attribute
-// selector). Guard it rather than polyfilling blindly, so a future jsdom
-// downgrade fails loudly here instead of silently skipping the scroll path.
+// Guard CSS.escape so a future jsdom downgrade fails loudly instead of skipping the scroll
+// path.
 if (typeof CSS === "undefined" || typeof CSS.escape !== "function") {
   throw new Error(
     "CSS.escape is unavailable in this jsdom build; add a polyfill before running these tests",
   );
 }
 
-// Controlled requestAnimationFrame: callbacks queue until flushAnimationFrames()
-// so the focus-scroll effect can be observed deterministically.
+// Controlled requestAnimationFrame so the focus-scroll effect is observable
+// deterministically.
 const pendingFrames = new Map<number, FrameRequestCallback>();
 let nextFrameId = 0;
 
@@ -127,8 +126,6 @@ describe("WorkspaceMiniBrowser keyboard navigation", () => {
     const { onSelectPath, region } = await renderMiniBrowser();
     await screen.findByRole("row", { name: /alpha/ });
 
-    // Folders are sorted alphabetically and notes.txt is filtered out by the
-    // default folders-only mode, so the targets are parent, alpha, beta, gamma.
     arrowDown(region);
     expect(onSelectPath).toHaveBeenLastCalledWith(alphaPath);
     arrowDown(region);
@@ -155,7 +152,6 @@ describe("WorkspaceMiniBrowser keyboard navigation", () => {
 
     onSelectPath.mockClear();
     arrowUp(region);
-    // Landing on the synthetic "parent" target focuses it but selects nothing.
     expect(onSelectPath).not.toHaveBeenCalled();
   });
 
@@ -168,10 +164,8 @@ describe("WorkspaceMiniBrowser keyboard navigation", () => {
 
     onSelectPath.mockClear();
     shiftArrowUp(region);
-    // First target is the parent row, which is focused but not selected.
     expect(onSelectPath).not.toHaveBeenCalled();
 
-    // Shift+ArrowUp focused the parent row, so Enter navigates to the parent.
     enter(region);
     expect(onSelectPath).toHaveBeenLastCalledWith("/alice@bvbrc");
     await waitFor(() => {
@@ -223,8 +217,6 @@ describe("WorkspaceMiniBrowser keyboard navigation", () => {
     });
     await screen.findByRole("row", { name: /alpha/ });
 
-    // "/" has no path segments, so showParentRow is false and nothing is
-    // focused initially: both arrow directions land on the first folder.
     arrowUp(region);
     expect(onSelectPath).toHaveBeenLastCalledWith("/alpha");
 
@@ -239,7 +231,6 @@ describe("WorkspaceMiniBrowser keyboard navigation", () => {
     });
     await screen.findByRole("row", { name: /alpha/ });
 
-    // focusedRow is null, so selectedPath (beta) decides where movement starts.
     arrowDown(region);
     expect(onSelectPath).toHaveBeenLastCalledWith(gammaPath);
   });
@@ -265,7 +256,6 @@ describe("WorkspaceMiniBrowser selecting versus navigating", () => {
     arrowDown(region);
 
     expect(onSelectPath).toHaveBeenLastCalledWith(betaPath);
-    // Arrow movement must not change currentPath, so no new listing is fetched.
     expect(listDirectoryPaths(repository)).toEqual([homePath]);
     expect(screen.getByRole("row", { name: /gamma/ })).toBeInTheDocument();
   });
@@ -335,7 +325,6 @@ describe("WorkspaceMiniBrowser focus scrolling", () => {
     scrollIntoViewMock.mockClear();
 
     arrowDown(region);
-    // The effect only schedules the scroll; nothing happens until it is flushed.
     expect(scrollIntoViewMock).not.toHaveBeenCalled();
     expect(pendingFrames.size).toBe(1);
 

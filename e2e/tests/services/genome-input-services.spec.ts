@@ -15,9 +15,8 @@ test.describe("proteome-comparison submission (genome-id-input family)", () => {
         JSON.stringify({
           output_path: "/e2e-test-user@patricbrc.org/home",
           output_file: "pc-e2e",
-          // 1-based index into the combined [genome_ids, user_genomes, user_feature_groups]
-          // ordering. reference_genome_index = 3 picks the third genome_id below as the
-          // reference; the remaining two become comparison items.
+          // 1-based index into [genome_ids, user_genomes, user_feature_groups]; 3 picks
+          // the third genome_id as the reference.
           genome_ids: ["83332.111", "83333.111", "511145.12"],
           reference_genome_index: 3,
           max_e_val: "1e-5",
@@ -45,8 +44,6 @@ test.describe("proteome-comparison submission (genome-id-input family)", () => {
           jobs: [submittedJob],
           submitResponse: { job: [submittedJob] },
         }),
-        // The proteome-comparison page hydrates the rerun-applied genome IDs into
-        // ComparisonItems by looking up display names via /api/services/genome/by-ids.
         {
           url: "/api/services/genome/by-ids",
           method: "POST",
@@ -64,9 +61,8 @@ test.describe("proteome-comparison submission (genome-id-input family)", () => {
             ],
           },
         },
-        // SingleGenomeSelector mounts on the reference-genome card and may fire its
-        // autocomplete request (`GET /api/services/genome/search?q=&limit=25`) on
-        // initial focus. Without this override the call leaks past strict mode.
+        // SingleGenomeSelector may fire an autocomplete request on focus; without this
+        // override it leaks past strict mode.
         {
           url: /\/api\/services\/genome\/search/,
           method: "GET",
@@ -105,7 +101,6 @@ test.describe("proteome-comparison submission (genome-id-input family)", () => {
       output_file: "pc-e2e",
       reference_genome_index: 1,
     });
-    // The transform places the reference genome first, then the remaining comparison items.
     expect(payload.app_params?.genome_ids).toEqual([
       "511145.12",
       "83332.111",

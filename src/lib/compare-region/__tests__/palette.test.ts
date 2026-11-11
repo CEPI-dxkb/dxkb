@@ -11,7 +11,6 @@ import {
 
 const focusHue = 37.18;
 
-/** Degrees between two hues, the short way round. */
 function hueGap(a: number, b: number): number {
   const gap = Math.abs(a - b) % 360;
   return gap > 180 ? 360 - gap : gap;
@@ -36,7 +35,6 @@ describe("familyColor", () => {
   });
 
   it("moves a hue near the focus orange 66° on", () => {
-    // Raw hues 42.0, 9.6 and 62.1 all sit within 32° of the orange.
     expect(familyColor(6)).toBe("oklch(0.645 0.11 108.0)");
     expect(familyColor(11)).toBe("oklch(0.73 0.12 75.6)");
     expect(familyColor(14)).toBe("oklch(0.73 0.12 128.1)");
@@ -118,7 +116,6 @@ describe("featurePaint", () => {
   it("paints a gene by its family, the pinned gene included", () => {
     const [upstream, pinned] = focusRow.features;
     expect(featurePaint(upstream)).toBe(familyColor(3));
-    // Unlike the legacy fill, the pinned gene is not painted by identity.
     expect(pinned.identity).toBe(100);
     expect(featurePaint(pinned)).toBe(focusFamilyColor);
   });

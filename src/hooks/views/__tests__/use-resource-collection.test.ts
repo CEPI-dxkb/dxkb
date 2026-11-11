@@ -43,11 +43,6 @@ function repository() {
   } as unknown as DataRepository;
 }
 
-/**
- * One client for the whole test. `wrapper` builds a new client each time it
- * renders, so after a `rerender` or a remount it starts from an empty cache; a
- * test that counts requests across renders needs this one instead.
- */
 function sharedClientWrapper() {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false } },
@@ -173,24 +168,7 @@ describe("useResourceCollection", () => {
     expect(result.current.selectedIds).toEqual([]);
   });
 
-  /**
-   * Serology and Surveillance row ids ARE digit-only strings ("000123" appears
-   * in serology-view.test.ts), so `"0012"` and `"12"` are two real, distinct
-   * selections that must not collapse into one.
-   *
-   * Today that is free: `selectedIds` is `Object.keys` over a
-   * `Record<string, boolean>`, and object keys cannot coerce. The guarantee
-   * disappears SILENTLY the moment selection state moves off
-   * `RowSelectionState` — to a `Map`, to a number keying, or to any dedupe
-   * that parses ids — and nothing else in the suite would fail. Hence the
-   * exact ids rather than a count.
-   *
-   * The expected order is deliberately NOT sorted: `"12"` is a canonical
-   * integer-index string and so enumerates ahead of the leading-zero keys
-   * regardless of insertion order, while `"0012"` and `"000123"` follow in
-   * insertion order. Alphabetical order would be the reverse, so a `.sort()`
-   * creeping into the derivation fails here.
-   */
+  /** Ids are digit-only strings, so `"0012"` and `"12"` must stay distinct; `Object.keys` order is deliberately unsorted. */
   it("keeps digit-only selection ids distinct, in enumeration order", async () => {
     const data = repository();
     const { result } = renderHook(
@@ -529,7 +507,6 @@ describe("useResourceCollection", () => {
       expect(result.current.rows).toHaveLength(1);
     });
 
-    // Selected on another page, so no loaded row can stand in for it.
     act(() => {
       result.current.setSelection({ "200.1": true });
     });
@@ -595,8 +572,6 @@ describe("useResourceCollection", () => {
     expect(result.current.detail).not.toHaveProperty("host_name");
     expect(member).toHaveBeenCalledTimes(1);
 
-    // Same selected ID, but a view requesting a wider detail projection —
-    // must not be served the previous view's incompletely-projected record.
     rerender({ detailFields: ["genome_id", "genome_name", "host_name"] });
 
     await waitFor(() => {
@@ -919,7 +894,6 @@ describe("useResourceCollection", () => {
     first.unmount();
 
     const second = renderCollection();
-    // The rows stay stale-on-arrival (`staleTime: 0`), so the remount refreshes them.
     await waitFor(() => {
       expect(
         collection.mock.calls.filter(([, request]) => !request.facets),
@@ -1021,8 +995,6 @@ describe("useResourceCollection", () => {
     });
     expect(result.current.isPageLoading).toBe(false);
 
-    // Another page: page 1's rows stand in, so the table shows its skeleton,
-    // while page 1's total keeps the pager in place.
     rerender({ state: { ...initialState, page: 2 } });
     await waitFor(() => {
       expect(result.current.isPageLoading).toBe(true);
@@ -1030,7 +1002,6 @@ describe("useResourceCollection", () => {
     expect(result.current.isInitialLoading).toBe(false);
     expect(result.current.total).toBe(401);
 
-    // The same page in another order keeps the rows on screen meanwhile.
     rerender({ state: { ...initialState, sort: "genome_name:desc" } });
     await waitFor(() => {
       expect(result.current.isPlaceholderData).toBe(true);
@@ -1116,7 +1087,6 @@ describe("useResourceCollection", () => {
       expect(result.current.isPlaceholderData).toBe(true);
     });
 
-    // The previous query's 401 is on screen; the total waits for this query's.
     let resolved: number | undefined;
     const total = result.current.currentTotal().then((value) => {
       resolved = value;
@@ -1137,7 +1107,6 @@ describe("useResourceCollection", () => {
       });
     });
     await expect(total).resolves.toBe(37);
-    // It joined the in-flight read rather than sending its own.
     expect(collection).toHaveBeenCalledTimes(2);
   });
   it("cancels a pending current total when the query it waits for is replaced", async () => {
@@ -1256,12 +1225,10 @@ describe("useResourceCollection", () => {
       });
     });
 
-    // The user turns another facet on in the Facets menu.
     rerender({ facetFields: ["genome_status", "host_name"] });
     await waitFor(() => {
       expect(result.current.isFacetsLoading).toBe(true);
     });
-    // Genome Status is still this scope's count, so nothing on screen is stale.
     expect(result.current.isFacetsRefreshing).toBe(false);
     expect(result.current.facets).toEqual({
       genome_status: [{ value: "Complete", count: 1 }],
@@ -1271,7 +1238,6 @@ describe("useResourceCollection", () => {
         .filter(([, request]) => request.facets)
         .map(([, request]) => request.facets),
     ).toEqual([["genome_status"], ["host_name"]]);
-    // The rows are not re-read for a facet change.
     expect(
       collection.mock.calls.filter(([, request]) => !request.facets),
     ).toHaveLength(1);
@@ -1304,7 +1270,6 @@ describe("useResourceCollection", () => {
             ? []
             : [{ genome_id: "100.1", genome_name: "Page value" }],
           total: 1,
-          // A field counted with no values is absent from the upstream answer.
           facets: request.facets
             ? { host_name: [{ value: "Human", count: 1 }] }
             : {},
@@ -1344,17 +1309,12 @@ describe("useResourceCollection", () => {
         expect.any(AbortSignal),
       ],
     ]);
-    // The settled counts keep their identity across renders.
     const settled = result.current.facets;
     await waitFor(() => {
       expect(result.current.facets.genome_status).toBe(settled.genome_status);
     });
   });
 
-  /**
-   * A repository whose facet reads stay pending until their signal aborts,
-   * recording each one's signal.
-   */
   function pendingFacetRepository() {
     const data = repository();
     const facetSignals: (AbortSignal | undefined)[] = [];
@@ -1407,7 +1367,6 @@ describe("useResourceCollection", () => {
     });
     expect(facetSignals[0]?.aborted).toBe(true);
     expect(facetSignals[1]?.aborted).toBe(false);
-    // The abandoned read's abort is not this scope's error.
     expect(result.current.facetsError).toBeNull();
     expect(result.current.isFacetsLoading).toBe(true);
   });
@@ -1456,7 +1415,6 @@ describe("useResourceCollection", () => {
     });
     expect(facetSignals[0]).toBeInstanceOf(AbortSignal);
 
-    // The user unpins Host Name while both counts load.
     rerender({ facetFields: ["genome_status"] });
     expect(facetSignals[0]?.aborted).toBe(false);
 
@@ -1511,7 +1469,6 @@ describe("useResourceCollection", () => {
     });
     const facetRequests = () =>
       collection.mock.calls.filter(([, request]) => request.facets);
-    // Both fields go out in one request.
     await waitFor(() => {
       expect(facetRequests()).toHaveLength(1);
     });
@@ -1524,7 +1481,6 @@ describe("useResourceCollection", () => {
       expect.any(AbortSignal),
     ]);
 
-    // Opening the panel, or pointing at its button again, reuses those reads.
     act(() => {
       result.current.prefetchFacets(["genome_status", "host_name"]);
     });
@@ -1584,7 +1540,6 @@ describe("useResourceCollection facet scope", () => {
     );
   });
 
-  /** A repository whose facet reads answer one bucket per requested field. */
   function facetEchoRepository() {
     const data = repository();
     const collection = vi
@@ -1620,7 +1575,6 @@ describe("useResourceCollection facet scope", () => {
           idField: "feature_id",
           fields: ["feature_id"],
           facetFields: ["annotation", "feature_type", "product"],
-          // `annotation` is filtered, so its own counts leave that filter out.
           facetStructuralRql: (field) =>
             field === "annotation" ? undefined : "eq(annotation,PATRIC)",
           prefetchNextPage: false,
@@ -1646,7 +1600,6 @@ describe("useResourceCollection facet scope", () => {
     expect(facetRequests()).toHaveLength(2);
     expect(facetRequests()).toEqual(
       expect.arrayContaining([
-        // The explicit rql stays in every scope.
         expect.objectContaining({
           rql: "eq(genome_id,83332.12)",
           facets: ["annotation"],
@@ -1749,7 +1702,6 @@ describe("useResourceCollection facet scope", () => {
       },
     );
 
-    // Nothing counted yet: no previous counts stand in.
     await waitFor(() => {
       expect(result.current.rows).toHaveLength(1);
     });
@@ -1762,8 +1714,6 @@ describe("useResourceCollection facet scope", () => {
       expect(result.current.facetStatuses).toEqual({ genome_status: "ready" });
     });
 
-    // A new scope: the old counts stay on screen, marked stale, while a field
-    // counted for the first time has none to show.
     rerender({
       state: { ...initialState, keyword: "coli" },
       facetFields: ["genome_status", "host_name"],
@@ -1847,8 +1797,6 @@ describe("useResourceCollection facet scope", () => {
         "Facet query timed out upstream.",
       );
     });
-    // The previous scope's counts are not this scope's, so none are shown and
-    // the error says why.
     expect(result.current.facetStatuses).toEqual({ genome_status: "ready" });
     expect(result.current.isFacetsRefreshing).toBe(false);
     expect(result.current.isFacetsLoading).toBe(false);

@@ -16,10 +16,8 @@ import { TaxonomyTree } from "../taxonomy-tree";
 import type { TaxonRecord } from "../taxon-tree-types";
 import * as taxonChildren from "../use-taxon-children";
 
-// useVirtualizer measures the scroll container via ResizeObserver / getBoundingClientRect,
-// neither of which works in jsdom (0 layout height → 0 rows rendered). Mock it to return
-// all items synchronously so tests assert on row content without the virtualizer's async
-// measurement lifecycle. Same mock as reference-genomes-client.test.tsx.
+// useVirtualizer needs ResizeObserver/getBoundingClientRect, which jsdom lacks (0 rows
+// rendered); the mock returns every item synchronously.
 vi.mock("@tanstack/react-virtual", () => ({
   useVirtualizer: ({
     count,
@@ -42,9 +40,7 @@ vi.mock("@tanstack/react-virtual", () => ({
   }),
 }));
 
-// The tree reads children and child counts from the same-origin
-// /api/taxonomy-tree route, so these handlers intercept relative paths — no
-// NEXT_PUBLIC_DATA_API origin is involved on the client any more.
+// The tree reads children and child counts from the same-origin /api/taxonomy-tree route.
 const childrenPath = "/api/taxonomy-tree/children";
 const childCountsPath = "/api/taxonomy-tree/child-counts";
 
@@ -82,8 +78,6 @@ function child(
   };
 }
 
-// Children for the two-root ([rootTaxon, virusesRoot]) scenarios: one bacterial
-// species under Brucella, one viral family under Viruses.
 const twoRootChildren: Record<number, TaxonRecord[]> = {
   234: [child(235, "Brucella abortus", "species", 581)],
   10239: [
@@ -91,12 +85,8 @@ const twoRootChildren: Record<number, TaxonRecord[]> = {
   ],
 };
 
-// parentId -> rows, answering both route operations the tree calls:
-// /children?parentId=ID returns {rows}, and /child-counts?parentId=… returns
-// {counts} with each requested parent's child count (from byParent), so expand
-// arrows appear for nodes that have children. A parent with zero children is
-// reported as 0 here rather than omitted, which is what the route's upstream
-// mincount,1 would do — either way `getRowCanExpand` sees no positive count.
+// parentId -> rows. A parent with zero children is reported as 0 rather than omitted,
+// so `getRowCanExpand` sees no positive count either way.
 function mockChildren(byParent: Record<number, TaxonRecord[]>) {
   server.use(
     http.get(childCountsPath, ({ request }) => {
@@ -119,7 +109,6 @@ function mockChildren(byParent: Record<number, TaxonRecord[]>) {
 }
 
 afterEach(() => {
-  // Release modifier keys so held state never leaks into the next test.
   fireEvent.keyUp(document, { key: "Shift" });
   fireEvent.keyUp(document, { key: "Control" });
   fireEvent.keyUp(document, { key: "Meta" });
@@ -188,7 +177,6 @@ describe("TaxonomyTree", () => {
     expect(
       screen.getByRole("button", { name: "No phylogenetic tree available" }),
     ).toBeDisabled();
-    // Only roots carry the Trees icon; children never do.
     await screen.findByRole("link", { name: "Brucella abortus" });
     expect(
       screen.getAllByRole("link", { name: /View phylogenetic tree/ }),
@@ -219,8 +207,6 @@ describe("TaxonomyTree", () => {
     expect(
       await screen.findByRole("link", { name: "Brucella abortus" }),
     ).toBeInTheDocument();
-    // The route's specific upstream detail reaches the placeholder row rather
-    // than being replaced by a generic "failed to load sub-taxa".
     expect(
       await screen.findByText(
         /error: taxonomy children 10239: viral branch unavailable/i,
@@ -276,7 +262,6 @@ describe("TaxonomyTree", () => {
   it("keeps the expand toggle on a failed node after collapse, so expanding again retries", async () => {
     let childrenCalls = 0;
     server.use(
-      // The outage fails the count the collapsed node asks for too.
       http.get(childCountsPath, () =>
         HttpResponse.json(
           { error: "The BV-BRC data service did not respond.", code: "upstream_timeout" },
@@ -312,7 +297,6 @@ describe("TaxonomyTree", () => {
 
     fireEvent.click(within(rootRow).getByRole("button", { name: "Collapse" }));
 
-    // Its count failed as well: unknown, not zero, so it does not become a leaf.
     expect(
       await screen.findByText(/Sub-taxa counts: .*did not respond/),
     ).toBeInTheDocument();
@@ -364,7 +348,6 @@ describe("TaxonomyTree", () => {
       within(speciesRow).getByRole("button", { name: "Expand" }),
     ).toBeInTheDocument();
 
-    // Once the count loads and says none, the toggle goes as it should.
     fireEvent.click(within(alert).getByRole("button", { name: "Retry" }));
     await waitFor(() => {
       expect(
@@ -450,7 +433,6 @@ describe("TaxonomyTree", () => {
       ]);
     });
 
-    // Same id/name/rank/genomes — only the lineage was corrected by a refresh.
     const relineaged = {
       ...rootTaxon,
       lineageNames: ["cellular organisms", "Bacteria"],
@@ -484,7 +466,6 @@ describe("TaxonomyTree", () => {
     });
     const speciesRow = speciesLink.closest("tr");
     expect(speciesRow).not.toBeNull();
-    // The expand arrow appears once the batched child-count facet resolves (async).
     const expandBtn = await within(speciesRow as HTMLElement).findByRole(
       "button",
       { name: "Expand" },
@@ -516,8 +497,8 @@ describe("TaxonomyTree", () => {
       name: "Expand",
     });
 
-    // Let the count query switch from its populated key to the empty disabled key.
-    // The toggle must remain because the settled count is part of rendered state.
+    // Let the count query switch from its populated key to the empty disabled key; the toggle
+    // must remain because the settled count is part of rendered state.
     await waitFor(() => {
       expect(within(speciesRow).getByRole("button", { name: "Expand" })).toBe(
         expand,
@@ -559,7 +540,6 @@ describe("TaxonomyTree", () => {
     const badge = within(speciesLink.closest("tr") as HTMLElement).getByText(
       "species",
     );
-    // The [data-slot="badge"][data-rank="…"] rules in globals.css key on both.
     expect(badge).toHaveAttribute("data-slot", "badge");
     expect(badge).toHaveAttribute("data-rank", "species");
   });
@@ -608,8 +588,6 @@ describe("TaxonomyTree", () => {
     });
     fireEvent.click(speciesLink.closest("tr") as HTMLElement);
 
-    // onSelect fires with the full selected-row array (driven by the selection
-    // effect), not a single record. Assert the row landed in the latest call.
     await waitFor(() => {
       expect(onSelect).toHaveBeenLastCalledWith([
         expect.objectContaining({ taxon_id: 235 }),
@@ -631,7 +609,6 @@ describe("TaxonomyTree", () => {
     const row = checkbox.closest("tr") as HTMLElement;
     const selectionCell = checkbox.closest("td") as HTMLElement;
 
-    // Height comes from the h-(--row-height) class, fed by this property.
     expect(row).toHaveClass("h-(--row-height)");
     expect(row.style.getPropertyValue("--row-height")).toBe("24px");
     fireEvent.click(selectionCell);
@@ -687,7 +664,6 @@ describe("TaxonomyTree", () => {
       wrapper: createQueryClientWrapper(),
     });
 
-    // Expand to load strains
     const speciesLink = await screen.findByRole("link", {
       name: "Brucella abortus",
     });
@@ -696,7 +672,6 @@ describe("TaxonomyTree", () => {
       await within(speciesRow).findByRole("button", { name: "Expand" }),
     );
 
-    // Select parent + both strains via checkboxes (additive).
     fireEvent.click(
       within(speciesRow).getByRole("checkbox", {
         name: "Select Brucella abortus",
@@ -721,13 +696,10 @@ describe("TaxonomyTree", () => {
       expect(onSelect.mock.calls.at(-1)?.[0]).toHaveLength(3);
     });
 
-    // Collapse — strains leave the row model (childrenMap drops entry for 235)
     fireEvent.click(
       within(speciesRow).getByRole("button", { name: "Collapse" }),
     );
 
-    // Uncheck parent via checkbox — triggers the selection effect that previously returned 0
-    // because getSelectedRowModel() only saw visible rows.
     fireEvent.click(
       within(speciesRow).getByRole("checkbox", {
         name: "Select Brucella abortus",
@@ -760,7 +732,6 @@ describe("TaxonomyTree", () => {
       wrapper: createQueryClientWrapper(),
     });
 
-    // Expand Brucella abortus and select its strain via checkbox (additive).
     const speciesLink = await screen.findByRole("link", {
       name: "Brucella abortus",
     });
@@ -780,12 +751,10 @@ describe("TaxonomyTree", () => {
       expect(onSelect.mock.calls.at(-1)?.[0]).toHaveLength(1);
     });
 
-    // Collapse — strain leaves the row model
     fireEvent.click(
       within(speciesRow).getByRole("button", { name: "Collapse" }),
     );
 
-    // Select a different visible row via checkbox — additive, preserves hidden strain.
     await screen.findByRole("link", { name: "Brucella melitensis" });
     fireEvent.click(
       within(
@@ -795,7 +764,6 @@ describe("TaxonomyTree", () => {
       ).getByRole("checkbox", { name: "Select Brucella melitensis" }),
     );
 
-    // Should count 2: hidden strain + newly checked species
     await waitFor(() => {
       const lastCall = onSelect.mock.calls.at(-1)?.[0] as TaxonRecord[];
       expect(lastCall).toHaveLength(2);
@@ -822,7 +790,6 @@ describe("TaxonomyTree", () => {
       wrapper: createQueryClientWrapper(),
     });
 
-    // Rows in visible order: root (234), 235, 236, 237.
     const firstRow = (
       await screen.findByRole("link", { name: "Brucella abortus" })
     ).closest("tr") as HTMLElement;
@@ -830,14 +797,11 @@ describe("TaxonomyTree", () => {
       await screen.findByRole("link", { name: "Brucella suis" })
     ).closest("tr") as HTMLElement;
 
-    // Plain click sets the anchor.
     fireEvent.click(firstRow);
     await waitFor(() => {
       expect(onSelect.mock.calls.at(-1)?.[0]).toHaveLength(1);
     });
 
-    // Shift held → click the last species. Everything between anchor and target
-    // (235, 236, 237) becomes selected.
     fireEvent.keyDown(document, { key: "Shift" });
     fireEvent.click(lastRow);
 
@@ -875,7 +839,6 @@ describe("TaxonomyTree", () => {
       await screen.findByRole("link", { name: "Brucella abortus" })
     ).closest("tr") as HTMLElement;
 
-    // Anchor on the middle row, then shift-click upward to the first.
     fireEvent.click(middleRow);
     await waitFor(() => {
       expect(onSelect.mock.calls.at(-1)?.[0]).toHaveLength(1);
@@ -913,7 +876,6 @@ describe("TaxonomyTree", () => {
       await screen.findByRole("link", { name: "Brucella melitensis" })
     ).closest("tr") as HTMLElement;
 
-    // No anchor yet → shift-click behaves like a plain toggle.
     fireEvent.keyDown(document, { key: "Shift" });
     fireEvent.click(row);
 
@@ -948,20 +910,17 @@ describe("TaxonomyTree", () => {
       .getByRole("link", { name: "Brucella suis" })
       .closest("tr") as HTMLElement;
 
-    // Plain click: exclusive select of first row.
     fireEvent.click(firstRow);
     await waitFor(() => {
       expect(onSelect.mock.calls.at(-1)?.[0]).toHaveLength(1);
     });
 
-    // Ctrl+click second row: adds to selection.
     fireEvent.keyDown(document, { key: "Control" });
     fireEvent.click(secondRow);
     await waitFor(() => {
       expect(onSelect.mock.calls.at(-1)?.[0]).toHaveLength(2);
     });
 
-    // Ctrl+click third row: adds to selection.
     fireEvent.click(thirdRow);
     await waitFor(() => {
       const last = onSelect.mock.calls.at(-1)?.[0] as TaxonRecord[];
@@ -975,7 +934,6 @@ describe("TaxonomyTree", () => {
       );
     });
 
-    // Ctrl+click first row again: removes it.
     fireEvent.click(firstRow);
     await waitFor(() => {
       const last = onSelect.mock.calls.at(-1)?.[0] as TaxonRecord[];
@@ -1003,7 +961,6 @@ describe("TaxonomyTree", () => {
       wrapper: createQueryClientWrapper(),
     });
 
-    // Select two rows via checkboxes (additive).
     const cb235 = await screen.findByRole("checkbox", {
       name: "Select Brucella abortus",
     });
@@ -1016,7 +973,6 @@ describe("TaxonomyTree", () => {
       expect(onSelect.mock.calls.at(-1)?.[0]).toHaveLength(2);
     });
 
-    // Plain whitespace click on a third row — should exclusively select only that row.
     const thirdRow = screen
       .getByRole("link", { name: "Brucella suis" })
       .closest("tr") as HTMLElement;
@@ -1050,13 +1006,11 @@ describe("TaxonomyTree", () => {
       name: "Select Brucella suis",
     });
 
-    // Plain checkbox click sets the anchor.
     fireEvent.click(firstCb);
     await waitFor(() => {
       expect(onSelect.mock.calls.at(-1)?.[0]).toHaveLength(1);
     });
 
-    // Shift held → checkbox click on last species selects 235, 236, 237.
     fireEvent.keyDown(document, { key: "Shift" });
     fireEvent.click(lastCb);
 
@@ -1155,7 +1109,6 @@ describe("TaxonomyTree", () => {
       wrapper: createQueryClientWrapper(),
     });
 
-    // Set anchor via checkbox click.
     const firstCb = await screen.findByRole("checkbox", {
       name: "Select Brucella abortus",
     });
@@ -1164,7 +1117,6 @@ describe("TaxonomyTree", () => {
       expect(onSelect.mock.calls.at(-1)?.[0]).toHaveLength(1);
     });
 
-    // Shift + row-body click on last species should range from the checkbox anchor.
     const lastRow = screen
       .getByRole("link", { name: "Brucella suis" })
       .closest("tr") as HTMLElement;

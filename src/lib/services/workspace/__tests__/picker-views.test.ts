@@ -547,7 +547,6 @@ describe("file-mode rows", () => {
     expect(isPickerItemNavigable(job, jobResults)).toBe(false);
     expect(isPickerItemChoosable(job, jobResults)).toBe(true);
     expect(pickerRowKey(job, jobResults)).toBe("/a@b/home/Assembly1");
-    // Requested beside other types, it is still chosen rather than opened.
     const mixed = pickerTargetFor(["contigs", "job_result"]);
     expect(isPickerItemChoosable(job, mixed)).toBe(true);
     expect(pickerRowKey(job, mixed)).toBe("/a@b/home/Assembly1");

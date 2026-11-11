@@ -38,8 +38,8 @@ describe("jobs URL state", () => {
   });
 
   it("owns exactly the param names it writes", () => {
-    // The jobs URL hook drops these names and keeps every other param, so a
-    // field added to the serializer without a name here would be written twice.
+    // The jobs URL hook drops these names and keeps every other param, so a serializer field
+    // missing here would be written twice.
     const query =
       "status=failed&service=GenomeAssembly2&q=ecoli&archived=true&from=2026-09-01&to=2026-09-10&sort=start_time%3Aasc&page=3&pageSize=50";
     const written = [...serializeJobsUrlState(parse(query)).keys()];
@@ -47,8 +47,8 @@ describe("jobs URL state", () => {
   });
 
   it("accepts the sort field of every sortable jobs column", () => {
-    // A column added with a sortField the parser refuses would write
-    // sort=<field>:asc, then snap back to the default, so its header looks dead.
+    // A sortField the parser refuses would write sort=<field>:asc then snap back to the default, so
+    // the header looks dead.
     const { result } = renderHook(() =>
       useJobsColumns(defaultJobsUrlState.sort, vi.fn()),
     );

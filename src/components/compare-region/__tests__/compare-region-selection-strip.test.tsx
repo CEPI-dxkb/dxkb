@@ -17,14 +17,12 @@ import { focusRow, mirroredRow, testGene } from "@/test-helpers/compare-region";
 import { HoverContext, PinContext } from "../compare-region-contexts";
 import { SelectionStrip } from "../compare-region-selection-strip";
 
-// Spied, to count the strip's renders: it resolves the pin first thing.
 vi.mock("@/lib/compare-region/families", async (importOriginal) => {
   const actual =
     await importOriginal<typeof import("@/lib/compare-region/families")>();
   return { ...actual, resolveFeature: vi.fn(actual.resolveFeature) };
 });
 
-/** The focus row with an RNA gene: it has a feature page, but no Compare Region tab. */
 const rnaRow: CompareRegionRow = {
   ...focusRow,
   features: [
@@ -75,7 +73,6 @@ describe("SelectionStrip", () => {
     expect(screen.getByText("Ctrl").parentElement).toHaveTextContent(
       "⌘/Ctrl+ scroll to zoom",
     );
-    // One icon button, named for the density it switches to, with no label beside it.
     expect(densityToggle("Compact").textContent).toBe("");
     expect(densityToggle("Compact").querySelector("svg")).toHaveClass(
       "lucide-list-chevrons-down-up",
@@ -97,7 +94,6 @@ describe("SelectionStrip", () => {
   it("draws the toggle in the foreground, as the bar's Export, and a size up from it", () => {
     renderStrip();
     const toggle = densityToggle("Compact");
-    // The hint row around it is muted; the toggle is not.
     expect(toggle.parentElement).toHaveClass("text-foreground");
     expect(toggle).toHaveClass("size-8");
     expect(toggle.querySelector("svg")).toHaveClass("size-4.5");
@@ -124,7 +120,6 @@ describe("SelectionStrip", () => {
       renderStrip({ density });
       await user.hover(densityToggle(next));
       const tip = await screen.findByText(sentence);
-      // That sentence alone: no title line, no measurements.
       expect(tip.closest('[data-slot="tooltip-content"]')?.textContent).toBe(
         sentence,
       );
@@ -141,13 +136,9 @@ describe("SelectionStrip", () => {
     expect(screen.getByText("Focus protein")).toBeInTheDocument();
     expect(screen.getByText("PGF_00000001")).toBeInTheDocument();
     expect(screen.getByText("Escherichia coli")).toBeInTheDocument();
-    // On the strip's muted wash, `muted-foreground` falls under 4.5:1 in two
-    // light themes; `foreground/70` clears it in all six.
     const genome = screen.getByText("Escherichia coli").parentElement;
     expect(genome).toHaveClass("text-foreground/70");
     expect(genome).not.toHaveClass("text-muted-foreground");
-    // The wash under the genome and the links: theme-contrast.test.ts holds
-    // links and foreground/70 readable on `muted` at this share (30%).
     expect(
       screen.getByRole("link", { name: "Open feature" }).closest("div"),
     ).toHaveClass("bg-muted/30");
@@ -225,7 +216,6 @@ describe("SelectionStrip", () => {
       [focusRow, mirroredRow],
       densitySpecs.comfortable,
     );
-    // One element throughout, as the chart's cached one: only a context it reads re-renders it.
     const strip = (
       <SelectionStrip
         model={model}

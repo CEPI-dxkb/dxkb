@@ -8,11 +8,8 @@ export interface OverviewLinkItem {
 }
 
 /**
- * A field holding zero or more links laid out inline. Each destination goes
- * through the shared `MetadataLink` boundary, which decides internal versus
- * external and renders the new-tab icon only for a destination it classified
- * as external — this field carries no `external` flag of its own, so a caller
- * cannot disagree with the classifier about what a URL is.
+ * Destinations go through `MetadataLink`, which decides internal versus
+ * external, so callers carry no `external` flag.
  */
 export function linkListField(
   label: string,

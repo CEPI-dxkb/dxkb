@@ -12,15 +12,11 @@ import {
   type Frame,
 } from "../support/tab-history";
 
-// Back from a filtered taxon tab must keep the filter on the frame the tab is
-// still on screen with the Overview's URL. Why that frame exists, and why only
-// a browser shows it, is in e2e/support/tab-history.ts.
+// The stale-frame rationale is in e2e/support/tab-history.ts.
 
 test.use({ storageState: { cookies: [], origins: [] } });
 
 test.describe("Back and Forward from a filtered taxon tab", () => {
-  // Taxon 11974's Genomes rows come from taxonGenomesScenarioOverrides; its
-  // Overview is server-rendered from the loopback mock.
   const taxonId = "11974";
   const filteredGenomes = `/taxonomy/${taxonId}?tab=genomes&collection_year=2025`;
   const isFiltered = (read: URL) =>
@@ -64,8 +60,6 @@ test.describe("Back and Forward from a filtered taxon tab", () => {
       "aria-current",
       "page",
     );
-    // The leaving tab may still be on screen for a frame with the Overview's
-    // URL, but it must look as it did: filtered rows, no refresh.
     const staleFrames = frames.filter(
       (frame) => frame.search === "" && frame.current === "Genomes",
     );
@@ -74,8 +68,6 @@ test.describe("Back and Forward from a filtered taxon tab", () => {
       backReads.filter((read) => !isFiltered(read)).map(String),
     ).toEqual([]);
 
-    // Forward restores the filtered tab, and still asks for nothing unfiltered.
-    // Its frames are not checked: the Overview has no collection to go stale.
     const forwardReads = await collectionReads(page, "genome", async () => {
       await stepAndSampleFrames(page, "forward", "Genomes");
     });

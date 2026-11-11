@@ -1,11 +1,5 @@
 "use client";
 
-/**
- * The Compare Region Viewer's command bar: the settings (each with a visible
- * label above it), the genome source and its workspace group, Update, the
- * zoom cluster and Export. The settings edit a draft that applies on Update
- * only (`useCompareRegionSettings`).
- */
 import { Download, Loader2, RefreshCw, Rows3, Ruler } from "lucide-react";
 import { useId, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
@@ -57,7 +51,6 @@ function Divider() {
   );
 }
 
-/** A control with its label above it. The label also names the control (`aria-label` matches it). */
 function BarField({
   label,
   children,
@@ -88,13 +81,9 @@ function BarField({
 
 export interface CommandBarProps {
   settings: ReturnType<typeof useCompareRegionSettings>;
-  /** A request is in flight: the settings and Update are disabled. */
   busy: boolean;
-  /** Signed out, the workspace group sources are disabled, and so is Update while one is chosen. */
   signedIn: boolean;
-  /** Null while there is no chart to zoom. */
   zoom: ZoomControls | null;
-  /** Null while there is no chart to export. */
   onExport: (() => void) | null;
 }
 
@@ -109,11 +98,9 @@ export function CommandBar({
   const filter = draft.filter;
   const groupPath = isCompareRegionGroupFilter(filter) ? draft[filter] : "";
   const pickerId = useId();
-  // One id per source: each slot's selector has its own, and the label names the active one.
   const groupPickerId = `${pickerId}${filter}`;
   const groupDisabled = busy || !signedIn;
-  // A group URL opened signed out (or after the session ran out): the route
-  // would answer 401, so only a public source can be applied.
+  // The route would answer 401, so only a public source can be applied.
   const groupNeedsSignIn = !signedIn && isCompareRegionGroupFilter(filter);
   return (
     <div className="flex shrink-0 flex-wrap items-end gap-2 border-b px-3 pt-2 pb-2.5">
@@ -198,8 +185,7 @@ export function CommandBar({
                         "h-6 rounded-md px-2.5 text-xs font-medium transition-colors",
                         draft.method === method
                           ? "bg-background text-foreground shadow-sm"
-                          : // Not `muted-foreground`, 3.7:1 on `muted` in the
-                            // light themes: 70% foreground holds 4.5:1 in all six.
+                          : // 70% foreground, not `muted-foreground` (3.7:1 on `muted`).
                             "text-foreground/70 hover:text-foreground",
                       )}
                     />
@@ -228,8 +214,8 @@ export function CommandBar({
             label={compareRegionGroupLabels[filter]}
             htmlFor={groupPickerId}
           >
-            {/* One slot per source, so switching sources mounts a fresh
-                selector instead of carrying the other one's search. */}
+            {/* One slot per source, so switching sources mounts a fresh selector
+               instead of carrying the other one's search. */}
             {filter === "genomeGroup" && (
               <GroupPicker
                 id={groupPickerId}

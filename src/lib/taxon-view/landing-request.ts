@@ -6,14 +6,8 @@ type LandingTabRequest =
   | { redirectToOverview: true }
   | {
       redirectToOverview: false;
-      /** The view to open: `tab`, else the legacy `view` (undefined: the default). */
       activeViewKey?: string;
-      /**
-       * The raw `tab` param (null: none), which the shell's tab content compares
-       * with the URL. Not `activeViewKey`: a legacy `?view=genomes` link opens
-       * Genomes on a URL without `tab`, and a shell told "genomes" there would
-       * never match its own URL.
-       */
+      /** The raw `tab` param (null: none); a legacy `?view=` link has none, so it differs from `activeViewKey`. */
       tabParam: string | null;
     };
 

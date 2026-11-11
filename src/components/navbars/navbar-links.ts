@@ -224,11 +224,12 @@ const serviceItems = {
 
 interface WorkspaceNavItem {
   title: string;
-  /** Static href or function that receives the encoded workspace username. */
   href: string | ((encodedUsername: string) => string);
-  /** Whether the item requires authentication. Unauthenticated users get a sign-in redirect. */
   requiresAuth: boolean;
-  /** Fallback href for unauthenticated users. Defaults to `/sign-in?redirect=/workspace`. */
+  /**
+   * Fallback href for unauthenticated users; defaults to
+   * `/sign-in?redirect=/workspace`.
+   */
   signInRedirect?: string;
 }
 
@@ -237,10 +238,7 @@ interface WorkspaceNavSection {
   items: WorkspaceNavItem[];
 }
 
-/**
- * The user's private genomes; DXKB equivalent of BV-BRC `/view/GenomeList/?eq(public,false)`.
- * A `public` filter rather than `rql`, which selecting a facet would clear.
- */
+/** A `public` filter rather than `rql`, which selecting a facet would clear. */
 const myGenomesHref = "/genome?public=false";
 
 const workspaceNavItems: Record<string, WorkspaceNavSection> = {

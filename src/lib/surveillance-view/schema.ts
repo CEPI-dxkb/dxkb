@@ -30,7 +30,6 @@ export function isSurveillanceSampleId(value: string): boolean {
   return value.length > 0 && value.length <= 1_000;
 }
 
-/** Keep incomplete source dates incomplete rather than inventing month/day precision. */
 export function formatSourceDate(
   value: string | null | undefined,
 ): string | null {

@@ -5,17 +5,10 @@ import { cva, type VariantProps } from "class-variance-authority"
 
 import { cn } from "@/lib/utils"
 
-// Local edits (keep when regenerating with `shadcn add --overwrite`):
-// `disableScrollWrapper`, TableRow `selectionIndicator`, and the `size` /
-// `variant` axes below. Variant classes merge after each part's base in the
-// same `cn` call, so tailwind-merge resolves conflicts as the call-site
-// classes they replace did.
-
 const tableVariants = cva("w-full caption-bottom text-sm", {
   variants: {
     size: {
       default: "",
-      // Dense data grids.
       xs: "text-xs",
     },
   },
@@ -29,8 +22,6 @@ const tableHeaderVariants = cva("[&_tr]:border-b", {
     variant: {
       default: "",
       muted: "bg-muted",
-      // Sticky header over scrolling rows. The rows repaint the surface too,
-      // as the header markup this replaced did.
       "sticky-surface": "bg-background shadow-sm [&_tr]:bg-background",
     },
   },
@@ -45,28 +36,15 @@ const tableRowVariants = cva(
     variants: {
       variant: {
         default: "",
-        // The header row of a muted TableHeader.
         "muted-header": "border-y bg-muted",
-        // Primary-tinted selection for dense grids; set
-        // `data-state="selected"` on the row. A hovered selected row shows
-        // bg-muted/50 in light themes and keeps its tint in dark themes.
         tint: "hover:bg-muted data-[state=selected]:bg-primary/15 data-[state=selected]:hover:bg-muted/50 dark:data-[state=selected]:bg-primary/30",
-        // Alternate (odd) rows of a striped table.
         striped: "bg-muted/20",
-        // Rows that do not react to the pointer (a selected-items list,
-        // where only the row's remove button has a hover state).
         static: "hover:bg-transparent",
-        // `static`, with every second body row filled (BV-BRC's selected
-        // genome tables). The even rows repeat their fill on hover so they
-        // stay still too.
         "static-striped":
           "even:bg-muted/50 hover:bg-transparent even:hover:bg-muted/50",
-        // The last row shown above rows collapsed with `visibility: collapse`
-        // (laid out, so they still size the columns, but not shown). Only
-        // the body's last child drops its rule, and the rule this row shares
-        // with a collapsed one is half painted (0.5px, shown or not by where
-        // the table falls on the pixel grid), so whatever follows the table
-        // draws the line instead.
+        // Only the body's last child drops its rule, and a rule shared with a
+        // `visibility: collapse` row is half painted, so what follows the table
+        // draws the line.
         "last-shown": "border-b-0",
       },
     },
@@ -76,11 +54,8 @@ const tableRowVariants = cva(
   }
 )
 
-// Cell rules shared by TableHead and TableCell.
 const tableDividerVariants = {
-  // A rule on the trailing edge.
   divider: "border-r",
-  // A stronger trailing rule.
   "divider-strong": "border-r border-foreground/20",
 }
 
@@ -91,13 +66,10 @@ const tableHeadVariants = cva(
       variant: {
         default: "",
         ...tableDividerVariants,
-        // A sorted column's head (`aria-sort` ascending or descending) takes an
-        // `info` tint and an `info` rule along its bottom edge, drawn as an
-        // inset shadow so the cell keeps its height. `info`, not `primary`:
-        // the dark themes keep a dark primary, which the tint would swallow.
+        // `info`, not `primary`: dark themes keep a dark primary that the tint
+        // would swallow.
         "divider-strong-muted":
           "border-r border-foreground/20 bg-muted aria-[sort=ascending]:bg-info/15 aria-[sort=ascending]:shadow-[inset_0_-2px_0_var(--color-info)] aria-[sort=descending]:bg-info/15 aria-[sort=descending]:shadow-[inset_0_-2px_0_var(--color-info)]",
-        // An opaque head cell (sticky or dragged headers).
         surface: "bg-background",
       },
       size: {
@@ -119,21 +91,10 @@ const tableCellVariants = cva(
       variant: {
         default: "",
         ...tableDividerVariants,
-        // A border on every edge (data grids).
         grid: "border",
-        // The sticky checkbox column of a `grid` table whose rows use the
-        // `tint` variant (and a `group` class): an opaque surface so scrolled
-        // cells do not show through, and opaque equivalents of the row's
-        // surface in each state: hover (bg-muted), selected (bg-primary/15,
-        // /30 in dark themes) and selected + hover (bg-muted/50 in light
-        // themes; dark themes keep the tint).
         "sticky-select":
           "border bg-background group-hover:bg-muted group-data-[state=selected]:bg-[color-mix(in_srgb,var(--color-primary)_15%,var(--color-background))] group-data-[state=selected]:group-hover:bg-[color-mix(in_srgb,var(--color-muted)_50%,var(--color-background))] dark:group-data-[state=selected]:bg-[color-mix(in_srgb,var(--color-primary)_30%,var(--color-background))] dark:group-data-[state=selected]:group-hover:bg-[color-mix(in_srgb,var(--color-primary)_30%,var(--color-background))]",
-        // Identifiers and sequences.
         code: "font-mono text-xs",
-        // A cell whose text may be one long unbroken string (a workspace
-        // path): it wraps anywhere instead of widening the table. A call site
-        // cannot add this itself, since `whitespace-*` is typography.
         wrap: "break-all whitespace-normal",
       },
     },
@@ -146,7 +107,7 @@ const tableCellVariants = cva(
 interface TableProps
   extends React.ComponentProps<"table">,
     VariantProps<typeof tableVariants> {
-  /** When true, render only the table (no scroll wrapper). Use when the parent is the scroll container (e.g. for sticky headers). */
+  /** Render only the table, for when the parent is the scroll container. */
   disableScrollWrapper?: boolean;
 }
 
@@ -215,7 +176,7 @@ function TableRow({
   ...props
 }: React.ComponentProps<"tr"> &
   VariantProps<typeof tableRowVariants> & {
-    /** When true, reserves a 2px left border that turns primary (with the `bg-muted` fill) when the row also has `data-state="selected"`. */
+    /** Reserves a 2px left border that turns primary on a selected row. */
     selectionIndicator?: boolean;
   }) {
   return (

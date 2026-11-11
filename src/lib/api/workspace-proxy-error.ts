@@ -6,7 +6,7 @@ import {
   upstreamServices,
 } from "./upstream-failure";
 
-/** Safe shape we forward to the client; avoids leaking stack traces, paths, or config. */
+/** Safe shape forwarded to the client; no stack traces, paths or config. */
 interface SanitizedApiError {
   code?: number;
   message?: string;
@@ -34,14 +34,8 @@ function sanitizeUpstreamError(raw: unknown): SanitizedApiError | null {
 }
 
 /**
- * The answer a Workspace JSON-RPC proxy route (`/api/services/workspace`,
- * `/api/workspace/public`) gives for a non-OK Workspace response, with the
- * upstream status. `logLabel` starts the server log line, which names the
- * host.
- *
- * The body is read without a catch: a body that stalls or resets rejects, so
- * a route `return await`s this inside its `try`, and its catch-all
- * (`upstreamFailureResponse`) answers the rejection 504/502.
+ * The answer a Workspace JSON-RPC proxy route gives for a non-OK Workspace response.
+ * The body is read without a catch so a stalled body rejects into the route's catch-all (`upstreamFailureResponse`) as 504/502.
  */
 export async function workspaceErrorReply(
   response: Response,
@@ -61,10 +55,7 @@ export async function workspaceErrorReply(
     apiResponse,
   );
   const sanitized = sanitizeUpstreamError(apiResponse);
-  // A Workspace JSON-RPC error keeps the "BV-BRC API error: <status>"
-  // label, with the Workspace's own message in `apiResponse` (which
-  // `workspace-errors.ts` reads). Any other body (a maintenance page) is
-  // described by its status and page title, never forwarded.
+  // A Workspace JSON-RPC error keeps the "BV-BRC API error: <status>" label with its message in `apiResponse` (read by `workspace-errors.ts`); any other body is described by status and page title, never forwarded.
   const error = sanitized?.message
     ? `BV-BRC API error: ${String(response.status)} ${response.statusText}`
     : describeUpstreamResponse(response, responseText, upstreamServices.workspace)

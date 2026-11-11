@@ -39,10 +39,8 @@ vi.mock("@/components/views", () => {
 
 const state: CollectionState = { filters: {}, page: 1, sort: "unsorted" };
 
-// Legacy BV-BRC's lists and the All Data Types counts send the keyword as
-// typed (`keyword(H1N1)`); a token prefix is wider for some words and, since
-// Solr does not split a wildcard term, far narrower for others (Strains
-// `H1N1`: 260,889 exact, 76,178 as `H1N1*`).
+// Legacy sends the keyword as typed (`keyword(H1N1)`); a token prefix is wider
+// or narrower depending on the word.
 describe.each<[string, () => ReactElement]>([
   ["Strains", () => <StrainCollection initialState={state} />],
   [

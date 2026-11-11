@@ -35,7 +35,6 @@ const StructureSourceViewer = dynamic(
 
 const layout = { showControls: true, regionState: "full" as const };
 
-/** Where a structure source's file comes from, mid-sentence. */
 const structureSourceNames: Record<StructureSource["kind"], string> = {
   "bv-brc": "BV-BRC",
   alphafold: "AlphaFold",
@@ -44,7 +43,6 @@ const structureSourceNames: Record<StructureSource["kind"], string> = {
   url: "its source",
 };
 
-/** `formatUserFacingErrorMessage` fallback for a lookup error that says nothing. */
 const genericMetadataErrorMessage =
   "The BV-BRC metadata lookup failed. Please try again.";
 

@@ -1,6 +1,8 @@
 import type { DataTableColumn } from "@/components/shared/data-table";
 
-/** Download output keeps the legacy "; " separator; strain copy asks for ";". */
+/**
+ * Download output keeps the legacy "; " separator; strain copy asks for ";".
+ */
 const defaultArraySeparator = "; ";
 
 function exportValue(
@@ -49,12 +51,6 @@ export function serializeResourceRows(
   ].join("\n");
 }
 
-/**
- * Saves rows the browser already holds as a CSV or TXT file named after
- * `resource`. It serves tables outside `ResourceCollection` (the Meta-CATS
- * groups grid); collection views download through the gateway's shared
- * Download tile instead (`src/lib/data-api/downloads.ts`).
- */
 export function downloadResourceExport(
   resource: string,
   rows: readonly Record<string, unknown>[],

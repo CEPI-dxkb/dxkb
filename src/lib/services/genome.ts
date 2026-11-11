@@ -40,9 +40,7 @@ export async function fetchGenomeSuggestions(
 }
 
 /**
- * Looks genomes up by ID. `fields` adds genome fields to the default
- * summary (name, strain, owner, ...); the route drops any that are not plain
- * field names.
+ * Looks genomes up by ID; `fields` adds genome fields to the default summary.
  */
 export async function fetchGenomesByIds(
   genomeIds: string[],
@@ -108,11 +106,7 @@ export async function getGenomeIdsFromGroup(
   }
 }
 
-/**
- * The text of a failed workspace call: the upstream message the proxy passes
- * on as `apiResponse` (or a JSON-RPC `error`), without BV-BRC's `_ERROR_`
- * markers, before the proxy's own summary ("BV-BRC API error: 500 ...").
- */
+/** The text of a failed workspace call, without BV-BRC's `_ERROR_` markers. */
 function workspaceErrorMessage(body: unknown): string | null {
   const { apiResponse, error } = (body ?? {}) as {
     apiResponse?: { message?: unknown };
@@ -130,10 +124,8 @@ function workspaceErrorMessage(body: unknown): string | null {
 }
 
 /**
- * Reads a group's stored content through the workspace proxy. Every failure
- * becomes an Error worth showing: the backend's own message when it sent one,
- * otherwise "Invalid workspace response for genome group" for a body that is
- * not a usable `Workspace.get` result (null, empty, HTML, no entry).
+ * Reads a genome group's stored content through the workspace proxy; every
+ * failure is an Error with a displayable message.
  */
 async function fetchGroupContent(
   path: string,
@@ -181,8 +173,7 @@ async function fetchGroupContent(
 }
 
 /**
- * The genome ids of a decoded group. `id_list.genome_id` is normally a string
- * array, but some older groups store one comma-separated string.
+ * Some older groups store `id_list.genome_id` as one comma-separated string.
  */
 function genomeIdsFromGroupContent(content: unknown): string[] {
   const ids = (content as { id_list?: { genome_id?: unknown } } | null)
@@ -333,11 +324,8 @@ export interface ViralGenomeValidationErrors {
 }
 
 /**
- * The message for a genome group that fails viral validation, worded as on
- * the legacy site: its heading, then one "- " line per error (alpha's `<br>`
- * breaks are `\n`, which the app's toast descriptions keep). Alpha's MSA page
- * says "This is an invalid genome group"; every other tree page uses this
- * heading, so the site uses it throughout.
+ * Legacy-site wording for a group that fails viral validation: a heading, then
+ * one "- " line per error.
  */
 export function formatInvalidGenomeGroupMessage(
   errors: ViralGenomeValidationErrors,
@@ -356,11 +344,9 @@ export function formatInvalidGenomeGroupMessage(
 }
 
 /**
- * Maximum genome ids sent to `/api/services/genome/validate-viral` per request.
- * The route turns the whole list into one `in(genome_id,(...))` clause on a GET
- * query string, so an unbatched call for a 5,000-genome group builds a ~50 KB
- * URL that the upstream BV-BRC data API rejects. Batching mirrors
- * `fetchSelectedRows` / `maxSelectedRows` in the data-API layer.
+ * Maximum genome ids per `validate-viral` request; the route builds one GET
+ * `in(genome_id,(...))` clause, so an unbatched 5,000-id call builds a URL the
+ * upstream rejects.
  */
 export const maxViralValidationIdsPerRequest = 200;
 
@@ -386,9 +372,8 @@ export async function validateViralGenomes(
     );
     const batches = await Promise.all(
       Array.from({ length: batchCount }, (_, index) =>
-        // `apiCall` gives undefined for an empty body, so nothing about the
-        // response is assumed: a missing list or entry counts as missing
-        // metadata below, not a TypeError.
+        // `apiCall` gives undefined for an empty body, so a missing list or
+        // entry counts as missing metadata, not a TypeError.
         apiCall<{ results?: unknown } | null | undefined>(
           "/api/services/genome/validate-viral",
           {

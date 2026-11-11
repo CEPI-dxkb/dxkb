@@ -4,9 +4,8 @@ import { RequiredFormLabel } from "@/components/forms/required-form-components";
 import { cn } from "@/lib/utils";
 
 /**
- * `RequiredFormLabel` with the service form label style.
- * `service-card-label-required` restores the 4px gap before the "*" marker,
- * which `service-card-label`'s `block` display otherwise removes.
+ * `service-card-label-required` restores the 4px gap before the "*" that
+ * `service-card-label`'s `block` display removes.
  */
 export function ServiceRequiredLabel({
   className,

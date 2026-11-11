@@ -57,7 +57,6 @@ describe("CircularViewerTrackList", () => {
     expect(vf).toHaveTextContent("The BV-BRC data service is unavailable (HTTP 503).");
     expect(within(vf).getByRole("button", { name: "Retrying…" })).toBeDisabled();
     expect(within(vf).queryByRole("status", { name: "Loading" })).toBeNull();
-    // A track with no answer yet shows the spinner.
     expect(within(screen.getByRole("listitem", { name: "AMR Genes" })).getByRole("status", { name: "Loading" })).toBeInTheDocument();
   });
 
@@ -79,7 +78,6 @@ describe("CircularViewerTrackList", () => {
     const description = "GC Content - window size: 2000 nt, plot range: 0 - 1";
     const title = screen.getByText("GC Content", { selector: "[tabindex='0']" });
     expect(title).toHaveAccessibleDescription(description);
-    // Tab past the two color swatches to the title.
     await userEvent.tab();
     await userEvent.tab();
     await userEvent.tab();
@@ -105,7 +103,6 @@ describe("TrackColorPicker", () => {
     render(<TrackColorPicker label="GC Content background color" hint="Background color" color="#EBD4F4" onChange={vi.fn()} />);
     const trigger = screen.getByRole("button", { name: "GC Content background color" });
     await userEvent.hover(trigger);
-    // Shown to sighted users only: screen readers hear the trigger's label.
     expect(await screen.findByText("Background color")).toBeInTheDocument();
     await userEvent.click(trigger);
     expect(await screen.findByRole("textbox", { name: "GC Content background color, hex value" })).toBeInTheDocument();
@@ -115,7 +112,6 @@ describe("TrackColorPicker", () => {
     const onChange = vi.fn();
     render(<TrackColorPicker label="GC Content background color" hint="Background color" color="#EBD4F4" onChange={onChange} />);
     const trigger = screen.getByRole("button", { name: "GC Content background color" });
-    // A 24px target (WCAG 2.5.8) around its 16px swatch.
     expect(trigger).toHaveClass("size-6");
     await userEvent.click(trigger);
     await userEvent.click(await screen.findByRole("button", { name: "Use #FF0000" }));
@@ -139,7 +135,6 @@ describe("TrackColorPicker", () => {
       render(<TrackColorPicker label="AMR Genes color" hint="Track color" color="#FF0000" onChange={onChange} />);
       await userEvent.click(screen.getByRole("button", { name: "AMR Genes color" }));
       const hue = await screen.findByRole("slider", { name: "Hue" });
-      // Frames the popover asked for before the drag are not the picker's.
       const before = frames.length;
       fireEvent.keyDown(hue, { key: "ArrowRight", keyCode: 39 });
       fireEvent.keyDown(hue, { key: "ArrowRight", keyCode: 39 });
@@ -184,7 +179,6 @@ describe("CustomTrackForm", () => {
   it("adds from the inline + button's form with Enter, too", async () => {
     const onAdd = vi.fn();
     render(<CustomTrackForm onAdd={onAdd} />);
-    // Icon-only beside the track name, named by its aria-label.
     const add = screen.getByRole("button", { name: "Add custom track" });
     expect(add).toHaveTextContent("");
     expect(add).toHaveAttribute("type", "submit");
@@ -201,7 +195,6 @@ describe("CustomTrackForm", () => {
 describe("UserTrackForm", () => {
   const sequenceLengths = new Map([["NC_1", 1000]]);
 
-  /** The hidden native input behind the "Choose file" button. */
   function fileInput(): HTMLInputElement {
     const input = document.querySelector<HTMLInputElement>('input[type="file"]');
     if (!input) throw new Error("no file input");
@@ -212,13 +205,11 @@ describe("UserTrackForm", () => {
     render(<UserTrackForm onAdd={vi.fn()} sequenceLengths={sequenceLengths} />);
     const button = screen.getByRole("button", { name: "Data file Choose file" });
     expect(button).toHaveAccessibleDescription("No file chosen");
-    // The native input is out of the tab order and the accessibility tree: the button stands for it.
     expect(fileInput()).toHaveAttribute("tabindex", "-1");
     expect(fileInput()).toHaveAttribute("aria-hidden", "true");
     const click = vi.spyOn(fileInput(), "click");
     await userEvent.click(button);
     expect(click).toHaveBeenCalledTimes(1);
-    // The label opens it too.
     await userEvent.click(screen.getByText("Data file"));
     expect(click).toHaveBeenCalledTimes(2);
 
@@ -293,7 +284,6 @@ describe("UserTrackForm", () => {
     expect(screen.getByRole("button", { name: "Data file Choose file" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "Add user track" })).toBeDisabled();
 
-    // Enter with the submit button disabled must not start a second read; the name input stays usable.
     const nameInput = screen.getByRole("textbox", { name: "Track name (optional)" });
     await userEvent.type(nameInput, "Mine{Enter}");
     expect(readText).toHaveBeenCalledTimes(1);
@@ -306,9 +296,7 @@ describe("UserTrackForm", () => {
       expect(onAdd).toHaveBeenCalledTimes(1);
     });
     expect(screen.getByRole("button", { name: "Data file Choose file" })).toBeEnabled();
-    // The name typed during the read was not submitted, so it is kept.
     expect(nameInput).toHaveValue("Mine");
-    // The submitted file was cleared, from the form and from the native input.
     expect(screen.getByRole("button", { name: "Data file Choose file" })).toHaveAccessibleDescription("No file chosen");
     expect(fileInput().value).toBe("");
   });

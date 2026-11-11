@@ -20,9 +20,6 @@ import { useTabContentSearchParams } from "@/components/views/tab-content-search
 import { LandingShellClient } from "../landing-shell-client";
 import { organismTabCollectionOptionsByView } from "../organism-tab-collection-options";
 
-// Derived from the same exhaustive, compiler-enforced record the component
-// uses — not a second hand-maintained list — so this can't drift out of
-// sync the way the pre-fix code (and an earlier draft of this test) could.
 const everyOrganismTabCollectionOptions = Object.values(
   organismTabCollectionOptionsByView,
 ).filter(
@@ -90,10 +87,6 @@ it("removes the legacy view parameter while preserving unrelated parameters", as
 });
 
 it("clears a Strain-owned parameter and a stale refine on an unrelated tab switch, while preserving unrelated params (regression for the cross-tab cleanup bug)", async () => {
-  // Before this fix, a tab switch only cleared genomeCollectionOptions's own
-  // friendly filters (and never "refine" at all), so a Strain-owned value
-  // like "strain" — and any leftover refinement — could survive a Genomes ->
-  // Overview transition and reactivate on a later tab that recognizes it.
   searchParamsRef.current = new URLSearchParams(
     "strain=H5N1&refine=N034&utm_source=email",
   );

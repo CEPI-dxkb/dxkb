@@ -8,11 +8,6 @@ import type { CopilotClarificationCard } from "@/lib/copilot/cards";
 import { useCardActions } from "./copilot-card-actions";
 import { CardFrame } from "./copilot-card-frame";
 
-/**
- * An agent's questions before it goes on: option chips plus a free-text
- * answer per question. Answers go back to the agent that asked. Only the
- * newest unanswered card takes answers; older ones show their questions.
- */
 export function ClarificationCardView({
   messageId,
   card,

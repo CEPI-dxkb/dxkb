@@ -15,7 +15,6 @@ function messageOf(value: unknown): string | undefined {
   return typeof message === "string" && message.trim() ? message : undefined;
 }
 
-/** The proxy's error answer as the workspace adapter would throw it. */
 function proxyError(body: unknown, status: number): WorkspaceApiError {
   const errorValue = property(body, "error");
   const apiResponse = property(body, "apiResponse") ?? errorValue ?? body;
@@ -29,7 +28,6 @@ function proxyError(body: unknown, status: number): WorkspaceApiError {
   );
 }
 
-/** `result[0]` holds what was found per requested path; empty means nothing. */
 function foundNothing(body: unknown): boolean {
   const result = property(body, "result");
   const found: unknown = Array.isArray(result) ? result[0] : undefined;
@@ -40,14 +38,10 @@ function foundNothing(body: unknown): boolean {
 }
 
 /**
- * Check if a workspace object exists at the given path using Workspace.get.
- * - Found: true (the name is taken).
- * - The Workspace answers that the object is not there (its "Object not
- *   found" JSON-RPC error, which arrives as an HTTP 500, or an empty
- *   result): false (the name is available).
- * - Anything else rejects, so the caller says the name could not be checked
- *   rather than calling it available: an outage (502/503/504), another
- *   Workspace error, or a network failure.
+ * Whether an object exists at the path, via Workspace.get: true when found;
+ * false when the Workspace says it is not there (its "Object not found" error
+ * arrives as HTTP 500, or an empty result). Anything else rejects, so a name is
+ * never called available when it could not be checked.
  */
 export async function checkWorkspaceObjectExists(
   fullPath: string,

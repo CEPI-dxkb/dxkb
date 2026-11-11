@@ -35,7 +35,6 @@ function Providers({ children }: { children: ReactNode }) {
   );
 }
 
-/** A parent that holds the pick as `value`, as the service forms do. */
 function ControlledSelector({ invalid }: { invalid?: boolean }) {
   const [value, setValue] = useState<string>();
   return (
@@ -161,7 +160,6 @@ describe("WorkspaceObjectSelector searchOnInteraction", () => {
     searchOnInteraction,
     value,
   }: {
-    /** Left out, the selector's default applies. */
     searchOnInteraction?: boolean;
     value?: string;
   }) {
@@ -230,7 +228,6 @@ describe("WorkspaceObjectSelector searchOnInteraction", () => {
 
   it("waits for the field to be used by default", async () => {
     const { user, searchCount } = renderFolderSelector({});
-    // Give a mount-time search the chance to start.
     await new Promise((resolve) => setTimeout(resolve, 20));
     expect(searchCount()).toBe(0);
 
@@ -304,7 +301,6 @@ describe("WorkspaceObjectSelector fields on one form", () => {
       );
     const user = userEvent.setup();
 
-    // Nothing is listed for fields nobody has touched.
     await new Promise((resolve) => setTimeout(resolve, 20));
     expect(searches()).toEqual([]);
 
@@ -314,14 +310,12 @@ describe("WorkspaceObjectSelector fields on one form", () => {
     ).toBeInTheDocument();
     expect(searches()).toEqual([["reads"]]);
 
-    // The second reads field reuses the first one's listing.
     await user.type(screen.getByPlaceholderText("Read file 2"), "s");
     expect(
       await screen.findByRole("option", { name: /sample\.fq/ }),
     ).toBeInTheDocument();
     expect(searches()).toEqual([["reads"]]);
 
-    // Another type set is its own listing, filtered by the server.
     await user.type(screen.getByPlaceholderText("Contigs"), "d");
     expect(
       await screen.findByRole("option", { name: /draft\.fasta/ }),

@@ -30,7 +30,6 @@ function renderPill() {
   return render(<JobStatusPill />, { wrapper: createQueryClientWrapper() });
 }
 
-/** Like renderPill, with the QueryClient exposed to drive and inspect polls. */
 function renderPillWithClient() {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
@@ -84,7 +83,6 @@ describe("JobStatusPill", () => {
   beforeEach(() => {
     setAuth(true);
     mockAuth.isSessionUnverified = false;
-    // Default: no jobs so pill is hidden unless tests override
     mockSummary({});
     mockJobsList([]);
   });
@@ -93,7 +91,6 @@ describe("JobStatusPill", () => {
     setAuth(false);
     mockSummary({ completed: 3 });
     renderPill();
-    // Wait for potential async data and confirm nothing rendered
     await new Promise((r) => setTimeout(r, 50));
     expect(
       screen.queryByRole("button", { name: /view job status/i }),
@@ -113,7 +110,6 @@ describe("JobStatusPill", () => {
     mockSummary({ failed: 2, error: 1, cancelled: 3 });
     renderPill();
     await new Promise((r) => setTimeout(r, 50));
-    // totalCount > 0 but displayableCount (completed + running + queued) = 0 → null
     expect(
       screen.queryByRole("button", { name: /view job status/i }),
     ).toBeNull();
@@ -165,7 +161,6 @@ describe("JobStatusPill", () => {
       ).toBeInTheDocument(),
     );
     const counts = screen.getAllByText(/^\d+$/);
-    // Left to right: queued, running, completed.
     expect(counts.map((el) => el.textContent)).toEqual(["1", "2", "4"]);
   });
 
@@ -217,7 +212,6 @@ describe("JobStatusPill", () => {
   });
 
   it("shows loading state while jobs list is fetching", async () => {
-    // Summary resolves immediately; enumerate stalls
     mockSummary({ completed: 1 });
     server.use(
       http.post(
@@ -424,8 +418,6 @@ describe("JobStatusPill", () => {
       );
       await userEvent.click(within(alert).getByRole("button", { name: "Retry" }));
 
-      // The pill and its popover stay, saying they are retrying, rather than
-      // vanishing while the summary is pending again.
       expect(
         await within(alert).findByRole("button", { name: "Retrying…" }),
       ).toBeDisabled();
@@ -480,7 +472,6 @@ describe("JobStatusPill", () => {
 
     mockJobsList([]);
     const { queryClient } = renderPillWithClient();
-    // The recent-jobs list loads once the popover opens.
     await userEvent.click(
       await screen.findByRole("button", { name: /view job status/i }),
     );
@@ -493,7 +484,6 @@ describe("JobStatusPill", () => {
     });
 
     expect(summaryCalls).toBe(1);
-    // A running job would otherwise poll both every 3 s.
     expect(nextRefetchInterval(queryClient, ["jobs-summary", "tasks", false])).toBe(false);
     expect(nextRefetchInterval(queryClient, ["jobs-filtered"])).toBe(false);
   });
@@ -545,7 +535,6 @@ describe("JobStatusPill", () => {
     );
     expect(await screen.findByRole("alert")).toHaveTextContent(outageMessage);
 
-    // A poll, not a Retry: TanStack puts the data-less summary back to pending.
     holding = true;
     act(() => {
       void queryClient.refetchQueries({ queryKey: ["jobs-summary"] });
@@ -561,7 +550,6 @@ describe("JobStatusPill", () => {
     ).toBeInTheDocument();
     const alert = screen.getByRole("alert");
     expect(alert).toHaveTextContent(outageMessage);
-    // Nobody pressed Retry, so it does not claim to be retrying.
     expect(within(alert).getByRole("button", { name: "Retry" })).toBeEnabled();
     expect(screen.queryByRole("status", { name: "Loading job status" })).toBeNull();
 

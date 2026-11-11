@@ -1,24 +1,15 @@
 import { test as base, type Page, type Route } from "@playwright/test";
 
 export interface JsonOverrideBodyContext {
-  /** Parsed JSON request body (null when the body was not JSON or was empty). */
   parsedBody: unknown;
-  /** 0-based count of how many times this override has been served on the current page. */
   callIndex: number;
   requestUrl: string;
   method: string;
 }
 
 /**
- * Response body shape for a {@link JsonOverride}. Covers every JSON-serializable
- * primitive, plain object, and array — plus a factory function that receives
- * `{ parsedBody, callIndex }` and returns the body for that call. The factory
- * branch lets a single mock evolve between calls (e.g. a workspace listing that
- * gains a new row after an upload completes).
- *
- * `object` is intentional (not `Record<string, unknown>`) so typed object
- * literals without an index signature — `MockJob`, `mockUserProfile`, etc. —
- * satisfy this alias without per-call-site casts.
+ * `object` rather than `Record<string, unknown>` so typed literals without an
+ * index signature satisfy it without casts.
  */
 export type JsonOverrideBody =
   | object
@@ -33,49 +24,33 @@ export interface JsonOverride {
   method?: string;
   status?: number;
   /**
-   * Response body. Static value, or a function that receives `{ parsedBody, callIndex }` and
-   * returns the body for that call — used when a single mock needs to evolve between calls
-   * (e.g. a workspace listing that gains a new row after an upload completes).
+   * Static value, or a function of `{ parsedBody, callIndex }` for mocks that
+   * change between calls.
    */
   body?: JsonOverrideBody;
   headers?: Record<string, string>;
-  /**
-   * Optional predicate against the parsed JSON request body. Lets multiple overrides share the
-   * same URL and HTTP method (e.g. a single JSON-RPC endpoint that dispatches many methods).
-   * If parsing fails, the predicate receives `null`.
-   */
   matchBody?: (body: unknown) => boolean;
-  /**
-   * Response content type, for a body that is not JSON (a TSV or FASTA file). Defaults to
-   * `application/json`.
-   */
   contentType?: string;
   /**
-   * Let the matched request through to the app's own route handler instead of fulfilling
-   * it, so the server-side path — and the loopback mock it calls — is what answers. For a
-   * same-origin route whose real work happens on the server, such as the download gateway
-   * (`e2e/fixtures/overrides/downloads.ts`). `body`, `status` and `contentType` are ignored.
+   * Lets the request through to the app's own route handler so the
+   * server-side path answers; `body`, `status` and `contentType` are ignored.
    */
   passthrough?: boolean;
 }
 
 export interface BackendMockOptions {
   overrides?: JsonOverride[];
-  /** When true (default), any unmocked request to a backend host or /api/** fails the test. */
   strict?: boolean;
 }
 
-// Default overrides merged into every applyBackendMocks call. Tests can override
-// individual entries by placing their own override earlier in the array (first match wins).
-// Add entries here for any navbar/layout component that fetches on every page load so
-// tests that don't care about that data don't have to mock it themselves.
+// Earlier overrides win (first match wins), so a test can replace an entry by
+// listing its own first.
 const defaultOverrides: JsonOverride[] = [
   {
     url: "/api/services/app-service/jobs/summary",
     method: "POST",
     body: { taskSummary: {}, appSummary: {} },
   },
-  // The header job pill reads task counts only.
   {
     url: "/api/services/app-service/jobs/task-summary",
     method: "POST",
@@ -83,9 +58,6 @@ const defaultOverrides: JsonOverride[] = [
   },
 ];
 
-// Per-page log of backend requests the strict guard aborted. Populated inside the
-// strict route handler and drained by verifyNoUnmockedBackendRequests() — which the
-// custom `test` fixture below calls on teardown.
 // WeakMap so entries are GC'd when Playwright retires the page.
 const unmockedBackendRequests = new WeakMap<Page, string[]>();
 
@@ -148,33 +120,19 @@ function parseJsonBody(raw: string | null): unknown {
 }
 
 /**
- * Apply backend mocks to a Playwright page.
- *
- * Playwright route handlers run LIFO (last registered is matched first). Register the strict
- * catch-all first and overrides last so overrides win and strict only fires if nothing else
- * matched.
- *
- * With `strict: true` (default), every unmocked request to a backend host or the app's /api/**
- * namespace is aborted AND recorded on the page. Import `test` from this module (instead of
- * `@playwright/test`) to get automatic leak verification on teardown — the custom `page` fixture
- * calls `verifyNoUnmockedBackendRequests` after each test. The route handler itself cannot fail
- * the test because Playwright swallows thrown errors in route callbacks.
- *
- * Non-backend requests (Next.js assets, fonts, CDN) pass through unchanged regardless of strict
- * mode.
+ * Playwright routes run LIFO, so the strict catch-all is registered first and
+ * overrides last. Throwing in a route callback cannot fail the test, so leaks
+ * are verified in the custom `test` fixture's teardown.
  */
 export async function applyBackendMocks(
   page: Page,
   options: BackendMockOptions = {},
 ): Promise<void> {
   const { overrides = [], strict = true } = options;
-  // Merge defaults after caller overrides so caller-provided entries win (first match wins).
   const effectiveOverrides = [...overrides, ...defaultOverrides];
   const appHost = resolveAppHost();
 
-  // Strict guard — registered FIRST so it runs LAST (routes are LIFO).
-  //    Only fires for backend requests that none of the later handlers matched.
-  //    Aborts + records to the per-page log; verifyNoUnmockedBackendRequests throws later.
+  // Registered first so it runs last (routes are LIFO).
   if (strict) {
     unmockedBackendRequests.set(page, []);
     await page.route("**/*", async (route: Route) => {
@@ -192,7 +150,7 @@ export async function applyBackendMocks(
     });
   }
 
-  // Overrides — registered LAST so they run FIRST. These win over strict.
+  // Registered last so they run first.
   if (effectiveOverrides.length > 0) {
     const callCounts = new WeakMap<JsonOverride, { value: number }>();
     const counterFor = (o: JsonOverride) => {
@@ -244,24 +202,14 @@ export async function applyBackendMocks(
   }
 }
 
-/**
- * Snapshot of backend requests the strict guard aborted for this page.
- * Empty array when strict was enabled but nothing leaked; empty array when strict was disabled.
- */
 export function getUnmockedBackendRequests(page: Page): string[] {
   return [...(unmockedBackendRequests.get(page) ?? [])];
 }
 
 /**
- * Throws if any unmocked backend request reached the strict guard during the test.
- *
- * The `test` exported from this module already calls this automatically in its `page` fixture
- * teardown, so suites that `import { test } from "../mocks/backends"` do not need to call it
- * manually. Use it directly only when the default Playwright `test` is in play (e.g. the strict
- * self-tests in `backends.spec.ts`).
- *
- * The route handler cannot fail the test — Playwright swallows thrown errors in route callbacks
- * and logs them instead. Throwing during fixture teardown is what actually fails the test.
+ * The exported `test` already calls this on teardown; call it directly only
+ * with the default Playwright `test`. It must throw here because Playwright
+ * swallows errors thrown in route callbacks.
  */
 export function verifyNoUnmockedBackendRequests(page: Page): void {
   const leaks = unmockedBackendRequests.get(page);
@@ -274,14 +222,8 @@ export function verifyNoUnmockedBackendRequests(page: Page): void {
 }
 
 /**
- * Playwright `test` extended with a `page` fixture that verifies no unmocked backend requests
- * leaked once the test finishes. Import this (and `expect`) from here in any suite that uses
- * `applyBackendMocks`, instead of `@playwright/test`:
- *
- *     import { test, expect } from "../mocks/backends";
- *
- * If the suite never calls `applyBackendMocks` (or calls it with `strict: false`), the
- * `unmockedBackendRequests` WeakMap has no entry for the page and the teardown is a no-op.
+ * Import `test` and `expect` from here instead of `@playwright/test` to get
+ * leak verification on teardown.
  */
 export const test = base.extend({
   page: async ({ page }, runTest) => {

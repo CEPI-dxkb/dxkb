@@ -20,7 +20,7 @@ interface StrainMemberProps {
 export function StrainMember({ strain }: StrainMemberProps) {
   const name = strain.strain ?? `Strain ${strain.id}`;
   // `null` past the Data API's `in(...)` ceiling as well as for no genomes, so
-  // the button never links to a list the destination would reject.
+  // the button never links to a rejected list.
   const genomesHref = genomesHrefFromIds(genomeIdsFromStrains([strain]));
   return (
     <EntityViewShell

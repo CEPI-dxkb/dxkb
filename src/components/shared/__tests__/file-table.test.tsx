@@ -25,7 +25,6 @@ const storageKey = "dxkb-table-layout:v1:test-files";
 Element.prototype.setPointerCapture = vi.fn();
 Element.prototype.releasePointerCapture = vi.fn();
 
-/** A pointer drag of `handle` by `deltaX` px from `startX`, released. */
 function pointerDrag(
   handle: HTMLElement,
   startX: number,
@@ -117,10 +116,6 @@ describe("FileTable remembered layout", () => {
     expect(storedLayout()).toStrictEqual({ widths: { size: 120 } });
   });
 
-  // TanStack stores the raw drag width (0 when dragged far left, unbounded to the
-  // right) and only getSize() clamps it to the column's minSize/maxSize. What is
-  // saved must be what the column renders at: a width outside the saved-layout
-  // schema (20-4000) would cost the user every saved width.
   describe("a pointer drag past the column's limits", () => {
     function dragName(savedWidth: number, deltaX: number) {
       localStorage.setItem(
@@ -240,7 +235,6 @@ describe("FileTable remembered layout", () => {
     await waitFor(() => {
       expect(handle).toHaveAttribute("aria-valuenow", "350");
     });
-    // Mid-drag the width lives in component state only.
     expect(storedLayout()).toStrictEqual({ widths: { name: 300 } });
 
     fireEvent.pointerUp(handle, { pointerId: 1, clientX: 150 });
@@ -277,10 +271,9 @@ describe("FileTable remembered layout", () => {
   });
 
   it("merges a keyboard resize into the widths stored when it is saved", () => {
-    // Writes another tab's save after the table renders the resize but before
-    // its commit effect runs: a layout effect runs between the two, and a
-    // direct write sends no storage event, so the table's render-time layout
-    // is stale when the effect saves.
+    // Writes another tab's save after the render but before the commit effect;
+    // a direct write sends no storage event, so the render-time layout is stale
+    // when the effect saves.
     let foreignWrite: string | null = null;
     function OwnerHeader() {
       useLayoutEffect(() => {
@@ -329,10 +322,9 @@ describe("FileTable remembered layout", () => {
     expect(storedLayout()).toStrictEqual({ widths: { name: 340 } });
   });
 
-  // Responsive tables hide columns with CSS (`hidden md:table-cell`), which
-  // TanStack still counts as visible. jsdom loads no stylesheet, so these
-  // tests hide the Owner header inline, and give the scroll box a width so the
-  // columns after the dragged one share the drag.
+  // Responsive tables hide columns with CSS, which TanStack still counts as
+  // visible and jsdom does not apply, so these tests hide the Owner header
+  // inline.
   describe("with a column that CSS hides", () => {
     const threeColumns: ColumnDef<FileTableFeatures, Row>[] = [
       ...columns,
@@ -383,8 +375,6 @@ describe("FileTable remembered layout", () => {
       const handle = pressName();
       fireEvent.pointerMove(handle, { pointerId: 1, clientX: 160 });
       fireEvent.pointerUp(handle, { pointerId: 1 });
-      // Name and Size fill 600px at twice their 150px settings: Name's edge
-      // moves 60px (30 setting px) and Size gives the width up.
       expect(storedLayout()).toStrictEqual({
         widths: { name: 180, size: 120 },
       });
@@ -393,7 +383,6 @@ describe("FileTable remembered layout", () => {
     it("ignores a second finger and keeps widths another tab saved mid-drag", () => {
       renderThreeColumns();
       const handle = pressName("touch");
-      // A second finger neither starts a drag of its own nor ends this one.
       fireEvent.pointerDown(
         screen.getByRole("separator", { name: /resize size column/i }),
         { pointerId: 2, isPrimary: false, pointerType: "touch", clientX: 300 },
@@ -401,7 +390,6 @@ describe("FileTable remembered layout", () => {
       fireEvent.pointerUp(handle, { pointerId: 2 });
       fireEvent.pointerMove(handle, { pointerId: 1, clientX: 160 });
       expect(localStorage.getItem(storageKey)).toBeNull();
-      // Owner is hidden, so this drag does not change it.
       localStorage.setItem(storageKey, JSON.stringify({ widths: { owner: 90 } }));
       fireEvent.pointerUp(handle, { pointerId: 1 });
       expect(storedLayout()).toStrictEqual({
@@ -414,7 +402,6 @@ describe("FileTable remembered layout", () => {
       const { unmount } = renderThreeColumns();
       const handle = pressName();
       fireEvent.pointerMove(handle, { pointerId: 1, clientX: 160 });
-      // The drag is live (Size gives up what Name takes).
       expect(handle).toHaveAttribute("aria-valuenow", "185");
       unmount();
       fireEvent.pointerUp(document, { pointerId: 1 });
@@ -437,7 +424,6 @@ describe("DataTable columnOrder identity", () => {
       <DataTable<Row>
         data={rows}
         columns={columns}
-        // Defensive: a fresh array each render (current callers pass module constants).
         defaultColumnOrder={["name", "size"]}
         isLoading={false}
         getRowId={(row) => row.id}

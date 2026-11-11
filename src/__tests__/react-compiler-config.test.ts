@@ -5,9 +5,7 @@ const repoRoot = resolve(__dirname, "..", "..");
 
 const optOutFiles = [
   "src/components/shared/data-table.tsx",
-  // Extracted out of data-table.tsx's useDataTableContent, which is itself
-  // opted out. Each child keys derived values off `table` identity, which is
-  // only unstable because useTable receives a fresh options literal.
+  // Extracted from data-table.tsx's opted-out useDataTableContent; each child keys off `table` identity.
   "src/components/shared/data-table-header.tsx",
   "src/components/shared/data-table-controls.tsx",
   "src/components/shared/data-table-footer.tsx",
@@ -16,12 +14,9 @@ const optOutFiles = [
   "src/components/taxonomy/taxonomy-tree.tsx",
 ] as const;
 
-// Components that opt out inside a file whose other functions opt out too, so the
-// file-level check below would still pass without them. The unit suite does not run
-// the compiler; e2e/tests/resource-collection-selection.spec.ts shows the behavior.
+// Opt-outs inside a file whose other functions opt out too, which the file-level check would miss; the unit suite does not run the compiler.
 const optOutComponents = [
-  // Reads selection state off the column header context's table, which is created
-  // once; compiled, the header checkbox froze in its first state.
+  // Reads selection state off the header context's table, created once; compiled, the header checkbox froze.
   { path: "src/components/shared/data-table.tsx", name: "SelectionHeader" },
 ] as const;
 
@@ -80,8 +75,7 @@ describe("React Compiler configuration", () => {
     expect(blockMatch).not.toBeNull();
     const arrayStart = eslintConfig.lastIndexOf("files: [", blockMatch?.index);
     const openBracket = eslintConfig.indexOf("[", arrayStart);
-    // Walk forward tracking bracket depth so paths containing "]" (e.g. Next.js
-    // dynamic-route segments like "[id]") don't truncate the captured block.
+    // Track bracket depth so paths containing "]" (e.g. "[id]") do not truncate the block.
     let depth = 0;
     let arrayEnd = -1;
     for (let i = openBracket; i < eslintConfig.length; i++) {

@@ -28,36 +28,23 @@ import { FileTypeTag } from "./file-type-tag";
 type ScopeChoice = "selected" | "all";
 
 export interface CollectionDownloadProps {
-  /** The collection label, as the popover heading ("Download Features"). */
   label: string;
   spec: ResolvedCollectionDownloadSpec;
   selection: {
-    /** The rows the bar reports selected (the total for an all-pages selection). */
     count: number;
-    /** The explicitly selected ids, in selection order. */
     ids: readonly string[];
-    /** Every matching row is selected, which downloads as *All results*. */
     isAllPagesSelected: boolean;
   };
-  /**
-   * What *All results* downloads, and how many rows it covers: the query on
-   * screen, or the rows a client-side keyword leaves displayed.
-   */
   allResults: { scope: DownloadScope; total: number };
   sort?: DataSort;
   /**
-   * The total is not this query's yet (a previous query's placeholder, or none
-   * while the first read is in flight), so *All results* waits for its count
-   * rather than offering a stale one or reading "All 0 / No matching rows".
+   * The total is a previous query's placeholder (or absent), so *All results*
+   * waits for its count.
    */
   isPlaceholderData: boolean;
-  /** The table's visible columns, for the *Visible columns* switch. */
   visibleColumnIds: readonly string[];
-  /** `exportFileName`, else the resource. */
   fileNameBase: string;
-  /** The query the download applies to, shown in the footer. */
   queryLabel?: string;
-  /** The format downloading now, from `useCollectionDownload`. */
   pending: DownloadFormatId | null;
   onDownload: (
     request: DownloadRequest,
@@ -70,20 +57,14 @@ const compactCount = new Intl.NumberFormat("en-US", {
   maximumFractionDigits: 1,
 });
 
-/** How long a finished row shows its check mark. */
 const doneMs = 1_800;
 
 const countingReason = "Counting matching rows…";
 
 /**
- * The action rail's Download tile: a popover with the scope on one line, one
- * list of format rows where a click is the download, and a footer with the
- * columns switch and the query. Every format the resource offers stays
- * listed; one that cannot run says why in place.
- *
- * Shown on every collection with or without a selection, as legacy's top
- * DOWNLOAD is. The popover's state lives here, and the running download in the
- * shell's `useCollectionDownload`, so a remounted tile keeps its spinner.
+ * The action rail's Download tile. Popover state lives here and the running
+ * download in the shell's `useCollectionDownload`, so a remounted tile keeps
+ * its spinner.
  */
 export function CollectionDownloadAction({
   label,
@@ -117,14 +98,12 @@ export function CollectionDownloadAction({
     scopeChoice === "selected" && !hasSelection
       ? "all"
       : (scopeChoice ?? (hasSelection ? "selected" : "all"));
-  // An all-pages selection is every matching row, so it downloads the query.
   const isQueryBacked = scope === "all" || selection.isAllPagesSelected;
   const requestScope: DownloadScope = isQueryBacked
     ? allResults.scope
     : { kind: "selected", ids: [...selection.ids] };
   const rows = isQueryBacked ? allResults.total : selection.ids.length;
   const scopeReason = isQueryBacked && isPlaceholderData ? countingReason : null;
-  // The upstream cannot select every column, so the switch cannot be honored.
   const columnsReason = unselectableColumnsReason(visibleColumnIds);
   const sendVisibleColumns = visibleColumnsOnly && columnsReason === null;
 
@@ -156,7 +135,6 @@ export function CollectionDownloadAction({
       {
         onSuccess: () => {
           setDone(format);
-          // Only the latest download's check mark has a timer to clear it.
           clearTimeout(doneTimeoutRef.current);
           doneTimeoutRef.current = setTimeout(() => {
             setDone(null);

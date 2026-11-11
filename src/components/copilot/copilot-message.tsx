@@ -77,10 +77,6 @@ const cardLabels: Record<string, string> = {
   execution_blocked: "a job waiting for your approval",
 };
 
-/**
- * An answer's card: a plan, or the interactive question and approval cards,
- * or a notice for one DXKB cannot read.
- */
 function MessageCard({
   messageId,
   card,
@@ -123,7 +119,6 @@ function MessageCard({
   return <CardNotice card={card} />;
 }
 
-/** For a card DXKB cannot draw (an unknown kind, or one it cannot read). */
 function CardNotice({ card }: { card: CopilotCard }) {
   return (
     <Marker variant="border">
@@ -139,13 +134,8 @@ function CardNotice({ card }: { card: CopilotCard }) {
 }
 
 /**
- * Rating saves still running, per message id: the newest one (a token unique
- * to that save) and the last rating the server confirmed. Only the newest
- * save's failure rolls back, and it rolls back to the confirmed rating, so an
- * older failure never undoes a newer click (even one that set the same value)
- * and overlapping failures never leave a rating the server did not store.
- * Module-level rather than a ref, so it outlives a remount while a save
- * runs; an entry goes once its newest save settles.
+ * Module-level so it outlives a remount; only the newest save's failure rolls back, to the last
+ * server-confirmed rating.
  */
 const ratingSaves = new Map<
   string,
@@ -184,7 +174,6 @@ function RatingButtons({
       const running = ratingSaves.get(message.id);
       ratingSaves.set(message.id, {
         latest: save,
-        // With no save running, the cached rating is the stored one.
         confirmed: running ? running.confirmed : (ratingOf() ?? message.rating),
       });
       await queryClient.cancelQueries({ queryKey: key });
@@ -192,7 +181,6 @@ function RatingButtons({
       return { save };
     },
     onSuccess: (_data, rating) => {
-      // One toast per message however fast the clicks: the id replaces it.
       if (rating !== 0) {
         toast.success("Thanks for the feedback", { id: `copilot-rating-${message.id}` });
       }
@@ -200,9 +188,8 @@ function RatingButtons({
       if (running) running.confirmed = rating;
     },
     onError: (error, _rating, context) => {
-      // Only this message's rating: restoring the whole session would undo
-      // another message's rating that saved meanwhile. A newer click on this
-      // message since then keeps its rating.
+      // Restore only this message's rating, not the whole session, which would undo other messages'
+      // saves.
       const running = ratingSaves.get(message.id);
       if (running && running.latest === context?.save) {
         setRating(running.confirmed);
@@ -250,10 +237,6 @@ function RatingButtons({
   );
 }
 
-/**
- * A model id without its provider prefix ("Qwen/Qwen3.6-35B-A3B" reads
- * "Qwen3.6-35B-A3B"); the full id stays in the label's title.
- */
 export function shortModelName(model: string): string {
   return model.slice(model.lastIndexOf("/") + 1) || model;
 }
@@ -282,7 +265,6 @@ const attachmentKinds: Record<CopilotAttachmentInfo["type"], string> = {
   execution: "Note",
 };
 
-/** The files a question carried (names only; the content is not kept). */
 function AttachmentList({ attachments }: { attachments: CopilotAttachmentInfo[] }) {
   if (attachments.length === 0) return null;
   return (
@@ -310,11 +292,9 @@ export function CopilotUserMessage({
   latest = true,
 }: {
   content: string;
-  /** Answers to an agent's questions, shown instead of `content`. */
   answers?: CopilotClarificationAnswer[];
   attachments?: CopilotAttachmentInfo[];
   onRetry?: () => void;
-  /** The newest question keeps its actions shown; older ones show on hover. */
   latest?: boolean;
 }) {
   return (
@@ -358,7 +338,6 @@ export function CopilotUserMessage({
   );
 }
 
-/** A stored answer: markdown, what the agents did, and its actions. */
 export function CopilotAssistantMessage({
   sessionId,
   message,
@@ -368,11 +347,8 @@ export function CopilotAssistantMessage({
 }: {
   sessionId: string;
   message: CopilotMessage;
-  /** Its card takes answers (the newest answer, with nothing after it). */
   interactive?: boolean;
-  /** The newest answer keeps its actions shown; older ones show on hover. */
   latest?: boolean;
-  /** Name the model (the transcript names it only where it changes). */
   showModel?: boolean;
 }) {
   return (
@@ -410,7 +386,6 @@ export function CopilotAssistantMessage({
   );
 }
 
-/** The answer being written: live status, steps so far, and the text. */
 export function CopilotStreamingMessage({
   steps,
   answer,
@@ -420,7 +395,6 @@ export function CopilotStreamingMessage({
   steps: CopilotStep[];
   answer: string;
   card: CopilotCard | null;
-  /** The live status line, while the turn runs. */
   live: React.ReactNode;
 }) {
   return (
@@ -432,7 +406,6 @@ export function CopilotStreamingMessage({
             <div className="flex flex-col gap-2">
               <CopilotSteps steps={steps} />
               {answer && <CopilotMarkdown content={answer} />}
-              {/* Answerable once saved: the stored answer replaces this one. */}
               {card && (
                 <MessageCard messageId="" card={card} interactive={false} live />
               )}

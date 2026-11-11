@@ -262,7 +262,6 @@ describe("genome service", () => {
     });
 
     it("splits a genome_id stored as one comma-separated string", async () => {
-      // How some older groups are stored; the legacy site reads them too.
       const groupData = JSON.stringify({
         name: "Haemophilus_influenzae_ampicillin_resistance",
         id_list: { genome_id: "727.1572,727.1525, 727.1554,," },
@@ -572,7 +571,6 @@ describe("genome service", () => {
       const result = await validateViralGenomes(["g1"]);
 
       expect(result.allValid).toBe(false);
-      // Alpha's wording, with its `<br>` as a line break.
       expect(result.errors.kingdom_error).toBe(
         "Invalid Superkingdom: only virus genomes are permitted\nFirst occurrence for genome_id: g1",
       );
@@ -725,9 +723,8 @@ describe("genome service", () => {
       expect(requestBodies[0]).toHaveLength(maxViralValidationIdsPerRequest);
     });
 
-    // Regression: the validate-viral route builds one in(genome_id,(...)) GET
-    // clause from whatever it receives, so an unbatched 5,000-id call produced a
-    // ~50KB URL that the upstream data API rejects.
+    // An unbatched 5,000-id call built a ~50KB URL the upstream data API
+    // rejects.
     it("chunks large id lists and merges the results", async () => {
       const genomeIds = Array.from({ length: 1050 }, (_, index) =>
         String(index),
@@ -781,7 +778,6 @@ describe("genome service", () => {
             const body = (await request.json()) as { genome_ids?: string[] };
             const batch = body.genome_ids ?? [];
             return HttpResponse.json({
-              // Drop the last id of every batch, including the final partial one.
               results: batch.slice(0, -1).map((genomeId) => ({
                 genome_id: genomeId,
                 superkingdom: "Viruses",

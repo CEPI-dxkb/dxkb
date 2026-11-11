@@ -15,12 +15,9 @@ export const POST = withAuth(async (request: NextRequest, { token }) => {
     return NextResponse.json({ results: [] });
   }
 
-  // URL encode the feature group path for the FeatureGroup() function
-  // The path needs to be encoded but FeatureGroup() itself should not be encoded
+  // The path is encoded but FeatureGroup() itself must not be.
   const encodedPath = encodeURIComponent(featureGroupPath.trim());
 
-  // Build the query: ?in(feature_id,FeatureGroup(ENCODED_PATH))&limit(1000,0)
-  // Select fields that are useful for display: feature_id, patric_id, annotation
   const queryString = `?in(feature_id,FeatureGroup(${encodedPath}))&limit(1000,0)`;
   const url = `${getRequiredEnv("BVBRC_WEBSITE_API_URL")}/genome_feature/${queryString}`;
 

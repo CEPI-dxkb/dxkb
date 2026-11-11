@@ -10,29 +10,17 @@ const genericSectionErrorMessage =
   "This section could not be loaded. Please try again.";
 
 interface SectionErrorProps {
-  /**
-   * What the section shows, as the start of a sentence: "Reference genomes"
-   * titles the card "Reference genomes could not be loaded".
-   */
+  /** What the section shows, as the start of a sentence: "Reference genomes" titles the card "Reference genomes could not be loaded". */
   section: string;
   /** What failed: the caught error, or a message. Long messages are condensed. */
   error: unknown;
-  /**
-   * Re-runs a load the browser owns (a query's `refetch`). Without it, Retry
-   * refreshes the route, which re-runs a server-rendered section. `false`
-   * leaves Retry out, for a failure that loading again cannot fix (an invalid
-   * reference in the data itself).
-   */
+  /** Re-runs a browser-owned load; without it Retry refreshes the route. `false` omits Retry for failures loading again cannot fix. */
   onRetry?: (() => void) | false;
   /** The caller's load is running again (`useRetryKeepingError`'s `retrying`). */
   isRetrying?: boolean;
 }
 
-/**
- * A section or panel whose data could not be loaded: a title naming the
- * section, the condensed real message as text (never a block of upstream page
- * source) and a Retry, announced as an alert.
- */
+/** A section or panel whose data could not load: a title, the condensed real message and a Retry, announced as an alert. */
 export function SectionError({
   section,
   error,

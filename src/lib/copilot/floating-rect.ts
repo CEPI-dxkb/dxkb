@@ -9,7 +9,6 @@ export interface Viewport {
   height: number;
 }
 
-/** Keeps the window on screen, shrinking it before moving it. */
 export function clampFloatingRect(
   rect: CopilotFloatingRect,
   viewport: Viewport,
@@ -30,14 +29,9 @@ export function clampFloatingRect(
   };
 }
 
-/** A resize handle: the edges (n, e, s, w) or corner it moves. */
 export type ResizeDirection = "n" | "e" | "s" | "w" | "ne" | "nw" | "se" | "sw";
 
-/**
- * The rect after dragging the `direction` edges by (dx, dy). Only the dragged
- * edges move: a window at its minimum size stops shrinking rather than
- * sliding, and an edge stops at the viewport margin.
- */
+/** Only the dragged edges move: a window at minimum size stops shrinking rather than sliding. */
 export function resizeFloatingRect(
   start: CopilotFloatingRect,
   direction: ResizeDirection,
@@ -45,7 +39,6 @@ export function resizeFloatingRect(
   dy: number,
   viewport: Viewport,
 ): CopilotFloatingRect {
-  // Edges as distances from the viewport's top-left corner.
   let left = viewport.width - start.right - start.width;
   let right = viewport.width - start.right;
   let top = viewport.height - start.bottom - start.height;

@@ -14,19 +14,12 @@ import {
 import { workspaceQueryKeys } from "@/lib/services/workspace/workspace-query-keys";
 
 export interface WorkspacePickerListing {
-  /** Unfiltered rows for the location; the picker filters and sorts them. */
   items: WorkspaceItem[];
   isLoading: boolean;
   error: Error | null;
 }
 
-/**
- * Rows for one picker location. Directories (and the `/` root behind Shared
- * and Public) share the mini browser's cache keys; favorites share the
- * navbar's; recent folders come from browser storage. Favorite and recent
- * rows outside the user's own workspaces take their permissions from the `/`
- * listing, so a writable shared folder can be chosen from them.
- */
+/** Rows for one picker location; favorite and recent rows outside the user's own workspaces take their permissions from the `/` listing. */
 export function useWorkspacePickerListing({
   location,
   username,
@@ -71,10 +64,7 @@ export function useWorkspacePickerListing({
     enabled: readsWorkspaces,
     staleTime: 60 * 1000,
   });
-  // A disabled query still reports its cache entry, which other observers
-  // share (the navbar's favorites, the Shared and Public `/` column), so only
-  // the reads this listing depends on may make it load or fail: a favorites
-  // outage must not fail Recently Used, which comes from browser storage.
+  // A disabled query still reports its shared cache entry, so only the reads this listing depends on may make it load or fail.
   const favorites = readsFavorites ? favoritesQuery : null;
   const workspaces = readsWorkspaces ? workspacesQuery : null;
 
@@ -83,7 +73,6 @@ export function useWorkspacePickerListing({
     case "recent":
       return {
         items: folderStubItems(stubPaths, workspacesQuery.data),
-        // Rows wait for their permissions rather than flash as read-only.
         isLoading: !!favorites?.isLoading || !!workspaces?.isLoading,
         error: favorites?.error ?? workspaces?.error ?? null,
       };

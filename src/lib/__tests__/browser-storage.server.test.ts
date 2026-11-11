@@ -1,11 +1,7 @@
 // @vitest-environment node
 import { readStorageItem, writeStorageItem } from "../browser-storage";
 
-/**
- * Node 25+ defines its own `localStorage` global, and with `--localstorage-file`
- * it is one on-disk store shared by every request the server handles. A server
- * read must still see "nothing stored".
- */
+/** Node 25+ defines its own `localStorage` global (a shared on-disk store with `--localstorage-file`); a server read must still see nothing stored. */
 function populatedStorage({ refuseWrites = false } = {}): Storage {
   const items = new Map([["k", "stored on the server"]]);
   return {

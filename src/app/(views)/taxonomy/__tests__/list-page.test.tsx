@@ -3,7 +3,6 @@ import { render, screen } from "@testing-library/react";
 vi.mock("../taxonomy-collection", async () => {
   const { useState } = await import("react");
   return {
-    // The first props it mounted with live in state, so a remount shows.
     TaxonomyCollection: ({ initialState }: { initialState: unknown }) => {
       const [mountedWith] = useState(() => JSON.stringify(initialState));
       return (

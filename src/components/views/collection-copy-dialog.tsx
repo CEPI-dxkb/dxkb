@@ -16,7 +16,6 @@ export type CopyColumnMode = "all" | "visible";
 interface CollectionCopyDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  /** Plural collection label, e.g. "Strains" or "Genomes". */
   label: string;
   selectedCount: number;
   onCopy: (
@@ -67,17 +66,14 @@ export function CollectionCopyDialog({
   const [error, setError] = useState<string | null>(null);
   const [lastOpen, setLastOpen] = useState(open);
   /**
-   * Identifies the current dialog session so a copy that resolves after the dialog
-   * was closed cannot close, error, or unblock a later session.
+   * Identifies the current dialog session so a copy that resolves after close
+   * cannot affect a later session.
    */
   const sessionRef = useRef(0);
   useEffect(() => {
-    // Every open/close transition — including one driven by the parent — ends the
-    // previous session, so any copy still in flight is no longer current.
     sessionRef.current += 1;
   }, [open]);
 
-  // Each opening starts with clean local state rather than the last session's error.
   if (lastOpen !== open) {
     setLastOpen(open);
     setCopyingChoice(null);

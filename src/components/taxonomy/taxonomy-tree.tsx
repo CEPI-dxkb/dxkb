@@ -114,12 +114,7 @@ function resolveUpdater<T>(updater: Updater<T>, current: T): T {
     : updater;
 }
 
-/**
- * A new array of the roots, for the table's `data`. TanStack Table rebuilds
- * its rows only when `data` changes identity, so the other values the rows
- * depend on are passed too: a memo over this call then yields a new array
- * whenever one of them changes. Nothing reads them.
- */
+/** A new array of the roots for the table's `data`; the extra args force a new identity so TanStack Table rebuilds rows when they change. */
 function tableDataFor(
   roots: readonly TaxonRecord[],
   ..._rowInputs: unknown[]
@@ -187,9 +182,7 @@ function TaxonomyTreeInstance({
   const [knownChildCounts, setKnownChildCounts] = useState<Map<number, number>>(
     () => new Map(),
   );
-  // Collapsed nodes whose child-count request failed. Their count is unknown,
-  // not zero, so they keep their expand toggle: expanding loads the children
-  // directly, which is the retry.
+  // Collapsed nodes whose child-count request failed: the count is unknown, not zero, so they keep the toggle (expanding is the retry).
   const [uncountedIds, setUncountedIds] = useState<ReadonlySet<number>>(
     () => new Set(),
   );
@@ -296,9 +289,7 @@ function TaxonomyTreeInstance({
     commitSelection(toggleSelected(selection.selected, row.id));
   }
 
-  // getSubRows and getRowCanExpand read loaded children and child counts from
-  // outside `data`, and the compiled row views skip a row whose object is
-  // unchanged, so either changing has to rebuild the rows.
+  // getSubRows and getRowCanExpand read state outside `data`, and compiled row views skip an unchanged row, so changes must rebuild the rows.
   const tableData = useMemo(
     () =>
       tableDataFor(
@@ -335,7 +326,6 @@ function TaxonomyTreeInstance({
       if (row.getIsExpanded()) return true;
       const id = numericId(row.original);
       const loaded = queryState.children.get(id);
-      // A failed load says nothing about how many children there are.
       if (loaded?.some(isPlaceholder)) return true;
       const count = loaded
         ? loaded.length

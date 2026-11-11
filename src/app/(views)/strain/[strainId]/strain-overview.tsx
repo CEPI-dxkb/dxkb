@@ -15,11 +15,6 @@ import {
 } from "@/lib/strain-view";
 import { genomeHref, taxonomyHref } from "@/lib/views/hrefs";
 
-/**
- * The per-segment accession fields, in `strainFields` order (influenza's eight
- * numbered segments, then the S/M/L of tri-segmented viruses). The combined
- * `genbank_accessions` list is shown on its own.
- */
 const segmentFields = Object.values(strainFields).filter(
   (field) =>
     isStrainAccessionField(field.field) &&
@@ -47,8 +42,8 @@ interface StrainOverviewProps {
 
 export function StrainOverview({ strain }: StrainOverviewProps) {
   const taxonId = String(strain.taxon_id);
-  // `taxonomyHref` throws on an unrecognized ID, so the shape check has to gate
-  // the call. The resolved href then doubles as the field's availability.
+  // `taxonomyHref` throws on an unrecognized ID, so the shape check gates the
+  // call.
   const taxonomyDestination = isTaxonId(taxonId)
     ? taxonomyHref(taxonId)
     : undefined;

@@ -7,11 +7,6 @@ import type { JsonOverride } from "../../mocks/backends";
 export const e2eUsername = "e2e-test-user@patricbrc.org";
 export const e2eHomePath = `/${e2eUsername}/home`;
 
-/**
- * Legacy object-shaped items kept for the earlier smoke specs that still read them directly.
- * New specs should use `workspaceTuple(...)` + `mockWorkspaceLs(...)` to build realistic
- * tuple-encoded JSON-RPC responses instead.
- */
 export const mockWorkspaceItems = [
   {
     name: "home",
@@ -40,9 +35,8 @@ export const mockWorkspaceItems = [
 ];
 
 /**
- * Matches the tuple shape parsed by `parseTupleToRawObject` in
- * src/lib/services/workspace/adapters/parsers.ts: [name, type, parent, creation_time, id, owner_id, size,
- * userMeta, autoMeta, user_perm, global_perm, link_reference].
+ * Tuple shape parsed by `parseTupleToRawObject` in
+ * src/lib/services/workspace/adapters/parsers.ts.
  */
 export interface TupleItem {
   name: string;
@@ -78,11 +72,9 @@ export function workspaceTuple(item: TupleItem): unknown[] {
 }
 
 interface MockLsOptions {
-  /** Keyed by the requested parent path (no trailing slash) → items returned for that path. */
   pathItems: Record<string, TupleItem[]>;
 }
 
-/** Build the `result` payload for a `Workspace.ls` RPC call covering one or more paths. */
 export function mockWorkspaceLsResult(options: MockLsOptions): unknown {
   const map: Record<string, unknown[][]> = {};
   for (const [path, items] of Object.entries(options.pathItems)) {
@@ -91,10 +83,6 @@ export function mockWorkspaceLsResult(options: MockLsOptions): unknown {
   return [map];
 }
 
-/**
- * `Workspace.list_permissions` result. Each item's entries are `[user, permission]` pairs. We
- * give `o` (owner) on every path by default so the UI treats the current user as the writer.
- */
 export function mockListPermissionsResult(paths: string[]): unknown {
   const map: Record<string, [string, string][]> = {};
   for (const path of paths) {
@@ -103,17 +91,10 @@ export function mockListPermissionsResult(paths: string[]): unknown {
   return [map];
 }
 
-/**
- * `Workspace.get` result for a single file containing string content at position [0][0][1].
- */
 export function mockWorkspaceGetContent(content: string): unknown {
   return [[[{ name: "favorites.json", type: "json" }, content]]];
 }
 
-/**
- * Workspace RPC override routed by method name. Lets multiple overrides share the
- * `/api/services/workspace` endpoint by matching on the parsed body's `method` field.
- */
 export function workspaceRpcOverride(
   rpcMethod: string,
   body: string | object,
@@ -127,11 +108,8 @@ export function workspaceRpcOverride(
 }
 
 /**
- * `Workspace.get` returning `content` for `item` (the read a genome group's
- * Add button makes, with `metadata_only: false`). List it before
- * `buildWorkspaceOverrides(...)`, whose `Workspace.get` entries answer every
- * path: the first match wins. Metadata-only reads of the same path (output
- * name and path checks) still fall through to that bundle.
+ * List before `buildWorkspaceOverrides(...)`: its `Workspace.get` entries
+ * answer every path and the first match wins.
  */
 export function workspaceObjectContentOverride(
   item: TupleItem,
@@ -158,33 +136,23 @@ export function workspaceObjectContentOverride(
 }
 
 interface BuildWorkspaceOverridesOptions {
-  /** Directory path → tuples returned by Workspace.ls. Default: home populated with 3 items. */
   pathItems?: Record<string, TupleItem[]>;
-  /** Favorites.json folder list returned by Workspace.get. Default: empty. */
   favorites?: string[];
-  /** Items returned by the object-selector search (Workspace.ls with recursive=true). */
   searchItems?: TupleItem[];
-  /** Optional extra RPC method overrides to append. */
   extraRpc?: JsonOverride[];
   /**
-   * When true, file (non-Directory) `Workspace.create` calls append the new tuple to
-   * `pathItems` so the post-upload `Workspace.ls` refresh surfaces the uploaded row.
-   * Folder creates ignore this flag — use `reflectFolderCreates` for those.
+   * Appends file `Workspace.create` tuples to `pathItems` so the next ls
+   * shows the upload.
    */
   reflectUploads?: boolean;
   /**
-   * When true, folder (`Workspace.create` with type "Directory") calls append the new
-   * folder tuple to `pathItems` so the post-create `Workspace.ls` refresh surfaces the
-   * row. Independent of `reflectUploads` so file-upload specs don't accidentally enable
-   * folder reflection (and vice versa).
+   * Appends folder `Workspace.create` tuples to `pathItems`; independent of
+   * `reflectUploads`.
    */
   reflectFolderCreates?: boolean;
   /**
-   * When true, append a permissive `{ result: [[]] }` fallback for any `Workspace.*` RPC
-   * the explicit overrides above don't match. Lets older specs avoid declaring every RPC
-   * the page might fire. Default: `false` — matches the strict-mock spirit of journey
-   * overrides so new RPC traffic surfaces as a strict-mode failure rather than being
-   * silently swallowed.
+   * Answers unmatched `Workspace.*` RPCs with `{ result: [[]] }`; off by
+   * default so unknown traffic fails strict mode.
    */
   permissiveCatchall?: boolean;
 }
@@ -229,13 +197,6 @@ const defaultHomeItems: TupleItem[] = [
 
 const favoritesPath = `/${e2eUsername}/home/.preferences/favorites.json`;
 
-/**
- * Resolve a workspace path against a pathItems map. A path matches when:
- *   1. It is a child file/folder listed under one of the directory keys (parent + "/" + name).
- *   2. It is a directory key itself — synthesizes a folder tuple so directory existence checks
- *      (Workspace.get on a folder path) return metadata instead of 404.
- * Returns null when no match is found so callers can fall back to a 500 "not found" response.
- */
 function findKnownItem(
   pathItems: Partial<Record<string, TupleItem[]>>,
   fullPath: string,
@@ -256,12 +217,6 @@ function findKnownItem(
   return null;
 }
 
-/**
- * Build a workspace override set backed by tuple-encoded RPC responses. Covers the three RPC
- * methods the browser hits on load (`ls`, `list_permissions`, `get` for favorites) plus the
- * preview/view proxy endpoints. Designed so specs can compose scenarios without re-specifying
- * the full RPC plumbing.
- */
 export function buildWorkspaceOverrides(
   options: BuildWorkspaceOverridesOptions = {},
 ): JsonOverride[] {
@@ -276,11 +231,10 @@ export function buildWorkspaceOverrides(
       const body = parsed as { method?: string; params?: unknown[] } | null;
       if (body?.method !== "Workspace.ls") return false;
       const params = body.params?.[0] as { paths?: string[]; recursive?: boolean } | undefined;
-      // Recursive ls calls hit a different branch (object selector search).
       return params?.recursive !== true;
     },
-    // Function body lets reflectUploads / reflectFolderCreates mutate `pathItems` between
-    // calls (Workspace.create appends the new tuple, then the next Workspace.ls picks it up).
+    // The function body lets the reflect flags mutate `pathItems` between
+    // calls.
     body: () => buildBrowserRpcSuccess(mockWorkspaceLsResult({ pathItems })),
   };
 
@@ -294,9 +248,8 @@ export function buildWorkspaceOverrides(
       return params?.recursive === true;
     },
     body: ({ parsedBody }) => {
-      // Use the requested path as the map key so parseLsResult — which does an exact lookup
-      // by `requestedPath` — always finds the items, regardless of how the caller built the
-      // path (`@bvbrc` vs `@patricbrc.org`, trailing slash, etc.).
+      // Keyed by requested path so parseLsResult's exact lookup always hits,
+      // whatever the realm or trailing slash.
       const params = (parsedBody as { params?: unknown[] } | null)?.params?.[0] as
         | { paths?: string[] }
         | undefined;
@@ -328,11 +281,6 @@ export function buildWorkspaceOverrides(
     ),
   };
 
-  // Mirror back whatever filename the request asked to create. The two reflection flags
-  // route by type so file-upload specs and folder-create specs can opt in independently:
-  // `reflectUploads` mirrors non-Directory creates (file uploads); `reflectFolderCreates`
-  // mirrors Directory creates (new folders). Either way, the new tuple is appended to
-  // `pathItems` so the next Workspace.ls refresh surfaces the row.
   const createOverride: JsonOverride = {
     url: /\/api\/services\/workspace(?:$|\?)/,
     method: "POST",
@@ -387,23 +335,14 @@ export function buildWorkspaceOverrides(
     buildBrowserRpcSuccess([[]]),
   );
 
-  // Workspace.du fires whenever a folder is selected in the browser (the details panel
-  // calls it for disk-usage). Returning an empty tuple-array is enough — the panel just
-  // renders zero size when no entry matches. Pinning it here keeps the strict-mock
-  // contract intact without forcing every spec that selects a folder to opt in.
   const duOverride = workspaceRpcOverride(
     "Workspace.du",
     buildBrowserRpcSuccess([[]]),
   );
 
-  // Workspace.get serves two distinct UI flows:
-  //   1. Path resolution (`useWorkspacePathResolve`) — must succeed with metadata for any path
-  //      that actually exists in `pathItems`, otherwise the workspace browser shows the "Folder
-  //      not found" dialog when navigating into a real subfolder.
-  //   2. Output-name availability (`checkWorkspaceObjectExists`) — must return non-200 for paths
-  //      that don't exist, otherwise the form's submit button stays disabled.
-  // We resolve known paths against the assembled `pathItems` map. Unknown paths fall through to
-  // a 500 so the availability check treats them as available.
+  // Known paths resolve against `pathItems` (path resolution needs them);
+  // unknown ones get a 500 so the output-name availability check treats them
+  // as free.
   const getKnownOverride: JsonOverride = {
     url: /\/api\/services\/workspace(?:$|\?)/,
     method: "POST",
@@ -432,19 +371,15 @@ export function buildWorkspaceOverrides(
     matchBody: (parsed) =>
       (parsed as { method?: string } | null)?.method === "Workspace.get",
     status: 500,
-    // What `/api/services/workspace` really answers for a missing object: the
-    // Workspace's JSON-RPC error arrives as an HTTP 500, and the proxy keeps
-    // its message in `apiResponse` (see `sanitizeUpstreamError`). The app's
-    // "missing vs outage" check (`workspace-errors.ts`) reads it from there.
+    // The proxy answers a missing object with an HTTP 500 carrying its
+    // message in `apiResponse` (see `sanitizeUpstreamError`), which
+    // `workspace-errors.ts` reads.
     body: {
       error: "BV-BRC API error: 500 Internal Server Error",
       apiResponse: { code: -32603, message: "_ERROR_Object not found!_" },
     },
   };
 
-  // Fallback for any Workspace.* methods we haven't explicitly mocked. Off by default —
-  // turning this on weakens strict-mode by silently swallowing unknown RPCs. Specs that
-  // rely on it should opt in via `permissiveCatchall: true`.
   const workspaceCatchall: JsonOverride = {
     url: /\/api\/services\/workspace(?:$|\?)/,
     method: "POST",
@@ -463,7 +398,6 @@ export function buildWorkspaceOverrides(
     getKnownOverride,
     getNotFoundOverride,
     ...(options.permissiveCatchall ? [workspaceCatchall] : []),
-    // Proxy / preview endpoints the file viewer calls.
     {
       url: /\/api\/workspace\/view\//,
       method: "GET",
@@ -483,10 +417,6 @@ export function buildWorkspaceOverrides(
   ];
 }
 
-/**
- * Legacy smoke-test override kept so the original `workspace.spec.ts` / `jobs.spec.ts` specs
- * continue to pass without modification. New specs should call `buildWorkspaceOverrides`.
- */
 export const workspaceOverrides: JsonOverride[] = [
   {
     url: /\/services\/Workspace/,
@@ -505,15 +435,12 @@ export const workspaceOverrides: JsonOverride[] = [
   },
 ];
 
-/** Populated home workspace with a mix of folders, reads, JSON, and PNG. */
 export const workspacePopulatedOverrides = buildWorkspaceOverrides();
 
-/** Empty home workspace — `Workspace.ls` returns no items. */
 export const workspaceEmptyOverrides = buildWorkspaceOverrides({
   pathItems: { [e2eHomePath]: [] },
 });
 
-/** `Workspace.ls` fails with a JSON-RPC error so the browser renders the error alert. */
 export const workspaceErrorOverrides: JsonOverride[] = [
   {
     url: /\/api\/services\/workspace(?:$|\?)/,

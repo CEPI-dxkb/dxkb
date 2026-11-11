@@ -1,6 +1,5 @@
 import type { WorkspaceItem } from "@/lib/services/workspace/domain";
 
-/** Build a normalized full workspace item path for API calls. */
 export function getItemFullPath(
   item: Omit<WorkspaceItem, "path" | "name"> & {
     path?: string | null;

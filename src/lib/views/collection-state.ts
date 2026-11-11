@@ -4,27 +4,17 @@ export interface CollectionStateOptions<Sort extends string = string> {
   defaultSort: Sort;
   sortAllowlist: readonly Sort[];
   friendlyFilters?: readonly string[];
-  /** Filters that remain active and serialized alongside explicit structural RQL. */
   independentFilters?: readonly string[];
-  /**
-   * Closed value sets for friendly filters, such as `true`/`false` for a
-   * boolean field. Values outside the set are dropped wherever state is parsed
-   * or canonicalized, so they never reach the backend, which rejects them.
-   */
   filterValues?: Readonly<Record<string, readonly string[]>>;
   /**
-   * Filters a view selects while its URL does not name them: legacy BV-BRC's
-   * removable grid defaults, such as the Feature list's `annotation=PATRIC`.
    * Every key must also be a `friendlyFilters` entry. A default is omitted from
-   * serialized URLs; once the user removes it, the URL carries `<name>=*`
-   * (`clearedFilterValue`), so the removal survives reload and sharing. A
-   * default stays beside an explicit `rql`, as legacy's does beside a link's
-   * query, unless that rql names the default's field (`filtersBesideRql`), so
-   * the view's structural RQL builder must apply it under an rql too (as
-   * `featureStructuralRql` does; `structuralFilterRql` does not).
+   * URLs; once removed, the URL carries `<name>=*` so the removal survives
+   * reload.
+   * A default stays beside an explicit `rql` unless that rql names its field
+   * (`filtersBesideRql`), so the view's structural RQL builder must apply it
+   * under an rql too.
    */
   defaultFilters?: Readonly<Record<string, readonly string[]>>;
-  /** Accept legacy `filter=<RQL>` URLs and canonicalize them to `rql`. */
   legacyRqlFilter?: boolean;
 }
 
@@ -46,10 +36,6 @@ export interface CollectionStateUpdate<Sort extends string = string> {
   sort?: Sort;
 }
 
-/**
- * Convert a `field:direction` collection sort into the data-API sort argument.
- * `"unsorted"` means "let the endpoint decide", so it maps to undefined.
- */
 export function dataSort(
   sort: string,
 ): { field: string; direction: "asc" | "desc" } | undefined {
@@ -99,7 +85,6 @@ function allowedValues<Sort extends string>(
     : [...selected];
 }
 
-/** The URL value recording that the user removed a filter's default: `?annotation=*`. */
 export const clearedFilterValue = "*";
 
 function defaultFilterValues<Sort extends string>(
@@ -111,11 +96,6 @@ function defaultFilterValues<Sort extends string>(
     : undefined;
 }
 
-/**
- * What a URL selects for one friendly filter. A filter with a default selects
- * it while the URL names no usable value for the filter, and nothing once the
- * URL holds only the cleared marker; values beside the marker win.
- */
 function selectedFilterValues<Sort extends string>(
   name: string,
   requested: readonly string[],
@@ -133,22 +113,14 @@ function selectedFilterValues<Sort extends string>(
 }
 
 /**
- * Whether an explicit `rql` filters on `field`: some operator's first argument
- * is it (`eq(annotation,RefSeq)`, `in(annotation,(…))`), spaces allowed as the
- * RQL parser allows them. A value at the start of an `in(...)` list is not an
- * operator's argument. Read the validated rql where there is one: there a
- * value cannot hold a literal `(` (values come percent-encoded, `%28`).
+ * A value at the start of an `in(...)` list is not an operator's argument. Read
+ * the validated rql where there is one: values there cannot hold a literal `(`.
  */
 export function rqlNamesField(rql: string, field: string): boolean {
   return new RegExp(`[a-z]\\(\\s*${field}\\s*,`).test(rql);
 }
 
-/**
- * The friendly filters that stay active beside an explicit `rql`: the
- * independent ones, and each default whose field the rql does not name (an rql
- * that picks its own annotation replaces the PATRIC default). Without an rql,
- * every friendly filter applies.
- */
+/** An rql that picks its own annotation replaces the PATRIC default. */
 export function filtersBesideRql<Sort extends string>(
   rql: string | undefined,
   options: CollectionStateOptions<Sort>,
@@ -200,7 +172,6 @@ function consumesLegacyRqlFilter<Sort extends string>(
   return optionalValue(params, "filter")?.includes("(") === true;
 }
 
-/** Parse and validate the URL-owned portion of collection state. */
 export function parseCollectionState<Sort extends string>(
   params: SearchParamsRecord,
   options: CollectionStateOptions<Sort>,
@@ -215,9 +186,7 @@ export function parseCollectionState<Sort extends string>(
   const sort = parseSort(rawSort ?? options.defaultSort, options);
   const filters: Record<string, string[]> = {};
 
-  // An explicit structural expression is authoritative over the filters it does
-  // not keep (`filtersBesideRql`). Keyword is deliberately independent and may
-  // still be combined with it by the collection query.
+  // Keyword is deliberately independent of an explicit structural expression.
   const applied = filtersBesideRql(rql, options);
   for (const name of options.friendlyFilters ?? []) {
     if (!applied.has(name)) continue;
@@ -228,7 +197,6 @@ export function parseCollectionState<Sort extends string>(
   return { keyword, refine, rql, filters, page: parsePage(params), sort };
 }
 
-/** Validate a programmatic state and remove values omitted by the URL schema. */
 export function canonicalizeCollectionState<Sort extends string>(
   state: CollectionState<Sort>,
   options: CollectionStateOptions<Sort>,
@@ -260,7 +228,6 @@ export function canonicalizeCollectionState<Sort extends string>(
   return { keyword, refine, rql, filters, page: state.page, sort };
 }
 
-/** Serialize only canonical collection parameters in stable schema order. */
 export function serializeCollectionState<Sort extends string>(
   state: CollectionState<Sort>,
   options: CollectionStateOptions<Sort>,
@@ -290,14 +257,11 @@ export function serializeCollectionState<Sort extends string>(
 }
 
 /**
- * Restore the defaults an outgoing rql hid. While an rql names a default's
- * field the default drops out of the parsed filters, so a next state that no
- * longer has that rql cannot tell "hidden" from "removed" and would otherwise
- * serialize the cleared marker. A default the next state still leaves
- * shadowed, or that `explicit` names (a removal or pick in this same change),
- * is left as the caller set it. Only the caller knows whether a change meant
- * to remove everything ("Clear All Filters"), so a full-state replacement does
- * not apply this; a caller replacing the rql through a facet pick does.
+ * While an rql names a default's field the default drops out of parsed filters,
+ * so without this a next state with no rql could not tell "hidden" from
+ * "removed" and would serialize the cleared marker.
+ * A full-state replacement skips it, since only the caller knows whether the
+ * change meant to remove everything.
  */
 export function withUnshadowedDefaults<Sort extends string>(
   previousRql: string | undefined,
@@ -317,7 +281,6 @@ export function withUnshadowedDefaults<Sort extends string>(
   return filters === next.filters ? next : { ...next, filters };
 }
 
-/** Canonicalize managed parameters while retaining unrelated URL state. */
 export function canonicalizeCollectionSearchParams<Sort extends string>(
   params: SearchParamsRecord,
   options: CollectionStateOptions<Sort>,
@@ -330,14 +293,9 @@ export function canonicalizeCollectionSearchParams<Sort extends string>(
 }
 
 /**
- * Replace the URL-owned collection state wholesale, preserving unrelated
- * parameters. Unlike `updateCollectionSearchParams`, this never resets
- * pagination: the caller supplies the complete next state (including
- * `page`), so there is no incremental "did the query shape change" question
- * to answer. Keeping replacement and incremental update as separate
- * functions is deliberate — folding them into one behind a flag is how the
- * pagination-reset rule and the replacement rule got confused with each
- * other before.
+ * Never resets pagination: the caller supplies the complete next state. Kept
+ * separate from `updateCollectionSearchParams` so the pagination-reset and
+ * replacement rules stay distinct.
  */
 export function replaceCollectionSearchParams<Sort extends string>(
   params: SearchParamsRecord,
@@ -351,7 +309,6 @@ export function replaceCollectionSearchParams<Sort extends string>(
   );
 }
 
-/** Apply a collection-state update, resetting pagination when query shape changes. */
 export function updateCollectionSearchParams<Sort extends string>(
   params: SearchParamsRecord,
   update: CollectionStateUpdate<Sort>,
@@ -422,14 +379,11 @@ function sameFilters(
 }
 
 /**
- * The state a view's facet counts are read for. While the filters are exactly
- * the view's defaults (the user has not touched them), the defaults are left
- * out, so a default's own facet still counts the values it hides: legacy
- * FeatureList's annotation facet shows RefSeq beside its PATRIC default. Once
- * the user picks or removes anything, the counts use the filters as shown, as
- * legacy's do. Independent filters are a scope the view keeps beside any other
- * state (the Proteins search's `filter=protein`), not something the user picks,
- * so they neither touch the defaults nor drop out of the counts.
+ * While the filters are exactly the view's defaults they are left out, so a
+ * default's own facet still counts the values it hides (legacy's annotation
+ * facet shows RefSeq beside PATRIC).
+ * Independent filters are a scope the view keeps, so they neither touch the
+ * defaults nor drop out of the counts.
  */
 export function facetCountState<Sort extends string>(
   state: CollectionState<Sort>,
@@ -458,12 +412,8 @@ export function facetCountState<Sort extends string>(
 }
 
 /**
- * Parameter names a single collection view owns and may clear: the fixed
- * managed keys, this view's own friendly filters, and — only when `params`
- * is currently consuming a legacy `filter=<rql>` URL under these options —
- * `filter` itself. This is the sole definition of "managed" for a view; both
- * canonicalization/incremental-update and full-state replacement go through
- * it via `mergeWithUnrelatedParams`.
+ * The sole definition of "managed" for a view; `filter` is included only when
+ * `params` is consuming a legacy `filter=<rql>` URL.
  */
 export function collectionManagedParamNames<Sort extends string>(
   params: SearchParamsRecord,
@@ -477,13 +427,9 @@ export function collectionManagedParamNames<Sort extends string>(
 }
 
 /**
- * Union of managed parameter names across several collection views' options,
- * each evaluated against the same source params. For a surface where more
- * than one view's URL state can coexist (e.g. an organism landing page's
- * tabs), this is the set of parameters that must be cleared together so
- * stale state from any participating view cannot survive a navigation that
- * doesn't belong to it — and can't silently reactivate if the destination
- * view happens to recognize the same key.
+ * For surfaces where several views' URL state can coexist (an organism landing
+ * page's tabs): cleared together so stale state cannot survive a navigation or
+ * reactivate in a view that recognizes the same key.
  */
 export function unionCollectionManagedParamNames(
   params: SearchParamsRecord,
@@ -498,8 +444,6 @@ export function unionCollectionManagedParamNames(
   return union;
 }
 
-/** Convert a `URLSearchParams` into the record shape the parsers expect,
- * collapsing single-value entries and preserving repeats as arrays. */
 export function toSearchParamsRecord(
   params: URLSearchParams,
 ): SearchParamsRecord {

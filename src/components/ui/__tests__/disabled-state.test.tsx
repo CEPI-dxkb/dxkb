@@ -13,12 +13,6 @@ import { Select, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { Textarea } from "@/components/ui/textarea";
 
-// These are local edits to shadcn files that `shadcn add --overwrite` would
-// revert (see AGENTS.md). The look itself (fill, cursor, hover) is checked in
-// the browser by e2e/tests/services/service-form-controls.spec.ts; this pins
-// the classes that produce it, which jsdom cannot compute.
-
-/** Every class on the element, split, so a test can look for exact tokens. */
 function classes(element: Element): string[] {
   return (element.getAttribute("class") ?? "").split(/\s+/);
 }
@@ -41,7 +35,6 @@ describe("disabled fields share the bg-disabled fill", () => {
       ]),
     );
     expect(classes(field)).not.toContain("disabled:opacity-50");
-    // It hid the not-allowed cursor.
     expect(classes(field)).not.toContain("disabled:pointer-events-none");
   });
 
@@ -83,7 +76,6 @@ describe("disabled fields share the bg-disabled fill", () => {
       ]),
     );
     expect(classes(group)).not.toContain("has-disabled:opacity-50");
-    // The group's fill shows through; a second fill would stack on it.
     expect(classes(screen.getByRole("textbox", { name: "search" }))).toEqual(
       expect.arrayContaining(["disabled:bg-transparent", "disabled:opacity-100"]),
     );
@@ -109,8 +101,8 @@ describe("disabled controls receive the pointer, for the not-allowed cursor", ()
     expect(container.innerHTML).not.toContain("disabled:pointer-events-none");
   });
 
-  // Base UI draws these as a <span> beside a hidden 1px <input>, so only the
-  // input matches `:disabled`, and a `disabled:` cursor never showed.
+  // Base UI draws these as a <span> beside a hidden 1px <input>, so a
+  // `disabled:` cursor never showed.
   it.each([
     [
       "RadioGroupItem",
@@ -142,10 +134,8 @@ describe("disabled controls receive the pointer, for the not-allowed cursor", ()
       expect(control).toHaveAttribute("data-disabled");
       expect(classes(control)).toContain("data-disabled:cursor-not-allowed");
       expect(classes(control)).not.toContain("disabled:cursor-not-allowed");
-      // Dimmed the same way, or it stays fully opaque.
       expect(classes(control)).toContain("data-disabled:opacity-50");
       expect(classes(control)).not.toContain("disabled:opacity-50");
-      // The control is the label's `peer`.
       expect(classes(control)).toContain("peer");
       expect(classes(screen.getByText("Choice"))).toContain(
         "peer-data-disabled:cursor-not-allowed",
@@ -160,9 +150,8 @@ describe("disabled controls receive the pointer, for the not-allowed cursor", ()
         join(resolve(__dirname, "..", "..", "..", ".."), file),
         "utf8",
       );
-      // `aria-disabled:pointer-events-none` (tabs) still blocks clicks that
-      // nothing native blocks; a bare `disabled:` one hid the cursor.
-      // Class tokens only: the files' comments name the class in backticks.
+      // `aria-disabled:pointer-events-none` still blocks clicks nothing native
+      // blocks; a bare `disabled:` one hid the cursor.
       expect(source).not.toMatch(
         /(?<=[\s"'])disabled:pointer-events-none(?=[\s"'])/,
       );
@@ -179,7 +168,7 @@ describe("the stepper button variant", () => {
         "hover:text-primary",
         "active:bg-primary/25",
         // `enabled:` so a disabled arrow keeps the base layer's not-allowed
-        // cursor instead of a utility pointer that would beat it.
+        // cursor.
         "enabled:cursor-pointer",
       ]),
     );

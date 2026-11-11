@@ -2,7 +2,6 @@ import { clampFloatingRect, margin, resizeFloatingRect } from "../floating-rect"
 import { uiPreferenceSchemas } from "@/lib/ui-preferences/schemas";
 
 const viewport = { width: 1400, height: 900 };
-// left 956..right 1376, top 236..bottom 876
 const start = { right: 24, bottom: 24, width: 420, height: 640 };
 
 describe("resizeFloatingRect", () => {

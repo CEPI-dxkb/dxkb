@@ -1,7 +1,6 @@
 import { apiCall } from "@/lib/api/client";
 import { ApiCallError } from "@/lib/api/types";
 
-/** Shape of a single job in the submit response (array of one element) */
 export interface SubmitJobEntry {
   id: string;
   app?: string;
@@ -9,10 +8,6 @@ export interface SubmitJobEntry {
   submit_time?: string;
 }
 
-/**
- * Generic service submission helper
- * Submits any service job via the workspace API
- */
 export async function submitServiceJob(
   appName: string,
   appParams: Record<string, unknown>,
@@ -21,7 +16,9 @@ export async function submitServiceJob(
   job?: [SubmitJobEntry];
   error?: string;
   details?: unknown;
-  /** HTTP status of a failed submit; 504 means the job service never answered. */
+  /**
+   * HTTP status of a failed submit; 504 means the job service never answered.
+   */
   status?: number;
 }> {
   try {

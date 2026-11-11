@@ -21,7 +21,6 @@ function renderUploadDialog(
 ) {
   const QueryWrapper = createQueryClientWrapper();
   let listings = 0;
-  // Stands in for the folder listing behind the dialog.
   function FolderListing() {
     useQuery({
       queryKey: workspaceQueryKeys.browser("alice@bvbrc", "home", ""),
@@ -75,9 +74,8 @@ function chooseFile(name: string) {
 }
 
 /**
- * Node's fetch cannot send jsdom's File or FormData, so a test that needs an
- * upload to succeed swaps in Node's own: its File, and its FormData, which
- * jsdom's global hides but Node's Request still builds.
+ * Node's fetch cannot send jsdom's File or FormData, so a test that needs a successful
+ * upload swaps in Node's own.
  */
 async function stubNodeFormData() {
   const form = await new Request("http://localhost", {
@@ -104,9 +102,8 @@ describe("UploadDialog", () => {
     expect(screen.getByRole("button", { name: "Start Upload" })).toBeDisabled();
   });
 
-  // jsdom's File cannot be serialized by Node's fetch, so with it the
-  // multipart POST is out of reach; this covers everything up to it.
-  // (`stubNodeFormData` gets past it for tests that need the POST.)
+  // jsdom's File cannot be serialized by Node's fetch, so the multipart POST is out of
+  // reach here.
   it("starts the upload in the target folder", async () => {
     const { repository, user } = renderUploadDialog();
 
@@ -127,8 +124,6 @@ describe("UploadDialog", () => {
   });
 
   it("removes the new entry when the file never reaches storage", async () => {
-    // A network failure. (jsdom cannot serialize the File either, which
-    // rejects the request the same way before it is sent.)
     server.use(
       http.post("*/api/services/workspace/upload", () => HttpResponse.error()),
     );
@@ -150,7 +145,6 @@ describe("UploadDialog", () => {
       expect(toast.error).toHaveBeenCalled();
     });
     expect(onUploadComplete).not.toHaveBeenCalled();
-    // Nothing reached the folder, so its listing is not fetched again.
     await screen.findByRole("button", { name: "Start Upload" });
     expect(listings()).toBe(1);
   });
@@ -197,8 +191,8 @@ describe("UploadDialog", () => {
     const sent: { nodeUrl: string | null; parts: string[] }[] = [];
     server.use(
       http.post("*/api/services/workspace/upload", async ({ request }) => {
-        // `request.formData()` cannot parse here: undici's parser rejects the
-        // File it builds under jsdom. Read the part headers from the raw body.
+        // undici's parser rejects the File it builds under jsdom, so read the part headers
+        // from the raw body.
         const body = await request.text();
         sent.push({
           nodeUrl: request.headers.get("x-shock-node-url"),
@@ -219,8 +213,6 @@ describe("UploadDialog", () => {
         { path: `${targetPath}/second.fq`, type: "unspecified" },
       ]);
     });
-    // The route streams the body to Shock as is: the one `upload` part Shock
-    // reads, with the node Workspace.create returned in the header.
     expect(sent).toEqual([
       {
         nodeUrl:
@@ -240,7 +232,6 @@ describe("UploadDialog", () => {
   });
 
   it("deletes nothing when the entry itself cannot be created", async () => {
-    // e.g. a file of that name is already there: it must survive.
     const { repository, user } = renderUploadDialog(
       new InMemoryWorkspaceRepository({
         errors: { createUploadNode: new Error("Object already exists") },
@@ -261,8 +252,6 @@ describe("UploadDialog", () => {
   });
 
   it("freezes the form while an upload runs", async () => {
-    // The upload works through the files and type it started with, so
-    // anything added or changed meanwhile would be silently left out.
     const repository = new InMemoryWorkspaceRepository();
     const held = Promise.withResolvers<undefined>();
     const createUploadNode = repository.createUploadNode.bind(repository);
@@ -297,8 +286,6 @@ describe("UploadDialog", () => {
   });
 
   it("stays open until a running upload ends", async () => {
-    // Closing would unmount the panel that tracks the upload, and a reopened
-    // one could start a second upload alongside it.
     const repository = new InMemoryWorkspaceRepository({
       errors: { createUploadNode: new Error("Upload service unavailable") },
     });
@@ -315,7 +302,6 @@ describe("UploadDialog", () => {
     await user.click(screen.getByRole("button", { name: "Start Upload" }));
     await screen.findByRole("button", { name: /Uploading/ });
 
-    // Whatever else is passed along, no call asks to close.
     const openRequests = () => onOpenChange.mock.calls.map(([open]) => open);
     await user.keyboard("{Escape}");
 

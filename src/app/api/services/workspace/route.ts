@@ -9,10 +9,6 @@ import { upstreamFailureResponse } from "@/lib/api/upstream-route";
 import { workspaceErrorReply } from "@/lib/api/workspace-proxy-error";
 import { getRequiredEnv } from "@/lib/env";
 
-/**
- * Workspace API proxy route
- * Forwards JSON-RPC requests to WORKSPACE_API_URL
- */
 export const POST = withAuth(async (request: NextRequest, { token }) => {
   try {
     const body = (await request.json()) as { method?: unknown; params?: unknown };

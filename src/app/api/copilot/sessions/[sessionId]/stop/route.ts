@@ -8,11 +8,7 @@ interface RouteParams {
   params: Promise<{ sessionId: string }>;
 }
 
-/**
- * Stops the turn running in a session, for a Stop pressed before the stream
- * named its job. 404 `NO_TURN` when nothing is running yet (the request may
- * not have reached the gateway; the client retries once).
- */
+/** 404 `NO_TURN` when nothing is running yet (the request may not have reached the gateway; the client retries once). */
 export const POST = withAuth<RouteParams>(
   async (_request: NextRequest, { token, params }) => {
     const { sessionId } = await params;

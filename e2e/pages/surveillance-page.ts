@@ -63,7 +63,6 @@ export class SurveillancePage {
     await expect(this.memberLink(sampleIdentifier)).toBeVisible();
   }
 
-  /** Tick one value of a facet in the toolbar's Filters menu. */
   async selectFacet(label: string, value: string): Promise<void> {
     await this.toolbar.pickFacetValue(label, value);
   }

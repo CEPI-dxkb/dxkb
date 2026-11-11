@@ -82,8 +82,8 @@ it("refuses hidden folders as the default", async () => {
     .setup()
     .click(screen.getByRole("button", { name: "Browse workspace folders" }));
   await screen.findByRole("dialog", { name: "Select a Default Output Folder" });
-  // Select is also disabled while the Home column loads, so the filter's
-  // reason has to show before the disabled state means anything.
+  // Select is also disabled while the Home column loads, so the filter's reason
+  // has to show before the disabled state means anything.
   expect(
     await screen.findByText("This folder can't be used here."),
   ).toBeInTheDocument();

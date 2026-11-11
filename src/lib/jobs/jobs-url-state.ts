@@ -1,10 +1,7 @@
 import type { DataTableSort } from "@/components/shared/file-table";
 import { defaultPageSize, pageSizeOptions, statusOptions } from "./constants";
 
-/**
- * Columns the jobs endpoint can sort by (jobs-table-columns.tsx `meta.sortField`).
- * jobs-url-state.test.ts fails when a sortable column is missing from this list.
- */
+/** Columns the jobs endpoint can sort by; jobs-url-state.test.ts fails when a sortable column is missing. */
 const jobsSortFields = [
   "status",
   "app",
@@ -14,18 +11,13 @@ const jobsSortFields = [
 ] as const;
 
 export interface JobsUrlState {
-  /** One of statusOptions' values; "all" means unfiltered. */
   status: string;
-  /** An app id, or "all". */
   service: string;
-  /** Client-side text filter over the current page. */
   search: string;
   includeArchived: boolean;
-  /** Local calendar dates, YYYY-MM-DD, inclusive. */
   dateFrom?: string;
   dateTo?: string;
   sort: DataTableSort;
-  /** 1-based. */
   page: number;
   pageSize: number;
 }
@@ -95,10 +87,7 @@ export function parseJobsUrlState(params: URLSearchParams): JobsUrlState {
   };
 }
 
-/**
- * Every param name serializeJobsUrlState can write. A URL writer drops these and
- * keeps the rest, such as `utm_source`, which belong to someone else.
- */
+/** A URL writer drops these and keeps other params, such as `utm_source`. */
 export const jobsUrlParamNames = [
   "status",
   "service",

@@ -73,10 +73,8 @@ describe("sanitizeHar", () => {
     expect(out).toContain("e2e@example.com");
   });
 
-  // Regression for the "scrub-after-stringify misses JSON-escaped credentials"
-  // bug. A password with `"` would survive the old approach because
-  // JSON.stringify wrote it as `\"` in the output text and the raw-credential
-  // regex no longer matched.
+  // Regression: scrubbing after stringify missed credentials containing `"`,
+  // which JSON.stringify escapes.
   it("scrubs credentials that contain JSON-escaped characters", () => {
     const trickyPassword = 'pa$$"word\\with\\slash';
     const trickyUser = 'odd"name';
@@ -85,8 +83,6 @@ describe("sanitizeHar", () => {
         request: {
           method: "POST",
           url: "http://localhost:3010/api/auth/sign-in",
-          // postData.text is the literal HTTP body — when parsed back into a
-          // JS string the credential characters are present in unescaped form.
           postData: {
             text: `body-with-creds: user=${trickyUser} pwd=${trickyPassword}`,
           },
@@ -101,7 +97,6 @@ describe("sanitizeHar", () => {
     sanitizeHar(harPath, trickyUser, trickyPassword, "http://localhost:3010");
 
     const out = fs.readFileSync(harPath, "utf8");
-    // Neither raw nor JSON-escaped form of the credential should remain.
     expect(out).not.toContain(trickyPassword);
     expect(out).not.toContain(JSON.stringify(trickyPassword).slice(1, -1));
     expect(out).not.toContain(trickyUser);
@@ -182,9 +177,7 @@ describe("assertNoSensitiveData", () => {
 
   it("detects credentials in their JSON-escaped on-disk form", () => {
     const trickyPassword = 'pa$$"word';
-    // Simulate a leaked credential: HAR file contains the JSON-escaped form
-    // (\") because it was written via JSON.stringify of an object that had
-    // the password as a raw string value.
+    // A leaked credential appears JSON-escaped, as written by JSON.stringify.
     const harPath = path.join(tmpDir, "leaked.har");
     fs.writeFileSync(
       harPath,
@@ -196,7 +189,6 @@ describe("assertNoSensitiveData", () => {
     expect(() => {
       assertNoSensitiveData(harPath, "", trickyPassword);
     }).toThrow(/live password appears in HAR/);
-    // The assertion deletes the file when it finds violations.
     expect(fs.existsSync(harPath)).toBe(false);
   });
 

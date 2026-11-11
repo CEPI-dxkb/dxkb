@@ -34,7 +34,6 @@ test.describe("Surveillance view", () => {
     await surveillancePage.expectCollection("sentinel");
     await surveillancePage.expectMemberVisible("sample/1");
 
-    // A refinement sends one keyword() per word (`keywordQuery`).
     const refinementClauses = "and(keyword(Nasal),keyword(swab))";
     const refinementRequest = page.waitForRequest((request) => {
       const url = new URL(request.url());

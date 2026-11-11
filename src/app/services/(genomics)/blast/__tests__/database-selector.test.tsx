@@ -50,8 +50,7 @@ function DatabaseSelectorHarness() {
   );
 }
 
-// jsdom's HTMLElement.scrollIntoView is undefined; the genome typeahead calls
-// it when the pointer highlights a suggestion.
+// jsdom lacks scrollIntoView, which the genome typeahead calls on highlight.
 Element.prototype.scrollIntoView = vi.fn();
 
 function GenomeListHarness({

@@ -66,8 +66,7 @@ const TimelineTime = ({
       variant={variant}
       {...props}
     >
-      {/* The label's weight and case live on a child: Badge owns its own
-          typography. */}
+      {/* The label's weight and case live on a child: Badge owns its own typography. */}
       <span className="font-semibold uppercase">{children}</span>
     </Badge>
   );

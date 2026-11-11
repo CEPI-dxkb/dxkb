@@ -87,12 +87,9 @@ describe("useWorkspaceObjectSearch", () => {
       "y.fa",
     ]);
     expect(result.current.mixed2.items).toEqual(result.current.mixed1.items);
-    // An empty type list means every type, as the repository reads it.
     expect(result.current.empty.items).toEqual(result.current.untyped.items);
     expect(result.current.untyped.items).toHaveLength(3);
 
-    // Same type set (in any order) shares a query; each distinct set, and
-    // the untyped one, is listed once, with its filter sent to the server.
     const searchedTypes = repo.calls.flatMap((call) =>
       call.method === "searchObjects" ? [call.input.types] : [],
     );

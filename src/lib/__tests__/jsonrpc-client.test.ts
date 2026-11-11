@@ -16,7 +16,6 @@ vi.mock("@/lib/env", () => ({
 
 describe("JsonRpcClient", () => {
   beforeEach(() => {
-    // Reset the static requestId to get deterministic ids across tests.
     (JsonRpcClient as unknown as { requestId: number }).requestId = 1;
   });
 

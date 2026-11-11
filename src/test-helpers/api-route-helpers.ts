@@ -34,9 +34,6 @@ export function setTestSession({
   else testCookies.delete("bvbrc_realm");
 }
 
-/**
- * Factory for creating mock NextRequest objects for route handler tests.
- */
 export function mockNextRequest(
   opts: {
     method?: string;
@@ -45,7 +42,6 @@ export function mockNextRequest(
     rawBody?: BodyInit;
     headers?: Record<string, string>;
     searchParams?: Record<string, string>;
-    /** Aborts as the client disconnecting would (`request.signal`). */
     signal?: AbortSignal;
   } = {},
 ): NextRequest {
@@ -86,24 +82,7 @@ export function mockNextRequest(
 }
 
 
-/**
- * Builds the `{ params: Promise<…> }` second argument an App Router route
- * handler receives, typed to whatever params the route actually declares.
- *
- * Takes the params object rather than a bare `id` so a route segmented on
- * something else (`{ resource }` for `/api/data/[resource]`, `{ operation }`
- * for `/api/taxonomy-tree/[operation]`) uses this helper instead of
- * hand-rolling `{ params: Promise.resolve(…) }`. The generic preserves the
- * literal key type, so passing the wrong param name is a type error rather
- * than an `undefined` at runtime. Values may be `string[]` for a catch-all
- * segment and `undefined` for an optional one (`[[...path]]`), which is what
- * Next actually hands a handler.
- *
- * This is for **route handlers** only. A Page or `generateMetadata` receives
- * `{ params, searchParams }` — a different shape, usually with a second
- * promise — so the page specs under `src/app/(views)/**` build their props
- * directly and are not callers of this.
- */
+/** Builds the `{ params: Promise }` argument of a route handler (values may be `string[]` or `undefined`); not for pages. */
 export function makeRouteContext<
   T extends Record<string, string | string[] | undefined>,
 >(params: T): { params: Promise<T> } {

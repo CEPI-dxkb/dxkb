@@ -41,12 +41,7 @@ import {
   taxonomyRecord,
 } from "../records";
 
-/**
- * The strongest check available for a fixture: parse it with the SAME Zod
- * schema the production Data API repository uses to validate real backend
- * responses (src/lib/data-api/schemas.ts). A fixture the real schema rejects
- * is a fixture that lies about the shape of the API.
- */
+/** Parse each fixture with the same Zod schema production uses; a fixture the real schema rejects lies about the API. */
 describe("canonical E2E fixture records parse with production Zod schemas", () => {
   it("taxonomyRecord matches taxonomyRecordSchema", () => {
     expect(taxonomyRecordSchema.safeParse(taxonomyRecord).success).toBe(true);
@@ -135,21 +130,12 @@ describe("canonical E2E fixture records parse with production Zod schemas", () =
   );
 });
 
-/**
- * `safeParse(...).success === true` above is a weaker check than it looks.
- * Every schema in `src/lib/data-api/schemas.ts` is a `z.looseObject` with only
- * the id required, so it catches type-shape drift (array to string) but not
- * field DELETION: `biosetRecord` could lose `exp_id` — the key that ties it to
- * `experimentRecord`, which the Bioset action suites need — and still parse.
- * These close that direction.
- */
+/** Every data-api schema is a `z.looseObject` with only the id required, so `safeParse` catches type drift but not field deletion; these close that direction. */
 describe("canonical E2E fixture records keep the keys they carry", () => {
   const registryBacked: {
     name: string;
     resource: DataResource;
-    // `object`, not `Record<string, unknown>`: the `*FixtureRecord`
-    // interfaces declare their fields explicitly and carry no index
-    // signature. These assertions only ever read `Object.keys`.
+    // `object` rather than `Record<string, unknown>`: the `*FixtureRecord` interfaces have no index signature.
     record: object;
   }[] = [
     { name: "taxonomyRecord", resource: "taxonomy", record: taxonomyRecord },
@@ -200,8 +186,7 @@ describe("canonical E2E fixture records keep the keys they carry", () => {
     },
   ];
 
-  // Reads the REGISTRY rather than a restated literal, so a fixture that drops
-  // its id key and a registry that renames `idField` both fail here.
+  // Reads the registry rather than a restated literal.
   it.each(registryBacked)(
     "$name carries the id field the $resource registry declares",
     ({ resource, record }) => {
@@ -211,11 +196,7 @@ describe("canonical E2E fixture records keep the keys they carry", () => {
     },
   );
 
-  /**
-   * The keys each fixture carries today. Adding a key is free — these use
-   * `arrayContaining`, not an exact set — but REMOVING one must be deliberate,
-   * which is the drift direction the Zod parse above cannot see.
-   */
+  /** Keys each fixture carries today; `arrayContaining` lets keys be added freely but removal must be deliberate. */
   const requiredKeys: Record<string, readonly string[]> = {
     taxonomyRecord: [
       "taxon_id",
@@ -461,21 +442,14 @@ describe("canonical E2E fixture records keep the keys they carry", () => {
   });
 
   it("names a required-key list for every record in the table", () => {
-    // Guards the loop above against passing vacuously if a record were added
-    // to `registryBacked` with no entry in `requiredKeys`.
+    // Guards the loop against passing vacuously.
     expect(Object.keys(requiredKeys).sort()).toEqual(
       registryBacked.map((entry) => entry.name).sort(),
     );
   });
 });
 
-/**
- * Three fixture sets are meant to join. Asserting the join rather than mere key
- * presence means a fixture that drops the foreign key AND one that renames the
- * parent both fail. `genomeAmrRecord.genome_id` and `taxonomyRecord.taxon_id`
- * deliberately point at neither `genomeRecord` nor each other, so they are not
- * asserted here.
- */
+/** Asserting the join, not mere key presence, fails both a dropped foreign key and a renamed parent. */
 describe("canonical E2E fixture records stay joined to their parents", () => {
   it("biosetRecord belongs to experimentRecord", () => {
     expect(biosetRecord.exp_id).toBe(experimentRecord.exp_id);
@@ -496,12 +470,7 @@ describe("canonical E2E fixture records stay joined to their parents", () => {
 });
 
 describe("epitope.host_name stays array-valued (registry: multipleFields.epitope)", () => {
-  // src/lib/data-api/resources.ts declares epitope.host_name as multi-valued
-  // (`multipleFields.epitope`), so the real Data API returns it as an array.
-  // A prior drift had the server-side loopback mock serving it as a bare
-  // string (see src/app/api/e2e-mock/[...path]/route.ts history) while the
-  // browser-side mock correctly used an array — this pins the fixed shape so
-  // it can't silently regress back to a string in either transport.
+  // `epitope.host_name` is multi-valued in the registry, so the real Data API returns an array; pins that shape in both transports.
   it("epitopeRecord.host_name is an array", () => {
     expect(Array.isArray(epitopeRecord.host_name)).toBe(true);
     expect(epitopeRecord.host_name).toEqual(["Homo sapiens, human"]);
@@ -517,19 +486,13 @@ describe("epitope.host_name stays array-valued (registry: multipleFields.epitope
 });
 
 describe("genomeAmrRecord agrees with what the registry declares", () => {
-  // Task 19 onboarded `genome_amr` without a row fixture anywhere in the
-  // repo, so nothing checked its declarations against a concrete row. These
-  // read the REGISTRY — not a literal restated from the fixture — so editing
-  // either side alone fails. What they cannot do is prove what the live
-  // BV-BRC core returns; no test may reach a live backend.
+  // These read the registry, not a restated literal, so editing either side alone fails.
   const definition = getResourceDefinition("genome_amr");
 
   it.each(["evidence", "pmid"] as const)(
     "matches the registry's %s cardinality",
     (field) => {
-      // `multipleFields` itself is module-private; `cardinality` is the derived
-      // public surface `buildFields` computes from it, so dropping either field
-      // from `multipleFields.genome_amr` flips this to "scalar" and fails here.
+      // `multipleFields` is module-private; `cardinality` is its derived public surface.
       expect(definition.fields[field].cardinality).toBe("multiple");
       expect(Array.isArray(genomeAmrRecord[field])).toBe(
         definition.fields[field].cardinality === "multiple",
@@ -538,10 +501,7 @@ describe("genomeAmrRecord agrees with what the registry declares", () => {
   );
 
   it("matches the registry's inferred type for every scalar field it carries", () => {
-    // `measurement_value` and `testing_standard_year` are deliberately left
-    // to inferType's string default so the gateway does not reject
-    // non-numeric facet values (">=", year ranges). Assert that against the
-    // registry rather than against a restated literal.
+    // `measurement_value` and `testing_standard_year` are left to inferType's string default so the gateway accepts non-numeric facet values.
     const jsTypeFor: Record<string, string> = {
       string: "string",
       number: "number",
@@ -557,16 +517,14 @@ describe("genomeAmrRecord agrees with what the registry declares", () => {
         `${field}:${jsTypeFor[declared.type]}`,
       );
     }
-    // Guards the loop against passing vacuously if the fixture or the
-    // registry dropped the two fields this assertion exists for.
+    // Guards the loop against passing vacuously.
     expect(checked).toEqual(
       expect.arrayContaining(["measurement_value", "testing_standard_year"]),
     );
   });
 
   it("covers the two fields Task 19 left to inferType's string default", () => {
-    // Guards the loop above against vacuously passing if those fields were
-    // dropped from the fixture or from the registry.
+    // Guards the loop against passing vacuously.
     expect(definition.fields.measurement_value.type).toBe("string");
     expect(definition.fields.testing_standard_year.type).toBe("string");
     expect(genomeAmrRecord).toHaveProperty("measurement_value");
@@ -575,9 +533,7 @@ describe("genomeAmrRecord agrees with what the registry declares", () => {
 });
 
 describe("BV-BRC website organism tables stay paired", () => {
-  // The organism landing page fetches taxonomy AND summary for the same taxon
-  // in one render, so a taxon present in one table and missing from the other
-  // renders half a page (or, before this task, an error boundary).
+  // The landing page fetches taxonomy and summary in one render, so a taxon missing from either table renders half a page.
   it("covers the same taxon ids in both tables", () => {
     expect(Object.keys(organismSummaryRecords).sort()).toEqual(
       Object.keys(organismTaxonomyRecords).sort(),
@@ -601,9 +557,7 @@ describe("BV-BRC website organism tables stay paired", () => {
     },
   );
 
-  // The Taxonomy header's genome count leaves out Deprecated genomes, which
-  // the summary count includes. Strictly below, so a loopback that served
-  // the summary count for the header would render a different number.
+  // The header's genome count leaves out Deprecated genomes, so it is strictly below the summary count.
   it("covers the same taxon ids in the header genome counts", () => {
     expect(Object.keys(taxonGenomeCounts).sort()).toEqual(
       Object.keys(organismSummaryRecords).sort(),
@@ -625,8 +579,7 @@ describe("BV-BRC website organism tables stay paired", () => {
   );
 
   it("covers the taxon ids the a11y taxonomy variants scan", () => {
-    // /taxonomy/234 and /taxonomy/1763 are the two variants in
-    // e2e/a11y/routes.ts. 1763 had no fixture and scanned an error boundary.
+    // /taxonomy/234 and /taxonomy/1763 are the two variants in e2e/a11y/routes.ts.
     expect(Object.keys(organismTaxonomyRecords)).toEqual(
       expect.arrayContaining(["234", "1763"]),
     );
@@ -641,9 +594,6 @@ describe("Brucella PPI records", () => {
   });
 
   it("names a positive total for the loopback's unnarrowed ppi count", () => {
-    // Behaviour, not the literal: the loopback's response is asserted in
-    // src/app/api/e2e-mock/[...path]/__tests__/route.test.ts, which compares
-    // `numFound` against this constant.
     expect(brucellaPpiTotal).toBeGreaterThan(0);
   });
 });

@@ -147,7 +147,6 @@ describe("legacy search route", () => {
     ["unsupported", { type: "pathway", q: "---" }],
     ["everything", { type: "everything", q: " / + " }],
     ["canonical", { type: "genome", q: "---" }],
-    // Terms nothing would be searched for: an operator alone, empty quotes.
     ["operator-only", { type: "everything", q: "OR" }],
     ["empty-quote", { type: "everything", q: '""' }],
   ])("prompts for normalized-empty %s searches", async (_label, params) => {

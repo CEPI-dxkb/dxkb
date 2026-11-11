@@ -14,10 +14,8 @@ function BubbleGroup({ className, ...props }: React.ComponentProps<"div">) {
   )
 }
 
-// Local edits (keep when regenerating with `shadcn add --overwrite`): the
-// interactive `default` and `secondary` hovers use the `primary-hover` and
-// `secondary-hover` tokens (as Button does) instead of `primary/80` and a
-// `color-mix()`, which fall below 4.5:1 in some themes.
+// Local edit: hovers use the `primary-hover`/`secondary-hover` tokens, since
+// `primary/80` falls below 4.5:1 in some themes.
 const bubbleVariants = cva(
   "group/bubble relative flex w-fit max-w-[80%] min-w-0 flex-col gap-1 group-data-[align=end]/message:self-end data-[align=end]:self-end data-[variant=ghost]:max-w-full",
   {

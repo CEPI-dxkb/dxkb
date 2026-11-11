@@ -1,4 +1,3 @@
-// src/lib/taxon-view/__tests__/predicates.test.ts
 import { buildTabContext } from "../tab-context";
 import type { PhyloManifest, TabContext } from "../tab-context";
 import {
@@ -105,7 +104,7 @@ describe("hasSfvt (curated, by lineage id, inherits)", () => {
     expect(hasSfvt(ctx({ taxonId: 99999, lineageIds: [10239, 12637, 99999] }))).toBe(true);
   });
   it("false when no lineage id is listed", () => {
-    expect(hasSfvt(ctx({ lineageIds: [10239, 694009] }))).toBe(false); // SARS-CoV-2 family
+    expect(hasSfvt(ctx({ lineageIds: [10239, 694009] }))).toBe(false);
   });
 });
 
@@ -128,7 +127,7 @@ describe("hasViralTree (data availability, exact id, NO inheritance)", () => {
     expect(hasViralTree(ctx({ taxonId: 2955291, manifest }))).toBe(true);
   });
   it("does NOT inherit — a species does not get its family's tree", () => {
-    const manifest: PhyloManifest = { trees: { "11308": {} } }; // family present
+    const manifest: PhyloManifest = { trees: { "11308": {} } };
     expect(hasViralTree(ctx({ taxonId: 2955291, manifest }))).toBe(false);
   });
   it("false when manifest is null (fail-open)", () => {

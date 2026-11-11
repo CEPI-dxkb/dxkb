@@ -26,13 +26,8 @@ async function loadExperiment(
   rawExperimentId: string,
   source: RouteParamSource,
 ) {
-  // The two entry points receive this segment in different encodings, so
-  // each declares which it is. Unlike the feature and epitope views, this
-  // route never had the underlying bug: `isExperimentId` accepts digits only,
-  // so no experiment id can carry a percent escape for the two encodings to
-  // differ on. Declaring `source` here is uniformity with the other member
-  // views — one way to read a route param — not a fix for a live defect. See
-  // `readRouteParam`.
+  // The two entry points receive this segment in different encodings, so each
+  // declares its `source` (see `readRouteParam`).
   const experimentId = readRouteParam(rawExperimentId, source);
   if (!isExperimentId(experimentId)) notFound();
   let experiment: Awaited<ReturnType<typeof getExperiment>>;
@@ -41,7 +36,6 @@ async function loadExperiment(
   } catch (error) {
     if (error instanceof DataApiError && [401, 403, 404].includes(error.status))
       notFound();
-    // An outage is rendered, not thrown: production would redact its message.
     const unavailable = recordUnavailableMessage(error);
     if (unavailable === null) throw error;
     if (source === "page") console.error(`experiment/${experimentId}:`, error);

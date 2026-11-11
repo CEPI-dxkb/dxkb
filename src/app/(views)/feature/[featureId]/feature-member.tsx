@@ -44,7 +44,6 @@ interface CrumbTrailProps {
   lineage: readonly LineageCrumb[];
 }
 
-/** The taxon lineage and the genome as one breadcrumb, root first. */
 function CrumbTrail({ feature, lineage }: CrumbTrailProps) {
   const crumbs = lineage.map(({ taxonId, name }, index) => ({
     key: `taxon-${String(index)}-${taxonId}`,
@@ -89,10 +88,8 @@ function LineageCrumbTrail({
 }
 
 /**
- * BV-BRC's Feature View header: the taxon lineage and the genome as one
- * breadcrumb, then the feature's identifiers in bold, separated by pipes.
- * The lineage is a second lookup, so it streams in: until it lands the
- * breadcrumb holds the genome alone.
+ * Feature View header; the lineage streams in, so the breadcrumb holds the
+ * genome alone until it lands.
  */
 function breadcrumbs(
   feature: FeatureViewRecord,
@@ -123,10 +120,7 @@ function breadcrumbs(
 
 interface FeatureMemberProps {
   feature: FeatureViewRecord;
-  /**
-   * The taxa leading the breadcrumb, root first (see `lineageCrumbs`).
-   * A promise, so a slow taxonomy lookup holds the breadcrumb, not the page.
-   */
+  /** A promise, so a slow taxonomy lookup holds the breadcrumb, not the page. */
   lineage: Promise<readonly LineageCrumb[]>;
   activeTab: FeatureTab;
 }

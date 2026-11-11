@@ -4,7 +4,6 @@ import type { OrganismTaxonomy } from "@/lib/services/organisms/types";
 
 import { TaxonBreadcrumb } from "../taxon-breadcrumb";
 
-// Live BV-BRC lineage for E. coli K-12 (83333), 2026-10-28.
 const ecoliK12: OrganismTaxonomy = {
   taxonId: 83333,
   taxonName: "Escherichia coli K-12",
@@ -98,7 +97,6 @@ describe("TaxonBreadcrumb", () => {
   it("shows an empty trail for a domain, as BV-BRC does, but keeps an h1", () => {
     render(
       <TaxonBreadcrumb
-        // Differs from taxonName: the h1 names the taxon, not the display name.
         displayName="Bacteria landing"
         taxon={{
           taxonId: 2,
@@ -203,7 +201,6 @@ describe("TaxonBreadcrumb", () => {
       ["Class A", "/taxonomy/2"],
       ["Class A", "/taxonomy/2"],
     ]);
-    // React's dev warning: "Encountered two children with the same key…".
     expect(consoleError.mock.calls.flat().join(" ")).not.toContain("same key");
     consoleError.mockRestore();
   });

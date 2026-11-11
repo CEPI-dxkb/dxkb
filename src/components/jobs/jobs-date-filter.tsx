@@ -43,8 +43,8 @@ interface JobsDateFilterProps {
   onFilterChange: (from: Date | undefined, to: Date | undefined) => void;
 }
 
-// Before/After step by calendar day (addDays), not by 24 hours: a day is 23 or
-// 25 hours long when the clocks change, and the result goes into the URL.
+// Step by calendar day (addDays), not 24 hours: a day is 23 or 25 hours long when the clocks
+// change.
 function conditionToApiDates(
   condition: DateCondition,
   date: Date | undefined,
@@ -87,7 +87,6 @@ function formatTriggerLabel(
   return `${label} ${d}`;
 }
 
-/** What the popover shows: a condition and the dates picked for it. */
 interface DateChoice {
   condition: DateCondition;
   singleDate: Date | undefined;
@@ -95,16 +94,13 @@ interface DateChoice {
   rangeTo: Date | undefined;
 }
 
-/** Local calendar day of a date, the granularity the filter is applied at. */
 function dayOf(date: Date | undefined): string | undefined {
   return date ? toLocalDateParam(date) : undefined;
 }
 
 /**
- * The choice that best describes an applied `from`/`to`, for when the filter
- * did not come from this component's own picks (a URL load, Back/Forward). The
- * dates alone do not say which condition made them, so this is the plainest
- * reading. With no dates, the condition already open stays.
+ * The dates alone do not say which condition made them, so this is the plainest reading; with no
+ * dates, the open condition stays.
  */
 function choiceFromDates(
   from: Date | undefined,
@@ -127,7 +123,6 @@ function choiceFromDates(
   return { ...none, condition: currentCondition };
 }
 
-/** Whether a choice, applied, gives exactly these dates (by calendar day). */
 function choiceProduces(
   choice: DateChoice,
   from: Date | undefined,
@@ -153,12 +148,9 @@ export function JobsDateFilter({
   );
   const { condition, singleDate, rangeFrom, rangeTo } = choice;
 
-  // The dates are applied elsewhere (the URL), so they can change without this
-  // component: a refresh, a shared link, Back/Forward. When they no longer
-  // match what the user picked here, show what they say. When they do (the
-  // user's own pick coming back through the parent), keep the user's condition:
-  // "Before Sep 10" is applied as "to Sep 9" and must not turn into "On or
-  // before Sep 9".
+  // The dates can change without this component (URL load, Back/Forward): show what they say,
+  // unless they match the user's own pick coming back ("Before Sep 10" is applied as "to Sep 9" and
+  // must not become "On or before Sep 9").
   const appliedDays = `${dayOf(dateFrom) ?? ""}|${dayOf(dateTo) ?? ""}`;
   const [previousDays, setPreviousDays] = useState(appliedDays);
   if (previousDays !== appliedDays) {
@@ -237,7 +229,6 @@ export function JobsDateFilter({
       </div>
       <PopoverContent size="flush" className="w-auto" align="start">
         <div className="space-y-3 p-4">
-          {/* Header: label + condition dropdown + delete */}
           <div className="flex items-center gap-2">
             <span className="text-sm font-medium">Submitted</span>
             <Select
@@ -271,7 +262,6 @@ export function JobsDateFilter({
             </button>
           </div>
 
-          {/* Calendar */}
           {isRange ? (
             <Calendar
               mode="range"

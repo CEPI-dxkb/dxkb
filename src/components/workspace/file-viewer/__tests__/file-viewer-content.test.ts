@@ -1,10 +1,5 @@
 import { resolveViewer, iframeNeedsScripts } from "../file-viewer-registry";
 
-// Test the viewer routing logic that FileViewerContent depends on.
-// The component itself is a thin switch over resolveViewer, so we test
-// the routing decisions here rather than rendering the full component
-// (which requires heavy viewer mocks).
-
 describe("FileViewerContent routing logic", () => {
   it("routes .fasta files to text viewer", () => {
     expect(resolveViewer("contigs", "reads.fasta")).toBe("text");

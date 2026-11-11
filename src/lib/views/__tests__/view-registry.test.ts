@@ -5,9 +5,8 @@ import {
   legacyViewTargets,
 } from "../view-registry";
 
-// Cast to the loose ViewRegistry type so TypeScript treats every entry as
-// ViewTypeEntry (with optional legacySingular) rather than the narrow literal
-// shapes inferred from `satisfies ViewRegistry`.
+// Cast to the loose ViewRegistry type so every entry is a ViewTypeEntry rather
+// than the narrow inferred literals.
 const reg = viewRegistry as ViewRegistry;
 
 describe("viewRegistry", () => {
@@ -41,7 +40,7 @@ describe("viewRegistry", () => {
         ].filter(Boolean) as string[],
     );
     expect(names.length).toBeGreaterThanOrEqual(10);
-    expect(new Set(names).size).toBe(names.length); // unique
+    expect(new Set(names).size).toBe(names.length);
     for (const name of names) {
       expect(legacyViewTargets[name]).toBeDefined();
       expect(reg[legacyViewTargets[name]?.segment ?? ""]).toBeDefined();

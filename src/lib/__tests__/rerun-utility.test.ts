@@ -249,7 +249,6 @@ describe("rerunJob", () => {
       getItem: vi.fn(),
     });
     vi.stubGlobal("window", { open: mockOpen });
-    // Mock crypto.randomUUID for deterministic key generation
     vi.stubGlobal("crypto", { randomUUID: () => "12345678-abcd-efgh-ijkl-mnopqrstuvwx" });
   });
 
@@ -289,8 +288,6 @@ describe("rerunJob", () => {
       message:
         "The UnsupportedService service is not currently supported in DXKB",
     });
-    // It used to toast *and* return the message, so a caller that rendered
-    // `launch.message` inline reported the same failure twice.
     expect(toast.error).not.toHaveBeenCalled();
     expect(mockSetItem).not.toHaveBeenCalled();
     expect(mockOpen).not.toHaveBeenCalled();
@@ -306,9 +303,7 @@ describe("rerunJob", () => {
       status: "blockedPopup",
       message: rerunPopupBlockedMessage,
     });
-    // Nothing will ever read the key, so it must not linger in sessionStorage.
     expect(mockRemoveItem).toHaveBeenCalledWith("12345678");
-    // The choosers show this inline next to their retry button instead.
     expect(toast.error).not.toHaveBeenCalled();
   });
 
@@ -327,8 +322,7 @@ describe("rerunJob", () => {
     const params = { genome_id: "123" };
     const result = rerunJob(params, "GenomeAssembly2", { resultWindow });
 
-    // The reserved tab cloned this tab's storage when it opened, so writing here
-    // would never reach it.
+    // The reserved tab cloned this tab's storage when it opened, so writing here would never reach it.
     expect(mockSetItem).not.toHaveBeenCalled();
     expect(setItem).toHaveBeenCalledWith("12345678", JSON.stringify(params));
     expect(createElement).toHaveBeenCalledWith("a");
@@ -352,9 +346,7 @@ describe("rerunJob", () => {
 
     const result = rerunJob({}, "GenomeAssembly2", { resultWindow });
 
-    // Telling the user to allow pop-ups would be wrong advice for a tab they
-    // closed, so the status has to say which happened rather than carrying the
-    // closed-tab message under the `blockedPopup` discriminant.
+    // Telling the user to allow pop-ups would be wrong advice for a closed tab, so the status must say which happened.
     expect(result).toEqual({
       status: "windowClosed",
       message: rerunWindowClosedMessage,

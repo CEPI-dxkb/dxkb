@@ -25,7 +25,6 @@ async function sessionIdFrom(params: RouteParams["params"]) {
   return isCopilotId(sessionId) ? sessionId : null;
 }
 
-/** The session's messages, Plan/Execute mode, and running turn. */
 export const GET = withAuth<RouteParams>(
   async (request: NextRequest, { token, params }) => {
     const sessionId = await sessionIdFrom(params);
@@ -44,7 +43,6 @@ const updateSchema = z.union([
   z.object({ executionMode: z.enum(["plan", "execute"]) }),
 ]);
 
-/** Renames the session (`{title}`) or sets its mode (`{executionMode}`). */
 export const PATCH = withAuth<RouteParams>(
   async (request: NextRequest, { token, params }) => {
     const sessionId = await sessionIdFrom(params);
@@ -65,7 +63,6 @@ export const PATCH = withAuth<RouteParams>(
   },
 );
 
-/** Deletes (archives) the session. */
 export const DELETE = withAuth<RouteParams>(
   async (_request: NextRequest, { token, params }) => {
     const sessionId = await sessionIdFrom(params);

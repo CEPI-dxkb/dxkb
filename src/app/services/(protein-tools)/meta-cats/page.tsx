@@ -89,11 +89,9 @@ function autoGroupsOrEmpty(autoGroups: MetaCatsFormData["auto_groups"]) {
 }
 
 function useMetaCATSPage() {
-  // State for auto grouping
   const [selectedAutoFeatureGroupObject, setSelectedAutoFeatureGroupObject] =
     useState<WorkspaceObject | null>(null);
   const [isLoadingAutoGroup, setIsLoadingAutoGroup] = useState(false);
-  // Keyed by BRC ID (patric_id), as the Groups Grid selects rows.
   const [gridSelection, setGridSelection] = useState<RowSelectionState>({});
   const [groupNames, setGroupNames] = useState<string[]>([]);
   const [selectedGroupName, setSelectedGroupName] = useState<string>("");
@@ -103,17 +101,14 @@ function useMetaCATSPage() {
     message: string;
   } | null>(null);
 
-  // State for feature groups mode
   const [selectedFeatureGroupObject, setSelectedFeatureGroupObject] =
     useState<WorkspaceObject | null>(null);
 
-  // State for alignment file mode
   const [_selectedAlignmentFileObject, setSelectedAlignmentFileObject] =
     useState<WorkspaceObject | null>(null);
   const [_selectedGroupFileObject, setSelectedGroupFileObject] =
     useState<WorkspaceObject | null>(null);
 
-  // General state
   const [isOutputNameValid, setIsOutputNameValid] = useState(true);
 
   const form = useForm({
@@ -218,8 +213,6 @@ function useMetaCATSPage() {
     autoGroups,
     gridSelection,
   ).size;
-  // Features whose genome lacks the metadata sit in a blank group, which
-  // would be a blank suggestion.
   const groupNameSuggestions = groupNames.filter((name) => name !== "");
   const showYearRanges = metadataGroup === "collection_year";
 
@@ -247,7 +240,6 @@ function useMetaCATSPage() {
     setIsLoadingAutoGroup(true);
 
     try {
-      // Fetch features from the feature group
       const features = await fetchFeaturesFromGroup(featureGroupPath).finally(
         () => {
           setIsLoadingAutoGroup(false);
@@ -262,12 +254,9 @@ function useMetaCATSPage() {
         return;
       }
 
-      // Get unique genome IDs from features
       const genomeIdMap = createGenomeIdMapFromFeatures(features);
       const genomeIds = Array.from(genomeIdMap.keys());
 
-      // Fetch genome metadata: the field rows are grouped by, and the
-      // grid's Genbank Accession.
       const genomes = await fetchGenomesByIds(genomeIds, {
         fields: metaCatsGenomeFields(currentMetadataGroup),
       });
@@ -287,7 +276,6 @@ function useMetaCATSPage() {
           existingGroupNames: groupNames,
         });
 
-      // Update form and state
       form.setFieldValue("auto_groups", [
         ...currentAutoGroups,
         ...newAutoGroups,
@@ -330,7 +318,6 @@ function useMetaCATSPage() {
     );
     form.setFieldValue("auto_groups", updatedAutoGroups);
 
-    // Update group names
     const remainingGroupNames = getUniqueGroupNames(updatedAutoGroups);
     setGroupNames(remainingGroupNames);
     setGridSelection({});
@@ -360,7 +347,6 @@ function useMetaCATSPage() {
 
     form.setFieldValue("auto_groups", updatedAutoGroups);
 
-    // Update group names
     const newGroupNames = new Set(groupNames);
     newGroupNames.add(groupName);
     setGroupNames(Array.from(newGroupNames));
@@ -382,7 +368,6 @@ function useMetaCATSPage() {
     const path = selectedFeatureGroupObject.path;
     const currentFeatureGroups = form.state.values.groups || [];
 
-    // Check for duplicates
     if (currentFeatureGroups.includes(path)) {
       toast.error("Feature group already added", {
         description: "This feature group is already in the list.",
@@ -391,7 +376,6 @@ function useMetaCATSPage() {
       return;
     }
 
-    // Check max limit
     if (currentFeatureGroups.length >= maxGroups) {
       toast.error("Maximum groups reached", {
         description: `Maximum of ${String(maxGroups)} feature groups allowed.`,
@@ -432,7 +416,6 @@ function useMetaCATSPage() {
         }}
         className="flex flex-col gap-4"
       >
-        {/* Parameters Card */}
         <Card>
           <ServiceCardHeader>
             <RequiredFormCardTitle>
@@ -494,7 +477,6 @@ function useMetaCATSPage() {
           </ServiceCardContent>
         </Card>
 
-        {/* Input Card */}
         <Card>
           <ServiceCardHeader>
             <RequiredFormCardTitle>
@@ -509,7 +491,6 @@ function useMetaCATSPage() {
 
           <CardContent className="space-y-6 pt-1">
             <div className="flex flex-col gap-6">
-              {/* Input Type Selection */}
               <form.Field name="input_type">
                 {(field) => (
                   <FieldItem>
@@ -540,14 +521,10 @@ function useMetaCATSPage() {
                 )}
               </form.Field>
 
-              {/* Auto Grouping Section */}
               <MetaCatsInputSection
                 active={inputType === "auto"}
                 className="space-y-4"
               >
-                  {/* Metadata Selection. `items-start`, so the message under
-                      Year Ranges does not stretch the Metadata field and push
-                      its select down. */}
                   <div className="flex flex-wrap items-start gap-4">
                     <form.Field name="metadata_group">
                       {(field) => (
@@ -562,7 +539,6 @@ function useMetaCATSPage() {
                             onValueChange={(value) => {
                               if (value == null) return;
                               field.handleChange(value);
-                              // Reset year ranges when metadata changes
                               if (value !== "collection_year") {
                                 setYearRangesInput("");
                                 form.setFieldValue("year_ranges", "");
@@ -595,7 +571,6 @@ function useMetaCATSPage() {
                       )}
                     </form.Field>
 
-                    {/* Year Ranges (only for collection_year) */}
                     {showYearRanges && (
                       <FieldItem className="min-w-64 flex-1">
                         <ServiceLabel>Year Ranges</ServiceLabel>
@@ -624,7 +599,6 @@ function useMetaCATSPage() {
                     )}
                   </div>
 
-                  {/* Feature Group Selector */}
                   <div className="space-y-2">
                     <ServiceLabel>Select Feature Group</ServiceLabel>
                     <div className="flex gap-2">
@@ -649,7 +623,6 @@ function useMetaCATSPage() {
                     </div>
                   </div>
 
-                  {/* Alphabet Selection */}
                   <form.Field name="auto_alphabet">
                     {(field) => (
                       <FieldItem>
@@ -674,13 +647,9 @@ function useMetaCATSPage() {
                     )}
                   </form.Field>
 
-                  {/* Group Names ComboBox and Change Group Button */}
                   <div className="space-y-2">
                     <ServiceLabel>Group Names</ServiceLabel>
                     <div className="flex gap-2">
-                      {/* Typed text is a group name too, as in legacy's
-                          combo box: Change group can move rows into a new
-                          group as well as an existing one. */}
                       <Autocomplete
                         items={groupNameSuggestions}
                         value={selectedGroupName}
@@ -693,8 +662,7 @@ function useMetaCATSPage() {
                           placeholder="Select or type a group name"
                           triggerLabel="Show group names"
                           onKeyDown={(event) => {
-                            // Enter picks a highlighted name; otherwise it
-                            // would submit the whole job.
+                            // Enter picks a highlighted name; otherwise it would submit the whole job.
                             if (event.key === "Enter") event.preventDefault();
                           }}
                         />
@@ -753,7 +721,6 @@ function useMetaCATSPage() {
                     </div>
                   </div>
 
-                  {/* Groups Grid */}
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
                       <ServiceLabel>Groups Grid</ServiceLabel>
@@ -799,9 +766,7 @@ function useMetaCATSPage() {
                   </div>
               </MetaCatsInputSection>
 
-              {/* Feature Groups Section */}
               <MetaCatsInputSection active={inputType === "groups"}>
-                  {/* Feature Group Selector */}
                   <div className="space-y-2">
                     <ServiceLabel>Select Feature Group</ServiceLabel>
                     <div className="flex gap-2">
@@ -825,7 +790,6 @@ function useMetaCATSPage() {
                     </div>
                   </div>
 
-                  {/* Alphabet Selection */}
                   <form.Field name="group_alphabet">
                     {(field) => (
                       <FieldItem>
@@ -850,7 +814,6 @@ function useMetaCATSPage() {
                     )}
                   </form.Field>
 
-                  {/* Selected Feature Groups Table */}
                   <div className="space-y-2">
                     <ServiceLabel>
                       Selected Feature Groups ({featureGroups.length}/
@@ -884,9 +847,7 @@ function useMetaCATSPage() {
                   </div>
               </MetaCatsInputSection>
 
-              {/* Alignment File Section */}
               <MetaCatsInputSection active={inputType === "files"}>
-                  {/* Alignment File Selector */}
                   <form.Field name="alignment_file">
                     {(field) => (
                       <FieldItem>
@@ -899,7 +860,6 @@ function useMetaCATSPage() {
                           ) => {
                             if (object?.path) {
                               field.handleChange(object.path);
-                              // Store alignment type for alphabet detection
                               const type = object.type || "";
                               form.setFieldValue("alignment_type", type);
                             } else {
@@ -915,7 +875,6 @@ function useMetaCATSPage() {
                     )}
                   </form.Field>
 
-                  {/* Group File Selector */}
                   <form.Field name="group_file">
                     {(field) => (
                       <FieldItem>
@@ -944,7 +903,6 @@ function useMetaCATSPage() {
           </CardContent>
         </Card>
 
-        {/* Form Controls */}
         <ServiceFormFooter
           form={form}
           onReset={handleReset}

@@ -16,8 +16,8 @@ interface StrainPageProps {
 }
 
 async function loadStrain(rawStrainId: string, source: RouteParamSource) {
-  // The two entry points receive this segment in different encodings, so
-  // each declares which it is. See `readRouteParam`.
+  // The two entry points receive this segment in different encodings, so each
+  // declares its `source` (see `readRouteParam`).
   const strainId = readRouteParam(rawStrainId, source);
   if (!isStrainId(strainId)) notFound();
   let strain: Awaited<ReturnType<typeof getStrain>>;
@@ -26,7 +26,6 @@ async function loadStrain(rawStrainId: string, source: RouteParamSource) {
   } catch (error) {
     if (error instanceof DataApiError && [401, 403, 404].includes(error.status))
       notFound();
-    // An outage is rendered, not thrown: production would redact its message.
     const unavailable = recordUnavailableMessage(error);
     if (unavailable === null) throw error;
     if (source === "page") console.error(`strain/${strainId}:`, error);

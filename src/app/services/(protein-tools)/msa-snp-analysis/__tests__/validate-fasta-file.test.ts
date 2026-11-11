@@ -42,9 +42,7 @@ describe("fastaFileProblem", () => {
 
   it("checks the records of a file's start, but not their count", () => {
     const start = { protein: false, truncated: true };
-    // A long first record: more may follow past the cut.
     expect(fastaFileProblem(">a\nACGT\nACGT\n", start)).toBeNull();
-    // The cut left a header without its sequence.
     expect(fastaFileProblem(">a\nACGT\n>b\n", start)).toBeNull();
     expect(fastaFileProblem(">a\nACGT\n>b\nACXT\n", start)).toBe(
       "Invalid nucleotide letters on line 4.",
@@ -53,25 +51,17 @@ describe("fastaFileProblem", () => {
 
   it("finds nothing wrong in a start that holds no complete record", () => {
     const start = { protein: false, truncated: true };
-    // A first sequence on one line longer than the read: only its header fits.
     expect(fastaFileProblem(">a\n", start)).toBeNull();
-    // No line end fits, so the read stops inside the header.
     expect(fastaFileProblem(">a very long hea", start)).toBeNull();
-    // Or inside the first sequence line, which is dropped with the header.
     expect(fastaFileProblem(">a\nACGTAC", start)).toBeNull();
-    // A line the read ends inside is not checked, so its cut is no error.
     expect(fastaFileProblem(">a\nACGT\n>b\nAC", start)).toBeNull();
   });
 
   it("rejects a start with no complete line that does not open with a header", () => {
     const start = { protein: false, truncated: true };
     const noHeader = 'A fasta record is at least two lines and starts with ">".';
-    // Sequence text with no line end in the read: nothing complete to check,
-    // but the missing header already shows it is not FASTA.
     expect(fastaFileProblem("ACGTACGTAC", start)).toBe(noHeader);
-    // The preview keeps a line end at the very start rather than cut to it.
     expect(fastaFileProblem("\nACGTACGTAC", start)).toBe(noHeader);
-    // Leading blank lines before a header are still a header start.
     expect(fastaFileProblem("\n\n>a\nACGTAC", start)).toBeNull();
   });
 });

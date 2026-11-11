@@ -78,13 +78,11 @@ export function ProfileForm({ profile }: ProfileFormProps) {
           }}
           className="grid gap-4"
         >
-          {/* Username (read-only) */}
           <FieldItem>
             <Label htmlFor="profile-username">Username</Label>
             <Input id="profile-username" value={profile.id} disabled />
           </FieldItem>
 
-          {/* Email */}
           <form.Field name="email">
             {(field) => (
               <FieldItem>
@@ -105,7 +103,6 @@ export function ProfileForm({ profile }: ProfileFormProps) {
             )}
           </form.Field>
 
-          {/* First Name */}
           <form.Field name="first_name">
             {(field) => (
               <FieldItem>
@@ -125,7 +122,6 @@ export function ProfileForm({ profile }: ProfileFormProps) {
             )}
           </form.Field>
 
-          {/* Middle Name */}
           <form.Field name="middle_name">
             {(field) => (
               <FieldItem>
@@ -143,7 +139,6 @@ export function ProfileForm({ profile }: ProfileFormProps) {
             )}
           </form.Field>
 
-          {/* Last Name */}
           <form.Field name="last_name">
             {(field) => (
               <FieldItem>
@@ -163,7 +158,6 @@ export function ProfileForm({ profile }: ProfileFormProps) {
             )}
           </form.Field>
 
-          {/* Organization */}
           <form.Field name="affiliation">
             {(field) => (
               <FieldItem>
@@ -181,7 +175,6 @@ export function ProfileForm({ profile }: ProfileFormProps) {
             )}
           </form.Field>
 
-          {/* Organisms */}
           <form.Field name="organisms">
             {(field) => (
               <FieldItem>
@@ -199,7 +192,6 @@ export function ProfileForm({ profile }: ProfileFormProps) {
             )}
           </form.Field>
 
-          {/* Interests */}
           <form.Field name="interests">
             {(field) => (
               <FieldItem>

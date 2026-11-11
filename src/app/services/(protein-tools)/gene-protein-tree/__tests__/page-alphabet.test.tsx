@@ -23,25 +23,12 @@ function Providers({ children }: { children: React.ReactNode }) {
   );
 }
 
-/**
- * The page-level alphabet toggle is the only meaningful divergence between this form and the
- * Viral Genome Tree form (which the e2e `tree-services.spec.ts` covers as the family
- * representative). When the user flips DNA ↔ Protein mid-form, a useEffect filters the
- * sequences array down to the types that match the new alphabet. Silent data loss is the
- * concerning failure mode if the filter ever regresses, so the assertion below pins the
- * "DNA-only sequences are dropped, feature_group survives" contract.
- *
- * The reverse direction (Protein → DNA) is symmetric — the same filter applies with the
- * DNA-valid type set — so it is not asserted separately here.
- */
 describe("GeneProteinTree page — alphabet toggle filters incompatible sequences", () => {
   beforeEach(() => {
     sessionStorage.clear();
     window.history.replaceState({}, "", "/");
     server.use(
-      // Workspace.get returns 500 so the OutputFolder name-availability check treats the name
-      // as available (same trick as genome-assembly/page-rerun.test.tsx); other workspace RPCs
-      // return [] for empty listings.
+      // Workspace.get returns 500 so the output name counts as available; other RPCs return [].
       http.post("*/api/services/workspace", async ({ request }) => {
         const body = (await request.json()) as { method?: string };
         if (body.method === "Workspace.get") {
@@ -74,8 +61,7 @@ describe("GeneProteinTree page — alphabet toggle filters incompatible sequence
 
     render(<GeneProteinTreePage />, { wrapper: Providers });
 
-    // Each basename is in its row twice (the name line and the path line), and the regexes
-    // overlap (/aligned\.fa/ also matches unaligned.fa), so `getAllByText` counts matches.
+    // Basenames appear twice per row and the regexes overlap, so count with getAllByText.
     await waitFor(() => {
       expect(screen.getAllByText(/group\.fa/).length).toBeGreaterThan(0);
       expect(screen.getAllByText(/aligned\.fa/).length).toBeGreaterThan(0);

@@ -14,7 +14,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
-/** Code blocks longer than this many lines start collapsed (as on BV-BRC). */
 const collapsedCodeLines = 8;
 
 function CodeBlock({ children, ...props }: ComponentProps<"pre">) {
@@ -53,7 +52,6 @@ function CodeBlock({ children, ...props }: ComponentProps<"pre">) {
   );
 }
 
-/** The text inside a rendered `<pre>`'s `<code>` child, for line counting. */
 function blockText(node: unknown): string {
   if (typeof node === "string") return node;
   if (Array.isArray(node)) return node.map(blockText).join("");
@@ -64,11 +62,7 @@ function blockText(node: unknown): string {
   return "";
 }
 
-/**
- * Element overrides. Links open in a new tab (agent answers link to BV-BRC
- * pages for now). Images are never loaded: a model-written image URL could
- * carry chat content to another server, so it is shown as a link instead.
- */
+/** Images are never loaded: a model-written image URL could leak chat content to another server. */
 const components: Components = {
   p: ({ node: _node, ...props }) => <p className="my-2 first:mt-0 last:mb-0" {...props} />,
   a: ({ node: _node, href, children, ...props }) => (
@@ -112,7 +106,6 @@ const components: Components = {
   hr: () => <hr className="my-3 border-border" />,
   pre: ({ node: _node, ...props }) => <CodeBlock {...props} />,
   code: ({ node: _node, className, ...props }) =>
-    // Fenced code carries a `language-*` class and sits in CodeBlock's <pre>.
     className ? (
       <code className={className} {...props} />
     ) : (
@@ -130,10 +123,7 @@ const components: Components = {
   td: ({ node: _node, ...props }) => <TableCell {...props} />,
 };
 
-/**
- * An answer's markdown (GitHub flavor: tables, task lists, strikethrough).
- * Raw HTML in the text is shown as text, never rendered.
- */
+/** Raw HTML in the text is shown as text, never rendered. */
 export const CopilotMarkdown = memo(function CopilotMarkdown({
   content,
 }: {

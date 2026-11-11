@@ -4,51 +4,31 @@ import type { CollectionState } from "./collection-state";
 import { rqlAnd, rqlAnyOf } from "./rql";
 
 /**
- * The one remap shared by every resource that carries a taxonomic lineage: the
- * friendly `taxon_id` filter means "anywhere in this organism's lineage", which
- * the Data API expresses through the multi-valued `taxon_lineage_ids` field.
- * Epitope, Experiment, Genome, Protein Structure and Strain all read it, so the
- * fact lives here once rather than restated per sibling module.
- *
- * Taxonomy is deliberately not a consumer: `taxon_id` already *is* the taxonomy
- * resource's own id field, so remapping it there would filter the wrong column.
- * That is also why this is not `fieldMap`'s default — a resource has to opt in.
+ * Shared by every resource with a taxonomic lineage: `taxon_id` means "anywhere
+ * in this lineage" via `taxon_lineage_ids`.
+ * Taxonomy is deliberately not a consumer, since `taxon_id` is already its own
+ * id field; resources opt in.
  */
 export const taxonLineageFieldMap: Readonly<Record<string, string>> = {
   taxon_id: "taxon_lineage_ids",
 };
 
 export interface StructuralFilterOptions {
-  /**
-   * Backend field name overrides, keyed by friendly filter name. A filter
-   * name absent from this map falls back to `unknownFilters`.
-   */
   fieldMap?: Readonly<Record<string, string>>;
   /**
-   * How to resolve a filter name that has no entry in `fieldMap`:
-   * - `"passthrough"` (default) — forward the filter name unchanged as the
-   *   backend field. Every structural-filter module except Genome relies on
-   *   this: their friendly filter names already are backend field names, so
-   *   only a handful (like `taxon_id`) need remapping.
-   * - `"drop"` — omit the filter instead of forwarding it. Genome uses this:
-   *   its remap table is the total, authoritative list of filters it will
-   *   ever send to the backend, so an unlisted name fails closed rather than
-   *   reaching the backend under its raw (and possibly invalid) name.
+   * `"passthrough"` (default) forwards the name as the backend field. `"drop"`
+   * omits it: Genome's remap table is the authoritative list of what it sends,
+   * so an unlisted name fails closed.
    */
   unknownFilters?: "passthrough" | "drop";
 }
 
 /**
- * Compose a collection's friendly filters into Data API structural RQL:
- * values within one field are ORed, fields are ANDed, and an explicit
- * `state.rql` bypasses friendly filters entirely (returns `undefined`).
- *
- * Shared by every `*StructuralRql` domain wrapper except Feature's, which
- * applies every filter its parsed state holds: its independent `filter` and
- * the `/feature` list's PATRIC default stay beside `state.rql`
- * (`filtersBesideRql`; see `src/lib/feature-view/query.ts`). A view that gives
- * another resource `defaultFilters` needs the same, or a default kept beside
- * the rql would reach the URL but not the query.
+ * An explicit `state.rql` bypasses friendly filters entirely (returns
+ * `undefined`).
+ * Feature's wrapper is the exception: its independent `filter` and PATRIC
+ * default stay beside `state.rql` (`filtersBesideRql`), and any view giving
+ * another resource `defaultFilters` needs the same.
  */
 export function structuralFilterRql(
   resource: DataResource,

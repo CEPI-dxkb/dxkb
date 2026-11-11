@@ -4,25 +4,8 @@ import { useEffect, useEffectEvent, useState } from "react";
 import { keywordDebounceMs } from "@/components/filterbar/keyword-search";
 
 /**
- * A text box's draft over a committed value that lives elsewhere (usually the
- * URL), committed after `delayMs` of no typing.
- *
- * Next applies History API writes to `useSearchParams` inside a transition, so
- * a text input bound straight to the URL snaps back to the old value on each
- * keystroke and drops fast typing. The box shows the draft instead.
- *
- * - The draft starts as `committed`, and mounting never commits.
- * - A `committed` value that changes from outside (Back/Forward, a link)
- *   replaces the draft, without committing it back.
- * - A `committed` value that is this hook's own write landing does not: the
- *   user may have typed on since, and that text must survive.
- *
- * `normalize` is what the committed value makes of a draft (the filter bar
- * trims its keyword). The hook commits the normalized draft and recognizes it
- * when it lands, so trailing whitespace neither reads as an outside change nor
- * triggers a second commit; the box keeps showing what was typed.
- *
- * `commit` runs through an effect event, so it always sees the latest props.
+ * A draft over a committed value that lives elsewhere (usually the URL), committed after `delayMs` of no typing.
+ * A `committed` change from outside replaces the draft; this hook's own write landing does not, so text typed since survives.
  */
 export function useDebouncedDraft(
   committed: string,
@@ -37,7 +20,6 @@ export function useDebouncedDraft(
 ): readonly [string, (value: string) => void] {
   const [draft, setDraft] = useState(committed);
   const [previousCommitted, setPreviousCommitted] = useState(committed);
-  // What this hook last committed, until a committed value lands.
   const [ownCommit, setOwnCommit] = useState<string | null>(null);
   if (previousCommitted !== committed) {
     setPreviousCommitted(committed);

@@ -17,7 +17,6 @@ const canonicalDescriptors = searchDescriptors.filter(
   (descriptor) => descriptor.route.status === "canonical",
 );
 
-/** The redirect href for a legacy request, or a failure naming what happened instead. */
 function redirectHref(
   params: Record<string, string | string[] | undefined>,
   query: string,
@@ -29,7 +28,6 @@ function redirectHref(
   return target.href;
 }
 
-/** The destination query, parsed back into the record shape the views take. */
 function redirectParams(
   params: Record<string, string | string[] | undefined>,
   query: string,
@@ -63,11 +61,8 @@ describe("legacy search routing contract", () => {
     },
   );
 
-  // The Taxa redirect is the one destination whose carried parameters are
-  // narrowed, so it is the one that can silently drop state. Prove the narrowing
-  // is a superset of what `/taxonomy` actually parses by round-tripping the
-  // destination URL back through the real parser, rather than by re-deriving the
-  // same set the production code derives.
+  // Taxa is the one redirect with narrowed parameters, so round-trip its URL
+  // through the real `/taxonomy` parser instead of re-deriving the set.
   it("carries every collection parameter the Taxa route parses", () => {
     const filters = (taxonomyCollectionOptions.friendlyFilters ?? []).filter(
       (name) => name !== "taxon_id",
@@ -99,8 +94,6 @@ describe("legacy search routing contract", () => {
       expect(state.filters[name], name).toEqual([`value-${name}`]);
     }
 
-    // Nothing the parser reads was left behind: the destination's own managed
-    // names for these params are exactly the ones asserted above.
     expect([...collectionManagedParamNames(legacy, taxonomyCollectionOptions)]).toEqual(
       expect.arrayContaining(["keyword", "refine", "rql", "page", "sort", ...filters]),
     );
@@ -113,9 +106,8 @@ describe("legacy search routing contract", () => {
     expect(state.rql).toBe("eq(taxon_id,10239)");
   });
 
-  // `tab` is the one non-collection parameter the narrowed set carries. A future
-  // non-collection parameter on `/taxonomy` must be added here and to
-  // `carriedParamNames`, or the redirect will drop it.
+  // `tab` is the one non-collection parameter carried; a new one on `/taxonomy`
+  // must be added here and to `carriedParamNames`.
   it("carries the non-collection parameters the Taxa redirect allows", () => {
     expect(redirectParams({ type: "taxonomy", tab: "taxonomy" }, "").tab).toBe(
       "taxonomy",
@@ -227,9 +219,8 @@ describe("legacy search routing contract", () => {
     });
   });
 
-  // Sequences and AMR Phenotypes had the old legacy list as their only search
-  // view; DXKB searches neither, so their legacy URLs get the same panel as
-  // every other type with no view.
+  // DXKB searches neither Sequences nor AMR Phenotypes, so their legacy URLs
+  // get the same panel as every other type with no view.
   it.each([
     "genome_sequence",
     "genome_amr",

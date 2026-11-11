@@ -2,8 +2,8 @@ import { Children, type FocusEvent } from "react";
 
 import { cn } from "@/lib/utils";
 
-// The runtime tint of an active entry is split into backgroundColor and
-// borderColor so the element's style stays a literal object with static keys.
+// The tint is split into backgroundColor/borderColor so the style stays a literal
+// object with static keys.
 interface LegendAppearance {
   className: string;
   backgroundColor?: string;

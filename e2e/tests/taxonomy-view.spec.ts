@@ -27,9 +27,8 @@ test.describe("Taxonomy collection", () => {
   test("waits for a narrowed query's results before resolving every matching Taxon", async ({
     page,
   }) => {
-    // Hold the narrowed query's rows, so the previous query's rows and total are
-    // still on screen when every result is selected. Registered after the mocks,
-    // so it is matched first.
+    // Hold the narrowed query's rows so the previous rows and total are still on
+    // screen. Registered after the mocks, so it is matched first.
     let releaseNarrowed!: () => void;
     const narrowedHeld = new Promise<void>((resolve) => {
       releaseNarrowed = resolve;
@@ -57,8 +56,6 @@ test.describe("Taxonomy collection", () => {
     await taxonomyPage.selectAllResults();
     await page.getByRole("button", { name: "SERVICES", exact: true }).click();
 
-    // The action waits for the narrowed query's own total rather than refusing,
-    // and opens nothing while the previous query's rows are still on screen.
     await taxonomyPage.expectRefreshing(true);
     await taxonomyPage.expectStaleRows(true);
     await expect(
@@ -66,9 +63,8 @@ test.describe("Taxonomy collection", () => {
     ).toHaveCount(0);
     await expect(page.getByText("Could not complete action")).toHaveCount(0);
 
-    // Once the narrowed rows land, the same click resolves every matching Taxon.
-    // The fixture serves the same row to both queries, so only the refresh status
-    // tells them apart.
+    // The fixture serves the same row to both queries, so only the refresh status tells
+    // them apart.
     const narrowedResponse = page.waitForResponse(
       (response) =>
         response.request().method() === "GET" &&

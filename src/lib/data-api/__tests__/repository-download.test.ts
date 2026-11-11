@@ -17,7 +17,6 @@ interface SeenRequest {
   body: string;
 }
 
-/** Records every upstream request to `resource` and answers with `respond`. */
 function captureUpstream(
   resource: string,
   respond: (request: SeenRequest) => Response = () => new Response("file"),
@@ -42,12 +41,10 @@ function captureUpstream(
   return seen;
 }
 
-/** The gateway's fresh count of a query download (`application/solr+json`). */
 function solrCount(numFound: number): Response {
   return HttpResponse.json({ response: { numFound, docs: [] } });
 }
 
-/** Answers `resource`'s count reads with `numFound`, and records them. */
 function countUpstream(resource: string, numFound: number) {
   return captureUpstream(resource, () => solrCount(numFound), "get");
 }
@@ -171,7 +168,6 @@ describe("ServerDataRepository.download", () => {
   });
 
   it("does not stop at a total that went stale after the table loaded", async () => {
-    // The table counted 2 rows; 3 match by the time of the download.
     countUpstream("genome", 3);
     const seen = captureUpstream("genome", () => new Response("a\nb\nc\n"));
 
@@ -356,11 +352,9 @@ describe("ServerDataRepository.download", () => {
       total: 2,
     });
 
-    // genomes[0] is the count.
     expect(decodeURIComponent(genomes[1].url.search)).toBe(
       "?eq(genus,Brucella)&select(genome_id)&sort(+genome_name,+genome_id)",
     );
-    // One id past the cap, to see a query that grew after its count.
     expect(genomes[1].range).toBe("items=0-10001");
     expect(contigs[0].body).toBe(
       "in(genome_id,(1.1,1.2))&sort(+sequence_id)&limit(2500000)",
@@ -400,7 +394,6 @@ describe("ServerDataRepository.download", () => {
   });
 
   it("reports a genome query that matched nothing instead of sending an empty in()", async () => {
-    // Counted 2, but the ids read after it came back empty.
     captureUpstream(
       "genome",
       ({ accept }) =>

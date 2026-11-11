@@ -7,9 +7,8 @@ import { Button } from "@/components/ui/button";
 import { useSessionUnverifiedNotice } from "@/lib/auth/provider";
 
 /**
- * Shown while the profile service cannot confirm the session (see
- * `AuthUser.sessionUnverified`), so an outage does not look like being signed
- * out. Retry re-renders the server components, which repeats the lookup.
+ * Shown while the profile service cannot confirm the session, so an outage does
+ * not look like being signed out.
  */
 export function SessionUnverifiedBanner() {
   const { visible, reason, dismiss } = useSessionUnverifiedNotice();

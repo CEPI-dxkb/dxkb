@@ -141,7 +141,6 @@ export function useViralAssemblyPage() {
           Record<string, string> | undefined;
         const single = data.single_end_lib as
           Record<string, string> | undefined;
-        // Legacy sends sra_id; DXKB used to send srr_id. The app takes both.
         const srr = (data.sra_id ?? data.srr_id) as string | undefined;
         if (paired?.read1 && paired.read2) {
           rerunForm.setFieldValue("input_type", "paired");

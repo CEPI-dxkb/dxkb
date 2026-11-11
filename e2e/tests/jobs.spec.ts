@@ -9,7 +9,6 @@ test.describe("jobs page", () => {
   test.beforeEach(async ({ page }) => {
     await applyBackendMocks(page, {
       overrides: [
-        // Workspace.get (favorites) fired when /jobs page loads the workspace sidebar chrome.
         ...workspacePopulatedOverrides,
         ...journeyOverrides,
       ],
@@ -24,8 +23,6 @@ test.describe("jobs page", () => {
 
   test("shows job status pill in navbar for signed-in user with jobs", async ({ page }) => {
     await page.goto("/jobs");
-    // journeyOverrides includes jobsOverrides which mocks the summary endpoint with
-    // 1 completed + 1 running job, so displayableCount > 0 and the pill should render.
     const pill = page.getByRole("button", { name: /view job status/i });
     await expect(pill).toBeVisible();
   });
@@ -46,10 +43,8 @@ test.describe("jobs page", () => {
     await jobs.goto();
     await jobs.waitForJob("job-001");
 
-    // "assembly" matches job-001's service (GenomeAssembly), the one completed job.
     await jobs.filterByStatus("Completed");
     await jobs.search("assembly");
-    // `q` is written after the search box's 300 ms debounce.
     await jobs.expectUrlParams({ status: "completed", q: "assembly" });
 
     const expectFiltersRestored = async () => {
@@ -59,9 +54,8 @@ test.describe("jobs page", () => {
       await expect(jobs.rowById("job-001")).toBeVisible();
     };
 
-    // The mocked job has no output path, so there is no row to open. The navbar's
-    // Workspace menu reaches the same folder through the client router, which makes
-    // the Back below a Next popstate (a `page.goto` away would make it a document load).
+    // The mocked job has no output path; the navbar Workspace menu uses the client
+    // router, making Back a Next popstate (a page.goto would be a document load).
     await jobs.openWorkspaceHomeFromNavbar();
     const workspace = new WorkspacePage(page);
     await expect(page).toHaveURL(/\/workspace\/e2e-test-user@patricbrc\.org\/home$/);
@@ -87,10 +81,8 @@ test.describe("jobs page", () => {
     await jobs.goto();
     await jobs.waitForJob("job-001");
 
-    // Entry A: a status change.
     await jobs.filterByStatus("Completed");
     await jobs.expectUrlParams({ status: "completed", sort: null });
-    // Entry B: a sort change on top of it. The list starts sorted by Submit, newest first.
     await jobs.sortBy("Start");
     await jobs.expectUrlParams({ status: "completed", sort: "start_time:asc" });
     await jobs.expectSort("Start", "ascending");
@@ -114,7 +106,6 @@ test.describe("jobs page", () => {
 
     await jobs.filterByStatus("Completed");
     await jobs.expectUrlParams({ status: "completed", q: null });
-    // Two debounced commits of one search share an entry on top of the status one.
     await jobs.search("assem");
     await jobs.expectUrlParams({ status: "completed", q: "assem" });
     await jobs.search("assembly");

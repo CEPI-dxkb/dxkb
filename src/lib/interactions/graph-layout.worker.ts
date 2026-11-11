@@ -4,11 +4,8 @@ import {
   type GraphLayoutResponse,
 } from "./layout-positions";
 
-// Worker entry for the interactions graph layout. Started by
-// `requestGraphLayout` (layout-client.ts) with
-// `new Worker(new URL("./graph-layout.worker.ts", import.meta.url), { type: "module" })`,
-// one worker per request. The project's `tsconfig` has no `webworker` lib, so
-// the worker scope is typed with just the two members this file uses.
+// Started per request by `requestGraphLayout` (layout-client.ts). The tsconfig has no `webworker`
+// lib, so the worker scope is typed with just the two members this file uses.
 interface LayoutWorkerScope {
   addEventListener(
     type: "message",

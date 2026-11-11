@@ -1,10 +1,5 @@
 "use client";
 
-/**
- * The Compare Region Viewer's legend, on one line under the figure: what
- * the ribbons mean, the glyph key and that zooming reveals more. Its glyphs
- * are always Comfortable's, whatever the figure's density.
- */
 import { ZoomIn } from "lucide-react";
 import {
   useLayoutEffect,
@@ -46,7 +41,6 @@ function LegendItem({
   );
 }
 
-/** Whether `ref`'s element is wider than its box, measured again whenever its box changes. */
 function useScrollsSideways(ref: RefObject<HTMLElement | null>): boolean {
   const [scrolls, setScrolls] = useState(false);
   useLayoutEffect(() => {
@@ -67,10 +61,8 @@ function useScrollsSideways(ref: RefObject<HTMLElement | null>): boolean {
 }
 
 /**
- * One compact line: what ribbons mean, the shape key, and that zooming
- * reveals more. Under `md` the line scrolls sideways, and then the legend
- * takes focus, so a keyboard can scroll it too; where it wraps (or fits) it
- * is no tab stop.
+ * Under `md` the line scrolls sideways and the legend takes focus so a keyboard
+ * can scroll it too.
  */
 export function Legend() {
   const ref = useRef<HTMLDivElement>(null);

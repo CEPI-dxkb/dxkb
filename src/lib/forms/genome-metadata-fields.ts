@@ -1,8 +1,4 @@
-/**
- * The genome metadata fields the phylogenetic tree services (Gene / Protein
- * Tree, Viral Genome Tree) offer for the tree's metadata table. A field's id
- * is what the job's `metadata_fields` carries.
- */
+/** Genome metadata fields the tree services offer; a field's id is what the job's `metadata_fields` carries. */
 
 export interface MetadataField {
   id: string;
@@ -30,13 +26,7 @@ export const defaultMetadataFields: MetadataField[] = [
   { id: "subtype", name: "Subtype", selected: true },
 ];
 
-/**
- * Legacy shows two lists one at a time: its short list ("Frequent Fields"
- * here, `checkMoreOptions` in `GeneTree.js`) and, behind "... More Options
- * ...", the genome fields of `AdvancedSearchFields.js` by section. Here they
- * are one list, so the sections leave out the frequent fields: an id is its
- * Select item's value and React key, and a repeat broke both.
- */
+/** Sections omit the frequent fields: an id is a Select item's value and React key, and a repeat broke both. */
 const sectionFields: { label: string; fields: string[] }[] = [
   {
     label: "Frequent Fields",
@@ -176,10 +166,8 @@ const sectionFields: { label: string; fields: string[] }[] = [
   },
 ];
 
-/** Labels that are not the id in title case. */
 const displayNames = new Map([["host_gender", "Host Sex"]]);
 
-/** "host_common_name" → "Host Common Name". */
 export function formatMetadataLabel(field: string): string {
   return field
     .replace(/_/g, " ")
@@ -198,11 +186,9 @@ export const metadataFieldSections: MetadataFieldSection[] = sectionFields.map(
   }),
 );
 
-/** Every option, for the Select's `items`: the label its trigger shows. */
 export const metadataFieldOptions: MetadataFieldOption[] =
   metadataFieldSections.flatMap((section) => section.options);
 
-/** A table row for `fieldId`, named by its option (or its title-cased id). */
 export function createMetadataField(fieldId: string): MetadataField {
   const option = metadataFieldOptions.find(({ value }) => value === fieldId);
   return {
@@ -214,7 +200,6 @@ export function createMetadataField(fieldId: string): MetadataField {
 
 const optionValues = new Set(metadataFieldOptions.map(({ value }) => value));
 
-/** A job parameter's ids: a list, or one comma-separated string. */
 function idList(value: unknown): string[] {
   if (typeof value === "string") {
     return value
@@ -227,14 +212,7 @@ function idList(value: unknown): string[] {
     : [];
 }
 
-/**
- * The metadata table a job ran with, for its rerun. Jobs keep it in one of
- * three places: `genome_metadata_fields` (this site, and legacy's Viral Genome
- * Tree); `metadata_fields` (legacy's Gene Tree, which the app ignores); and
- * `feature_metadata_fields`, where this site's Gene / Protein Tree used to
- * send any field outside a fixed list. Only genome fields are taken from the
- * last: a gene field there (e.g. "product") is not one the table offers.
- */
+/** The metadata table a job ran with; only genome fields are taken from `feature_metadata_fields`. */
 export function metadataFieldIdsFromJob(
   params: Record<string, unknown>,
 ): string[] {
@@ -250,10 +228,6 @@ export function metadataFieldIdsFromJob(
   ];
 }
 
-/**
- * The sections without the fields already in the table, and without the
- * sections that leaves empty.
- */
 export function availableMetadataFieldSections(
   selectedIds: ReadonlySet<string>,
 ): MetadataFieldSection[] {

@@ -67,7 +67,6 @@ vi.mock("@/components/workspace/workspace-object-selector", () => ({
     ) => void;
   }) => (
     <>
-      {/* Uncontrolled like the real selector's search text: only a remount clears it. */}
       <input aria-label="Search genome groups" />
       <output aria-label="Genome group value">
         {value === undefined ? "<no value prop>" : value}
@@ -201,8 +200,6 @@ describe("GenomeAlignmentServicePage selection races", () => {
   });
 });
 
-// Rule 11: "Select at least two genomes" is a response to something the user
-// did, not to the empty form. These run the real page, field and schema.
 describe("GenomeAlignmentServicePage genome-count error", () => {
   const countError = "Select at least two genomes";
   const secondGroupGenome: GenomeSummary = {
@@ -267,7 +264,6 @@ describe("GenomeAlignmentServicePage genome-count error", () => {
     await user.click(screen.getByRole("button", { name: "Remove Second group genome" }));
     expect(await screen.findByText(countError)).toBeInTheDocument();
 
-    // Removing the last one builds a new empty array: still a user action.
     await user.click(screen.getByRole("button", { name: "Remove Group genome" }));
     expect(await screen.findByText(countError)).toBeInTheDocument();
   });
@@ -299,7 +295,6 @@ describe("GenomeAlignmentServicePage selected genome rows", () => {
     const rows = within(
       screen.getByRole("table", { name: "Selected genomes" }),
     ).getAllByRole("row");
-    // The header row, then one row per genome in selection order.
     expect(rows.map((row) => row.textContent)).toEqual([
       "GenomeGenome IDRemove",
       "Group genomeReferencegroup-genome",
@@ -327,8 +322,6 @@ describe("GenomeAlignmentServicePage advanced options layout", () => {
     await user.click(toggle);
 
     const slider = screen.getByText("Seed Weight", { selector: "label" });
-    // The slider joins the toggle's column; Weight keeps the same grid cell
-    // (it used to be pushed onto a new row by the slider).
     expect(toggleColumn).toContainElement(slider);
     expect(toggleColumn).not.toContainElement(weightLabel);
     expect(grid?.children).toHaveLength(2);

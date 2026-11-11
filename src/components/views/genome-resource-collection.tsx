@@ -17,11 +17,6 @@ interface GenomeResourceCollectionProps {
   enableRowLinks?: boolean;
   initialState?: CollectionState;
   keywordMode?: "server" | "loaded" | "refine";
-  /**
-   * How a URL keyword reaches the Data API. The `/genome` list sends an exact
-   * `keyword(...)`, as legacy GenomeList does; unset keeps the token-prefix
-   * default.
-   */
   serverKeywordMode?: "exact" | "prefix";
 }
 

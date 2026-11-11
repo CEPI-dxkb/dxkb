@@ -7,12 +7,6 @@ import type { useResourceCollection as useResourceCollectionHook } from "@/hooks
 import { ResourceCollection } from "../resource-collection";
 import { createResourceCollectionResult } from "./fixtures/resource-collection-result";
 
-// Bioset is the other resource (with Taxonomy) whose action needs a network
-// round-trip before it can navigate: BIOSETS pools every selected row's experiment
-// IDs, which for an all-pages selection means resolving them after a tab is already
-// reserved. That reservation/race/error-recovery shape is exercised on its own here
-// rather than folded into the shared selection-action tests.
-
 const { useResourceCollection } = vi.hoisted(() => ({
   useResourceCollection: vi.fn<typeof useResourceCollectionHook>(),
 }));
@@ -64,15 +58,8 @@ vi.mock("../resource-filter-bar", async () =>
     await import("./fixtures/resource-collection-mocks")
   ).resourceFilterBarMock(),
 );
-// The `SearchActionBar` fake shared with every resource-collection*.test.tsx suite.
-// It calls the same `visibleSearchActions` / `isSearchActionDisabled` policy
-// production does (search-action-policy.ts), so a control this suite can query or
-// click is one the real bar would have rendered, in the same enabled state.
 vi.mock("@/components/search/search-action-bar", async () => {
-  // A dynamic import, not a static one: `vi.mock` factories run before the file's own
-  // static imports are linked, so a statically-imported helper referenced here throws
-  // ("Cannot access ... before initialization"). Awaiting the import inside the
-  // factory sidesteps that — `beforeEach`/the tests below still resolve normally.
+  // Dynamic import: `vi.mock` factories run before static imports are linked.
   const { createSearchActionBarFake } =
     await import("./fixtures/search-action-bar-fake");
   return {
@@ -119,14 +106,6 @@ function repository(
   } as unknown as DataRepository;
 }
 
-/**
- * A stand-in for the tab both Bioset paths reserve with `window.open("about:blank")`.
- * Both navigate it through `navigateReservedTab`, by clicking an
- * `<a target="_self" rel="noreferrer">` created in the reserved document, so `links`
- * is where the destination assertions look. `location.replace` is still captured, and
- * asserted *not* called: the all-pages path used to navigate that way, which sends the
- * destination a referrer.
- */
 function reservedTab() {
   const links: {
     href?: string;
@@ -194,16 +173,12 @@ describe("ResourceCollection Bioset actions", () => {
       enabledActions: ["services", "biosets"],
       guideUrl: "https://example.test/guide",
     });
-    // The Download tile heads the rail beside the Bioset actions.
     expect(screen.getByRole("button", { name: /^DOWNLOAD/ })).toBeVisible();
     await user.click(screen.getByRole("button", { name: "Biosets action" }));
     expect(selected).not.toHaveBeenCalled();
-    // A reserved `about:blank`, not the final href with `noopener,noreferrer`: the
-    // spec makes `window.open` return null whenever `noopener` is set, so the handle
-    // could not tell a blocked pop-up from an allowed one. Reserving keeps the
-    // handle meaningful *and* keeps `noreferrer` on the navigation.
+    // Reserved as `about:blank`: `noopener` makes `window.open` return null,
+    // which hides a blocked pop-up.
     expect(open).toHaveBeenCalledWith("about:blank", "_blank");
-    // `opener` is severed while the tab is still same-origin and empty.
     expect(open.mock.results[0].value).toMatchObject({ opener: null });
     expect(links).toStrictEqual([
       expect.objectContaining({
@@ -213,8 +188,6 @@ describe("ResourceCollection Bioset actions", () => {
       }),
     ]);
     expect(links[0].click).toHaveBeenCalledOnce();
-    // Nothing reaches for `location.replace` any more — it would send the
-    // destination a referrer, which is why all three paths click an anchor instead.
     expect(replace).not.toHaveBeenCalled();
   });
 
@@ -250,12 +223,6 @@ describe("ResourceCollection Bioset actions", () => {
         biosets: "Some selected Biosets are not associated with experiments",
       },
     });
-    // Plan item 21: the real bar disables rather than removes this button
-    // (search-action-bar.tsx's `isDisabled`), so the fake renders it the same way —
-    // present, with the native `disabled` attribute. Asserting `toBeDisabled()` proves
-    // BIOSETS is genuinely unreachable in the real UI's own terms; the click below
-    // (which a disabled `<button>` never dispatches) and the `open` assertion confirm
-    // it, rather than merely proving a click happened to have no effect.
     const biosetsButton = screen.getByRole("button", {
       name: "Biosets action",
     });
@@ -389,9 +356,6 @@ describe("ResourceCollection Bioset actions", () => {
       sort: { field: "bioset_id", direction: "asc" },
     });
     expect(open).toHaveBeenCalledWith("about:blank", "_blank");
-    // Navigated by the same `navigateReservedTab` anchor as the other two pop-up
-    // paths, so this one no longer hands the destination a referrer either. It used
-    // to call `resultsWindow.location.replace(href)`, which does.
     expect(links).toStrictEqual([
       expect.objectContaining({
         href: "https://www.bv-brc.org/view/BiosetResult/?in(exp_id,(00042,00051))",
@@ -438,15 +402,14 @@ describe("ResourceCollection Bioset actions", () => {
       const user = userEvent.setup();
       const { open, links, close } = reservedTab();
       const currentTotal = Promise.withResolvers<number>();
-      // The previous query's total is over the row limit; this query's is not.
       const exportAll = renderAllPagesBiosets({
         total: maxExportRows + 1,
         currentTotal: () => currentTotal.promise,
       });
 
       await user.click(screen.getByRole("button", { name: "Biosets action" }));
-      // Reserved before the wait: once it is over, the browser would no longer
-      // treat the open as user-initiated and would block it.
+      // Reserved before the wait: afterward the browser no longer treats the
+      // open as user-initiated.
       expect(open).toHaveBeenCalledWith("about:blank", "_blank");
       expect(exportAll).not.toHaveBeenCalled();
 
@@ -658,18 +621,12 @@ describe("ResourceCollection Bioset actions", () => {
     );
 
     await user.click(screen.getByRole("button", { name: "Biosets action" }));
-    // This branch used to discard the result of `window.open` entirely, so a
-    // blocked pop-up looked exactly like a click that did nothing.
-    // Reserved, then abandoned: the handle was null, so nothing was navigated and
-    // no second attempt was made.
     expect(open).toHaveBeenCalledExactlyOnceWith("about:blank", "_blank");
     expect(
       await screen.findByText(
         "Allow pop-ups to open the selected Bioset results.",
       ),
     ).toBeVisible();
-    // Same wording and same sink as the all-matching branch below, so the two
-    // failures read identically to the user.
     expect(screen.getByText("Could not complete action")).toBeVisible();
   });
 
@@ -706,8 +663,6 @@ describe("ResourceCollection Bioset actions", () => {
         "Allow pop-ups to open the selected Bioset results.",
       ),
     ).toBeVisible();
-    // The tab is reserved before anything is fetched, so a blocked pop-up costs
-    // nothing.
     expect(exportAll).not.toHaveBeenCalled();
   });
 
@@ -792,7 +747,6 @@ describe("ResourceCollection Bioset actions", () => {
     await user.click(screen.getByRole("button", { name: "Biosets action" }));
     expect(exportAll).toHaveBeenCalledTimes(1);
 
-    // The user narrows the selection while the resolution is still in flight.
     useResourceCollection.mockReturnValue({
       ...allPages,
       isAllPagesSelected: false,
@@ -865,9 +819,6 @@ describe("ResourceCollection Bioset actions", () => {
     );
 
     await user.click(screen.getByRole("button", { name: "Biosets action" }));
-    // This sink used to pass `error.message` straight through, so an empty message
-    // reached the shell as a falsy string and its `{actionError && (...)}` guard
-    // rendered nothing at all: a closed tab and no reason for it.
     expect(await screen.findByText("Could not complete action")).toBeVisible();
     expect(
       screen.getByText("The selected Bioset results could not be loaded."),

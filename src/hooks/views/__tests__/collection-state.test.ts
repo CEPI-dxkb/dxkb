@@ -104,10 +104,6 @@ describe("view collection state exports", () => {
   });
 
   it("delegates full-state replacement to the pure module without resetting pagination", () => {
-    // A smoke test that setState no longer reimplements the managed-key merge
-    // inline: it goes through replaceCollectionSearchParams, which (unlike
-    // the incremental update path) never resets page — the caller already
-    // owns the complete next state, including an explicit page far from 1.
     navigation.searchParams = new URLSearchParams(
       "page=9&tab=details&keep=a&keep=b",
     );
@@ -135,8 +131,6 @@ describe("useCollectionUrlState nested tables", () => {
   });
 
   it("clears nested-table params when the page's own query changes", () => {
-    // A new parent query is a new scope for every nested table: page 3 of the
-    // old scope may not exist in the new one.
     navigation.searchParams = new URLSearchParams(
       "tab=features&host=human&features.page=3&features.sort=start:desc",
     );

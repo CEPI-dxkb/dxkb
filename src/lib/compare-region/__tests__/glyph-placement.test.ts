@@ -8,7 +8,6 @@ import { glyphLabel } from "../labels";
 import { trackScale } from "../ruler";
 import { estimateTextWidth } from "../text-measure";
 
-/** A 900 px card: Comfortable's plot beside its 226 px label column. */
 const plotWidth = 674;
 const measure = estimateTextWidth;
 const model = buildChartModel(
@@ -71,7 +70,6 @@ describe("placeGlyph", () => {
   });
 
   it("skips a glyph further off the plot than its reach", () => {
-    // 2.25× about the focus line leaves the upstream gene 118 px left of the window.
     const x = trackScale(
       model.layout.domain,
       { scaleX: 2.25, translateX: -421.25 },

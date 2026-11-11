@@ -24,14 +24,11 @@ function Providers({ children }: { children: React.ReactNode }) {
   );
 }
 
-// BV-BRC's Assembly2 form shows Estimated Genome Size under Advanced ›
-// Genome Parameters for every assembly strategy, not only Canu.
 describe("GenomeAssembly page — advanced options", () => {
   beforeEach(() => {
     sessionStorage.clear();
     window.history.replaceState({}, "", "/");
     server.use(
-      // Workspace.get "Object not found": the output name is available.
       http.post("*/api/services/workspace", async ({ request }) => {
         const body = (await request.json()) as { method?: string };
         if (body.method === "Workspace.get") {
@@ -108,7 +105,6 @@ describe("GenomeAssembly page — advanced options", () => {
     ] as const;
     for (const [title, role, fields] of sections) {
       const group = screen.getByRole("group", { name: title });
-      // Only its own fields: no control landed in the wrong section.
       expect(within(group).getAllByRole(role)).toHaveLength(fields.length);
       for (const name of fields) {
         expect(within(group).getByRole(role, { name })).toBeInTheDocument();

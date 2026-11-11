@@ -17,19 +17,7 @@ import {
   validateFastaRequest,
 } from "@/lib/data-api/validation";
 
-/**
- * FASTA downloads: `POST {type, ids}` → the upstream's FASTA, streamed.
- *
- * A sub-route rather than an `operation` on `/api/data/[resource]`, for the
- * reason the Taxa Tree has its own route: every generic operation answers with
- * JSON through one `execute()`, and this one answers with a text stream that
- * may be megabytes long. Everything else is shared — the session-aware
- * repository and its upstream error mapping, the admission guards, and the
- * `{error, code}` error contract.
- *
- * Which resources and sequence types are served is decided by
- * `fastaResources` in `src/lib/data-api/fasta.ts`, not here.
- */
+/** FASTA downloads: `POST {type, ids}` streams the upstream's FASTA; a sub-route because the generic operations answer JSON through one `execute()`. */
 const rateLimitMax = 30;
 const rateLimitWindowMs = 60_000;
 
@@ -38,7 +26,6 @@ export async function POST(
   context: { params: Promise<{ resource: string }> },
 ): Promise<NextResponse> {
   const { resource } = await context.params;
-  // Allowlisted before the rate limit: the resource is part of the bucket key.
   if (!isFastaResource(resource)) {
     return NextResponse.json(
       {
@@ -63,8 +50,7 @@ export async function POST(
     const text = await readCappedBody(request, maxRequestBytes);
     if (text === null) return oversizedBodyResponse();
     const fastaRequest = validateFastaRequest(resource, JSON.parse(text));
-    // `"query"`: an id list is near-unique per caller, and an authenticated
-    // caller can see private genomes, so a FASTA response is never shared.
+    // `"query"`: an authenticated caller can see private genomes, so a FASTA response is never shared.
     const { repository } = await resolveServerDataRepository({
       readScope: "query",
       notConfigured: {

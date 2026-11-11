@@ -11,7 +11,6 @@ const bacterialTreeBaseUrl = `${contentOrigin}/api/content/bvbrc_phylogeny_tab/p
 const viralFamilyBaseUrl = `${contentOrigin}/api/content/phyloxml_trees/families/`;
 const phylogenyMetadataFetchTimeoutMs = 2000;
 const phylogenyTreeFetchTimeoutMs = 30_000;
-/** How failure messages name the backend these reads reach. */
 const treeService = "the BV-BRC phylogeny tree service";
 
 export interface PhyloTreeRef {
@@ -66,12 +65,9 @@ function parseTreeRefs(value: unknown): PhyloTreeRef[] | undefined {
 }
 
 /**
- * One browser read from the tree service, request and body, under a budget.
- * A spent budget or a failed connection throws `UpstreamError` with the status
- * the app-wide retry policy reads (504, 502), so an outage is not retried and
- * the user reads "… did not respond (timed out after 30 s)" instead of
- * "signal timed out" or "Failed to fetch". `read` handles the response,
- * non-OK included; what it throws is rethrown as is.
+ * One browser read from the tree service under a budget; a spent budget or
+ * failed connection throws `UpstreamError` with a status (504, 502) the retry
+ * policy reads, so an outage is not retried.
  */
 async function readTreeService<T>(
   url: string,
@@ -93,7 +89,6 @@ async function readTreeService<T>(
   }
 }
 
-/** The JSON a body holds, or `null` when it is not JSON (an HTML error page). */
 function parseJson(body: string): unknown {
   try {
     return JSON.parse(body);
@@ -134,9 +129,8 @@ function parseFamilyBlock(value: unknown): PhyloFamilyBlock {
 export async function fetchBacterialTreeXml(
   taxonId: number,
 ): Promise<string | null> {
-  // The server holds BV-BRC's ~32 MB taxon-to-tree dictionary and answers
-  // with one filename. Its first lookup after a restart downloads that file,
-  // so this waits as long as a tree download rather than the metadata budget.
+  // The server holds BV-BRC's ~32 MB taxon-to-tree dictionary; its first lookup
+  // after a restart downloads it, so this waits as long as a tree download.
   const value = await readTreeService(
     `/api/phylogeny/bacterial-trees/${String(taxonId)}`,
     "application/json",
@@ -145,9 +139,8 @@ export async function fetchBacterialTreeXml(
       const body = await response.text();
       const parsed = parseJson(body);
       if (response.ok) return parsed;
-      // The route's own `{error}` already names the cause; without one (a
-      // proxy's HTML page) the status and page title do. Either way the status
-      // lets the app-wide retry policy skip an outage (502–504).
+      // Without a route `{error}`, the status and page title name the cause;
+      // the status lets the retry policy skip an outage (502–504).
       if (isRecord(parsed) && typeof parsed.error === "string") {
         throw Object.assign(new Error(parsed.error), {
           status: response.status,

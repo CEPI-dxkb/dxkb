@@ -21,14 +21,12 @@ import type { WorkspaceSelectorPreset } from "./workspace-selector-presets";
 import { sanitizePathSegment } from "@/lib/services/workspace/path-utils";
 import { isSelectableOutputFolder } from "@/lib/services/workspace/picker-views";
 
-/** The two ID group kinds a row selection can produce. */
 export type SelectionGroupKind = "genome" | "feature";
 
 export interface SelectionToGroupDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   ids: readonly string[];
-  /** Genome Groups hold `genome_id`s, Feature Groups hold `feature_id`s. */
   groupKind?: SelectionGroupKind;
   defaultFolder: string;
   onCreate: (folderPath: string, name: string) => Promise<void>;
@@ -150,9 +148,6 @@ function SelectionToGroupForm({
         </DialogDescription>
       </DialogHeader>
 
-      {/* Header and footer stay put; on a short screen only this body scrolls,
-          so the actions are always reachable. The 1-unit inset keeps the
-          fields' focus rings inside the scroll area's clip. */}
       <div className="-mx-1 grid min-h-0 gap-4 overflow-y-auto px-1 pb-1">
         <Tabs
           value={mode}
@@ -292,14 +287,11 @@ export function SelectionToGroupDialog({
   finalFocus,
 }: SelectionToGroupDialogProps) {
   /**
-   * Identifies the current dialog session so a create or append that resolves after
-   * the dialog was closed cannot close, error, or unblock a later session. The form
-   * unmounts with the popup, so the token has to live out here to outlast it.
+   * Identifies the dialog session so a create or append resolving after close cannot
+   * affect a later session; it lives outside the form, which unmounts with the popup.
    */
   const sessionRef = useRef(0);
   useEffect(() => {
-    // Every open/close transition — including one driven by the parent — ends the
-    // previous session, so any submission still in flight is no longer current.
     sessionRef.current += 1;
   }, [open]);
 

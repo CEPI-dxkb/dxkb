@@ -1,18 +1,8 @@
 "use client";
 
 /**
- * The Compare Region Viewer's genome column: each row's number tag, genome
- * name and identity to the focus gene, on an opaque card so the track can
- * scroll under it, and its header over the ruler. Both densities set the
- * species over the strain, Compact in smaller type on tighter rows. It
- * takes only the model, so a hover redraws none of it. The focus row's tag, accent and
- * wash are in the focus genes' orange (a data color, as an attribute), not
- * the theme's secondary color, so they match the genes in every theme; its
- * "focus" text is that orange deepened to read as text (`focusInk`), and dark
- * themes set it in the foreground color (a class, which beats the
- * attribute). The strains, tags, percentages and header are in the
- * foreground at 70%, not `muted-foreground`, which fell to about 4:1 on the
- * light themes' row bands at these 10–11.5 px sizes.
+ * Text is foreground at 70%, not `muted-foreground`, which fell to about 4:1 on
+ * the light themes' row bands at these sizes.
  */
 import { Info } from "lucide-react";
 import type { CSSProperties, ReactNode } from "react";
@@ -54,11 +44,6 @@ interface RowLabelProps {
   measure: TextMeasure;
 }
 
-/**
- * The row number's tag; the focus row's is in the focus family's orange (a
- * data color, so it matches the focus genes in every theme), inked like a
- * label on a family fill.
- */
 function RowTag({
   spec,
   center,
@@ -98,13 +83,6 @@ function RowTag({
   );
 }
 
-/**
- * A genome's label: the species in italics over the strain, then the
- * identity as a percentage (or the focus row's "FOCUS"), in the density's
- * sizes (`DensitySpec`), centered in the row's slot with the tag and the
- * identity on the species' line (`genomeLabelLines`). Each line is cut with
- * "…" to the room left of the identity; the whole name is the row's title.
- */
 function RowLabel({
   spec,
   placed,
@@ -175,7 +153,6 @@ function RowLabel({
   );
 }
 
-/** The species' and strain's CSS fonts (without the family), as measured and drawn. */
 function speciesFont(spec: DensitySpec): string {
   return `italic 500 ${String(spec.speciesSize)}px`;
 }
@@ -188,11 +165,9 @@ interface LabelColumnProps {
   model: ChartModel;
   labelWidth: number;
   measure: TextMeasure;
-  /** Drawn over the bands and under the text (Compact's row tint). */
   children?: ReactNode;
 }
 
-/** Row numbers, genome names and identity, on an opaque card so the track can scroll under it. */
 export function LabelColumn({
   model,
   labelWidth,
@@ -206,7 +181,6 @@ export function LabelColumn({
       <rect width={labelWidth} height={frame.height} className="fill-card" />
       <RowBands frame={frame} x={0} width={labelWidth} />
       {children}
-      {/* The focus row's accent, in the focus genes' orange. */}
       {focus && (
         <rect
           x={0}
@@ -239,17 +213,13 @@ export function LabelColumn({
   );
 }
 
-/** The header's words, px and CSS font; `tracking-wider` adds 0.05em after each letter. */
 const headerFontSize = 10;
 const headerFont = `500 ${String(headerFontSize)}px`;
 const headerTracking = 0.05 * headerFontSize;
-/** The header's last word, as drawn (`uppercase`). */
 const identityHeading = "IDENTITY";
-/** The header's rule (the ruler's axis), and the middle of the band above it, where the words center. */
 const headerRule = rulerHeight - 6;
 const headerMiddle = headerRule / 2;
 
-/** The label column's header, over the ruler's band (sticky with it), on the density's columns. */
 export function LabelHeader({
   spec,
   labelWidth,
@@ -293,13 +263,7 @@ export function LabelHeader({
   );
 }
 
-/**
- * The "i" before the header's "Identity": a popover saying what the column's
- * percentages are. It is HTML laid over the header's corner, which never
- * moves (the label column and the ruler are both sticky), so the figure's
- * SVG, and an export of it, carries none of it. It sits left of the word, so
- * the word stays aligned with the percentages under it.
- */
+/** HTML laid over the header's corner, so the figure's SVG and an export of it carry none of it. */
 export function IdentityInfo({
   spec,
   labelWidth,
@@ -314,9 +278,6 @@ export function IdentityInfo({
     spec.endPad -
     measure(identityHeading, headerFont) -
     identityHeading.length * headerTracking;
-  // The 20 px button ends 1 px before the word, so its hover fill never
-  // covers it; its centered 12 px glyph ends 5 px before. `top-0.5` centers
-  // it on the words' middle (12 px), so the fill stays above the rule (24 px).
   const left = wordLeft - 21;
   return (
     <div

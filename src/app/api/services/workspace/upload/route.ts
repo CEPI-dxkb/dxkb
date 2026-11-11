@@ -7,32 +7,23 @@ import {
 import { upstreamFailureResponse } from "@/lib/api/upstream-route";
 import { getRequiredEnv } from "@/lib/env";
 
-/**
- * Shock's API path on a BV-BRC host. A `SHOCK_ORIGINS` entry that names only
- * an origin (`https://p3.theseed.org`) serves its nodes under this path, as
- * the `link_reference` Workspace.create returns does
- * (`https://p3.theseed.org/services/shock_api/node/<id>`). An entry with a
- * path of its own (`https://host/shock`) uses that path instead.
- */
+/** Shock's API path on a BV-BRC host; an origin-only `SHOCK_ORIGINS` entry serves nodes under it, an entry with its own path uses that. */
 const defaultShockApiPath = "/services/shock_api";
 
 const shockNodeId = /^[A-Za-z0-9-]+$/;
 
 interface ShockBase {
   origin: string;
-  /** The path a node URL starts with, ending in `/node/`. */
   nodePath: string;
 }
 
-/** The Shock APIs `SHOCK_ORIGINS` allows, one per comma-separated entry. */
 function parseShockBases(config: string): ShockBase[] {
   return config.split(",").flatMap((entry) => {
     const trimmed = entry.trim();
     if (!trimmed) return [];
     try {
       const url = new URL(trimmed);
-      // Only a web origin: any other scheme has none (or an opaque "null"
-      // one), and the PUT goes over HTTP.
+      // Only a web origin: other schemes have none, and the PUT goes over HTTP.
       if (url.protocol !== "http:" && url.protocol !== "https:") return [];
       const apiPath = url.pathname.replace(/\/+$/, "") || defaultShockApiPath;
       return [{ origin: url.origin, nodePath: `${apiPath}/node/` }];
@@ -42,12 +33,7 @@ function parseShockBases(config: string): ShockBase[] {
   });
 }
 
-/**
- * Whether the URL names a node of an allowed Shock API itself
- * (`<origin><api path>/node/<id>`), so the user's token can be aimed neither
- * at another host nor at another endpoint on an allowed one (a node's ACL,
- * another service on the host, a query, credentials of its own).
- */
+/** Whether the URL is a node of an allowed Shock API itself, so the user's token cannot be aimed at another host or endpoint. */
 function isAllowedShockNodeUrl(urlString: string, bases: ShockBase[]): boolean {
   let url: URL;
   try {
@@ -65,17 +51,8 @@ function isAllowedShockNodeUrl(urlString: string, bases: ShockBase[]): boolean {
 }
 
 /**
- * Proxy route: streams the browser's multipart body (field `upload`) to the
- * Shock node named in the `X-Shock-Node-Url` header, with auth, without
- * buffering it. The node URL must be a `/node/<id>` path under a Shock API
- * that `SHOCK_ORIGINS` allows. Keeps the BV-BRC token server-side and avoids
- * CORS.
- *
- * The body is forwarded verbatim, so a client can put other Shock node fields
- * (attributes, a different part) beside `upload`. That is accepted: Shock
- * authorizes them against the user's own token, which the user could send to
- * Shock directly anyway, and the server's network reach does not grow (the
- * PUT still only goes to an allowed node URL, and redirects are refused).
+ * Streams the multipart body to the Shock node in `X-Shock-Node-Url`, keeping the token server-side.
+ * The body is forwarded verbatim, so extra Shock node fields are accepted: Shock authorizes them against the user's own token.
  */
 export const POST = withAuth(async (request: NextRequest, { token }) => {
   try {
@@ -104,7 +81,6 @@ export const POST = withAuth(async (request: NextRequest, { token }) => {
       );
     }
 
-    // Forwarded verbatim: its boundary is the one the body's bytes use.
     const contentType = request.headers.get("content-type") ?? "";
     if (
       !contentType.toLowerCase().startsWith("multipart/form-data") ||
@@ -128,37 +104,30 @@ export const POST = withAuth(async (request: NextRequest, { token }) => {
       Authorization: shockAuth,
       "Content-Type": contentType,
     };
-    // Some proxies in front of Shock refuse a chunked upload; the browser
-    // sends a length for a FormData body, and undici keeps it on a stream.
+    // Some proxies in front of Shock refuse a chunked upload, so forward the length.
     const contentLength = request.headers.get("content-length");
     if (contentLength !== null && /^\d+$/.test(contentLength)) {
       headers["Content-Length"] = contentLength;
     }
 
-    // No budget of our own: the file is sent before Shock can answer, and a
-    // large one legitimately takes longer than any fixed budget. undici
-    // bounds the connect (10 s) and, once the body is sent, the wait for an
-    // answer (300 s).
+    // No budget of our own: a large file legitimately outlasts any fixed one;
+    // undici bounds the connect and the wait for an answer.
     const init: RequestInit & { duplex: "half" } = {
       method: "PUT",
       headers,
       body: request.body,
       // Node's fetch requires this for a stream body.
       duplex: "half",
-      // Never follow a redirect: it would send the request somewhere the
-      // allowlist never checked. Node answers "manual" with the 3xx itself,
-      // which is refused below. ("error" would also refuse it, but reports
-      // it as "Could not reach …", although Shock answered.)
+      // Never follow a redirect: it would leave the allowlist. "manual" returns
+      // the 3xx for refusal below, where "error" would misreport it as unreachable.
       redirect: "manual",
       signal: request.signal,
     };
     const response = await fetch(shockUrl, init);
 
     if (response.status >= 300 && response.status < 400) {
-      // Its body is never read: release the connection. Not awaited, because
-      // a cancel resolves only once every reader of a tee'd body has
-      // cancelled, and an instrumented fetch (MSW, a tracing wrapper) may
-      // hold the other branch, so awaiting it could hang the answer.
+      // Not awaited: cancel resolves only once every reader of a tee'd body
+      // cancels, and an instrumented fetch may hold the other branch.
       response.body?.cancel().catch(() => undefined);
       return NextResponse.json(
         {
@@ -175,7 +144,6 @@ export const POST = withAuth(async (request: NextRequest, { token }) => {
       try {
         body = text ? JSON.parse(text) : null;
       } catch {
-        // Text, or an HTML error page: its readable part, never the markup.
         body = summarizeUpstreamBody(text, response.headers.get("content-type"));
       }
       return NextResponse.json(
@@ -187,8 +155,7 @@ export const POST = withAuth(async (request: NextRequest, { token }) => {
     const data: unknown = await response.json().catch(() => ({}));
     return NextResponse.json(data);
   } catch (error) {
-    // The browser cancelled the upload: nobody is left to read an answer, and
-    // it is not a failure worth logging.
+    // The browser cancelled the upload; not worth logging.
     if (request.signal.aborted) return new NextResponse(null, { status: 499 });
     console.error("Workspace upload proxy error:", error);
     return upstreamFailureResponse(error, upstreamServices.fileStorage);

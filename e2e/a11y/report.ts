@@ -13,32 +13,21 @@ export interface ScanRecord {
   warnings: Violation[];
 }
 
-/** Artifact root for the a11y sweep's JSON report, scan records and summary. */
 export const a11yReportDir = ".misc/a11y-report";
 
-/** Aggregated per-route/theme scan summary, one file per invocation. */
 export const a11ySummaryPath = path.join(a11yReportDir, "a11y-summary.json");
 
 /**
- * Env var carrying the id of the current `playwright test` invocation.
- *
- * `e2e/a11y/setup.ts` assigns it in the config process before any worker forks,
- * so every worker of one invocation — and the global teardown that aggregates
- * them — agree on the same value.
+ * Id of the current `playwright test` invocation, assigned in
+ * `e2e/a11y/setup.ts` before workers fork so workers and the teardown agree.
  */
 export const a11yRunIdEnvVar = "A11Y_RUN_ID";
 
 const scansRoot = path.join(a11yReportDir, "scans");
 
 /**
- * Directory holding this invocation's scan records.
- *
- * Records are written per invocation rather than into one flat folder: the
- * teardown aggregates whatever it finds, so a shared folder let a previous
- * run's records leak into this run's summary (and into the `maxNodes` values
- * `pnpm a11y:baseline:update` derives from it). The `unscoped` fallback only
- * applies if these helpers are used outside a Playwright run that loaded the
- * global setup — recorder and aggregator still agree, so the pairing holds.
+ * Per-invocation, so a previous run's records cannot leak into this summary
+ * or the `maxNodes` values `pnpm a11y:baseline:update` derives.
  */
 export function currentScansDir(): string {
   return path.join(scansRoot, process.env[a11yRunIdEnvVar] ?? "unscoped");

@@ -148,10 +148,6 @@ function SessionRow({
   );
 }
 
-/**
- * The user's chats, newest first. Selecting one opens it; deleting the open
- * one starts a new chat.
- */
 export function CopilotSessionList({
   currentSessionId,
   onSelect,

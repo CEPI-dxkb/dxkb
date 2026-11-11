@@ -142,14 +142,7 @@ export default function BlastServicePage() {
       await runtime.submitFormData(data);
     };
   }, [runtime, isFastaValid, fastaValidationResult]);
-  // Clearing the fields a source choice swaps in leaves them untouched, so
-  // the newly shown field does not open on a "required" error before the
-  // user has done anything with it. `dontUpdateMeta` alone is not enough:
-  // `setFieldValue` still validates a mounted field, which marks it touched,
-  // and TanStack keeps `isTouched` through the field's unmount, so the error
-  // was waiting when that source was chosen again. Dev hides this (Strict
-  // Mode's extra unmount-and-remount of the new field clears the error), so
-  // it shows only in a production build and in tests without Strict Mode.
+  // `setFieldValue` validates a mounted field even with `dontUpdateMeta`, and the touched flag survives unmount. Strict Mode hides this in dev.
   const untouched = { dontUpdateMeta: true, dontValidate: true };
   const changeSource = (next: BlastFormData["input_source"]) => {
     const fasta =

@@ -12,10 +12,9 @@ const optionalTaxonomy = {
 };
 
 /**
- * The Data API returns `taxon_id` as a number (the resource registry types it as one),
- * while the app's routes and selections carry canonical positive-integer strings.
- * Accept either on the wire and normalize to a string, so one numeric row cannot fail
- * the whole response in `parseRows`.
+ * The API returns `taxon_id` as a number while the app carries positive-integer
+ * strings; accept either and normalize, so one numeric row cannot fail the
+ * whole response.
  */
 const taxonIdentifier = z
   .union([z.string(), z.number().int().positive()])
@@ -50,20 +49,9 @@ export const genomeRecordSchema = z.looseObject({
 });
 
 /**
- * AMR phenotype rows. `id` is the genome_amr core's own document identifier —
- * the same field `src/constants/resources.ts` already keys the legacy table on,
- * and the only column the list needs to render a row at all (it is the React
- * key and the selection id).
- *
- * Nothing else is declared, deliberately. `parseRows`
- * (`./repository.ts`) turns any row that disagrees with this schema into a 502
- * that blanks the whole page. The deterministic genome_amr fixture validates
- * known test data, but it is not sufficient evidence to narrow every field the
- * live backend may return. `looseObject` passes every other AMR column through
- * untouched, which is what the columns the UI reads already relied on.
- * This matches the other legacy-list resource (`genomeSequenceRecordSchema`)
- * and `ppiRecordSchema`; the heavily-declared schemas below are the ones with
- * real fixtures in `src/lib/e2e-fixtures/records.ts`.
+ * Only `id` is declared: `parseRows` turns any row that disagrees with the
+ * schema into a 502 that blanks the page, so `looseObject` passes every other
+ * AMR column through.
  */
 export const genomeAmrRecordSchema = z.looseObject({
   id: identifier,
@@ -213,7 +201,6 @@ export const ppiRecordSchema = z.looseObject({
   id: identifier,
 });
 
-/** One `sp_gene` row: a specialty gene as one source lists it (a gene can have several). */
 export const spGeneRecordSchema = z.looseObject({
   id: identifier,
 });

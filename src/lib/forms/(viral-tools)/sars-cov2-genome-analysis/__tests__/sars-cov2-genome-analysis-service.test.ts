@@ -25,8 +25,7 @@ function fakeForm() {
   return { form, values };
 }
 
-// What `transformParams` sent for a job before it sent `my_label`: the
-// output name doubles as `scientific_name`.
+// Params as sent before `my_label`: the output name doubles as `scientific_name`.
 const rerunData = {
   input_type: "reads",
   taxonomy_id: "2697049",

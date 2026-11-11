@@ -41,14 +41,10 @@ import {
   TrackBands,
 } from "../compare-region-track-layers";
 
-/** D6: the focus family's fixed DXKB orange, in every theme. */
 const focusOrange = "oklch(71.57% 0.182 37.18)";
-/** The "focus" text: that orange 20 points darker, so it reads as text. */
 const focusTextOrange = "oklch(51.57% 0.182 37.18)";
-/** A 674 px plot: Comfortable's in a 912 px card, beside its 238 px label column. */
 const plotWidth = 674;
 const identity: TrackMatrix = { scaleX: 1, translateX: 0 };
-/** 4×, about the focus line (x 337), so the ruler shows ±250 bp. */
 const fourFold: TrackMatrix = { scaleX: 4, translateX: -1011 };
 const measure = estimateTextWidth;
 
@@ -56,7 +52,6 @@ const rows = [focusRow, mirroredRow];
 const comfortable = buildChartModel(rows, densitySpecs.comfortable);
 const compact = buildChartModel(rows, densitySpecs.compact);
 
-/** Family 3 moved: 100–400 in the focus row, 1500–1800 below it. */
 const movedRows: CompareRegionRow[] = [
   focusRow,
   {
@@ -69,12 +64,6 @@ const movedRows: CompareRegionRow[] = [
   },
 ];
 
-/**
- * A third genome whose window starts 200 bp before its contig, with one
- * glyph of each kind the first two rows lack. By index: 0 an orphan gene (in
- * no family), 1 the focus homolog, 2 a pseudogene in a family seen in this
- * genome only, 3 a pseudogene in no family, 4 a tRNA.
- */
 const mixedRow: CompareRegionRow = {
   genomeId: "4.1",
   genomeName: "Bacillus subtilis subsp. subtilis str. 168",
@@ -227,7 +216,6 @@ describe("GlyphLayer", () => {
         measure={measure}
       />,
     );
-    // Any lighter ink falls under 4.5:1 on the darker family fills.
     const onFill = screen.getByText("hypothetical protein");
     expect(onFill).toHaveAttribute("fill", labelInk);
     expect(onFill).not.toHaveAttribute("fill-opacity");
@@ -248,7 +236,6 @@ describe("GlyphLayer", () => {
         measure={measure}
       />
     );
-    // 4×: the upstream gene lies 472 px left of the plot.
     const atRest = renderInSvg(layer(0));
     expect(glyphAt(atRest.container, 0, 0)).toBeNull();
     expect(glyphAt(atRest.container, 0, 1)).not.toBeNull();
@@ -258,8 +245,6 @@ describe("GlyphLayer", () => {
     expect(glyphAt(nearer.container, 0, 0)).toBeNull();
     nearer.unmount();
 
-    // While a drag pans, a plot's width past the edge: drawn, and labelled in
-    // its whole body, so it slides into view with its name.
     const panning = renderInSvg(layer(plotWidth));
     expect(glyphAt(panning.container, 0, 0)).not.toBeNull();
     expect(
@@ -282,12 +267,10 @@ describe("GlyphLayer", () => {
         measure={measure}
       />,
     );
-    // An orphan gene: a quiet neutral arrow, with no fill of its own.
     const orphan = glyphAt(container, 2, 0);
     expect(orphan).not.toHaveAttribute("fill");
     expect(orphan).toHaveClass("fill-muted-foreground/20", "stroke-card");
     expect(orphan).toHaveAttribute("stroke-width", "1");
-    // A pseudogene: dashed, its family's fill at a quarter; in no family, neutral.
     const pseudo = glyphAt(container, 2, 2);
     expect(pseudo).toHaveAttribute("fill", familyColor(4));
     expect(pseudo).toHaveAttribute("fill-opacity", "0.25");
@@ -300,7 +283,6 @@ describe("GlyphLayer", () => {
       "stroke-foreground/55",
     );
     expect(loosePseudo).toHaveAttribute("stroke-dasharray", "3 2");
-    // RNA and other features: a rounded bar, inset 4 px in the lane.
     const spec = densitySpecs.comfortable;
     const item = mixed.layout.rows[2].features[4];
     const box = glyphBox(spec, mixed.frame.rows[2], item);
@@ -312,7 +294,6 @@ describe("GlyphLayer", () => {
       "d",
       glyphPath(spec, "other", x(item.from), x(item.to), box.top, box.bottom),
     );
-    // A family seen in one genome only (the focus row's upstream gene): faded.
     expect(glyphAt(container, 0, 0)).toHaveClass("stroke-card", "opacity-45");
   });
 
@@ -355,7 +336,6 @@ describe("track layers", () => {
   });
 
   it("draws no focus line once offset 0 is further off the plot than its reach", () => {
-    // 4×: offset 0 at x −652.
     const line = (reach: number) =>
       renderInSvg(
         <FocusLine
@@ -376,7 +356,6 @@ describe("track layers", () => {
     expect(screen.getByText("0")).toHaveClass("font-semibold");
     expect(screen.getByText("−0.5 kb")).toBeInTheDocument();
     expect(screen.getByText("+0.5 kb")).toBeInTheDocument();
-    // At x 0, inside the 20 px edge.
     expect(screen.getByText("−1.0 kb").parentElement).toHaveClass("hidden");
     expect(screen.getByText("−0.5 kb").parentElement).not.toHaveClass("hidden");
   });
@@ -432,7 +411,6 @@ describe("track layers", () => {
     expect(paths).toHaveLength(1);
     expect(paths[0]).toHaveAttribute("d", "M87,51.5C87,62 574.2,62 574.2,72.5");
     expect(paths[0]).toHaveAttribute("stroke", familyColor(3));
-    // round(0.5 × 0.35 × 100) / 100
     expect(paths[0]).toHaveAttribute("stroke-opacity", "0.18");
   });
 
@@ -467,19 +445,16 @@ describe("track layers", () => {
     const [focus, mirrored, cut] = [
       ...container.querySelectorAll("svg > g > g"),
     ].map((row) => [...row.querySelectorAll("line")]);
-    // The focus row's window lies inside its contig: a plain line across the plot.
     expect(focus).toHaveLength(1);
     expect(at(focus[0], "x1")).toBe(0);
     expect(at(focus[0], "x2")).toBe(plotWidth);
     expect(at(focus[0], "y1")).toBe(mixed.frame.rows[0].center);
-    // The mirrored row's contig ends at offset −500 (x 168.5): a 1.5 px tick there.
     expect(mirrored).toHaveLength(2);
     expect(at(mirrored[0], "x2")).toBeCloseTo(168.5, 6);
     expect(at(mirrored[1], "x1")).toBeCloseTo(168.5, 6);
     expect(mirrored[1]).toHaveAttribute("stroke-width", "1.5");
     expect(at(mirrored[1], "y1")).toBe(mixed.frame.rows[1].center - 6);
     expect(at(mirrored[1], "y2")).toBe(mixed.frame.rows[1].center + 6);
-    // The third row's contig starts at offset −800 (x 67.4).
     expect(cut).toHaveLength(2);
     expect(at(cut[0], "x1")).toBeCloseTo(67.4, 6);
     expect(at(cut[1], "x1")).toBeCloseTo(67.4, 6);
@@ -493,7 +468,6 @@ describe("track layers", () => {
     const [wash, band, ...others] = container.querySelectorAll("rect");
     expect(others).toHaveLength(0);
     expect(wash).toHaveAttribute("fill", focusOrange);
-    // The 5% (dark 4%) of the theme's `fill-secondary/5 dark:fill-secondary/4`.
     expect(wash).toHaveClass("opacity-5", "dark:opacity-4");
     expect(wash).toHaveAttribute("y", "30");
     expect(band).toHaveClass("fill-muted/50");
@@ -574,7 +548,6 @@ describe("label column", () => {
     const strain = screen.getByText("str. K-12 substr. MG1655");
     expect(species).toHaveAttribute("font-size", "12");
     expect(strain).toHaveAttribute("font-size", "10.5");
-    // Under the species, not beside it, so the strain always shows.
     expect(strain).toHaveAttribute("x", species.getAttribute("x"));
     expect(Number(strain.getAttribute("y"))).toBeGreaterThan(
       Number(species.getAttribute("y")),
@@ -588,7 +561,6 @@ describe("label column", () => {
     );
     const spec = comfortable.spec;
     const species = screen.getByText("Salmonella enterica");
-    // The species' cap middle, the tag's middle and the figures' middle agree.
     const middle =
       Number(species.getAttribute("y")) - (capHeight * spec.speciesSize) / 2;
     const tag = screen.getByText("02").previousElementSibling;
@@ -599,7 +571,6 @@ describe("label column", () => {
       middle + (capHeight * spec.identitySize) / 2,
       6,
     );
-    // Centered in the row's slot, below the gene's middle.
     expect(middle).not.toBe(comfortable.frame.rows[1].center);
   });
 
@@ -612,7 +583,6 @@ describe("label column", () => {
       "fill",
       focusOrange,
     );
-    // Inked like a label on a family fill, whatever the theme.
     expect(focusTag).toHaveAttribute("fill", labelInk);
     const tag = screen.getByText("02");
     expect(tag).not.toHaveAttribute("fill");
@@ -623,10 +593,8 @@ describe("label column", () => {
     const { container } = renderInSvg(
       <LabelColumn model={comfortable} labelWidth={226} measure={measure} />,
     );
-    // The orange itself is 2.5:1 as text on the light cards.
     const focusText = screen.getByText("focus");
     expect(focusText).toHaveAttribute("fill", focusTextOrange);
-    // Dark themes set it in the foreground color: the class beats the attribute.
     expect(focusText).toHaveClass("dark:fill-foreground");
     const accent = container.querySelector('rect[width="3"]');
     expect(accent).toHaveAttribute("fill", focusOrange);
@@ -639,7 +607,6 @@ describe("label column", () => {
   });
 
   it("sets the strains, tags, percentages and header in the foreground at 70%, not muted-foreground", () => {
-    // `muted-foreground` fell to about 4:1 on the light themes' row bands.
     const { container } = renderInSvg(
       <>
         <LabelColumn model={comfortable} labelWidth={280} measure={measure} />
@@ -673,7 +640,6 @@ describe("label column", () => {
     expect(rule).toBe(24);
     for (const heading of ["#", "Genome", "Identity"]) {
       const y = Number(screen.getByText(heading).getAttribute("y"));
-      // The caps' middle (10 px words) halfway between the band's top and the rule.
       expect(y - (capHeight * 10) / 2).toBeCloseTo(rule / 2, 6);
     }
   });
@@ -687,7 +653,6 @@ describe("label column", () => {
       />,
     );
     const button = screen.getByRole("button", { name: "About identity" });
-    // 20 px from 2 px down: 2–22, centered on the words' middle (12), clear of the rule (24).
     expect(button).toHaveClass("size-5");
     expect(button.parentElement).toHaveClass("top-0.5", "flex");
   });
@@ -736,7 +701,6 @@ describe("family trace", () => {
     expect(veil).toHaveAttribute("width", String(plotWidth));
     const overlay = container.querySelector("g[data-overlay]");
     expect(overlay).not.toBeNull();
-    // The family's ribbon, then its two genes on top.
     expect(overlay?.querySelector("g.opacity-55 path")).toHaveAttribute(
       "fill",
       focusOrange,
@@ -744,7 +708,6 @@ describe("family trace", () => {
     expect(
       overlay?.querySelectorAll(`[data-trace-slot] > path[fill="${focusOrange}"]`),
     ).toHaveLength(2);
-    // The trace is never a pointer target.
     expect(overlay?.querySelector("[data-feature]")).toBeNull();
     expect(overlay?.querySelector(".stroke-foreground\\/70")).not.toBeNull();
   });
@@ -783,7 +746,6 @@ describe("family trace", () => {
     const [veil, track, labels] = container.querySelectorAll("[data-overlay]");
     expect(veil).toHaveClass("opacity-0");
     expect(track.querySelectorAll("path")).toHaveLength(0);
-    // The label column's marks stay drawn, transparent, to fade in.
     const marks = labels.querySelectorAll("rect");
     expect(marks).toHaveLength(4);
     for (const mark of marks) expect(mark).toHaveClass("opacity-0");
@@ -806,7 +768,6 @@ describe("family trace", () => {
     expect(second).toHaveClass("opacity-0");
     expect(second.childElementCount).toBe(0);
 
-    // The new family fades in in the other slot as the last one fades out.
     rerender(tracedTree(upstreamGene, null, layer));
     expect(second).toHaveClass("opacity-100");
     expect(
@@ -815,7 +776,6 @@ describe("family trace", () => {
     expect(first).toHaveClass("opacity-0");
     expect(first.querySelector(`path[fill="${focusOrange}"]`)).not.toBeNull();
 
-    // Its fade over, the last family's trace goes.
     fireEvent.transitionEnd(first);
     expect(first.childElementCount).toBe(0);
     expect(second.childElementCount).toBeGreaterThan(0);
@@ -930,7 +890,6 @@ describe("Legend", () => {
       .spyOn(Element.prototype, "clientWidth", "get")
       .mockReturnValue(360);
     const { unmount } = render(<Legend />);
-    // A phone's one line scrolls: a keyboard must be able to reach it.
     expect(screen.getByRole("group", { name: "Legend" })).toHaveAttribute(
       "tabindex",
       "0",
@@ -938,7 +897,6 @@ describe("Legend", () => {
     unmount();
     scrollWidth.mockReturnValue(360);
     render(<Legend />);
-    // Wrapped or fitting, it is no tab stop.
     expect(screen.getByRole("group", { name: "Legend" })).not.toHaveAttribute(
       "tabindex",
     );

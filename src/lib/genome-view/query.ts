@@ -26,18 +26,8 @@ export const genomeSorts = genomeMetadata.sorts;
 export const recentGenomeRql =
   "and(gt(completion_date,NOW-1YEARS),ne(genome_status,Deprecated))";
 
-/**
- * The recent-genomes default applies only to an otherwise unscoped list. An
- * explicit RQL query replaces it, and so does a `public` visibility filter:
- * "My Genomes" (`public=false`) must list every private genome, not just the
- * ones completed in the last year. A keyword search replaces it too, as legacy
- * BV-BRC's does (`keyword(...)` alone), so a search lists every genome it
- * matches; and so does a refinement, so the Genomes tab and the related tabs
- * (which run the refinement on their own collections, `genomeRelatedScope`)
- * cover the same records.
- */
+/** The recent-genomes default applies only to an otherwise unscoped list: an explicit RQL, `public` filter, keyword search or refinement replaces it. */
 export function genomeBaseRql(state: CollectionState): string | undefined {
-  // Text without terms (blank, `"`, only syntax) searches for nothing.
   return state.rql ||
     keywordQuery(state.keyword ?? "").length > 0 ||
     keywordQuery(state.refine ?? "").length > 0 ||
@@ -57,8 +47,6 @@ export const genomeCollectionOptions: CollectionStateOptions = {
       "collection_year",
       "isolation_country",
       "host_common_name",
-      // The other fields the overview charts break genomes down by, so a chart
-      // bucket links to its genomes as a removable filter (`genomeListValueHref`).
       "host_name",
       "host_group",
       "isolation_source",
@@ -67,12 +55,9 @@ export const genomeCollectionOptions: CollectionStateOptions = {
       "genus",
       "species",
       "reference_genome",
-      // Visibility scope behind the "My Genomes" link. A friendly filter rather
-      // than `rql` so selecting a facet adds to it instead of replacing it.
+      // A friendly filter rather than `rql`, so selecting a facet adds to it instead of replacing it.
       "public",
-      // Every facet the filters panel offers. A facet missing here is dropped
-      // when its pick is written to the URL, so the value highlights and then
-      // clears. Appended after the names above so their URL order is unchanged.
+      // A facet missing here is dropped when its pick is written to the URL.
       ...genomeMetadata.facetFields,
     ]),
   ],
@@ -88,20 +73,8 @@ export function parseGenomeCollectionState(
   return state;
 }
 
-// Derived from `friendlyFilters` so the two lists agree by construction: each
-// friendly filter name maps to itself, except the shared taxonomic-lineage
-// remap. Restating the names here instead would let the lists drift.
-//
-// Genome pairs this with `unknownFilters: "drop"` (every other
-// structural-filter module passes unmapped names through unchanged). Note what
-// that does and does not buy, because deriving the table changed it: since
-// `parseCollectionState` only admits names in `friendlyFilters`, and every
-// admitted name is a key here by construction, "drop" is unreachable for
-// URL-derived state. It still guards a caller that hands `structuralFilterRql`
-// a hand-built `CollectionState`. A new friendly filter therefore reaches the
-// backend under its raw name automatically — which is the intended behaviour
-// for a field whose Solr name matches, but it is NOT a tripwire forcing this
-// table to be updated first. Add the entry when the Solr name differs.
+// Derived from `friendlyFilters` so the lists agree by construction.
+// `unknownFilters: "drop"` only guards a hand-built `CollectionState`; a new friendly filter reaches the backend under its raw name, so add an entry here when the Solr name differs.
 const genomeStructuralFieldMap: Readonly<Record<string, string>> =
   Object.fromEntries(
     (genomeCollectionOptions.friendlyFilters ?? []).map((name) => [
@@ -120,30 +93,13 @@ export function genomeStructuralRql(
 }
 
 /**
- * How the Genome list's related tabs (Strains, Sequences, Features, Proteins,
- * Protein Structures, Domains and Motifs) scope their rows. Legacy BV-BRC's
- * GenomeList hands its own query verbatim to each tab's collection, and DXKB
- * does the same wherever that works:
- * - `undefined`: an unscoped list, so each tab lists its whole collection;
- * - `{ rql, join: false }`: keyword and refinement only; `rql` is those
- *   `keyword(...)` clauses, run on the tab's own collection. They are built
- *   as the Genomes tab builds its own: one exact clause per term
- *   (`keywordClauses`, what its `?keyword=` sends and what
- *   `ResourceCollection`'s refinement, `rqlKeyword`, sends);
- * - `{ rql, join: true }`: friendly filters, `public` or explicit `rql`. They
- *   name genome fields, which legacy's pass-through sends to the child
- *   collection and gets HTTP 400 for, so the tabs join to the listed genomes
- *   with `genome(<rql>)` (Strains: `genome(to(genome_ids),<rql>)`), `rql`
- *   being the Genomes tab's effective query.
- *
- * Epitopes, Surveillance and Serology have no genome ID to join on; they scope
- * through `genomeTaxonScope` instead.
+ * How the Genome list's related tabs scope their rows: `undefined` is unscoped, `{ rql, join: false }` runs keyword and refinement clauses on the tab's own collection, and `{ rql, join: true }` joins to the listed genomes with `genome(<rql>)` (Strains: `genome(to(genome_ids),<rql>)`) because genome fields are an HTTP 400 on child collections.
+ * Epitopes, Surveillance and Serology scope through `genomeTaxonScope` instead.
  */
 export function genomeRelatedScope(
   state: CollectionState,
 ): { rql: string; join: boolean } | undefined {
   const keywords = [
-    // Exact, as the Genomes tab's `serverKeywordMode` (genome-collection.tsx).
     ...keywordClauses(state.keyword ?? "", "exact"),
     ...keywordClauses(state.refine ?? "", "exact"),
   ];
@@ -169,12 +125,7 @@ export type GenomeTaxonScope =
 // The one genome field Epitope, Surveillance and Serology records share with it.
 const taxonScopeFields: ReadonlySet<string> = new Set(["taxon_lineage_ids"]);
 
-/**
- * A query built from validated clauses, parsed again; `undefined` when it no
- * longer fits the parser's limits. Each clause passed on its own, but wrapping
- * one in `and(...)` adds a nesting level, and serializing a value can lengthen
- * it (a space becomes `%20`), so the result can be too deep or too long.
- */
+/** Re-parses the query; `undefined` when wrapping in `and(...)` or serializing (a space becomes `%20`) pushes it past the parser's limits. */
 function parseValidatedRql(rql: string): RqlExpression | undefined {
   try {
     return parseRql("genome", rql);
@@ -201,22 +152,8 @@ function namesOnlyTaxonFields(expression: RqlExpression): boolean {
 }
 
 /**
- * How the Genome list's Epitopes, Surveillance and Serology tabs scope their
- * rows. Those records carry no genome ID, so the Data API cannot join them to
- * the listed genomes (`genome(...)` is an HTTP 400 on all three); what they share
- * with a genome is its taxonomy. A scope that names nothing but keywords and
- * `taxon_lineage_ids` (the Taxon friendly filter, or an `rql` such as the
- * Taxonomy page's genome links) therefore runs on the tab's own collection, as
- * legacy GenomeList hands each tab its query. Any other genome field (a status,
- * a visibility, a genome ID list) has no counterpart there, so the tab is
- * unsupported rather than silently broader than the Genomes tab. The
- * recent-genomes default (`genomeBaseRql`) is a Genomes-tab listing default, not
- * carried, as the related tabs of the bare list do not carry it.
- * - `{ supported: true }`: unscoped, so the tab lists its whole collection;
- * - `{ supported: true, rql }`: keyword and taxon clauses, in the order
- *   `genomeRelatedScope` builds them;
- * - `{ supported: false }`: the scope names a genome-only field, or is too
- *   deep or too long to parse.
+ * How Epitopes, Surveillance and Serology scope their rows: they carry no genome ID (`genome(...)` is an HTTP 400), so only keyword and `taxon_lineage_ids` clauses carry over.
+ * `supported: false` means the scope names a genome-only field or is too deep or long to parse.
  */
 export function genomeTaxonScope(state: CollectionState): GenomeTaxonScope {
   const clauses = [
@@ -233,7 +170,6 @@ export function genomeTaxonScope(state: CollectionState): GenomeTaxonScope {
     : { supported: false };
 }
 
-// The operands of an expression's `and`s, nested ones flattened.
 function conjuncts(expression: RqlExpression): RqlExpression[] {
   return expression.operator === "and"
     ? expression.operands.flatMap(conjuncts)
@@ -254,12 +190,7 @@ function namesOnlyKeywords(expression: RqlExpression): boolean {
   }
 }
 
-/**
- * An explicit `rql` split into its genome-field and keyword clauses. Only its
- * top-level conjuncts move, so the two parts ANDed back together match the same
- * genomes; a conjunct that mixes keywords with genome fields under `or` or
- * `not` cannot be split without changing that, so it stays a field clause.
- */
+/** An explicit `rql` split into genome-field and keyword clauses; only top-level conjuncts move, so a conjunct mixing both under `or`/`not` stays a field clause. */
 function splitRqlKeywords(expression: RqlExpression): {
   fields: string[];
   keywords: string[];
@@ -286,17 +217,9 @@ const kleeneAnd = (left: Truth, right: Truth): Truth =>
 const kleeneOr = (left: Truth, right: Truth): Truth =>
   kleeneNot(kleeneAnd(kleeneNot(left), kleeneNot(right)));
 
-/**
- * How an expression can turn out for a private genome, over the values its
- * other clauses can take: whether it matches, and what it would be with its
- * `public` clauses unknown. An outcome still unknown without them is one they
- * decide. Clauses on other fields are taken as independent of each other, so a
- * contradiction between two of them can add an outcome no genome has, which
- * errs toward a private reading. At most four outcomes are distinct.
- */
+/** Possible outcomes of an expression for a private genome, with its `public` clauses unknown. Clauses on other fields are treated as independent, which errs toward a private reading. */
 type PrivateOutcome = readonly [matches: boolean, withoutPublic: Truth];
 
-// A clause on any field but `public`, which may or may not match either way.
 const otherFieldOutcomes: readonly PrivateOutcome[] = [
   [true, true],
   [false, false],
@@ -344,33 +267,14 @@ function privateOutcomes(
   }
 }
 
-/**
- * Whether an explicit `rql` asks for private genomes (`public=false`), as the
- * My Genomes filter does: whether the whole expression can match one because
- * of what it says about `public`. `eq(public,*)` and `in(public,(true,false))`
- * count, as the filter's `public=true&public=false` does;
- * `and(eq(public,true),in(public,(true,false)))` does not, and neither does
- * `or(eq(public,true),eq(genome_status,Complete))`, which reaches private
- * genomes only through `genome_status`, as a list with no visibility clause
- * reaches them.
- */
+/** Whether an explicit `rql` asks for private genomes (`public=false`) by what it says about `public`: `eq(public,*)` counts, `and(eq(public,true),in(public,(true,false)))` does not. */
 function selectsPrivateGenomes(expression: RqlExpression): boolean {
   return privateOutcomes(expression).some(
     ([matches, withoutPublic]) => matches && withoutPublic === undefined,
   );
 }
 
-/**
- * The genomes the Overview tab summarizes: those the Genomes tab lists, so its
- * keyword and refinement clauses (including those of an explicit `rql`) and its
- * genome-field clauses (friendly filters, `rql`, or the recent-genomes default
- * of the bare list), kept apart for the collections that join to genomes
- * (`genomeLinkedScopeClauses`). `undefined` for a list that includes private
- * genomes (My Genomes, `public=false`, or an `rql` that asks for them, which
- * replaces that filter): the overview's requests are public reads, so its
- * charts would be empty for exactly the genomes the list shows. An `rql` too
- * long to parse again stays one genome-field clause, unchecked.
- */
+/** The genomes the Overview tab summarizes: those the Genomes tab lists. `undefined` when the list includes private genomes, since the overview's requests are public reads. */
 export function genomeOverviewScope(
   state: CollectionState,
 ): GenomeQueryScope | undefined {

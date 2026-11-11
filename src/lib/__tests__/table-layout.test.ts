@@ -37,8 +37,6 @@ describe("parseTableLayout", () => {
       order: ["b", "a"],
       facets: { f: true },
     };
-    // Widths outside 20-4000 (or not integers) must not cost the user their
-    // column order, hidden columns or facet choices.
     for (const widths of [{ a: 0 }, { a: 4100 }, { a: 12.5 }, { a: "wide" }]) {
       expect(
         parseTableLayout(JSON.stringify({ ...layout, widths })),
@@ -118,7 +116,6 @@ describe("mergeTableLayout", () => {
     expect(mergeTableLayout('{"order":["b","a"]}', { order: undefined })).toBeNull();
     expect(mergeTableLayout(null, { order: undefined })).toBeNull();
     expect(mergeTableLayout(null, {})).toBeNull();
-    // A stored field that fails validation counts as absent, so nothing is left.
     expect(
       mergeTableLayout('{"widths":{"a":4100}}', { order: undefined }),
     ).toBeNull();

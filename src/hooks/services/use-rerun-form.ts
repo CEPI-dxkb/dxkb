@@ -23,23 +23,7 @@ type UseRerunFormOptions<
   form: ServiceFormApi<TForm>;
 };
 
-/**
- * Read rerun_key from the URL and pull the matching JSON blob from sessionStorage.
- * Private primitive — use useRerunForm instead.
- *
- * The read is idempotent: the sessionStorage entry is left in place rather
- * than consumed at read time. `<AuthBoundary>` wraps every page in a Suspense
- * whose fallback is the same children, so the form can mount twice during
- * client hydration when `useSearchParams` suspends — once under the fallback,
- * once under the resolved tree. A consume-on-read here would empty
- * sessionStorage on the first mount and leave the second mount staring at
- * `null`, dropping every pre-fill. `useRerunForm`'s `rerunApplied` ref handles
- * one-shot application within a single mount; cross-mount idempotence is
- * fine because `setFieldValue` with the same value is a no-op for TanStack
- * Form. Stranded entries are scoped to the tab's sessionStorage and keyed by
- * a fresh 8-char UUID per rerun, so they don't collide and they evaporate on
- * tab close.
- */
+/** Reads `rerun_key` from the URL and the matching sessionStorage blob. The entry stays in place: `<AuthBoundary>`'s Suspense fallback can mount the form twice during hydration, and a consuming read would empty the second mount. */
 function useRerunData(): Record<string, unknown> | null {
   const [rerunData] = useState<Record<string, unknown> | null>(() => {
     if (typeof window === "undefined") return null;
@@ -71,18 +55,7 @@ const libraryBuilders: Record<
   sra: buildSraLibraries,
 };
 
-/**
- * Declarative form pre-fill hook.
- *
- * On mount, reads `?rerun_key=` from the URL, fetches the matching sessionStorage blob, and:
- *   1. Copies declared `fields` from rerunData onto the form (via setFieldValue, when defined)
- *   2. Reconstructs declared `libraries` via the shared builders (passes `getLibraryExtra(lib, kind)`)
- *   3. Calls `syncLibraries(libs)` with the aggregated array if libraries are declared
- *   4. Invokes `onApply(rerunData, form, libs)` for custom logic (taxonomy fetches, branching flows)
- *
- * When no rerun data is present, pre-fills `output_path` from the user's `default_job_folder` profile
- * setting. Pass `defaultOutputPath: null` to opt out.
- */
+/** Declarative form pre-fill from `?rerun_key=`; with no rerun data, pre-fills `output_path` from `default_job_folder` (`defaultOutputPath: null` opts out). */
 export function useRerunForm<
   T extends Record<string, unknown>,
   TForm = unknown,
@@ -104,12 +77,7 @@ export function useRerunForm<
   const { user } = useAuth();
   const defaultJobFolder = user?.defaultJobFolder;
 
-  // The `rerunApplied` ref enforces one-shot execution, so only `rerunData`
-  // matters as a trigger. Callers pass inline arrays/callbacks (fields, libraries,
-  // getLibraryExtra, syncLibraries, onApply) that change identity every render —
-  // including them as deps would re-schedule this effect on every parent render
-  // for no benefit. The optionsRef captures the latest values; the effect reads
-  // through the ref so the dep list can honestly be `[rerunData]`.
+  // `rerunApplied` makes this one-shot, so only `rerunData` triggers it; callers' inline options change identity every render and are read through `optionsRef`.
   const optionsRef = useRef({
     fields,
     libraries,

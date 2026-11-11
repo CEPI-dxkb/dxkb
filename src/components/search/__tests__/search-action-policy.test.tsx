@@ -11,14 +11,6 @@ import {
   type SearchActionId,
 } from "../search-action-policy";
 
-/**
- * The visibility and enablement rules `SearchActionBar` and the
- * `resource-collection*.test.tsx` fake both read, plus the parity that matters: the
- * fake must offer exactly the actions production would, in the same order and with
- * the same disabled states. The fake used to restate a subset of these rules by hand
- * and drifted, which let those suites click 23 controls the real bar never renders.
- */
-
 const searchTypes = [
   ...new Set(
     searchActionConfig.flatMap((action) =>
@@ -91,7 +83,6 @@ describe("visibleSearchActions", () => {
       hasGuideUrl: false,
     });
 
-    // FEATURE and GENOME are maxSelection:1; GROUP has no upper bound.
     expect(single.filter(byId("feature"))).toHaveLength(1);
     expect(single.filter(byId("genome"))).toHaveLength(1);
     expect(multiple.filter(byId("feature"))).toHaveLength(0);
@@ -100,7 +91,6 @@ describe("visibleSearchActions", () => {
   });
 
   it("has no DWNLD entry: every collection downloads from its own Download tile", () => {
-    // The tile (`CollectionDownloadAction`) heads the rail outside this config.
     expect(
       searchActionConfig.filter((action) => action.label === "DWNLD"),
     ).toHaveLength(0);
@@ -151,8 +141,6 @@ describe("SearchActionBar / test-fake parity", () => {
       .map((button) => button.hasAttribute("disabled"));
   }
 
-  // Every search type the config mentions, at the selection sizes the policy
-  // distinguishes, against each shape of consumer-side override.
   const cases = searchTypes.flatMap((searchType) =>
     [0, 1, 2].flatMap((selectedCount) =>
       [
@@ -163,8 +151,6 @@ describe("SearchActionBar / test-fake parity", () => {
           props: { disabledActions: { services: "Not here" } },
         },
         {
-          // The real bar disables a mid-flight action and swaps its icon for a
-          // spinner; the fake has to agree about the disabling.
           name: "actions mid-flight",
           props: {
             enabledActions,
@@ -211,11 +197,9 @@ describe("SearchActionBar / test-fake parity", () => {
 
       expect(realStates).toHaveLength(expected.length);
       expect(fakeStates).toStrictEqual(realStates);
-      // Order too, so the fake cannot rearrange the bar under a suite's feet.
-      // The real bar prints the letter glyph (where an entry has one) ahead of the
-      // label, and splits a two-line label into adjacent spans with no separator. A
-      // mid-flight action shows a spinner *instead of* its glyph — the spinner is an
-      // svg, so it contributes no text.
+      // The real bar prints the letter glyph ahead of the label and splits a
+      // two-line label into adjacent spans; a mid-flight action shows a spinner
+      // svg instead of its glyph.
       const loading = new Set<string>(
         (props as { loadingActionIds?: string[] }).loadingActionIds ?? [],
       );

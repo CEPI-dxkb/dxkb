@@ -5,13 +5,11 @@ import {
 
 interface FolderPickerColumnEmptyProps {
   location: PickerLocation;
-  /** Files the column hides, offered through "Show N files". */
   hiddenFileCount: number;
   isPickingFiles: boolean;
   onShowFiles: () => void;
 }
 
-/** A column with nothing to list, or only hidden files. */
 export function FolderPickerColumnEmpty({
   location,
   hiddenFileCount,

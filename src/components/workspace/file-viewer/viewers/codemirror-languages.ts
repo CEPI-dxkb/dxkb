@@ -1,8 +1,3 @@
-/**
- * Maps file extensions to CodeMirror 6 language packages.
- * Languages are dynamically imported so unused packages aren't bundled.
- */
-
 import type { LanguageSupport } from "@codemirror/language";
 
 type LanguageLoader = () => Promise<LanguageSupport>;

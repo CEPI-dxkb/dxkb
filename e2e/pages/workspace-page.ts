@@ -5,10 +5,8 @@ import { ErrorAlert } from "./error-alert";
 import { PanelSplit } from "./panel-split";
 
 /**
- * Page object for `/workspace/*` routes. Encapsulates the selectors the browser exposes for
- * breadcrumbs, toolbar actions, rows, and the details panel so specs can express intent rather
- * than plumbing. Row lookup uses the data-table role "row" filtered by visible text — this is
- * stable across the virtual scroller because TanStack Table always renders the current window.
+ * Page object for `/workspace/*`; rows are found by role "row" and visible
+ * text, which is stable across the virtual scroller.
  */
 export class WorkspacePage {
   readonly page: Page;
@@ -21,7 +19,6 @@ export class WorkspacePage {
   readonly showHiddenButton: Locator;
   readonly showDetailsButton: Locator;
   readonly panels: PanelSplit;
-  /** The dialog the browser opens when the Workspace says a path does not exist. */
   readonly notFoundDialog: Locator;
 
   constructor(page: Page) {
@@ -38,22 +35,18 @@ export class WorkspacePage {
     this.showHiddenButton = page.getByRole("button", {
       name: /^(show|hide) hidden$/i,
     });
-    // By title: the button's accessible name is just its "Show" label.
+    // By title: the button's accessible name is just "Show".
     this.showDetailsButton = page.getByTitle("Show details panel");
     this.panels = new PanelSplit(page);
   }
 
-  /** Navigate to a workspace path, defaulting to the signed-in user's home. */
   async goto(path?: string): Promise<void> {
     const target = path ?? "/workspace/e2e-test-user@patricbrc.org/home";
     await this.page.goto(target);
     await expect(this.breadcrumbs).toBeVisible();
   }
 
-  /**
-   * The folder could not be listed. `title` names where: "Couldn't load your home folder" at the
-   * home root, "Couldn't load this folder" below it.
-   */
+  /** `title` names where it failed: home root vs a deeper folder. */
   loadError(title: string): ErrorAlert {
     return new ErrorAlert(this.page, title);
   }
@@ -64,30 +57,23 @@ export class WorkspacePage {
     });
   }
 
-  /** Selection-mode single-click: opens details panel without navigating. */
   async selectFile(name: string): Promise<void> {
     await this.rowByName(name).click();
   }
 
-  /** Enter a folder with the same double-click gesture exposed by the browser. */
   async enterFolder(name: string): Promise<void> {
     await this.rowByName(name).first().dblclick();
   }
 
   /**
-   * Block until the shell's panel group has stopped moving.
-   *
-   * The toolbar sits inside that group, and the group collapses the details
-   * panel from a client effect after the data has already loaded. A click
-   * issued in that window puts `mousedown` on the button and `mouseup`
-   * wherever the button used to be, so no `click` is synthesised at all and
-   * the dialog silently never opens. Every toolbar action below waits first.
+   * Waits for the panel group to stop moving: it collapses the details panel
+   * from a client effect, and a click in that window loses its `mouseup`
+   * target so the dialog never opens.
    */
   private async awaitToolbarStable(): Promise<void> {
     await awaitPanelLayoutCommitted(this.page);
   }
 
-  /** Open the details panel from the action strip and wait for the split to settle. */
   async showDetailsPanel(): Promise<void> {
     await this.awaitToolbarStable();
     await this.showDetailsButton.click();
@@ -103,16 +89,13 @@ export class WorkspacePage {
   async openNewFolder(): Promise<void> {
     await this.awaitToolbarStable();
     await this.newFolderButton.click();
-    // Wait for the dialog's title heading specifically — "Create Folder" also
-    // appears as the confirm button, so target the heading role to disambiguate.
+    // Target the heading: "Create Folder" is also the confirm button.
     await expect(
       this.page.getByRole("dialog").getByRole("heading", { name: /^create folder$/i }),
     ).toBeVisible();
   }
 
-  /** Count the data rows currently rendered (excludes special "parent" row). */
   async dataRowCount(): Promise<number> {
-    // Data rows always contain at least a cell with the name column; filter out header rows.
     const rows = this.page.locator("tbody tr");
     return rows.count();
   }

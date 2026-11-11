@@ -27,7 +27,6 @@ export interface ArchaeopteryxNode {
 export type ViewerTheme = "light" | "dark";
 
 export interface MountedViewer {
-  /** Resolves once the tree has been drawn. */
   ready: Promise<void>;
   getSelectedNodes: () => ArchaeopteryxNode[];
   destroy: () => void;
@@ -49,8 +48,7 @@ interface ArchaeopteryxGlobals extends Window {
   jspdf?: { jsPDF: unknown };
 }
 
-// Archaeopteryx keeps the light/dark choice of its panel and canvas here, and
-// reads it when a viewer launches.
+// Archaeopteryx keeps its light/dark choice here and reads it at launch.
 const panelThemeStorageKey = "aptx-panel-theme";
 
 let loader: Promise<Archaeopteryx> | null = null;
@@ -74,28 +72,21 @@ async function loadDependencies(): Promise<Archaeopteryx> {
       import("canvg") as Promise<CanvgModule>,
       import("jspdf") as Promise<JspdfModule>,
     ]);
-  // The bundler cannot resolve the guarded require() calls in the viewer's UMD
-  // header, so the bundled viewer reads its dependencies from these globals.
+  // The bundler cannot resolve the viewer's guarded require() calls, so it reads its dependencies from these globals.
   globals.d3 = d3Module;
   globals.forester = foresterModule.forester;
   globals.phyloXml = phyloXmlModule.phyloXml;
-  // Archaeopteryx offers PNG and PDF downloads only when these page-level
-  // globals exist; neither library publishes one itself.
+  // Archaeopteryx offers PNG/PDF downloads only when these globals exist.
   globals.Canvg = canvgModule.Canvg;
   globals.jspdf = { jsPDF: jspdfModule.jsPDF };
-  // svg2pdf.js registers jsPDF.API.svg on jspdf: the one it imports, or the
-  // global above when it is loaded as a plain script.
+  // svg2pdf.js registers jsPDF.API.svg on the jspdf it imports, or on the global when loaded as a script.
   await import("svg2pdf.js");
 
   const archaeopteryxModule = await import("archaeopteryx");
   return archaeopteryxModule.archaeopteryx;
 }
 
-/**
- * Launches a viewer whose destroy() is a no-op once a newer viewer has
- * launched. Archaeopteryx keeps one viewer per page in module state, so every
- * handle's destroy() would otherwise tear down whichever viewer is current.
- */
+/** Launches a viewer whose destroy() is a no-op once a newer one has launched; Archaeopteryx keeps one viewer per page. */
 export function mountArchaeopteryx(
   archaeopteryx: Archaeopteryx,
   container: Element,
@@ -120,10 +111,7 @@ export function mountArchaeopteryx(
   };
 }
 
-/**
- * The launch config shared by every DXKB tree. Archaeopteryx throws on an
- * unknown key, so this is also what its unit tests launch the real viewer with.
- */
+/** Archaeopteryx throws on an unknown key, so unit tests launch the real viewer with this. */
 export function createViewerConfig(
   {
     selectable,
@@ -138,8 +126,7 @@ export function createViewerConfig(
     enableManualNodeSelection: selectable,
     enableSubtreeDeletion: false,
     zoomToFitUponWindowResize: true,
-    // Matches the legacy OutbreaksPhylogenyTreeViewer.js viral default;
-    // Archaeopteryx falls back to its own pick when a tree lacks the field.
+    // Matches the legacy viral default; Archaeopteryx picks its own when a tree lacks the field.
     ...(!selectable && { initialVisualization: "Host" }),
   };
 }
@@ -150,26 +137,20 @@ export function documentViewerTheme(): ViewerTheme {
     : "light";
 }
 
-/** Makes the next launched viewer draw in the given theme from the start. */
 export function seedViewerTheme(theme: ViewerTheme) {
   try {
     localStorage.setItem(panelThemeStorageKey, theme);
   } catch {
-    // Without storage the viewer follows the OS color scheme instead.
+    // storage unavailable
   }
 }
 
-/**
- * Switches a running viewer to the given theme in place. Archaeopteryx has no
- * API for this, so it flips the viewer's own light/dark switch, which keeps
- * the zoom, selection and searches the user has.
- */
+/** Switches a running viewer's theme in place by flipping its own switch, which keeps zoom, selection and searches. */
 export function syncViewerTheme(container: Element, theme: ViewerTheme) {
   const panel = container.querySelector(".aptx-panel");
   const toggle = container.querySelector<HTMLButtonElement>(".aptx-theme-btn");
   if (!panel || !toggle) return;
-  // A panel still following the OS carries neither class, and its first
-  // toggle can land on the opposite theme, hence the second attempt.
+  // A panel still following the OS carries neither class, so its first toggle can land on the opposite theme.
   for (
     let attempt = 0;
     attempt < 2 && !panel.classList.contains(`aptx-${theme}`);
@@ -179,12 +160,7 @@ export function syncViewerTheme(container: Element, theme: ViewerTheme) {
   }
 }
 
-/**
- * Folds a running viewer's control panel to its header bar, or opens it.
- * Archaeopteryx only takes this at launch, so it clicks the panel's own
- * hide/show button, leaving the panel as if the user had pressed it. Returns
- * whether the panel changed.
- */
+/** Folds or opens a running viewer's control panel by clicking its own hide/show button, since Archaeopteryx only takes this at launch. Returns whether the panel changed. */
 export function setViewerControlsCollapsed(
   container: Element,
   collapsed: boolean,

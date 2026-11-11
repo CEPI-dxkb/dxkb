@@ -1,10 +1,5 @@
 "use client";
 
-/**
- * Where the command bar's genomes come from: legacy BV-BRC's four "Genomes"
- * sources in one menu (the workspace groups disabled while signed out), and
- * the workspace picker a group source shows.
- */
 import {
   ChevronDown,
   FolderTree,
@@ -46,14 +41,12 @@ const sourceIcons = {
 
 interface SourceMenuProps {
   filter: CompareRegionFilter;
-  /** The chosen group's name ("" when none), shown on the trigger. */
   groupName: string;
   busy: boolean;
   signedIn: boolean;
   onChange: (filter: CompareRegionFilter) => void;
 }
 
-/** The "Genomes" menu. Its trigger names the source, and the group once one is picked. */
 export function SourceMenu({
   filter,
   groupName,
@@ -130,16 +123,13 @@ export function SourceMenu({
 }
 
 interface GroupPickerProps {
-  /** The input's id, for the bar's label above it. */
   id: string;
   source: CompareRegionGroupFilter;
-  /** The picked group's workspace path ("" when none). */
   value: string;
   disabled: boolean;
   onPick: (path: string) => void;
 }
 
-/** The workspace picker for a group source; it offers that source's object type only. */
 export function GroupPicker({
   id,
   source,

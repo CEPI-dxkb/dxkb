@@ -93,7 +93,6 @@ const initialState: CollectionState = {
   sort: "unsorted",
 };
 
-/** Legacy FeatureGrid's and ProteinGrid's `queryOptions` sort. */
 const legacyGridOrder = {
   field: "genome_name",
   direction: "asc",
@@ -103,7 +102,6 @@ const legacyGridOrder = {
   ],
 };
 
-/** What `/genome` means with no query of its own. */
 const recentScope =
   "and(gt(completion_date,NOW-1YEARS),ne(genome_status,Deprecated))";
 
@@ -130,7 +128,6 @@ describe("GenomeCollection", () => {
       screen.getByRole("button", { name: "Domains and Motifs" }),
     ).toBeEnabled();
     expect(screen.getByRole("button", { name: "Overview" })).toBeEnabled();
-    // A genome ID list has no counterpart on these collections.
     expect(screen.getByRole("button", { name: "Epitopes" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "Surveillance" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "Serology" })).toBeDisabled();
@@ -141,9 +138,6 @@ describe("GenomeCollection", () => {
 
     render(<GenomeCollection initialState={initialState} />);
 
-    // Tab URL construction and parameter preservation belong to EntityViewShell
-    // and are covered by its own suite; GenomeCollection only contributes the tab
-    // set, the resolved active tab and the default.
     expect(shellProps.current).toEqual(
       expect.objectContaining({
         viewLabel: "Genome View",
@@ -370,9 +364,8 @@ describe("GenomeCollection", () => {
     ["structures", "eq(pdb_id,*)"],
     ["domains", "eq(id,*)"],
   ])("lists the whole %s collection on a bare URL, as legacy does", (tab, rql) => {
-    // No genome() join to the ~573,000 recent genomes (11–78 s a tab on prod).
-    // Each collection's own match-all, because the Data API rejects an empty
-    // query once a sort or facet is added.
+    // Each collection's own match-all: the Data API rejects an empty query once
+    // a sort or facet is added.
     searchParams.current = new URLSearchParams(`tab=${tab}`);
 
     render(
@@ -450,8 +443,7 @@ describe("GenomeCollection", () => {
       />,
     );
 
-    // One clause per word, as the Genomes tab's ?keyword= sends it, so the
-    // join covers the genomes that tab lists.
+    // One clause per word, as the Genomes tab's ?keyword= sends it.
     expect(childProps.current?.rql).toBe(
       "and(eq(genome_id,*),genome(and(keyword(Escherichia),keyword(coli),in(genome_id,(1.1,1.2)))))",
     );
@@ -472,8 +464,8 @@ describe("GenomeCollection", () => {
       />,
     );
 
-    // Legacy GenomeList passes its search's and(keyword(coli),keyword(Salmonella))
-    // to each tab: 38 structures, where the phrase keyword(coli Salmonella) finds 0.
+    // Legacy passes the search's and(keyword(coli),keyword(Salmonella)) to each
+    // tab; the phrase form finds 0.
     expect(childProps.current?.rql).toBe(
       "and(keyword(coli),keyword(Salmonella))",
     );
@@ -493,8 +485,8 @@ describe("GenomeCollection", () => {
       />,
     );
 
-    // Legacy GenomeList hands its query to each tab's collection: 72
-    // sequences match keyword(Dnak), where the genome() join found 174.
+    // Legacy passes its query straight to each tab's collection, not through a
+    // genome() join.
     expect(childProps.current?.rql).toBe("keyword(Dnak)");
   });
 
@@ -532,8 +524,6 @@ describe("GenomeCollection", () => {
       />,
     );
 
-    // Run on genome_sequence itself, so this tab and the Genomes tab cover the
-    // same records.
     expect(childProps.current?.rql).toBe("keyword(coli)");
   });
 
@@ -580,8 +570,8 @@ describe("GenomeCollection", () => {
       />,
     );
 
-    // keyword(coli) matches 134,274 genomes, as on legacy; the token-prefix
-    // keyword(coli*) matched 137,836.
+    // keyword(coli) matches 134,274 genomes, as on legacy; keyword(coli*)
+    // matched 137,836.
     expect(genomeProps.current).toEqual(
       expect.objectContaining({
         baseRql: undefined,
@@ -661,8 +651,6 @@ describe("GenomeCollection", () => {
   it.each([
     ["features", undefined],
     ["proteins", undefined],
-    // Text without terms searches for nothing (`genomeBaseRql`), so these are
-    // bare lists too.
     ["features", "   "],
     ["proteins", '""'],
   ])(
@@ -723,7 +711,6 @@ describe("GenomeCollection", () => {
     expect(childProps.current?.rql).toBe(
       "and(eq(genome_id,*),genome(in(genome_id,(1.1,1.2))),and(or(eq(feature_type,CDS),eq(feature_type,mat_peptide)),eq(annotation,PATRIC)))",
     );
-    // Same clause the member Proteins view and `filter=protein` use.
     expect(childProps.current?.rql).toContain(proteinFeatureRql);
   });
 
@@ -746,9 +733,8 @@ describe("GenomeCollection", () => {
 
     render(<GenomeCollection initialState={initialState} />);
 
-    // No `columns` or `profile` override: ResourceChildCollection's
-    // `protein_structure` branch supplies the collection profile, so the tab keeps
-    // its detail fields, facets and pdb_id row links.
+    // `protein_structure` gets its detail fields, facets and row links from
+    // ResourceChildCollection's profile, so no override.
     expect(childProps.current).toEqual(
       expect.objectContaining({
         resource: "protein_structure",
@@ -766,7 +752,7 @@ describe("GenomeCollection", () => {
     "sends the %s tab's own keyword exact, as legacy does",
     (tab) => {
       // The in-tab keyword box would otherwise add a token-prefix
-      // keyword(gyrA*) beside the list's exact keyword(Dnak).
+      // keyword(gyrA*) beside the exact keyword(Dnak).
       searchParams.current = new URLSearchParams(
         `keyword=Dnak&tab=${tab}`,
       );

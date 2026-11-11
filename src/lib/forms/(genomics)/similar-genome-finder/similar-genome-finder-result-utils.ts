@@ -1,6 +1,5 @@
 import { getFirstDefined } from "@/lib/utils";
 
-/** Result row shape for Similar Genome Finder (when result data is available) */
 export interface SimilarGenomeFinderResultRow {
   genome_id: string;
   genome_name: string;
@@ -16,9 +15,6 @@ export interface SimilarGenomeFinderResultRow {
 /** No result rows: one array, never mutated, so it is stable across renders. */
 export const noSimilarGenomeResults: SimilarGenomeFinderResultRow[] = [];
 
-/**
- * Convert columnar result { genome_id: [...], distance: [...] } to row array.
- */
 function asUnknownArray(value: unknown): unknown[] | undefined {
   return Array.isArray(value) ? (value as unknown[]) : undefined;
 }
@@ -42,10 +38,7 @@ function columnarToRows(result: Record<string, unknown>): unknown[] {
   }));
 }
 
-/**
- * Extract the hits array from Minhash JSON-RPC response.
- * Handles: { result: [...] }, { result: [ [ row1, row2, ... ] ] } (nested), columnar, or top-level array.
- */
+/** Handles { result: [...] }, nested, columnar, or top-level array responses. */
 function extractMinhashArray(payload: unknown): unknown[] {
   if (!payload || typeof payload !== "object") return [];
   const obj = payload as Record<string, unknown>;
@@ -90,7 +83,6 @@ function parseCounts(v: unknown): number | string | undefined {
   return undefined;
 }
 
-/** Minhash JSON-RPC returns { result: [...] }. Extract rows with genome_id and metrics. */
 export function parseMinhashResultPayload(
   payload: unknown,
 ): SimilarGenomeFinderResultRow[] {
@@ -117,7 +109,6 @@ export function parseMinhashResultPayload(
   });
 }
 
-/** Build table rows by merging Minhash metrics with BV-BRC genome API response. */
 export function mergeGenomeResults(
   minhashRows: SimilarGenomeFinderResultRow[],
   genomeApiResults: Record<string, string>[],

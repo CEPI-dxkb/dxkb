@@ -89,10 +89,6 @@ const SelectedItemsTable = ({
           )}
         </div>
       )}
-      {/* One white box, as BLAST's selected-genomes table draws it: the rows
-          stripe on `even:bg-muted/50` (the `static-striped` TableRow fill) and
-          the empty message sits on the same white. The box takes the caller's
-          `className` (max height and scroll). */}
       <div className={`overflow-auto rounded-md border bg-background ${className}`}>
         {items.length === 0 ? (
           <div className="py-1.5 text-center text-sm text-muted-foreground">

@@ -351,7 +351,6 @@ describe("api/e2e-mock catch-all — enabled", () => {
     expect((await resp.json()) as unknown).toEqual({
       response: { numFound: findTaxonGenomeCount("234"), docs: [] },
     });
-    // The summary count includes Deprecated genomes; the header must not.
     expect(findTaxonGenomeCount("234")).not.toBe(
       findOrganismSummaryRecord("234")?.count,
     );
@@ -715,8 +714,6 @@ describe("api/e2e-mock catch-all — enabled", () => {
     ]);
   });
 
-  // fetchReferenceGenomes puts its own reference_genome clause after the
-  // scope, which a Genome list filtered by type also gives one.
   it("GET answers the summary read of a scope that filters reference_genome itself", async () => {
     const resp = await GET(
       mockNextRequest({
@@ -729,7 +726,6 @@ describe("api/e2e-mock catch-all — enabled", () => {
     const body = (await resp.json()) as {
       facet_counts?: { facet_fields: { reference_genome: unknown[] } };
     };
-    // The backend ANDs every equality: Reference AND any type is Reference.
     expect(body.facet_counts?.facet_fields.reference_genome).toEqual([
       "Reference",
       2,
@@ -791,9 +787,7 @@ describe("api/e2e-mock catch-all — enabled", () => {
   });
 
   it("GET disambiguates taxon IDs by regex, not substring", async () => {
-    // taxon "234" is a substring of "1234" — the old code would have matched both
-    // and returned the geo-specific fixture for "1234". With regex matching,
-    // a taxon ID of "1234" falls through to the default fixture.
+    // taxon "234" is a substring of "1234": matching must be exact.
     const resp = await GET(
       mockNextRequest({
         url: "http://localhost:3020/api/e2e-mock/bvbrc-website/genome/?eq(taxon_lineage_ids,1234)&facet%28%28field%2Cisolation_country%29%2C%28mincount%2C1%29%29",
@@ -803,8 +797,6 @@ describe("api/e2e-mock catch-all — enabled", () => {
 
     expect(resp.status).toBe(200);
     const body = (await resp.json()) as SolrFacetBody;
-    // Should be the default isolation_country fixture (uses long country names)
-    // not the geo-specific one keyed at taxonId=234.
     expect(body.facet_counts.facet_fields.isolation_country).toEqual(
       expect.arrayContaining(["United States", 290442]),
     );
@@ -820,7 +812,6 @@ describe("api/e2e-mock catch-all — enabled", () => {
 
     expect(resp.status).toBe(200);
     const body = (await resp.json()) as SolrFacetBody;
-    // Geo fixture uses 3-letter or short country names ("USA", "China", "Italy")
     expect(body.facet_counts.facet_fields.isolation_country).toEqual(
       expect.arrayContaining(["USA", 260]),
     );
@@ -1118,8 +1109,7 @@ describe("api/e2e-mock catch-all — enabled", () => {
   });
 
   it("POST returns 400 when genome_amr body is missing the antibiotic pivot fragment", async () => {
-    // Body has the lineage and phenotype clauses but lacks the required
-    // facet((pivot,(antibiotic,resistant_phenotype)) fragment — a real caller typo.
+    // Lacks the required facet fragment, as a real caller typo would.
     const body =
       "eq(genome_id,*)" +
       "&genome(eq(taxon_lineage_ids,234))" +
@@ -1151,14 +1141,6 @@ describe("api/e2e-mock catch-all — enabled", () => {
   });
 });
 
-/**
- * Fail-closed dispatch.
- *
- * Every combination this mock answers is named here, and every namespace that
- * used to be permissive is probed with something it does not know. A guard
- * that only ever sees the happy path is not a guard, so each retained empty
- * operation is paired with a rejection case in the same namespace.
- */
 /** The download gateway's upstream request: an RQL body, the format in `Accept`. */
 function downloadPost(path: string[], accept: string, body: string) {
   return POST(
@@ -1238,8 +1220,6 @@ describe("api/e2e-mock catch-all — fail-closed dispatch", () => {
     return post(path, { id: 1, jsonrpc: "2.0", method, params: [] });
   }
 
-  // The complete retained set: namespace, method, and the empty result the
-  // mock documents as correct for that contract.
   it.each([
     ["workspace", "Workspace.ls", [{}]],
     ["workspace", "Workspace.get", [[]]],
@@ -1428,11 +1408,8 @@ describe("api/e2e-mock catch-all — fail-closed dispatch", () => {
   );
 
   it("logs every rejection branch under the prefix e2e/README.md documents", async () => {
-    // The README tells a reader to grep the webServer log for
-    // "[api/e2e-mock] e2e-mock: ". That grep is only trustworthy if EVERY
-    // rejection is in it, so this drives all nine — including the
-    // `genome_amr` body-validation branch, which is the one that sat outside
-    // the prefix while a comment claimed none did.
+    // Drives every rejection branch, since the README's grep is only
+    // trustworthy if all of them carry the prefix.
     const logged: string[] = [];
     const spy = vi
       .spyOn(console, "error")
@@ -1496,12 +1473,9 @@ describe("api/e2e-mock catch-all — fail-closed dispatch", () => {
   });
 
   it("routes every 4xx in the module through the two prefixed helpers", () => {
-    // The test above can only cover branches someone remembered to add to
-    // it. This one is the completeness half: a new branch that builds its
-    // own `NextResponse` with a status literal — and therefore its own log
-    // line, or none — fails here even if nobody updates the list above.
-    // `disabledResponse` is the one allowed exception: the
-    // `E2E_MOCK_ENABLED` guard is a refusal to serve, not a missing fixture.
+    // Completeness half of the test above: a new branch that builds its own
+    // status literal fails here. `disabledResponse` is exempt (a refusal to
+    // serve, not a fixture gap).
     const source = readFileSync(join(__dirname, "..", "route.ts"), "utf8");
     const allowed = [
       "function disabledResponse",
@@ -1518,8 +1492,7 @@ describe("api/e2e-mock catch-all — fail-closed dispatch", () => {
       const end = remaining.indexOf("\n}\n", start);
       remaining = remaining.slice(0, start) + remaining.slice(end);
     }
-    // Strip comments before scanning so prose mentioning a status code (the
-    // JsonRpcClient note, the module header) is not read as a branch.
+    // Strip comments so prose mentioning a status code is not read as a branch.
     const code = remaining
       .replace(/\/\*[\s\S]*?\*\//g, "")
       .replace(/^\s*\/\/.*$/gm, "");
@@ -1545,8 +1518,6 @@ describe("api/e2e-mock catch-all — fail-closed dispatch", () => {
   });
 
   it("GET still serves /taxonomy/1763's landing fixtures rather than rejecting", async () => {
-    // The page that used to render an error boundary. Both endpoints have to
-    // answer, because the landing page fetches them together.
     const taxonomy = await GET(
       mockNextRequest({
         url: "http://localhost:3020/api/e2e-mock/bvbrc-website/taxonomy/1763",

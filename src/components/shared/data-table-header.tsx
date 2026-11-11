@@ -11,14 +11,10 @@ import { clsx } from "cn";
 
 interface DataTableHeaderProps {
   table: DataTableInstance;
-  /** Each column's `--col-size` and `--col-grow` (see `columnSizes` in data-table.tsx). */
   columnSizes: ColumnSizes;
   onColumnOrderChange?: DataTableProps["onColumnOrderChange"];
-  /** The column a pointer drag is resizing, if any. */
   resizingColumnId?: string;
-  /** Width settings during a pointer drag, reported by the handles. */
   widthSettings?: ColumnWidths;
-  /** Starts a pointer resize of a column from a press on its handle. */
   onResizeStart: (
     columnId: string,
     event: React.PointerEvent<HTMLElement>,
@@ -26,11 +22,8 @@ interface DataTableHeaderProps {
 }
 
 /**
- * A press this close to the header's content edge (px) never starts a column
- * reorder: it is a resize that just missed the handle. The handle already
- * covers the cell's 8px padding on each side, so on a narrow column the guard
- * shrinks to a quarter of the content width, which leaves the middle half to
- * reorder.
+ * A press this close to the content edge is a resize that missed the handle,
+ * not a reorder; the guard shrinks to a quarter of the width on narrow columns.
  */
 const reorderEdgeGuard = 12;
 
@@ -42,32 +35,21 @@ export function DataTableHeader({
   widthSettings,
   onResizeStart,
 }: DataTableHeaderProps) {
-  // Extracted out of useDataTableContent, which carries "use no memo". The
-  // compiler otherwise keys the header cells (sort chevrons included) on
-  // `table` identity alone, and the table instance is only unstable by
-  // accident (see the useTable call in data-table.tsx) — memoize the options
-  // there and the sort indicators freeze.
+  // Extracted out of useDataTableContent ("use no memo"): the compiler would
+  // otherwise key this on `table` identity alone, which is only unstable by
+  // accident (see the useTable call in data-table.tsx).
   "use no memo";
 
   const [draggedColumn, setDraggedColumn] = useState<string | null>(null);
   const justResizedRef = useRef(false);
-  // Reordering is only possible when the parent owns the column order:
-  // `data-table.tsx` passes `onColumnOrderChange: undefined` to `useTable`
-  // when this prop is absent, which makes `table.setColumnOrder` a no-op too.
-  // Without a callback there is nowhere for a drop to land, so we withhold the
-  // drag affordance entirely rather than show a grab cursor that discards the
-  // drop.
+  // Without an `onColumnOrderChange` callback a drop has nowhere to land, so
+  // the drag affordance is withheld.
   const canReorder = Boolean(onColumnOrderChange);
-  // While a column is being resized, the pointer crosses other headers; their
-  // hover bars stay hidden so only the dragged edge is drawn.
   const isResizingAny = Boolean(resizingColumnId);
-  // Where the last press on a header landed, so a drag that starts from the
-  // edge of a header (a resize that missed its handle) is not a reorder.
   const pressXRef = useRef<number | null>(null);
-  // Capture retargets the press's click to the handle, so the sort button
-  // should not see it. The window below still swallows a click that lands on
-  // the button within 100 ms of a resize, as WebKit has retargeted clicks
-  // differently before.
+  // Capture retargets the press's click to the handle; the window below still
+  // swallows a click on the sort button within 100 ms of a resize, as WebKit
+  // has retargeted clicks differently before.
   const markJustResized = () => {
     justResizedRef.current = true;
     setTimeout(() => {
@@ -153,8 +135,6 @@ export function DataTableHeader({
                 ) : (
                   <>
                     <div
-                      // The header typography sits here rather than on the
-                      // TableHead: this wrapper holds all of the cell's text.
                       className={clsx(
                         "relative flex size-full items-center py-0 pr-0.5 text-xs leading-tight font-bold",
                         canReorder && "cursor-move",
@@ -237,18 +217,12 @@ export function DataTableHeader({
                             resizeWithKeyboard(10);
                           }
                         }}
-                        // One pointer path for mouse, pen and touch: the
-                        // drag lives in data-table.tsx (startPointerResize),
-                        // which follows this press's pointer until it is
-                        // lifted or cancelled.
                         onPointerDown={(event) => {
                           justResizedRef.current = false;
                           onResizeStart(column.id, event);
                         }}
                         onPointerUp={markJustResized}
                         onPointerCancel={markJustResized}
-                        // 16px wide, centred on the edge: a press that lands a
-                        // little off the line still resizes.
                         className="absolute top-0 right-0 z-30 flex h-full w-4 translate-x-1/2 cursor-col-resize touch-none select-none"
                       >
                         <div

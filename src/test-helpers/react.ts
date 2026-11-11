@@ -35,11 +35,7 @@ export function createQueryClientWrapper() {
   };
 }
 
-/**
- * The interval the first observer of the first query whose key starts with
- * `queryKey` would wait before its next poll, evaluating a `refetchInterval`
- * function against the query's current state.
- */
+/** The polling interval of the first query whose key starts with `queryKey`, evaluating `refetchInterval` against its current state. */
 export function nextRefetchInterval(
   queryClient: QueryClient,
   queryKey: QueryKey,

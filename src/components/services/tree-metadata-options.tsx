@@ -35,20 +35,17 @@ import {
 interface TreeMetadataOptionsProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  /** The fields that can still be added, by section. */
   sections: MetadataFieldSection[];
-  /** The field picked in the select, or "" for none. */
   selectedField: string;
   onSelectField: (fieldId: string) => void;
   onAdd: () => void;
-  /** The table's fields. */
   fields: MetadataField[];
   onRemove: (fieldId: string) => void;
 }
 
 /**
- * The phylogenetic tree forms' "Metadata Options" (Gene / Protein Tree, Viral
- * Genome Tree): pick genome metadata fields for the tree's metadata table.
+ * Metadata Options for the tree forms: pick genome metadata fields for the
+ * tree's metadata table.
  */
 export function TreeMetadataOptions({
   open,
@@ -82,8 +79,8 @@ export function TreeMetadataOptions({
                 visualization
               </p>
               <div className="flex gap-2">
-                {/* `items` gives the trigger the picked field's label, not
-                  its id. */}
+                {/* `items` gives the trigger the picked field's label, not its
+                    id. */}
                 <Select
                   items={metadataFieldOptions}
                   value={selectedField}

@@ -16,9 +16,8 @@ const thresholdItems = thresholdOptions.map((value) => ({
 }));
 
 /**
- * A label and the 0 to 1 threshold select shared by the tree services. It is
- * presentational: the page owns the `form.Field`, `FieldItem` and
- * `FieldErrors`, and passes its own label element.
+ * A label and 0-to-1 threshold select shared by the tree services; the page
+ * owns the `form.Field`.
  */
 export function TreeThresholdSelect({
   label,

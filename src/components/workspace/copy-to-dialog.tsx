@@ -27,7 +27,6 @@ export interface CopyToDialogProps {
     filenameOverride?: string,
   ) => Promise<void>;
   isCopying: boolean;
-  /** When "move", dialog shows Move wording and the parent calls API with move: true. */
   mode?: "copy" | "move";
 }
 
@@ -57,8 +56,8 @@ export function CopyToDialog({
       setDestinationPath(null);
       setCustomFilename("");
     } else {
-      // Initialize only on false → true transitions so parent re-renders
-      // passing a new sourceItems reference don't reset customFilename.
+      // Initialize only on false to true transitions so a new sourceItems reference does
+      // not reset customFilename.
       setDestinationPath(workspaceRootPath);
       setCustomFilename(sourceItems[0]?.name ?? "");
       setShowAllFiles(false);
@@ -93,11 +92,8 @@ export function CopyToDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="flex h-full max-h-[90vh] max-w-lg flex-col overflow-hidden sm:max-w-xl md:max-h-[70vh] md:max-w-2xl lg:max-w-4xl">
         <DialogHeader className="shrink-0">
-          {/* A margin (not padding) keeps the title clear of the close button. */}
           <DialogTitle className="mr-8">{title}</DialogTitle>
         </DialogHeader>
-        {/* scrollbar-themed sits here, not on DialogContent: its inherited
-            scrollbar-color reaches the same scrolling descendants. */}
         <div className="scrollbar-themed -mx-4 flex min-h-0 flex-1 flex-col gap-4 px-4 pt-1">
           <div className="flex shrink-0 flex-col gap-2">
             <Label variant="caption">Destination</Label>

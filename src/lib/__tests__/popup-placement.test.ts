@@ -7,10 +7,8 @@ import {
   type PopupBox,
 } from "../popup-placement";
 
-/** A 1,000 px wide chart whose figure runs from 100 px down to 800. */
 const bounds: PopupBounds = { width: 1000, top: 100, bottom: 800 };
 const tooltip = { width: 320, height: 120 };
-/** Compare Region's gap from a glyph; the Circular Viewer's pointer uses 12. */
 const gap = 6;
 
 function glyph(left: number, right: number, top = 300): PopupBox {
@@ -19,7 +17,6 @@ function glyph(left: number, right: number, top = 300): PopupBox {
 
 describe("popupSide", () => {
   it("opens below while the popup fits there", () => {
-    // 800 - 8 - (316 + 6) = 470 px below.
     expect(popupSide(glyph(400, 500), bounds, 120, gap)).toEqual({
       below: true,
       room: 470,
@@ -27,7 +24,6 @@ describe("popupSide", () => {
   });
 
   it("opens above where it does not fit below but fits above", () => {
-    // No room below; 770 - 6 - 108 = 656 px above.
     expect(popupSide(glyph(400, 500, 770), bounds, 120, gap)).toEqual({
       below: false,
       room: 656,
@@ -35,12 +31,10 @@ describe("popupSide", () => {
   });
 
   it("takes the roomier side where it fits neither", () => {
-    // 170 px below, 486 above.
     expect(popupSide(glyph(400, 500, 600), bounds, 500, gap)).toEqual({
       below: false,
       room: 486,
     });
-    // 470 px below, 186 above.
     expect(popupSide(glyph(400, 500, 300), bounds, 500, gap)).toEqual({
       below: true,
       room: 470,
@@ -73,7 +67,6 @@ describe("placePopup", () => {
   });
 
   it("goes left of a glyph with too little room on its right", () => {
-    // 806 + 320 runs past 992: its right edge 6 px short of the glyph's left.
     expect(
       placePopup({
         box: glyph(700, 800),
@@ -110,7 +103,6 @@ describe("placePopup", () => {
   });
 
   it("keeps inside its bounds", () => {
-    // A tall popup above a gene near the top stops at the figure's top.
     expect(
       placePopup({
         box: glyph(400, 500, 200),
@@ -120,7 +112,6 @@ describe("placePopup", () => {
         gap,
       }),
     ).toEqual({ x: 506, y: 108 });
-    // A gene at the right edge, wider than the room: its left end, pulled in.
     expect(
       placePopup({
         box: glyph(500, 1000),
@@ -163,8 +154,6 @@ describe("a pointer's zero-size box, 12 px away", () => {
   });
 
   it("keeps a wide tooltip inside a phone-sized figure from its middle", () => {
-    // 357 px wide, the pointer 1 px left of the middle: neither side has room
-    // for 270 px, so it is pulled into the margins.
     const figure: PopupBounds = { width: 357, top: 0, bottom: 357 };
     const { x } = placePopup({
       box: pointer(357 / 2 - 1, 100),

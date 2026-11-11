@@ -9,14 +9,12 @@ import {
 
 const { push, copyDialog, groupDialog } = vi.hoisted(() => ({
   push: vi.fn(),
-  /** The group dialog's latest callbacks, so a test can finish a create or append. */
   groupDialog: {
     onCreate: undefined as
       | ((folderPath: string, name: string) => Promise<void>)
       | undefined,
     onAppend: undefined as ((path: string) => Promise<void>) | undefined,
   },
-  /** The copy dialog's latest props, so a test can run its copy directly. */
   copyDialog: {
     onCopy: undefined as
       | ((columnMode: "all" | "selected", includeHeaders: boolean) => Promise<void>)
@@ -97,7 +95,6 @@ import { toast } from "sonner";
 import { CollectionSelectionActions } from "../collection-selection-actions";
 import { strainSelectionActionIds } from "../collection-selection-action-ids";
 
-/** Strain is the interesting shape: one row's `genome_ids` fans out to many IDs. */
 function renderStrainActions(
   overrides: Partial<ComponentProps<typeof CollectionSelectionActions>>,
 ) {
@@ -136,8 +133,6 @@ describe("CollectionSelectionActions", () => {
 
     await user.click(screen.getByRole("button", { name: /^services$/i }));
 
-    // SERVICES owns the single shared ID slot until it settles, so every other owned
-    // action is disabled and a GROUP click in the meantime never starts a fetch.
     const groupButton = screen.getByRole("button", { name: /^group$/i });
     expect(groupButton).toBeDisabled();
     await user.click(groupButton);
@@ -153,7 +148,6 @@ describe("CollectionSelectionActions", () => {
       await Promise.resolve();
     });
 
-    // Only the winning action's dialog opens, with only its own IDs.
     expect(await screen.findByTestId("selection-services")).toHaveTextContent(
       "11320.1,11320.2",
     );
@@ -242,8 +236,6 @@ describe("CollectionSelectionActions", () => {
 
   it("rejects a selection whose rows flatten past the services ID ceiling", async () => {
     const user = userEvent.setup();
-    // 20 rows is well inside the 100-row fetch bound, but each segmented Strain row
-    // carries 40 genomes, so the selection resolves to 800 genome IDs.
     const rows = Array.from({ length: 20 }, (_, row) => ({
       genome_ids: Array.from(
         { length: 40 },
@@ -334,15 +326,12 @@ describe("CollectionSelectionActions", () => {
   );
 
   it("drops COPY quietly when the query it waits for is replaced", async () => {
-    // user-event installs a clipboard stub for this test.
     userEvent.setup();
     const writeText = vi.spyOn(navigator.clipboard, "writeText");
     renderStrainActions({
       resolveActionRows: vi.fn(() => Promise.reject(new CancelledError())),
     });
 
-    // Resolving rather than rejecting is what keeps the dialog from showing an
-    // error: the user has moved on from the results they asked to copy.
     await expect(copyDialog.onCopy?.("all", true)).resolves.toBeUndefined();
     expect(writeText).not.toHaveBeenCalled();
   });

@@ -120,8 +120,8 @@ const numericFields = new Set([
   "parent_id",
   "genomes",
 ]);
-// `reference_genome` is the text "Reference" or "Representative", not a
-// boolean: typed as one, `eq(reference_genome,Representative)` is rejected.
+// `reference_genome` is the text "Reference" or "Representative"; typed as a
+// boolean, `eq(reference_genome,Representative)` is rejected.
 const booleanFields = new Set(["public"]);
 const dateFields = new Set([
   "date_created",
@@ -139,9 +139,8 @@ const dateFields = new Set([
 const phraseFields = new Set(["strain", "pathogen_test_type"]);
 const multipleFields: Partial<Record<DataResource, ReadonlySet<string>>> = {
   taxonomy: new Set(["other_names", "lineage_ids", "lineage_names"]),
-  // An AMR row can cite multiple evidence sources and publications, so both
-  // fields arrive as lists. Declaring them `multiple` is also what keeps the
-  // legacy Search table from offering server sorts that Solr rejects.
+  // Both fields arrive as lists; declaring them `multiple` also stops the
+  // legacy Search table offering server sorts Solr rejects.
   genome_amr: new Set(["evidence", "pmid"]),
   epitope: new Set(["assay_results", "host_name", "taxon_lineage_ids"]),
   surveillance: new Set(["pathogen_test_type", "taxon_lineage_ids"]),
@@ -236,11 +235,6 @@ function buildFields(resource: DataResource): Record<string, ResourceField> {
       const metadata = source
         ? Object.values(source).find((field) => field.field === name)
         : undefined;
-      // Sortability is derived from the cardinality this same pass just decided,
-      // not from a second `multipleFields` lookup. The two used to be computed
-      // independently from the same set, which left `field-metadata.ts`'s stated
-      // contract ("`sortable` + registry cardinality owns sortability") describing
-      // an intent the code only happened to satisfy.
       const cardinality: ResourceField["cardinality"] = multipleFields[
         resource
       ]?.has(name)

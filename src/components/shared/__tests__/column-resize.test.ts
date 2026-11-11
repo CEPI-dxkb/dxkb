@@ -8,7 +8,6 @@ import {
   type ColumnResizeStart,
 } from "../column-resize";
 
-/** Three columns with settings 100/50/50 in a box `containerWidth` wide. */
 function start(
   index: number,
   containerWidth: number,
@@ -24,7 +23,6 @@ function start(
   };
 }
 
-/** Right edge of column `index` (px from the table's left edge). */
 function edge(widths: number[], index: number): number {
   return widths.slice(0, index + 1).reduce((a, b) => a + b, 0);
 }
@@ -47,7 +45,6 @@ describe("resizedColumnWidths in a table stretched to fill its box", () => {
   it("moves the dragged edge by exactly the pointer delta", () => {
     for (const delta of [-20, 1, 15, 60]) {
       const widths = resizedColumnWidths(start(1, 400), delta);
-      // At rest the edge is at (100 + 50) * 2 = 300.
       expect(edge(widths, 1)).toBeCloseTo(300 + delta);
     }
   });
@@ -63,7 +60,6 @@ describe("resizedColumnWidths in a table stretched to fill its box", () => {
   });
 
   it("grows past the box once the following columns reach their minimum", () => {
-    // Owner can give up 100 - 80 = 20px before hitting 40 * 2.
     const widths = resizedColumnWidths(start(1, 400), 50);
     expect(widths[2]).toBe(80);
     expect(edge(widths, 1)).toBe(350);
@@ -93,7 +89,6 @@ describe("resizedColumnWidths in an overflowing table", () => {
   });
 
   it("widens the following columns only to fill the box", () => {
-    // 200px of settings in a 150px box; shrinking name by 80 leaves 30px empty.
     const widths = resizedColumnWidths(start(0, 150), -80);
     expect(widths[0]).toBe(40);
     expect(widths.reduce((a, b) => a + b, 0)).toBeCloseTo(150);
@@ -115,7 +110,6 @@ describe("columnWidthSettings", () => {
   it("keeps the settings' total while the table fills its box", () => {
     const s = start(1, 400);
     const settings = columnWidthSettings(s, resizedColumnWidths(s, 20));
-    // Size renders 100 + 20 = 120 at scale 2; owner gives up the 20.
     expect(settings).toStrictEqual({ size: 60, owner: 40 });
   });
 
@@ -144,8 +138,6 @@ describe("columnWidthSettings", () => {
   });
 });
 
-// The DataTable's selection column is not resizable: it neither stretches nor
-// absorbs a drag, and gets no saved setting.
 describe("a fixed column", () => {
   function withSelection(index: number): ColumnResizeStart {
     return {
@@ -160,7 +152,6 @@ describe("a fixed column", () => {
   }
 
   it("keeps its width when the others stretch", () => {
-    // 300px of room for 150px of resizable settings.
     expect(stretchedColumnWidths([40, 100, 50], 340, [true, false, false]))
       .toStrictEqual([40, 200, 100]);
   });
@@ -181,14 +172,12 @@ describe("a fixed column", () => {
   it("gets no saved setting", () => {
     const s = withSelection(1);
     const settings = columnWidthSettings(s, resizedColumnWidths(s, 10));
-    // 210 and 90 rendered at scale 2.
     expect(settings).toStrictEqual({ name: 105, size: 45 });
   });
 });
 
 const sum = (values: number[]) => values.reduce((a, b) => a + b, 0);
 
-/** The workspace table's defaults (name, size, owner, created, members, type). */
 function workspace(
   index: number,
   containerWidth: number,
@@ -305,7 +294,7 @@ describe("resizeColumns", () => {
   });
 
   it("neither moves nor saves a drag smaller than one setting step", () => {
-    const s = workspace(0, 1605); // scale 3
+    const s = workspace(0, 1605);
     const { widths, settings } = resizeColumns(s, 1);
     expect(settings).toEqual({});
     expect(widths).toEqual(stretchedColumnWidths(s.sizes, 1605));
@@ -337,7 +326,7 @@ describe("resizeColumns", () => {
       minSizes: [40, 40, 40],
       maxSizes: [1000, 1000, 1000],
       index: 1,
-      containerWidth: 1800, // scale 3: a renders 1200, past its maximum
+      containerWidth: 1800,
     };
     let lastEdge = 0;
     for (let delta = 0; delta <= 900; delta += 1) {

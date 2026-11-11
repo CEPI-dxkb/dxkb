@@ -39,10 +39,9 @@ export function AnchoredSuggestionPortal({
     const minHeight = 160;
     const gap = 4;
 
-    // The gap is part of the space the dropdown consumes, so subtract it once
-    // and let both the threshold checks and the resulting heights use that
-    // same budget. Adding the gap to `top` while sizing against the un-gapped
-    // space overflows the viewport by up to `gap` pixels.
+    // The gap is part of the space the dropdown consumes, so subtract it once;
+    // adding it to `top` while sizing against the un-gapped space overflows the
+    // viewport.
     const availableBelow = window.innerHeight - anchorRect.bottom - gap;
 
     if (availableBelow >= minHeight) {
@@ -55,8 +54,7 @@ export function AnchoredSuggestionPortal({
       return;
     }
 
-    // Flip up. Clamp to the space actually above the anchor so `top` can never
-    // go negative and push the dropdown off the top of the viewport.
+    // Clamp to the space above the anchor so `top` never goes negative.
     const availableAbove = anchorRect.top - gap;
     const maxHeight = Math.min(preferredHeight, Math.max(availableAbove, 0));
     setRect({
@@ -67,9 +65,8 @@ export function AnchoredSuggestionPortal({
     });
   });
 
-  // Layout effect, not a passive effect: `rect` is intentionally retained
-  // while closed, so measuring after paint would render one frame at the
-  // previous (possibly scrolled-away) position on reopen.
+  // Layout effect: `rect` is retained while closed, so measuring after paint
+  // would flash one frame at the previous position on reopen.
   useLayoutEffect(() => {
     if (!open) return;
     updateLayout();

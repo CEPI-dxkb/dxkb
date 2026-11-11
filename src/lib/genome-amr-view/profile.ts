@@ -2,10 +2,6 @@ import type { ResourceCollectionProfile } from "@/components/views";
 import { genomeAmrMetadata } from "./fields";
 import { genomeAmrStructuralRql } from "./query";
 
-/**
- * Legacy AMRPanelGridContainer: raw genome_amr rows with no member page of
- * their own. The Genome Name and Genome ID columns link to the row's genome.
- */
 export const genomeAmrCollectionProfile: ResourceCollectionProfile<
   Record<string, unknown>
 > = {

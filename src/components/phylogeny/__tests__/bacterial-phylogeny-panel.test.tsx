@@ -74,7 +74,6 @@ describe("BacterialPhylogenyPanel", () => {
     );
     fireEvent.click(within(alert).getByRole("button", { name: "Retry" }));
 
-    // The failure stays up instead of going back to the loading skeleton.
     expect(
       await within(alert).findByRole("button", { name: "Retrying…" }),
     ).toBeDisabled();

@@ -69,7 +69,6 @@ describe("parseIdGroupContent", () => {
   });
 
   it("reads a field stored as one comma-separated string as a list", () => {
-    // How some older groups are stored; the legacy site reads them too.
     expect(
       parseIdGroupContent(
         '{"name":"Set","id_list":{"genome_id":"727.1572, 727.1525,,727.1572"}}',

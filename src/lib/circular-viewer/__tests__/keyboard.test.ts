@@ -33,7 +33,6 @@ const features = (...items: CircularFeature[]): TrackData => ({
   items: { kind: "features", truncated: false, features: items },
 });
 
-// Outermost first: labels (skipped), forward CDS, GC line (skipped), pending AMR (skipped), reverse CDS.
 const tracks = [
   byId("labels"),
   byId("cds-forward"),
@@ -42,7 +41,6 @@ const tracks = [
   byId("cds-reverse"),
 ];
 const data = new Map<string, TrackData>([
-  // Given out of order: the keyboard follows the circle, not the list.
   [
     "cds-forward",
     features(
@@ -125,11 +123,9 @@ describe("stepCursor", () => {
   });
 
   it("moves to the nearest item on the next ring in or out that has items", () => {
-    // F3 (701..800) skips the GC line and the pending ring; R2 (651..700) is nearest.
     const atF3 = { trackId: "cds-forward", position: 2 };
     const inner = stepCursor(drawings, atF3, "inner");
     expect(inner).toEqual({ trackId: "cds-reverse", position: 1 });
-    // From R1 (101..200) back out, F1 (1..100) is nearer than F2 (301..400).
     const atR1 = { trackId: "cds-reverse", position: 0 };
     expect(featureIdAt(stepCursor(drawings, atR1, "outer"))).toBe("F1");
   });
@@ -192,7 +188,6 @@ describe("cursorTarget", () => {
 
 describe("cursorFor", () => {
   it("puts the cursor on the item a pointer hit", () => {
-    // F2 (301..400), at 35% of the way round.
     const ring = drawings.find((drawing) => drawing.id === "cds-forward");
     if (!ring) throw new Error("no ring");
     const radius = (ring.ring.innerRadius + ring.ring.outerRadius) / 2;

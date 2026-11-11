@@ -5,30 +5,15 @@ const port = Number(process.env.E2E_PORT ?? 3020);
 const baseURL = process.env.E2E_BASE_URL ?? `http://127.0.0.1:${String(port)}`;
 const isCi = Boolean(process.env.CI);
 
-// The wrapper loads .env.e2e.local (gitignored, dev overrides) + .env.e2e.test
-// (committed defaults) into process.env, then runs `next start`. Caller must
-// already have a valid .next/ build — run `pnpm build` first. We deliberately
-// do not invoke `next build` inside the wrapper because a cold build exceeds
-// the webServer timeout and blocks targeted runs.
-//
-// Without the loopback env overrides, server components make real outbound
-// fetches that Playwright's page.route() can't intercept, and the test server
-// spams "JSON-RPC call failed: HTTP error! status: 500". We can't use node's
-// --env-file flag directly: it leaks into NODE_OPTIONS and Next's worker
-// threads reject NODE_OPTIONS containing --env-file.
+// The wrapper loads .env.e2e.local and .env.e2e.test, then runs `next start`
+// (run `pnpm build` first). The loopback env is required or server components
+// make outbound fetches `page.route()` cannot intercept. `node --env-file` is
+// not usable: it leaks into NODE_OPTIONS, which Next's workers reject.
 const webServerCommand = `node e2e/scripts/start-webserver.mjs ${String(port)}`;
 
-// Every *report and artifact* folder this config writes lives under /.misc,
-// per AGENTS.md's file-structure rule — this html report and `outputDir`
-// below. Two paths it writes sit outside /.misc on purpose and are not
-// artifacts: `snapshotDir` (`e2e/__snapshots__`, committed visual baselines —
-// .gitignore says so in place) and the `e2e/.auth/` storage state (gitignored
-// at .gitignore's `/e2e/.auth/`).
-//
-// The html reporter would otherwise default to `playwright-report/` at the
-// repo root, which breaks that rule and is also the default
-// playwright.a11y.config.ts would land on, so both configs set it explicitly
-// rather than sharing one directory.
+// Report and artifact folders live under /.misc; `snapshotDir` and
+// `e2e/.auth/` sit outside on purpose. The html reporter is set explicitly
+// because its default would collide with playwright.a11y.config.ts.
 const htmlReportDir = ".misc/playwright-report";
 
 export default defineConfig({

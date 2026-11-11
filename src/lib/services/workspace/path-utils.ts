@@ -1,8 +1,4 @@
-/**
- * Domain helpers for workspace path construction and write-access checks.
- * Extracted from `WorkspaceBrowser` so they can be tested without rendering
- * the whole component tree.
- */
+/** Domain helpers for workspace path construction and write-access checks. */
 
 import type { ListPermissionsResult, WorkspaceItem } from "./domain";
 import type { WorkspaceViewMode } from "@/types/workspace-browser";
@@ -23,10 +19,8 @@ interface WorkspaceNavigationInput {
   username: string;
   sharedRootUsername?: string;
   /**
-   * Overrides `path` when building home-mode child destinations. Job-result
-   * views pass the dot-prefixed relative path (see `getDotPathRelative`) so
-   * children resolve under `.{jobName}` rather than the display path.
-   * Ignored in shared/public modes, which derive the URL from `item.path`.
+   * Overrides `path` when building home-mode child destinations; job-result
+   * views pass the dot-prefixed relative path. Ignored in shared/public modes.
    */
   basePath?: string;
 }
@@ -42,18 +36,13 @@ interface WorkspaceBreadcrumbInput {
 export interface WorkspacePathsInput {
   mode: "home" | "shared" | "public";
   username: string;
-  /** Relative path under the workspace root (from the URL segment). */
   path: string;
-  /** Current user's workspace root (e.g. "alice@bvbrc"). */
   myWorkspaceRoot: string;
 }
 
 export interface WorkspacePaths {
-  /** `/` + mode-prefixed full path (e.g. /alice@bvbrc/home/folder). */
   currentDirectoryPath: string;
-  /** `/{myWorkspaceRoot}` — used for top-level navigation and root checks. */
   currentUserWorkspaceRoot: string;
-  /** Full path as used by the Workspace API for shared/public modes. */
   fullPath: string;
 }
 
@@ -88,9 +77,8 @@ export interface CanWriteInput {
 }
 
 /**
- * Decide whether the current user can write to `fullPath`. Mirrors the
- * browser's previous behavior: always-false for public; always-true for
- * owned paths; otherwise checked against `currentDirPermissions`.
+ * Whether the current user can write to `fullPath`: false for public, true for
+ * owned paths, otherwise per `currentDirPermissions`.
  */
 export function canWriteToCurrentDir({
   mode,
@@ -135,9 +123,7 @@ export function hasWorkspaceWritePermission(
 }
 
 /**
- * Decide whether a `WorkspaceItem` grants the current user write access using
- * its own permissions tuple. Used when listing children to decide per-item
- * write actions without an extra round-trip.
+ * Whether a `WorkspaceItem` grants write access by its own permissions tuple.
  */
 export function itemHasWriteAccess(item: WorkspaceItem): boolean {
   return hasWorkspaceWritePermission(
@@ -147,32 +133,27 @@ export function itemHasWriteAccess(item: WorkspaceItem): boolean {
 }
 
 /**
- * Regex that matches C0 control characters (U+0000-U+001F) and DEL (U+007F).
- * Built via `String.fromCharCode` + `RegExp` constructor so the pattern is not
- * statically analyzable by `no-control-regex`, which inspects regex literals
- * and evaluated string arguments to `new RegExp(...)`.
+ * Matches C0 control characters and DEL; built via the `RegExp` constructor so
+ * `no-control-regex` cannot statically analyze it.
  */
 const controlCharRegex = new RegExp(
   `[${String.fromCharCode(0)}-${String.fromCharCode(31)}${String.fromCharCode(127)}]`,
   "g",
 );
 
-/** Remove control characters and null bytes from a path segment. */
 export function sanitizePathSegment(segment: string): string {
   if (typeof segment !== "string") return "";
   return segment.trim().replace(/\0/g, "").replace(controlCharRegex, "");
 }
 
 /**
- * Encode a path segment for use in workspace URLs, keeping RFC 3986-legal
- * characters (`@`, `,`, `&`, …) readable in the address bar. Sanitizes input so
- * control characters are never added to the URL.
+ * Encodes a path segment for workspace URLs, keeping RFC 3986-legal characters
+ * (`@`, `,`, `&`) readable; control characters are removed.
  */
 export function encodeWorkspaceSegment(segment: string): string {
   return encodePathSegment(sanitizePathSegment(segment));
 }
 
-/** Split a workspace path into sanitized, non-empty segments. */
 export function parsePathSegments(path: string): string[] {
   return path
     .replace(/^\//, "")
@@ -181,7 +162,6 @@ export function parsePathSegments(path: string): string[] {
     .filter(Boolean);
 }
 
-/** Encode an array of segments into a URL-safe workspace path string. */
 export function buildEncodedSegmentPath(segments: string[]): string {
   return segments.map(encodeWorkspaceSegment).join("/");
 }
@@ -253,9 +233,8 @@ function formatBreadcrumbLabel(
 }
 
 /**
- * Map path segments to breadcrumb descriptors. Every mode shares the same
- * label/muted policy (the last segment is the current location: unlinked and
- * unmuted); only the href differs, so each caller supplies its own builder.
+ * Maps path segments to breadcrumb descriptors; only the href differs per mode,
+ * so each caller supplies its own builder.
  */
 function segmentCrumbs(
   segments: string[],
@@ -317,8 +296,8 @@ export function buildWorkspaceBreadcrumbs({
   if (mode === "shared") {
     const myRoot = workspaceRootUsername || currentUsername;
     return segmentCrumbs(segments, currentUsername, (index) =>
-      // The first shared segment is another user's root; link it to *our* root
-      // so the crumb walks back into the current user's workspace.
+      // The first shared segment is another user's root; link it to our root so
+      // the crumb walks back into the current user's workspace.
       index === 0 && myRoot
         ? `/workspace/${encodeWorkspaceSegment(myRoot)}`
         : `/workspace/${buildEncodedSegmentPath(segments.slice(0, index + 1))}`,
@@ -350,14 +329,10 @@ export function buildWorkspaceBreadcrumbs({
 }
 
 /**
- * Full username with @realm for workspace URLs and paths. The session and the
- * profile service store the short form, and the realm differs per account
- * (legacy PATRIC accounts are `@patricbrc.org`, newer ones `@bvbrc`), so a
- * path must never be built from the short form plus an assumed realm.
- *
- * The canonical profile `id` wins over the login name (`username`, from
- * `l_id`): the workspace is provisioned and owned under `id@realm`, the same
- * owner the session user id gives the `/workspace/home` shortcut.
+ * Full username with @realm for workspace URLs and paths. The realm differs per
+ * account (`@patricbrc.org` legacy, `@bvbrc` newer), so never build a path from
+ * the short form plus an assumed realm; the canonical profile `id` wins over
+ * the login name, since the workspace is owned under `id@realm`.
  */
 export function workspaceUsername(
   user: { id?: string; username?: string; realm?: string } | null,

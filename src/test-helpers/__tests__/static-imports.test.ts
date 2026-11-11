@@ -21,8 +21,6 @@ describe("valueImportsMatching", () => {
     ]);
   });
 
-  // TypeScript drops a declaration whose every specifier is `type`, so it
-  // adds nothing to the runtime graph.
   it("leaves out type-only imports and exports, inline `type` ones too", () => {
     const source = [
       'import type { ChartProps } from "@/components/heavy/chart";',

@@ -24,7 +24,6 @@ export async function TaxonomySummary({
   taxonId: number;
   taxon: OrganismTaxonomy | null;
 }) {
-  // allSettled: failing the summary endpoint shouldn't blank the entire card.
   const summaryResult = await fetchOrganismSummary(taxonId).then(
     (value) => ({ status: "fulfilled" as const, value }),
     (reason: unknown) => ({ status: "rejected" as const, reason }),
@@ -36,9 +35,7 @@ export async function TaxonomySummary({
     if (summaryResult.status === "rejected") throw summaryResult.reason;
   }
 
-  // A failed summary must not read as "no data": its counts say Unavailable,
-  // and one line below says why. The genome count the taxonomy record carries
-  // (the breadcrumb's) still shows.
+  // A failed summary reads as Unavailable with a reason, not as "no data".
   const summaryError =
     summaryResult.status === "rejected"
       ? formatUserFacingErrorMessage(

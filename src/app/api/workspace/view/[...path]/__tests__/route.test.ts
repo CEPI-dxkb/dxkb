@@ -77,8 +77,7 @@ describe("GET /api/workspace/view opened as a document", () => {
   });
 
   it("blames a Workspace reply that times out mid-body on the workspace, not file storage", async () => {
-    // MSW does not tie the request signal to a mocked body, so the stream
-    // errors the way undici's does when `AbortSignal.timeout` fires mid-body.
+    // MSW does not tie the request signal to a mocked body, so the stream errors as undici's does mid-body.
     server.use(
       http.post(
         workspaceApiUrl,

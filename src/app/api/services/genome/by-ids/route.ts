@@ -23,12 +23,7 @@ const defaultFields = [
   "superkingdom",
 ];
 
-/**
- * The select list: the default fields plus any extra ones the caller asks for
- * (Meta-CATS needs `genbank_accessions` and the metadata it groups by). Only
- * plain field identifiers pass, so a name cannot close `select(` and append
- * its own RQL.
- */
+/** Default fields plus caller extras; only plain identifiers pass, so a name cannot close `select(` and append its own RQL. */
 function selectFields(extra: unknown): string[] {
   const requested = Array.isArray(extra)
     ? extra.filter(
@@ -58,8 +53,6 @@ export const POST = withAuth(async (request: NextRequest, { token }) => {
   const queryString = `?in(genome_id,(${inClause}))&select(${selectFields(body.fields).join(",")})&limit(${String(Math.min(genomeIds.length, 100))})`;
   const url = `${getRequiredEnv("NEXT_PUBLIC_DATA_API")}/genome/${queryString}`;
 
-  // A network failure or spent budget throws an UpstreamError, which
-  // withAuth's errorResponse answers with its 502/503/504.
   const response = await fetchUpstream(
     url,
     {

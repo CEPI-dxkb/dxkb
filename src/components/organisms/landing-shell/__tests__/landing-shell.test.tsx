@@ -37,7 +37,6 @@ const views: OrganismLandingView[] = [
 ];
 
 beforeEach(() => {
-  // The URL outlives a test.
   history.replaceState(null, "", "/organisms/bacteria");
 });
 
@@ -62,7 +61,6 @@ describe("OrganismLandingShell — gate-aware tab resolution", () => {
         tabParam="phylogeny"
       />,
     );
-    // The disabled tab must NOT become the active rendered view.
     expect(screen.queryByTestId("view-phylogeny")).not.toBeInTheDocument();
     expect(screen.getByTestId("view-overview")).toBeInTheDocument();
   });
@@ -75,9 +73,7 @@ describe("OrganismLandingShell — gate-aware tab resolution", () => {
         tabParam={null}
       />,
     );
-    // disabled defaultView must NOT be rendered
     expect(screen.queryByTestId("view-phylogeny")).not.toBeInTheDocument();
-    // first enabled view must be rendered instead
     expect(screen.getByTestId("view-genomes")).toBeInTheDocument();
   });
 
@@ -220,7 +216,6 @@ describe("OrganismLandingShell — tabParam", () => {
   }
 
   it("matches the raw tab, so a legacy ?view= page follows its own URL", () => {
-    // A canonical Genomes visit records its search...
     history.replaceState(
       null,
       "",
@@ -228,8 +223,8 @@ describe("OrganismLandingShell — tabParam", () => {
     );
     const { rerender } = render(shell("genomes"));
 
-    // ...then Back to a legacy link to the same view: Next keeps the subtree,
-    // and the stale frame still holds the leaving search.
+    // Back to a legacy link to the same view: Next keeps the subtree, and the stale
+    // frame still holds the leaving search.
     act(() => {
       history.replaceState(null, "", "/organisms/bacteria?view=genomes");
     });
@@ -237,9 +232,8 @@ describe("OrganismLandingShell — tabParam", () => {
       "tab=genomes&collection_year=2025",
     );
 
-    // The legacy page opens Genomes without a `tab`, and its content follows
-    // the URL, including a nested table's History API write. Forwarding the
-    // resolved view ("genomes") instead would hold the old search for good.
+    // The legacy page opens Genomes without a `tab`; forwarding the resolved view
+    // would hold the old search for good.
     rerender(shell(null));
     expect(screen.getByRole("status")).toHaveTextContent("view=genomes");
     act(() => {

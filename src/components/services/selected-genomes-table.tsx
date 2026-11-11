@@ -19,15 +19,10 @@ export interface SelectedGenomeRow {
 interface SelectedGenomesTableProps {
   rows: SelectedGenomeRow[];
   onRemove: (id: string) => void;
-  /** Tags the first row as the reference genome (Genome Alignment's anchor). */
   markFirstAsReference?: boolean;
 }
 
-/**
- * The selected-genomes table BLAST and Genome Alignment share: one row per
- * genome with its name, ID and a remove button, in a white box that scrolls
- * once the list outgrows it.
- */
+/** The selected-genomes table BLAST and Genome Alignment share. */
 export function SelectedGenomesTable({
   rows,
   onRemove,

@@ -26,13 +26,8 @@ import {
 import type { ReactNode } from "react";
 
 /**
- * The one icon for each kind of view tab. Every view rail takes its icons from
- * here: the organism and taxon pages, each list and member page under
- * `(views)`, and the All Data Types search's data types. So a data type shows
- * the same icon wherever it appears; a tab whose key differs between pages
- * (`structures` on the Genome list, `protein-structures` on a taxon) still
- * names the same entry. A new kind of tab adds its icon here, never at the
- * call site.
+ * The one icon per kind of view tab; add a new kind here, never at the call
+ * site.
  */
 export const viewIcons = {
   overview: <Blocks />,

@@ -1,17 +1,11 @@
 /**
- * The page-context sentence sent with each question as `system_prompt`, which
- * the gateway forwards to the orchestrator as `page_context`. It tells the
- * agents what the user is looking at, so "this genome" has a referent.
- *
- * Built from the URL alone. The gateway's own `/get-path-state` only knows
- * BV-BRC URLs, so it is not used. Never include tokens or private data:
- * the sentence is saved with the turn.
+ * Built from the URL alone (the gateway's `/get-path-state` only knows BV-BRC URLs). Never include
+ * tokens or private data: the sentence is saved with the turn.
  */
 
 const siteSentence =
   "The user is on DXKB (the Disease X Knowledge Base), a site built on BV-BRC data and services; DXKB page URLs differ from BV-BRC's.";
 
-/** Entity pages: `/<segment>/<id>` → "<label> <id>". */
 const entityLabels = new Map<string, string>(Object.entries({
   genome: "genome",
   feature: "feature",
@@ -21,7 +15,6 @@ const entityLabels = new Map<string, string>(Object.entries({
   experiment: "experiment",
 }));
 
-/** Collection pages with an RQL filter: `/<segment>?rql=…`. */
 const collectionLabels = new Map<string, string>(Object.entries({
   genome: "genomes",
   feature: "genomic features",
@@ -43,7 +36,6 @@ function decode(segment: string): string {
   }
 }
 
-/** Bounds a value taken from the URL, which the user can make arbitrarily long. */
 function clip(value: string, max = 300): string {
   return value.length <= max ? value : `${value.slice(0, max)}…`;
 }
@@ -98,10 +90,6 @@ function describeView(
   return null;
 }
 
-/**
- * One or two sentences about the page at `pathname` (+ `search`), or just the
- * site sentence for a page it does not describe.
- */
 export function describeCopilotPage(
   pathname: string,
   search: string | URLSearchParams = "",
@@ -111,9 +99,8 @@ export function describeCopilotPage(
   const segments = pathname.split("/").filter(Boolean);
   const view = describeView(segments, params);
   if (!view) return siteSentence;
-  // Each clipped part is bounded; this literal cap keeps the whole sentence
-  // under the gateway's 2,000-character limit (server.ts is server-only, so
-  // the limit is not imported).
+  // This literal cap keeps the sentence under the gateway's 2,000-character limit (server.ts is
+  // server-only, so the limit is not imported).
   return `${siteSentence} They are viewing ${view} (URL path ${clip(pathname, 300)}).`.slice(
     0,
     1900,

@@ -28,14 +28,7 @@ function describeSteps({ steps, max }: GeoColorScale): string {
     .join("; ");
 }
 
-/**
- * The map's color steps as a stepped bar, each boundary labeled with the
- * fewest genomes of the step it starts and the bar's end with the most any
- * region has. The "No data" swatch leads the bar as a step of its own, set
- * apart by a gap, with its label in the same row as the bounds. The labels sit
- * in a row of their own below the swatches, so the legend's height includes
- * them.
- */
+/** The map's color steps as a stepped bar, with boundary labels in a row below and a leading "No data" swatch. */
 export function ColorLegend({ scale, unit }: ColorLegendProps) {
   const { steps, max } = scale;
   const lastStep = steps.at(-1);
@@ -47,8 +40,7 @@ export function ColorLegend({ scale, unit }: ColorLegendProps) {
     <div
       role="img"
       aria-label={`${unit}: ${ranges ? `${ranges}. ` : ""}No data: no genomes.`}
-      // Top-aligned, with the text 1px up, so the 12px text centers on the
-      // 10px swatches rather than on the swatches and their labels together.
+      // Text sits 1px up so the 12px text centers on the 10px swatches alone.
       className="flex flex-wrap items-start gap-x-5 gap-y-3 text-xs text-muted-foreground"
     >
       <span className="-mt-px leading-none">{unit}</span>
@@ -61,7 +53,6 @@ export function ColorLegend({ scale, unit }: ColorLegendProps) {
           <span className="h-4 whitespace-nowrap">No data</span>
         </div>
         {steps.length > 0 && (
-          // px-4 leaves room for the end labels, centered on the bar's edges.
           <div className="flex flex-col gap-1.5 px-4">
             <div className="flex">
               {steps.map((step) => (

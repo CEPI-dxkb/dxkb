@@ -15,14 +15,6 @@ import {
 import { TaxonPage } from "../../pages";
 import { encodeQueryComponent } from "@/lib/url";
 
-// This spec exercises strain (default beforeEach fixture), genome, genome
-// feature, and epitope tabs across several describe blocks below — each tab's
-// own test either reads this default data or replaces it with a local, more
-// specific override that wins first-match, so one shared bundle covers the
-// whole file instead of the full unscoped catch-all. genomeFeatureScenarioOverrides
-// was an undeclared dependency found while narrowing this spec: the "features"
-// local-filtering case's initial render needs it even though its own test
-// layers a local page.route() on top for the filtered-count assertion.
 const taxonListDataOverrides = [
   ...strainScenarioOverrides,
   ...genomeScenarioOverrides,
@@ -33,7 +25,6 @@ const taxonListDataOverrides = [
 
 test.use({ storageState: { cookies: [], origins: [] } });
 
-// Force the strain data API to return 500 so we can assert the error-handling path.
 const strainApi500: JsonOverride = {
   url: /\/api\/data\/strain(?:\?|$)/,
   method: "GET",
@@ -41,9 +32,8 @@ const strainApi500: JsonOverride = {
   body: { error: "Internal Server Error" },
 };
 
-// Taxon 11520 = Influenza A virus (Orthomyxoviridae). hasStrains predicate requires
-// "Orthomyxoviridae" in lineage_names — bacteria like taxon 234 (Brucella) evaluate
-// false and the Strains tab is disabled, so its collection never mounts.
+// Taxon 11520 (Orthomyxoviridae) satisfies hasStrains; other lineages, such as 234,
+// disable the Strains tab.
 const influenzaTaxonId = "11520";
 
 test.describe("taxon strains actions", () => {
@@ -175,8 +165,8 @@ test.describe("taxon strains actions", () => {
     expect(clipboard).not.toContain("641501.3");
   });
 
-  // Unguarded: the associated-Genome navigation is plain routing, so every browser
-  // keeps this coverage even though the clipboard assertions above are Chromium-only.
+  // Unguarded: associated-Genome navigation is plain routing, so every browser covers
+  // it.
   test("opens all associated genomes", async ({ page }) => {
     const taxon = new TaxonPage(page);
     await taxon.selectAllRowsOnPage();
@@ -221,14 +211,10 @@ test.describe("taxon strains actions", () => {
       .click();
 
     await expect(page).toHaveURL(`/taxonomy/${influenzaTaxonId}?tab=strains`);
-    // Direct BLAST needs no workspace object, so it carries the selected Genome IDs
-    // into the service tab and lets the protected route handle sign-in. Redirecting
-    // from here instead discarded the selection.
     const serviceTab = context.waitForEvent("page");
     await page.getByRole("button", { name: "BLAST" }).click();
     const opened = await serviceTab;
-    // The protected service route sends a signed-out user through sign-in, but the
-    // rerun key survives the round trip, so the prefill is still there afterwards.
+    // The rerun key survives the sign-in round trip, so the prefill is still there.
     await expect(opened).toHaveURL(
       /\/sign-in\?redirect=\/services\/blast\?rerun_key%3D/,
     );
@@ -258,8 +244,7 @@ test.describe("taxon strains actions", () => {
     await page.getByRole("button", { name: /^group$/i }).click();
 
     await expect(page.getByText("Sign in required")).toBeVisible();
-    // The popover's Sign In is a Button rendered as an anchor, so it carries
-    // role="button" rather than role="link".
+    // The popover's Sign In is a Button rendered as an anchor, so it has role="button".
     await expect(
       page.getByRole("dialog").getByRole("button", { name: "Sign In" }),
     ).toHaveAttribute(
@@ -289,11 +274,6 @@ test.describe("taxon strains tab: data API error handling", () => {
     await expect(page.getByRole("button", { name: "Strains" })).toBeVisible();
   });
 });
-
-// ─── Download Selected: POST regression ───────────────────────────────────────
-// Regression: the download-selected handler sent a GET with all IDs in the URL.
-// With 200 rows, the URL exceeded browser limits. The shared collection sends a
-// bounded JSON POST through the same-origin Data API gateway instead.
 
 const domainsTaxonId = "11974";
 
@@ -375,9 +355,9 @@ test.describe("taxon data table: checkbox-column selection", () => {
   });
 });
 
-// The Download tile sends a selection's ids in its POST body, never in a URL:
-// as GET params, 200 ids made the request fail (net::ERR_FAILED). The file
-// itself is the gateway's (`collection-download.spec.ts`), so here it is a stub.
+// Selected ids go in the POST body, never a URL: 200 ids as GET params failed with
+// net::ERR_FAILED. The file is the gateway's (collection-download.spec.ts), so it is a
+// stub here.
 const pfDownload = /\/api\/data\/protein_feature\/download(?:\?|$)/;
 
 async function downloadSelectedCsv(page: Page) {
@@ -433,17 +413,8 @@ test.describe("taxon domains-and-motifs: Download sends the selection by POST", 
   }
 });
 
-// ─── Facet click regression: multi-word eq() values must be quoted ───────────
-// Regression: a facet click built an eq() clause with an unquoted value. Solr
-// string fields (e.g. epitope_type) split an unquoted multi-word value into
-// separate ANDed terms — `eq(epitope_type,Linear peptide)` becomes
-// `epitope_type:Linear AND epitope_type:peptide`, matching nothing — so
-// clicking any multi-word facet value hung the table at
-// "Showing 0-0 of 0 results" forever.
-//
-// The quoting now happens in exactly one place for every view: `serializeValue`
-// in src/lib/data-api/rql.ts, which the gateway applies to a structural filter
-// (this tab, via ResourceFilterBar) and to a raw `rql` string alike.
+// Solr splits an unquoted multi-word value into ANDed terms, so a multi-word facet
+// value must be quoted (`serializeValue` in src/lib/data-api/rql.ts).
 const epitopeGateway = /\/api\/data\/epitope(?:\?|$)/;
 
 function buildEpitopeRows(count: number, epitopeType: string) {
@@ -575,9 +546,7 @@ test.describe("taxon epitopes tab: local filtering and facets", () => {
       overrides: [...taxonListDataOverrides],
     });
 
-    // The gateway exposes one combined rows/count/facets response. Only a
-    // correctly quoted phrase predicate is treated as a hit so this remains a
-    // regression test for typed RQL serialization.
+    // Only a correctly quoted phrase predicate counts as a hit.
     await page.route(epitopeGateway, async (route) => {
       if (route.request().method() !== "GET") return route.fallback();
       const decoded = decodeURIComponent(route.request().url());
@@ -618,8 +587,6 @@ test.describe("taxon epitopes tab: local filtering and facets", () => {
       "Linear peptide",
     );
 
-    // The regression hangs here forever at "Showing 0-0 of 0 results" — assert the
-    // real match count instead, proving the request carried a quoted phrase value.
     await expect(page.getByText(/Showing 1-3 of 3 results/)).toBeVisible({
       timeout: 10_000,
     });

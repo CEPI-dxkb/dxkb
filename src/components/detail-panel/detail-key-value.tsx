@@ -4,15 +4,7 @@ import { formatDate } from "@/lib/services/workspace/helpers";
 export interface DetailField {
   label: string;
   value: unknown;
-  /** Render "date" to auto-format ISO strings */
   format?: "date";
-  /**
-   * Custom renderer — overrides default text rendering. The sole mechanism for
-   * link fields: the caller (`info-panel.tsx`) routes the destination through
-   * the `./metadata-link` boundary, which classifies internal versus external
-   * and returns the built `Link`/`<a>` element supplied here, so this component
-   * stays free of routing and URL-classification concerns.
-   */
   render?: () => ReactNode;
 }
 

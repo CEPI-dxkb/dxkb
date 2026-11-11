@@ -42,12 +42,10 @@ export function useFastaValidation({
     setFastaTextState(text);
     setIsValidating(true);
 
-    // Clear existing timeout
     if (debounceTimeoutRef.current) {
       clearTimeout(debounceTimeoutRef.current);
     }
 
-    // Set new timeout for validation
     const timeout = setTimeout(() => {
       const result = validateFastaForBlast(text, inputType);
       setValidationResult(result);

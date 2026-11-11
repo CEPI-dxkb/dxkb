@@ -15,19 +15,13 @@ import { cn } from "@/lib/utils";
 interface FolderPickerRowProps {
   item: WorkspaceItem;
   target: PickerTarget;
-  /** `pickerRowKey(item, target)`, computed by the column. */
   rowKey: string;
-  /** `isPickerItemInteractive(item, target)`, computed by the column. */
   interactive: boolean;
-  /** The column holding the row. */
   index: number;
   folderVariant: FolderIconVariant;
   showOwner: boolean;
-  /** The row is its column's selection. */
   isSelected: boolean;
-  /** The row is the picker's selection (active styling). */
   isActive: boolean;
-  /** The row is the strip's single Tab stop. */
   isTabStop: boolean;
   isWritable: boolean;
   isUsable: boolean;
@@ -36,7 +30,6 @@ interface FolderPickerRowProps {
   onKeyDown: (event: KeyboardEvent<HTMLDivElement>) => void;
 }
 
-/** One option row of a column: icon, name, owner, size, lock and chevron. */
 export function FolderPickerRow({
   item,
   target,

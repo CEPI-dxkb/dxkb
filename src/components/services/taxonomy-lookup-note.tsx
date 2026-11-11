@@ -6,10 +6,8 @@ import {
 } from "@/lib/forms/taxonomy-lookup";
 
 /**
- * "Could not verify taxonomy ID N: <reason>" under a form's taxonomy fields,
- * after a rerun's taxon name lookup failed (`applyTaxonomyIdWithLookup`).
- * The restored ID and name stay, so the form is still submittable; the note
- * goes once the form holds another taxonomy ID.
+ * Shown after a rerun's taxon name lookup failed; the restored ID and name
+ * stay, and it goes once the form holds another taxonomy ID.
  */
 export function TaxonomyLookupNote({
   form,

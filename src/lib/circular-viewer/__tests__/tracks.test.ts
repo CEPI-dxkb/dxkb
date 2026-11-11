@@ -44,7 +44,6 @@ describe("trackReducer", () => {
     let state = trackReducer(initialTrackState(), { type: "toggle", id: "amr" });
     expect(state.tracks.find((track) => track.id === "amr")?.visible).toBe(false);
     state = trackReducer(state, { type: "remove", id: "vf" });
-    // Legacy's remove emptied the whole list; only VF goes.
     expect(state.tracks.map((track) => track.id)).not.toContain("vf");
     expect(state.tracks).toHaveLength(10);
     state = trackReducer(state, { type: "remove", id: "contigs" });
@@ -65,7 +64,6 @@ describe("trackReducer", () => {
     expect(custom.map((track) => track.foreground)).toEqual([
       "#0000FF", "#008000", "#FFA500", "#FFC0CB", "#FF0000", "#800080", "#0000FF",
     ]);
-    // Blue and purple (under 3:1 on a dark card) lighten in a dark theme, green and the rest do not.
     expect(custom.map((track) => track.darkForeground)).toEqual([
       "#5C8DFF", null, null, null, null, "#C08AF5", "#5C8DFF",
     ]);
@@ -87,7 +85,6 @@ describe("trackReducer", () => {
       foreground: "#0000FF",
       background: "#FFFFE0",
       scale: { min: -3, max: 3 },
-      // Drawn on its own light background, where a lighter blue would fade.
       darkForeground: null,
     });
     expect(trackDescription(state.tracks.at(-1) ?? defaultTracks()[0])).toBe(

@@ -43,7 +43,6 @@ describe("InMemoryWorkspaceRepository", () => {
         permissions: { user: "w", global: "n" },
       }),
     );
-    // Verify no snake_case fields bleed through
     expect(item).not.toHaveProperty("owner_id");
     expect(item).not.toHaveProperty("creation_time");
     expect(item).not.toHaveProperty("user_permission");
@@ -200,8 +199,6 @@ describe("InMemoryWorkspaceRepository", () => {
       "appendToIdGroup",
       "getRaw",
     ]);
-    // The read options are part of the call history so a content read (rather than a
-    // metadata-only read) can be asserted.
     expect(repo.calls.at(-1)).toEqual(
       expect.objectContaining({
         method: "getRaw",
@@ -247,8 +244,7 @@ describe("InMemoryWorkspaceRepository", () => {
   });
 
   it("rejects create overwrite and malformed append without mutating content", async () => {
-    // A comma-separated string is a format older groups use and is read;
-    // a number is not.
+    // A comma-separated string is read (older groups use it); a number is not.
     const malformed = JSON.stringify({ id_list: { genome_id: 42 } });
     const repo = new InMemoryWorkspaceRepository({
       directories: {

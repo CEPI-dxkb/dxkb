@@ -1,9 +1,6 @@
 import { restoreHistoryScroll } from "@/lib/history-scroll-restoration";
 
-/**
- * jsdom has no layout, so a region here is a div whose scrollTop clamps to a
- * height the test sets, and fires `scroll` when it moves, as a browser's does.
- */
+/** jsdom has no layout, so a region is a div whose scrollTop clamps to a test-set height and fires `scroll` when it moves. */
 function scrollRegion(maxScroll = 5000) {
   const region = document.createElement("div");
   const content = { maxScroll };
@@ -26,18 +23,15 @@ function attach(region: HTMLElement) {
   return detach;
 }
 
-/** A link: a new history entry, no popstate. */
 function visit(address: string) {
   window.history.pushState(null, "", address);
 }
 
-/** Back or forward: the address changes, with no push, then popstate fires. */
 function traverse(address: string) {
   window.history.replaceState(null, "", address);
   window.dispatchEvent(new PopStateEvent("popstate"));
 }
 
-/** Leave a region scrolled to `offset` at `address`. */
 function scrollAndLeave(address: string, offset: number) {
   visit(address);
   const { region } = scrollRegion();
@@ -238,7 +232,6 @@ describe("restoreHistoryScroll", () => {
     content.maxScroll = 2000;
     runFrames();
     expect(region.scrollTop).toBe(900);
-    // The last step's scroll event arrives a frame later, after the restore.
     region.dispatchEvent(new Event("scroll"));
     visit("/elsewhere");
     detach();
@@ -280,7 +273,6 @@ describe("restoreHistoryScroll", () => {
     const leaving = scrollRegion();
     const detach = attach(leaving.region);
     traverse("/taxonomy/9?tab=overview");
-    // The page being left still scrolls before the next one replaces it.
     leaving.region.scrollTop = 50;
     detach();
     const { region } = scrollRegion();
@@ -310,7 +302,6 @@ describe("restoreHistoryScroll", () => {
     const { region } = scrollRegion();
     const detach = attach(region);
     region.scrollTop = 300;
-    // A nested table's next page and back again, all in one region.
     visit("/genome/16?features.page=3");
     region.scrollTop = 500;
     traverse("/genome/16?features.page=2");
@@ -353,7 +344,6 @@ describe("restoreHistoryScroll", () => {
     const restored = scrollRegion();
     const detach = attach(restored.region);
     expect(restored.region.scrollTop).toBe(900);
-    // A tab link to a table view, which has no scroll region, and one back.
     visit("/taxonomy/18?tab=genomes");
     detach();
     visit("/taxonomy/18");
@@ -367,7 +357,6 @@ describe("restoreHistoryScroll", () => {
     scrollAndLeave("/taxonomy/19", 900);
 
     traverse("/taxonomy/19");
-    // Next's router writes its state onto the entry on every commit.
     window.history.replaceState({ __NA: true }, "", "/taxonomy/19");
     const { region } = scrollRegion();
     attach(region);
@@ -378,10 +367,7 @@ describe("restoreHistoryScroll", () => {
   it("restores a region the router renders before this module hears of the step", async () => {
     vi.resetModules();
     const fresh = await import("@/lib/history-scroll-restoration");
-    // Next's router listens from hydration, before any region attaches, so in
-    // Chromium its popstate listener runs first, and React renders a cached
-    // destination in the microtask after it, attaching the ref twice in
-    // Strict Mode.
+    // Next's router listens from hydration, so in Chromium its popstate listener runs first and React renders a cached destination in the next microtask, attaching the ref twice in Strict Mode.
     const destination = scrollRegion();
     const renderDestination = () => {
       fresh.restoreHistoryScroll(destination.region)?.();

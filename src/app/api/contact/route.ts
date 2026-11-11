@@ -12,14 +12,9 @@ import {
   type ContactFormData,
 } from "@/app/(footer)/contact/components/contact-form-utils";
 
-// Cap submissions per client IP to prevent flooding help@dxkb.org.
 const rateLimitMax = 5;
-const rateLimitWindowMs = 60 * 60 * 1000; // 1 hour
+const rateLimitWindowMs = 60 * 60 * 1000;
 
-/**
- * Builds the plaintext email body from a validated contact submission,
- * mirroring the metadata the legacy /reportProblem route attached.
- */
 function buildMessageBody(data: ContactFormData): string {
   return [
     `Inquiry type: ${inquiryTypeLabel(data.inquiryType)}`,
@@ -31,11 +26,8 @@ function buildMessageBody(data: ContactFormData): string {
 }
 
 /**
- * Runs `send` within `smtpSendDeadlineMs`, and stops it when the submitter
- * leaves. nodemailer has no way to cancel a send (`close()` leaves a busy
- * connection open), so the route owns the relay socket and destroys it: the
- * relay sees the connection drop instead of delivering a message the user
- * was told had failed. The deadline rejects as nodemailer's own `ETIMEDOUT`.
+ * Runs `send` within `smtpSendDeadlineMs` and destroys the relay socket when the submitter leaves,
+ * since nodemailer cannot cancel a send and the relay would otherwise deliver a message the user was told had failed.
  */
 async function sendWithinDeadline(
   send: Promise<unknown>,
@@ -44,8 +36,8 @@ async function sendWithinDeadline(
 ): Promise<void> {
   const cutOff = () => {
     socket.destroy();
-    // A socket destroyed while nodemailer is still resolving the relay's
-    // name is revived by its `connect()`; drop it again once it connects.
+    // A socket destroyed while nodemailer resolves the relay's name is revived
+    // by its `connect()`; drop it again once it connects.
     socket.once("connect", () => socket.destroy());
   };
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -108,12 +100,8 @@ export const POST = withErrorHandling(async (request: NextRequest) => {
 
   const data = parsed.data;
 
-  // Mirrors the BV-BRC report-problem route: default to the deployment
-  // server's local mail relay (localhost:25, unauthenticated) unless
-  // overridden by env.
   const host = process.env.SMTP_HOST || "localhost";
-  // Only fall back to 25 when SMTP_PORT is unset, so an explicit value is
-  // always respected (Number(x) || 25 would treat a valid "0" as unset).
+  // Only default to 25 when SMTP_PORT is unset (`Number(x) || 25` would treat "0" as unset).
   const port = process.env.SMTP_PORT ? Number(process.env.SMTP_PORT) : 25;
   const to = process.env.CONTACT_EMAIL_TO || "help@dxkb.org";
   const from =
@@ -122,24 +110,18 @@ export const POST = withErrorHandling(async (request: NextRequest) => {
   const pass = process.env.SMTP_PASSWORD;
   const hasAuth = Boolean(user && pass);
 
-  // nodemailer connects (and TLS-upgrades) this socket; holding it is what
-  // lets `sendWithinDeadline` end the send.
   const socket = new Socket();
   const transport = nodemailer.createTransport({
     host,
     port,
-    // Implicit TLS on 465; STARTTLS otherwise.
     secure: port === 465,
     socket,
-    // Name the stalled step; `sendWithinDeadline` bounds the whole send.
     ...smtpTimeoutsMs,
     ...(hasAuth
-      ? // Authenticated (remote) relay: verify the server certificate
-        // (nodemailer's default) so credentials can't be captured by a
-        // man-in-the-middle presenting a self-signed cert.
+      ? // Authenticated relay: keep nodemailer's certificate verification so
+        // credentials cannot be captured by a self-signed man-in-the-middle.
         { auth: { user, pass } }
-      : // Unauthenticated local relay (e.g. localhost:25): the on-box MTA
-        // typically uses a self-signed cert and no credentials are at risk.
+      : // Local on-box relay: typically a self-signed cert, no credentials at risk.
         { tls: { rejectUnauthorized: false } }),
   });
 
@@ -156,10 +138,8 @@ export const POST = withErrorHandling(async (request: NextRequest) => {
       request.signal,
     );
   } catch (error) {
-    // Log the raw SMTP error server-side for debugging, but don't forward it
-    // to the client: nodemailer errors leak infrastructure details (relay
-    // host, port, auth failure reason) to an anonymous form submitter. The
-    // client gets the kind of failure and its code instead.
+    // Log the raw SMTP error server-side only: it leaks relay host, port and
+    // auth details to an anonymous submitter.
     const detail =
       error instanceof Error ? error.message : String(error);
     console.error("Contact email send failed:", detail);

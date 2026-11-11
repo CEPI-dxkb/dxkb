@@ -18,10 +18,8 @@ interface GraphNodeListProps {
   onSelectNode: (node: GNode) => void;
 }
 
-// Keyboard-operable equivalent of clicking a node on the WebGL canvas. Sigma
-// only wires pointer events, so this list is the sole path to reach a node
-// (and, via the detail panel, its edges) without a mouse. Selecting here drives
-// the same selection sink as clickNode, keeping canvas and list in lockstep.
+// Sigma wires only pointer events, so this list is the keyboard path to a node (and, via the detail
+// panel, its edges).
 export function GraphNodeList({
   nodes,
   selectedIds,
@@ -29,12 +27,8 @@ export function GraphNodeList({
 }: GraphNodeListProps) {
   const listRef = useRef<HTMLDivElement | null>(null);
 
-  // cmdk's own `data-selected` cursor follows the pointer, which visually
-  // competed with the app selection and highlighted whatever was last hovered
-  // rather than the node clicked on the graph. We disable pointer selection so
-  // that phantom highlight can't wander, and style the app selection through a
-  // separate data attribute below. On a graph→list selection change, scroll the
-  // selected row into view so the two stay in sync.
+  // cmdk's own data-selected cursor follows the pointer and competes with the app selection, so
+  // pointer selection is disabled; selection changes scroll the row into view.
   useEffect(() => {
     if (selectedIds.size !== 1) return;
     const el = listRef.current?.querySelector('[data-app-selected="true"]');
@@ -43,8 +37,7 @@ export function GraphNodeList({
 
   return (
     <Command
-      // cmdk defaults to its own fuzzy filter over each item's `value`; we set
-      // value to gene + id so both are searchable.
+      // value is gene + id so both are searchable by cmdk's filter.
       label="Interaction network nodes"
       className="h-full"
       disablePointerSelection
@@ -62,12 +55,8 @@ export function GraphNodeList({
                 onSelectNode(node);
               }}
               data-app-selected={isSelected}
-              // cmdk keeps its own `data-selected` cursor (mount first-item,
-              // keyboard, click) independent of the app selection, which showed
-              // as a competing highlight on the wrong row. Neutralise it and let
-              // the app selection, driven equally by canvas clicks and this list,
-              // be the single amber highlight, forced to win when a row is both
-              // cmdk-focused and app-selected.
+              // Neutralise cmdk's own data-selected cursor so the app selection is the single
+              // highlight, forced to win when both apply.
               variant="app-selection"
             >
               <span

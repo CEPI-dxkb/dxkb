@@ -157,7 +157,6 @@ describe("genome browser client", () => {
       "a".repeat(10),
     );
     expect(requested).toEqual(["0-40000", "40000-45000"]);
-    // Both ranges are cached now: reading them again sends nothing.
     await expect(loadGenomeBrowserSequence(sequence, 19_990, 20_010)).resolves.toBe(
       "a".repeat(20),
     );

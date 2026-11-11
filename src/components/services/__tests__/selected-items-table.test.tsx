@@ -20,7 +20,6 @@ describe("SelectedItemsTable", () => {
       "max-h-84",
       "overflow-y-auto",
     );
-    // No inner bordered box and no padding frame around the rows.
     expect(box).not.toHaveClass("p-4");
     expect(container.querySelectorAll(".rounded-md")).toHaveLength(1);
   });

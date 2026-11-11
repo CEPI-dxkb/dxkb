@@ -43,13 +43,9 @@ interface ActionConfig {
   id: WorkspaceActionId;
   label: string;
   icon: LucideIcon;
-  /** "*" or list of item types this action applies to */
   validTypes: string[] | "*";
-  /** If true, hide when user has only read permission */
   requireWrite?: boolean;
-  /** If true, action only applies when exactly one item is selected */
   singleOnly?: boolean;
-  /** If set, button is always disabled and this string is shown as hover title */
   disabledWithTooltip?: string;
 }
 
@@ -154,16 +150,11 @@ function isActionValidForSelection(
 
 export interface WorkspaceActionBarProps {
   selection: WorkspaceItem[];
-  /** URL opened when the Guide button is clicked (from env WORKSPACE_GUIDE_URL). */
   workspaceGuideUrl: string;
   currentPath?: string;
-  /** Action IDs to disable (e.g. "download" while fetching URL). */
   disabledActionIds?: WorkspaceActionId[];
-  /** Action IDs currently loading (show spinner instead of icon). */
   loadingActionIds?: WorkspaceActionId[];
-  /** When true, the Favorite action shows a filled star (selected folder is favorited). */
   isCurrentSelectionFavorite?: boolean;
-  /** When true, only show read-only actions (guide + download). Used for public workspace browsing. */
   readOnly?: boolean;
   onAction?: (actionId: WorkspaceActionId, selection: WorkspaceItem[]) => void;
 }

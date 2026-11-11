@@ -4,7 +4,6 @@ import { describe, expect, it, vi } from "vitest";
 vi.mock("../genome-collection", async () => {
   const { useState } = await import("react");
   return {
-    // The first props it mounted with live in state, so a remount shows.
     GenomeCollection: ({
       initialState,
       overview,

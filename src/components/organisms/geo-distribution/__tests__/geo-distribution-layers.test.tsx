@@ -7,9 +7,8 @@ import { ChoroplethPath } from "../choropleth-path";
 import type { OrganismGeoDistribution } from "@/lib/services/organisms/types";
 import type { StateFeature } from "../topology-utils";
 
-// Replace @visx/geo projection components with a minimal stub that calls the
-// render-prop children directly with the supplied features. This lets us test
-// the layer logic (meta lookup, fallback) without SVG projection math.
+// Stub @visx/geo to call render-prop children with the supplied features,
+// avoiding SVG projection math.
 vi.mock("@visx/geo", () => ({
   AlbersUsa: ({
     data,
@@ -68,7 +67,6 @@ beforeEach(() => {
 
 describe("UsStatesLayer", () => {
   it("renders without crashing when a state has no stateMeta entry", () => {
-    // Previously crashed: `meta.genera` where `meta` was undefined
     expect(() =>
       render(
         <UsStatesLayer

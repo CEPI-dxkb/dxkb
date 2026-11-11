@@ -7,13 +7,12 @@ import {
 } from "@/test-helpers/resizable";
 import { JobsShell } from "../jobs-shell";
 
-// The library sizes the group as the sum of its panels' widths, so every element at
-// 800px makes the group 1600px. That keeps every split below inside the details
-// panel's 110–600px limits (21.053% ≈ 337px, 30% = 480px, 35% = 560px): nothing clamps.
+// The library sizes the group as the sum of its panels' widths (every element at 800px makes it
+// 1600px), which keeps every split inside the details panel's 110–600px limits.
 stubResizableGeometry(800);
 
-// vitest.config.mts sets clearMocks but not restoreMocks. Restore here so a failing
-// assertion cannot leave document.cookie spied for the next test.
+// clearMocks is set but not restoreMocks; restore here so a failing assertion cannot leave
+// document.cookie spied.
 afterEach(() => {
   vi.restoreAllMocks();
 });
@@ -66,11 +65,8 @@ describe("JobsShell layout persistence", () => {
       }),
     );
     pressOnSeparator("ArrowLeft");
-    // End moves the separator all the way right: a user-attributed collapse, the
-    // keyboard twin of dragging the panel shut.
     pressOnSeparator("End");
     expect(panelShares()).toStrictEqual(["100", "0"]);
-    // Only the ArrowLeft width was saved; the drag-close never overwrote it with 0.
     const layoutWrites = cookieSpy.mock.calls
       .map(([value]) => value.split(";")[0])
       .filter((pair) => pair.startsWith("dxkb-jobs-panel-layout="));

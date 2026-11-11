@@ -17,7 +17,6 @@ describe("checkWorkspaceObjectExists", () => {
   });
 
   it("returns false when the Workspace answers that the object is not found", async () => {
-    // The proxy's answer to Workspace.get of a missing path.
     server.use(
       http.post("/api/services/workspace", () =>
         HttpResponse.json(

@@ -1,21 +1,10 @@
-/**
- * SVG outlines of the Compare Region Viewer's glyphs, in pixels: softly
- * rounded gene arrows whose head and corners follow the density, and rounded
- * bars for BLAST hits and other features. Coordinates are rounded to a tenth
- * of a pixel, which keeps the paths short and stable across renders.
- */
 import type { DensitySpec } from "./density";
 import type { GlyphKind } from "./figure-frame";
 
-/** A coordinate rounded to 0.1 px, as path text. */
 export function roundPx(value: number): string {
   return String(Math.round(value * 10) / 10);
 }
 
-/**
- * A closed path through `points`, each corner rounded by its radius (cut back
- * along both edges and joined by a quadratic curve through the corner).
- */
 function roundedPolygon(
   points: [number, number][],
   radii: readonly number[],
@@ -40,10 +29,6 @@ function roundedPolygon(
   return `${parts.join("")}Z`;
 }
 
-/**
- * A full-height arrow (pentagon) from the 5′ end `x1` to the 3′ end `x2`,
- * softly rounded; a triangle when the gene is no longer than its head.
- */
 export function arrowPath(
   spec: DensitySpec,
   x1: number,
@@ -78,7 +63,6 @@ export function arrowPath(
   );
 }
 
-/** A rounded bar (BLAST hits, other features), at least 1 px wide. */
 export function barPath(
   x1: number,
   x2: number,
@@ -104,7 +88,6 @@ export function barPath(
   ].join("");
 }
 
-/** The glyph outline for any feature kind, between `top` and `bottom`. */
 export function glyphPath(
   spec: DensitySpec,
   kind: GlyphKind,

@@ -46,9 +46,7 @@ describe("metagenomicReadMappingFormSchema", () => {
       gene_set_fasta: "",
     });
     expect(result.success).toBe(false);
-    // Pin the issue to the FASTA-specific superRefine branch so the test fails if the
-    // schema starts accepting empty FASTA paths or moves the check elsewhere — without
-    // this we'd silently keep passing on any unrelated rejection (e.g. enum miss).
+    // Pin the issue to the FASTA-specific refinement so an unrelated rejection cannot pass.
     if (!result.success) {
       const fastaIssue = result.error.issues.find((issue) =>
         issue.path.includes("gene_set_fasta"),

@@ -19,10 +19,6 @@ import {
 } from "./facet-values";
 import type { FacetStatus } from "./types";
 
-/**
- * Keyboard model of the menus' lists: focus stays in the search box, the
- * arrows move a highlighted option (`aria-activedescendant`), Enter picks it.
- */
 function useOptionNavigation(
   count: number,
   onPick: (index: number) => void,
@@ -56,7 +52,6 @@ function useOptionNavigation(
   };
 }
 
-/** The square a selected option fills with the primary color. */
 export function CheckMark({ checked }: { checked: boolean }) {
   return (
     <span
@@ -73,7 +68,6 @@ export function CheckMark({ checked }: { checked: boolean }) {
   );
 }
 
-/** A count's share of the largest one, as a 2px bar. */
 function CountBar({ share, selected }: { share: number; selected: boolean }) {
   return (
     <span
@@ -96,10 +90,7 @@ function CountBar({ share, selected }: { share: number; selected: boolean }) {
 }
 
 /**
- * A menu's one "counts are refreshing" signal: a 2px primary line along its
- * top edge that eases most of the way across while counts load, then
- * completes and fades. Remounted per refresh, so each one starts from zero;
- * nothing else in the menu dims or moves.
+ * Counts-refreshing line; remounted per refresh so each one starts from zero.
  */
 export function RefreshHairline({ active }: { active: boolean }) {
   const [cycle, setCycle] = useState(0);
@@ -130,7 +121,6 @@ export function RefreshHairline({ active }: { active: boolean }) {
   );
 }
 
-/** A pane's empty or no-match state: a quiet glyph, what happened, what to do. */
 export function EmptyState({
   icon: Icon,
   title,
@@ -161,7 +151,6 @@ export function EmptyState({
   );
 }
 
-/** A search box at the top of a menu pane; it drives the list below it. */
 export function MenuSearch({
   inputRef,
   value,
@@ -221,31 +210,18 @@ interface FacetValueListProps {
   selectedCount: number;
   onToggle: (value: string) => void;
   onClear: () => void;
-  /** The counts failed; the toolbar shows the Retry. */
   error?: string;
-  /** No counts until the rows load (their alert says why). */
   unavailable?: boolean;
-  /** No facet names the field, so nothing counts its values. */
   notCounted?: boolean;
   inputRef: RefObject<HTMLInputElement | null>;
-  /** Controlled query (the Filters menu seeds and keeps it). */
   query?: string;
   onQueryChange?: (query: string) => void;
-  /** Runs before the list's own keys (the menu's ← back to the facets). */
   onSearchKeyDown?: (event: KeyboardEvent<HTMLInputElement>) => void;
   onSearchFocus?: () => void;
-  /** Fill a fixed-height pane instead of capping the list at 20rem. */
   fill?: boolean;
-  /** A header button beside Clear (the menu's Pin toggle). */
   headerAction?: ReactNode;
 }
 
-/**
- * One facet's value checklist: the body of an active pill's popover and the
- * Filters menu's right pane. Every slot that can appear (the selection count,
- * placeholder rows) is reserved at its final size, so nothing moves as
- * counts land.
- */
 export function FacetValueList({
   label,
   options,
@@ -298,7 +274,6 @@ export function FacetValueList({
         </span>
         <span className="ml-auto flex items-center gap-0.5">
           {headerAction}
-          {/* Its count's slot is reserved, so ticking never moves the header. */}
           <button
             type="button"
             disabled={selectedCount === 0}
@@ -472,7 +447,6 @@ export function FacetValueList({
   );
 }
 
-/** What an empty checklist says: no match for the search, or no values. */
 function emptyValuesMessage({
   label,
   query,
@@ -492,7 +466,6 @@ function emptyValuesMessage({
       detail: `${listed.toLocaleString()} ${listed === 1 ? "value is" : "values are"} listed; try fewer letters.`,
     };
   }
-  // Nothing counts the field, so whether any record has it is unknown.
   if (notCounted) {
     return {
       title: "No values picked",
@@ -511,7 +484,6 @@ function emptyValuesMessage({
   };
 }
 
-/** The checklist footer's count: "Loading values…", "3 of 40 values", … */
 function valueSummary(
   loading: boolean,
   searching: boolean,
@@ -527,7 +499,6 @@ function valueSummary(
 
 const skeletonWidths = ["w-28", "w-20", "w-24", "w-16", "w-22"] as const;
 
-/** Placeholder rows at the real rows' height and inset. */
 function ValueListSkeleton() {
   return (
     <div aria-hidden="true" className="flex flex-col">

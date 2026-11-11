@@ -11,18 +11,18 @@ describe("workspace adapters/parsers", () => {
   describe("parseTupleToRawObject", () => {
     it("maps array indices to untyped record correctly", () => {
       const list = [
-        "myfile.fasta",    // 0: name
-        "contigs",         // 1: type
-        "/user/home/",     // 2: parent path
-        "2024-01-15",      // 3: creation_time
-        "abc123",          // 4: id
-        "owner@test.com",  // 5: owner_id
-        1024,              // 6: size
-        { key: "val" },    // 7: userMeta
-        {},                // 8: autoMeta
-        "o",               // 9: user_permission
-        "r",               // 10: global_permission
-        null,              // 11: link_reference
+        "myfile.fasta",
+        "contigs",
+        "/user/home/",
+        "2024-01-15",
+        "abc123",
+        "owner@test.com",
+        1024,
+        { key: "val" },
+        {},
+        "o",
+        "r",
+        null,
       ];
       const obj = parseTupleToRawObject(list);
       expect(obj.id).toBe("abc123");
@@ -51,18 +51,18 @@ describe("workspace adapters/parsers", () => {
 
   describe("parseLsResult", () => {
     const lsTuple = [
-      "file.fa", // 0 name
-      "contigs", // 1 type
-      "/user@bvbrc/home/", // 2 parent path
-      "2026-04-01", // 3 creation time
-      "id-1", // 4 id
-      "user@bvbrc", // 5 owner
-      123, // 6 size
-      {}, // 7 userMeta
-      {}, // 8 autoMeta
-      "o", // 9 user_permission
-      "n", // 10 global_permission
-      "", // 11 link_reference
+      "file.fa",
+      "contigs",
+      "/user@bvbrc/home/",
+      "2026-04-01",
+      "id-1",
+      "user@bvbrc",
+      123,
+      {},
+      {},
+      "o",
+      "n",
+      "",
     ];
 
     it("maps tuples to WorkspaceItem for the requested path", () => {

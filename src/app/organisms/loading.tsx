@@ -3,9 +3,8 @@ import { LandingNavSkeleton } from "@/components/organisms/landing-shell/landing
 import { MetadataDistributionsSkeleton } from "@/components/organisms/metadata-distributions/metadata-distributions-skeleton";
 import { Skeleton } from "@/components/ui/skeleton";
 
-// Organism pages await taxonomy before rendering anything, so without this
-// boundary a client navigation cannot commit until that fetch returns.
-// Geometry mirrors LandingShellClient: nav rail (lg+), header card, overview.
+// Organism pages await taxonomy before rendering, so without this a client
+// navigation cannot commit until the fetch returns.
 export default function OrganismsLoading() {
   return (
     <div

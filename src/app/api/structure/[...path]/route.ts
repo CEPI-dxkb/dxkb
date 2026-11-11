@@ -53,8 +53,8 @@ export async function GET(
       response.headers.get("Content-Type") ?? "application/octet-stream",
     );
     headers.set("Cache-Control", "public, max-age=300");
-    // Fetch decodes Content-Encoding automatically, so the upstream compressed
-    // Content-Length no longer describes the streamed response body.
+    // Fetch decodes Content-Encoding, so the upstream Content-Length no longer
+    // matches the streamed body.
     return new NextResponse(response.body, { status: 200, headers });
   } catch (error) {
     return NextResponse.json(

@@ -1,16 +1,8 @@
 import { z } from "zod";
 import { getFastaErrorMessage, validateFasta } from "@/lib/fasta-validation";
 
-// -----------------------------------------------------------------------------
-// Input source
-// -----------------------------------------------------------------------------
-
 export const inputSourceSchema = z.enum(["fasta_data", "fasta_file"]);
 export type InputSource = z.infer<typeof inputSourceSchema>;
-
-// -----------------------------------------------------------------------------
-// Virus type options (legacy API values from BV-BRC SubspeciesClassification.js)
-// -----------------------------------------------------------------------------
 
 export const subspeciesVirusTypeOptions: { value: string; label: string }[] = [
   {
@@ -132,10 +124,6 @@ export const subspeciesVirusTypeOptions: { value: string; label: string }[] = [
 ];
 
 const firstVirusType = subspeciesVirusTypeOptions[0]?.value ?? "MASTADENOA";
-
-// -----------------------------------------------------------------------------
-// Main form schema
-// -----------------------------------------------------------------------------
 
 export const subspeciesClassificationFormSchema = z
   .object({

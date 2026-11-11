@@ -12,8 +12,6 @@ export interface FeaturedOrganismCategory {
 
 export const featuredAllOrganisms: FeaturedOrganismCategory[] = [
   {
-    // Viruses sit beside the three domains rather than inside them: they are
-    // not cellular life, but the platform treats them as a top-level group.
     title: "Domains and Viruses",
     organisms: [
       { name: "Bacteria", href: taxonUrl(2) },

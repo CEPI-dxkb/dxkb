@@ -9,10 +9,6 @@ export const recentWorkspaceFoldersStorageKey =
   "dxkb-recent-workspace-folders:v1";
 const defaultMaxItems = 5;
 
-/**
- * Extract the last segment of a workspace path for display.
- * e.g. "/user@bvbrc/home/Experiments" → "Experiments"
- */
 export function getWorkspaceFolderDisplayName(path: string): string {
   const trimmed = path.replace(/\/+$/, "");
   const lastSlash = trimmed.lastIndexOf("/");
@@ -49,10 +45,7 @@ export function getRecentFolders(userPrefix?: string): RecentFolder[] {
   );
 }
 
-/**
- * Add a folder to the recently visited list. Deduplicates and trims to maxItems
- * per user, preserving other users' entries on shared browsers.
- */
+/** Deduplicates and trims to maxItems per user, preserving other users' entries on shared browsers. */
 export function addRecentFolder(
   path: string,
   userPrefix: string,
@@ -78,9 +71,6 @@ export function addRecentFolder(
   );
 }
 
-/**
- * Clear all recently visited folders.
- */
 export function clearRecentFolders(): void {
   writeStorageItem(recentWorkspaceFoldersStorageKey, null);
 }

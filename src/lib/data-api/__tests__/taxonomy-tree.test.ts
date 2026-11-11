@@ -45,10 +45,6 @@ describe("taxonChildCountsClause", () => {
 
 describe("taxonChildrenPageSize", () => {
   it("stays above every generic collection and export limit", () => {
-    // The plan requires this bound to be isolated from generic limits. If a
-    // future change ever routed the tree through the collection or export
-    // operation, the bound would have to shrink to their ceilings to pass
-    // `validateDataApiRequest` — this asserts the two are still far apart.
     expect(taxonChildrenPageSize).toBe(50_000);
     expect(taxonChildrenPageSize).toBeGreaterThan(collectionPageSize);
     expect(taxonChildrenPageSize).toBeGreaterThan(maxExportRows);
@@ -93,7 +89,6 @@ describe("readTaxonChildren", () => {
     const { rows } = await readTaxonChildren(repository(), 235);
     expect(rows).toHaveLength(3);
     expect(callCount).toBe(2);
-    // taxonomyRecordSchema normalizes taxon_id to a string.
     expect(rows.map((row) => row.taxon_id)).toEqual(["1", "2", "3"]);
     expect(ranges).toEqual(["items=0-49999", "items=2-50001"]);
   });
@@ -140,7 +135,6 @@ describe("readTaxonChildren", () => {
         if (callCount === 1) {
           return HttpResponse.json(
             [{ taxon_id: 1, taxon_name: "Alpha", taxon_rank: "genus" }],
-            // Total claims 5 but the next page returns nothing.
             { headers: { "Content-Range": "items 0-0/5" } },
           );
         }
@@ -232,7 +226,6 @@ describe("readTaxonChildCounts", () => {
   it("leaves a parent with no qualifying children out of the object", async () => {
     server.use(
       http.get(taxonomyUrl, () =>
-        // mincount,1 means the upstream omits 236 entirely.
         new HttpResponse("[]", {
           headers: { facet_counts: facetHeader(["235", 3]) },
         }),
@@ -247,8 +240,8 @@ describe("readTaxonChildCounts", () => {
   it("does not let an incidental body row fail a facet-only request", async () => {
     server.use(
       http.get(taxonomyUrl, () =>
-        // taxon_id 0 would fail taxonomyRecordSchema; a facet request asks for
-        // items=0-0, so whatever row comes back is incidental.
+        // taxon_id 0 would fail the schema; a facet request asks for items=0-0,
+        // so whatever row comes back is incidental.
         HttpResponse.json([{ taxon_id: 0 }], {
           headers: { facet_counts: facetHeader(["235", 3]) },
         }),
@@ -290,14 +283,6 @@ describe("readTaxonChildCounts", () => {
   });
 });
 
-/**
- * The eleven rejections the Taxa Tree's child-count response must fail on.
- * They used to live in `src/components/taxonomy/__tests__/use-taxon-children.test.ts`
- * against the browser fetch; the parsing moved server-side, so they moved with
- * it. Each one is what stops malformed data from silently turning a branch
- * into a leaf, because an absent parent is the *valid* encoding of "no
- * children".
- */
 describe("parseTaxonFacetCounts", () => {
   it("parses the flat [id, count, …] array into a map", () => {
     const counts = parseTaxonFacetCounts(
@@ -324,10 +309,9 @@ describe("parseTaxonFacetCounts", () => {
     ["1. missing header", null, "missing facet_counts header"],
     ["2. invalid JSON", "not-json", "invalid facet_counts JSON"],
     ["3a. non-object parse", "7", "missing facet_fields.parent_id"],
-    // `null` is the case the object/null guard exists for: without it, reading
-    // `.facet_fields` off it raises a TypeError, which is not a DataApiError
-    // and so reaches the client as the route's generic 500 instead of this
-    // specific malformed-response message.
+    // `null` is the case the object/null guard exists for: reading
+    // `.facet_fields` off it would raise a TypeError and reach the client as a
+    // generic 500.
     ["3b. null parse", "null", "missing facet_fields.parent_id"],
     [
       "4. missing facet_fields",

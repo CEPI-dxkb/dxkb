@@ -34,8 +34,8 @@ test.describe("workspace viewer", () => {
   test.beforeEach(async ({ page }) => {
     await applyBackendMocks(page, {
       overrides: [
-        // Overrides are evaluated first-match-wins, so these specific view URLs MUST come
-        // before `buildWorkspaceOverrides` (which registers a catch-all `/api/workspace/view/`).
+        // These view URLs must come before buildWorkspaceOverrides, whose catch-all
+        // `/api/workspace/view/` would win (first match).
         {
           url: /\/api\/workspace\/view\/.*config\.json/,
           method: "GET",
@@ -48,7 +48,6 @@ test.describe("workspace viewer", () => {
           body: ">seq1\nACGTACGT\n",
           headers: { "Content-Type": "text/plain" },
         },
-        // buildWorkspaceOverrides covers Workspace.ls / Workspace.get / Workspace.list_permissions.
         ...buildWorkspaceOverrides({
           pathItems: { [e2eHomePath]: viewerFixtureItems },
         }),
@@ -62,10 +61,7 @@ test.describe("workspace viewer", () => {
     await workspace.goto();
     await workspace.selectFile("config.json");
 
-    // The file-viewer header renders the filename + an Open-in-new-tab button.
     await expect(page.getByTitle(/open in new tab/i)).toBeVisible();
-    // CodeMirror renders the streamed content into `.cm-content`. We don't assert exact tokens
-    // (highlighting swaps character runs) — just that our fixture made it through.
     await expect(page.locator(".cm-content")).toContainText("hello");
   });
 
@@ -92,13 +88,8 @@ test.describe("workspace viewer", () => {
   });
 });
 
-// Drives the file-viewer journey against post-auth traffic recorded in
-// `workspace-viewer.har`. The HAR captures the workspace listing for the
-// seeded folder, the viewer's `/api/workspace/view/<path>` GET, and the
-// JSON-RPC envelope around it. Three sequential `Workspace.get` entries
-// (favorites x2, then the e2e-fixtures folder lookup) replay in HAR order
-// via `callIndex`. See `harOverridesFor` for the canary rationale (no
-// broad, unscoped aggregate here).
+// Replays workspace-viewer.har; the three Workspace.get entries replay in HAR order via
+// callIndex.
 test.describe("workspace viewer via recorded HAR replay", () => {
   test("opens readme.txt and renders the recorded file content", async ({ page }) => {
     await applyBackendMocks(page, {
@@ -115,15 +106,11 @@ test.describe("workspace viewer via recorded HAR replay", () => {
     const workspace = new WorkspacePage(page);
     await expect(workspace.breadcrumbs).toBeVisible();
 
-    // The recorded `Workspace.ls` for `home/e2e-fixtures` returns a single
-    // `readme.txt` row.
     await expect(workspace.rowByName("readme.txt").first()).toBeVisible();
     await workspace.selectFile("readme.txt");
 
-    // CodeMirror renders the recorded `/api/workspace/view/.../readme.txt`
-    // body into `.cm-content`. `e2e seed fixture` is the leading substring
-    // of the recorded payload — sidesteps the em-dash mojibake the HAR
-    // recorder captured downstream of it.
+    // `e2e seed fixture` is a leading substring of the payload, avoiding an em-dash
+    // mojibake the HAR recorder captured.
     await expect(page.locator(".cm-content")).toContainText("e2e seed fixture");
   });
 });

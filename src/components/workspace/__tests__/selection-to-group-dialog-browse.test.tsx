@@ -44,8 +44,8 @@ describe("SelectionToGroupDialog browse", () => {
     );
 
     const folderField = screen.getByLabelText("Folder");
-    // Base UI moves focus into the dialog (to its first tab) shortly after it
-    // opens. Typing before that lands on the field and then loses focus mid-word.
+    // Base UI moves focus into the dialog shortly after it opens; typing earlier loses
+    // focus mid-word.
     const dialogElement = screen.getByRole("dialog");
     await waitFor(() => {
       expect(dialogElement).toContainElement(
@@ -59,9 +59,8 @@ describe("SelectionToGroupDialog browse", () => {
       name: /Experiments/,
     });
 
-    // jsdom does not paint, so compare what decides the paint order: the
-    // suggestions (portaled to <body>) must sit on the dialog's z-index tier
-    // or higher, and come after the dialog so they win a tie.
+    // jsdom does not paint, so compare what decides paint order: the portaled suggestions
+    // must sit on the dialog's z-index tier or higher and come after it.
     const dialog = screen.getByRole("dialog", { name: "Add Genomes to Group" });
     const zIndex = (element: Element) =>
       Number(/(?:^|\s)z-(\d+)(?:\s|$)/.exec(element.className)?.[1] ?? 0);
@@ -153,8 +152,6 @@ describe("SelectionToGroupDialog browse", () => {
         screen.queryByRole("dialog", { name: "Select a Genome Group" }),
       ).toBeNull();
     });
-    // `open` is fixed, so the group dialog only shows it was asked to close
-    // through this callback.
     expect(onOpenChange).not.toHaveBeenCalled();
     expect(
       screen.getByRole("dialog", { name: "Add Genomes to Group" }),

@@ -4,7 +4,6 @@ import { isTaxonId } from "./schema";
 
 export const maxTaxonomyActionIds = 500;
 
-/** Shared wording so the collection resolver and normalizeTaxonIds cannot drift. */
 export function taxonomyActionLimitMessage(): string {
   return `This action supports at most ${String(maxTaxonomyActionIds)} Taxa. Narrow the selection and try again.`;
 }

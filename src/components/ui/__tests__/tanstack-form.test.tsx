@@ -6,9 +6,8 @@ import { FieldErrors } from "@/components/ui/tanstack-form";
 import { fieldErrorMessage } from "@/components/ui/field-error-message";
 
 /**
- * A one-field form: `name` must not be empty. The field's message as
- * `fieldErrorMessage` reports it ("none" for null) sits next to what
- * `FieldErrors` renders, so the two can be compared.
+ * A one-field form whose `name` must not be empty; shows the message as
+ * `fieldErrorMessage` and `FieldErrors` report it.
  */
 function NameForm({ validator }: { validator: "string" | "schema" }) {
   const form = useForm({

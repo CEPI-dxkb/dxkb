@@ -155,11 +155,8 @@ describe("withSectionError", () => {
     expect(outage.host).toBe("www.bv-brc.org");
   });
 
-  // In development React sends every server component's props to the browser,
-  // and it cannot revive an error whose cause has no stack frame outside Node
-  // internals (a budget's TimeoutError, undici's socket error): the browser
-  // throws "frame.join is not a function" and the route's error boundary
-  // replaces the whole page.
+  // In development React cannot revive an error whose cause has no stack frame
+  // outside Node internals: the browser throws "frame.join is not a function".
   it("hands SectionError the message, never the error and its causes", async () => {
     const outage = new UpstreamError(
       {

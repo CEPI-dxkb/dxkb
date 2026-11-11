@@ -18,9 +18,8 @@ const pageSizeItems = pageSizeOptions.map((size) => ({
 }));
 
 /**
- * Whether the list behind the footer has loaded. While it has not, and when
- * it failed with nothing to show, `totalTasks` is a placeholder 0, so the
- * footer must not report it as "No jobs found".
+ * While the list has not loaded (or failed with nothing to show), `totalTasks` is a placeholder 0,
+ * not "No jobs found".
  */
 export type JobsListStatus = "loading" | "error" | "ready";
 
@@ -70,7 +69,6 @@ function rangeSummary(
   totalTasks: number,
 ) {
   if (status === "loading") return "Loading jobs…";
-  // The list's own alert explains the failure; a count here would be invented.
   if (status === "error") return null;
   if (totalTasks === 0) return "No jobs found";
   return (

@@ -28,10 +28,8 @@ const family = {
   ],
 };
 
-// Enough rows to overflow a desktop viewport, so the filter sidebar can be
-// checked against a genuinely scrolled tree list. Each filler needs its own
-// parseable segment — otherwise every tree collapses into a single (strain,
-// segment) row instead of 24 separate scrollable ones.
+// Each filler needs its own parseable segment, or all trees collapse into one (strain,
+// segment) row.
 const scrollFamily = {
   order: ["h3n2"],
   groups: [
@@ -126,8 +124,6 @@ test("opens the exact Auspice dataset and renders tree, map, and attribution", a
 
   await openPicker(page);
   await page.getByRole("radio", { name: "Auspice" }).click();
-  // Neither row has an Archaeopteryx tree for its segment, so both peer slots
-  // there read dead regardless — the interesting contrast is on the Auspice side.
   const available = row(page, "H3N2 segment 4 (HA)").getByRole("button", {
     name: "Open H3N2 segment 4 (HA) in Auspice",
   });
@@ -147,24 +143,22 @@ test("opens the exact Auspice dataset and renders tree, map, and attribution", a
   await expect(viewer.getByText(/Powered by Nextstrain/)).toBeVisible();
   if (await hasWebGl(page)) {
     await expect(viewer.locator("#map")).toBeVisible();
-    // MapLibre reads the credit from the style's sources once it loads; the
-    // `attribution` passed beside the style is never shown.
+    // MapLibre reads the credit from the style's sources; the `attribution` beside the
+    // style is never shown.
     await expect(viewer.locator(".leaflet-control-attribution")).toContainText(
       "OpenStreetMap",
     );
-    // MapLibre 6 cannot find its worker inside a webpack bundle, so
-    // patches/auspice@3.2.0.patch emits it as a hashed /dist/ asset and hands
-    // MapLibre that URL. Without a worker no tile is ever drawn.
+    // patches/auspice@3.2.0.patch emits MapLibre's worker as a hashed /dist/ asset;
+    // without a worker no tile is drawn.
     await expect
       .poll(() => workerPaths.some(path => /^\/dist\/[0-9a-f]+\.mjs$/.test(path)))
       .toBe(true);
-    // The worker, not the page, fetches vector tiles, and only after MapLibre
-    // asks it for one, so a tile request shows the worker loaded, started and
-    // is answering MapLibre's messages. Drawing the tile is MapLibre's own job.
+    // The worker, not the page, fetches vector tiles, so a tile request shows the
+    // worker is running.
     await expect.poll(() => tileRequests.length).toBeGreaterThan(0);
   } else {
-    // Without WebGL (headless Firefox in CI) Auspice drops the map panel and
-    // keeps the tree.
+    // Without WebGL (headless Firefox in CI) Auspice drops the map panel and keeps the
+    // tree.
     await expect(viewer.locator("#map")).toHaveCount(0);
   }
   expect(datasetRequests).toEqual([`nextstrain-viewer/${datasetId}`]);
@@ -197,15 +191,11 @@ test("keeps the local Auspice viewer same-origin so it can fetch datasets", asyn
 });
 
 test("nav bar logo and wordmark open the Auspice docs in a new tab", async ({ page, context }) => {
-  // Stock Auspice hardcodes href="/" with no target on both (it assumes it owns
-  // the site root), so a click navigates the iframe to the DXKB home page and
-  // renders it nested inside the phylogeny panel. auspice/navbar.js replaces
-  // that nav bar; this guards the extension staying wired up in the bundle.
+  // Stock Auspice hardcodes href="/" with no target, navigating the iframe to the DXKB
+  // home; auspice/navbar.js replaces that nav bar.
   await mockAuspice(page);
   await openPicker(page);
   await page.getByRole("radio", { name: "Auspice" }).click();
-  // Filtered to Auspice only, so the row's primary (and only) choice is the
-  // nextstrain one — the row's display name matches the button we click.
   await row(page, "H3N2 segment 4 (HA)")
     .getByRole("button", { name: "Open H3N2 segment 4 (HA) in Auspice" })
     .click();
@@ -223,8 +213,6 @@ test("nav bar logo and wordmark open the Auspice docs in a new tab", async ({ pa
     await expect(link).toHaveAttribute("rel", /noopener/);
   }
 
-  // The regression is the iframe navigating away, so assert on where it ends up
-  // rather than trusting the attributes alone.
   const popup = await Promise.all([
     context.waitForEvent("page"),
     wordmark.click(),
@@ -243,9 +231,6 @@ test("fails closed when inventory is unavailable", async ({ page }) => {
   await mockAuspice(page, 500);
   await openPicker(page);
 
-  // "XML HA" has no parseable segment, so it lands in its own row separate
-  // from the HA/NA nextstrain rows — Archaeopteryx is unaffected by inventory
-  // failures either way.
   await expect(
     row(page, "H3N2 segment 4 (HA)").getByTitle(
       "Auspice dataset availability could not be confirmed",
@@ -264,35 +249,29 @@ test("disables filter options with no matching trees", async ({ page }) => {
   const auspice = page.getByRole("radio", { name: /Auspice/ });
   await expect(auspice).not.toHaveAttribute("aria-disabled", "true");
 
-  // H5N1 in this fixture is Archaeopteryx-only, HA-only.
   await page.getByRole("radio", { name: /H5N1/ }).click();
   await expect(auspice).toHaveAttribute("aria-disabled", "true");
   await expect(page.getByRole("radio", { name: /Archaeopteryx/ })).not.toHaveAttribute("aria-disabled", "true");
   await expect(page.getByRole("checkbox", { name: /^HA/ })).not.toHaveAttribute("aria-disabled", "true");
   await expect(page.getByRole("checkbox", { name: /^NA/ })).toHaveAttribute("aria-disabled", "true");
 
-  // Disabled means inert, not just dimmed: Playwright's actionability check
-  // refuses to click a control it considers disabled.
   await expect(auspice.click({ timeout: 2_000 })).rejects.toThrow(/not enabled/);
   await expect(auspice).toHaveAttribute("aria-checked", "false");
   await expect(page.getByText("H5N1 segment 4 (HA)")).toBeVisible();
 
-  // ...and it must also *look* disabled. Base UI renders a span with
-  // aria-disabled rather than a natively disabled control, so a `peer-disabled:`
-  // style silently never applies — only computed style catches that.
+  // Base UI renders a span with aria-disabled, so a `peer-disabled:` style silently
+  // never applies; only computed style catches that.
   const rowOpacity = (name: RegExp) =>
     page.getByRole("radio", { name }).locator("xpath=ancestor::label[1]")
       .evaluate(element => Number(getComputedStyle(element).opacity));
   expect(await rowOpacity(/Auspice/)).toBeLessThan(1);
   expect(await rowOpacity(/Archaeopteryx/)).toBe(1);
 
-  // Options are disabled, never removed: the segment list must not reflow.
   const segmentLabels = page.getByRole("checkbox").locator("xpath=ancestor::label[1]");
   const narrowed = await segmentLabels.count();
   await page.getByRole("radio", { name: /All strains/ }).click();
   expect(await segmentLabels.count()).toBe(narrowed);
 
-  // Clearing the strain re-enables everything.
   await expect(auspice).not.toHaveAttribute("aria-disabled", "true");
   await expect(page.getByRole("checkbox", { name: /^NA/ })).not.toHaveAttribute("aria-disabled", "true");
 });
@@ -304,8 +283,8 @@ test("keeps the filter sidebar pinned while the tree grid scrolls", async ({ pag
   await openPicker(page);
 
   const filters = page.getByRole("button", { name: /Filters/ });
-  // The picker is server-rendered inside the lazy tab's Suspense boundary, so a
-  // hidden streamed copy can sit beside the live one.
+  // The picker is server-rendered inside the lazy tab's Suspense boundary, so a hidden
+  // streamed copy can sit beside the live one.
   const grid = page.locator('[data-slot="tree-results-scroll"]').filter({ visible: true });
   await expect(filters).toBeVisible();
 
@@ -314,13 +293,11 @@ test("keeps the filter sidebar pinned while the tree grid scrolls", async ({ pag
     element.scrollTop = element.scrollHeight;
     return { scrollTop: element.scrollTop, scrollHeight: element.scrollHeight };
   });
-  // Guards the fixture staying tall enough for the scroll to prove anything.
   expect(scrolled.scrollTop).toBeGreaterThan(0);
   const after = await filters.boundingBox();
 
   expect(after?.y).toBeCloseTo(before?.y ?? -1, 0);
   await expect(filters).toBeInViewport();
-  // The page itself must not scroll — otherwise the sidebar leaves with it.
   const pageScroll = await page.evaluate(() => ({
     scrollY: window.scrollY,
     overflow: document.documentElement.scrollHeight - document.documentElement.clientHeight,
@@ -349,10 +326,8 @@ test("themes the sidebar collapse control clear of the scroll gutter", async ({
     timeout: 30_000,
   });
 
-  // Reads through the same-origin iframe rather than a frameLocator so the
-  // sidebar's scroll gutter — the thing the chevron used to sit on — can be
-  // measured. offsetWidth-clientWidth is the only way to see it; no CSS
-  // property reports it, which is why this cannot be a unit test.
+  // Reads through the same-origin iframe to measure the sidebar's scroll gutter
+  // (offsetWidth - clientWidth), which no CSS property reports.
   const probe = () =>
     page.locator('iframe[title^="Auspice phylogeny viewer"]').evaluate((element) => {
       const frame = element as HTMLIFrameElement;
@@ -370,8 +345,6 @@ test("themes the sidebar collapse control clear of the scroll gutter", async ({
       const styles = win.getComputedStyle(chevron);
       return {
         scheme: win.getComputedStyle(doc.documentElement).colorScheme,
-        // Distance from the chevron's right edge to the sidebar's *content*
-        // edge. The stock inline `left` puts this at -gutterWidth.
         gapToContentEdge:
           sidebar.getBoundingClientRect().left + sidebar.clientWidth - chevronBox.right,
         gutter: (sidebar as HTMLElement).offsetWidth - sidebar.clientWidth,
@@ -382,8 +355,6 @@ test("themes the sidebar collapse control clear of the scroll gutter", async ({
       };
     });
 
-  // The bridge mirrors data-theme into the iframe, so driving the host's
-  // attribute is enough — no reload, no re-key.
   const setTheme = (theme: string) =>
     page.evaluate((t) => {
       document.documentElement.setAttribute("data-theme", t);
@@ -393,29 +364,22 @@ test("themes the sidebar collapse control clear of the scroll gutter", async ({
   const dark = await probe();
   expect(dark.scheme).toBe("dark");
   expect(dark.gapToContentEdge).toBe(0);
-  // Mirrors the collapsed tab in sidebar-toggle.js (14x44, rounded on the side
-  // facing the panels). Auspice's own chevron is a bare 12px glyph.
   expect(dark.width).toBe(15);
   expect(dark.height).toBe(46);
   expect(dark.radius).toBe("6px 0px 0px 6px");
 
-  // The gutter is the reason for the right-anchoring, so a run where the UA
-  // draws an overlay scrollbar cannot prove the fix. Say so rather than pass
-  // quietly.
+  // An overlay scrollbar draws no gutter, so such a run cannot prove the
+  // right-anchoring; say so rather than pass.
   if (dark.gutter === 0) {
     console.warn("[auspice] overlay scrollbars: gutter overlap not exercised");
   }
 
-  // Both halves of the theming: the tab must track the host tokens, and the UA
-  // scrollbar must follow the host out of dark mode.
   await setTheme("dxkb-light");
   const light = await probe();
   expect(light.scheme).toBe("normal");
   expect(light.background).not.toBe(dark.background);
   expect(light.gapToContentEdge).toBe(0);
 
-  // Collapsed state: same tab, mirrored. Two different upstream components, so
-  // a change to one does not imply the other.
   await viewer.locator('[class*="NavBarContainer"] > div[style*="position: fixed"]').click();
   const collapsed = await page
     .locator('iframe[title^="Auspice phylogeny viewer"]')
@@ -435,7 +399,6 @@ test("themes the sidebar collapse control clear of the scroll gutter", async ({
     });
   expect(collapsed.visibility).toBe("visible");
   expect(collapsed.radius).toBe("0px 6px 6px 0px");
-  // Stock is a hardcoded #F2F2F2 tab under a drop shadow.
   expect(collapsed.background).not.toBe("rgb(242, 242, 242)");
   expect(collapsed.shadow).toBe("none");
 });

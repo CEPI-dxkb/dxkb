@@ -10,7 +10,6 @@ const request: DownloadRequest = {
   total: 20_000,
 };
 
-/** What the transport put in the page, read while its form is submitting. */
 interface Submitted {
   form: HTMLFormElement;
   iframe: HTMLIFrameElement;
@@ -50,7 +49,6 @@ function currentSubmission(): Submitted {
   return submitted;
 }
 
-/** The gateway answering `body` into a submission's iframe. */
 function answer(iframe: HTMLIFrameElement, body: unknown): void {
   const frameDocument = iframe.contentDocument;
   if (!frameDocument) throw new Error("the iframe must have a document");
@@ -79,10 +77,8 @@ describe("startNativeDownload", () => {
     const { nonce, ...rest } = sent;
     expect(rest).toEqual(request);
     expect(nonce).toMatch(/^[0-9a-f]{32}$/);
-    // The token is never in the page: the session cookie carries it server-side.
     expect(JSON.stringify(sent)).not.toMatch(/token|authorization/i);
 
-    // Settled, so neither its poll nor its timeout outlives the test.
     document.cookie = `dxkb-download=${nonce}; Path=/`;
     await vi.advanceTimersByTimeAsync(500);
     await expect(done).resolves.toBeUndefined();
@@ -107,7 +103,6 @@ describe("startNativeDownload", () => {
     await vi.advanceTimersByTimeAsync(100);
     await expect(done).resolves.toBeUndefined();
     expect(form.isConnected).toBe(false);
-    // The cookie is spent, and the frame outlives the start of the transfer.
     expect(document.cookie).not.toContain(sent.nonce);
     expect(iframe.isConnected).toBe(true);
     await vi.advanceTimersByTimeAsync(1_000);
@@ -228,7 +223,6 @@ describe("startNativeDownload", () => {
     await vi.advanceTimersByTimeAsync(2_000);
 
     await expect(done).resolves.toBeUndefined();
-    // A slow upstream may still start the file into it.
     expect(iframe.isConnected).toBe(true);
   });
 });

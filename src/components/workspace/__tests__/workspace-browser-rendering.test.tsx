@@ -24,8 +24,8 @@ vi.mock("@/lib/auth/provider", () => ({
   }),
 }));
 
-// Only the path resolve calls this. Tests that need a folder to stay unresolved make
-// it return a promise that never settles.
+// Only the path resolve calls this; tests that need a folder to stay unresolved return a
+// never-settling promise.
 vi.mock("@/lib/services/workspace/shared", async (importOriginal) => ({
   ...(await importOriginal<
     typeof import("@/lib/services/workspace/shared")
@@ -249,11 +249,7 @@ describe("WorkspaceBrowser rendering", () => {
         }),
       },
     );
-    // The skeleton has no toolbar; the loaded browser does. Without this guard the
-    // sort icons below would come from the loaded table, not the skeleton.
     expect(screen.queryByPlaceholderText(/search files/i)).toBeNull();
-    // Otherwise the skeleton flashes the default name-ascending arrow while the
-    // folder resolves, then flips to the saved sort.
     expect(
       screen
         .getByRole("button", { name: "Sort by Size" })
@@ -295,8 +291,6 @@ describe("WorkspaceBrowser rendering", () => {
       .getAllByRole("row")
       .map((row) => row.textContent)
       .filter((text) => text.includes(".txt"));
-    // Size descending (small, large, hidden) differs from name ascending
-    // (hidden, large, small), so a default sort would fail these.
     expect(fileRows[0]).toContain("small.txt");
     expect(fileRows[1]).toContain("large.txt");
     expect(fileRows[2]).toContain(".hidden.txt");

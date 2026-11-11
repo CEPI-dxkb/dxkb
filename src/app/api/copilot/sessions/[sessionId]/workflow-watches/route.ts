@@ -15,11 +15,7 @@ interface RouteParams {
   params: Promise<{ sessionId: string }>;
 }
 
-/**
- * The jobs the gateway watches for this chat. When one ends, the gateway
- * writes a completion message into the chat; the client polls this to know
- * when to reload it.
- */
+/** The client polls this to know when to reload the gateway's completion message. */
 export const GET = withAuth<RouteParams>(
   async (request: NextRequest, { token, params }) => {
     const { sessionId } = await params;

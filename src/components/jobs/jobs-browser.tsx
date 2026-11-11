@@ -55,16 +55,10 @@ import {
 import { formatUserFacingErrorMessage } from "@/lib/utils";
 import { clsx } from "cn";
 
-/** `formatUserFacingErrorMessage` fallback for a failed job list read. */
 const jobsErrorFallback = "The job list could not be loaded. Please try again.";
 
-/** `formatUserFacingErrorMessage` fallback for a failed job summary read. */
 const summaryErrorFallback = "The job summary could not be loaded.";
 
-/**
- * In place of the table when the list failed and there is nothing to show.
- * It stays up, its button reading "Retrying…", until the retry answers.
- */
 function JobsLoadError({
   error,
   retrying,
@@ -88,10 +82,6 @@ function JobsLoadError({
   );
 }
 
-/**
- * A poll failed after the list had loaded: the rows stay (they were right a
- * moment ago) and this says they may be out of date, without taking over.
- */
 function JobsRefreshError({
   error,
   retrying,
@@ -118,8 +108,8 @@ function JobsRefreshError({
 
 interface JobDataRowProps {
   row: Row<FileTableFeatures, JobListItem>;
-  // See orderedCells: the compiled row caches its cells on `row`, which a
-  // column reorder does not replace.
+  // See orderedCells: the compiled row caches its cells on `row`, which a column reorder does not
+  // replace.
   columnOrder: string[];
   isSelected: boolean;
   onSelect: (job: JobListItem, modifiers?: { ctrlOrMeta: boolean }) => void;
@@ -218,8 +208,6 @@ function JobsTableBody({
 function useJobsBrowser() {
   const router = useRouter();
 
-  // List state (filters, sort, page) lives in the URL; selection and the
-  // not-found dialog stay local.
   const [listState, setListState] = useJobsUrlState();
   const {
     status: statusFilter,
@@ -232,10 +220,8 @@ function useJobsBrowser() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [showJobNotFound, setShowJobNotFound] = useState(false);
 
-  // The search box shows a draft: Next applies URL writes inside a transition,
-  // which a controlled text input cannot follow. The list filters from the
-  // draft; the URL `q` follows after a pause, and one run of search edits is one
-  // history entry, pushed on top of whichever filter came before it.
+  // The search box shows a draft: Next applies URL writes inside a transition, which a controlled
+  // text input cannot follow.
   const [searchQuery, setSearchQuery] = useDebouncedDraft(
     listState.search,
     (value) => {
@@ -261,10 +247,8 @@ function useJobsBrowser() {
     setSelectedIds(new Set());
   };
 
-  // Data fetching
   const summaryQuery = useJobsSummary(includeArchived);
   const summaryData = summaryQuery.data;
-  // A back-off poll of a summary that never loaded must not hide its error.
   const summaryError = useKeptQueryError(
     { error: summaryQuery.error, hasData: summaryData !== undefined },
     String(includeArchived),
@@ -294,8 +278,6 @@ function useJobsBrowser() {
     refetchInterval: hasActiveJobs ? 10_000 : 30_000,
   });
 
-  // The list query's own identity: the kept error of one page or filter is
-  // never shown for another.
   const listIdentity = JSON.stringify([
     offset,
     pageSize,
@@ -306,11 +288,9 @@ function useJobsBrowser() {
     startTime,
     endTime,
   ]);
-  // Rows kept from the previous page (`keepPreviousData`) are not this
-  // query's: they may stand in while it loads, never next to its failure.
+  // Rows kept from the previous page (`keepPreviousData`) may stand in while loading, never next to
+  // a failure.
   const hasListData = jobsResult !== undefined && !isPlaceholderData;
-  // The failure stays up through back-off polls (useKeptQueryError) and
-  // through a Retry, whose button says it is retrying (useRetryKeepingError).
   const keptListError = useKeptQueryError(
     { error, hasData: hasListData },
     listIdentity,
@@ -320,17 +300,14 @@ function useJobsBrowser() {
     listIdentity,
   );
   const listError = listRetry.error;
-  // Until a list arrives, and after a failure that left none, there are no
-  // rows to count: never present that as "No jobs found".
   const listStatus: JobsListStatus =
     listError && !hasListData ? "error" : jobsResult ? "ready" : "loading";
   const jobs = listStatus === "ready" ? (jobsResult?.jobs ?? []) : [];
   const totalTasks =
     listStatus === "ready" ? (jobsResult?.totalTasks ?? 0) : 0;
 
-  // The toolbar notes a failed summary, unless the list's own alert (the load
-  // error in place of the table, or the refresh notice above the toolbar)
-  // already gives the same reason: one outage fails both reads.
+  // The toolbar skips noting a failed summary when the list's own alert already gives the same
+  // reason.
   const summaryErrorMessage = summaryError
     ? formatUserFacingErrorMessage(summaryError, summaryErrorFallback)
     : undefined;
@@ -343,19 +320,15 @@ function useJobsBrowser() {
       ? summaryErrorMessage
       : undefined;
 
-  // Kill mutation
   const killMutation = useKillJob();
 
-  // Derived data. The service list comes from the summary; keep the selected
-  // service in it so the filter still names it when the summary failed.
+  // Keep the selected service in the list so the filter still names it when the summary failed.
   const availableServices = Object.keys(appSummary ?? {});
   if (serviceFilter !== "all" && !availableServices.includes(serviceFilter)) {
     availableServices.push(serviceFilter);
   }
   availableServices.sort();
 
-  // Client-side filters (status, search) applied to the current page
-  // Note: serviceFilter is handled server-side via the `app` param in useJobsData
   const filteredJobs = jobs.filter((job) => {
     if (!job.id || !job.app) return false;
 
@@ -382,7 +355,6 @@ function useJobsBrowser() {
     return true;
   });
 
-  // Selection
   const selectedJobs = filteredJobs.filter((job) => selectedIds.has(job.id));
 
   const handleSelect = (
@@ -402,13 +374,11 @@ function useJobsBrowser() {
     });
   };
 
-  // Columns
   const handleSortChange = (next: DataTableSort) => {
     setListState({ sort: next, page: 1 });
   };
   const { columns, handleSort } = useJobsColumns(sort, handleSortChange);
 
-  // Pagination
   const handlePrevious = () => {
     setListState({ page: Math.max(1, page - 1) });
     clearSelection();
@@ -424,7 +394,6 @@ function useJobsBrowser() {
     clearSelection();
   };
 
-  // Return to page 1 when filters change
   const handleStatusFilterChange = (value: string) => {
     setListState({ status: value, page: 1 });
     clearSelection();
@@ -457,7 +426,6 @@ function useJobsBrowser() {
     clearSelection();
   };
 
-  // Row rendering & keyboard
   const handleDoubleClick = (job: JobListItem) => {
     const resultHref = getJobResultHref(job);
     if (resultHref) {
@@ -467,7 +435,6 @@ function useJobsBrowser() {
     }
   };
 
-  // Actions
   const handleAction = (actionId: string, selection: JobListItem[]) => {
     if (selection.length === 0) return;
     const job = selection[0];
@@ -476,9 +443,8 @@ function useJobsBrowser() {
         handleDoubleClick(job);
         break;
       case "rerun": {
-        // Every failure — a pop-up blocker refusing the tab, an unsupported
-        // service — would otherwise look like a rerun that opened. `rerunJob`
-        // reports nothing itself, so the toast has to cover all of them.
+        // `rerunJob` reports nothing itself, so the toast covers every failure (a pop-up blocker,
+        // an unsupported service).
         const launch = rerunJob(job.parameters, job.app);
         if (launch.status !== "opened") toast.error(launch.message);
         break;
@@ -515,7 +481,6 @@ function useJobsBrowser() {
     onEnter: handleDoubleClick,
   });
 
-  // Details panel content
   const detailsPanel =
     selectedJobs.length === 1 ? (
       <JobDetailsPanel job={selectedJobs[0]} />
@@ -539,7 +504,6 @@ function useJobsBrowser() {
       detailsPanel={detailsPanel}
     >
       <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-        {/* Header + toolbar */}
         <div className="min-w-0 shrink-0 space-y-4 overflow-hidden p-4">
           <div className="flex items-center justify-between">
             <h1 className="text-2xl font-bold text-foreground">Jobs</h1>
@@ -575,7 +539,6 @@ function useJobsBrowser() {
           />
         </div>
 
-        {/* Table */}
         <div className="min-h-0 flex-1">
           {listStatus === "error" ? (
             <JobsLoadError
@@ -610,7 +573,6 @@ function useJobsBrowser() {
           )}
         </div>
 
-        {/* Pagination */}
         <div className="shrink-0 border-t">
           <JobsPagination
             status={listStatus}

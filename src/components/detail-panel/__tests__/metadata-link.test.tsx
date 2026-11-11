@@ -2,10 +2,8 @@ import { render, screen } from "@testing-library/react";
 import { MetadataLink, MetadataLinkButton } from "../metadata-link";
 
 describe("MetadataLinkButton", () => {
-  // `nativeButton={false}` (the same prop every other `Button render={<Link/>}`
-  // call site in this codebase sets, e.g. collection-selection-actions.tsx) keeps
-  // the accessible role "button" even though the rendered element is an anchor
-  // underneath — same href/target/rel contract as MetadataLink either way.
+  // `nativeButton={false}` keeps the accessible role "button" on the anchor
+  // rendered underneath.
   it("renders an internal button destination through Next Link", () => {
     render(<MetadataLinkButton href="/genome/1">View</MetadataLinkButton>);
     const button = screen.getByRole("button", { name: "View" });

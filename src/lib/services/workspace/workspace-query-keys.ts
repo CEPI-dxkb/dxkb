@@ -1,10 +1,6 @@
 /**
- * Centralized TanStack Query key factory for workspace queries.
- *
- * Every workspace query should use these helpers so invalidation is
- * consistent across the app. `workspaceQueryKeys.all` is the common prefix —
- * invalidating it after a mutation refetches the browser, shared listings,
- * path listings, metadata, permissions, etc.
+ * TanStack Query key factory for workspace queries; `workspaceQueryKeys.all` is
+ * the common prefix, so invalidating it refetches everything.
  */
 
 export const workspaceQueryKeys = {
@@ -61,9 +57,8 @@ export const workspaceQueryKeys = {
 };
 
 /**
- * Invalidate everything under the workspace root. Use after any mutation that
- * changes workspace state so dependent listings refetch. For narrow
- * invalidations pass a more specific key.
+ * Invalidates everything under the workspace root; pass a more specific key for
+ * narrow invalidations.
  */
 export function invalidateWorkspace(queryClient: {
   invalidateQueries: (opts: { queryKey: readonly unknown[] }) => unknown;

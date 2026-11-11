@@ -15,12 +15,10 @@ export const numberFormatter = new Intl.NumberFormat("en-US");
 
 export const organismBvBrcRevalidateSeconds = 86400;
 
-// These calls sit on the server render path, so an upstream that never
-// answers would hang the page instead of reaching its error surface. The
-// budget only needs to stop true hangs: BV-BRC's own gateway answers 500 after
-// ~20 s, and slow-but-good responses of 5–15 s occur. A timed-out response is
-// never cached, so a budget below that range would keep a slow endpoint
-// failing for every visitor instead of letting one slow success fill the cache.
+// The budget only needs to stop true hangs: BV-BRC's gateway answers 500 after
+// ~20 s, and slow-but-good responses take 5–15 s. A timed-out response is never
+// cached, so a lower budget would keep a slow endpoint failing for every
+// visitor.
 export const organismFetchTimeoutMs = 30_000;
 
 export function organismFetchCacheInit(
@@ -37,11 +35,8 @@ export function getBvBrcWebsiteApiBaseUrl(): string {
 }
 
 /**
- * A non-OK response as one log line: the body's text, or, for an HTML error
- * page (BV-BRC's maintenance page), only the status and the page's title and
- * heading ("503 Service Unavailable: Site Maintenance — We’ll be back soon!"),
- * never page source. A message the user reads comes from
- * `organismResponseError` instead.
+ * A non-OK response as one log line: the body's text, or only the status and
+ * title of an HTML error page, never page source.
  */
 export async function responseErrorMessage(response: Response): Promise<string> {
   const body = await response.text().catch(() => "");
@@ -54,25 +49,18 @@ export async function responseErrorMessage(response: Response): Promise<string> 
   return body.trim() || status;
 }
 
-// Matched by name rather than instanceof: the DOMException an abort produces
-// can come from another realm (jsdom in tests), where instanceof Error fails.
+// Matched by name: an abort's DOMException can come from another realm (jsdom),
+// where instanceof fails.
 function errorName(error: unknown): unknown {
   return typeof error === "object" && error !== null && "name" in error ? error.name : undefined;
 }
 
-/** How organism failure messages name the backend these endpoints belong to. */
 const organismService = upstreamServices.dataApi;
 
 /**
- * What an organism request fetches, named twice.
- *
- * - `label` is what the user knows the data as, the title of the chart that
- *   shows it ("Isolation Country"), and prefixes a failure's message. Leave
- *   it out where the card showing the failure already names the data
- *   ("Reference genomes could not be loaded").
- * - `source` is the endpoint's internal name ("genome isolation_country
- *   facet"), for the server log only: a failure carries it as
- *   `UpstreamError.source`, which `console.error(error)` prints.
+ * What an organism request fetches: `label` is the user-facing name (omit it
+ * where the card already names the data), `source` is the endpoint name for the
+ * server log.
  */
 export interface OrganismRequest {
   source: string;
@@ -84,19 +72,9 @@ function labelled(request: OrganismRequest, message: string): string {
 }
 
 /**
- * The `UpstreamError` for a non-OK organism response, in the wording every
- * backend shares (`describeUpstreamResponse`) behind the request's label:
- * "Isolation Country: The BV-BRC data service is unavailable (HTTP 503
- * Service Unavailable: Site Maintenance — We’ll be back soon!)." for a 5xx,
- * "… rejected the request (HTTP 400 Bad Request: undefined field genus)." for
- * a 4xx.
- *
- * An HTML body gives only its title and heading, a JSON error its message. A
- * plain-text body is kept, condensed to one line, as every other reader of
- * this Data API through the shared helper keeps it (statistics, minhash): it
- * is the service's own account of what failed ("undefined field genus"),
- * which the status alone would hide. The host goes on `host` and the endpoint
- * on `source`, for logs.
+ * The `UpstreamError` for a non-OK organism response, worded by
+ * `describeUpstreamResponse` behind the request's label; the host goes on
+ * `host` and the endpoint on `source`.
  */
 export async function organismResponseError(
   response: Response,
@@ -114,13 +92,9 @@ export async function organismResponseError(
 }
 
 /**
- * Rethrows a failed organism request. A spent budget or a network failure
- * becomes an `UpstreamError` that names the service and says what happened,
- * behind the request's label ("Isolation Country: The BV-BRC data service did
- * not respond (timed out after 30 s)."), where the platform said only "The
- * operation was aborted due to timeout" or undici only "fetch failed". The
- * host goes on the error's `host` and the endpoint on its `source`, for logs.
- * A caller's own abort and anything else is rethrown untouched.
+ * Rethrows a failed organism request: a spent budget or network failure becomes
+ * an `UpstreamError` naming the service; a caller's own abort and anything else
+ * is rethrown untouched.
  */
 export function throwOrganismFetchError(
   error: unknown,
@@ -145,14 +119,9 @@ export function throwOrganismFetchError(
 }
 
 /**
- * fetch() for BV-BRC organism endpoints. Applies the shared cache policy and
- * bounds the request with organismFetchTimeoutMs, composed with any caller
- * signal so caller cancellation keeps working.
- *
- * A `token` makes it the signed-in user's request, as `ServerDataRepository`
- * sends one: the answer includes their private genomes, so it is never cached
- * (a cached entry would serve one user's genomes to another), a redirect is
- * refused rather than followed with the token, and plain HTTP is refused.
+ * fetch() for BV-BRC organism endpoints with the shared cache policy and
+ * timeout. A `token` makes it the signed-in user's request: never cached,
+ * redirects and plain HTTP refused.
  */
 export async function fetchOrganism(
   url: string,
@@ -185,9 +154,8 @@ export async function fetchOrganism(
 }
 
 /**
- * Standard SOLR/BV-BRC fetch wrapper. Centralizes Accept header, cache init,
- * timeout, error message extraction, and JSON-object validation so callers
- * can stay focused on URL construction and payload parsing.
+ * Standard SOLR/BV-BRC fetch wrapper: Accept header, cache, timeout, error
+ * extraction, JSON-object validation.
  */
 export async function fetchOrganismSolrJson(
   url: string,
@@ -209,10 +177,7 @@ export async function fetchOrganismSolrJson(
   return readJsonObject(response, request);
 }
 
-/**
- * POST variant of fetchOrganismSolrJson. Used by BV-BRC endpoints (e.g.
- * genome_amr) that require an RQL body via POST instead of GET query params.
- */
+/** POST variant for endpoints (e.g. genome_amr) that require an RQL body. */
 export async function fetchOrganismSolrJsonPost(
   url: string,
   body: string,
@@ -256,8 +221,8 @@ export async function readJsonObject(
 
 export function numberOrNull(value: unknown, field: string): number | null {
   if (value === null || value === undefined || value === "") return null;
-  // Reject booleans, arrays, and objects up front: `Number(true) === 1`,
-  // `Number([5]) === 5`, both pass `Number.isFinite` and silently corrupt data.
+  // Reject booleans, arrays, and objects up front: `Number(true)` and
+  // `Number([5])` pass `Number.isFinite` and silently corrupt data.
   if (typeof value !== "number" && typeof value !== "string") {
     throw new Error(`Unexpected BV-BRC response shape: ${field} is not numeric`);
   }
@@ -339,8 +304,8 @@ interface PivotEntry {
 }
 
 function pivotEntryName(entry: PivotEntry): string | null {
-  // SOLR emits numeric outer keys (e.g. collection_year) as numbers OR
-  // strings depending on field type; coerce to string for the result map.
+  // SOLR emits numeric outer keys as numbers or strings by field type; coerce
+  // to string.
   if (typeof entry.value === "string" && entry.value.length > 0) return entry.value;
   if (typeof entry.value === "number" && Number.isFinite(entry.value)) return String(entry.value);
   return null;

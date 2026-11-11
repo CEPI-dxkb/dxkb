@@ -126,7 +126,6 @@ describe("useWorkspaceFilteredItems", () => {
         useWorkspaceFilteredItems(items, {
           ...defaultOptions,
           searchQuery,
-          // A fresh sort object each render, as the caller may pass.
           sort: { field: "name", direction: "asc" },
         }),
       { initialProps: { searchQuery: "a" } },

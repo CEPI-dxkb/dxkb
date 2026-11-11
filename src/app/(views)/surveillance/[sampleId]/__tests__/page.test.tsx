@@ -31,13 +31,8 @@ const record = {
 };
 
 /**
- * Next gives the two entry points DIFFERENT encodings of the same segment, so
- * these helpers take the real identifier and produce what each one actually
- * receives. Feeding one string to both would prove nothing — see
- * `readRouteParam` in `src/lib/views/route-params.ts`.
- *
- * The page component's params come from `getDynamicParam()`, which
- * percent-ENCODES the matched value before user code sees it.
+ * The two entry points get different encodings of the same segment
+ * (`readRouteParam`); these helpers produce what each receives.
  */
 function pageProps(
   sampleId = "sample/1",
@@ -49,7 +44,6 @@ function pageProps(
   };
 }
 
-/** `generateMetadata` reads the route matcher's already-decoded params. */
 function metadataProps(
   sampleId = "sample/1",
   query: Record<string, string | string[] | undefined> = {},
@@ -138,10 +132,8 @@ describe("Surveillance member page", () => {
   });
 
   it("preserves a sample ID containing literal percent text instead of over-decoding it", async () => {
-    // The identifier really is "sample%2Fone". The page component receives it
-    // double-encoded and must decode exactly once; `generateMetadata`
-    // receives it as-is and must not decode at all. Getting either wrong
-    // resolves a different (nonexistent) identifier.
+    // The page component receives the identifier double-encoded and must decode
+    // once; `generateMetadata` receives it as-is.
     render(await SurveillancePage(pageProps("sample%2Fone")));
 
     expect(mocks.getSurveillance).toHaveBeenCalledWith(

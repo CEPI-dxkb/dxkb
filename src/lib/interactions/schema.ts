@@ -5,13 +5,8 @@ const optionalText = z.string().optional();
 const optionalTextList = z.union([z.string(), z.array(z.string())]).optional();
 
 /**
- * The graph's row contract, on top of the gateway's `ppiRecordSchema`.
- *
- * The gateway only guarantees `id`, because the Interactions *table* renders
- * whatever columns a row happens to carry. The graph cannot place an edge without
- * both endpoints, so it requires them here: a row missing one used to become a
- * node keyed `undefined`, silently collapsing every such row into one phantom
- * node instead of reporting a malformed response.
+ * The gateway only guarantees `id`; the graph needs both endpoints, since a row missing one would
+ * become a node keyed `undefined` and collapse into one phantom node.
  */
 export const ppiGraphRecordSchema = ppiRecordSchema.extend({
   interactor_a: z.string().min(1),

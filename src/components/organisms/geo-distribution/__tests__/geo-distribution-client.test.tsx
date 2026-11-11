@@ -160,7 +160,6 @@ describe("GeoDistributionClient", () => {
       />,
     );
 
-    // The US view's steps end at the top state, not the USA's national total.
     const usLegend = screen.getByRole("img", { name: /^Genomes per state:/ });
     expect(usLegend).toHaveAccessibleName(/to 300/);
     expect(usLegend).not.toHaveAccessibleName(/1,000,000/);
@@ -185,7 +184,6 @@ describe("GeoDistributionClient", () => {
       />,
     );
 
-    // The State view opens on Illinois.
     fireEvent.click(screen.getByRole("button", { name: "State" }));
 
     const legend = screen.getByRole("img", { name: /^Genomes per county:/ });

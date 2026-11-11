@@ -11,14 +11,9 @@ import {
 } from "@/lib/views/legacy-redirect";
 import { viewSegments } from "@/lib/views/view-registry";
 
-/**
- * Next.js Proxy for optimistic page authentication checks.
- * Cookie validation remains server-side.
- */
 export function proxy(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
 
-  // 1. Legacy /view/* → new schema (path + query only; hash handled client-side).
   if (pathname.startsWith("/view/")) {
     const mapped = mapLegacyViewPath(
       pathname,
@@ -31,7 +26,6 @@ export function proxy(request: NextRequest) {
     }
   }
 
-  // 2. Internal ?view= → ?tab= on (views) routes.
   const firstSegment = pathname.split("/").filter(Boolean)[0];
   if (firstSegment && viewSegments.includes(firstSegment)) {
     const viewValue = request.nextUrl.searchParams.get("view");
@@ -67,9 +61,7 @@ export function proxy(request: NextRequest) {
   return NextResponse.next();
 }
 
-// NOTE: the view segment paths below mirror `viewSegments` in view-registry.ts.
-// Next.js requires a statically analyzable matcher literal — it cannot be computed
-// from viewSegments at runtime, so the list is intentionally duplicated here.
+// The matcher literal must be static (Next.js cannot compute it), so view segments are duplicated from `viewSegments` in view-registry.ts.
 export const config = {
   matcher: [
     "/services/:path*",

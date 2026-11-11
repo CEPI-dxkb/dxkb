@@ -15,7 +15,6 @@ describe("tickUnit", () => {
 describe("positionTicks", () => {
   it("ticks a 250 kb sequence every kb, labelling every 10 kb in Mbp", () => {
     const ticks = positionTicks(buildGenomeLayout([{ accession: "A", length: 250_000 }]));
-    // A start tick, then indices 1..248 (legacy's loop stops at count - 1).
     expect(ticks).toHaveLength(249);
     expect(ticks[0]).toEqual({ angle: 0, size: "medium" });
     expect(ticks[1].size).toBe("minor");

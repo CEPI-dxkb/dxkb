@@ -46,8 +46,7 @@ export function buildTaxonViews({
   surface,
 }: BuildTaxonViewsOptions): OrganismLandingView[] {
   const lists = getCuratedLists();
-  // Each root's own Phylogeny gate, as its taxonomy page would compute it, so
-  // the tree's Trees link only points at a tab that is enabled there.
+  // Each root's own Phylogeny gate, so the tree's Trees link only points at an enabled tab.
   const phylogenyTaxonIds = scopeRoots(scope)
     .filter((root) =>
       hasBacterialOrViralPhylogeny(buildTabContext(root, phyloManifest, lists)),

@@ -1,16 +1,9 @@
 "use client";
 
-/**
- * A drag handle on a folder-picker pane's edge. Drag, or focus it and
- * press ← / →, to resize; double-click resets. It sits over the pane's border,
- * so the line it draws on hover is the border itself lighting up.
- */
-
 import { useRef } from "react";
 import { cn } from "@/lib/utils";
 
 interface ResizeHandleProps {
-  /** Which edge of the pane the handle sits on. */
   edge: "start" | "end";
   label: string;
   width: number;
@@ -30,8 +23,6 @@ export function PaneResizeHandle({
   className,
 }: ResizeHandleProps) {
   const dragRef = useRef<{ x: number; width: number } | null>(null);
-  // Dragging the divider right widens a pane whose handle is on its end edge
-  // and narrows one whose handle is on its start edge.
   const sign = edge === "end" ? 1 : -1;
   const resize = (next: number) => {
     onResize(Math.round(Math.min(limits.max, Math.max(limits.min, next))));

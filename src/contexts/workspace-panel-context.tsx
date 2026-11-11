@@ -3,10 +3,8 @@
 import { createContext, useContext, useState, type ReactNode } from "react";
 
 interface WorkspacePanelContextType {
-  /** When true, user has manually hidden the details panel; don't auto-open on item selection or when traversing folders. */
   panelManuallyHidden: boolean;
   setPanelManuallyHidden: (value: boolean) => void;
-  /** When true, the details panel is expanded (persists across folder navigation). */
   panelExpanded: boolean;
   setPanelExpanded: (value: boolean) => void;
 }

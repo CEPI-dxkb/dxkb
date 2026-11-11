@@ -11,8 +11,8 @@ import {
 } from "node:fs";
 import { resolve } from "node:path";
 
-// Auspice loads this extension through auspice/config.json rather than Node's
-// module graph. Keep a static reference so React Doctor can trace it.
+// Auspice loads this through auspice/config.json, so keep a static reference
+// for React Doctor.
 if (process.env.REACT_DOCTOR_SCAN) void import("../auspice/navbar.js");
 
 const root = resolve(import.meta.dirname, "..");
@@ -29,9 +29,9 @@ const buildInputs = [
   "pnpm-lock.yaml",
 ];
 
-// Design tokens copied from the host page into the iframe as `--dxkb-<name>`.
-// public/auspice-dark.css consumes exactly these; scripts/auspice-shell.test.ts
-// fails the build if the two lists drift apart.
+// Tokens copied into the iframe as `--dxkb-<name>`;
+// scripts/auspice-shell.test.ts fails if they drift from
+// public/auspice-dark.css.
 const bridgedTokens = [
   "background",
   "foreground",
@@ -50,14 +50,9 @@ const bridgedTokens = [
 ];
 
 /**
- * Inline script that mirrors the host document's tokens onto this document.
- *
- * Inline rather than a separate file so it runs before first paint — an
- * external <script> would let a light frame through. Auspice is same-origin,
- * so `parent.document` is readable directly and a MutationObserver on the
- * host's `data-theme` attribute fires across the frame boundary. Opened
- * standalone, `parent === window` and this is a no-op; the stylesheet's
- * var() fallbacks then render stock Auspice.
+ * Inline so it runs before first paint (an external script would let a light
+ * frame through). Same-origin, so `parent.document` is readable; opened
+ * standalone it is a no-op and the stylesheet fallbacks render stock Auspice.
  */
 const themeBridge = `(function(){try{
 var host=window.parent;if(host===window)return;
@@ -113,8 +108,8 @@ try {
     resolve(publicDir, "auspice-favicon.png"),
   );
 
-  // Auspice minifies its shell, so attribute quotes are optional
-  // (`href=/favicon.png`); match both forms.
+  // Attribute quotes are optional in the minified shell
+  // (`href=/favicon.png`); match both.
   const shell = readFileSync(resolve(scratch, "index.html"), "utf8")
     .replaceAll(/href=(["']?)\/favicon\.png\1/g, 'href="/auspice-favicon.png"')
     .replace(

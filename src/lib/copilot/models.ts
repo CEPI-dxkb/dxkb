@@ -1,9 +1,5 @@
 import type { CopilotModel } from "./types";
 
-/**
- * The model to use: the user's last pick while the gateway still offers it,
- * else the gateway's default, else its first.
- */
 export function resolveCopilotModel(
   models: CopilotModel[],
   stored: string | null,

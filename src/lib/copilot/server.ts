@@ -1,14 +1,9 @@
 import "server-only";
 
 /**
- * Server side of `/api/copilot/*`: calls to the BV-BRC Copilot gateway
- * (`BV-BRC-Copilot-API`) with the caller's session token, mapped to the
- * browser-safe shapes in `./types`.
- *
- * The browser never calls the gateway itself: the BV-BRC token lives in an
- * HttpOnly cookie, and the gateway takes it as a bare `Authorization` header
- * (no `Bearer`), which is also how it learns the user — so no `user_id` is
- * sent. Network failures and spent budgets throw `UpstreamError`.
+ * The browser never calls the gateway: the token lives in an HttpOnly cookie, and the gateway takes
+ * it as a bare `Authorization` header (no `Bearer`), which is also how it learns the user, so no
+ * `user_id` is sent.
  */
 import { z } from "zod";
 import {
@@ -38,10 +33,7 @@ import { copilotName } from "@/lib/copilot/name";
 
 const service = upstreamServices.copilot;
 
-/**
- * `COPILOT_API_URL` is not set. Its message names the variable, for the
- * server log only: routes show `userMessage` instead.
- */
+/** Its message names the variable, for the server log only. */
 export class CopilotConfigurationError extends Error {
   readonly userMessage =
     `${copilotName} is unavailable right now: it is not configured on this server.`;
@@ -52,11 +44,7 @@ export class CopilotConfigurationError extends Error {
   }
 }
 
-/**
- * Headers for every gateway call: the caller's bare token, and the user agent
- * that gets the request past Cloudflare in front of the gateway (Node's
- * default draws a "Just a moment..." challenge, HTTP 403).
- */
+/** Node's default user agent draws a Cloudflare 403 "Just a moment..." challenge. */
 function gatewayHeaders(
   token: string,
   headers: Record<string, string>,
@@ -68,7 +56,6 @@ function gatewayHeaders(
   };
 }
 
-/** The gateway's base (`…/copilot-api`), without a trailing slash. */
 function copilotBaseUrl(): string {
   const value = process.env.COPILOT_API_URL?.trim();
   if (!value) throw new CopilotConfigurationError();
@@ -131,9 +118,6 @@ async function copilotPost(
   return readJson(response);
 }
 
-// ---------------------------------------------------------------------------
-// Models
-
 const gatewayModelSchema = z.object({
   model: z.string().min(1),
   model_type: z.string().nullish(),
@@ -144,15 +128,11 @@ const gatewayModelSchema = z.object({
   is_default: z.boolean().nullish(),
 });
 
-/** `models` is a JSON string holding the array, not the array itself. */
 const gatewayModelListSchema = z.object({ models: z.string() });
 
 /**
- * Active chat models, in the gateway's order. An entry the gateway marks
- * `active: false` is dropped; one that leaves `active` out is kept, as the
- * BV-BRC Copilot UI keeps it. A model the gateway lists more than once is kept
- * once, at its first entry: turns name the model only by its name, so a
- * second entry is not a second choice (and would repeat a React key).
+ * An entry with `active: false` is dropped, one that leaves `active` out is kept; duplicates keep
+ * the first, since turns name the model only by name.
  */
 export async function readCopilotModels(
   token: string,
@@ -189,17 +169,10 @@ export async function readCopilotModels(
   });
 }
 
-// ---------------------------------------------------------------------------
-// Sessions
-
-/** The gateway caps a page at 100 sessions. */
 export const maxCopilotSessionPage = 100;
 export const defaultCopilotSessionPage = 20;
 
-/**
- * Mongo `Date`s arrive as ISO strings. Anything else (an old document's odd
- * field) is read as unknown rather than failing the whole page.
- */
+/** Anything but an ISO string (an old document's odd field) is read as unknown rather than failing the page. */
 const dateText = z
   .unknown()
   .transform((value) => (typeof value === "string" && value ? value : null));
@@ -234,11 +207,7 @@ function toSessionSummary(
   };
 }
 
-/**
- * One page of the caller's sessions, newest first, without their messages
- * (the gateway sends every message of every session on the page; the session
- * list needs none of them).
- */
+/** Without messages: the gateway sends every message of every session on the page, and the list needs none. */
 export async function readCopilotSessions(
   token: string,
   page: { limit: number; offset: number },
@@ -259,14 +228,7 @@ export async function readCopilotSessions(
   };
 }
 
-// ---------------------------------------------------------------------------
-// Rejections the client acts on
-
-/**
- * The gateway refused a request with a 4xx and a reason of its own (a turn
- * already running, an archived session). Routes answer it as `{error, code,
- * copilotCode}` with the gateway's status, so the client can act on the code.
- */
+/** A 4xx with a reason of its own; routes answer `{error, code, copilotCode}` so the client can act on the code. */
 export class CopilotRejectedError extends Error {
   readonly status: number;
   readonly copilotCode: string | null;
@@ -280,9 +242,8 @@ export class CopilotRejectedError extends Error {
 }
 
 /**
- * A non-OK gateway answer as an error: a 4xx with a JSON `message` keeps it
- * (and its `code`), so "That prepared job is no longer in this chat" reaches
- * the user as written; anything else is described by `upstreamResponseError`.
+ * A 4xx with a JSON `message` keeps it (and its `code`) so it reaches the user as written; anything
+ * else goes through `upstreamResponseError`.
  */
 async function rejection(response: Response): Promise<Error> {
   if (response.status >= 400 && response.status < 500) {
@@ -307,17 +268,12 @@ async function rejection(response: Response): Promise<Error> {
   return upstreamResponseError(response, service);
 }
 
-// ---------------------------------------------------------------------------
-// Session messages
-
-/** Gateway ids are UUIDs; anything else is refused before a call is made. */
 const gatewayIdPattern = /^[A-Za-z0-9_-]{1,100}$/;
 
 export function isCopilotId(value: string): boolean {
   return gatewayIdPattern.test(value);
 }
 
-/** Auto-generated plan actions the BV-BRC UI hides (`ChatMessage.js`). */
 const hiddenUserText =
   /^(Execute plan step:|Execute approved plan:|Skip step and continue|Continue after review)/;
 
@@ -325,10 +281,6 @@ function readRating(value: unknown): CopilotMessage["rating"] {
   return value === -1 || value === 0 || value === 1 ? value : null;
 }
 
-/**
- * A stored message as the transcript shows it, or null for one it does not
- * show: other roles, hidden plan actions, and empty answers without a card.
- */
 export function toCopilotMessage(raw: unknown): CopilotMessage | null {
   if (!isRecord(raw)) return null;
   const role = raw.role;
@@ -362,9 +314,8 @@ export function toCopilotMessage(raw: unknown): CopilotMessage | null {
 }
 
 /**
- * A message's card. A plan answer carries the plan twice: `card.card_payload`
- * as first written, and `plan`, which the gateway updates as steps run (and
- * `/plan/:id/edit` replaces). The current one is shown.
+ * A plan answer carries the plan twice: `card.card_payload` as first written and `plan`, which the
+ * gateway updates as steps run; the current one is shown.
  */
 function readMessageCard(raw: Record<string, unknown>): CopilotCard | null {
   if (isRecord(raw.plan)) return { cardType: "plan", payload: raw.plan };
@@ -445,10 +396,6 @@ export async function readCopilotSession(
   };
 }
 
-// ---------------------------------------------------------------------------
-// Session and message actions
-
-/** POST that only needs to succeed; its body is returned unparsed. */
 async function copilotAction(
   path: string,
   body: object,
@@ -486,7 +433,6 @@ export async function renameCopilotSession(
   );
 }
 
-/** Archives the session (the gateway's delete is a soft delete). */
 export async function deleteCopilotSession(
   token: string,
   sessionId: string,
@@ -494,11 +440,7 @@ export async function deleteCopilotSession(
   await copilotAction("/chatbrc/delete-session", { session_id: sessionId }, token);
 }
 
-/**
- * Asks the model for a title from the first question, saves it, and returns
- * it. Null when the gateway declines (it answers "New Chat" for models it
- * cannot reach for titles); the session keeps its title then.
- */
+/** Null when the gateway declines (it answers "New Chat" for models it cannot reach for titles). */
 export async function titleCopilotSession(
   token: string,
   sessionId: string,
@@ -521,10 +463,7 @@ export async function titleCopilotSession(
   return title;
 }
 
-/**
- * Stops the turn running in a session (Stop before `started`, when the job
- * id is not known yet). Null when no turn holds the session.
- */
+/** Null when no turn holds the session. */
 export async function stopCopilotSession(
   token: string,
   sessionId: string,
@@ -544,7 +483,6 @@ export async function stopCopilotSession(
   }
 }
 
-/** Stops a running turn by its job id (from the `started` event). */
 export async function abortCopilotJob(token: string, jobId: string): Promise<void> {
   await copilotAction(
     `/chatbrc/job/${encodeURIComponent(jobId)}/abort`,
@@ -553,7 +491,6 @@ export async function abortCopilotJob(token: string, jobId: string): Promise<voi
   );
 }
 
-/** Saves the session's Plan/Execute mode. */
 export async function setCopilotExecutionMode(
   token: string,
   sessionId: string,
@@ -566,11 +503,7 @@ export async function setCopilotExecutionMode(
   );
 }
 
-/**
- * "No" on an execution card: records the answer on the stored card. Nothing
- * runs and no model turn is spent. The actions identify the card, as for a
- * replay; 409 (`REPLAY_*`) when it is gone or already answered.
- */
+/** Nothing runs and no model turn is spent; 409 (`REPLAY_*`) when the card is gone or already answered. */
 export async function declineCopilotExecution(
   token: string,
   sessionId: string,
@@ -583,10 +516,6 @@ export async function declineCopilotExecution(
   );
 }
 
-/**
- * A plan as the client sends it back: the stored plan object, bounded. Its
- * steps go to the planning agent as written.
- */
 export const copilotPlanSchema = z
   .looseObject({
     plan_id: z.string().refine(isCopilotId),
@@ -603,10 +532,7 @@ export const copilotPlanSchema = z
   })
   .refine((plan) => JSON.stringify(plan).length <= 500_000);
 
-/**
- * Saves an edited plan (its steps, or its status as it runs). The gateway
- * keeps the step outputs it stored; the plan must belong to this session.
- */
+/** The gateway keeps the step outputs it stored; the plan must belong to this session. */
 export async function editCopilotPlan(
   token: string,
   sessionId: string,
@@ -630,7 +556,6 @@ const gatewayWatchesSchema = z.object({
   ),
 });
 
-/** The jobs the gateway watches for a chat, newest first. */
 export async function readCopilotWorkflowWatches(
   token: string,
   sessionId: string,
@@ -663,16 +588,9 @@ export async function rateCopilotMessage(
   );
 }
 
-// ---------------------------------------------------------------------------
-// Chat turn
-
-/** Longest question accepted; the gateway forwards it to the model whole. */
 export const maxCopilotQueryLength = 100_000;
 
-/**
- * Prepared actions go back to the gateway verbatim, which checks them against
- * the card it stored; here they are only bounded.
- */
+/** Prepared actions go back verbatim; the gateway checks them against the card it stored. */
 export const copilotActionsSchema = z
   .array(z.looseObject({ tool: z.string().min(1).max(100) }))
   .min(1)
@@ -681,19 +599,9 @@ export const copilotActionsSchema = z
 export const maxCopilotPageContextLength = 2_000;
 
 /**
- * The gateway's `/copilot-agent` body for a turn. Only these fields are sent;
- * the user comes from the token.
- *
- * - Answers to a clarification card go back to the agent that asked
- *   (`targetAgent`) as `workflow_context.plan_action: "answer_questions"`,
- *   which the gateway saves as a `user_clarification` message.
- * - "Yes" on an execution card replays its actions once (`execute_once` +
- *   `replay_actions`); "Other" revises them (`prepared_actions`). The gateway
- *   accepts either only when it matches a card stored in this session.
- * - A plan step runs as `workflow_context.plan_action: "execute_next"`, one
- *   step per turn; the client moves on to the next step.
- * - Attachments go as the gateway's `images` (+ `image_attachments` names),
- *   `files` and `pdfs`; it caps them at 3 and checks sizes and content too.
+ * Only these fields are sent; the user comes from the token. The gateway accepts "Yes"
+ * (`execute_once` + `replay_actions`) or "Other" (`prepared_actions`) only when it matches a card
+ * stored in this session.
  */
 export function copilotTurnBody(turn: CopilotChatRequest): Record<string, unknown> {
   const body: Record<string, unknown> = {
@@ -718,8 +626,7 @@ export function copilotTurnBody(turn: CopilotChatRequest): Record<string, unknow
     };
   }
   if (turn.planStep) {
-    // The gateway merges the step results it stored into
-    // completed_step_results, so none are sent from here.
+    // The gateway merges stored step results into completed_step_results, so none are sent.
     body.workflow_context = {
       plan: turn.planStep.plan,
       plan_action: "execute_next",
@@ -760,10 +667,7 @@ export function copilotTurnBody(turn: CopilotChatRequest): Record<string, unknow
   return body;
 }
 
-/**
- * Opens a chat turn and returns the gateway's `text/event-stream` response for
- * the route to pass through. The budget covers only the wait for its headers.
- */
+/** The budget covers only the wait for the headers. */
 export async function openCopilotTurn(
   token: string,
   turn: CopilotChatRequest,
@@ -783,14 +687,12 @@ export async function openCopilotTurn(
     { service, timeoutMs: upstreamTimeoutMs.copilot, streamBody: true },
   );
   if (!response.ok) throw await rejection(response);
-  // A proxy's HTML page or a JSON error with a 200 is not a stream to relay.
   if (
     /^(text\/(html|xml)|application\/(json|xml|xhtml\+xml))\b/i.test(
       response.headers.get("content-type") ?? "",
     )
   ) {
-    // Not awaited: the answer does not depend on the stream closing, and
-    // under MSW's interceptor the cancel never settles.
+    // Not awaited: under MSW's interceptor the cancel never settles.
     void response.body?.cancel().catch(() => undefined);
     throw unreadableAnswer();
   }

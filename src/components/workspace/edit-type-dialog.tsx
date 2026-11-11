@@ -23,16 +23,12 @@ import type { WorkspaceItem } from "@/lib/services/workspace/domain";
 export interface EditTypeDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  /** Single item whose type is being changed */
   item: WorkspaceItem | null;
   onConfirm: (newType: string) => Promise<void>;
   isUpdating: boolean;
 }
 
-// State lives inside the form, not the dialog wrapper, so closing the dialog
-// unmounts this subtree (base-ui Dialog uses keepMounted={false} by default)
-// and state is destroyed. Reopening remounts with fresh state — no explicit
-// prop→state sync needed.
+// State lives inside the form so closing the dialog unmounts it and a reopen starts fresh.
 function EditTypeForm({
   item,
   onOpenChange,
@@ -53,7 +49,6 @@ function EditTypeForm({
       await onConfirm(selectedType.trim());
       onOpenChange(false);
     } catch (err) {
-      // Parent typically handles errors (e.g. toast). Log if rejection is unexpected.
       console.error("[EditTypeDialog] onConfirm failed:", err);
     }
   };

@@ -2,10 +2,7 @@ import { z } from "zod";
 
 import { baseLibrarySchema, libraryTypeSchema } from "@/lib/forms/shared-schemas";
 
-// -----------------------------------------------------------------------------
-// Strategy - the values are the ones the ViralAssembly app takes (legacy's
-// select uses "reference-guided" and sends "reference_guided")
-// -----------------------------------------------------------------------------
+// Values are the ones the ViralAssembly app takes (legacy's select sends "reference_guided").
 
 export const strategySchema = z.enum(["irma", "reference_guided"]);
 export type Strategy = z.infer<typeof strategySchema>;
@@ -14,11 +11,6 @@ export const strategyOptions: { value: Strategy; label: string }[] = [
   { value: "irma", label: "IRMA" },
   { value: "reference_guided", label: "Reference Guided Assembly" },
 ];
-
-// -----------------------------------------------------------------------------
-// Reference database (IRMA module) - legacy ViralAssembly.html option
-// values/labels and ViralAssembly.js irmaModuleDescriptions, in legacy's order
-// -----------------------------------------------------------------------------
 
 export const moduleSchema = z.enum([
   "FLU",
@@ -140,10 +132,7 @@ export const moduleOptions: {
   },
 ];
 
-// -----------------------------------------------------------------------------
-// Reference (reference-guided strategy). The app also takes "genome" and
-// "auto" (Minhash), which legacy's form hides.
-// -----------------------------------------------------------------------------
+// The app also takes "genome" and "auto" (Minhash), which legacy's form hides.
 
 export const referenceTypeSchema = z.enum(["genbank", "fasta"]);
 export type ReferenceType = z.infer<typeof referenceTypeSchema>;
@@ -156,10 +145,7 @@ export const referenceTypeOptions: { value: ReferenceType; label: string }[] = [
 /** Legacy ViralAssembly.js's accession pattern, matched in upper case. */
 const genbankAccessionPattern = /^[A-Z]{1,4}_?[A-Z]{0,4}\d+(?:\.\d+)?$/;
 
-/**
- * The accessions in a GenBank reference field. Legacy's placeholder separates
- * them with commas and its check with semicolons, so both are accepted.
- */
+/** Legacy's placeholder separates accessions with commas and its check with semicolons, so both are accepted. */
 export function genbankAccessions(value: string): string[] {
   return value
     .split(/[,;]/)
@@ -177,16 +163,8 @@ function isGenbankAccessionList(value: string): boolean {
   );
 }
 
-// -----------------------------------------------------------------------------
-// Library item: Viral Assembly has no platform; use base library schema as-is
-// -----------------------------------------------------------------------------
-
 export const viralAssemblyLibrarySchema = baseLibrarySchema;
 export type ViralAssemblyLibraryItem = z.infer<typeof viralAssemblyLibrarySchema>;
-
-// -----------------------------------------------------------------------------
-// Main form schema
-// -----------------------------------------------------------------------------
 
 export const viralAssemblyFormSchema = z
   .object({

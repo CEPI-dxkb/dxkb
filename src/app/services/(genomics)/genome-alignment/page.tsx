@@ -29,8 +29,7 @@ import {
   GenomeSelection,
 } from "./genome-alignment-sections";
 
-// The empty selection, as one array that is never mutated: the initial state
-// and what Reset restores. The effect below compares against it by identity.
+// Never mutated: the effect below compares against it by identity.
 const noGenomes: GenomeSummary[] = [];
 
 function useGenomeAlignmentForm(
@@ -50,8 +49,7 @@ export default function GenomeAlignmentServicePage() {
   const selectionRevisionRef = useRef(0);
   const groupRequestRevisionRef = useRef(0);
   const [showAdvanced, setShowAdvanced] = useState(false);
-  // Remounts GenomeSelection on reset: its selectors keep their search text
-  // internally, and its group fetch state must not outlive the reset.
+  // Remounts GenomeSelection on reset; its selectors keep search text internally.
   const [selectionResetKey, setSelectionResetKey] = useState(0);
   const [isOutputNameValid, setIsOutputNameValid] = useState(true);
   const [unverified, setUnverified] = useState<UnverifiedGenomes | null>(null);
@@ -61,15 +59,7 @@ export default function GenomeAlignmentServicePage() {
   );
   const form = useGenomeAlignmentForm((value) => submitRef.current(value));
   useEffect(() => {
-    // Syncing the empty selection (on mount, and after Reset) only copies it
-    // into the field. It must not mark the field touched or validate it, or
-    // "Select at least two genomes" shows before the user has done anything
-    // (or right after Reset, which has just cleared it). `dontUpdateMeta`
-    // alone is not enough: `setFieldValue` still validates a mounted field,
-    // and that marks it touched. Comparing against the shared empty array,
-    // rather than flipping a flag on the first run, keeps this true when
-    // Strict Mode runs the effect twice on mount. Removing the last genome
-    // builds a new empty array, so that path still validates.
+    // Syncing the empty selection must not touch or validate the field. Compared by identity so Strict Mode's double run stays a no-op.
     const untouched =
       genomes === noGenomes
         ? { dontUpdateMeta: true, dontValidate: true }
@@ -85,12 +75,8 @@ export default function GenomeAlignmentServicePage() {
     genomesRef.current = nextGenomes;
     setGenomes(nextGenomes);
   };
-  // Restores a previous job's genomes. Their IDs are the job's, so they are
-  // kept even when the lookup that names them fails (as ID-only rows, which
-  // still submit); what could not be confirmed is shown with a Retry.
   const restoreGenomes = (ids: string[]) => {
     const selectionRevision = selectionRevisionRef.current;
-    // A Retry runs over the current list, so keep any entry it already has.
     const current = (id: string) =>
       genomesRef.current.find((genome) => genome.genome_id === id) ??
       idOnlyGenome(id);
@@ -117,7 +103,6 @@ export default function GenomeAlignmentServicePage() {
         setIsVerifying(false);
       });
   };
-  // Only the unverified genomes still in the list are worth a note.
   const unverifiedIds = unverified
     ? genomes
         .filter(

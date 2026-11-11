@@ -40,7 +40,6 @@ describe("Primer Design rerun", () => {
     sessionStorage.clear();
     window.history.replaceState({}, "", "/");
     server.use(
-      // Workspace.get is the output name check: "Object not found" means "name available".
       http.post("*/api/services/workspace", async ({ request }) => {
         const body = (await request.json()) as { method?: string };
         if (body.method === "Workspace.get")
@@ -56,7 +55,6 @@ describe("Primer Design rerun", () => {
     );
   });
 
-  // DXKB used to send workplace_fasta; legacy and the app use workspace_fasta.
   it.each(["workspace_fasta", "workplace_fasta"])(
     "reopens a %s job as a workspace FASTA and resubmits workspace_fasta",
     async (inputType) => {
@@ -67,7 +65,6 @@ describe("Primer Design rerun", () => {
       expect(
         await screen.findByRole("radio", { name: "Workspace FASTA" }),
       ).toBeChecked();
-      // A field nobody has opened shows the file name from its path.
       expect(screen.getByLabelText("FASTA File")).toHaveValue("gene.fna");
 
       const button = screen.getByRole("button", { name: "Submit" });

@@ -17,7 +17,6 @@ interface FolderPickerHeaderProps {
   isUploading: boolean;
 }
 
-/** Title, instructions, keyboard hints, Show files and Close. */
 export function FolderPickerHeader({
   title,
   target,
@@ -66,9 +65,8 @@ export function FolderPickerHeader({
                 ? "Hide files"
                 : "Show files"}
           </Button>
-          {/* In the header row rather than the dialog's own corner button,
-              which sits 8px higher than the rest of the row. Disabled, not
-              hidden, mid-upload so the row doesn't shift. */}
+          {/* Disabled, not hidden, mid-upload so the row doesn't shift; the
+             dialog's own corner button sits 8px higher than the rest of the row. */}
           <DialogClose
             disabled={isUploading}
             render={

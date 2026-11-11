@@ -10,15 +10,11 @@ import {
   formatBlockingViolations,
 } from "@/test-helpers/render-with-theme";
 
-// The isolated a11y vitest harness renders without Tailwind/globals.css, and
-// sonner self-injects its own (gray) CSS — so color-contrast reports a false
-// positive here. Real toast contrast in light + dark is covered by the e2e
-// a11y sweep against compiled CSS (baselined under DXKBCORE-174). We keep every
-// other rule (aria-live region, role, accessible name) active.
+// Sonner self-injects gray CSS and this harness has no Tailwind, so
+// color-contrast is a false positive here; the e2e a11y sweep covers real toast
+// contrast.
 const axeOptions = { rules: { "color-contrast": { enabled: false } } } as const;
 
-// Poll document.body for the rendered toast element. vitest-browser-react does
-// not auto-flush sonner's enqueue→render tick, so we wait for the portal node.
 async function waitForToast(timeoutMs = 2000): Promise<void> {
   const start = performance.now();
   while (performance.now() - start < timeoutMs) {
@@ -29,8 +25,6 @@ async function waitForToast(timeoutMs = 2000): Promise<void> {
 }
 
 describe("Toaster (sonner) — a11y primitive", () => {
-  // Dismiss queued toasts, then cleanup() to unmount the root and remove the
-  // portal host so the next render starts clean.
   afterEach(async () => {
     toast.dismiss();
     await cleanup();

@@ -3,29 +3,18 @@ import Graph from "graphology";
 import { runGraphLayout } from "./layouts";
 import type { GEdge, GNode, LayoutName } from "./types";
 
-// Pure on purpose: the layout worker (graph-layout.worker.ts) imports this, so
-// it must not reach React or the DOM.
+// Pure on purpose: the layout worker imports this, so it must not reach React or the DOM.
 
-/**
- * One layout job, in the shape that crosses to the worker: nodes as indices
- * into the caller's node list, edges as `[sourceIndex, targetIndex]` pairs in
- * a transferable buffer.
- */
 export interface GraphLayoutRequest {
   nodeCount: number;
   edges: Uint32Array;
   layout: LayoutName;
 }
 
-/** The worker's reply: positions `[x0, y0, x1, y1, …]`, or why it failed. */
 export type GraphLayoutResponse =
   | { positions: Float64Array }
   | { error: string };
 
-/**
- * Index a graph for layout. Edges with an endpoint outside `nodes` are dropped,
- * as `buildGraph` (sigma-canvas.tsx) drops them with `hasNode`.
- */
 export function buildLayoutRequest(
   nodes: GNode[],
   edges: GEdge[],
@@ -45,11 +34,8 @@ export function buildLayoutRequest(
 }
 
 /**
- * Run `runGraphLayout` over the indexed graph and read the positions back in
- * node order. The graph is built the way `buildGraph` builds the rendered one
- * (multi, directed, random seed positions, insertion order = node order),
- * because grid, concentric and dagre follow insertion order and dagre reads
- * edge direction.
+ * The graph is built the way `buildGraph` builds the rendered one, because grid, concentric and
+ * dagre follow insertion order and dagre reads edge direction.
  */
 export function computeLayoutPositions(request: GraphLayoutRequest): Float64Array {
   const { nodeCount, edges, layout } = request;

@@ -1,15 +1,10 @@
-/**
- * Response parsers for Workspace API methods. Extracted from the previous
- * in-client dispatcher so each method's parse behavior is independently
- * testable.
- */
+/** Response parsers for Workspace API methods, each testable on its own. */
 
 import type { WorkspaceItem } from "../domain";
 
 /**
- * Convert a raw ls tuple array (as returned by Workspace.ls) into an untyped
- * record. Moved here from helpers.ts so both `parsers.ts` and `client.ts` can
- * share this without a circular import.
+ * Converts a raw ls tuple array into an untyped record; lives here so
+ * `parsers.ts` and `client.ts` share it without a circular import.
  */
 export function parseTupleToRawObject(list: unknown[]): Record<string, unknown> {
   const name = list[0];
@@ -32,7 +27,6 @@ export function parseTupleToRawObject(list: unknown[]): Record<string, unknown> 
   };
 }
 
-/** Convert a raw ls tuple directly to a canonical `WorkspaceItem`. */
 function parseTupleToWorkspaceItem(tuple: unknown[]): WorkspaceItem {
   const name = (tuple[0] as string | undefined) ?? "";
   const parent = (tuple[2] as string | undefined) ?? "";
@@ -64,9 +58,8 @@ function parseTupleToWorkspaceItem(tuple: unknown[]): WorkspaceItem {
 }
 
 /**
- * Parse a `Workspace.ls` result. Raw shape: result[0] is a map from requested
- * path -> list of object tuples. Only the listing for `requestedPath` is
- * returned. Unmatched / missing entries yield an empty array.
+ * Parses a `Workspace.ls` result: only the listing for `requestedPath`, empty
+ * when unmatched.
  */
 export function parseLsResult(
   rawResult: unknown,
@@ -81,9 +74,7 @@ export function parseLsResult(
 }
 
 /**
- * Same as `parseLsResult` but returns the first available path's listing when
- * the exact requested path isn't found. Mirrors the fallback behavior of the
- * old `WorkspaceApiClient.makeRequest`.
+ * Like `parseLsResult`, but falls back to the first available path's listing.
  */
 export function parseLsResultLoose(rawResult: unknown): WorkspaceItem[] {
   if (!Array.isArray(rawResult) || rawResult.length === 0) return [];
@@ -97,10 +88,6 @@ export function parseLsResultLoose(rawResult: unknown): WorkspaceItem[] {
   return entries.map((tuple) => parseTupleToWorkspaceItem(tuple as unknown[]));
 }
 
-/**
- * Parse `Workspace.list_permissions` into the canonical path -> entries map.
- * Result shape: result[0] is already the map; unwrap it.
- */
 export function parseListPermissions(
   rawResult: unknown,
 ): Record<string, [string, string][]> {
@@ -111,8 +98,8 @@ export function parseListPermissions(
 }
 
 /**
- * Parse a Shock-upload-node `Workspace.create` result. Returns the
- * `link_reference` string from the tuple at [0][0][11].
+ * Parses a Shock-upload-node `Workspace.create` result: the `link_reference` at
+ * [0][0][11].
  */
 export function parseUploadNode(rawResult: unknown): string | null {
   if (!Array.isArray(rawResult) || rawResult.length === 0) return null;
@@ -125,7 +112,8 @@ export function parseUploadNode(rawResult: unknown): string | null {
 }
 
 /**
- * Parse a `Workspace.du` response. Raw shape: result[0] = [[path, size, fileCount, dirCount, error], ...].
+ * Parses a `Workspace.du` response: result[0] = [[path, size, fileCount,
+ * dirCount, error], ...].
  */
 export function parseDuResult(
   rawResult: unknown,

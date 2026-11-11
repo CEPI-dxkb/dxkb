@@ -12,17 +12,14 @@ interface RecordedCall {
 
 interface FakeRpcOptions {
   /**
-   * If provided, the ls call returns this raw result. Otherwise, ls throws
-   * a `userLacksPermission` error to simulate a missing /home/.
+   * If set, ls returns this raw result; otherwise it throws
+   * `userLacksPermission` to simulate a missing /home/.
    */
   lsResult?: unknown;
-  /**
-   * Throw on the ls call with this message (or error) instead of returning lsResult.
-   */
   lsThrow?: string | Error;
   /**
-   * Map of method+sequence-index → error to throw. Sequence index is per-method.
-   * e.g. { "Workspace.create:0": "boom" } throws on the first create call.
+   * Method+sequence-index to error, e.g. { "Workspace.create:0": "boom" }
+   * throws on the first create call.
    */
   createErrors?: Record<number, string | Error>;
 }
@@ -173,7 +170,6 @@ describe("ensureUserWorkspace", () => {
   it("records per-batch create failures without aborting the run", async () => {
     const { port } = createFakeRpc({
       lsThrow: "_ERROR_User lacks permission",
-      // First create (home) succeeds; second create (sub-folders batch) fails.
       createErrors: { 1: "Sub-folder batch failed" },
     });
 
@@ -198,7 +194,6 @@ describe("ensureUserWorkspace", () => {
 
     const result = await ensureUserWorkspace({ rpc: port, userId, realm });
 
-    // Home create failed but we still issued the sub-folder batch.
     expect(calls.filter((c) => c.method === "Workspace.create")).toHaveLength(2);
     expect(result.failures[homePath]).toBe("Home create blew up");
     expect(result.created).toEqual(

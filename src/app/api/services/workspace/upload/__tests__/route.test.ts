@@ -1,8 +1,5 @@
 // @vitest-environment node
-// The test serializes a real multipart body with Node's FormData and File,
-// and the Shock handler parses it back; under jsdom those classes are
-// jsdom's while the request machinery is Node's, so the two never agree. The
-// route only runs on Node.
+// Node's FormData/File and the request machinery must agree, which jsdom's do not.
 
 import { delay, http, HttpResponse } from "msw";
 
@@ -15,8 +12,6 @@ import {
 } from "@/test-helpers/upstream-failures";
 import { POST } from "../route";
 
-// The shape of Workspace.create's link_reference: the Shock API path under a
-// bare SHOCK_ORIGINS origin.
 const shockUrl =
   "https://shock.test/services/shock_api/node/793b90fb-8b53-4c8a-a525-54ef16bdb112";
 
@@ -29,7 +24,6 @@ afterEach(() => {
   delete process.env.SHOCK_ORIGINS;
 });
 
-/** The multipart body the upload panel sends: one `upload` file part. */
 async function multipartBody() {
   const form = new FormData();
   form.append("upload", new File(["ACGT"], "reads.fq"));
@@ -48,7 +42,6 @@ async function multipartBody() {
 async function uploadRequest(
   overrides: {
     nodeUrl?: string | null;
-    /** A replacement, or a rewrite of the serialized body's own header. */
     contentType?: string | ((serialized: string) => string);
     contentLength?: string;
     signal?: AbortSignal;
@@ -111,7 +104,6 @@ describe("POST /api/services/workspace/upload", () => {
     await expect(response.json()).resolves.toEqual({ data: { id: "793b90fb" } });
     expect(seen).toEqual({
       authorization: "OAuth test-token",
-      // Same boundary, so the forwarded bytes still parse.
       contentType,
       contentLength,
       uploadName: "reads.fq",
@@ -325,8 +317,7 @@ describe("POST /api/services/workspace/upload", () => {
   });
 
   it("treats a redirect from Shock as a failed upload and releases its body", async () => {
-    // MSW hands the route one branch of a tee'd body, so the cancel shows on
-    // that stream, not on the source below.
+    // MSW hands the route one branch of a tee'd body, so the cancel shows on that stream.
     const cancel = vi.spyOn(ReadableStream.prototype, "cancel");
     try {
       server.use(
@@ -335,7 +326,6 @@ describe("POST /api/services/workspace/upload", () => {
           () =>
             new HttpResponse(
               new ReadableStream({
-                // Never closed: the route must not wait for its end.
                 start(controller) {
                   controller.enqueue(new TextEncoder().encode("Moved"));
                 },

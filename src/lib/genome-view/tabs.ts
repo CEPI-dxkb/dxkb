@@ -15,7 +15,6 @@ export const genomeTabKeys = [
 ] as const;
 export type GenomeTab = (typeof genomeTabKeys)[number];
 
-/** Legacy BV-BRC tab names (`#view_tab=browser`) the server redirects. */
 const legacyGenomeTabs: Partial<Record<string, GenomeTab>> = {
   browser: "genome-browser",
   circular: "circular-viewer",
@@ -31,7 +30,6 @@ export function parseGenomeTab(
     : "overview";
 }
 
-/** A lineage field is an array or a comma-joined string; either way, trimmed entries. */
 function lineageList(
   value: string | number | readonly (string | number)[] | undefined,
 ): readonly string[] {
@@ -48,13 +46,7 @@ function lineageIds(genome: GenomeViewRecord): readonly string[] {
   return lineageList(genome.taxon_lineage_ids);
 }
 
-/**
- * Legacy `Genome.js` removed the Circular Viewer tab for viruses
- * (`changeToVirusContext`) and for eukaryotic host genomes (lineage
- * `2759`), so archaea, and any genome without lineage data, keep it. The
- * lineage ids, lineage names, and `superkingdom` each exclude on their own, so
- * a `"null"` kingdom on a viral record cannot hide the lineage.
- */
+/** Legacy `Genome.js` removed the Circular Viewer tab for viruses and eukaryotic host genomes (lineage `2759`); lineage ids, names and `superkingdom` each exclude on their own so a `"null"` kingdom cannot hide the lineage. */
 export function supportsCircularViewer(genome: GenomeViewRecord): boolean {
   const ids = lineageIds(genome);
   if (ids.includes("10239") || ids.includes("2759")) return false;
@@ -71,8 +63,7 @@ export function buildGenomeTabs(
   return [
     { key: "overview", label: "Overview" },
     { key: "sequences", label: "Sequences" },
-    // Open for every genome, bacterial or not: a genome with no interaction
-    // records shows the table's empty state rather than a disabled tab.
+    // Open for every genome; one with no interaction records shows the empty state.
     { key: "interactions", label: "Interactions" },
     { key: "genome-browser", label: "Genome Browser" },
     {

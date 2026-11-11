@@ -56,7 +56,6 @@ export type FolderIconVariant = "default" | "public" | "shared" | "favorite";
 interface WorkspaceItemIconProps {
   type: string;
   className?: string;
-  /** Override folder icon based on context (public, shared, or favorite). */
   variant?: FolderIconVariant;
 }
 
@@ -71,8 +70,6 @@ export function WorkspaceItemIcon({ type, className, variant = "default" }: Work
   const key = normalizeWorkspaceObjectType(type);
   const isFolderLike = isFolderType(type);
   const ownIcon = typeIconMap[key] ?? typeIconMap[type];
-  // Use the variant-aware folder icon when the type is folder-like and has no
-  // distinct icon of its own (i.e. would just fall back to the generic Folder).
   const useFolderVariant = isFolderLike && (ownIcon === undefined || ownIcon === Folder);
   const Icon = useFolderVariant ? folderVariantIcon[variant] : (ownIcon ?? File);
 

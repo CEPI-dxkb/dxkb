@@ -23,7 +23,6 @@ export interface UseWorkspaceActionDispatchOptions {
   myWorkspaceRoot: string;
   queryClient: QueryClient;
   items: WorkspaceItem[];
-  /** When true, dispatch download through the public (unauthenticated) repository. */
   isPublic?: boolean;
 }
 

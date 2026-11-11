@@ -20,7 +20,6 @@ export class StrainPage {
     ).toBeVisible();
   }
 
-  /** Every link titled with this strain name; records can share one. */
   strainLinks(name: string): Locator {
     return this.page.getByRole("link", { name, exact: true });
   }

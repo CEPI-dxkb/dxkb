@@ -45,10 +45,6 @@ import {
   type SelectionServiceKind,
 } from "./selection-service-chooser";
 
-/**
- * Workspace group each ID kind writes to. `title` also names the default folder
- * (`Genome Groups` / `Feature Groups`), matching legacy.
- */
 const groupTargetByKind = {
   genome: {
     title: "Genome Group",
@@ -69,7 +65,6 @@ const groupTargetByKind = {
 >;
 
 interface CollectionSelectionActionsProps {
-  /** Drives which SearchActionBar entries are in scope for this resource. */
   searchType:
     | "strain"
     | "genome"
@@ -85,50 +80,34 @@ interface CollectionSelectionActionsProps {
     | "ppi"
     | "experiment"
     | "bioset";
-  /** Plural collection label, e.g. "Strains" or "Genomes". */
   label: string;
-  /** Singular of `label` for one-row messages. Defaults to `label` without its "s". */
   singularLabel?: string;
-  /** The subset of actions this component dispatches itself. */
   actionIds: readonly SearchActionId[];
-  /**
-   * Actions the owning collection dispatches through `onOtherAction` that the shared
-   * config disables by default, so the bar still has to render them enabled.
-   */
   extraEnabledActionIds?: readonly SearchActionId[];
   /**
-   * Row field(s) the selection's service, list and group IDs come from. Several fields
-   * are pooled and de-duplicated together (Interactions carry two interactors a row).
+   * Several fields are pooled and de-duplicated (Interactions carry two
+   * interactors a row).
    */
   idField: string | readonly string[];
-  /** What `idField` holds. Drives the service set and the group type. */
   idKind?: SelectionServiceKind;
   selectedCount: number;
   guideUrl?: string;
-  /** The one selected row is known to have no genomes, so every action is a dead end. */
   hasNoAssociatedGenomes?: boolean;
-  /** Reasons the owning collection disables bar entries it dispatches itself. */
   disabledActions?: Partial<Record<SearchActionId, string>>;
-  /** Actions currently resolving in the owning collection. */
   externalLoadingActionIds?: readonly SearchActionId[];
-  /** False when no service accepts this collection's selection; SERVICES is disabled with a reason. */
   hasSelectableServices?: boolean;
   columns: readonly DataTableColumn[];
   columnVisibility: Record<string, boolean>;
-  /** Fetch the selected rows (or every matching row) with the supplied fields. */
   resolveActionRows: (
     fields: readonly string[],
     maxRows: number,
     actionLabel: string,
   ) => Promise<Record<string, unknown>[]>;
   onError: (message: string | null) => void;
-  /** Dispatch for bar entries this component does not own (e.g. GENOME). */
   onOtherAction?: (actionId: SearchActionId) => void;
 }
 
-// The group dialog (its folder field and the workspace picker behind it)
-// loads when the group action first runs, so a collection does not carry it
-// in its first bundle. `preloadGroupDialog` starts the load while the
+// The group dialog loads on the group action's first run, preloaded while the
 // selection's IDs resolve.
 const SelectionToGroupDialog = dynamic(
   () =>
@@ -138,26 +117,20 @@ const SelectionToGroupDialog = dynamic(
   { ssr: false },
 );
 
-/** A failed load is left to the render, which reports it. */
+// A failed load is left to the render, which reports it.
 function preloadGroupDialog(): void {
   import("@/components/workspace/selection-to-group-dialog").catch(
     () => undefined,
   );
 }
 
-/** A built list href that is present and short enough to open safely. */
 function isOpenableListHref(href: string | null): href is string {
   return !!href && href.length <= selectionListMaxUrlLength;
 }
 
 /**
- * The action bar and dialogs shared by every collection whose row selection resolves
- * to a set of IDs a service or workspace group accepts — Genome IDs (Strains via
- * `genome_ids`, Genomes, Sequences and Protein Structures via `genome_id`) or Feature
- * IDs (Features via `feature_id`, Interactions via both interactor columns). Kept out
- * of ResourceCollection so the auth,
- * workspace-repository and query-client hooks this behaviour needs mount only on the
- * resources that use them.
+ * Kept out of ResourceCollection so the auth, workspace-repository and
+ * query-client hooks mount only on resources that use them.
  */
 export function CollectionSelectionActions({
   searchType,
@@ -194,23 +167,17 @@ export function CollectionSelectionActions({
   const [loadingActionIds, setLoadingActionIds] = useState<SearchActionId[]>(
     [],
   );
-  /** The action currently resolving IDs, so overlapping resolutions are rejected. */
   const pendingActionRef = useRef<SearchActionId | null>(null);
   // Each dialog hands focus back to the button that opened it when it closes.
   const copyButtonRef = useRef<HTMLButtonElement>(null);
   const servicesButtonRef = useRef<HTMLButtonElement>(null);
   const groupButtonRef = useRef<HTMLButtonElement>(null);
-  // "Strains" -> "Strain". Only used for the copied-rows toast and the no-genomes
-  // reason, so labels that do not pluralize by suffix pass their own singular.
   const singularLabel = singularLabelProp ?? label.replace(/s$/, "");
   const groupCopy = groupTargetByKind[idKind];
 
   /**
-   * Fetch the selection's rows and flatten them to IDs. Both ceilings matter and they
-   * are different numbers: `maxRows` bounds the fetch (enforced inside
-   * `resolveActionRows`, before anything is requested), while `maxIds` bounds what
-   * actually leaves the page — `idsFromRows` flattens a Strain's `genome_ids` and pools
-   * both Interaction interactors, so one row can contribute many IDs.
+   * `maxRows` bounds the fetch; `maxIds` bounds what leaves the page, since one
+   * row can contribute many IDs.
    */
   const resolveSelectionIds = async ({
     maxRows,
@@ -221,7 +188,6 @@ export function CollectionSelectionActions({
     maxRows: number;
     maxIds: number;
     actionLabel: string;
-    /** What the user should do instead; closes the over-ceiling message. */
     advice: string;
   }) => {
     const fields = typeof idField === "string" ? [idField] : idField;
@@ -248,21 +214,15 @@ export function CollectionSelectionActions({
       setIsCopyOpen(true);
       return;
     }
-    // `selectionIds` is one shared slot, so a second resolution would overwrite the
-    // IDs an already-open dialog is working with. A ref rejects the overlap in the
-    // same tick, which disabled state alone cannot do.
+    // `selectionIds` is one shared slot; a ref rejects an overlapping
+    // resolution in the same tick, which disabled state alone cannot.
     if (pendingActionRef.current) return;
     pendingActionRef.current = actionId;
     setLoadingActionIds([actionId]);
     const opensGroup = actionId === "group" && isAuthenticated;
     try {
-      // Both list actions pre-check the ID count rather than leaning on the href
-      // builders returning null: the explicit check can name the resolved ID count and
-      // the destination, and it keeps all four owned actions on one enforcement path.
-      // `isOpenableListHref` stays for type narrowing and as a backstop if the
-      // builders' rules diverge (a missing href), and it also enforces the
-      // URL-length bound, which is genuinely separate: long feature IDs reach it
-      // well before 500 of them.
+      // `isOpenableListHref` also enforces the URL-length bound, which long
+      // feature IDs hit well before 500 of them.
       if (actionId === "genomes") {
         const href = genomesHrefFromIds(
           await resolveSelectionIds({
@@ -301,8 +261,6 @@ export function CollectionSelectionActions({
             maxRows: selectionServicesMaxRows,
             maxIds: selectionServicesMaxIds,
             actionLabel: "Services",
-            // A group is what SERVICES already builds, so suggesting one would be
-            // circular — the only way out is a smaller selection.
             advice: "Narrow the selection and try again.",
           }),
         );
@@ -321,7 +279,6 @@ export function CollectionSelectionActions({
         setIsGroupOpen(true);
       }
     } catch (error) {
-      // The query the rows were waiting for was replaced: the user has moved on.
       if (!(error instanceof CancelledError)) {
         onError(error instanceof Error ? error.message : String(error));
       }
@@ -344,8 +301,6 @@ export function CollectionSelectionActions({
       selectionCopyMaxRows,
       "Copy",
     ).catch((error: unknown) => {
-      // The query the rows were waiting for was replaced, so the dialog closes
-      // without copying rather than reporting an error.
       if (error instanceof CancelledError) return null;
       throw error;
     });
@@ -362,9 +317,6 @@ export function CollectionSelectionActions({
   const redirect = `${pathname}${query ? `?${query}` : ""}`;
   const signInHref = `/sign-in?redirect=${encodeQueryComponent(redirect)}`;
   const noGenomesReason = `No genomes are associated with this ${singularLabel.toLowerCase()}`;
-  // While one owned action resolves, the others would overwrite the shared IDs, so
-  // only the actions this component dispatches are disabled. Entries the owning
-  // collection dispatches itself keep working.
   const resolvingActionId = loadingActionIds.at(0);
   const mergedDisabledActions: Partial<Record<SearchActionId, string>> = {
     ...(resolvingActionId
@@ -386,8 +338,8 @@ export function CollectionSelectionActions({
       ? {}
       : { services: noServicesReason(singularLabel, label, selectedCount) }),
   };
-  // Stay `undefined` rather than `{}` when nothing is disabled: the bar's prop is
-  // optional and consumers assert on its absence.
+  // `undefined` rather than `{}` when nothing is disabled: consumers assert on
+  // its absence.
   const resolvedDisabledActions = Object.keys(mergedDisabledActions).length
     ? mergedDisabledActions
     : undefined;

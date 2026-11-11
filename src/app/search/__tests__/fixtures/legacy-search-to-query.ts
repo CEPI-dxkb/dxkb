@@ -1,15 +1,8 @@
 /**
- * A port of legacy BV-BRC's search-box parser (`p3/util/searchToQuery.js`):
- * the RQL alpha's search box sends for its normalized text. The app reads
- * `?keyword=` with `keywordQuery` instead; tests use this as the reference
- * that reading must match.
+ * Port of legacy BV-BRC's search-box parser (`p3/util/searchToQuery.js`); the
+ * reference the `?keyword=` reading must match.
  */
 
-/**
- * Adds quotes to a string if it doesn't already have them
- * @param str The string to add quotes to
- * @returns The quoted string
- */
 function addQuotes(str: string): string {
   if (str.charAt(0) === '"' && str.charAt(str.length - 1) === '"') {
     return str;
@@ -17,9 +10,6 @@ function addQuotes(str: string): string {
   return `"${str}"`;
 }
 
-/**
- * Base interface for search expression parsing state
- */
 interface ParseState {
   exprs: string[];
   exp: string;
@@ -32,13 +22,6 @@ interface ParseState {
   quoted: boolean;
 }
 
-/**
- * Parses a search expression into a query string
- * @param expression The search expression to parse
- * @param field Optional field to search in
- * @param options Configuration options for parsing
- * @returns The parsed query string
- */
 function parseExpression(
   expression: string,
   field: string | undefined,
@@ -223,12 +206,6 @@ function parseExpression(
     : `and(${state.exprs.join(",")})`;
 }
 
-/**
- * Default search query parser that uses AND operator
- * @param expression The search expression to parse
- * @param field Optional field to search in
- * @returns The parsed query string
- */
 export function searchToQuery(expression: string, field?: string): string {
   return parseExpression(expression, field, { useOr: false, addQuotes: false });
 }

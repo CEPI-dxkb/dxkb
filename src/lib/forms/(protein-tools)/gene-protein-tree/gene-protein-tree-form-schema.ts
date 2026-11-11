@@ -1,7 +1,6 @@
 import { z } from "zod";
 import { defaultMetadataFields } from "@/lib/forms/genome-metadata-fields";
 
-// Sequence type enum
 export const sequenceTypeSchema = z.enum([
   "feature_group",
   "aligned_dna_fasta",
@@ -10,13 +9,11 @@ export const sequenceTypeSchema = z.enum([
   "feature_protein_fasta",
 ]);
 
-// Sequence item schema
 export const sequenceItemSchema = z.object({
   filename: z.string().min(1, "Sequence path is required"),
   type: sequenceTypeSchema,
 });
 
-// Main form schema
 export const geneProteinTreeFormSchema = z
   .object({
     alphabet: z.enum(["DNA", "Protein"], {
@@ -53,7 +50,6 @@ export const geneProteinTreeFormSchema = z
     output_file: z.string().min(1, "Output name is required"),
   })
   .superRefine((data, ctx) => {
-    // Validate that sequences match the selected alphabet
     const isDNA = data.alphabet === "DNA";
     const validTypes = new Set(
       isDNA
@@ -71,7 +67,6 @@ export const geneProteinTreeFormSchema = z
       }
     });
 
-    // Validate substitution model matches alphabet
     const dnaModels = ["GTR", "TN93", "HKY85", "F84", "F81", "K80", "JC69"];
     const proteinModels = [
       "LG",
@@ -96,7 +91,6 @@ export const geneProteinTreeFormSchema = z
 export type GeneProteinTreeFormData = z.infer<typeof geneProteinTreeFormSchema>;
 export type SequenceItem = z.infer<typeof sequenceItemSchema>;
 
-// Constants
 export const maxSequences = 5000;
 
 export const dnaModels = [
@@ -119,7 +113,6 @@ export const proteinModels = [
   { value: "HIVb", label: "HIVb" },
 ] as const;
 
-// Default form values
 export const defaultGeneProteinTreeFormValues: GeneProteinTreeFormData = {
   alphabet: "DNA",
   recipe: "RAxML",

@@ -3,12 +3,7 @@ import { NextResponse } from "next/server";
 import { encodePathSegment } from "@/lib/url";
 import { formatUserFacingErrorMessage } from "@/lib/utils";
 
-/**
- * The view route is also opened as a document ("Open in new tab", iframes),
- * where its JSON error body showed up as raw `{"error":…}` text. A request
- * that asks for HTML gets a small readable page instead; `fetch` callers,
- * which send `Accept: *\/*`, keep the JSON.
- */
+/** A request that asks for HTML ("Open in new tab", iframes) gets a readable page instead of raw JSON; `fetch` callers keep the JSON. */
 export function wantsDocument(request: NextRequest): boolean {
   const destination = request.headers.get("sec-fetch-dest");
   if (destination === "document" || destination === "iframe") return true;
@@ -24,7 +19,6 @@ function escapeHtml(text: string): string {
     .replace(/'/g, "&#39;");
 }
 
-/** The workspace page of the folder holding the file. */
 function folderHref(segments: string[]): string {
   const folder = segments.slice(0, -1);
   return folder.length > 0
@@ -44,10 +38,6 @@ async function errorMessageOf(response: NextResponse): Promise<string> {
   );
 }
 
-/**
- * `response` (a JSON `{error}` answer) as a minimal HTML page with the same
- * status: what failed, the condensed reason, and a link back to the folder.
- */
 export async function documentErrorResponse(
   response: NextResponse,
   segments: string[],

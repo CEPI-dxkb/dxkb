@@ -23,11 +23,8 @@ export function featureName(feature: NamedFeatureProps | undefined): string {
   return feature.name ?? feature.NAME ?? "";
 }
 
-// Detect features whose coordinates span the antimeridian (180°/-180° boundary).
-// These features have both positive longitudes (> 0°) AND very-negative longitudes
-// (< -160°), which only happens for things like Alaska's Aleutians West Census Area.
-// Using them in geoMercator().fitExtent() produces a near-global bounding box, making
-// the state drill-down map tiny and mis-positioned.
+// Features spanning the antimeridian (Alaska's Aleutians West) make
+// geoMercator().fitExtent() produce a near-global bounding box.
 export function crossesAntimeridian(feature: GeoJSON.Feature): boolean {
   const state = { hasPositive: false, hasVeryNegative: false };
   function scan(coords: unknown): void {

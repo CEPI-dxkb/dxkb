@@ -6,10 +6,6 @@ interface RouteParams {
   params: Promise<{ id: string }>;
 }
 
-/**
- * Get job stderr
- * GET /api/services/app-service/jobs/[id]/stderr
- */
 export const GET = withAuth<RouteParams>(
   async (_request: NextRequest, { token, params }) => {
     const { id: jobId } = await params;

@@ -6,20 +6,12 @@ import type { CollectionDownloadSpec } from "@/lib/data-api/downloads";
 import { deriveFieldMetadata } from "./field-metadata";
 
 /**
- * Child tabs run through the same metadata pass as the top-level collections, so a child
- * column carries the registry's sortability too. Before that, child columns omitted
- * `sortable` entirely, which `DataTable` reads as "sortable" — a header for a field the
- * Data API rejects. Child tabs hold their sort in component state rather than the URL, so
- * they consume `columns` only; the other three derived outputs stay unused here.
- *
- * Only the three child resources with no `src/lib/*-view/` directory of their own live
- * here. `genome_feature` deliberately does not: `ResourceChildCollection` substitutes the
- * Feature collection profile (`src/lib/feature-view/profile.ts`) for its feature tabs, so
- * a set declared here would be dead code. It would also disagree on policy with that
- * profile's columns even if declared: Feature passes `hiddenColumns: "omit"`
- * (`feature-view/fields.ts`), while every `deriveFieldMetadata` call in this module uses
- * the default collapse policy, so a `genome_feature` entry here could not simply mirror
- * Feature's canonical columns.
+ * Child tabs run through the same metadata pass, so columns carry the
+ * registry's sortability; they hold their sort in state rather than the URL, so
+ * only `columns` is used.
+ * `genome_feature` is deliberately absent: `ResourceChildCollection`
+ * substitutes the Feature profile (`feature-view/profile.ts`), which uses
+ * `hiddenColumns: "omit"` where this module uses the default collapse.
  */
 export const genomeSequenceColumns = deriveFieldMetadata(genomeSequenceFields, {
   resource: "genome_sequence",
@@ -51,23 +43,17 @@ export function genomeFeatureRql(
 }
 
 /**
- * What "protein" means for a Feature query: annotated CDS and mat-peptide rows. The
- * member Proteins view, the Feature list's `filter=protein` and the multi-genome
- * Proteins tab all have to mean the same thing, so they share these clauses.
+ * Shared by the member Proteins view, the Feature list's `filter=protein` and
+ * the multi-genome Proteins tab, so they all mean the same thing.
  */
 const proteinFeatureClauses = [
   `or(${eq("genome_feature", "feature_type", "CDS")},${eq("genome_feature", "feature_type", "mat_peptide")})`,
   eq("genome_feature", "annotation", "PATRIC"),
 ];
 
-/** `proteinFeatureClauses` as one `and(...)` clause. */
 export const proteinFeatureRql = `and(${proteinFeatureClauses.join(",")})`;
 
-/**
- * The download formats of a Proteins list: legacy's ProteinList DWNLD offers
- * Protein FASTA and no DNA FASTA, so every Proteins view narrows the Feature
- * resource's default to it.
- */
+/** Legacy's ProteinList offers Protein FASTA and no DNA FASTA. */
 export const proteinDownloadSpec = {
   sequenceFormats: ["protein-fasta"],
 } as const satisfies CollectionDownloadSpec;
@@ -88,10 +74,6 @@ export function taxonomySequenceRql(lineageClause: string): string {
   return `and(eq(genome_id,*),genome(and(${lineageClause},ne(genome_status,Deprecated))))`;
 }
 
-/**
- * Scope a child resource to every genome matching a Genome collection query, with an
- * optional extra clause on the child itself.
- */
 export function genomesChildRql(genomeRql: string, extra?: string): string {
   const relationship = `genome(${genomeRql})`;
   return extra
@@ -100,31 +82,25 @@ export function genomesChildRql(genomeRql: string, extra?: string): string {
 }
 
 /**
- * The strains of the genomes `genomeRql` lists. A strain names its genomes in the
- * multi-valued `genome_ids`, so the join targets that field; like the other
- * joins, a bare `genome(...)` with no match-all beside it is an HTTP 400.
+ * A strain names its genomes in the multi-valued `genome_ids`, so the join
+ * targets that field; a bare `genome(...)` with no match-all beside it is an
+ * HTTP 400.
  */
 export function genomeStrainsRql(genomeRql: string): string {
   return `and(eq(genome_ids,*),genome(to(genome_ids),${genomeRql}))`;
 }
 
 /**
- * A PPI row does not say which endpoint carries the scoped organism. The A and B
- * sides have identical field shapes, `toGraph` classifies each independently as
- * host or microbial, and `featureInteractionsRql` above already matches a scoped
- * feature on either endpoint — so the genome that feature belongs to can be on
- * either endpoint too. Match both, or the tab drops every row filed B-side.
+ * A PPI row does not say which endpoint carries the scoped organism, so match
+ * both sides or the tab drops every row filed B-side.
  */
 export function genomeInteractionsRql(genomeId: string): string {
   return `and(or(${eq("ppi", "genome_id_a", genomeId)},${eq("ppi", "genome_id_b", genomeId)}),${eq("ppi", "evidence", "experimental")})`;
 }
 
 /**
- * Taxonomy scoping stays A-side only, unlike its Feature and Genome siblings: it
- * resolves a lineage through the Genome relationship join, and the Data API RQL
- * contract accepts only `to(genome_id_a)` for `ppi` (`src/lib/data-api/rql.ts`,
- * locked by `src/lib/data-api/__tests__/rql.test.ts`). There is no B-side join to
- * `or` with, so widening this needs a contract change, not a predicate change.
+ * Stays A-side only: the Data API RQL contract accepts only `to(genome_id_a)`
+ * for `ppi` (locked by `rql.test.ts`), so there is no B-side join to `or` with.
  */
 export function taxonomyInteractionsRql(lineageClause: string): string {
   return `and(eq(genome_id_a,*),genome(to(genome_id_a),and(${lineageClause},ne(genome_status,Deprecated))),eq(evidence,experimental))`;

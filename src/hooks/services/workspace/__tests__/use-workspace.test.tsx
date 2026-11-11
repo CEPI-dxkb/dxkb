@@ -142,9 +142,6 @@ describe("useKillJob", () => {
       expect(result.current.isSuccess).toBe(true);
     });
 
-    // The mutation completed successfully which means onSuccess ran
-    // and invalidated the query keys. We verify this indirectly by
-    // confirming the mutation succeeded (onSuccess was called).
     expect(result.current.isSuccess).toBe(true);
   });
 });

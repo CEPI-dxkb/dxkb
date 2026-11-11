@@ -32,8 +32,6 @@ describe("noop", () => {
   });
 
   it("returns undefined", () => {
-    // noop's declared return type is void; calling it as a standalone statement
-    // verifies it executes without throwing. The void return type is checked by TS.
     noop();
   });
 });
@@ -82,7 +80,6 @@ describe("formatUserFacingErrorMessage", () => {
   });
 
   it("falls back for a non-Error rejection", () => {
-    // `String(error)` put "[object Object]" in front of the user instead.
     expect(formatUserFacingErrorMessage({ status: 502 }, "fallback")).toBe(
       "fallback",
     );
@@ -95,9 +92,7 @@ describe("formatUserFacingErrorMessage", () => {
   });
 
   it("falls back for an empty or whitespace-only Error message", () => {
-    // An empty string is falsy, so it can suppress a `{message && …}` render
-    // guard outright — and where the guard tests the error object instead, it
-    // paints an alert with no text in it.
+    // An empty string is falsy and can suppress a `{message && …}` guard, leaving an alert with no text.
     expect(formatUserFacingErrorMessage(new Error(), "fallback")).toBe(
       "fallback",
     );

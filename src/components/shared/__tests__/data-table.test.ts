@@ -43,14 +43,13 @@ describe("estimateHeaderWidth", () => {
   });
 
   it("sizes by the longest word (headers wrap), not the whole label", () => {
-    // "Collection Year" longest word "Collection" (10) > "Genome Name" longest "Genome" (6).
     expect(estimateHeaderWidth("Collection Year")).toBeGreaterThan(
       estimateHeaderWidth("Genome Name"),
     );
   });
 
   it("clamps to [60, 250]", () => {
-    expect(estimateHeaderWidth("A")).toBe(60); // tiny → floor
-    expect(estimateHeaderWidth("x".repeat(100))).toBe(250); // huge → cap
+    expect(estimateHeaderWidth("A")).toBe(60);
+    expect(estimateHeaderWidth("x".repeat(100))).toBe(250);
   });
 });

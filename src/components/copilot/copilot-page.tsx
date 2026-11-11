@@ -9,14 +9,10 @@ import { useCopilot } from "./copilot-provider";
 import { CopilotSessionList } from "./copilot-session-list";
 import { copilotName } from "@/lib/copilot/name";
 
-// The answers' markdown renderer is not in this page's first bundle: start
-// loading it with the page, ahead of the chat's own read, which waits for it.
+// Start loading the markdown renderer with the page, ahead of the chat read,
+// which waits for it.
 if (typeof window !== "undefined") void loadCopilotMarkdown();
 
-/**
- * The full-page Copilot: the user's chats on the left, the open chat beside
- * them. Shares its state with the side panel and floating window.
- */
 export function CopilotPage() {
   const copilot = useCopilot();
   const running = isCopilotTurnActive(copilot.chat.active?.turn ?? null);

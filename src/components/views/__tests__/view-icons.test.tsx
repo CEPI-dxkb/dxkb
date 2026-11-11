@@ -55,8 +55,6 @@ describe("viewIcons", () => {
   });
 
   it("is the only place a view rail defines a tab icon", () => {
-    // A tab icon written at the call site (`icon: <Dna />`) is how the Genome
-    // list's Sequences tab came to differ from the organism pages' one.
     const roots = [
       "src/app/(views)",
       "src/components/organisms",

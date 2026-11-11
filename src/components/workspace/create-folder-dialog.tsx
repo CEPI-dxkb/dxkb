@@ -16,7 +16,7 @@ import { workspaceErrorMessage } from "@/lib/services/workspace/workspace-errors
 export interface CreateFolderDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  /** Resolves once the folder exists; a rejection keeps the dialog open with the reason. */
+  /** Rejection keeps the dialog open with the reason. */
   onCreateFolder: (folderName: string) => Promise<void>;
   isCreating: boolean;
 }
@@ -48,7 +48,6 @@ export function CreateFolderDialog({
         onOpenChange(false);
       },
       (error: unknown) => {
-        // Stay open with the typed name, so the user can retry as is.
         setCreateError(
           `Couldn't create folder "${name}": ${workspaceErrorMessage(error, "the workspace service returned an error.")}`,
         );

@@ -2,7 +2,6 @@ import { render, screen } from "@testing-library/react";
 import Link from "next/link";
 import { OverviewSection } from "../overview-section";
 
-/** Rendered `<dt>` labels, in DOM order. */
 function renderedLabels(): string[] {
   return screen.queryAllByRole("term").map((dt) => dt.textContent);
 }

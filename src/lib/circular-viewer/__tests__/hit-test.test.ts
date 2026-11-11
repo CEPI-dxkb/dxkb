@@ -50,15 +50,12 @@ describe("spanAt", () => {
 });
 
 describe("visibleSegments", () => {
-  /** Each piece's span is the one `spanAt` names at the piece's middle. */
   const namedBySpanAt = (index: SpanIndex) =>
     visibleSegments(index).every(
       (segment) => spanAt(index, (segment.startAngle + segment.endAngle) / 2, 0)?.index === segment.index,
     );
 
   it("lets a nested span show through, and the outer one resume after it", () => {
-    // Rows 1..400, 101..200 and 101..150 as 0-based offsets over 100: the
-    // last two share a start, so the shorter is on top.
     const nested = indexSpans([
       { startAngle: 0, endAngle: 4, index: 0 },
       { startAngle: 1, endAngle: 2, index: 1 },

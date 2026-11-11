@@ -16,8 +16,7 @@ export const genomeAnnotationService =
     rerun: {
       fields: ["contigs", "recipe", "output_path", "output_file"],
       onApply: (rerunData, form) => {
-        // Restore what the job carries first, so a taxonomy outage leaves a
-        // submittable form; a successful lookup then refreshes the name.
+        // Restore job values first so a taxonomy outage leaves a submittable form.
         if (typeof rerunData.scientific_name === "string") {
           form.setFieldValue("scientific_name", rerunData.scientific_name);
         }

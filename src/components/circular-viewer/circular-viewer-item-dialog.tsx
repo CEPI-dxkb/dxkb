@@ -7,10 +7,7 @@ import { itemTitle } from "@/lib/circular-viewer/item-fields";
 import { featureHref } from "@/lib/views/hrefs";
 import { ItemFieldList } from "./circular-viewer-item-fields";
 
-/**
- * Legacy's click dialog (`formatDialogContent`): every field, and a way to the record.
- * Nothing triggers it, so on close `returnFocus` puts focus back (on the figure).
- */
+/** Nothing triggers it, so on close `returnFocus` puts focus back on the figure. */
 export function CircularViewerItemDialog({
   hit,
   onClose,

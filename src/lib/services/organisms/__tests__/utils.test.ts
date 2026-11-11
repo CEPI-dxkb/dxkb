@@ -390,7 +390,6 @@ describe("chartTooltipStyle", () => {
     Object.defineProperty(window, "innerHeight", { value: 800, configurable: true });
 
     const style = chartTooltipStyle(100, 10, 150, 30);
-    // offsetY default = -36; 10 + -36 < 0 so it flips downward
     expect(style.top).toBeGreaterThan(10);
   });
 });

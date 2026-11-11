@@ -1,22 +1,21 @@
 /**
- * Low-level JSON-RPC helper used by the HTTP workspace adapter. Handles only
- * transport — envelope construction, HTTP errors, and unwrapping
- * `{ result, error }`. Method-specific response parsing lives in `./parsers.ts`.
+ * Low-level JSON-RPC transport for the HTTP workspace adapter: envelope, HTTP
+ * errors, and unwrapping `{ result, error }`.
  */
 
 import { WorkspaceApiError } from "../domain";
 
 export interface RpcOptions {
-  /** Endpoint, default "/api/services/workspace". */
   baseUrl?: string;
-  /** When true, do not log errors. */
   silent?: boolean;
 }
 
 export interface RpcRequestInit extends RpcOptions {
   method: string;
   params: unknown[];
-  /** Some write-only Workspace methods may return a JSON-RPC envelope without `result`. */
+  /**
+   * Some write-only Workspace methods may return an envelope without `result`.
+   */
   allowMissingResult?: boolean;
 }
 
@@ -30,10 +29,8 @@ function getErrorMessage(value: unknown): string | null {
 }
 
 /**
- * Send a JSON-RPC POST and return `result`. Throws `WorkspaceApiError` for
- * HTTP or RPC-level errors. The envelope and headers match the existing
- * `WorkspaceApiClient.makeRequest` shape so the `/api/services/workspace` proxy
- * continues to work unchanged.
+ * Sends a JSON-RPC POST and returns `result`; throws `WorkspaceApiError` for
+ * HTTP or RPC errors.
  */
 export async function rpc<T = unknown>({
   method,

@@ -20,17 +20,9 @@ interface TaxonNameSelectorProps extends TaxonomySelectorProps {
   setBacteriophage?: boolean;
   segmentWildcard?: boolean;
   highlightMatch?: "all" | "first" | "none";
-  /**
-   * Draws the error border for a failure the caller reports (a form field's
-   * error). Unlike `required`, it adds no message of its own.
-   */
+  /** Draws the error border for a caller-reported failure; unlike `required`, adds no message. */
   invalid?: boolean;
-  /**
-   * The form field's error (`fieldErrorMessage(field)`), shown under the
-   * input in place of a `FieldErrors` beside it. While nothing is picked
-   * because the search failed, the failure shows instead, so an outage never
-   * reads as "Taxonomy Name is required".
-   */
+  /** The form field's error, shown under the input; a failed search shows instead while nothing is picked. */
   fieldError?: string | null;
 }
 
@@ -68,7 +60,6 @@ const boostQuery = [
   "taxon_rank:*",
 ];
 
-// Custom encoding function for SOLR queries - only encode spaces and special URL chars
 function encodeSolrQuery(query: string): string {
   return query.replace(/ /g, "%20");
 }
@@ -85,10 +76,8 @@ function buildSolrQuery(
 ): string {
   const extraSearch: string[] = [];
 
-  // Clean the query string
   const qString = query.replace(/\(|\)|\.|\*|\||\[|\]/g, "");
 
-  // Extract rank parts
   let cleanQuery = qString;
 
   rankList.forEach((rank) => {
@@ -103,7 +92,6 @@ function buildSolrQuery(
   if (opts.segmentWildcard && cleanQuery) {
     const queryParts = cleanQuery.split(/[ ,]+/);
     if (queryParts.length > 0) {
-      // Add wildcard searches
       extraSearch.push(`(taxon_name:*${queryParts.join("*")}*)`);
       extraSearch.push(`(taxon_name:${queryParts.join(" ")})`);
     }
@@ -112,20 +100,16 @@ function buildSolrQuery(
     searchQuery = cleanQuery;
   }
 
-  // Add boost query for ranking
   if (boostQuery.length > 0) {
     searchQuery += ` AND (${boostQuery.join(" OR ")})`;
   }
 
-  // Build the complete query string manually to avoid double encoding
   const params: string[] = [];
 
-  // Use custom encoding for SOLR query - only encode spaces
   params.push(`q=${encodeSolrQuery(searchQuery)}`);
   params.push(`fl=taxon_name,taxon_id,taxon_rank,lineage_names,division`);
   params.push(`qf=taxon_name`);
 
-  // Add filters based on organism type
   if (opts.includeEukaryotes && !opts.setBacteriophage) {
     params.push(`fq=lineage_ids:2759`);
   }
@@ -156,9 +140,7 @@ async function searchTaxonByName(
 ): Promise<TaxonomyItem[]> {
   const queryParams = buildSolrQuery(query.trim(), filterOpts);
 
-  // The query string is built by hand (repeated `fq`, spaces-only
-  // encoding), so it goes on the URL rather than through `params`. A failure
-  // carries the proxy's own message ("BV-BRC Taxonomy API error: 503 …").
+  // The query string is built by hand (repeated `fq`, spaces-only encoding), so it goes on the URL, not `params`.
   return apiGet<TaxonomyItem[]>(`${apiUrl}?${queryParams}`, undefined, {
     headers: {
       Accept: "application/json",
@@ -186,7 +168,6 @@ export function TaxonNameSelector({
   highlightMatch: _highlightMatch = "all",
 }: TaxonNameSelectorProps) {
   const [showDropdown, setShowDropdown] = useState(false);
-  // Initialize searchQuery from value prop to ensure SSR/client hydration match
   const [searchQuery, setSearchQuery] = useState(value?.taxon_name || "");
   const [debouncedQuery, setDebouncedQuery] = useState(searchQuery);
   const [touched, setTouched] = useState(false);
@@ -196,7 +177,6 @@ export function TaxonNameSelector({
     value || null,
   );
 
-  // Debounce the search query
   useEffect(() => {
     const timeoutId = setTimeout(() => {
       setDebouncedQuery(searchQuery);
@@ -206,7 +186,6 @@ export function TaxonNameSelector({
     };
   }, [searchQuery]);
 
-  // Stabilize filter flags for queryKey
   const filterKey = `${String(includeEukaryotes)}-${String(includeBacteria)}-${String(includeViruses)}-${String(setBacteriophage)}-${String(segmentWildcard)}`;
 
   const searchResult = useQuery<TaxonomyItem[]>({
@@ -234,11 +213,9 @@ export function TaxonNameSelector({
   const handleSearchChange = (newValue: string) => {
     setSearchQuery(newValue);
     setShowDropdown(newValue.length > 0);
-    // Clear the selected value when user clears the input or changes it from selected value
     if (newValue.trim() === "") {
       onChange?.(null);
     } else if (value && newValue !== value.taxon_name) {
-      // If user is typing something different from the selected value, clear it
       onChange?.(null);
     }
   };
@@ -257,9 +234,7 @@ export function TaxonNameSelector({
     setShowDropdown(!showDropdown);
   };
 
-  // Sync searchQuery with value prop when value is set externally.
-  // Uses the React-recommended pattern of storing previous props in state
-  // to avoid both refs-during-render and setState-in-effect lint errors.
+  // Stores previous props in state to avoid refs-during-render and setState-in-effect lint errors.
   if (prevValue !== value) {
     setPrevValue(value || null);
     if (value && !showDropdown) {
@@ -269,20 +244,15 @@ export function TaxonNameSelector({
       prevValue &&
       searchQuery === prevValue.taxon_name
     ) {
-      // Cleared from outside (the Taxonomy ID box, a form reset): drop the
-      // stale name, as TaxIDSelector does. Text the user typed differs from
-      // the old name, so it stays.
+      // Cleared from outside (the Taxonomy ID box, a form reset): drop the stale name; typed text differs, so it stays.
       setSearchQuery("");
     }
   }
 
-  // Input always displays searchQuery (what user types or what's selected)
   const inputValue = searchQuery;
 
   const isValid = !required || !!value;
   const displayResults = results;
-  // With nothing picked, a failed search is the reason, not the user: it
-  // takes the required message's place (in the list while that is open).
   const shownLookupError = value ? null : lookup.error;
   const requiredMessage =
     fieldError ??
@@ -328,7 +298,6 @@ export function TaxonNameSelector({
           />
         </Button>
 
-        {/* Live Search Dropdown */}
         {showDropdown && (
           <div className="absolute inset-x-0 top-full z-50 mt-1 max-h-64 scrollbar-thin scrollbar-thumb-muted-foreground/20 scrollbar-track-transparent overflow-y-auto rounded-md border bg-popover shadow-md hover:scrollbar-thumb-muted-foreground/40 dark:scrollbar-thumb-muted-foreground/30 dark:hover:scrollbar-thumb-muted-foreground/50">
             <TaxonomySuggestionContent
@@ -344,9 +313,7 @@ export function TaxonNameSelector({
               renderPrimary={(item) =>
                 `[${item.taxon_rank || "unknown"}] ${item.taxon_name}`
               }
-              // Plain text, so the dot has one space on each side (the flex
-              // gap put 8px before it and a 4px space after) and the line
-              // still truncates with an ellipsis.
+              // Plain text, so the dot has one space on each side and the line still truncates.
               renderSecondary={(item) =>
                 `ID: ${String(item.taxon_id)}${item.division ? ` • ${item.division}` : ""}`
               }
@@ -363,7 +330,6 @@ export function TaxonNameSelector({
               message={shownLookupError}
               onRetry={() => {
                 lookup.retry();
-                // Focus reopens the list, where the retry's answer shows.
                 inputRef.current?.querySelector("input")?.focus();
               }}
             />

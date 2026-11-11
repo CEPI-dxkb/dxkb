@@ -11,7 +11,6 @@ const HelpHero = () => {
   return (
     <section className="border-b bg-background">
     <div className="container mx-auto px-4 py-12 text-center md:py-16">
-      {/* <h1 className="text-3xl md:text-4xl font-bold mb-4">How can we help you?</h1> */}
       <p className="mx-auto mb-8 max-w-2xl text-muted-foreground">
         Search our knowledge base for answers to common questions or browse help topics below.
       </p>

@@ -9,7 +9,6 @@ import {
 const timedOut =
   "The BV-BRC workspace service did not respond (connection timed out after 10 s).";
 
-/** What `rpc()` throws for the proxy's answer to a JSON-RPC error inside a 500. */
 function rpcError(message: string, status = 500) {
   return new WorkspaceApiError(
     message,
@@ -19,7 +18,6 @@ function rpcError(message: string, status = 500) {
   );
 }
 
-/** What `WorkspaceApiClient.makeRequest` throws for the same answer. */
 function clientError(upstreamMessage: string, status = 500) {
   return Object.assign(
     new Error(`BV-BRC API error: ${String(status)} Internal Server Error`),

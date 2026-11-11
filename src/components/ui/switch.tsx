@@ -4,20 +4,10 @@ import { Switch as SwitchPrimitive } from "@base-ui/react/switch"
 
 import { cn } from "@/lib/utils"
 
-// Local edit (keep when regenerating with `shadcn add --overwrite`): the
-// unchecked state reads like an unselected Checkbox or RadioGroupItem: a
-// `border-muted-foreground bg-background` track with a `bg-muted-foreground`
-// thumb, and a border that darkens to `foreground` on hover. Upstream's
-// `bg-input` track is nearly white in the light themes (1.04-1.14:1 against the
-// service card), so an "off" switch disappeared. muted-foreground keeps the
-// ring and the thumb above the 3:1 non-text contrast WCAG 1.4.11 asks of a
-// control's boundary in all six themes. The dark-theme `bg-input/80` track and
-// `bg-foreground` thumb overrides are gone: the dark thumb takes the same
-// muted-foreground, so the ring and the thumb read as one pair. The `not-*`
-// guards let the focus (`border-ring`) and invalid (`border-destructive`)
-// borders win: the unchecked border ties them at the same specificity and
-// sorts last. The hover guards also keep a disabled switch from reacting, as
-// on Checkbox and RadioGroupItem.
+// Local edit: the unchecked track and thumb use `muted-foreground` because
+// upstream's `bg-input` is nearly white in light themes.
+// The `not-*` guards let the focus and invalid borders win, since the unchecked
+// border ties them in specificity and sorts last.
 function Switch({
   className,
   size = "default",

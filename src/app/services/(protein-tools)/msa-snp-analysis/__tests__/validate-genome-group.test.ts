@@ -12,7 +12,6 @@ function makeGenomeIds(count: number): string[] {
   return Array.from({ length: count }, (_, index) => `${String(index + 1)}.1`);
 }
 
-/** Respond to Workspace.get with a genome group holding exactly these ids. */
 function groupWithIds(genomeIds: string[]) {
   return http.post("/api/services/workspace", () =>
     HttpResponse.json({
@@ -67,7 +66,6 @@ describe("validateGenomeGroup", () => {
 
     expect(result).toEqual({
       status: "invalid",
-      // Alpha's heading, then one "- " line per error.
       message: [
         "This looks like an invalid genome group. The following errors were found:",
         "- Invalid Superkingdom: only virus genomes are permitted",
@@ -108,10 +106,6 @@ describe("validateGenomeGroup", () => {
     expect(capturedBody.genome_ids).toEqual(["1.1", "2.1"]);
   });
 
-  // Regression: the group id list used to be resolved through
-  // /api/services/genome/by-ids, whose route caps its query at limit(100). Any
-  // group of 101+ genomes therefore reported a count of 100, could never reach
-  // the too-large branch, and left genomes 101+ unvalidated.
   it("counts every member of a group larger than the by-ids row cap", async () => {
     let byIdsHandlerCalled = false;
     let viralHandlerCalled = false;
@@ -145,7 +139,6 @@ describe("validateGenomeGroup", () => {
         return HttpResponse.json({
           results: (body.genome_ids ?? []).map((genomeId) => ({
             genome_id: genomeId,
-            // Genome 150 is the one the old 100-row cap never saw.
             superkingdom: genomeId === "150.1" ? "Bacteria" : "Viruses",
             contigs: 1,
             genome_length: 1000,

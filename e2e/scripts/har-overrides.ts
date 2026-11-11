@@ -25,11 +25,8 @@ interface HarFile {
   log: { entries: HarEntry[] };
 }
 
-// Drop session-bearing headers when promoting HAR responses into overrides.
-// `record-har.ts` already strips these from the request side at sanitize time,
-// but the response side carries the recorder's own runtime headers (e.g.
-// Set-Cookie from the dev server, Authentication-Info on some BV-BRC paths)
-// that would otherwise leak into the replayed response.
+// Drops session-bearing response headers (Set-Cookie, Authentication-Info)
+// the recorder's own server added.
 const sensitiveHeaders = new Set([
   "set-cookie",
   "cookie",
@@ -40,14 +37,8 @@ const sensitiveHeaders = new Set([
   "x-api-key",
 ]);
 
-// Hop-by-hop transport headers (RFC 7230 §6.1) plus body-shape headers whose
-// values are tied to the original wire bytes. Replaying any of these against
-// `route.fulfill` lies to the browser about a body Playwright re-serializes:
-// `Transfer-Encoding: chunked` claims chunked framing on a non-chunked body,
-// the recorded `Content-Length` no longer matches the served bytes once the
-// body has been re-encoded, and `Content-Encoding: gzip` claims the body is
-// compressed when the HAR stored it as decoded text. Drop them and let the
-// runtime compute fresh framing/length from whatever it actually serves.
+// Hop-by-hop and body-shape headers (RFC 7230 §6.1) describe the original
+// wire bytes, which `route.fulfill` re-serializes.
 const transportHeaders = new Set([
   "connection",
   "keep-alive",
@@ -64,13 +55,6 @@ interface RpcRequest {
   params: unknown;
 }
 
-/**
- * Parse a JSON-RPC request body into `{ method, params }`, or return null when
- * the body is empty / non-JSON (e.g. multipart upload) / lacks a string-typed
- * `method` field. The override mechanism's `matchBody` predicate fans a single
- * endpoint (`/api/services/workspace`) out by `method` field, and
- * `uploadedFilenameFromHar` reads `params` to recover the uploaded filename.
- */
 function parseRpcRequest(body: string | null | undefined): RpcRequest | null {
   if (!body) return null;
   try {
@@ -84,18 +68,14 @@ function parseRpcRequest(body: string | null | undefined): RpcRequest | null {
       return { method: obj.method, params: obj.params };
     }
   } catch {
-    // non-JSON request body
+    // unparseable body: no match
   }
   return null;
 }
 
 /**
- * Reduce a fully-qualified URL to `pathname + search` so HAR matching is
- * port-portable. The recorder rewrites the live origin to a placeholder host
- * (`http://e2e-har-replay.local`), and specs run against `E2E_PORT` (default
- * 3020) — matching on the URL host would constantly mis-match. The override
- * matcher does a `requestUrl.includes(override.url)` substring check, and a
- * raw `pathname + search` is a valid suffix of any qualified request URL.
+ * Path + search only, so matching survives the recorder's placeholder host
+ * and any `E2E_PORT`.
  */
 function urlToPathSearch(url: string): string {
   try {
@@ -112,9 +92,7 @@ function resolveHarPath(harPath: string): string {
     : path.resolve(process.cwd(), "e2e/fixtures/hars", harPath);
 }
 
-// Memoize the parsed HAR per process. Specs that read the same fixture twice
-// (e.g. `harOverridesFor` + `uploadedFilenameFromHar` in workspace-upload)
-// would otherwise re-read and re-parse a multi-MB file on every call.
+// Memoized per process so repeated reads do not re-parse a multi-MB file.
 const parsedHarCache = new Map<string, HarFile>();
 
 function loadHar(harPath: string): HarFile {
@@ -145,41 +123,10 @@ interface GroupedEntries {
 }
 
 /**
- * Read a HAR file and return JSON overrides that replay each recorded entry.
- *
- * Entries are grouped by `{path+search, HTTP method, JSON-RPC method?}`. Each
- * group becomes a single override:
- *
- *  - The override URL is the path+search portion of the recorded URL, so port
- *    differences between the recorder (3010) and the live spec (E2E_PORT)
- *    don't break matching.
- *  - When the request body is a JSON-RPC envelope, `matchBody` ensures only
- *    requests carrying that RPC method are served by this override. This
- *    disambiguates different JSON-RPC calls that share a URL and HTTP method.
- *  - When a group has multiple entries (e.g. two `Workspace.ls` calls before
- *    and after an upload), responses are served in HAR order via the
- *    override's `callIndex` body function. Once the recorded sequence is
- *    exhausted, the last entry is served on every subsequent call so the UI
- *    isn't suddenly mocked off the air.
- *
- * Status and response headers are taken from the first entry in each group;
- * if a journey needs status drift across calls, layer hand-rolled overrides
- * on top of the HAR-derived ones in the spec.
- *
- * Pass the result into `applyBackendMocks(page, { overrides })`. The return
- * value is a plain `JsonOverride[]`, so callers can spread additional
- * fixture-specific overrides before or after for behaviour the recorder
- * couldn't capture (empty list, 500 response, etc.).
- *
- * **Canary specs that drive a HAR-replay journey should NOT layer a broad,
- * unscoped aggregate (e.g. `a11yBackendOverrides`) on top.** It would silently serve
- * `{}` / `{result:[[]]}` for any drift in the HAR's coverage and the test
- * would still pass; letting the strict guard fail loudly is what surfaces
- * the missing replay so the HAR can be re-recorded. Layer endpoint-specific
- * overrides first when a journey intentionally replaces recorded responses.
- *
- * @param harPath  Absolute path or relative-to-CWD path; relative paths
- *                 resolve from `e2e/fixtures/hars/`.
+ * Groups entries by path+search, HTTP method and JSON-RPC method; repeated
+ * calls replay in HAR order via `callIndex`, then the last entry repeats.
+ * Canary journeys must not layer a broad aggregate over this, or HAR drift
+ * would be silently served instead of failing the strict guard.
  */
 export function harOverridesFor(harPath: string): JsonOverride[] {
   const har = loadHar(harPath);
@@ -233,14 +180,8 @@ export function harOverridesFor(harPath: string): JsonOverride[] {
 }
 
 /**
- * Find the basename of the file uploaded in a recorded upload HAR.
- *
- * The upload dialog fires a `Workspace.create` JSON-RPC call before posting the
- * multipart body; that call's `params[0].objects[0][0]` is the absolute
- * workspace path of the new file. Re-recordings produce a fresh timestamped
- * name (`recorded-<ISO>.txt`) every run, so specs that assert on the uploaded
- * row would otherwise need a manual edit on every HAR refresh — derive the
- * name from the HAR instead.
+ * Basename of the uploaded file, from the `Workspace.create` call;
+ * re-recordings use a fresh timestamped name.
  */
 export function uploadedFilenameFromHar(harPath: string): string {
   const har = loadHar(harPath);

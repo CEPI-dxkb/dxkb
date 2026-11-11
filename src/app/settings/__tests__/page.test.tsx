@@ -15,7 +15,6 @@ const { refreshMock } = vi.hoisted(() => ({ refreshMock: vi.fn() }));
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ refresh: refreshMock, push: vi.fn(), replace: vi.fn() }),
 }));
-// The forms have their own tests; here they only show the page got a profile.
 vi.mock("@/components/settings/profile-form", () => ({
   ProfileForm: ({ profile }: { profile: UserProfile }) =>
     createElement("p", null, `Profile form for ${profile.id}`),
@@ -51,7 +50,6 @@ const unverifiedUser: AuthUser = {
   sessionUnverifiedReason: "The account service did not answer.",
 };
 
-/** The profile endpoint: a 503 first, then the profile. */
 function failOnceThenServeProfile(): { calls: () => number } {
   let calls = 0;
   server.use(
@@ -102,7 +100,7 @@ describe("SettingsPage", () => {
   });
 
   // The root layout's lookup feeds `<AuthBoundary>`, which a client refetch
-  // does not reach: the outage banner and the account menu need the refresh.
+  // does not reach, so the refresh is needed.
   it("re-checks an unverified session once a Retry loads the profile", async () => {
     failOnceThenServeProfile();
     renderPage(unverifiedUser);
@@ -159,7 +157,6 @@ describe("SettingsPage", () => {
       within(alert).getByRole("button", { name: "Retry" }),
     );
 
-    // The alert, not the loading skeletons, until the retry answers.
     expect(
       await within(alert).findByRole("button", { name: "Retrying…" }),
     ).toBeDisabled();

@@ -3,8 +3,8 @@ import userEvent from "@testing-library/user-event";
 import { JobMetadataCard } from "../job-metadata-card";
 import type { ResolvedPathObject } from "@/lib/services/workspace/types";
 
-// The sibling job-metadata-card.test.tsx mocks the Collapsible file-wide, so
-// this file leaves it real to cover the open/close wiring.
+// The sibling test mocks Collapsible file-wide; this one leaves it real to cover the
+// open/close wiring.
 function makeMeta(
   overrides?: Partial<ResolvedPathObject>,
 ): ResolvedPathObject {

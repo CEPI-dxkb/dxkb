@@ -30,7 +30,6 @@ vi.mock("@/components/services/output-folder", () => ({
   default: () => null,
 }));
 
-// A button per genome selector, named by its placeholder, that picks one genome.
 vi.mock("@/components/services/single-genome-selector", () => ({
   SingleGenomeSelector: ({
     placeholder,
@@ -50,7 +49,6 @@ vi.mock("@/components/services/single-genome-selector", () => ({
   ),
 }));
 
-// A button per picker; picking the genome group is the only one a test drives.
 vi.mock("@/components/workspace/workspace-object-selector", () => ({
   WorkspaceObjectSelector: ({
     preset,
@@ -79,7 +77,6 @@ function groupResponse(count: number) {
   });
 }
 
-/** Answers the group's `Workspace.get` with a group of `count` genomes. */
 function serveGroup(count: number, gate?: Promise<void>) {
   server.use(
     http.post("*/api/services/workspace", async () => {
@@ -89,10 +86,6 @@ function serveGroup(count: number, gate?: Promise<void>) {
   );
 }
 
-/**
- * Answers successive group reads in order, each with its own group size once
- * its gate opens, and records which reads have been answered.
- */
 function serveGroupReads(reads: { count: number; gate: Promise<void> }[]) {
   const answered: number[] = [];
   let next = 0;
@@ -136,8 +129,6 @@ describe("ProteomeComparisonPage genome group add", () => {
     expect(options?.description).toBe(
       "Adding this genome group would exceed the maximum of 9 genomes. Current: 0, Group size: 10",
     );
-    // The early return used to skip the reset of the loading flag, leaving the
-    // button on its spinner and disabled until a reload.
     await waitFor(() => {
       expect(
         screen.getByRole("button", { name: "Add genome group" }),
@@ -232,9 +223,6 @@ describe("ProteomeComparisonPage genome group add", () => {
     await pickGroupAndAdd(user);
     expect(await screen.findByRole("status", { name: "Loading" })).toBeVisible();
 
-    // The read started before the reset finishes while the new one is pending:
-    // it must not add its group to the new comparison, nor stop the spinner of
-    // the add started after the reset.
     act(() => {
       beforeReset.open();
     });
@@ -288,7 +276,6 @@ describe("ProteomeComparisonPage genome group add", () => {
     await user.click(screen.getByRole("button", { name: "Add genome" }));
     expect(await screen.findByRole("status", { name: "Loading" })).toBeVisible();
 
-    // The group takes all nine slots while the genome's name is still loading.
     await pickGroupAndAdd(user);
     expect(await screen.findByText("9 genome(s)")).toBeVisible();
 

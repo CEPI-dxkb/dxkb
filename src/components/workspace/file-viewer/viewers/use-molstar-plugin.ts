@@ -32,10 +32,8 @@ interface MolstarPluginHandle {
 }
 
 /**
- * Disposes a Mol* plugin instance defensively. `dispose()` can throw on a
- * partially-initialised plugin (e.g. one that failed mid-download); logging
- * and swallowing that failure — rather than letting it propagate — ensures a
- * broken disposal never masks the original error that triggered it.
+ * dispose() can throw on a partially initialised plugin; swallow it so it never masks
+ * the original error.
  */
 function disposePlugin(plugin: MolstarPluginHandle | null): void {
   if (!plugin) return;
@@ -46,14 +44,6 @@ function disposePlugin(plugin: MolstarPluginHandle | null): void {
   }
 }
 
-/**
- * Shared hook that initialises a Mol* plugin inside the given container,
- * loads a resolved structure source, and keeps the WebGL canvas in sync with
- * resize events.
- *
- * Both the dedicated viewer page and the embedded preview component use this
- * hook - the only difference is the `layout` spec (full panels vs. hidden).
- */
 export function useMolstarPlugin(
   source: StructureSource,
   layout: MolstarLayoutSpec,
@@ -65,12 +55,10 @@ export function useMolstarPlugin(
   const [retryCount, setRetryCount] = useState(0);
 
   useEffect(() => {
-    // `isDisposed` reads through a function call so TypeScript cannot narrow the
-    // return value to `false` after a guard — the cleanup callback can set it to
-    // `true` at any await boundary and all subsequent checks are genuinely needed.
+    // isDisposed is a function call so TypeScript cannot narrow it to false after a guard;
+    // cleanup can set it at any await boundary.
     const lifecycle = { disposed: false };
     const isDisposed = (): boolean => lifecycle.disposed;
-    // Cancels the file download when the source changes or the view unmounts.
     const downloadController = new AbortController();
 
     async function init() {
@@ -79,9 +67,8 @@ export function useMolstarPlugin(
 
       if (!source.url || !containerRef.current) return;
 
-      // The file downloads while Mol* loads. Its failure is handled where it
-      // is awaited below; the no-op only keeps it from being reported as
-      // unhandled while Mol* is still loading.
+      // The no-op catch only keeps the download from being reported as unhandled while
+      // Mol* loads; its failure is handled where awaited below.
       const download = downloadStructure(
         {
           url: source.url,
@@ -93,8 +80,8 @@ export function useMolstarPlugin(
       );
       download.catch(noop);
 
-      // Computed outside the `try`: a ternary inside it makes the React
-      // Compiler skip this hook.
+      // Computed outside the try: a ternary inside it makes the React Compiler skip this
+      // hook.
       const format = source.format === "bcif" ? "mmcif" : source.format;
 
       try {
@@ -156,12 +143,8 @@ export function useMolstarPlugin(
         setStatus("ready");
       } catch (err) {
         if (isDisposed()) return;
-        // A failure here can follow a successful plugin creation (download /
-        // parse / preset failed). Dispose immediately so the scarce WebGL
-        // context is released while the error screen is shown rather than
-        // held until a retry or unmount. Clearing the ref afterwards makes
-        // the final effect cleanup below a no-op for this instance, so the
-        // two paths can never double-dispose the same plugin.
+        // Dispose immediately so the scarce WebGL context is released while the error
+        // shows; clearing the ref makes the final cleanup a no-op for this instance.
         disposePlugin(pluginRef.current);
         pluginRef.current = null;
         setErrorMessage(
@@ -174,10 +157,8 @@ export function useMolstarPlugin(
     void init();
 
     return () => {
-      // Setting `disposed` before disposing means a concurrent async
-      // continuation of `init()` (e.g. a download that rejects after
-      // unmount) will see `isDisposed()` as true and skip its own dispose,
-      // so the plugin is only ever disposed once.
+      // Set disposed before disposing so a concurrent init() continuation skips its own
+      // dispose.
       lifecycle.disposed = true;
       downloadController.abort();
       disposePlugin(pluginRef.current);
@@ -212,8 +193,8 @@ export function useMolstarPlugin(
     });
 
     try {
-      // device-pixel-content-box gives exact device-pixel dimensions,
-      // avoiding rounding errors from clientWidth * devicePixelRatio.
+      // device-pixel-content-box gives exact device-pixel dimensions, avoiding rounding
+      // from clientWidth * devicePixelRatio.
       observer.observe(container, {
         box: "device-pixel-content-box" as ResizeObserverBoxOptions,
       });

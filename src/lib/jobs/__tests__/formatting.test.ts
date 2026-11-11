@@ -7,8 +7,6 @@ import {
   getOutputName,
 } from "../formatting";
 
-// ── formatServiceName ──────────────────────────────────────────────
-
 describe("formatServiceName", () => {
   it("returns the display name for a known service", () => {
     expect(formatServiceName("Homology")).toBe("BLAST");
@@ -24,8 +22,6 @@ describe("formatServiceName", () => {
     expect(formatServiceName("")).toBe("");
   });
 });
-
-// ── getOutputName ──────────────────────────────────────────────────
 
 describe("getOutputName", () => {
   it("returns output_file when present on the job", () => {
@@ -52,8 +48,6 @@ describe("getOutputName", () => {
   });
 });
 
-// ── formatElapsedSeconds ───────────────────────────────────────────
-
 describe("formatElapsedSeconds", () => {
   it('formats 0 seconds as "0s"', () => {
     expect(formatElapsedSeconds(0)).toBe("0s");
@@ -79,8 +73,6 @@ describe("formatElapsedSeconds", () => {
     expect(formatElapsedSeconds(undefined)).toBe("\u2014");
   });
 });
-
-// ── formatUnixTimestamp ────────────────────────────────────────────
 
 describe("formatUnixTimestamp", () => {
   it("formats a valid timestamp as a non-empty, non-dash string", () => {
@@ -115,8 +107,6 @@ describe("formatUnixTimestamp", () => {
     expect(formatUnixTimestamp(NaN)).toBe("\u2014");
   });
 });
-
-// ── getJobResultHref ───────────────────────────────────────────────
 
 describe("getJobResultHref", () => {
   it("joins output_path and output_file into a workspace URL", () => {

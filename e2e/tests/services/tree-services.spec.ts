@@ -22,21 +22,10 @@ import {
 } from "../../pages";
 
 /**
- * Deep submission spec for the phylogenetic-tree service family.
- *
- * Group representative: `/services/viral-genome-tree`. The Gene/Protein Tree page shares the
- * same `useServiceRuntime` plumbing, the same SelectedSequencesTable input pattern, and the same
- * output-folder + JobParamsDialog tail — so one journey here covers the family's interaction
- * layer (rerun pre-fill → submit → toast → /jobs landing). The one Gene/Protein-Tree-only
- * divergence is the DNA/Protein alphabet toggle that filters incompatible sequences when
- * switched mid-form; that lives in a Vitest page-level test
- * (`gene-protein-tree/__tests__/page-alphabet.test.tsx`) because it is plain React state +
- * a useEffect — testable in jsdom without a real browser.
- *
- * Pre-fill via the rerun mechanism instead of driving the WorkspaceObjectSelector. The
- * Genome Group selector additionally fires a `fetchGenomeGroupMembers` + `validateViralGenomes`
- * pair on click that we'd otherwise have to mock; rerun bypasses that path entirely while still
- * exercising the same `submitFormData` → `app-service/submit` flow we care about.
+ * Deep submission spec for the phylogenetic-tree family, via
+ * `/services/viral-genome-tree`. Pre-fills through the rerun mechanism to skip
+ * WorkspaceObjectSelector's group fetch and validate calls. The Gene/Protein alphabet
+ * toggle is covered by a Vitest page test.
  */
 test.describe("viral genome tree submission (representative for tree-services family)", () => {
   async function preFillRerunData(page: import("@playwright/test").Page) {
@@ -72,8 +61,6 @@ test.describe("viral genome tree submission (representative for tree-services fa
     };
     await applyBackendMocks(page, {
       overrides: [
-        // buildWorkspaceOverrides covers Workspace.ls / Workspace.get / Workspace.list_permissions
-        // for the output-folder selector and the post-submit /jobs workspace sidebar chrome.
         ...buildWorkspaceOverrides(),
         ...buildJobsOverrides({
           jobs: [submittedJob, ...mockLifecycleJobs],
@@ -88,11 +75,8 @@ test.describe("viral genome tree submission (representative for tree-services fa
     const form = new ServiceFormPage(page, /viral genome tree/i);
     await form.goto("/services/viral-genome-tree?rerun_key=e2e-rerun");
 
-    // Output-name input reflecting the rerun value is the proxy for "rerun applied" — the page's
-    // `onApply` runs on mount and writes output_file alongside sequences/thresholds in one shot.
+    // The output-name input reflecting the rerun value proves `onApply` ran.
     await expect(page.getByPlaceholder(/select output name/i)).toHaveValue("tree-e2e");
-    // Submit only enables once tanstack-form's `canSubmit` flips true; the schema enforces
-    // sequences.length >= 1, so this is also a guarantee the rerun-supplied sequence was applied.
     const submitButton = page.getByRole("button", { name: "Submit" });
     await expect(submitButton).toBeEnabled();
 
@@ -117,9 +101,6 @@ test.describe("viral genome tree submission (representative for tree-services fa
       output_path: "/e2e-test-user@patricbrc.org/home",
       output_file: "tree-e2e",
     });
-    // The sequences array is the difference between a real workspace selection round-tripping
-    // through rerun and the form silently dropping the input — same shape concern that drives
-    // the `paired_end_libs` assertion in genome-assembly.spec.ts.
     const sequences = payload.app_params?.sequences as
       | { filename?: string; type?: string }[]
       | undefined;
@@ -139,12 +120,8 @@ test.describe("viral genome tree submission (representative for tree-services fa
 
 
 /**
- * Every outcome of the Input card's three Add buttons ends in a deliberate
- * toast or a new row in the selected list, never an uncaught error or a raw
- * TypeError toast (a group whose `genome_id` was one string used to toast
- * "….filter is not a function"). The hook's branches are unit tested; these
- * journeys cover what only a browser shows: the selector → Add → row path and
- * the toast as rendered, line breaks included.
+ * Each outcome of the Input card's Add buttons is a deliberate toast or a new row,
+ * never a raw TypeError toast; covers what only a browser shows.
  */
 test.describe("viral genome tree inputs", () => {
   const groupParent = `${e2eHomePath}/Genome Groups`;
@@ -174,8 +151,8 @@ test.describe("viral genome tree inputs", () => {
     type: "feature_dna_fasta",
     parentPath: sequenceParent,
   };
-  // The mocked search answers every selector with this whole list; each
-  // selector keeps only the types it accepts.
+  // The mocked search answers every selector with this whole list; each keeps only the
+  // types it accepts.
   const searchItems = [
     viralGroup,
     bacterialGroup,
@@ -217,8 +194,8 @@ test.describe("viral genome tree inputs", () => {
   const rawErrorText = /is not a function|Cannot read properties/;
 
   /**
-   * Records uncaught page errors and the text of every toast shown, including
-   * ones that time out before the test ends.
+   * Records uncaught page errors and the text of every toast shown, including ones that
+   * time out before the test ends.
    */
   async function watchForRawErrors(page: Page) {
     const pageErrors: string[] = [];
@@ -241,8 +218,6 @@ test.describe("viral genome tree inputs", () => {
         ...(window as unknown as { e2eToastTexts: Set<string> }).e2eToastTexts,
       ]);
       expect(pageErrors, "uncaught page errors").toEqual([]);
-      // Every scenario here ends in a toast, so an empty log means the
-      // recorder is broken, not that the page stayed quiet.
       expect(toastTexts, "toasts recorded").not.toEqual([]);
       expect(
         toastTexts.filter((text) => rawErrorText.test(text)),
@@ -261,7 +236,10 @@ test.describe("viral genome tree inputs", () => {
     await expectNoRawErrors();
   });
 
-  /** Mock the backends, the scenario's own overrides first (first match wins), and open the form. */
+  /**
+   * Mock the backends, the scenario's own overrides first (first match wins), and open
+   * the form.
+   */
   async function openForm(page: Page, overrides: JsonOverride[]) {
     await applyBackendMocks(page, {
       overrides: [
@@ -302,7 +280,6 @@ test.describe("viral genome tree inputs", () => {
     const row = viralTree.selectedRow(pathOf(viralGroup));
     await expect(row).toContainText(viralGroup.name);
     await expect(row).toContainText("Genome Group");
-    // The selector clears once its object is in the list.
     await expect(viralTree.selector("genomeGroup")).toHaveValue("");
   });
 
@@ -311,8 +288,6 @@ test.describe("viral genome tree inputs", () => {
   }) => {
     const genomeIds = ["727.1510", "727.1511"];
     const viralTree = await openForm(page, [
-      // Some older groups store `genome_id` as one string rather than a
-      // list; reading it used to throw "….filter is not a function".
       groupContent(bacterialGroup, genomeIds.join(",")),
       validateViral(genomeIds, {
         body: {
@@ -326,8 +301,8 @@ test.describe("viral genome tree inputs", () => {
 
     await viralTree.add("genomeGroup", bacterialGroup.name);
 
-    // innerText follows the rendering, so it only keeps the line breaks if
-    // the description's white-space keeps them (layout.tsx's toastOptions).
+    // innerText only keeps the line breaks if the description's white-space does
+    // (layout.tsx's toastOptions).
     expect(
       await viralTree.toastDescription("Genome group validation failed"),
     ).toBe(
@@ -359,9 +334,6 @@ test.describe("viral genome tree inputs", () => {
     await viralTree.expectAddReady("genomeGroup");
   });
 
-  // A failed group read, as the workspace proxy (src/app/api/services/
-  // workspace/route.ts) answers when BV-BRC fails, and as a bare JSON-RPC
-  // error. Either way the toast shows the backend's own message.
   for (const [shape, body] of [
     [
       "the workspace proxy's error",

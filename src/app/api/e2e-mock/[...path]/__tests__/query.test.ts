@@ -14,13 +14,7 @@ function parse(search: string) {
   return parseFixtureQuery(mockNextRequest({ url: `${loopback}${search}` }));
 }
 
-/**
- * The two shapes a clause arrives in. `repository` is what
- * `ServerDataRepository` puts on the wire; `normalised` is what Next hands a
- * route handler after running that query through a `URLSearchParams` round
- * trip. Every matcher has to read both identically — the Surveillance
- * compound-member failure was a matcher that only understood the first.
- */
+/** `repository` is the wire form; `normalised` is after Next's `URLSearchParams` round trip. Every matcher must read both identically. */
 function normalise(repositorySearch: string): string {
   return `?${new URLSearchParams(repositorySearch.replace(/^\?/, "")).toString()}`;
 }
@@ -35,9 +29,7 @@ describe("normalizeQueryValue", () => {
   });
 
   it("does NOT percent-decode — splitClauses already did the one decode", () => {
-    // The second decode is what used to collapse sample%2F1 onto sample/1 and
-    // hide the production param-encoding bug. Values reach this function
-    // already decoded; anything percent-looking left in one is literal.
+    // Values arrive already decoded, so anything percent-looking is literal.
     expect(normalizeQueryValue("sample%2F1")).toBe("sample%2F1");
     expect(normalizeQueryValue("50%")).toBe("50%");
     expect(normalizeQueryValue("%E0%A4%A")).toBe("%E0%A4%A");
@@ -109,10 +101,7 @@ describe("parseFixtureQuery — predicate extraction", () => {
   ])(
     "keeps a double-encoded identifier distinct from the slash one (%s)",
     (_name, search) => {
-      // `sample%252F1` is what a caller that forgot to decode its route param
-      // puts on the wire. It asks for the identifier `sample%2F1`, which is
-      // not `sample/1`, and the matcher must say so — that strictness is what
-      // makes a regression of the page-param bug visible.
+      // `sample%252F1` asks for the identifier `sample%2F1`, which must not match `sample/1`.
       expect(equalsValue(parse(search), "sample_identifier")).toBe(
         "sample%2F1",
       );
@@ -126,7 +115,6 @@ describe("parseFixtureQuery — predicate extraction", () => {
       normalise(`?eq(sample_identifier,${encodeURIComponent("50%")})`),
     ],
   ])("recovers a literal-percent identifier from the %s", (_name, search) => {
-    // A malformed escape must fall back to the raw text rather than throw.
     expect(equalsValue(parse(search), "sample_identifier")).toBe("50%");
   });
 

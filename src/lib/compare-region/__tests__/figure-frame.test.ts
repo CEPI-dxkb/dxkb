@@ -7,7 +7,6 @@ import { layoutCompareRegion, type PlacedFeature } from "../layout";
 const { comfortable, compact } = densitySpecs;
 const layout = layoutCompareRegion([focusRow, mirroredRow]);
 
-/** The focus row with a second gene overlapping the pinned one, so lane 1 holds a gene. */
 const overlapRow: CompareRegionRow = {
   ...focusRow,
   features: [

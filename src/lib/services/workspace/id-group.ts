@@ -15,7 +15,7 @@ function uniqueIds(ids: readonly string[]): string[] {
 
 /**
  * The ids of a field stored as one comma-separated string
- * ("727.1572,727.1525"), as some older groups are; the legacy site reads them.
+ * ("727.1572,727.1525"), as some older groups are.
  */
 export function splitIdList(value: string): string[] {
   return value
@@ -33,10 +33,9 @@ export function createIdGroupContent(
 }
 
 /**
- * Older ID groups store their content as base64-encoded JSON; the legacy reader in
- * `src/lib/services/genome.ts` still decodes that representation. Accept it here so
- * such a group can be read and appended to. Throws when `raw` is neither valid
- * base64 nor decodes to JSON, so the caller can report the original parse failure.
+ * Older ID groups store content as base64-encoded JSON, which the legacy reader
+ * in `genome.ts` still decodes; accept it so such a group can be read and
+ * appended to. Throws when `raw` is neither valid base64 nor JSON.
  */
 function decodeLegacyBase64Json(raw: string): unknown {
   const binary = atob(raw.trim());

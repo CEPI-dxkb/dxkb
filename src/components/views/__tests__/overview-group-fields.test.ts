@@ -41,7 +41,6 @@ const fields: DataFieldMap = {
 };
 
 const dateFields = new Set(["collection_date"]);
-/** Truncates to the year, so a formatted result is distinguishable from the raw value. */
 const formatDate = (value: string) => value.slice(0, 4);
 
 describe("overviewGroupFields", () => {
@@ -62,12 +61,10 @@ describe("overviewGroupFields", () => {
     const result = overviewGroupFields({
       fields,
       group: "Sample Info",
-      // Row keys deliberately reversed relative to the field map.
       row: { serotype: "H1N1", sample_identifier: "S-1" },
       dateFields,
       formatDate,
     });
-    // Declaration order here is reverse-alphabetical, so any sort would show.
     expect(result.map(({ label }) => label)).toEqual([
       "Serotype",
       "Sample Identifier",
@@ -128,7 +125,7 @@ describe("overviewGroupFields", () => {
   });
 
   it("drops a value that is available but formats to empty text", () => {
-    // [""] passes the availability check (it holds a primitive) but joins to "".
+    // [""] passes the availability check but joins to "".
     const result = overviewGroupFields({
       fields,
       group: "Sample Info",

@@ -71,16 +71,10 @@ interface WorkspaceToolbarProps {
   onShowHiddenFilesChange: (show: boolean) => void;
   onNewFolder?: () => void;
   onUpload?: () => void;
-  /** When true, show "New Workspace" instead of New Folder/Upload (root directory). Type filter, search, and refresh remain. */
   isAtRoot?: boolean;
   onNewWorkspace?: () => void;
 }
 
-/**
- * A toolbar button. Its label shows from the toolbar container's @3xl width
- * and folds into the accessible name below it (`foldable` size), leaving the
- * icon and the `title`.
- */
 function ToolbarButton({
   icon,
   label,
@@ -96,7 +90,6 @@ function ToolbarButton({
   onClick?: () => void;
   disabled?: boolean;
   pressed?: boolean;
-  /** Shown in a tooltip on the disabled button, which takes no hover itself. */
   unavailableReason?: string;
 }) {
   const button = (
@@ -126,10 +119,8 @@ function ToolbarButton({
 }
 
 /**
- * The filter, search and actions share one row at every width, so opening the
- * details panel (which narrows this pane) never changes the toolbar's height
- * and never moves the table rows under the pointer. Narrower than @3xl the
- * action labels fold away; narrower than @md the actions move into a menu.
+ * One row at every width so opening the details panel never changes the toolbar height
+ * or moves table rows under the pointer.
  */
 export function WorkspaceToolbar({
   searchQuery,

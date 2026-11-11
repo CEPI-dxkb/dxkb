@@ -9,16 +9,9 @@ import { requestGraphLayout } from "@/lib/interactions/layout-client";
 
 import { InteractionsSubviewShell } from "../interactions-subview-shell";
 
-// The Table and the Graph are two representations of one dataset, so these tests
-// keep the whole data path real — ResourceChildCollection, ResourceCollection,
-// useResourceCollection, DataRepository, the filter bar, useInteractions — and
-// compare the requests the two views actually issue over MSW.
-//
-// Only presentation is stubbed: Sigma's WebGL canvas and TanStack Virtual's
-// DataTable have no working geometry in jsdom, and the surrounding chrome
-// (action bars, dialogs) needs app-wide providers this test has no stake in.
-// The Table's page and sort live in the URL, so the Table only pages when
-// `useSearchParams` follows the History API writes.
+// The Table and the Graph show one dataset, so these tests keep the data path real and compare the
+// requests both issue over MSW. Only Sigma's canvas and TanStack Virtual's DataTable are stubbed,
+// since jsdom has no geometry for them.
 vi.mock("next/navigation", async () =>
   (await import("@/test-helpers/history-navigation")).historyNavigationMock({
     pathname: "/genome/1.1",
@@ -32,15 +25,12 @@ vi.mock("../sigma/sigma-canvas", () => ({
     />
   ),
 }));
-// The layout runs in a Web Worker in the browser, which jsdom does not have;
-// the tests decide when it answers.
 vi.mock("@/lib/interactions/layout-client", () => ({
   requestGraphLayout: vi.fn(),
 }));
 vi.mock("@/components/shared/data-table", () => ({
-  // The real pager is inside TanStack Virtual's DataTable, which has no working
-  // geometry in jsdom. Paging is still part of the request the Table issues, so
-  // the mock keeps a minimal pager: what page it is showing, and a way forward.
+  // The real pager sits in TanStack Virtual's DataTable (no geometry in jsdom), so the mock keeps a
+  // minimal pager.
   DataTable: ({
     data,
     columns,
@@ -114,15 +104,12 @@ vi.stubGlobal("ResizeObserver", ResizeObserverStub);
 vi.stubGlobal("scrollTo", vi.fn());
 Element.prototype.scrollIntoView = vi.fn();
 
-// Each test renders the full data path, and the first Graph render loads the
-// layout code (graphology) on demand. Under a loaded machine that import alone
-// could take most of the default 5 s, so it is paid here, outside any test, and
-// the file gets a wider per-test budget.
+// The first Graph render loads graphology on demand; paid here outside any test, with a wider
+// per-test budget.
 vi.setConfig({ testTimeout: 15_000, hookTimeout: 15_000 });
 beforeAll(() => import("@/lib/interactions/layout-positions"));
 
 const scopeRql = "eq(evidence,experimental)";
-/** One row past the Table's first page, so only a server-side search can find it. */
 const beyondFirstPageIndex = resourceCollectionPageSize + 49;
 
 const allRows = Array.from(
@@ -139,26 +126,15 @@ const beyondFirstPageInteractor = allRows[beyondFirstPageIndex].interactor_a;
 interface Predicate {
   rql?: string;
   keyword?: string;
-  /**
-   * Selects exact vs prefix matching in the repository, so the two views have to
-   * agree on it as well as on the text. `undefined` for `ppi` today (no
-   * `serverKeywordMode` on the profile) — captured so that a profile which sets
-   * one cannot make the views diverge on matching semantics unnoticed.
-   */
+  /** `undefined` for `ppi` today; captured so a profile that sets one cannot make the views diverge unnoticed. */
   keywordMode?: string;
 }
 
 const tablePredicates: Predicate[] = [];
 const graphPredicates: Predicate[] = [];
-/**
- * The page each Table request asked for, pushed in lockstep with
- * `tablePredicates`, so index -1 is the same request in both. Kept out of
- * `Predicate` because the Graph fetches its whole dataset at once and has no
- * page of its own — the two views' predicates have to stay directly comparable.
- */
+/** Kept out of `Predicate` because the Graph fetches its whole dataset and has no page. */
 const tablePages: number[] = [];
 
-/** Server-side keyword search, the way the gateway applies it: prefix per term. */
 function matching(keyword: string | undefined) {
   const terms = (keyword ?? "").trim().split(/\s+/).filter(Boolean);
   if (terms.length === 0) return allRows;
@@ -228,7 +204,6 @@ async function searchInTable(user: ReturnType<typeof userEvent.setup>, text: str
     tablePanel().getByPlaceholderText("Search interaction results..."),
     text,
   );
-  // The filter bar debounces before committing the keyword to the request.
   await waitFor(() => {
     expect(tablePredicates.at(-1)?.keyword).toBe(text);
   });
@@ -245,9 +220,6 @@ describe("Interactions Table and Graph share one dataset", () => {
     await user.click(screen.getByRole("tab", { name: "Graph" }));
     await waitFor(() => { expect(graphPredicates).toHaveLength(1); });
 
-    // Identical predicates, not merely similar ones: the Graph used to encode
-    // the keyword into its own RQL clause while the Table kept it off the
-    // request entirely.
     expect(graphPredicates.at(-1)).toEqual({
       rql: scopeRql,
       keyword: "peg.601",
@@ -257,8 +229,8 @@ describe("Interactions Table and Graph share one dataset", () => {
   });
 
   it("issues one request per view for a whole typing burst in the Graph's box", async () => {
-    // delay: null dispatches the keystrokes without waiting between them, so the
-    // burst lands well inside the debounce window the way real typing does.
+    // delay: null dispatches keystrokes without waiting, so the burst lands inside the debounce
+    // window.
     const user = userEvent.setup({ delay: null });
     render(<InteractionsSubviewShell rql={scopeRql} />, {
       wrapper: createQueryClientWrapper(),
@@ -283,11 +255,6 @@ describe("Interactions Table and Graph share one dataset", () => {
       expect(tablePredicates.at(-1)?.keyword).toBe("peg.601");
     });
 
-    // One request each, not one per character. The keyword is a request
-    // predicate for both views now, and the Table panel stays mounted behind
-    // the Graph tab, so an undebounced box amplified a 7-character search into
-    // 7 graph requests plus 7 collection requests against the gateway's
-    // per-IP rate limit.
     expect(graphPredicates.length - graphRequestsBefore).toBe(1);
     expect(tablePredicates.length - tableRequestsBefore).toBe(1);
   });
@@ -296,8 +263,6 @@ describe("Interactions Table and Graph share one dataset", () => {
     const user = userEvent.setup();
     render(<InteractionsSubviewShell rql={scopeRql} />, { wrapper: createQueryClientWrapper() });
 
-    // The match is on page two of the unfiltered scope, so it is absent until
-    // the keyword reaches the backend.
     await waitFor(() => {
       expect(tablePanel().getByText("peg.600")).toBeInTheDocument();
     });
@@ -339,12 +304,8 @@ describe("Interactions Table paging follows the shared keyword", () => {
     await waitFor(() => {
       expect(tablePages.at(-1)).toBe(2);
     });
-    // The page is the Table's own URL state, so a refresh or a shared link
-    // lands on it.
     expect(window.location.search).toBe("?interactions.page=2");
 
-    // The Table panel stays mounted behind the Graph tab, so it keeps paging
-    // state — and its keyword box never sees this edit.
     await user.click(screen.getByRole("tab", { name: "Graph" }));
     await waitFor(() => {
       expect(graphPredicates).toHaveLength(1);
@@ -358,12 +319,9 @@ describe("Interactions Table paging follows the shared keyword", () => {
     await waitFor(() => {
       expect(tablePredicates.at(-1)?.keyword).toBe("peg.601");
     });
-    // A new keyword is a new result set — one row here, so page 2 is past its
-    // end. Refetching the old page index showed an empty table under a pager
-    // still reading 2, while the Graph showed the match.
+    // A new keyword is a new result set (one row, so page 2 is past its end); the stale page must
+    // not be refetched.
     expect(tablePages.at(-1)).toBe(1);
-    // ...and the stale page is gone from the address too, so the URL and the
-    // Table agree once the keyword's owner has dropped it.
     expect(window.location.search).not.toContain("interactions.page");
   });
 
@@ -387,8 +345,8 @@ describe("Interactions Table paging follows the shared keyword", () => {
         expect(tablePages.at(-1)).toBe(1);
       });
 
-      // The commit drops the stale page (a replace) and then writes the table's
-      // state, which is by then the same address. A keyword pause is not a Back step.
+      // The commit drops the stale page (a replace) then writes the table's state; a keyword pause
+      // is not a Back step.
       expect(pushState).not.toHaveBeenCalled();
       expect(window.location.search).not.toContain("interactions.page");
     } finally {
@@ -400,8 +358,7 @@ describe("Interactions Table paging follows the shared keyword", () => {
 describe("Interactions Graph layout across tab switches", () => {
   it("shows the layout's progress and keeps the chosen layout and its positions through a Table round trip", async () => {
     const user = userEvent.setup();
-    // A handful of rows: this test is about the layout, and role queries over
-    // the full dataset's node list are slow in jsdom.
+    // A handful of rows: role queries over the full node list are slow in jsdom.
     const fewRows = allRows.slice(0, 3);
     server.use(
       http.get("/api/data/ppi", () =>
@@ -452,7 +409,6 @@ describe("Interactions Graph layout across tab switches", () => {
       "circular",
     );
 
-    // The Graph panel unmounts while hidden; its layout and positions do not.
     await user.click(screen.getByRole("tab", { name: "Table" }));
     expect(
       screen.queryByRole("tabpanel", { name: "Graph" }),

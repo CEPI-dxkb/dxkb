@@ -24,7 +24,6 @@ function Providers({ children }: { children: React.ReactNode }) {
   );
 }
 
-/** Reruns a job with `metadata`, submits it, and returns the submitted app params. */
 async function rerunAndSubmit(
   metadata: Record<string, unknown>,
 ): Promise<Record<string, unknown>> {
@@ -62,17 +61,10 @@ async function rerunAndSubmit(
     .app_params;
 }
 
-/**
- * The GeneTree app reads `genome_metadata_fields` (genome fields) and
- * `feature_metadata_fields` (gene fields, which replace its default gene
- * labels). Metadata Options offers genome fields only, so a rerun submits
- * them all as genome fields, whichever key the job stored them under.
- */
 describe("GeneProteinTree page — rerun metadata fields", () => {
   beforeEach(() => {
     sessionStorage.clear();
     server.use(
-      // Workspace.get answers "Object not found", so the output name is available.
       http.post("*/api/services/workspace", async ({ request }) => {
         const body = (await request.json()) as { method?: string };
         if (body.method === "Workspace.get") {
@@ -102,8 +94,6 @@ describe("GeneProteinTree page — rerun metadata fields", () => {
       feature_metadata_fields: ["public", "product"],
     });
 
-    // "public" is a genome field; "product" is a gene field the table does
-    // not offer, so it is dropped and the app keeps its default gene labels.
     expect(params.genome_metadata_fields).toEqual([
       "genome_id",
       "genome_name",

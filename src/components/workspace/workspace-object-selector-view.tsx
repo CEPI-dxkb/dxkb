@@ -176,7 +176,6 @@ interface WorkspaceObjectSelectorViewProps {
   onObjectClick: (object: WorkspaceObject) => void;
   onObjectHighlight: (index: number) => void;
   disabled?: boolean;
-  /** The Browse button after the input; absent or null hides it. */
   browse?: {
     label: string;
     disabled: boolean;
@@ -214,8 +213,8 @@ function WorkspaceObjectDropdown({
   const { rect, openUpward, maxHeight } = dropdownLayout;
   if (!rect || typeof document === "undefined") return null;
 
-  // z-50 is the dialog tier: the list mounts after any open dialog, so it
-  // stacks above the dialog's backdrop and popup instead of behind them.
+  // z-50 is the dialog tier: the list mounts after any open dialog, so it stacks above the
+  // dialog's backdrop and popup.
   return createPortal(
     <div
       id={listboxId}

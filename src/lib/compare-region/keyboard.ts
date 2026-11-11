@@ -1,12 +1,3 @@
-/**
- * The Compare Region Viewer's keyboard, as pure functions of the layout:
- * which gene an arrow key moves to, which gene holds the figure's one tab
- * stop, what each gene and row is called to assistive technology, and how far
- * the zoom and the scroller move to bring a focused gene into view.
- *
- * Genes are ordered as they stand on screen, left to right, not in the
- * service's order (a mirrored row sends them right to left).
- */
 import type { TransformMatrix } from "@visx/zoom";
 import type { CompareRegionFeature } from "./contract";
 import type { FeatureRef } from "./families";
@@ -20,10 +11,8 @@ import {
 } from "./layout";
 import { trackScale } from "./ruler";
 
-/** Where a key moves the focus: along the row, to its ends, or to the row above or below. */
 export type FeatureStep = "previous" | "next" | "first" | "last" | "up" | "down";
 
-/** The keys that move the focus between genes, and where each goes. */
 export const featureStepKeys: Readonly<Partial<Record<string, FeatureStep>>> = {
   ArrowLeft: "previous",
   ArrowRight: "next",
@@ -33,14 +22,12 @@ export const featureStepKeys: Readonly<Partial<Record<string, FeatureStep>>> = {
   ArrowDown: "down",
 };
 
-/** How far inside the plot (and the scroller) a revealed gene comes to rest, px. */
 export const revealMargin = 8;
 
 function middleOf(item: PlacedFeature): number {
   return (item.from + item.to) / 2;
 }
 
-/** A row's feature indices as they stand on screen: left to right by their middle, the upper lane first. */
 export function screenOrder(placed: PlacedRow): number[] {
   return placed.features
     .map((item, index) => ({ index, middle: middleOf(item), lane: item.lane }))
@@ -48,7 +35,6 @@ export function screenOrder(placed: PlacedRow): number[] {
     .map(({ index }) => index);
 }
 
-/** The feature of `placed` nearest `middle` (bp offset), the upper lane winning a tie. */
 function nearestIn(placed: PlacedRow, middle: number): number {
   let best = 0;
   for (let index = 1; index < placed.features.length; index += 1) {
@@ -66,12 +52,6 @@ function nearestIn(placed: PlacedRow, middle: number): number {
   return best;
 }
 
-/**
- * The gene `step` moves the focus to from `at`: the one beside it in its row,
- * the row's first or last, or the one nearest it in the next row up or down
- * that has any (rows are aligned on their pinned gene, so that is usually its
- * homolog). Null where there is none to move to.
- */
 export function stepFeature(
   layout: CompareRegionLayout,
   at: FeatureRef,
@@ -106,11 +86,6 @@ export function stepFeature(
   return { rowIndex: at.rowIndex, featureIndex: target };
 }
 
-/**
- * Where the figure's tab stop rests before any gene has been focused: the
- * focus gene (the first row's pinned gene), else the first gene on screen in
- * the first row that has any. Null for a figure with no features.
- */
 export function defaultTabStop(layout: CompareRegionLayout): FeatureRef | null {
   const first = layout.rows.at(0);
   const pinned =
@@ -123,13 +98,8 @@ export function defaultTabStop(layout: CompareRegionLayout): FeatureRef | null {
   return { rowIndex, featureIndex: screenOrder(layout.rows[rowIndex])[0] };
 }
 
-/** What a kind of feature is called before its product; genes are called by their product alone. */
 const kindNames = { blast: "BLAST hit", pseudo: "Pseudogene" } as const;
 
-/**
- * A feature's accessible name: its product, then its ID, after its kind when
- * it is not a gene ("BLAST hit: …", "tRNA: …").
- */
 export function featureName(feature: CompareRegionFeature): string {
   const kind = glyphKind(feature);
   const name = `${feature.product || noProduct}, ${feature.fid}`;
@@ -139,17 +109,10 @@ export function featureName(feature: CompareRegionFeature): string {
   return kind === "other" ? `${feature.type}: ${name}` : name;
 }
 
-/** A row's accessible name: its number tag, as the label column shows it, and its genome. */
 export function rowName(rowIndex: number, genomeName: string): string {
   return `Genome ${rowTagText(rowIndex)}: ${genomeName}`;
 }
 
-/**
- * The zoom matrix that brings `item` into the plot, `revealMargin` px inside
- * its edges: panned the least that does, through `constrainToTrack` (so never
- * past the window's ends), or `matrix` itself when it is already in view. A
- * gene wider than the plot comes to rest at its start.
- */
 export function revealMatrix(
   domain: [number, number],
   matrix: TransformMatrix,
@@ -173,7 +136,6 @@ export function revealMatrix(
   );
 }
 
-/** A box, px, in the scroller's content. */
 export interface RevealBox {
   left: number;
   right: number;
@@ -181,13 +143,6 @@ export interface RevealBox {
   bottom: number;
 }
 
-/**
- * The scroll position that brings `box` into the scroller's view, which
- * `view` describes (its scroll position and client size): moved the least
- * that does, `revealMargin` px inside it, and clear of what stays stuck over
- * its start (`inset`: the label column on the left, the ruler on top). A box
- * larger than the view comes to rest at its start.
- */
 export function revealScroll(
   view: { left: number; top: number; width: number; height: number },
   box: RevealBox,
@@ -200,8 +155,6 @@ export function revealScroll(
     start: number,
     end: number,
   ) => {
-    // The furthest the view can scroll with the start in view, and the
-    // least it can with the end in view.
     const latest = start - revealMargin - stuck;
     const earliest = end + revealMargin - size;
     if (scroll > latest) return Math.max(0, latest);

@@ -34,7 +34,8 @@ describe("isOverviewValueAvailable", () => {
   });
 
   it("treats a value that JSON-serializes to no content as unavailable", () => {
-    // JSON.stringify(a function) returns undefined -- must fall through to unavailable.
+    // JSON.stringify of a function returns undefined; it must fall through to
+    // unavailable.
     expect(isOverviewValueAvailable(() => undefined)).toBe(false);
   });
 
@@ -217,12 +218,4 @@ describe("OverviewCard", () => {
     expect(screen.getByText("Assembly summary")).toBeInTheDocument();
     expect(screen.getByText("content")).toBeInTheDocument();
   });
-
-  // There is deliberately no empty-card test here. `OverviewCard` takes opaque
-  // `children`, so it cannot know whether the body it was handed is empty; a
-  // test that passed it the fallback paragraph and then asserted the paragraph
-  // could not fail for any behaviour of this component. Deciding a section is
-  // empty belongs to `OverviewSection` (see `overview-section.test.tsx`), and
-  // the policy is asserted against real entity overviews in the six
-  // `*-overview.test.tsx` suites under `src/app/(views)/`.
 });

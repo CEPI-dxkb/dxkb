@@ -8,11 +8,8 @@ import {
 } from "./report";
 
 /**
- * Aggregate this invocation's scan records into one summary.
- *
- * Only this invocation's directory is read and removed, so a later run — or a
- * setup-only invocation, which records nothing and therefore returns early —
- * neither absorbs nor deletes another run's evidence.
+ * Aggregates this invocation's scan records into one summary; only its own
+ * directory is read and removed.
  */
 export default function globalTeardown(): void {
   const scansDir = currentScansDir();
@@ -28,13 +25,12 @@ export default function globalTeardown(): void {
 
   fs.mkdirSync(a11yReportDir, { recursive: true });
   fs.writeFileSync(a11ySummaryPath, JSON.stringify(summary, null, 2));
-  // Raw records are consumed now; the summary is the artifact worth keeping.
   fs.rmSync(scansDir, { recursive: true, force: true });
 }
 
 export function summarizeScanRecords(records: ScanRecord[]): ScanRecord[] {
-  // Keep the latest retry's evidence. A failed attempt can legitimately differ
-  // from the passing retry that Playwright reports as the final test result.
+  // Keep the latest retry's evidence; a failed attempt can differ from the
+  // passing retry.
   const seen = new Map<string, ScanRecord>();
   for (const record of records) {
     const key = `${record.project}::${record.route}::${record.theme}`;

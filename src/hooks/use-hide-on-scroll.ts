@@ -2,14 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 
-/**
- * Hide-on-scroll-down, reveal-on-scroll-up. Tracks window scroll direction.
- * Stays visible near the top of the page and whenever `forceShow` is set
- * (e.g. while an attached sheet/menu is open).
- *
- * SSR-safe: starts visible (`hidden = false`) and only reads `window` inside
- * the effect, so the server render and first client render agree.
- */
+/** Hide on scroll down, reveal on scroll up; always visible near the top or when `forceShow` is set. */
 export function useHideOnScroll(forceShow = false): boolean {
   const [hidden, setHidden] = useState(false);
   const lastWindowY = useRef(0);
@@ -22,7 +15,6 @@ export function useHideOnScroll(forceShow = false): boolean {
       const y = element ? element.scrollTop : window.scrollY;
       const previousY = element ? (lastElementY.current.get(element) ?? 0) : lastWindowY.current;
       const goingDown = y > previousY;
-      // Ignore tiny jitters; never hide within the first 60px of the scroll region.
       if (Math.abs(y - previousY) > 4) {
         setHidden(!forceShow && goingDown && y > 60);
         if (element) lastElementY.current.set(element, y);

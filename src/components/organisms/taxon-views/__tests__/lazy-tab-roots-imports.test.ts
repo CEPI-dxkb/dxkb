@@ -5,16 +5,11 @@ import { valueImportsMatching } from "@/test-helpers/static-imports";
 
 const taxonViewsDir = resolve(__dirname, "..");
 
-// The tab client roots that must reach a route only through lazy-tab-roots: the
-// views barrel (by either name) and its collection modules, the Interactions
-// shell, the phylogeny panels and the taxonomy tree.
+// Tab client roots that must reach a route only through lazy-tab-roots.
 const tabRootModule =
   /^@\/components\/(?:views(?:\/index|\/[a-z-]+-collection)?|interactions\/interactions-subview-shell|phylogeny\/[a-z-]+-phylogeny-panel|taxonomy\/taxonomy-tree-panel)$/;
 
-/**
- * Module specifiers of the value imports (not `import type`) of a tab root in a
- * source that lives in `fromDir`.
- */
+/** Module specifiers of the value imports of a tab root in a source in `fromDir`. */
 function tabRootValueImports(source: string, fromDir: string): string[] {
   return valueImportsMatching(source, fromDir, tabRootModule);
 }
@@ -56,8 +51,7 @@ describe("taxon tab factories", () => {
   });
 
   it("reach their client roots only through lazy-tab-roots", () => {
-    // A static import here puts the root in the chunk group of every route
-    // that builds the taxon tabs, whichever tab is open.
+    // A static import puts the root in every taxon-tab route's chunk group.
     const files = readdirSync(taxonViewsDir).filter(
       (name) => /\.tsx?$/.test(name) && name !== "lazy-tab-roots.tsx",
     );

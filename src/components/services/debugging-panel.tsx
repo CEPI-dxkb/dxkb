@@ -19,11 +19,9 @@ export function DebuggingPanel() {
   const { isDebugMode, containerBuildId, setIsDebugMode, setContainerBuildId } =
     useServiceDebugging();
 
-  // Local state for the dialog
   const [localDebugMode, setLocalDebugMode] = useState(isDebugMode);
   const [localContainerId, setLocalContainerId] = useState(containerBuildId);
 
-  // Sync local state with context when dialog opens
   const [prevSyncKey, setPrevSyncKey] = useState("");
   const syncKey = isOpen ? `${String(isDebugMode)}-${containerBuildId}` : "";
   if (syncKey && syncKey !== prevSyncKey) {
@@ -40,7 +38,6 @@ export function DebuggingPanel() {
     setIsOpen(true);
   });
 
-  // Add keyboard shortcut listener
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.ctrlKey && event.shiftKey && event.key === "D") {
@@ -58,7 +55,6 @@ export function DebuggingPanel() {
 
   const handleOpenChange = (open: boolean) => {
     if (open) {
-      // Sync with current values when opening
       setLocalDebugMode(isDebugMode);
       setLocalContainerId(containerBuildId);
     }

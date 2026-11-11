@@ -82,7 +82,6 @@ const RelatedResources = () => {
       <FooterHeader title="Related Resources" />
 
       <div className="mx-auto my-12 w-[90%] max-w-6xl space-y-12 py-8">
-        {/* Disease X/CEPI Resource Centers */}
         <section>
           <h2 className="section-title">Disease X/CEPI Resource Centers</h2>
           <div className="card-grid-three">
@@ -92,7 +91,6 @@ const RelatedResources = () => {
           </div>
         </section>
 
-        {/* Related Websites */}
         <section>
           <h2 className="section-title">Related Websites</h2>
           <div className="card-grid-three">

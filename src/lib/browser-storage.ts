@@ -1,21 +1,9 @@
-/**
- * localStorage that never throws — private mode, a full quota, disabled storage and
- * the server all read as "nothing stored" — plus an in-tab change signal. The
- * browser's `storage` event only fires in *other* tabs, so writes made here notify
- * this tab's subscribers themselves.
- *
- * A write that storage refuses is kept in memory for this tab instead: it reads back
- * and notifies like any other write, so a toggle still works for the session and just
- * isn't remembered. The in-memory copy wins over whatever storage holds for that key
- * until the next write that storage accepts clears it.
- */
+/** localStorage that never throws, plus an in-tab change signal (`storage` only fires in other tabs); a refused write is kept in memory for the session. */
 const listeners = new Set<() => void>();
 const unsavedItems = new Map<string, string | null>();
 
 export function readStorageItem(key: string): string | null {
-  // Node 25+ has a localStorage global of its own (one on-disk store for every
-  // request under --localstorage-file), and this module's in-memory fallback is
-  // shared across requests too, so the server must not consult either.
+  // Node 25+ has a shared localStorage global of its own, so the server must not consult it.
   if (typeof window === "undefined") return null;
   if (unsavedItems.has(key)) return unsavedItems.get(key) ?? null;
   try {

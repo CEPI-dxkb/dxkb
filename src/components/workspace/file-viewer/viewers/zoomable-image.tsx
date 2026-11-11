@@ -26,7 +26,6 @@ const ZoomPanFrame = dynamic(
 interface ZoomableImageProps {
   src: string;
   alt: string;
-  /** Extra toolbar content rendered before the zoom controls. */
   toolbarLeading?: ReactNode;
 }
 

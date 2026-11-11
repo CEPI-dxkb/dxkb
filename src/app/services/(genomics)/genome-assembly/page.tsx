@@ -91,8 +91,7 @@ function uiReducer(
       return state.expectedGenomeSize === action.value
         ? state
         : { ...state, expectedGenomeSize: action.value };
-    // A rerun sets the count and its unit together; "set-unit" would reset
-    // the count to the unit's default.
+    // "set-unit" would reset the count to the unit's default.
     case "restore-genome-size":
       return {
         ...state,

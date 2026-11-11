@@ -18,7 +18,6 @@ export function parseYearData(
   return years.sort((a, b) => a.year - b.year);
 }
 
-// Choose how many year labels to render along the x-axis so they don't overlap.
 export function labelStep(count: number): number {
   if (count <= 15) return 1;
   if (count <= 30) return 2;

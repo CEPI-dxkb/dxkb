@@ -8,11 +8,6 @@ interface ExpectedAction {
   enabled: boolean;
 }
 
-/**
- * Assert the bar rendered exactly these buttons, in this order, with these
- * enabled states. The cases that deliberately assert neither order nor count keep
- * looping over `screen.getByRole` themselves instead of calling this.
- */
 function expectActionButtons(expected: readonly ExpectedAction[]) {
   const buttons = screen.getAllByRole("button");
   expect(buttons).toHaveLength(expected.length);
@@ -48,14 +43,12 @@ describe("SearchActionBar (taxonomy)", () => {
 
     it("hides single-select-only actions when more than one row is selected", () => {
       render(<SearchActionBar selectedCount={2} searchType="taxonomy" />);
-      // taxonOverview + features are maxSelection:1 → hidden on multi
       expect(
         screen.queryByRole("button", { name: /taxon\s*overview/i }),
       ).not.toBeInTheDocument();
       expect(
         screen.queryByRole("button", { name: /features/i }),
       ).not.toBeInTheDocument();
-      // genomes has no maxSelection → still visible on multi
       expect(
         screen.queryByRole("button", { name: /genomes/i }),
       ).toBeInTheDocument();
@@ -72,7 +65,6 @@ describe("SearchActionBar (taxonomy)", () => {
       expect(
         screen.queryByRole("button", { name: /genomes/i }),
       ).not.toBeInTheDocument();
-      // Guide is always shown (no selection required)
       expect(
         screen.queryByRole("button", { name: /guide/i }),
       ).toBeInTheDocument();
@@ -95,7 +87,6 @@ describe("SearchActionBar (taxonomy)", () => {
 
     it("leaves an action enabled when no reason is passed for it", () => {
       render(<SearchActionBar selectedCount={1} searchType="taxonomy" />);
-      // taxonOverview has no module-level disable and no consumer disable → enabled
       expect(
         screen.getByRole("button", { name: /taxon\s*overview/i }),
       ).not.toBeDisabled();
@@ -121,7 +112,6 @@ describe("SearchActionBar (taxonomy)", () => {
         { name: /^ggenome$/i, enabled: true },
         { name: /^ffeatures$/i, enabled: true },
         { name: /group/i, enabled: true },
-        // FASTA and Browser wait on a later PR.
         { name: /fasta/i, enabled: false },
         { name: /browser/i, enabled: false },
       ];
@@ -158,8 +148,6 @@ describe("SearchActionBar (taxonomy)", () => {
         />,
       );
 
-      // FEATURES resolves from the one displayed detail row's sequence_id, so it is
-      // maxSelection:1 -> hidden on multi. COPY ROWS has no bound and stays.
       expect(
         screen.queryByRole("button", { name: /^ffeatures$/i }),
       ).not.toBeInTheDocument();
@@ -194,14 +182,12 @@ describe("SearchActionBar (taxonomy)", () => {
         />,
       );
 
-      // Legacy order, minus SUBSYSTEMS and PATHWAYS which DXKB does not carry.
       const expectedActions = [
         { name: /guide/i, enabled: true },
         { name: /^copy$/i, enabled: true },
         { name: /services/i, enabled: true },
         { name: /^ffeature$/i, enabled: true },
         { name: /^ggenome$/i, enabled: true },
-        // FASTA and ID MAP wait on a later PR.
         { name: /fasta/i, enabled: false },
         { name: /id map/i, enabled: false },
         { name: /group/i, enabled: true },
@@ -226,7 +212,6 @@ describe("SearchActionBar (taxonomy)", () => {
         { name: /guide/i, enabled: true },
         { name: /copy rows/i, enabled: true },
         { name: /services/i, enabled: true },
-        // VARIANT TYPES waits on a later PR.
         { name: /variant\s*types/i, enabled: false },
       ];
 
@@ -303,7 +288,6 @@ describe("SearchActionBar (taxonomy)", () => {
         { name: /^copy$/i, enabled: true },
         { name: /services/i, enabled: true },
         { name: /^ffeatures$/i, enabled: true },
-        // FASTA waits on a later PR.
         { name: /fasta/i, enabled: false },
         { name: /group/i, enabled: true },
       ];
@@ -365,7 +349,6 @@ describe("SearchActionBar (taxonomy)", () => {
         { name: /^copy$/i, enabled: true },
         { name: /services/i, enabled: true },
         { name: /^ssrvlnce$/i, enabled: true },
-        // MAP waits on a later PR.
         { name: /^map$/i, enabled: false },
       ];
 
@@ -399,12 +382,10 @@ describe("SearchActionBar (taxonomy)", () => {
         />,
       );
 
-      // Legacy leaves COPY ROWS out of the experiment container.
       const expectedActions = [
         { name: /guide/i, enabled: true },
         { name: /services/i, enabled: true },
         { name: /^eexprmnt$/i, enabled: true },
-        // BIOSETS waits on a later PR.
         { name: /biosets/i, enabled: false },
       ];
 

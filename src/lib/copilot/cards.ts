@@ -1,8 +1,3 @@
-/**
- * Readers for the cards the agents attach to answers (`card.card_payload`).
- * Payloads are model- and gateway-written, so every field is checked; a card
- * that does not read is shown as a notice instead.
- */
 import { isRecord, text } from "./steps";
 import type {
   CopilotBlockedAction,
@@ -12,21 +7,14 @@ import type {
 
 export interface CopilotClarificationCard {
   questions: CopilotClarificationQuestion[];
-  /** The agent that asked; answers go back to it. */
   agent: string;
-  /**
-   * Set when a plan step asked: the answers re-run that step instead of
-   * going to the agent directly.
-   */
   planStep: { planId: string; stepIndex: number | null; stepId: string | null } | null;
 }
 
 export interface CopilotExecutionCard {
-  /** The agent whose actions were held back. */
   agent: string | null;
   actions: CopilotBlockedAction[];
   answered: { answer: CopilotExecutionAnswer; text: string | null } | null;
-  /** The plan whose step prepared the actions; Yes lets it go on. */
   planId: string | null;
 }
 
@@ -46,7 +34,6 @@ function readPlanStepRef(raw: unknown): CopilotClarificationCard["planStep"] {
   };
 }
 
-/** Agent names the chat route accepts as `targetAgent`. */
 export function asTargetAgent(value: unknown): string | null {
   return typeof value === "string" && /^[a-z_]{1,40}$/.test(value) ? value : null;
 }
@@ -106,7 +93,6 @@ export function readExecutionCard(payload: unknown): CopilotExecutionCard | null
   };
 }
 
-/** "Job" / "Group" for an action's tool, as the BV-BRC card labels them. */
 export function actionKind(tool: string): string {
   if (tool === "submit_gowe_job") return "Job";
   if (tool === "create_group" || tool === "edit_group") return "Group";
@@ -127,7 +113,6 @@ function counts(actions: CopilotBlockedAction[]) {
   return { jobs, groups, edits };
 }
 
-/** "Submit this job?", "Create these 2 groups?", "Run these 3 actions?" */
 export function executionQuestion(actions: CopilotBlockedAction[]): string {
   const { jobs, groups, edits } = counts(actions);
   if (jobs && groups) return `Run these ${String(jobs + groups)} actions?`;
@@ -149,10 +134,7 @@ export function executionYesLabel(actions: CopilotBlockedAction[]): string {
   return jobs === 1 ? "Yes, submit it" : `Yes, submit all ${String(jobs)}`;
 }
 
-/**
- * The message a "Yes" sends with the actions to replay (BV-BRC's wording; the
- * service agent reads it as "run exactly what you prepared").
- */
+/** BV-BRC's wording; the service agent reads it as "run exactly what you prepared". */
 export function executeRunMessage(actions: CopilotBlockedAction[]): string {
   const { jobs, groups, edits } = counts(actions);
   const prefix = "Execute mode is on for this message.";
@@ -171,9 +153,8 @@ export function executeRunMessage(actions: CopilotBlockedAction[]): string {
 }
 
 /**
- * The question text for answers to a clarification card. The planning agent
- * takes the answers from `workflow_context` and gets the original request as
- * the question; any other agent gets the request plus the answers as text.
+ * The planning agent takes answers from `workflow_context` and gets the original request as the
+ * question; other agents get the request plus the answers as text.
  */
 export function clarificationQuery(
   agent: string,

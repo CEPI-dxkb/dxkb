@@ -4,7 +4,6 @@ import { answerCopilot, copilotNoStore } from "@/lib/copilot/route-errors";
 import { readCopilotModels } from "@/lib/copilot/server";
 import type { CopilotModelsResponse } from "@/lib/copilot/types";
 
-/** The chat models the Copilot gateway offers the caller. */
 export const GET = withAuth(async (request, { token }) =>
   answerCopilot(async () =>
     NextResponse.json<CopilotModelsResponse>(

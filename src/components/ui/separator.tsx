@@ -4,10 +4,8 @@ import { Separator as SeparatorPrimitive } from "@base-ui/react/separator"
 
 import { cn } from "@/lib/utils"
 
-// Local edit (keep when regenerating with `shadcn add --overwrite`): the
-// orientation variants key on `data-[orientation=...]`. Base UI sets
-// `data-orientation` and no `data-horizontal`/`data-vertical`, so upstream's
-// `data-horizontal:h-px` never matched and every separator rendered 0px.
+// Local edit: Base UI sets `data-orientation`, not
+// `data-horizontal`/`data-vertical`, so upstream's variants never matched.
 function Separator({
   className,
   orientation = "horizontal",

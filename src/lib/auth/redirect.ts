@@ -11,7 +11,7 @@ export function safePostAuthDestination(destination: string): string {
       return candidate;
     }
   } catch {
-    // Invalid destinations fall back to the home page.
+    // invalid URL: fall back to /
   }
   return "/";
 }

@@ -28,7 +28,7 @@ function parseLineageIds(value: unknown): number[] {
       ids.push(entry);
       continue;
     }
-    // SOLR with `application/solr+json` commonly serializes longs as strings.
+    // SOLR commonly serializes longs as strings.
     if (typeof entry === "string" && entry.length > 0) {
       const numeric = Number(entry);
       if (Number.isFinite(numeric)) ids.push(numeric);
@@ -38,9 +38,8 @@ function parseLineageIds(value: unknown): number[] {
 }
 
 /**
- * Positional, unlike the names and ids: a rank's index is the index of the
- * taxon it ranks, so a malformed entry becomes "" (which no breadcrumb rank
- * matches) instead of shifting every rank after it onto the wrong taxon.
+ * Positional: a malformed rank becomes "" instead of shifting every later rank
+ * onto the wrong taxon.
  */
 function parseLineageRanks(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
@@ -55,9 +54,8 @@ export class TaxonomyNotFoundError extends Error {
 }
 
 /**
- * Whether a failed taxonomy lookup is the service being down (a 5xx answer, a
- * timeout, an unreachable host) rather than a configuration error, a malformed
- * payload or a bug, which must keep reaching the error boundary and the log.
+ * Whether a failed taxonomy lookup is the service being down, not a
+ * configuration error or bug, which must keep reaching the error boundary.
  */
 export function isTaxonomyOutage(error: unknown): boolean {
   const failure = describeUpstreamFailure(error, upstreamServices.dataApi);
@@ -69,8 +67,6 @@ export async function fetchOrganismTaxonomy(
   options: OrganismFetchOptions = {},
 ): Promise<OrganismTaxonomy> {
   const baseUrl = getBvBrcWebsiteApiBaseUrl();
-  // Unlabelled: the page showing a failure names the taxon ("Taxon 234 could
-  // not be loaded").
   const request: OrganismRequest = { source: `taxonomy/${String(taxonId)}` };
   const response = await fetchOrganism(`${baseUrl}/taxonomy/${String(taxonId)}`, request, {
     method: "GET",
@@ -82,8 +78,6 @@ export async function fetchOrganismTaxonomy(
     throw new TaxonomyNotFoundError(taxonId);
   }
 
-  // The UpstreamError carries the status, so a page can tell a 5xx (the
-  // service failing, not this request) from a bug.
   if (!response.ok) throw await organismResponseError(response, request);
 
   const payload = await readJsonObject(response, request);
@@ -100,11 +94,8 @@ export async function fetchOrganismTaxonomy(
 }
 
 /**
- * The fixed roots of the organism landing pages (Bacteria, Viruses, cellular
- * organisms), as BV-BRC's taxonomy endpoint returns them. These NCBI roots and
- * their lineages do not change, and a landing's tabs and scope need only the
- * id and lineage, so they stand in when the lookup fails; only the genome
- * count (`genomes`, shown on the Taxa Tree root row) is then unknown.
+ * Fixed landing roots (Bacteria, Viruses, cellular organisms); they stand in
+ * when the lookup fails, leaving only the genome count unknown.
  */
 const staticLandingRoots: ReadonlyMap<number, OrganismTaxonomy> = new Map([
   [
@@ -145,7 +136,6 @@ const staticLandingRoots: ReadonlyMap<number, OrganismTaxonomy> = new Map([
   ],
 ]);
 
-/** A copy of a landing root's static taxonomy, or `undefined` for any other taxon. */
 export function staticLandingRootTaxonomy(
   taxonId: number,
 ): OrganismTaxonomy | undefined {
@@ -161,12 +151,8 @@ export function staticLandingRootTaxonomy(
 }
 
 /**
- * A landing root's taxonomy: the fetched record, or the static one when the
- * service is down (`isTaxonomyOutage`), so a landing's shell, rail and static
- * sections render during an outage and only its data sections (each behind its
- * own section error) fail. The outage is logged, since nothing on the page
- * reports it. Any other failure (a missing env var, a malformed payload) and
- * any taxon that is not a landing root is rethrown.
+ * A landing root's taxonomy: the fetched record, or the static one during an
+ * outage (logged); any other failure or taxon is rethrown.
  */
 export async function fetchLandingRootTaxonomy(
   taxonId: number,

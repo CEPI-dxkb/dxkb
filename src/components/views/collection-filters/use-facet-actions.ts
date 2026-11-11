@@ -15,13 +15,9 @@ type PeekProps = Pick<
 >;
 
 /**
- * Peeking and pinning. A peek counts facets outside the pinned set because the
- * user opened them: the active ones when a menu or pill opens, and the whole
- * More group at once when it is unfolded (never one by one on hover). Once
- * every menu has closed (`idle`), an unfiltered peek is dropped again, a
- * filtered one stays until its filter goes. Unpinning a facet keeps it counted
- * (as a peek) while the menu is open, so its row and counts stay put until the
- * menu closes.
+ * A peek counts a facet outside the pinned set that the user opened; unfiltered
+ * peeks drop once every menu closes (`idle`), but an unpinned facet stays
+ * counted while a menu is open so its row stays put.
  */
 export function useFacetActions(props: PeekProps, idle: boolean) {
   const {
@@ -45,7 +41,6 @@ export function useFacetActions(props: PeekProps, idle: boolean) {
     definitions.some((definition) => definition.field === field);
 
   return {
-    /** Ask for the counts, and count these fields too if they are not yet. */
     peek: (fields: readonly string[]) => {
       onFacetsWanted();
       const added = fields.filter(
@@ -57,7 +52,6 @@ export function useFacetActions(props: PeekProps, idle: boolean) {
       if (added.length === 0) return;
       setPeekedFields(new Set([...peekedFields, ...added]));
     },
-    /** Its counts are (or are being) read; a field no facet names has none. */
     isCounted: (field: string) =>
       !isDefined(field) || pinnedFields.has(field) || peekedFields.has(field),
     isPinned: (field: string) => pinnedFields.has(field),

@@ -56,12 +56,10 @@ export class TaxonomyCollectionPage {
     ).toBeEnabled();
   }
 
-  /** Narrow the collection with its own keyword box (the `refine` query). */
   async filterCollection(query: string): Promise<void> {
     await this.toolbar.fillKeyword(query);
   }
 
-  /** Select the page with the header checkbox, then every matching result. */
   async selectAllResults(): Promise<void> {
     await this.page
       .getByRole("checkbox", { name: "Select all rows on this page" })
@@ -75,8 +73,8 @@ export class TaxonomyCollectionPage {
   }
 
   /**
-   * The collection's live status reads "Refreshing results..." while the rows and total on screen
-   * belong to an earlier query (placeholder data), and the result count once the current one lands.
+   * Reads "Refreshing results..." while the rows on screen belong to an
+   * earlier query (placeholder data).
    */
   async expectRefreshing(refreshing: boolean): Promise<void> {
     await expect(
@@ -84,15 +82,11 @@ export class TaxonomyCollectionPage {
     ).toHaveCount(refreshing ? 1 : 0);
   }
 
-  /**
-   * While the rows on screen belong to an earlier query, the table dims them and floats a filled
-   * "Loading results..." notice over them; both clear once the current rows land. jsdom computes no
-   * Tailwind styles, so only a browser can check the dimming and the notice's fill.
-   */
+  /** Checked in a browser because jsdom computes no Tailwind styles. */
   async expectStaleRows(stale: boolean): Promise<void> {
     const notice = this.page.getByText("Loading results...", { exact: true });
-    // By its label, not its role: a dialog the action opens can hide the region from the
-    // accessibility tree.
+    // By label, not role: a dialog the action opens can hide the region from
+    // the accessibility tree.
     const body = this.page.locator('[aria-label="Taxa results table"] tbody');
     if (stale) {
       await expect(notice).toBeInViewport();

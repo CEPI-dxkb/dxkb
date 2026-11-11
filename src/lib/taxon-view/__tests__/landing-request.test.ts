@@ -6,7 +6,6 @@ function Component() {
   return null;
 }
 
-// [params, tabParam]: an empty `tab` is still the URL's raw `tab`.
 const defaultRequests: [
   Parameters<typeof resolveLandingTab>[0],
   string | null,
@@ -17,9 +16,7 @@ const defaultRequests: [
   [{ tab: [] }, null],
 ];
 
-// [params, activeViewKey, tabParam]. tabParam is the raw `tab`, so a legacy
-// `view` request opens its view with a null tabParam: the shell's tab content
-// compares it with the URL's `tab`, which a legacy link does not have.
+// A legacy `view` request opens its view with a null tabParam, since a legacy link has no `tab` in the URL.
 const enabledRequests: [
   Parameters<typeof resolveLandingTab>[0],
   "genomes" | "features",

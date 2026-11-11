@@ -1,23 +1,10 @@
 /**
- * The folder picker's motion when going into or out of a folder.
- *
- * Going in, a column fades in from slightly to the right; going out, the
- * right-hand column fades out the same way in reverse. When the strip has to
- * scroll, the columns glide to their new place instead of jumping. Same-depth
- * moves (↑ / ↓ in a column) don't animate the columns.
- *
- * It runs after React has committed and before the browser paints. The strip's
- * scroll position and content width glide together from where they were to
- * where they should be (a scroll tween, not a transform: transforming the
- * scrolled content changes its scroll range mid-animation and the browser
- * clamps the position). Columns
- * fade in or out with the Web Animations API. A column that is going away is
- * already out of the DOM by then, so a copy of it plays the exit on an overlay
- * above the strip.
+ * Runs after React commits and before the browser paints. The strip's scroll position
+ * and content width tween together as a scroll tween, not a transform, which would
+ * change the scroll range mid-animation and get clamped.
  */
 
 const duration = 180;
-/** easeOutCubic, shared by the scroll tween and the column animations. */
 const easing = "cubic-bezier(0.33, 1, 0.68, 1)";
 const timing: KeyframeAnimationOptions = { duration, easing };
 
@@ -25,9 +12,7 @@ function easeOutCubic(progress: number): number {
   return 1 - (1 - progress) ** 3;
 }
 
-/** The scroll tween running on each strip, so a new one can cancel it. */
 const runningScrolls = new WeakMap<HTMLElement, number>();
-/** How far a column slides as it appears or goes away. */
 const nudge = 12;
 
 const columnSelector = "[data-picker-key]";
@@ -41,7 +26,6 @@ interface ColumnSnapshot {
   height: number;
 }
 
-/** The strip as it is on screen just before a navigation. */
 export interface ColumnsSnapshot {
   place: string;
   depth: number;
@@ -91,10 +75,6 @@ function prefersReducedMotion(): boolean {
   return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
 
-/**
- * Scroll the strip to `scrollLeft` and, if the depth or place changed since
- * `snapshot`, animate from the snapshot to the new layout.
- */
 export function playColumnTransition({
   strip,
   content,
@@ -112,17 +92,13 @@ export function playColumnTransition({
   place: string;
   depth: number;
 }) {
-  // ↑ / ↓ within a column keeps the same columns, so leave the strip where it
-  // is: wherever the user scrolled it, or a glide still running finishes.
-  // Snapping it back to the computed position on every press made the scroll
-  // bar jump.
+  // Same-depth moves leave the strip where the user scrolled it, or let a running glide
+  // finish.
   const sameDepth =
     snapshot !== null && snapshot.depth === depth && snapshot.place === place;
   if (sameDepth) return;
 
-  // Exit copies from a move this one interrupts sit where the columns were
-  // before it; left to finish, they fade over the new layout (going back in,
-  // over the very column that is fading in again).
+  // Exit copies from an interrupted move would fade over the new layout, so cancel them.
   overlay.replaceChildren();
   const running = runningScrolls.get(strip);
   if (running !== undefined) cancelAnimationFrame(running);
@@ -131,9 +107,7 @@ export function playColumnTransition({
   content.style.overflow = "";
 
   const animate = snapshot !== null && !prefersReducedMotion();
-  // The strip's scroll range now, with the new columns and no tween styles.
   const toWidth = strip.scrollWidth;
-  // How far the columns move on screen: positive when they move right.
   const shift = snapshot ? snapshot.scrollLeft - scrollLeft : 0;
   if (
     !snapshot ||
@@ -142,12 +116,9 @@ export function playColumnTransition({
   ) {
     strip.scrollTo({ left: scrollLeft, behavior: "instant" });
   } else {
-    // The scroll bar's thumb is sized by the content width, which React just
-    // changed in one step (a column added or removed). Tween the width along
-    // with the position so the thumb resizes and moves smoothly together,
-    // instead of snapping at the start (going in) or the end (going out).
-    // `overflow: clip` keeps a wider-than-allowed column from adding to the
-    // scroll range while the width catches up.
+    // Tween the content width along with the position so the scroll thumb resizes
+    // smoothly; `overflow: clip` keeps a too-wide column from extending the scroll range
+    // meanwhile.
     const fromWidth = snapshot.scrollWidth;
     const fromLeft = snapshot.scrollLeft;
     const tween = (eased: number) => {
@@ -158,7 +129,7 @@ export function playColumnTransition({
     tween(0);
     const start = performance.now();
     const step = (now: number) => {
-      // A frame's timestamp can predate `start`; never run the tween backwards.
+      // A frame's timestamp can predate `start`.
       const progress = Math.min(1, Math.max(0, (now - start) / duration));
       tween(easeOutCubic(progress));
       if (progress < 1) {

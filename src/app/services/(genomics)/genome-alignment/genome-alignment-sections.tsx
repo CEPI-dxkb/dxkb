@@ -274,12 +274,6 @@ export function AlignmentParameters({
             />
           </ServiceCollapsibleTrigger>
           <ServiceCollapsibleContent>
-            {/* The seed weight toggle and its slider share the left column,
-                so enabling the slider grows that column instead of pushing
-                Weight onto a new row. Each label is a direct child of its
-                FieldItem (no `mb-2`), so "Manually Set Seed Weight" and
-                "Weight" sit on one line, and the switch row is the input's
-                `h-8` so the two controls share a midline. */}
             <div className="service-card-content-grid">
               <div className="space-y-6">
                 <form.Field name="manual_seed_weight">
@@ -306,10 +300,6 @@ export function AlignmentParameters({
                 {manual && (
                   <form.Field name="seed_weight">
                     {(field) => (
-                      // Two columns put the value on the label's row without
-                      // nesting the label (which would restore its `mb-2`);
-                      // `leading-none` matches the label's line box so their
-                      // text tops line up.
                       <FieldItem className="grid-cols-2">
                         <ServiceLabel>Seed Weight</ServiceLabel>
                         <span className="justify-self-end text-sm leading-none text-muted-foreground">

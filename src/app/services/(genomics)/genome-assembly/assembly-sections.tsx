@@ -341,7 +341,6 @@ function AdvancedOptions({
           className={`size-4 transition-transform ${open ? "rotate-180 transform" : ""}`}
         />
       </ServiceCollapsibleTrigger>
-      {/* The four groups of BV-BRC's Assembly2 form, in its order. */}
       <ServiceCollapsibleContent>
         <div className="space-y-6">
           <AdvancedSection info={genomeAssemblyReadProcessing}>
@@ -423,12 +422,6 @@ function AdvancedOptions({
   );
 }
 
-/**
- * One titled group of Advanced Options, its info popup beside the title. The
- * title sits a size above the field labels so the groups read apart; it is not
- * a heading element, because the card titles above it are not headings either
- * and an `h3` here would skip levels.
- */
 function AdvancedSection({
   info,
   children,
@@ -494,12 +487,6 @@ function AdvancedNumberField({
   );
 }
 
-/**
- * Estimated Genome Size, as BV-BRC's Assembly2 form asks for it under Genome
- * Parameters: a count in megabases or kilobases. The page state holds the
- * count and unit; the form holds `genome_size` in bases. Switching the unit
- * resets the count to that unit's default (5 M or 500 K), as BV-BRC does.
- */
 function GenomeSizeField({
   form,
   state,
@@ -522,9 +509,7 @@ function GenomeSizeField({
               id={field.name}
               value={state.expectedGenomeSize}
               onValueChange={(value) => {
-                // NumericFormat also reports the count the page set (a rerun
-                // or unit switch). The form already holds those bases, and a
-                // rerun's may not be a whole kilobase, so leave it alone.
+                // Leave the form's bases alone: a rerun's size may not be a whole kilobase.
                 if (value === state.expectedGenomeSize) return;
                 dispatch({ type: "set-genome-size", value });
                 field.handleChange(

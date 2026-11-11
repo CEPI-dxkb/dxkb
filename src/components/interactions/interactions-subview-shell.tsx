@@ -11,8 +11,6 @@ import { interactionColumns } from "@/lib/views/child-resources";
 
 import { InteractionsGraph } from "./interactions-graph";
 
-// The Table's URL param prefix, and the page param the shell drops when the shared
-// keyword changes. One value, so the two cannot drift apart.
 const tableUrlKey = "interactions";
 
 interface InteractionsSubviewShellProps {
@@ -25,23 +23,14 @@ export function InteractionsSubviewShell({
   guideUrl,
 }: InteractionsSubviewShellProps) {
   const [subTab, setSubTab] = useState<"table" | "graph">("table");
-  // Keep table-only state (facets, pagination, sorting, selection) mounted.
-  // Only keyword text is shared because both sibling views expose that input.
-  // Graph remains lazy-mounted to avoid fetching its full dataset until opened,
-  // and unmounts when hidden (a hidden Sigma has no size and would hold a WebGL
-  // context). What a return to Graph needs survives it anyway: the chosen
-  // layout lives here, and the computed positions in TanStack Query
-  // (useGraphLayout), so the same picture comes back without a new layout run.
+  // Table-only state stays mounted; the Graph is lazy-mounted and unmounts when hidden (a hidden
+  // Sigma has no size and would hold a WebGL context).
   const [keywordText, setKeywordText] = useState("");
   const [graphLayout, setGraphLayout] = useState<LayoutName>(defaultLayout);
-  // One predicate for two representations of the same data. The fragment is
-  // stripped once, here, so the Table's and the Graph's requests carry byte-equal
-  // RQL, and the keyword goes to both as a request predicate — a server-side
-  // search whose result set does not depend on which view asked for it.
+  // The fragment is stripped once here so the Table's and Graph's requests carry byte-equal RQL.
   const scopedRql = rql.split("#")[0];
-  // A new keyword is a new result set for the Table, whose page lives in the URL:
-  // drop the stale page in the same event the keyword changes. The same text
-  // again is the same result set, so it keeps the page.
+  // A new keyword is a new result set, so drop the stale page in the same event; the same text
+  // keeps the page.
   const handleKeywordChange = (value: string) => {
     setKeywordText(value);
     if (value !== keywordText) resetChildCollectionPage(tableUrlKey);

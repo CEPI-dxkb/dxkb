@@ -30,13 +30,9 @@ export function ThemeProvider({ children, ...props }: ThemeProviderProps) {
 }
 
 /**
- * Rewrites a stored theme that is no longer offered (zinc and orange were
- * retired) to the default theme in the same light/dark mode. next-themes
- * applies whatever theme is stored, and no stylesheet matches a retired one,
- * so left alone the page would paint without theme colors.
- *
- * Serialized into an inline script, so it must not reference anything outside
- * its own body.
+ * Rewrites a stored retired theme to the default in the same mode, since no
+ * stylesheet matches it. Serialized into an inline script, so it must not
+ * reference anything outside its own body.
  */
 function resetRetiredTheme(storageKey: string, themes: string[], base: string) {
   try {
@@ -46,15 +42,13 @@ function resetRetiredTheme(storageKey: string, themes: string[], base: string) {
       localStorage.setItem(storageKey, `${base}-${mode}`)
     }
   } catch {
-    // Storage is unavailable, so next-themes has no stored theme to apply.
+    // storage unavailable
   }
 }
 
 /**
- * Runs resetRetiredTheme before first paint. It renders ahead of
- * NextThemesProvider, whose own inline script (the one that reads the stored
- * theme and sets data-theme) comes later in the document, so it sees the
- * rewritten value.
+ * Runs before first paint, ahead of NextThemesProvider's own inline script, so
+ * that script sees the rewritten value.
  */
 function RetiredThemeScript({ storageKey }: { storageKey: string }) {
   const args = JSON.stringify([storageKey, themeList, defaultThemeBase])
@@ -69,9 +63,8 @@ function RetiredThemeScript({ storageKey }: { storageKey: string }) {
 }
 
 /**
- * The same reset for a retired theme that arrives after load: next-themes
- * follows the storage event, so a tab still running the previous build can
- * write one into this tab.
+ * The same reset for a retired theme written by a tab running the previous
+ * build (next-themes follows the storage event).
  */
 function RetiredThemeReset() {
   const { theme, setTheme } = useTheme()

@@ -1,9 +1,5 @@
-// Core workspace object types
-//
-// `type` is the raw string returned by the Workspace API (folder, job_result,
-// reads, genome_group, etc.). It is intentionally not narrowed here — the
-// rules for which types count as folder-like live in `./utils` and the
-// canonical `WorkspaceItem` in `./domain.ts`.
+// `type` is the raw string from the Workspace API, deliberately not narrowed;
+// folder-likeness lives in `./utils`.
 export interface WorkspaceObject {
   id: string;
   name: string;
@@ -17,7 +13,6 @@ export interface WorkspaceObject {
   owner?: string;
 }
 
-// Workspace.ls parameters and response
 export interface WorkspaceListParams {
   paths: string[];
   excludeDirectories?: boolean;
@@ -39,7 +34,6 @@ export interface WorkspaceListResponse {
   limit: number;
 }
 
-// Workspace.get_permissions parameters and response
 export interface WorkspaceGetPermissionsParams {
   objects: {
     workspace: string;
@@ -59,7 +53,6 @@ export interface WorkspaceGetPermissionsResponse {
   permissions: WorkspacePermissions[];
 }
 
-// Workspace.create parameters and response
 export interface WorkspaceCreateParams {
   objects: {
     workspace: string;
@@ -79,9 +72,9 @@ export interface WorkspaceCreateResponse {
 }
 
 /**
- * Path-based Workspace.create params for uploads.
- * objects: [fullPath, type, userMeta, content][] (BV-BRC API format).
- * createUploadNodes: true returns Shock node URLs in the result (index 11 = link_reference).
+ * Path-based Workspace.create params for uploads: objects are [fullPath, type,
+ * userMeta, content][]; `createUploadNodes: true` returns Shock node URLs
+ * (index 11 = link_reference).
  */
 export interface WorkspaceCreateUploadParams {
   objects: [string, string, Record<string, unknown>, string][];
@@ -89,18 +82,13 @@ export interface WorkspaceCreateUploadParams {
   overwrite?: boolean;
 }
 
-/** Parsed result from Workspace.create with createUploadNodes: true (result[0][0] tuple; index 11 = link_reference). */
 export interface WorkspaceCreateUploadNodeResult {
   link_reference: string;
 }
 
-// Workspace.delete parameters and response
 export interface WorkspaceDeleteParams {
-  /** Full object paths (e.g. /user@realm/home/file.pdb). */
   objects: string[];
-  /** If true, delete non-empty directories. */
   force?: boolean;
-  /** If true, delete directory objects; if false, only files. */
   deleteDirectories?: boolean;
 }
 
@@ -111,7 +99,6 @@ export interface WorkspaceDeleteResponse {
   }[];
 }
 
-// Workspace.copy parameters and response
 export interface WorkspaceCopyParams {
   objects: {
     workspace: string;
@@ -128,17 +115,14 @@ export interface WorkspaceCopyResponse {
   }[];
 }
 
-/** Path-based copy params (BV-BRC API: objects as [sourcePath, destPath][]). */
 export interface WorkspaceCopyByPathsParams {
   objects: [string, string][];
   recursive: boolean;
   move: boolean;
 }
 
-/** Response from Workspace.copy when using path-based params (result array). */
 export type WorkspaceCopyByPathsResponse = unknown[];
 
-// Workspace.move parameters and response
 export interface WorkspaceMoveParams {
   objects: {
     workspace: string;
@@ -155,7 +139,6 @@ export interface WorkspaceMoveResponse {
   }[];
 }
 
-// Workspace.rename parameters and response
 export interface WorkspaceRenameParams {
   objects: {
     workspace: string;
@@ -171,7 +154,6 @@ export interface WorkspaceRenameResponse {
   }[];
 }
 
-// Workspace.get parameters and response
 export interface WorkspaceGetParams {
   objects: {
     workspace: string;
@@ -190,11 +172,14 @@ export interface WorkspaceGetResponse {
     id: string;
     type: string;
     meta: Record<string, unknown>;
-    data?: string; // Base64 encoded data for files
+    data?: string;
   }[];
 }
 
-/** Raw Workspace.get result: result[0] = path results, result[0][i][0] = object tuple. */
+/**
+ * Raw Workspace.get result: result[0] = path results, result[0][i][0] = object
+ * tuple.
+ */
 export type WorkspaceGetRawResult = unknown[];
 
 /** task_data from userMeta (index 7) for job_result objects. */
@@ -222,7 +207,6 @@ export interface JobResultSysMeta {
   job_output?: number;
 }
 
-/** Parsed object from Workspace.get single-path response (one tuple). */
 export interface ResolvedPathObject {
   name: string;
   type: string;
@@ -237,14 +221,13 @@ export interface ResolvedPathObject {
   jobSysMeta?: JobResultSysMeta;
 }
 
-// Workspace.save parameters and response
 export interface WorkspaceSaveParams {
   objects: {
     workspace: string;
     id: string;
     type: string;
     meta: Record<string, unknown>;
-    data?: string; // Base64 encoded data for files
+    data?: string;
   }[];
 }
 
@@ -257,7 +240,6 @@ export interface WorkspaceSaveResponse {
   }[];
 }
 
-// Generic JSON-RPC request/response types
 export interface JsonRpcRequest {
   id: number;
   method: string;
@@ -276,26 +258,24 @@ export interface JsonRpcResponse<T = unknown> {
   jsonrpc: "2.0";
 }
 
-// Workspace API method names
-// Workspace.update_metadata parameters: objects are [path, meta, type][] per object
 export interface WorkspaceUpdateMetadataParams {
-  /** Array of [path, meta, type] tuples; meta is typically {} */
   objects: [string, Record<string, unknown>, string][];
 }
 
-/** Params for Workspace.update_auto_meta (trigger inspection/metadata update for uploaded objects). */
 export interface WorkspaceUpdateAutoMetaParams {
   objects: string[];
 }
 
-/** Params for Workspace.du (disk usage). */
 export interface WorkspaceDuParams {
   paths: string[];
   recursive?: boolean;
   adminmode?: boolean;
 }
 
-/** Response from Workspace.du: result[0] = array of [path, sizeBytes, fileCount, dirCount, error]. */
+/**
+ * Response from Workspace.du: result[0] = array of [path, sizeBytes, fileCount,
+ * dirCount, error].
+ */
 export type WorkspaceDuResponse = [[string, number, number, number, string][]];
 
 export type WorkspaceMethod =
@@ -528,7 +508,6 @@ export const knownUploadTypes = {
   },
 } as const;
 
-// Type for the keys of knownUploadTypes
 export type ValidWorkspaceObjectTypes = keyof typeof knownUploadTypes | typeof otherWorkspaceObjectTypes[number] | typeof viewableTypes[number];
 
 export interface changeableTypes {
@@ -585,7 +564,6 @@ export interface changeableTypes {
   xml: { label: "xml"; value: "xml" };
 }
 
-/** Sorted list of object type IDs for the "Change Object Type" dialog. */
 export const editTypeOptions: string[] = [
   "aligned_dna_fasta",
   "aligned_protein_fasta",

@@ -8,9 +8,7 @@ import {
 import type { WorkspaceRepository } from "@/lib/services/workspace/workspace-repository";
 
 export interface WorkspaceRepositorySet {
-  /** Authenticated workspace (cookie-based). */
   authenticated: WorkspaceRepository;
-  /** Public workspace (no auth required). */
   public: WorkspaceRepository;
 }
 
@@ -28,11 +26,7 @@ export interface WorkspaceRepositoryProviderProps {
   children: ReactNode;
 }
 
-/**
- * Injects a `WorkspaceRepository` pair into the tree. Production trees can
- * omit this provider and consumers will get the default HTTP adapters. Tests
- * and stories pass an `InMemoryWorkspaceRepository` via `value`.
- */
+/** Injects a repository pair; without it consumers get the default HTTP adapters. */
 export function WorkspaceRepositoryProvider({
   value,
   children,

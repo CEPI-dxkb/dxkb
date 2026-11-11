@@ -9,7 +9,6 @@ import {
   Square,
   X,
 } from "lucide-react";
-import dynamic from "next/dynamic";
 import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
 import {
   InputGroup,
@@ -37,10 +36,6 @@ import {
 } from "@/lib/services/workspace/types";
 import { copilotName } from "@/lib/copilot/name";
 
-/**
- * Any workspace file. Folders are opened, not picked; a job result is opened
- * too, to reach its outputs.
- */
 const anyWorkspaceFile: PickerTarget = {
   kind: "object",
   types: [
@@ -59,32 +54,20 @@ export interface CopilotComposerProps {
   onChange: (value: string) => void;
   onSubmit: () => void;
   onStop: () => void;
-  /** A turn is running: Send becomes Stop. */
   running: boolean;
-  /**
-   * Nothing can be sent now (no model yet, the chat is loading, or another
-   * answer is running): the box is disabled.
-   */
   disabled: boolean;
-  /** Bumped to move focus into the box (a suggestion was picked). */
   focusKey?: number;
   executionMode: CopilotExecutionMode;
   onExecutionModeChange: (mode: CopilotExecutionMode) => void;
   attachments: CopilotAttachment[];
-  /** Files picked, pasted or dropped; the panel reads and checks them. */
   onAttach: (files: File[]) => void;
   onRemoveAttachment: (id: string) => void;
-  /** A note under the box (which model reads the images). */
   note?: string | null;
-  /** Replaces the usual placeholder (a plan step's question is open). */
   placeholder?: string;
-  /** Sends with only attachments and no text. */
   canSendEmpty?: boolean;
-  /** Attached files are still being read: nothing can be sent yet. */
   reading?: boolean;
 }
 
-/** The pasted text is just the pasted files' names, one per line. */
 function isPastedFileNames(text: string, files: File[]): boolean {
   const lines = text
     .trim()
@@ -155,7 +138,6 @@ const modes: { value: CopilotExecutionMode; label: string; hint: string }[] = [
   },
 ];
 
-/** Plan | Execute, as a two-option radio group. */
 function ModeToggle({
   value,
   onChange,
@@ -205,10 +187,6 @@ function ModeToggle({
   );
 }
 
-/**
- * The question box. Enter sends, Shift+Enter starts a new line (as on
- * BV-BRC); while an answer is being written the button stops it.
- */
 export function CopilotComposer({
   value,
   onChange,
@@ -274,8 +252,7 @@ export function CopilotComposer({
       }}
       onDragOver={(event) => {
         if (!event.dataTransfer.types.includes("Files")) return;
-        // Always cancel a file drag: the browser would otherwise open the
-        // file in this tab, replacing the chat.
+        // Always cancel a file drag, or the browser opens the file in this tab.
         event.preventDefault();
         event.dataTransfer.dropEffect = canAttach ? "copy" : "none";
         setDragging(canAttach);
@@ -338,9 +315,8 @@ export function CopilotComposer({
           onPaste={(event) => {
             const files = [...event.clipboardData.files];
             if (files.length === 0 || !canAttach) return;
-            // Text pasted beside the file (a copied cell, a rich selection)
-            // still goes into the box, unless it is only the files' names,
-            // which macOS Finder puts beside a copied file.
+            // Text pasted beside files still goes into the box, unless it is only the files' names
+            // (macOS Finder adds those).
             const text = event.clipboardData.getData("text/plain");
             if (text === "" || isPastedFileNames(text, files)) {
               event.preventDefault();
@@ -379,7 +355,6 @@ export function CopilotComposer({
             onChange={onExecutionModeChange}
             disabled={running || disabled}
           />
-          {/* Only while the box is in use: at rest it is toolbar noise. */}
           <span className="hidden text-2xs text-muted-foreground sm:group-focus-within/input-group:inline">
             Shift+Enter for a new line
           </span>
@@ -402,8 +377,8 @@ export function CopilotComposer({
               className="ml-auto"
               aria-label="Send"
               title="Send"
-              // aria-disabled, not disabled: InputGroup greys the whole box
-              // when any control in it is disabled, and an empty box is not.
+              // aria-disabled, not disabled: InputGroup greys the whole box when any control in it
+              // is disabled.
               aria-disabled={!canSend}
               variant={canSend ? "default" : "secondary"}
             >

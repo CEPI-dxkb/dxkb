@@ -80,10 +80,7 @@ export function PrimerOptionsSection({
       <form.Field name="PRIMER_PRODUCT_SIZE_RANGE">
         {(field) => (
           <FieldItem>
-            {/* A label and its help icon share a row that is not a direct child
-                of the field, so the label would keep `mb-2` on top of the
-                field's `gap-2` (16px to the input) and sit off the icon's
-                center. `mb-0!` beats the unlayered `.service-card-label`. */}
+            {/* `mb-0!` beats the unlayered `.service-card-label` margin, which the label keeps outside a direct child of the field. */}
             <div className="flex items-center gap-2">
               <ServiceFieldLabel field={field} className="mb-0!">
                 Product Size Range (bp)

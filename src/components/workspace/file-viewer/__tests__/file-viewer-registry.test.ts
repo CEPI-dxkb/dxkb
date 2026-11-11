@@ -51,7 +51,6 @@ describe("resolveViewer", () => {
   });
 
   it("does not use file size in routing (pure type-based)", () => {
-    // resolveViewer has no size parameter — routing is type-only
     expect(resolveViewer("contigs", "big.fasta")).toBe("text");
     expect(resolveViewer("json", "big.json")).toBe("json");
     expect(resolveViewer("csv", "big.csv")).toBe("csv");

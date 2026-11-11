@@ -3,16 +3,7 @@ import styled from "styled-components";
 
 import logo from "@auspice/images/logo-light.svg";
 
-/**
- * Replaces Auspice's stock nav bar (auspice/src/components/navBar/content.js),
- * whose logo and wordmark are hardcoded `<a href="/">` with no target. Auspice
- * assumes it owns the site root, so inside the DXKB iframe that "/" resolves to
- * the DXKB home page and renders it nested in the phylogeny panel. Point both
- * at the Auspice docs in a new tab instead.
- *
- * Narrative titles are omitted: /api/charon/getNarrative returns
- * "narratives are not supported", so narrativeTitle is never set.
- */
+/** Replaces Auspice's stock nav bar, whose hardcoded `<a href="/">` would render DXKB's home inside the iframe; links go to the Auspice docs instead. */
 const docsUrl = "https://docs.nextstrain.org/projects/auspice/";
 
 const Container = styled.div`

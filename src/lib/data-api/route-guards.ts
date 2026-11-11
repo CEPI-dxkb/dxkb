@@ -3,32 +3,22 @@ import { NextResponse } from "next/server";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
 
 /**
- * Admission checks shared by the Data API routes (`/api/data/[resource]`,
- * `/api/data/search`, `/api/data/[resource]/fasta`,
- * `/api/data/[resource]/download`, `/api/taxonomy-tree/[operation]` and
- * `/api/genome-browser/[operation]`) and `/api/compare-region` (rate limit
- * only), so a rate-limited or oversized request is answered in one shape
- * whichever of them it hit.
+ * Admission checks shared by the Data API routes, so a rate-limited or
+ * oversized request is answered in one shape whichever route it hit.
  */
 
 interface RateLimitPolicy {
-  /** Route family, the key's first segment (`data`, `taxonomy-tree`, …). */
   scope: string;
   /**
-   * What inside the family is limited: a resource or operation name. It must
-   * already be allowlist-checked, because the bucket key is
-   * `${scope}:${clientIp}:${bucket}` and a raw path segment would let a
-   * caller mint one bucket per garbage value — the unbounded-map growth that
-   * `src/lib/rate-limit.ts`'s prune sweep exists to bound.
+   * Must be allowlist-checked: a raw path segment would let a caller mint one
+   * bucket per garbage value.
    */
   bucket: string;
   max: number;
   windowMs: number;
-  /** Client-facing text naming what was limited. */
   message: string;
 }
 
-/** `429` with `Retry-After` once the caller's bucket is spent, else `null`. */
 export function rateLimitedResponse(
   request: NextRequest,
   { scope, bucket, max, windowMs, message }: RateLimitPolicy,
@@ -51,11 +41,8 @@ export function rateLimitedResponse(
 }
 
 /**
- * Single response contract for every oversized-body rejection path (a
- * declared Content-Length over the cap, or the byte-capped read below hitting
- * the cap while streaming a chunked or understated-length body). The paths
- * used to diverge: some returned 413, one threw a validation error that
- * turned into 400. One shape now, one status, for equivalent input.
+ * One response for every oversized-body path, whether declared by
+ * Content-Length or hit while streaming.
  */
 export function oversizedBodyResponse(): NextResponse {
   return NextResponse.json(
@@ -64,7 +51,6 @@ export function oversizedBodyResponse(): NextResponse {
   );
 }
 
-/** Whether the declared `Content-Length` alone already exceeds `maxBytes`. */
 export function declaresOversizedBody(
   request: NextRequest,
   maxBytes: number,
@@ -73,12 +59,8 @@ export function declaresOversizedBody(
 }
 
 /**
- * Reads `request`'s body up to `maxBytes`, tracking the running byte count as
- * chunks arrive instead of buffering the whole stream and measuring it
- * afterwards. Returns the decoded text on success, or `null` as soon as the
- * running total exceeds `maxBytes` — the reader is cancelled at that point,
- * so a chunked or understated-Content-Length body that lies about its size
- * is never fully consumed.
+ * Cancels the reader as soon as the running total exceeds `maxBytes`, so a body
+ * that lies about its size is never fully consumed.
  */
 export async function readCappedBody(
   request: NextRequest,

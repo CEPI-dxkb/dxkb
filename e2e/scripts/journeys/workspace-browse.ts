@@ -2,20 +2,10 @@ import type { JourneyDriver } from "../record-har";
 import { signIn, getUserId } from "./_helpers/sign-in";
 
 /**
- * Sign in, navigate to the test user's workspace home, and wait until the
- * file listing has rendered (or surfaced the empty-folder state). Captures:
- *
- *  - `Workspace.ls` for the home directory (the workspace browser's primary
- *    backend call)
- *  - `Workspace.get` for `favorites.json` (the favorites loader fires on
- *    every workspace mount)
- *  - any `/api/workspace/*` proxy calls the listing triggers
- *
- * Replayed by `workspace-browse.spec.ts` to assert the spec's overrides
- * still match the real BV-BRC response shape. Does NOT click into a
- * sub-folder — sub-folders depend on what the test account happens to
- * contain, which violates the determinism rule in
- * `e2e/scripts/journeys/README.md`.
+ * Signs in, loads the workspace home and waits for the listing, capturing
+ * `Workspace.ls`, the `favorites.json` `Workspace.get` and proxy calls. It
+ * does not enter a sub-folder, which would depend on the account's contents
+ * (see `e2e/scripts/journeys/README.md`).
  */
 export const drive: JourneyDriver = async (page, env) => {
   await signIn(page, env);
@@ -26,9 +16,8 @@ export const drive: JourneyDriver = async (page, env) => {
     .getByRole("navigation", { name: /workspace path/i })
     .waitFor({ state: "visible", timeout: 30_000 });
 
-  // Wait for either at least one row OR the empty-state copy. The workspace
-  // browser also renders an error alert if `Workspace.ls` fails — fail loudly
-  // here rather than committing a HAR that captures the error path silently.
+  // Wait for a row or the empty state; fail loudly on an error alert rather
+  // than commit a HAR of the error path.
   await page.waitForFunction(
     () => {
       const rows = document.querySelectorAll("tbody tr");

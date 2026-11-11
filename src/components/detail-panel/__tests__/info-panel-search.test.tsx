@@ -1,9 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import { InfoPanel } from "../info-panel";
 
-// Workspace hooks are only invoked inside WorkspaceItemDetailContent (workspace variant).
-// These tests only render the search variant, so no mock is needed.
-
 describe("InfoPanel — search variant", () => {
   describe("loading state", () => {
     it("shows loading indicator when a single row is selected and data is loading", () => {
@@ -54,7 +51,6 @@ describe("InfoPanel — search variant", () => {
           totalItems={0}
         />,
       );
-      // totalItems is falsy → falls back to count
       expect(screen.getByText("2 rows selected")).toBeInTheDocument();
     });
 
@@ -67,7 +63,6 @@ describe("InfoPanel — search variant", () => {
           selectedRow={{ genome_id: "genome-1", genome_name: "Test Genome" }}
         />,
       );
-      // Single row, not loading -> renders field detail panel (not multi-select message)
       expect(screen.queryByText(/rows selected/)).not.toBeInTheDocument();
       expect(screen.queryByText("Loading...")).not.toBeInTheDocument();
     });
@@ -195,13 +190,8 @@ describe("InfoPanel — search variant", () => {
         screen.getAllByText("fig|224914.16.peg.635").length,
       ).toBeGreaterThan(0);
       expect(screen.getByText("Genome Name A")).toBeInTheDocument();
-      // "Interactor B" names BOTH the collapsible section header (a <button>)
-      // and the field label inside it (a <td>), so asserting the text is
-      // present says nothing about the value: a panel rendering the header and
-      // an empty value cell passed. `DetailKeyValueTable` renders each field as
-      // one <tr> of label cell + value cell, so the field row's text is the
-      // label/value pairing. Dropping the <tr>-less section header leaves
-      // exactly one row, asserted whole.
+      // "Interactor B" appears in both the section header and the field row, so
+      // assert the whole row to catch an empty value cell.
       const interactorBFieldRows = screen
         .getAllByText("Interactor B")
         .flatMap((label) => label.closest("tr")?.textContent ?? []);
@@ -441,8 +431,6 @@ describe("InfoPanel — metadata link classification", () => {
       />,
     );
 
-    // A populated <dt> never sits next to an empty <dd> (plan item 19's rule):
-    // the field is treated as unavailable, not rendered with an empty value.
     expect(screen.queryByText("Genome IDs")).not.toBeInTheDocument();
     expect(screen.queryAllByRole("link")).toHaveLength(0);
   });

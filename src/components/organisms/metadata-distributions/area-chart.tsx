@@ -37,9 +37,7 @@ export function AreaChart({
   errorMessage,
 }: AreaChartProps) {
   const svgRef = useRef<SVGSVGElement>(null);
-  // Per-instance gradient id so multiple AreaCharts on one page do not collide
-  // in the SVG id namespace. Strip colons because url(#:r1:) is invalid in
-  // some SVG selector contexts.
+  // Per-instance gradient id; colons are stripped because url(#:r1:) is invalid in some SVG contexts.
   const reactId = useId().replaceAll(":", "");
   const gradientId = `collection-year-area-gradient-${reactId}`;
   const yearData = parseYearData(data);
@@ -61,8 +59,6 @@ export function AreaChart({
 
   const yTicks = yScale.ticks(4);
   const step = labelStep(yearData.length);
-  // A literal style object with static keys: the lint rule allows the
-  // runtime left/right/top, but not a style computed by a call.
   const tooltipPosition = chartTooltipStyle(
     tooltipLeft ?? 0,
     tooltipTop ?? 0,
@@ -139,8 +135,7 @@ export function AreaChart({
                       stroke="var(--card)"
                       strokeWidth={2}
                       tabIndex={0}
-                      // SVG <circle> has no implicit ARIA role; graphics-symbol permits
-                      // aria-label without tripping axe aria-prohibited-attr on WebKit/Firefox.
+                      // SVG <circle> has no implicit ARIA role; graphics-symbol permits aria-label without axe aria-prohibited-attr.
                       role="graphics-symbol"
                       aria-label={label}
                       onFocus={(event) => {

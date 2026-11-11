@@ -14,16 +14,8 @@ import {
 } from "lucide-react";
 
 /**
- * The action bar's visibility and enablement policy, and the config table both read
- * from. Pure: every input arrives as an argument and nothing here renders.
- *
- * Split out of `search-action-bar.tsx` so the `SearchActionBar` fake the
- * `resource-collection*.test.tsx` suites install can consume the *same* rules
- * (plan item 33). A hand-written fake could only model some of them — it modelled
- * `disabledActions` and the `enabledActions` gate but not `validSearchTypes`,
- * `requiresSelection` or `maxSelection` — which let those suites click buttons the
- * real bar would never have rendered. Both consumers calling these two functions is
- * what makes that impossible rather than merely unlikely.
+ * Pure policy and config table shared by `SearchActionBar` and its test fake,
+ * so the fake cannot offer an action the real bar hides.
  */
 
 export type SearchActionId =
@@ -51,12 +43,10 @@ export type SearchActionId =
 
 export interface SearchActionConfig {
   /**
-   * Dispatch value and consumer-map key. Three ids appear twice with disjoint
-   * validSearchTypes (`copyRows`, `features` and `group`); React keys come from
-   * configKey instead so those entries can never collide.
+   * Three ids appear twice with disjoint validSearchTypes (`copyRows`,
+   * `features`, `group`); React keys come from configKey instead.
    */
   id: SearchActionId;
-  /** Unique per entry. Defaults to `id` — only set where an id repeats. */
   configKey?: string;
   label: string;
   labelClassName?: string;
@@ -64,8 +54,6 @@ export interface SearchActionConfig {
   letter?: string;
   validSearchTypes: string[] | "*";
   requiresSelection?: boolean;
-  // Hide the action once the selection exceeds this many rows (e.g. single-select
-  // -only actions set it to 1). Absent = no upper bound.
   maxSelection?: number;
   disabledWithTooltip?: string;
 }
@@ -74,8 +62,7 @@ export const notReady = "Coming soon, still under construction";
 
 /**
  * The SERVICES tooltip where no service accepts the selection, so the button is
- * disabled rather than opening a chooser with nothing in it: "…for this Taxon"
- * for one selected row, "…for these Taxa" for several.
+ * disabled instead of opening an empty chooser.
  */
 export function noServicesReason(
   singularLabel: string,
@@ -87,7 +74,6 @@ export function noServicesReason(
     : `No services available for these ${pluralLabel}`;
 }
 
-/** Rendered top to bottom in this order, which follows the legacy action bar. */
 export const searchActionConfig: SearchActionConfig[] = [
   {
     id: "guide",
@@ -104,8 +90,6 @@ export const searchActionConfig: SearchActionConfig[] = [
     validSearchTypes: ["taxonomy"],
     requiresSelection: true,
     maxSelection: 1,
-    // Enabled/disabled per consumer via disabledActions (live in taxon-view,
-    // disabled on /search until that page wires a handler).
   },
   {
     id: "copyRows",
@@ -196,8 +180,8 @@ export const searchActionConfig: SearchActionConfig[] = [
     letter: "F",
     validSearchTypes: ["genome_sequence"],
     requiresSelection: true,
-    // ResourceCollection dispatches this from the displayed detail row's
-    // `sequence_id`, so it only has an answer for a single-row selection.
+    // Dispatched from the displayed detail row's `sequence_id`, so it only has
+    // an answer for a single-row selection.
     maxSelection: 1,
     disabledWithTooltip: notReady,
   },
@@ -320,18 +304,13 @@ export const searchActionConfig: SearchActionConfig[] = [
   },
 ];
 
-/** What decides whether the bar renders a button for an action at all. */
 export interface SearchActionVisibility {
   searchType: string;
   selectedCount: number;
-  /** GUIDE has nowhere to go without one, so it is dropped rather than disabled. */
   hasGuideUrl: boolean;
 }
 
-/**
- * The actions in scope for this search type and selection size, in config order.
- * An action outside this list is absent from the DOM, not present-and-disabled.
- */
+/** An action outside this list is absent from the DOM, not present-and-disabled. */
 export function visibleSearchActions({
   searchType,
   selectedCount,
@@ -347,7 +326,6 @@ export function visibleSearchActions({
     if (action.id === "guide" && !hasGuideUrl) {
       return false;
     }
-    // Hide selection-dependent buttons until at least one row is selected
     if (action.requiresSelection && selectedCount === 0) {
       return false;
     }
@@ -361,24 +339,15 @@ export function visibleSearchActions({
   });
 }
 
-/** What decides whether a visible action's button is disabled. */
 export interface SearchActionEnablement {
   disabledActions?: Partial<Record<SearchActionId, string>>;
   enabledActions?: readonly SearchActionId[];
-  /** Actions currently resolving, which the bar disables while they run. */
   loadingActionIds?: readonly SearchActionId[];
 }
 
 /**
- * Whether a visible action's button is disabled: the consumer gave an explicit
- * reason, or the action is one of the `disabledWithTooltip` entries and the consumer
- * has not opted it in through `enabledActions`, or it is mid-flight. A disabled action
- * stays in the DOM — that is the difference between this and `visibleSearchActions`.
- *
- * All three rules live here rather than two here and one in the bar, so the test fake
- * cannot offer a click on an action production has disabled. `SearchActionBar` calls
- * this twice per action: once without `loadingActionIds` to pick the button's
- * *structure*, and once with it for the `disabled` attribute — see the call site.
+ * A disabled action stays in the DOM, unlike one outside
+ * `visibleSearchActions`.
  */
 export function isSearchActionDisabled(
   action: SearchActionConfig,

@@ -154,9 +154,9 @@ describe("fetchAmrPhenotypeDistribution", () => {
     const result = await fetchAmrPhenotypeDistribution(197);
 
     expect(result.antibiotics.map((a) => a.antibiotic)).toEqual([
-      "ciprofloxacin", // 18151
-      "azithromycin",  // 643
-      "florfenicol",   // 569
+      "ciprofloxacin",
+      "azithromycin",
+      "florfenicol",
     ]);
   });
 

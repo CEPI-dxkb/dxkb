@@ -16,10 +16,6 @@ const requestSchema = z.object({
   end_time: z.string().optional(),
 });
 
-/**
- * Enumerate jobs with server-side pagination and archived support
- * POST /api/services/app-service/jobs/enumerate-tasks-filtered
- */
 export const POST = withAuth(async (request: NextRequest, { token }) => {
   const body: unknown = await request.json();
   const parsed = requestSchema.safeParse(body);

@@ -3,10 +3,6 @@ import { join, relative, resolve } from "node:path";
 
 const repoRoot = resolve(__dirname, "..", "..");
 
-/**
- * Files whose bare `text-primary` is allowed to stay navy in a dark theme,
- * each with the reason.
- */
 const allowed = new Map([
   // The help search box is a white island in every theme.
   ["src/components/heros/help-hero.tsx", "sits on bg-white"],
@@ -25,25 +21,12 @@ function* sourceFiles(dir: string): Generator<string> {
   }
 }
 
-/** A bare `text-primary` class: no variant prefix, no `-foreground`, no `/opacity`. */
 const barePrimaryText = /(?<![\w:-])text-primary(?![\w/-])/;
 
-/**
- * The dark overrides that are readable on a dark card: `link`, `foreground`,
- * and `primary-foreground` for a control that also fills itself `dark:bg-primary`
- * (the soft button, the select chevron). Opaque only: `/80` dims the text again.
- */
 const readableDarkText =
   /(?<![\w:-])dark:text-(?:link|foreground|primary-foreground)(?![\w/-])/;
 
-/**
- * `--primary` is a button fill. Each dark theme keeps it dark so white text
- * on a primary button stays readable, which leaves it at 2.1 to 3.0:1 as text
- * on a dark card. A class string that colors text `text-primary` therefore
- * also needs a readable dark override in the same string: `dark:text-link`
- * for a link, or `dark:text-foreground` for an active or selected label.
- * Any other `dark:text-*` (`dark:text-primary` itself) would keep it unreadable.
- */
+/** `--primary` stays dark in dark themes (2.1 to 3.0:1 as text), so `text-primary` needs a readable dark override in the same class string. */
 describe("text-primary in dark themes", () => {
   it("pairs every bare text-primary class string with a readable dark override", () => {
     const offenders: string[] = [];

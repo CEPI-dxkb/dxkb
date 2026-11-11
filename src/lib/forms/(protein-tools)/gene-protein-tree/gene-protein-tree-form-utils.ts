@@ -4,10 +4,8 @@ import type {
 } from "./gene-protein-tree-form-schema";
 import * as GeneProteinTreeSchema from "./gene-protein-tree-form-schema";
 
-// Types
 export type Alphabet = "DNA" | "Protein";
 
-// Utility functions
 export function getDisplayName(name: string): string {
   const maxName = 36;
   if (name.length <= maxName) return name;
@@ -27,9 +25,6 @@ export function getSequenceTypeLabel(
   return `${alphabet} Unaligned FASTA`;
 }
 
-/**
- * Check if a sequence with the given filename and type already exists
- */
 export function checkDuplicateSequence(
   sequences: SequenceItem[],
   filename: string,
@@ -40,16 +35,10 @@ export function checkDuplicateSequence(
   );
 }
 
-/**
- * Check if the sequence limit has been reached
- */
 export function checkSequenceLimit(sequences: SequenceItem[]): boolean {
   return sequences.length >= GeneProteinTreeSchema.maxSequences;
 }
 
-/**
- * Remove a sequence at the given index
- */
 export function removeSequenceAtIndex(
   sequences: SequenceItem[],
   index: number,
@@ -57,9 +46,6 @@ export function removeSequenceAtIndex(
   return sequences.filter((_, i) => i !== index);
 }
 
-/**
- * Create a new sequence item
- */
 export function createSequenceItem(
   filename: string,
   type: SequenceItem["type"],
@@ -67,16 +53,10 @@ export function createSequenceItem(
   return { filename, type };
 }
 
-/**
- * Transform gene/protein tree form data to API parameters
- */
 export function transformGeneProteinTreeParams(
   data: GeneProteinTreeFormData,
 ): Record<string, unknown> {
-  // Metadata Options offers genome fields only (legacy's list), so every
-  // pick is a genome field. `feature_metadata_fields` stays unset: the app
-  // then keeps its gene labels (product, accession, patric_id), which any
-  // value given there would replace.
+  // Metadata Options offers genome fields only; feature_metadata_fields stays unset so the app keeps its gene labels.
   const metadataFields = data.metadata_fields || [];
 
   return {

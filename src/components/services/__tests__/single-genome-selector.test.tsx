@@ -6,8 +6,8 @@ import { useState } from "react";
 import { SingleGenomeSelector } from "@/components/services/single-genome-selector";
 import { server } from "@/test-helpers/msw-server";
 
-// jsdom's HTMLElement.scrollIntoView is undefined; the genome typeahead calls
-// it when the pointer highlights a suggestion.
+// jsdom's HTMLElement.scrollIntoView is undefined; the typeahead calls it when
+// the pointer highlights a suggestion.
 Element.prototype.scrollIntoView = vi.fn();
 
 const genomes = [
@@ -71,7 +71,6 @@ describe("SingleGenomeSelector dropdown toggle", () => {
       screen.queryByRole("button", { name: /Mycobacterium tuberculosis/ }),
     ).not.toBeInTheDocument();
 
-    // Enabled again (the Align action re-added), it stays closed.
     rerender(<SingleGenomeSelector value="" onChange={vi.fn()} />);
     expect(
       screen.queryByRole("button", { name: /Mycobacterium tuberculosis/ }),
@@ -117,7 +116,6 @@ describe("SingleGenomeSelector prefilled genome ID", () => {
     const input = screen.getByRole("textbox");
     expect(input).toHaveValue("83332.12");
     expect(input).toHaveAccessibleDescription(note.textContent);
-    // Give a debounced name search the time it would take to fire.
     await new Promise((resolve) => setTimeout(resolve, 600));
     expect(queries).toEqual([]);
   });
@@ -180,7 +178,7 @@ describe("SingleGenomeSelector failed search", () => {
 });
 
 // A form field that passes the selector its own value back, as the service
-// pages do with `value={field.state.value} onChange={field.handleChange}`.
+// pages do.
 function ControlledSelector({ initialValue }: { initialValue: string }) {
   const [value, setValue] = useState(initialValue);
   return (
@@ -223,7 +221,6 @@ describe("SingleGenomeSelector in a controlled field", () => {
     await user.type(screen.getByRole("textbox"), "4");
 
     expect(screen.getByRole("textbox")).toHaveValue("83332.124");
-    // The edit still drops the kept ID from the field.
     expect(
       screen.getByRole("status", { name: "Field value" }),
     ).toBeEmptyDOMElement();

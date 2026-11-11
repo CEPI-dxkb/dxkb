@@ -21,12 +21,9 @@ export function ServiceSubLabel({
 }
 
 /**
- * A field label with its info or help icon: the two share a row, 4px apart on
- * a common midline, as `RequiredFormLabelInfo` does without the "*" marker.
- * The label is no longer a direct child of the field, so it would keep
- * `.service-card-label`'s `mb-2` on top of the field's `gap-2` (16px to the
- * input); `mb-0!` beats that unlayered rule. `className` and the rest of the
- * props go to the label.
+ * A field label with its info icon on one row; `mb-0!` beats
+ * `.service-card-label`'s unlayered `mb-2`, which would stack on the field's
+ * `gap-2`.
  */
 export function ServiceInfoLabel({
   info,

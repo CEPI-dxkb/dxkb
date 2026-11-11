@@ -17,12 +17,6 @@ import { surveillanceFields } from "../surveillance";
 import { taxonomyFields } from "../taxonomy";
 import type { DataFieldMap } from "../types";
 
-/**
- * Every `DataFieldMap` in this directory, keyed by resource name. Item 20B's audit
- * swept this whole set for three stale-link classes (legacy `/view/*` routes,
- * hardcoded production origins, plain-http targets) — this test pins the result so
- * a future edit can't silently reintroduce one.
- */
 const allDataFieldMaps: Record<string, DataFieldMap> = {
   bioset: biosetFields,
   epitope: epitopeFields,
@@ -86,8 +80,7 @@ describe("datafields link templates", () => {
   });
 
   it("every internal (relative) metadata link resolves through a real route base", () => {
-    // Canonical internal destinations this app actually serves. A relative link
-    // outside this set is either a typo or a route this sweep missed.
+    // Canonical internal destinations; a relative link outside this set is a typo or a route this sweep missed.
     const knownInternalBases = [
       "/genome/",
       "/taxonomy/",
@@ -112,9 +105,6 @@ describe("datafields link templates", () => {
   });
 
   it("converges the Taxonomy internal destination across every migrated field", () => {
-    // epitope, genome_feature, and strain used to point at the stale
-    // /view/Taxonomy/{value}; protein_feature was already canonical. All four
-    // should now agree.
     expect(epitopeFields.taxon_id.link).toBe("/taxonomy/{value}");
     expect(genomeFeatureFields.taxon_id.link).toBe("/taxonomy/{value}");
     expect(strainFields.taxon_id.link).toBe("/taxonomy/{value}");
@@ -126,9 +116,6 @@ describe("datafields link templates", () => {
   });
 
   it("rewrites genome_sequence.sequence_id's stale FeatureList target onto the new Feature collection RQL contract", () => {
-    // Confirmed against src/proxy.ts's live /view/* redirect (mapLegacyViewPath),
-    // which would map the old `/view/FeatureList/?and(...)` path+query to exactly
-    // this `/feature?rql=...` form — and against the real RQL validator.
     expect(genomeSequenceFields.sequence_id.link).toBe(
       "/feature?rql=and(eq(annotation,PATRIC),eq(sequence_id,{value}),eq(feature_type,CDS))",
     );

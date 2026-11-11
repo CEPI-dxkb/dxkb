@@ -430,7 +430,6 @@ describe("useWorkspaceSelection", () => {
 
     const selectionBefore = result.current.selectedItems;
 
-    // Rerender with same reference
     rerender(initialProps);
 
     expect(result.current.selectedItems).toBe(selectionBefore);
@@ -450,7 +449,6 @@ describe("useWorkspaceSelection", () => {
       { initialProps },
     );
 
-    // No selection — selectedItems should remain empty
     rerender({ ...defaultProps, processedItems: itemsV2 });
 
     expect(result.current.selectedItems).toEqual([]);

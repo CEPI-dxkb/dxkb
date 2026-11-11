@@ -75,7 +75,6 @@ vi.mock("@/components/ui/dropdown-menu", () => ({
   ),
 }));
 
-// The real submenu is exercised in user-avatar-theme-submenu.test.tsx.
 vi.mock("@/components/navbars/theme-menu-options", () => ({
   ThemeMenuOptions: () => <div data-testid="theme-menu-options" />,
 }));

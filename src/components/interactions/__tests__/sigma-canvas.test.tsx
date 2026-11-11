@@ -5,9 +5,8 @@ import type { ReactNode } from "react";
 import { SigmaCanvas } from "../sigma/sigma-canvas";
 import type { GEdge, GNode, GraphCanvasProps } from "@/lib/interactions/types";
 
-// Sigma needs WebGL, which jsdom lacks. Its React bindings are replaced by a
-// stub sigma over a real graphology graph, so GraphLoader's choice between
-// loading a new graph and moving the loaded one is observable.
+// Sigma needs WebGL; its React bindings are stubbed over a real graphology graph so GraphLoader's
+// load-vs-move choice is observable.
 const sigmaStub = vi.hoisted(() => ({
   graph: null as Graph | null,
   refresh: vi.fn(),
@@ -31,7 +30,6 @@ vi.mock("@react-sigma/core", () => {
 });
 vi.mock("../sigma/zoom-control", () => ({ ZoomControl: () => null }));
 vi.mock("@sigma/export-image", () => ({ downloadAsImage: vi.fn() }));
-// Reads WebGL constants at import time.
 vi.mock("sigma/rendering", () => ({
   drawDiscNodeHover: vi.fn(),
   EdgeRectangleProgram: vi.fn(),
@@ -80,7 +78,6 @@ function position(graph: Graph, id: string): number[] {
 
 beforeEach(() => {
   sigmaStub.graph = new Graph({ multi: true });
-  // What react-sigma's loadGraph does: replace the sigma graph's contents.
   sigmaStub.loadGraph.mockImplementation((graph: Graph) => {
     loadedGraph().clear();
     loadedGraph().import(graph);
@@ -92,7 +89,6 @@ describe("SigmaCanvas graph loading", () => {
     const { rerender } = render(canvas({ positions: null }));
     expect(sigmaStub.loadGraph).not.toHaveBeenCalled();
 
-    // Positions for another node count (rows that have since changed).
     rerender(canvas({ positions: new Float64Array([1, 2, 3, 4, 5, 6]) }));
     expect(sigmaStub.loadGraph).not.toHaveBeenCalled();
 
@@ -158,8 +154,6 @@ describe("SigmaCanvas graph loading", () => {
     );
     expect(loadedGraph().order).toBe(2);
 
-    // New rows: their layout is pending (and may yet fail), so the old graph
-    // must not stay drawn and clickable.
     const nextNodes: GNode[] = [{ id: "c", kind: "microbial" }];
     rerender(canvas({ nodes: nextNodes, edges: [], positions: null }));
 

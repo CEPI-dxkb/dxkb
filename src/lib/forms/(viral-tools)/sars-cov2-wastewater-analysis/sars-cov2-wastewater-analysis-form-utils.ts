@@ -6,15 +6,11 @@ import {
 } from "@/lib/forms/tanstack-library-selection";
 import type { Library } from "@/types/services";
 
-/** Toast-like interface for library error reporting (avoids coupling to sonner in utils) */
 export interface ToastLike {
   error: (message: string, opts?: { description?: string }) => void;
 }
 
-/**
- * Replace invalid characters in sample ID with underscore (legacy replaceInvalidChars).
- * Invalid chars: - : @ " ' ; [ ] { } | `
- */
+/** Invalid chars: - : @ " ' ; [ ] { } | ` */
 export function sanitizeSampleId(value: string): string {
   const invalidChars = ["-", ":", "@", '"', "'", ";", "[", "]", "{", "}", "|", "`"];
   let result = value;
@@ -24,26 +20,17 @@ export function sanitizeSampleId(value: string): string {
   return result;
 }
 
-/**
- * Derive default sample ID from a file path (filename without extension).
- */
 export function getDefaultSampleIdFromPath(path: string): string {
   const filename = path.split("/").pop() ?? "";
   const base = filename.split(".")[0] ?? path;
   return sanitizeSampleId(base);
 }
 
-/**
- * Derive default sample ID from SRA accession (e.g. SRR1234567.1 -> SRR1234567).
- */
 export function getDefaultSampleIdFromSrr(accession: string): string {
   const base = accession.split(".")[0] ?? accession;
   return sanitizeSampleId(base);
 }
 
-/**
- * Handle library add error: show "Duplicate library" with description for known messages, else show message as-is.
- */
 export function handleLibraryError(message: string, toast: ToastLike): void {
   if (
     message === "This paired library has already been added" ||
@@ -55,10 +42,6 @@ export function handleLibraryError(message: string, toast: ToastLike): void {
   toast.error(message);
 }
 
-/**
- * Build the (read1, read2, id) => BuildLibraryResult function for paired library add.
- * Attaches sampleId and sampleLevelDate to the library (no platform — legacy wastewater has no platform selector).
- */
 export function getPairedLibraryBuildFn(
   sampleId: string,
   sampleLevelDate?: string
@@ -75,10 +58,6 @@ export function getPairedLibraryBuildFn(
   });
 }
 
-/**
- * Build the (read) => BuildLibraryResult function for single library add.
- * Attaches sampleId and sampleLevelDate to the library (no platform — legacy wastewater has no platform selector).
- */
 export function getSingleLibraryBuildFn(
   sampleId: string,
   sampleLevelDate?: string
@@ -95,17 +74,12 @@ export function getSingleLibraryBuildFn(
   });
 }
 
-/** Duplicate matcher for single library: same path and type single. */
 export function singleLibraryDuplicateMatcher(library: Library, read: string): boolean {
   return library.id === read && library.type === "single";
 }
 
 export { findNewSraLibraries } from "@/lib/forms/tanstack-library-selection";
 
-/**
- * Resolve sample ID and optional sample date from current form state, with optional fallback path for default sample ID.
- * Use when adding a paired or single library so the same logic is not duplicated.
- */
 export function resolveSampleIdAndDate(
   currentSampleId: string,
   currentSampleDate: string,
@@ -118,9 +92,6 @@ export function resolveSampleIdAndDate(
   return { sampleId, sampleLevelDate };
 }
 
-/**
- * Transform SARS-CoV-2 Wastewater Analysis form data to API parameters (SARS2Wastewater).
- */
 export function transformSarsCov2WastewaterParams(
   data: SarsCov2WastewaterAnalysisFormData
 ): Record<string, unknown> {

@@ -10,9 +10,8 @@ interface EpitopeOverviewProps {
 
 export function EpitopeOverview({ epitope }: EpitopeOverviewProps) {
   const taxonId = String(epitope.taxon_id);
-  // `taxonomyHref` throws on an unrecognized ID, so the shape check has to gate
-  // the call. The resolved href then doubles as the field's availability: an
-  // unrecognized taxon ID shows no Taxon ID field at all, as before.
+  // `taxonomyHref` throws on an unrecognized ID, so the shape check gates the
+  // call.
   const taxonomyDestination = isTaxonId(taxonId)
     ? taxonomyHref(taxonId)
     : undefined;

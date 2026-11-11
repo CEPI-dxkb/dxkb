@@ -18,7 +18,6 @@ import {
 } from "./predicates";
 import type { TabContext } from "./tab-context";
 
-// Taxon-view-only tabs not present on the shared category-page descriptor list.
 const extraViewDescriptors: readonly DefaultViewDescriptor[] = [
   { key: "strains", label: "Strains", icon: viewIcons.strains },
   { key: "amr-phenotypes", label: "AMR Phenotypes", icon: viewIcons.amrPhenotypes },
@@ -31,7 +30,6 @@ const descriptorByKey = new Map<OrganismViewKey, DefaultViewDescriptor>(
   [...defaultViewDescriptors, ...extraViewDescriptors].map((d) => [d.key, d]),
 );
 
-// Display order for the 16-tab taxon strip (biological grouping).
 const taxonTabOrder: readonly OrganismViewKey[] = [
   "overview", "phylogeny", "taxa-tree", "strains", "genomes",
   "amr-phenotypes", "sequences", "features", "protein-structures",
@@ -44,8 +42,7 @@ interface Gate {
   disabledReason: string;
 }
 
-// Only conditional tabs appear here; any key absent from this map is baseline
-// (always enabled). Phylogeny is one label over two gates (bacterial OR viral).
+// Only conditional tabs appear here; absent keys are always enabled.
 const gatesByKey: Partial<Record<OrganismViewKey, Gate>> = {
   phylogeny: { enabled: hasBacterialOrViralPhylogeny, disabledReason: "No phylogenetic tree available for this taxon." },
   "amr-phenotypes": { enabled: isBacteria, disabledReason: "AMR phenotypes apply to bacterial taxa." },
@@ -72,12 +69,7 @@ function resolveComponent(
   return makePlaceholderView(descriptor.label, description);
 }
 
-/**
- * Evaluate the full tab policy against a TabContext. Returns all 16 tabs in
- * fixed order; each conditional tab whose gate fails is marked `enabled: false`
- * with a `disabledReason`. Baseline tabs are always enabled. Override semantics
- * mirror buildOrganismNavItems (swap Component, or rewrite placeholder copy).
- */
+/** All 16 tabs in fixed order; a conditional tab whose gate fails is `enabled: false` with a `disabledReason`. */
 export function resolveTabs(
   ctx: TabContext,
   overrides: TabPolicyOverrides = {},

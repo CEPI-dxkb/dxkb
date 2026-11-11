@@ -13,14 +13,12 @@ vi.mock("@/lib/utils", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/utils")>()),
   downloadBlob: vi.fn(),
 }));
-// The form POST itself is `download-transport.test.ts`'s; here only the
-// choice of path matters, and jsdom cannot navigate a form anyway.
+// jsdom cannot navigate a form; only the choice of path matters here.
 vi.mock("@/lib/data-api/download-transport", () => ({
   startNativeDownload: vi.fn(() => Promise.resolve()),
 }));
 
 const downloadRoute = "*/api/data/genome/download";
-// A feature's own sequences are small, so they stay on the buffered path.
 const featureDownloadRoute = "*/api/data/genome_feature/download";
 
 const selection: DownloadRequest = {
@@ -115,8 +113,6 @@ describe("useCollectionDownload", () => {
   });
 
   it("reports which format is in flight, and clears it when done", async () => {
-    // Made before the request, so releasing it never depends on the handler
-    // having started.
     const gate = Promise.withResolvers<undefined>();
     server.use(
       http.post(featureDownloadRoute, async () => {

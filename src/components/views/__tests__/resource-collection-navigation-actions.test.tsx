@@ -10,12 +10,6 @@ import type { useResourceCollection as useResourceCollectionHook } from "@/hooks
 import { ResourceCollection } from "../resource-collection";
 import { createResourceCollectionResult } from "./fixtures/resource-collection-result";
 
-// The member-navigation actions `useResourceCollectionActions` dispatches straight to
-// a row's own or a derived canonical destination — GENOME, FEATURE, EXPERIMENT,
-// SURVEILLANCE, the Strain Genomes list, and the Interaction FEATURES pool — kept apart
-// from the shared enable/disable selection-action tests so a broken destination href
-// fails on its own instead of inside a resource's "enables ..." test.
-
 const { push, useResourceCollection } = vi.hoisted(() => ({
   push: vi.fn(),
   useResourceCollection: vi.fn<typeof useResourceCollectionHook>(),
@@ -69,10 +63,6 @@ vi.mock("../resource-filter-bar", async () =>
     await import("./fixtures/resource-collection-mocks")
   ).resourceFilterBarMock(),
 );
-// The `SearchActionBar` fake shared with every resource-collection*.test.tsx suite.
-// It calls the same `visibleSearchActions` / `isSearchActionDisabled` policy
-// production does (search-action-policy.ts), so a control this suite can query or
-// click is one the real bar would have rendered, in the same enabled state.
 vi.mock("@/components/search/search-action-bar", async () =>
   (await import("./fixtures/resource-collection-mocks")).searchActionBarMock(
     (props) => {
@@ -361,13 +351,10 @@ describe("ResourceCollection resource-navigation actions", () => {
         fields: ["feature_id_a", "feature_id_b", "id"],
       });
     });
-    // Legacy pools feature_id_a and feature_id_b across every selected row.
     expect(push).toHaveBeenCalledWith(
       "/feature?rql=in(feature_id,(feature-a1,feature-b1,feature-a2))",
     );
 
-    // Legacy errors with "Missing or invalid type for Services" on this tab, so
-    // SERVICES is disabled with a reason.
     expect(screen.getByRole("button", { name: "services" })).toBeDisabled();
   });
 

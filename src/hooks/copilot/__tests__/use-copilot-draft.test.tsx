@@ -13,8 +13,6 @@ import {
   readCopilotDraft,
 } from "@/lib/copilot/drafts";
 
-// File reading is not a network call: replaced so a test decides when each
-// read finishes.
 vi.mock("@/lib/copilot/attachments", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/copilot/attachments")>()),
   readCopilotAttachment: vi.fn(),
@@ -37,7 +35,6 @@ function attachmentFor(file: File): CopilotAttachment {
   };
 }
 
-/** Reads that finish when the test releases them. */
 function deferReads() {
   const pending = new Map<string, (result: ReadResult) => void>();
   vi.mocked(readCopilotAttachment).mockImplementation(
@@ -145,7 +142,6 @@ describe("useCopilotDraft", () => {
     const [a, b, c, d] = ["a.txt", "b.txt", "c.txt", "d.txt"].map(textFile);
     const { result } = renderDraft("s1");
 
-    // Two quick drops in one render: the second sees the first's reads.
     act(() => {
       void result.current.attach([a, b]);
       void result.current.attach([c, d]);

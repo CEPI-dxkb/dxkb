@@ -1,14 +1,9 @@
 import { Input } from "../ui/input";
 
 /**
- * How long a keyword box holds a draft before committing it.
- *
- * `KeywordSearch` is uncontrolled-draft-free by design — it reports every input
- * event — so each consumer owns the draft and the timer. Where a keyword is a
- * *request* predicate, committing per keystroke amplifies one search into one
- * request per character, so those consumers must debounce. They share this
- * interval, because the Interactions subview has two keyword boxes writing the
- * same shared value and they have to settle in step.
+ * How long a keyword box holds a draft before committing. Consumers where the
+ * keyword is a request predicate must debounce, and share this interval so the
+ * Interactions subview's two boxes settle in step.
  */
 export const keywordDebounceMs = 300;
 

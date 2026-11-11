@@ -20,11 +20,7 @@ const maxBodyBytes = 1024 * 1024;
 
 const bodySchema = z.object({ actions: copilotActionsSchema });
 
-/**
- * "No" on an execution card (`{actions}`, the card's prepared actions):
- * records the answer on the stored card. Nothing runs. Yes and Other are chat
- * turns (`/api/copilot/chat` with `replayActions` / `preparedActions`).
- */
+/** Records the "No" answer on the stored card; Yes and Other are chat turns. */
 export const POST = withAuth<RouteParams>(
   async (request: NextRequest, { token, params }) => {
     const { sessionId } = await params;

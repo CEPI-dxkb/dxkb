@@ -11,7 +11,6 @@ interface FolderPickerPlacesNavProps {
   onSelectPlace: (view: PickerView) => void;
 }
 
-/** The sidebar of places (Home, workspaces, Favorites, Recently Used). */
 export function FolderPickerPlacesNav({
   place,
   isUploading,

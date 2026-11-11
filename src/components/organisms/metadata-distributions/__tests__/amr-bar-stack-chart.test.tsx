@@ -166,9 +166,6 @@ describe("AmrBarStackChart", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Percent" }));
 
-    // ciprofloxacin: Resistant=5815, Susceptible=12336, total=18151
-    //   → R = 5815/18151 ≈ 32.0%, S = 12336/18151 ≈ 68.0%
-    // Each rect is tagged with aria-label `${phenotype}: ${value}%` in percent mode.
     const labels = screen
       .getAllByLabelText(/^(Resistant|Susceptible|Intermediate): /, {
         selector: "rect",

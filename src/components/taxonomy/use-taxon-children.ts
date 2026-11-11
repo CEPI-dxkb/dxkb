@@ -6,15 +6,7 @@ import { TaxonomyTreeRepository } from "@/lib/data-api/taxonomy-tree-client";
 
 import type { TaxonRecord } from "./taxon-tree-types";
 
-/**
- * The Taxa Tree's React Query layer over the same-origin `/api/taxonomy-tree`
- * boundary. Everything about the upstream request — the `gt(genomes,1)`
- * predicate, `sort(+taxon_name)`, the `taxonChildrenPageSize` range bound,
- * `Content-Range` paging, and the `facet_counts` header contract — now lives
- * server-side in
- * `src/lib/data-api/taxonomy-tree.ts`, so this module reads no environment
- * variable and issues no request of its own.
- */
+/** The Taxa Tree's React Query layer over the same-origin `/api/taxonomy-tree` boundary; the upstream request contract lives in `src/lib/data-api/taxonomy-tree.ts`. */
 const taxonomyTreeRepository = new TaxonomyTreeRepository();
 
 /** React Query key for a node's children — shared by the single hook and the tree's useQueries. */
@@ -22,15 +14,7 @@ export function taxonChildrenKey(parentId: number) {
   return ["taxon-children", parentId] as const;
 }
 
-/**
- * Every child of a taxon node.
- *
- * The route validates each row with `taxonomyRecordSchema`, which requires a
- * positive-integer `taxon_id` and leaves the rest optional. `TaxonRecord`
- * additionally declares `taxon_name` and `taxon_rank` as required, which is the
- * tree's own assumption about real taxonomy documents rather than something the
- * schema enforces — unchanged from the unvalidated cast this replaced.
- */
+/** Every child of a taxon node. */
 export async function fetchTaxonChildren(
   parentId: number,
   signal?: AbortSignal,
@@ -47,10 +31,7 @@ export function taxonChildCountsKey(ids: number[]) {
   ] as const;
 }
 
-/**
- * Child counts for many parents in one request. Parents with 0 qualifying
- * children are absent from the map (→ no expand arrow).
- */
+/** Child counts for many parents in one request; parents with 0 children are absent from the map. */
 export function fetchTaxonChildCounts(
   parentIds: number[],
   signal?: AbortSignal,

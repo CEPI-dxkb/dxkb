@@ -2,7 +2,6 @@ import { fetchUpstream, UpstreamError } from "../upstream-failure";
 
 const service = "the BV-BRC data service";
 
-/** A backend that accepts the request and answers only when aborted. */
 function hangingFetch(
   _input: string | URL | Request,
   init?: RequestInit,

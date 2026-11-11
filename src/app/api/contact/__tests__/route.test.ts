@@ -19,7 +19,6 @@ const submission = {
 
 let clientNumber = 0;
 
-/** Each request comes from its own address, so the hourly limit never trips. */
 function contactRequest(signal?: AbortSignal) {
   clientNumber += 1;
   return mockNextRequest({
@@ -31,7 +30,6 @@ function contactRequest(signal?: AbortSignal) {
   });
 }
 
-/** The socket the route handed nodemailer for this send. */
 function relaySocket(): Socket {
   const options = vi.mocked(nodemailer.createTransport).mock.lastCall?.[0] as
     | { socket?: unknown }
@@ -42,10 +40,7 @@ function relaySocket(): Socket {
   return options.socket;
 }
 
-/**
- * A relay that never finishes the send, as nodemailer behaves with one: the
- * send ends only when its socket closes, with "Connection closed unexpectedly".
- */
+/** A relay that never finishes: the send ends only when its socket closes. */
 function relayHangs() {
   const sendMail = vi.fn(
     () =>

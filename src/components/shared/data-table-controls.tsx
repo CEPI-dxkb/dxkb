@@ -22,10 +22,9 @@ export function DataTableControls({
   onDownloadSelected,
   showExportControls,
 }: DataTableControlsProps) {
-  // Extracted out of useDataTableContent, which carries "use no memo". The
-  // compiler otherwise keys this JSX on `table` identity alone, and the table
-  // instance is only unstable by accident (see the useTable call in
-  // data-table.tsx) — memoize the options there and the column menu freezes.
+  // Extracted out of useDataTableContent ("use no memo"): the compiler would
+  // otherwise key this on `table` identity alone, which is only unstable by
+  // accident (see the useTable call in data-table.tsx).
   "use no memo";
 
   const [showColumnMenu, setShowColumnMenu] = useState(false);

@@ -14,7 +14,6 @@ function isMissingFile(error: unknown): boolean {
   );
 }
 
-/** `directory` with exactly one trailing separator ("/" stays "/"). */
 export function directoryPrefix(directory: string): string {
   return directory.endsWith(sep) ? directory : `${directory}${sep}`;
 }

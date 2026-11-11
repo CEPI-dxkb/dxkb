@@ -43,7 +43,6 @@ import { copilotName } from "@/lib/copilot/name";
 
 export type { CopilotPanelVariant };
 
-/** Why a question was not sent, and (condensed) what it said. */
 function unsentQuestionText(
   reason: string | null,
   question: string,
@@ -54,7 +53,6 @@ function unsentQuestionText(
   return parts.filter(Boolean).join(" ") || undefined;
 }
 
-/** The open chat's title, from the session list (a new chat has none yet). */
 function useSessionTitle(sessionId: string | null): string {
   const sessions = useCopilotSessions(sessionId !== null);
   const summary = sessions.data?.pages
@@ -63,11 +61,6 @@ function useSessionTitle(sessionId: string | null): string {
   return summary?.title ?? "New chat";
 }
 
-/**
- * The chat itself, shared by the side panel, the floating window and the
- * full page. `onClose` is given where the surface can be closed; `dragHandle`
- * receives the header's pointer-down for the floating window.
- */
 export function CopilotPanel({
   variant,
   onClose,
@@ -77,13 +70,11 @@ export function CopilotPanel({
   variant: CopilotPanelVariant;
   onClose?: () => void;
   onHeaderPointerDown?: (event: React.PointerEvent<HTMLElement>) => void;
-  /** Id for the surface's accessible name. */
   titleId?: string;
 }) {
   const copilot = useCopilot();
   const { chat, sessionId, model } = copilot;
-  // The draft belongs to the chat (and account), not to this surface: every
-  // surface showing the chat shows it, and each chat keeps its own.
+  // The draft belongs to the chat (and account), not to the surface.
   const draft = useCopilotDraft(copilot.username, sessionId);
   const [focusKey, setFocusKey] = useState(0);
   const [showHistory, setShowHistory] = useState(false);
@@ -101,7 +92,6 @@ export function CopilotPanel({
   const markdownReady = useCopilotMarkdownReady();
   const chatLoading = session.isPending || !markdownReady;
 
-  // An archived chat, or one from another account on this device: start over.
   const gone = isCopilotSessionGone(session.error);
   const { newChat } = copilot;
   const startOver = useEffectEvent(() => {
@@ -111,8 +101,6 @@ export function CopilotPanel({
     if (gone) startOver();
   }, [gone]);
 
-  // Plan/Execute: the one picked in this chat (a new chat's gateway session
-  // saves it with the first question), else the stored mode.
   const executionMode = draft.mode ?? session.data?.executionMode ?? "plan";
 
   const changeMode = (mode: CopilotExecutionMode) => {
@@ -153,9 +141,8 @@ export function CopilotPanel({
       ...copilotAttachmentFields(taken.attachments),
     });
     if (result.sent) return;
-    // Back into the chat the send started in, even if another is open now.
-    // Something typed or attached there since is not overwritten, so say
-    // what was lost instead.
+    // Restore into the chat the send started in; if something was typed there since, say what was
+    // lost instead.
     if (!draft.restore(taken, signal) && !signal.aborted) {
       toast.error("Your question was not sent", {
         description: unsentQuestionText(result.message, taken.text),
@@ -182,9 +169,8 @@ export function CopilotPanel({
   return (
     <div
       className="flex size-full min-h-0 flex-col bg-background"
-      // A file dropped anywhere on the panel would otherwise open in this
-      // tab and replace the page. The composer takes drops it can attach;
-      // everywhere else they are refused.
+      // A file dropped outside the composer would open in this tab and replace the page, so refuse
+      // it.
       onDragOver={(event) => {
         if (event.defaultPrevented || !event.dataTransfer.types.includes("Files")) {
           return;
@@ -241,7 +227,6 @@ export function CopilotPanel({
             }}
             active={active}
             error={chat.error}
-            // Resends exactly the question that failed, without the draft.
             onRetry={(query) => {
               void actions.sendTurn(query);
             }}
@@ -294,15 +279,12 @@ export function CopilotPanel({
           disabled={
             !model ||
             !sessionId ||
-            // Until the chat loads, it is not known whether this is its first
-            // question (which titles the chat), and an answer could not be
-            // drawn yet.
+            // Until the chat loads, it is unknown whether this is its first question (which titles
+            // the chat), and an answer could not be drawn yet.
             chatLoading ||
-            // One answer at a time: another chat is being answered here, or
-            // this one is being answered in another tab.
+            // One answer at a time: another chat is answering here, or this one in another tab.
             (anyRunning && !running) ||
             busyElsewhere ||
-            // A stopped answer is still being saved and read back.
             chat.stopping
           }
           focusKey={focusKey}

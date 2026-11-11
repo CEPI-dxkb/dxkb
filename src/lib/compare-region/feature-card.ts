@@ -1,18 +1,8 @@
-/**
- * The feature card: a gene's hover tooltip, pinned by a click and expanded
- * with the gene's record. Here is what the comparison itself says about the
- * gene, written as `genome_feature` fields so the detail panel's sections
- * can show it before (or instead of) the record. Where the card goes is
- * `@/lib/popup-placement`, which `place-feature-popup.ts` applies to it.
- */
 import type { CompareRegionFeature, CompareRegionRow } from "./contract";
 
 /**
- * The comparison's fields for `feature` in `row`, keyed as `genome_feature`
- * fields. The card shows them at once and the Data API record replaces them
- * when it arrives; for a BLAST hit, a pseudogene or a repeat, which have no
- * record, they are all there is. `start`/`end` are the record's convention
- * (start < end on either strand), not the service's 5′/3′ ends.
+ * `start`/`end` follow the record's convention (start < end on either strand),
+ * not the service's 5′/3′ ends.
  */
 export function featureStandIn(
   feature: CompareRegionFeature,

@@ -5,7 +5,6 @@ import { PaneResizeHandle } from "@/components/workspace/folder-picker/folder-pi
 
 const limits = { min: 144, max: 480, initial: 180 };
 
-// jsdom has no pointer capture.
 const setPointerCapture = vi.fn();
 const releasePointerCapture = vi.fn();
 Element.prototype.setPointerCapture = setPointerCapture;
@@ -133,7 +132,6 @@ describe("PaneResizeHandle", () => {
 
     fireEvent.pointerMove(handle(), { clientX: 530.4, pointerId: 7 });
     expect(handle()).toHaveAttribute("aria-valuenow", "230");
-    // Relative to the drag's start, not the last move.
     fireEvent.pointerMove(handle(), { clientX: 480, pointerId: 7 });
     expect(handle()).toHaveAttribute("aria-valuenow", "180");
 

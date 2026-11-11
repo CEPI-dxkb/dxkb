@@ -3,10 +3,8 @@ import { resourceRegistry, type DataResource } from "@/lib/data-api";
 import { deriveFieldMetadata } from "../field-metadata";
 
 /**
- * The synthetic maps below reuse real field names so the helper reads real cardinality
- * and sortability out of the Data API registry. `genome` has no array-valued fields at
- * all (`genome_name` is a sortable scalar, `comments` a metadata-unsortable scalar);
- * `strain` supplies the array-valued cases (`taxon_lineage_ids`, `genome_ids`).
+ * Synthetic maps reuse real field names so the helper reads real cardinality
+ * and sortability from the registry.
  */
 function field(name: string, overrides: Partial<DataField> = {}): DataField {
   return {
@@ -39,10 +37,8 @@ describe("registry reconciliation", () => {
   });
 
   it("reads sortability from the registry, not from the field map it is handed", () => {
-    // `DataField.sortable` has exactly one consumer — `resources.ts` folds it into
-    // `resourceRegistry[resource].fields[name].sortable`, which is also what
-    // `validateSort` enforces. Passing a contradicting flag here changes nothing,
-    // which is what keeps the table and the API boundary from disagreeing.
+    // `DataField.sortable` is folded into the registry, which `validateSort`
+    // enforces, so a contradicting flag here changes nothing.
     const derived = deriveFieldMetadata(
       map(field("comments", { sortable: true })),
       { resource: "genome" },
@@ -86,8 +82,6 @@ describe("column and sort derivation", () => {
       sorted: true,
     },
     {
-      // `hidden` is a visibility flag, not a permission: omitting the column must not
-      // silently turn a URL that ordered rows correctly into an unsorted one.
       name: "hidden:true under hiddenColumns:omit removes the column but keeps the sort",
       resource: "genome",
       field: field("genome_name", { hidden: true }),
@@ -178,7 +172,6 @@ describe("column and sort derivation", () => {
     expect(derived.sorts).toEqual(
       testCase.sorted ? [`${name}:asc`, `${name}:desc`] : [],
     );
-    // A dropped column never drops the field from the detail projection.
     expect(derived.detailFields).toEqual([name]);
   });
 
@@ -187,7 +180,6 @@ describe("column and sort derivation", () => {
       map(field("species"), field("genome_ids"), field("strain")),
       { resource: "strain" },
     );
-
 
     expect(derived.columns.map((column) => column.id)).toEqual([
       "species",
@@ -271,7 +263,6 @@ describe("facet derivation", () => {
       ]);
     }
 
-    // An omitted or collapsed facet is still a legal friendly URL filter name.
     expect(derived.facetFields).toEqual(testCase.friendlyFilter ? [name] : []);
   });
 });
@@ -328,8 +319,6 @@ describe("adaptColumn", () => {
   });
 
   it("cannot change the URL sort allowlist", () => {
-    // `sorts` comes from the field metadata and the registry, never from the adapted
-    // columns, so a profile adapter cannot widen or narrow what the URL accepts.
     const narrowed = deriveFieldMetadata(map(field("strain")), {
       resource: "strain",
       adaptColumn: (column) => ({ ...column, sortable: false }),
@@ -359,7 +348,6 @@ describe("detailFields", () => {
 it("rejects an unknown resource rather than deriving an empty contract", () => {
   expect(() =>
     deriveFieldMetadata(map(field("strain")), {
-      // Deliberately outside DataResource: the registry is the source of truth.
       resource: "not_a_resource" as never,
     }),
   ).toThrow(/Unsupported data resource/);

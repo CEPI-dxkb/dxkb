@@ -84,7 +84,6 @@ describe("buildTrackDrawings with a cache", () => {
     const tracks = [byId("cds-forward"), byId("cds-reverse")];
     const before = buildTrackDrawings(tracks, data, layout, 300, cache);
     const recolored = [tracks[0], { ...tracks[1], foreground: "#123456" }];
-    // A new map with new answers, as each render builds them, around the same items.
     const after = buildTrackDrawings(recolored, new Map(data), layout, 300, cache);
     expect(after[0]).toBe(before[0]);
     expect(after[1]).not.toBe(before[1]);
@@ -98,7 +97,6 @@ describe("buildTrackDrawings with a cache", () => {
     const [first] = buildTrackDrawings(tracks, data, layout, 300, cache);
     const [pending] = buildTrackDrawings(tracks, new Map([["cds-forward", { status: "pending" as const }]]), layout, 300, cache);
     expect(pending).not.toBe(first);
-    // Two pending answers draw alike, though they are not one object.
     expect(buildTrackDrawings(tracks, new Map(), layout, 300, cache)[0]).toBe(pending);
     const [ready] = buildTrackDrawings(tracks, data, layout, 300, cache);
     expect(buildTrackDrawings(tracks, data, layout, 200, cache)[0]).not.toBe(ready);
@@ -126,7 +124,6 @@ describe("hitTest", () => {
   const middle = (drawing.ring.innerRadius + drawing.ring.outerRadius) / 2;
 
   it("names the feature under the pointer inside its ring", () => {
-    // 3 o'clock: a quarter of the way round, inside F1 (the first half).
     const hit = hitTest([drawing], toPolar(middle, 0));
     expect(hit).toMatchObject({ trackId: "cds-forward", item: { kind: "feature", feature: { featureId: "F1" } } });
     expect(hit?.path).toMatch(/^M/);
@@ -185,13 +182,11 @@ describe("rows past a sequence's end", () => {
     };
     const kept = [{ start: 0, score: 0.1 }, { start: 900, score: 0.2 }];
     expect(vertices([...kept, { start: 1200, score: 0.9 }])).toBe(vertices(kept));
-    // 0-based 1000 is the 1-based row 1001, just past the end; 999 is the last base.
     expect(vertices([...kept, { start: 1000, score: 0.9 }])).toBe(vertices(kept));
     expect(vertices([...kept, { start: 999, score: 0.9 }])).toBe((vertices(kept) ?? 0) + 1);
   });
 });
 
-/** An upload drawn as the app draws it: parsed, made a track, and built into its ring. */
 const uploaded = (text: string, plot: UserPlotType) => {
   const track = userTrack(1, plot, parseUserTrack(text, plot), "upload.tsv", "");
   if (track.source.kind !== "user") throw new Error("expected an upload");
@@ -200,14 +195,11 @@ const uploaded = (text: string, plot: UserPlotType) => {
   if (drawing.body.kind !== "marks" || drawing.body.hits === null) throw new Error("expected marks with hover");
   return { track, drawing, body: drawing.body, hits: drawing.body.hits };
 };
-/** A 0-based offset on sequence A as an angle. */
 const at = (offset: number) => offsetAngle(layout, "A", offset) ?? Number.NaN;
-/** The radii of a path's arcs (d3's `A r,r,…`), smallest first. */
 const arcRadii = (d: string) =>
   [...d.matchAll(/A([^,]+),/g)].map((match) => Number(match[1])).sort((a, b) => a - b);
 
 describe("an uploaded histogram", () => {
-  // Scores of 0.5 and -0.25 read as a ±1 scale, so the baseline is mid-ring.
   const { track, drawing, body } = uploaded("A\t1\t500\t0.5\nA\t501\t1000\t-0.25", "histogram");
   const { innerRadius, outerRadius } = drawing.ring;
   const middle = (innerRadius + outerRadius) / 2;
@@ -215,7 +207,6 @@ describe("an uploaded histogram", () => {
   const baseline = baselineRadius(scale, innerRadius, outerRadius);
   const bar = (start: number, end: number, score: number) =>
     sectorsPath([{ startAngle: at(start), endAngle: at(end) }], baseline, scoreRadius(score, scale, innerRadius, outerRadius));
-  // 3 and 9 o'clock, mid-ring: on the positive bar (the first half) and the negative one.
   const positiveHit = hitTest([drawing], toPolar(middle, 0));
   const negativeHit = hitTest([drawing], toPolar(-middle, 0));
 
@@ -238,15 +229,12 @@ describe("an uploaded histogram", () => {
     expect(positiveHit?.path).toBe(bar(0, 500, 0.5));
     expect(negativeHit?.path).toBe(bar(500, 1000, -0.25));
     expect(negativeHit?.path).not.toBe(sectorsPath([{ startAngle: at(500), endAngle: at(1000) }], innerRadius, outerRadius));
-    // The highlight is the painted bar.
     expect(`${positiveHit?.path ?? ""}${negativeHit?.path ?? ""}`).toBe(body.layers[0].d);
-    // Off the bar, near the ring's outer edge, the pointer still names the row.
     expect(hitTest([drawing], toPolar(-(outerRadius - 1), 0))).toEqual(negativeHit);
   });
 
   it("highlights a zero score as a 1 px bar out from the baseline", () => {
     const zero = uploaded("A\t1\t500\t0\nA\t501\t1000\t-0.5", "histogram");
-    // Symmetric about 0 too, so the baseline is mid-ring here as well.
     expect(zero.track.scale).toEqual({ min: -0.5, max: 0.5 });
     const hit = hitTest([zero.drawing], toPolar(middle, 0));
     expect(hit).toMatchObject({ item: { kind: "score", point: { score: 0 } } });
@@ -265,10 +253,8 @@ describe("an uploaded heatmap", () => {
   it("paints overlapping rows as hover names them: the row that starts last on top", () => {
     const { drawing, body, hits } = uploaded("A\t1\t50\t0.9\nA\t100\t300\t-0.5\nA\t250\t400\t0.9", "heatmap");
     const { innerRadius, outerRadius } = drawing.ring;
-    // In 250..300, where rows 2 and 3 overlap, the pointer names row 3.
     const hit = hitTest([drawing], { angle: at(275), radius: (innerRadius + outerRadius) / 2 });
     expect(hit).toMatchObject({ item: { kind: "score", point: { start: 249, end: 400, score: 0.9 } } });
-    // So the blue row 2 stops where the red row 3 starts, rather than painting over it.
     expect(body.layers.map(({ color, d }) => ({ color, d }))).toEqual([
       {
         color: heatmapColor(0.9, 1),

@@ -5,8 +5,8 @@ import { http, HttpResponse } from "msw";
 import { GenomeNameSelector } from "@/components/services/genome-name-selector";
 import { server } from "@/test-helpers/msw-server";
 
-// jsdom's HTMLElement.scrollIntoView is undefined; the genome typeahead calls
-// it when the pointer highlights a suggestion.
+// jsdom's HTMLElement.scrollIntoView is undefined; the typeahead calls it when
+// the pointer highlights a suggestion.
 Element.prototype.scrollIntoView = vi.fn();
 
 const genomes = [
@@ -96,8 +96,8 @@ describe("GenomeNameSelector suggestions toggle", () => {
     const user = userEvent.setup();
     render(<GenomeNameSelector onSelect={vi.fn()} />);
 
-    // Typing schedules a search; closing the list and opening it again
-    // searches at once, and that answer arrives before the scheduled one.
+    // Closing and reopening the list searches at once, and that answer arrives
+    // before the scheduled typing search.
     await user.type(screen.getByPlaceholderText("Genome..."), "Myco");
     await user.click(screen.getByRole("button", { name: "Hide suggestions" }));
     await user.click(screen.getByRole("button", { name: "Show suggestions" }));
@@ -146,7 +146,6 @@ describe("GenomeNameSelector overlapping searches", () => {
 
     await user.type(input, "Myc");
     await screen.findByRole("button", { name: /Mycobacterium tuberculosis/ });
-    // The next search hangs; the earlier answer is still what Enter picks.
     await user.type(input, "o");
     await screen.findByText("Searching...");
     await user.keyboard("{ArrowDown}{Enter}");
@@ -181,8 +180,6 @@ describe("GenomeNameSelector overlapping searches", () => {
     held.resolve(undefined);
     await act(() => new Promise((resolve) => setTimeout(resolve, 50)));
 
-    // The list for "" would include Grapevine; only the search for "Myco"
-    // may fill it.
     expect(
       screen.queryByRole("button", { name: /Grapevine leafroll/ }),
     ).not.toBeInTheDocument();

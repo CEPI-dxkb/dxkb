@@ -32,9 +32,8 @@ describe("Feature collection route", () => {
   });
 
   it("gives the Proteins search no removable default", async () => {
-    // filter=protein already pins eq(annotation,PATRIC) (proteinFeatureRql), so
-    // a removable PATRIC chip would change nothing; legacy ProteinList's
-    // removal sends the same query (2,122,451 rows for Dnak).
+    // filter=protein already pins eq(annotation,PATRIC), so a removable PATRIC
+    // chip would change nothing.
     await expect(
       renderedFilters({ keyword: "Dnak", filter: "protein" }),
     ).resolves.toEqual({ filter: ["protein"] });
@@ -47,7 +46,6 @@ describe("Feature collection route", () => {
   });
 
   it("keeps the default beside an explicit RQL", async () => {
-    // Legacy FeatureList applies it to a link's query too.
     await expect(
       renderedFilters({ rql: "eq(genome_id,83332.12)" }),
     ).resolves.toEqual({ annotation: ["PATRIC"] });

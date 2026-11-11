@@ -1,8 +1,5 @@
 import type { TaxonomicClassificationFormData } from "./taxonomic-classification-form-schema";
 
-/**
- * Transform taxonomic classification form data to API parameters
- */
 export function transformTaxonomicClassificationParams(
   data: TaxonomicClassificationFormData
 ): Record<string, unknown> {
@@ -22,7 +19,6 @@ export function transformTaxonomicClassificationParams(
     params.host_genome = data.host_genome;
   }
 
-  // Add read libraries with sample_id (library-level sample_id is set at add-time and stays unchanged)
   if (data.paired_end_libs && data.paired_end_libs.length > 0) {
     // Top-level sample_id from user-editable form field (preserves exact input including hyphens)
     if (data.paired_sample_id?.trim()) {
@@ -37,7 +33,6 @@ export function transformTaxonomicClassificationParams(
   }
 
   if (data.single_end_libs && data.single_end_libs.length > 0) {
-    // Top-level sample_id from user-editable form field (preserves exact input including hyphens)
     if (data.single_sample_id?.trim()) {
       params.single_sample_id = data.single_sample_id.trim();
     }
@@ -49,7 +44,6 @@ export function transformTaxonomicClassificationParams(
   }
 
   if (data.srr_libs && data.srr_libs.length > 0) {
-    // Top-level sample_id from user-editable form field (preserves exact input including hyphens)
     if (data.srr_sample_id?.trim()) {
       params.srr_sample_id = data.srr_sample_id.trim();
     }
@@ -64,30 +58,18 @@ export function transformTaxonomicClassificationParams(
   return params;
 }
 
-/**
- * Get default analysis type for a given sequence type
- */
 export function getDefaultAnalysisType(sequenceType: "wgs" | "16s"): string {
   return sequenceType === "wgs" ? "microbiome" : "default";
 }
 
-/**
- * Get default database for a given sequence type
- */
 export function getDefaultDatabase(sequenceType: "wgs" | "16s"): string {
   return sequenceType === "wgs" ? "bvbrc" : "SILVA";
 }
 
-/**
- * Check if host filtering is available for the current sequence type
- */
 export function isHostFilteringAvailable(sequenceType: "wgs" | "16s"): boolean {
   return sequenceType === "wgs";
 }
 
-/**
- * Check if analysis type selection is available for the current sequence type
- */
 export function isAnalysisTypeSelectable(sequenceType: "wgs" | "16s"): boolean {
   return sequenceType === "wgs";
 }

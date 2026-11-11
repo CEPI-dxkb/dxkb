@@ -58,7 +58,6 @@ describe("TaxonomyServiceChooser", () => {
       screen.getByRole("button", { name: "BLAST against selected Taxa" }),
     );
 
-    // Closing the dialog here reported a launch that the browser refused.
     expect(screen.getByRole("alert")).toHaveTextContent(
       rerunPopupBlockedMessage,
     );

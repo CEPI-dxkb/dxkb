@@ -27,7 +27,7 @@ const badgeVariantForType: Record<string, "default" | "secondary" | "outline"> =
   Representative: "secondary",
 };
 
-const rowHeight = 32; // h-8
+const rowHeight = 32;
 const defaultTypeColumnWidth = 144;
 const minTypeColumnWidth = 96;
 const maxTypeColumnWidth = 480;
@@ -47,11 +47,11 @@ export function GenomeTable({
 }) {
   "use no memo";
   const [storedSortDir, setSortDir] = useState<"asc" | "desc" | null>(null);
-  // A list that turns partial (new data) keeps its server order, as the
-  // header it gets has no sort control to undo a direction picked before.
+  // A list that turns partial keeps its server order: its header has no sort
+  // control to undo an earlier direction.
   const sortDir = sortable ? storedSortDir : null;
   const parentRef = useRef<HTMLDivElement>(null);
-  const [containerHeight, setContainerHeight] = useState(320); // h-80 default
+  const [containerHeight, setContainerHeight] = useState(320);
   const [typeColumnWidth, setTypeColumnWidth] = useState(defaultTypeColumnWidth);
   const [isResizingTypeColumn, setIsResizingTypeColumn] = useState(false);
 
@@ -92,7 +92,6 @@ export function GenomeTable({
   const ariaSort =
     sortDir === "asc" ? "ascending" : sortDir === "desc" ? "descending" : "none";
 
-  // Cycle null → asc → desc → null so the user can return to insertion order.
   function cycleSort() {
     setSortDir((d) => (d === null ? "asc" : d === "asc" ? "desc" : null));
   }
@@ -148,8 +147,8 @@ export function GenomeTable({
   return (
     <div
       ref={parentRef}
-      // Keyboard users must be able to scroll the virtualized list; a focusable
-      // scroll container satisfies WCAG (axe scrollable-region-focusable).
+      // A focusable scroll container lets keyboard users scroll the list (axe
+      // scrollable-region-focusable).
       tabIndex={0}
       role="group"
       aria-label="Genome list (scrollable)"

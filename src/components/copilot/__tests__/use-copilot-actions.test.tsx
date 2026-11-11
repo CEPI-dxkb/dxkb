@@ -24,7 +24,6 @@ const sessionId = "11111111-2222-3333-4444-555555555555";
 
 const preparedJob = { tool: "submit_gowe_job", summary: "Assemble SRR123456" };
 
-/** The plan as the gateway stores it; plan saves replace it. */
 let storedPlanPayload: Record<string, unknown>;
 let sessionReads: number;
 let planSaves: Record<string, unknown>[];
@@ -43,7 +42,6 @@ function planPayload(steps: Record<string, unknown>[] = twoSteps): Record<string
   };
 }
 
-/** The gateway's answer to a session read, held until `release` is called. */
 function heldSessionRead() {
   const { promise: released, resolve: release } = Promise.withResolvers<undefined>();
   server.use(
@@ -97,7 +95,6 @@ function sessionDetail(): CopilotSessionDetail {
   };
 }
 
-/** Sets a step's status in the gateway's stored plan, as a step turn would. */
 function gatewayStep(index: number, status: string) {
   const steps = (storedPlanPayload.steps as Record<string, unknown>[]).slice();
   steps[index] = { ...steps[index], status };
@@ -157,7 +154,6 @@ function renderActions(
   return { result, send: chat.send };
 }
 
-/** A step turn the gateway records: the step completes, then `send` reloads. */
 async function completingTurn(
   options: CopilotSendOptions,
   queryClient: QueryClient,
@@ -365,11 +361,9 @@ describe("runPlan with untrusted step ids", () => {
       await answerQuestions("q1", planStepCard, []);
     });
 
-    // The next step's id names the finished one, so the plan stops there.
     expect(send).toHaveBeenCalledTimes(1);
     expect(send.mock.calls[0][0].planStep?.stepIndex).toBe(0);
 
-    // Going on from the second step by its index runs that step.
     await act(async () => {
       await answerQuestions(
         "q1",
@@ -455,8 +449,6 @@ describe("card actions", () => {
     });
 
     expect(handled).toBe(false);
-    // Not marked answered while the stored session is read again; that
-    // read then decides how the card shows.
     await waitFor(() => {
       expect(sessionReads).toBe(1);
     });
@@ -501,8 +493,7 @@ describe("card actions", () => {
       "answered.answer",
       "yes",
     );
-    // The cached plan is from before the turn: starting its next step from
-    // it could re-run the step the jobs belong to.
+    // The cached plan predates the turn; starting from it could re-run the step the jobs belong to.
     expect(send).toHaveBeenCalledTimes(1);
     expect(planSaves).toHaveLength(0);
     expect(toastError).toHaveBeenCalledWith(
@@ -515,7 +506,6 @@ describe("card actions", () => {
     const planExecutionCard: CopilotExecutionCard = { ...executionCard, planId: "p1" };
 
     beforeEach(() => {
-      // The step the jobs belong to is done; the plan's next step is ready.
       gatewayStep(0, "completed");
     });
 

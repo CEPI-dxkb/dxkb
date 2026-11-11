@@ -26,11 +26,9 @@ import type {
 } from "./adapter-config";
 
 /**
- * JBrowse 5 adapters over `/api/genome-browser/*`. DOM-free on purpose (plan
- * decision 4): they would run unchanged in a JBrowse RPC worker. The chunk
- * loaders own their requests (shared, cached), so an aborted render does not
- * cancel a fetch another block is waiting on; `checkAbortSignal` drops the
- * aborted render's result instead.
+ * DOM-free so they would run unchanged in a JBrowse RPC worker;
+ * `checkAbortSignal` drops an aborted render's result instead of cancelling a
+ * shared fetch.
  */
 
 function escapeHtml(value: string): string {
@@ -41,19 +39,14 @@ function escapeHtml(value: string): string {
     .replace(/"/g, "&quot;");
 }
 
-/**
- * The feature as JBrowse shows it, plus a link to its Feature View in the
- * details dialog (JBrowse renders attribute HTML through DOMPurify).
- */
 function featureDetails({
   subfeatures,
   ...feature
 }: GenomeBrowserFeature): SimpleFeatureSerialized {
   return {
     ...feature,
-    // `GenomeBrowserSubfeature` is an interface, which lacks the index
-    // signature `SimpleFeatureSerialized` declares; a spread copy is an object
-    // literal type and has it.
+    // A spread copy is an object literal type with the index signature
+    // `SimpleFeatureSerialized` requires; the interface has none.
     ...(subfeatures
       ? { subfeatures: subfeatures.map((subfeature) => ({ ...subfeature })) }
       : {}),
@@ -68,14 +61,14 @@ export class BvbrcFeatureAdapter extends BaseFeatureDataAdapter<BvbrcFeatureAdap
   }
 
   getFeatures(query: NoAssemblyRegion, opts: BaseOptions = {}) {
-    // No try/catch: ObservableCreate forwards a rejected callback to observer.error.
+    // ObservableCreate forwards a rejected callback to observer.error.
     return ObservableCreate<Feature>(async (observer) => {
       const annotation = this.getConf("annotation");
       if (!isGenomeBrowserAnnotation(annotation)) {
         throw new Error(`Unknown annotation track: ${annotation}`);
       }
-      // The loaders do not clamp and the route rejects a negative `start`; a
-      // view panned past the left edge asks for one.
+      // The route rejects a negative `start`, which a view panned past the left
+      // edge asks for.
       const start = Math.max(0, query.start);
       if (query.end <= start) {
         observer.complete();
@@ -106,8 +99,8 @@ export class BvbrcSequenceAdapter extends BaseSequenceAdapter<BvbrcSequenceAdapt
 
   getFeatures(query: NoAssemblyRegion, opts: BaseOptions = {}) {
     return ObservableCreate<Feature>(async (observer) => {
-      // Clamped as in the feature adapter; the feature below starts at the
-      // clamped start so `end = start + seq.length` stays right.
+      // Clamped as in the feature adapter so `end = start + seq.length` stays
+      // right.
       const start = Math.max(0, query.start);
       if (query.end <= start) {
         observer.complete();

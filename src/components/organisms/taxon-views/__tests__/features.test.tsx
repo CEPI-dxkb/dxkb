@@ -31,8 +31,6 @@ describe("taxon Features tab", () => {
 
     render(<FeaturesView />);
 
-    // Legacy `p3/widget/FeatureGrid.js` queryOptions:
-    // sort(+genome_name,+accession,+start).
     // The tab loads its collection through lazy-tab-roots, so wait for it.
     await waitFor(() => {
       expect(featureProps.current).toMatchObject({

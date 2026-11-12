@@ -240,8 +240,16 @@ export interface TreeRow {
   strainTitle: string;
   segment: string | null;
   name: string;
-  metadata?: string;
+  /** The first paired tree with a metadata file, named for its own tree. */
+  metadata?: { url: string; treeName: string };
   slots: Record<PhyloViewer, ViewerSlot>;
+}
+
+function rowMetadata(choices: ViralTreeChoice[]): TreeRow["metadata"] {
+  const source = choices.find((choice) => choice.ref.metadata);
+  return source?.ref.metadata
+    ? { url: source.ref.metadata, treeName: source.ref.name }
+    : undefined;
 }
 
 function viewerSlot(
@@ -281,7 +289,7 @@ export function buildTreeRows(
         strainTitle: primary.groupTitle,
         segment: primary.segment,
         name: primary.ref.name,
-        metadata: choices.map((choice) => choice.ref.metadata).find(Boolean),
+        metadata: rowMetadata(choices),
         slots: {
           archaeopteryx: viewerSlot(byViewer.archaeopteryx, inventory),
           nextstrain: viewerSlot(byViewer.nextstrain, inventory),

@@ -221,7 +221,7 @@ describe("buildTreeRows", () => {
     );
 
     expect(rows.map(row => row.name)).toEqual(["Ebola - 100", "Ebola - 500"]);
-    expect(rows[0]?.metadata).toBe("/100.tar.gz");
+    expect(rows[0]?.metadata).toEqual({ url: "/100.tar.gz", treeName: "Ebola - 100" });
     expect(rows.map(row => [row.slots.archaeopteryx.state, row.slots.nextstrain.state])).toEqual([
       ["open", "open"],
       ["open", "missing"],
@@ -306,6 +306,24 @@ describe("buildTreeRows", () => {
 
     expect(rows).toHaveLength(1);
     expect(auspicePath(rows[0])).toBe("Influenza-A-Virus/H3N2/all");
+  });
+
+  it("names a row's metadata for the tree that supplies it", () => {
+    const rows = buildTreeRows(
+      flattenViralTrees({
+        groups: [{
+          key: "h3n2",
+          title: "H3N2",
+          archaeopteryx: [{ name: "All concatenated", path: "/all.xml" }],
+          nextstrain: [{ name: "H3N2 all concatenated", path: "Influenza-A-Virus/H3N2/all", metadata: "/all.tar.gz" }],
+        }],
+      }),
+      ready([]),
+    );
+
+    expect(rows.map(row => [row.name, row.metadata])).toEqual([
+      ["All concatenated", { url: "/all.tar.gz", treeName: "H3N2 all concatenated" }],
+    ]);
   });
 
   it("keeps a segment's unmatched trees apart rather than pairing them by position", () => {

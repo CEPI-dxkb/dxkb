@@ -468,46 +468,39 @@ function TreeTable({
         </TableRow>
       </TableHeader>
       <TableBody>
-        {rows.map((row) => {
-          const metadataUrl = row.metadata
-            ? resolvePhylogenyUrl(row.metadata)
-            : null;
-          return (
-            <TableRow key={row.key} data-slot="tree-row" className="h-8">
+        {rows.map((row) => (
+          <TableRow key={row.key} data-slot="tree-row" className="h-8">
+            <TableCell variant="divider-strong" className="px-4 py-1">
+              <span className="font-medium">{row.name}</span>
+            </TableCell>
+            <TableCell variant="divider-strong" className="px-4 py-1">
+              {row.strainTitle}
+            </TableCell>
+            {hasSegments && (
               <TableCell variant="divider-strong" className="px-4 py-1">
-                <span className="font-medium">{row.name}</span>
+                <span className="font-mono text-xs">
+                  {row.segment ? segmentLabel(row.segment) : "—"}
+                </span>
               </TableCell>
-              <TableCell variant="divider-strong" className="px-4 py-1">
-                {row.strainTitle}
+            )}
+            {shownViewers.map((viewer) => (
+              <TableCell
+                key={viewer}
+                variant="divider-strong"
+                className="px-4 py-1"
+              >
+                <ViewerCell
+                  slot={row.slots[viewer]}
+                  viewer={viewer}
+                  onOpen={onOpen}
+                />
               </TableCell>
-              {hasSegments && (
-                <TableCell variant="divider-strong" className="px-4 py-1">
-                  <span className="font-mono text-xs">
-                    {row.segment ? segmentLabel(row.segment) : "—"}
-                  </span>
-                </TableCell>
-              )}
-              {shownViewers.map((viewer) => (
-                <TableCell
-                  key={viewer}
-                  variant="divider-strong"
-                  className="px-4 py-1"
-                >
-                  <ViewerCell
-                    slot={row.slots[viewer]}
-                    viewer={viewer}
-                    onOpen={onOpen}
-                  />
-                </TableCell>
-              ))}
-              <TableCell className="px-4 py-1 text-center">
-                {metadataUrl && (
-                  <MetadataLink url={metadataUrl} name={row.name} />
-                )}
-              </TableCell>
-            </TableRow>
-          );
-        })}
+            ))}
+            <TableCell className="px-4 py-1 text-center">
+              {row.metadata && <MetadataLink metadata={row.metadata} />}
+            </TableCell>
+          </TableRow>
+        ))}
       </TableBody>
     </Table>
   );
@@ -551,7 +544,13 @@ function ViewerCell({
   );
 }
 
-function MetadataLink({ url, name }: { url: string; name: string }) {
+function MetadataLink({
+  metadata,
+}: {
+  metadata: NonNullable<TreeRow["metadata"]>;
+}) {
+  const url = resolvePhylogenyUrl(metadata.url);
+  if (!url) return null;
   return (
     <Tooltip>
       <TooltipTrigger
@@ -560,7 +559,7 @@ function MetadataLink({ url, name }: { url: string; name: string }) {
             href={url}
             target="_blank"
             rel="noopener noreferrer"
-            aria-label={`Download metadata for ${name}`}
+            aria-label={`Download metadata for ${metadata.treeName}`}
             className={buttonVariants({ variant: "ghost", size: "icon-xs" })}
           />
         }

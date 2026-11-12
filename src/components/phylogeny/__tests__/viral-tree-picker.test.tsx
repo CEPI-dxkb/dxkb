@@ -634,6 +634,37 @@ describe("ViralTreePicker", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("names a metadata download for the tree that supplies the file", () => {
+    render(
+      <ViralTreePicker
+        block={{
+          groups: [
+            {
+              key: "h3n2",
+              title: "H3N2",
+              archaeopteryx: [{ name: "All concatenated", path: "/all.xml" }],
+              nextstrain: [
+                {
+                  name: "H3N2 all concatenated",
+                  path: "/Influenza-A-Virus/H3N2/all/",
+                  metadata: "/all.tar.gz",
+                },
+              ],
+            },
+          ],
+        }}
+        nextstrainInventory={{ status: "ready", ids: new Set() }}
+        onOpen={vi.fn()}
+      />,
+    );
+
+    expect(
+      within(row("All concatenated")).getByRole("link", {
+        name: "Download metadata for H3N2 all concatenated",
+      }),
+    ).toBeInTheDocument();
+  });
+
   it("keeps metadata downloads independent from viewer activation", () => {
     const onOpen = vi.fn();
     render(

@@ -182,8 +182,14 @@ export class CopilotPage {
     await this.sendButton.click();
   }
 
-  modeRadio(mode: "Plan" | "Execute"): Locator {
-    return this.panel.getByRole("radio", { name: mode });
+  /** The composer's mode menu button; it names the current mode. */
+  modeButton(mode: "Plan" | "Execute"): Locator {
+    return this.panel.getByRole("button", { name: `${copilotName} mode: ${mode}` });
+  }
+
+  async chooseMode(from: "Plan" | "Execute", to: "Plan" | "Execute"): Promise<void> {
+    await this.modeButton(from).click();
+    await this.page.getByRole("menuitemradio", { name: new RegExp(to) }).click();
   }
 
   async attach(file: {

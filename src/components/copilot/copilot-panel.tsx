@@ -26,6 +26,7 @@ import type { CopilotExecutionMode } from "@/lib/copilot/types";
 import { isCopilotTurnActive } from "@/lib/copilot/turn";
 import { CopilotCardActionsProvider } from "./copilot-card-actions";
 import { CopilotComposer } from "./copilot-composer";
+import { CopilotModelMenu } from "./copilot-model-menu";
 import { useCopilotMarkdownReady } from "./copilot-markdown-lazy";
 import {
   CopilotPanelHeader,
@@ -39,6 +40,7 @@ import { useCopilot } from "./copilot-provider";
 import { CopilotSessionList } from "./copilot-session-list";
 import { CopilotTranscript } from "./copilot-transcript";
 import { newestCopilotPlan, useCopilotActions } from "./use-copilot-actions";
+import { shortModelName } from "@/lib/copilot/models";
 import { copilotName } from "@/lib/copilot/name";
 
 export type { CopilotPanelVariant };
@@ -127,7 +129,7 @@ export function CopilotPanel({
   const attachmentNote =
     hasImages && model && turnModel !== model
       ? turnModel
-        ? `${model} cannot read images, so this question goes to ${turnModel}.`
+        ? `${shortModelName(model)} cannot read images, so this question goes to ${shortModelName(turnModel)}.`
         : `None of ${copilotName}'s models can read images. Remove the image to send.`
       : null;
 
@@ -266,6 +268,7 @@ export function CopilotPanel({
           running={running}
           executionMode={executionMode}
           onExecutionModeChange={changeMode}
+          toolbarExtra={<CopilotModelMenu />}
           attachments={draft.attachments}
           onAttach={(files) => {
             void draft.attach(files);

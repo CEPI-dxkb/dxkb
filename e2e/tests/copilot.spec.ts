@@ -437,8 +437,9 @@ test.describe("Copilot", () => {
     const copilot = new CopilotPage(page);
     await copilot.gotoAndOpen();
 
-    await expect(copilot.modeRadio("Plan")).toHaveAttribute("aria-checked", "true");
-    await copilot.modeRadio("Execute").click();
+    await expect(copilot.modeButton("Plan")).toBeVisible();
+    await copilot.chooseMode("Plan", "Execute");
+    await expect(copilot.modeButton("Execute")).toBeVisible();
     await expect(copilot.executeNotice).toBeVisible();
 
     await copilot.ask(question);

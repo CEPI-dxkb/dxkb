@@ -165,14 +165,14 @@ export function CopilotTranscript({
     <MessageScrollerProvider autoScroll defaultScrollPosition="last-anchor">
       <MessageScroller>
         <MessageScrollerViewport aria-label={`${copilotName} conversation`}>
-          <MessageScrollerContent aria-busy={running}>
+          <MessageScrollerContent aria-busy={running} density="compact">
             {messages.map((message) => (
               <MessageScrollerItem
                 key={message.id}
                 messageId={message.id}
                 scrollAnchor={message.id === lastQuestionId}
               >
-                <div className="px-4 pt-2">
+                <div className="px-4">
                   {message.role === "user" ? (
                     <CopilotUserMessage
                       content={message.content}
@@ -203,7 +203,7 @@ export function CopilotTranscript({
             ))}
             {turn && !active?.hidden && (
               <MessageScrollerItem messageId={turn.id} scrollAnchor>
-                <div className="px-4 pt-2">
+                <div className="px-4">
                   <CopilotUserMessage
                     content={turn.query}
                     answers={active?.clarificationAnswers ?? []}

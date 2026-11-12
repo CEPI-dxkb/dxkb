@@ -79,11 +79,25 @@ function PopoverHeader({ className, ...props }: React.ComponentProps<"div">) {
   )
 }
 
-function PopoverTitle({ className, ...props }: PopoverPrimitive.Title.Props) {
+const popoverTitleVariants = cva("font-medium", {
+  variants: {
+    variant: {
+      default: "",
+      muted: "text-muted-foreground",
+    },
+  },
+  defaultVariants: { variant: "default" },
+})
+
+function PopoverTitle({
+  className,
+  variant,
+  ...props
+}: PopoverPrimitive.Title.Props & VariantProps<typeof popoverTitleVariants>) {
   return (
     <PopoverPrimitive.Title
       data-slot="popover-title"
-      className={cn("font-medium", className)}
+      className={cn(popoverTitleVariants({ variant }), className)}
       {...props}
     />
   )

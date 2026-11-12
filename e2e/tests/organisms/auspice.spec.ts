@@ -306,6 +306,29 @@ test("keeps the filter sidebar pinned while the tree grid scrolls", async ({ pag
   expect(pageScroll.overflow).toBeLessThanOrEqual(1);
 });
 
+test("scrolls the tree table sideways beside the sidebar just above lg", async ({ page, browserName }) => {
+  test.skip(browserName !== "chromium", "geometry checks run in Chromium");
+  await page.setViewportSize({ width: 1024, height: 800 });
+  await mockAuspice(page);
+  await openPicker(page);
+  await expect(page.locator("aside").getByRole("heading", { name: "Filters" })).toBeVisible();
+
+  // A hidden streamed copy can sit beside the live one; see the pinned-sidebar test.
+  const grid = page.locator('[data-slot="tree-results-scroll"]').filter({ visible: true });
+  const overflow = await grid.evaluate(element => {
+    element.scrollLeft = element.scrollWidth;
+    return element.scrollWidth - element.clientWidth;
+  });
+  // The table is wider than the space beside the sidebar, so the results scroller,
+  // not the picker frame's overflow-hidden, must take the overflow.
+  expect(overflow).toBeGreaterThan(0);
+  // The last column ends on a fractional pixel, so ratio 1 would fail on 0.2px of rounding.
+  await expect(page.getByRole("columnheader", { name: "Metadata" })).toBeInViewport({ ratio: 0.99 });
+  await expect(
+    row(page, "H3N2 segment 4 (HA)").getByRole("button", { name: "Open H3N2 segment 4 (HA) in Auspice" }),
+  ).toBeInViewport({ ratio: 1 });
+});
+
 test("themes the sidebar collapse control clear of the scroll gutter", async ({
   page,
   browserName,
@@ -410,7 +433,7 @@ test("supports keyboard activation and mobile containment", async ({ page, brows
   await openPicker(page);
   // Below lg the sidebar is a filter bar of popover buttons.
   await page.getByRole("button", { name: "Viewer All" }).click();
-  await page.getByRole("dialog").getByRole("radio", { name: "Auspice" }).click();
+  await page.getByRole("dialog", { name: "Viewer" }).getByRole("radio", { name: "Auspice" }).click();
   await page.keyboard.press("Escape");
   await expect(page.getByRole("button", { name: "Viewer Auspice" })).toBeVisible();
 

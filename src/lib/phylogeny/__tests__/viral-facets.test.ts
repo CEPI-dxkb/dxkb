@@ -11,6 +11,7 @@ import {
   sortedSegments,
   viewerLabel,
   viralFacetCounts,
+  type TreeRow,
   type ViralFilters,
   type ViralTreeChoice,
 } from "../viral-facets";
@@ -99,6 +100,37 @@ describe("viralFacetCounts", () => {
 
     const empty = viralFacetCounts([], noFilters);
     expect([empty.allStrains, empty.allViewers, empty.viewer("archaeopteryx")]).toEqual([0, 0, 0]);
+  });
+
+  it("counts a tree that both viewers open once, like the table row it fills", () => {
+    const paired = flattenViralTrees({
+      groups: [{
+        key: "h3n2",
+        title: "H3N2",
+        archaeopteryx: [
+          { name: "H3N2 segment 4 (HA)", path: "/ha.xml" },
+          { name: "Ebola - 100", path: "/100.xml" },
+        ],
+        nextstrain: [
+          { name: "H3N2 segment 4 (HA)", path: "Influenza-A-Virus/H3N2/HA" },
+          { name: "Ebola - 100", path: "Orthoebolavirus/100" },
+        ],
+      }],
+    });
+    const counts = viralFacetCounts(paired, noFilters);
+
+    expect(counts.allStrains).toBe(buildTreeRows(paired, { status: "pending" }).length);
+    expect([counts.allStrains, counts.allViewers, counts.strain("h3n2")]).toEqual([2, 2, 2]);
+    expect(counts.segment("HA")).toBe(1);
+    // Under one viewer every tree is its own row.
+    expect([counts.viewer("archaeopteryx"), counts.viewer("nextstrain")]).toEqual([2, 2]);
+
+    // The strain and viewer cascade counts rows too.
+    const strainOnly = { ...noFilters, strain: "h3n2" };
+    expect(viralFacetCounts(paired, strainOnly).allViewers).toBe(2);
+    expect(
+      viralFacetCounts(paired, { ...strainOnly, viewer: "archaeopteryx" }).segment("HA"),
+    ).toBe(1);
   });
 
   it("agrees with pruneViralFilters: a zero-count option is one prune would drop", () => {
@@ -231,6 +263,140 @@ describe("buildTreeRows", () => {
     );
 
     expect(rows.map(row => row.name)).toEqual(["HA 100 (HA)", "HA 500 (HA)"]);
+  });
+
+  const auspicePath = (row: TreeRow | undefined) =>
+    !row || row.slots.nextstrain.state === "none" ? null : row.slots.nextstrain.choice.ref.path;
+
+  it("pairs a segment's trees by name before position", () => {
+    const rows = buildTreeRows(
+      flattenViralTrees({
+        groups: [{
+          key: "h3n2",
+          title: "H3N2",
+          archaeopteryx: [
+            { name: "HA 100 (HA)", path: "/ha-100.xml" },
+            { name: "HA 500 (HA)", path: "/ha-500.xml" },
+          ],
+          nextstrain: [{ name: "HA 500 (HA)", path: "Influenza-A-Virus/H3N2/HA/500" }],
+        }],
+      }),
+      ready([]),
+    );
+
+    expect(rows.map(row => [row.name, auspicePath(row)])).toEqual([
+      ["HA 100 (HA)", null],
+      ["HA 500 (HA)", "Influenza-A-Virus/H3N2/HA/500"],
+    ]);
+  });
+
+  it("pairs a segment's only tree per viewer even when the names differ", () => {
+    // BV-BRC's H3N2 names its concatenated trees differently in each viewer.
+    const rows = buildTreeRows(
+      flattenViralTrees({
+        groups: [{
+          key: "h3n2",
+          title: "H3N2",
+          archaeopteryx: [{ name: "All concatenated", path: "/all.xml" }],
+          nextstrain: [{ name: "H3N2 all concatenated", path: "Influenza-A-Virus/H3N2/all" }],
+        }],
+      }),
+      ready([]),
+    );
+
+    expect(rows).toHaveLength(1);
+    expect(auspicePath(rows[0])).toBe("Influenza-A-Virus/H3N2/all");
+  });
+
+  it("keeps a segment's unmatched trees apart rather than pairing them by position", () => {
+    const rows = buildTreeRows(
+      flattenViralTrees({
+        groups: [{
+          key: "h3n2",
+          title: "H3N2",
+          archaeopteryx: [
+            { name: "HA 100 (HA)", path: "/ha-100.xml" },
+            { name: "HA 500 (HA)", path: "/ha-500.xml" },
+          ],
+          nextstrain: [{ name: "HA 900 (HA)", path: "Influenza-A-Virus/H3N2/HA/900" }],
+        }],
+      }),
+      ready([]),
+    );
+
+    expect(rows.map(row => [row.slots.archaeopteryx.state, row.slots.nextstrain.state])).toEqual([
+      ["open", "none"],
+      ["open", "none"],
+      ["none", "missing"],
+    ]);
+  });
+
+  it("does not pair a leftover Archaeopteryx tree with a leftover Auspice tree by position", () => {
+    const rows = buildTreeRows(
+      flattenViralTrees({
+        groups: [{
+          key: "h3n2",
+          title: "H3N2",
+          archaeopteryx: [
+            { name: "HA 100 (HA)", path: "/ha-100.xml" },
+            { name: "HA 500 (HA)", path: "/ha-500.xml" },
+          ],
+          nextstrain: [
+            { name: "HA 500 (HA)", path: "Influenza-A-Virus/H3N2/HA/500" },
+            { name: "HA 900 (HA)", path: "Influenza-A-Virus/H3N2/HA/900" },
+          ],
+        }],
+      }),
+      ready([]),
+    );
+
+    expect(rows.map(row => [row.slots.archaeopteryx.state, auspicePath(row)])).toEqual([
+      ["open", null],
+      ["open", "Influenza-A-Virus/H3N2/HA/500"],
+      ["none", "Influenza-A-Virus/H3N2/HA/900"],
+    ]);
+    expect(rows[0]?.slots.nextstrain.state).toBe("none");
+    expect(rows[2]?.slots.archaeopteryx.state).toBe("none");
+  });
+
+  it("matches unsegmented names case-insensitively", () => {
+    const rows = buildTreeRows(
+      flattenViralTrees({
+        groups: [{
+          key: "ebola",
+          title: "Ebola",
+          archaeopteryx: [{ name: "Ebola - 100", path: "/100.xml" }],
+          nextstrain: [{ name: "ebola - 100", path: "Orthoebolavirus/100" }],
+        }],
+      }),
+      ready(["Orthoebolavirus/100"]),
+    );
+
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.slots.archaeopteryx.state).toBe("open");
+    expect(auspicePath(rows[0])).toBe("Orthoebolavirus/100");
+  });
+
+  it("matches a segment's tree names case-insensitively", () => {
+    const rows = buildTreeRows(
+      flattenViralTrees({
+        groups: [{
+          key: "h3n2",
+          title: "H3N2",
+          archaeopteryx: [
+            { name: "HA 500 (HA)", path: "/ha-500.xml" },
+            { name: "HA 100 (HA)", path: "/ha-100.xml" },
+          ],
+          nextstrain: [{ name: "ha 500 (HA)", path: "Influenza-A-Virus/H3N2/HA/500" }],
+        }],
+      }),
+      ready([]),
+    );
+
+    expect(rows.map(row => [row.name, auspicePath(row)])).toEqual([
+      ["HA 500 (HA)", "Influenza-A-Virus/H3N2/HA/500"],
+      ["HA 100 (HA)", null],
+    ]);
   });
 
   it("marks Auspice slots as checking or unconfirmed until the inventory is known", () => {

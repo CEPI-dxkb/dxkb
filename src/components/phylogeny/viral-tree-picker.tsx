@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import {
   Popover,
   PopoverContent,
+  PopoverTitle,
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -105,8 +106,6 @@ export function ViralTreePicker({
     nextstrainInventory,
   );
   const total = buildTreeRows(trees, nextstrainInventory).length;
-  // A viewer filter drops the other viewer's column instead of leaving it blank.
-  const shownViewers = filters.viewer ? [filters.viewer] : viewers;
 
   useEffect(() => {
     if (!focusChoiceKey) return;
@@ -126,10 +125,15 @@ export function ViralTreePicker({
     >
       <h2 className="sr-only">Available phylogenetic trees</h2>
       {/* Below lg the sidebar would stack above the table and push it off
-          screen, so a one-line filter bar takes its place. */}
+          screen, so a one-line filter bar takes its place. min-w-0 lets the
+          1fr track shrink below the table's width so tree-results-scroll
+          scrolls it instead of the frame clipping it. */}
       <div className="flex min-h-0 flex-1 flex-col lg:grid lg:grid-cols-[260px_1fr]">
         <SidebarFilters trees={trees} filters={filters} update={update} />
-        <div className="flex min-h-0 flex-1 flex-col">
+        <div
+          data-slot="tree-results-column"
+          className="flex min-h-0 min-w-0 flex-1 flex-col"
+        >
           <BarFilters
             trees={trees}
             filters={filters}
@@ -156,7 +160,7 @@ export function ViralTreePicker({
                 No trees found for the selected filters.
               </p>
             ) : (
-              <TreeTable rows={rows} viewers={shownViewers} onOpen={onOpen} />
+              <TreeTable rows={rows} onOpen={onOpen} />
             )}
           </div>
         </div>
@@ -179,6 +183,9 @@ function useFacets(trees: ViralTreeChoice[], filters: ViralFilters) {
       ...new Map(trees.map((tree) => [tree.groupKey, tree.groupTitle])),
     ],
     hasViewerChoice: new Set(trees.map((tree) => tree.viewer)).size > 1,
+    // Unsegmented trees count as a value: one segment beside them is still a
+    // choice, because checking it hides them.
+    hasSegmentChoice: new Set(trees.map((tree) => tree.segment)).size > 1,
     segments: sortedSegments(trees),
     counts: viralFacetCounts(trees, filters),
   };
@@ -271,7 +278,10 @@ function SegmentOptions({ trees, filters, update }: FilterProps) {
 }
 
 function SidebarFilters(props: FilterProps) {
-  const { hasViewerChoice, segments } = useFacets(props.trees, props.filters);
+  const { hasViewerChoice, hasSegmentChoice } = useFacets(
+    props.trees,
+    props.filters,
+  );
   return (
     <aside className="hidden space-y-5 border-r p-4 lg:block lg:min-h-0 lg:overflow-y-auto">
       <h3 className="text-sm font-semibold">Filters</h3>
@@ -289,7 +299,7 @@ function SidebarFilters(props: FilterProps) {
           <ViewerOptions {...props} />
         </fieldset>
       )}
-      {segments.length > 1 && (
+      {hasSegmentChoice && (
         <fieldset>
           <legend className="mb-2 text-sm font-medium text-muted-foreground">
             Segment
@@ -322,11 +332,14 @@ function BarFilter({
         <span className="max-w-40 truncate">{summary}</span>
         <ChevronDown aria-hidden className="text-muted-foreground" />
       </PopoverTrigger>
-      <PopoverContent align="start" className="w-64">
+      {/* The title names the dialog: Base UI points its aria-labelledby at it.
+          The height cap keeps a long list reachable on a short screen. */}
+      <PopoverContent
+        align="start"
+        className="max-h-(--available-height) w-64 overflow-y-auto"
+      >
         <div className="flex items-center justify-between">
-          <span className="text-sm font-medium text-muted-foreground">
-            {label}
-          </span>
+          <PopoverTitle variant="muted">{label}</PopoverTitle>
           {onClear && (
             <Button variant="ghost" size="xs" onClick={onClear}>
               Clear
@@ -345,7 +358,7 @@ function BarFilters({
   ...props
 }: FilterProps & { shown: number; total: number }) {
   const { filters, update } = props;
-  const { strains, hasViewerChoice, segments } = useFacets(
+  const { strains, hasViewerChoice, hasSegmentChoice, segments } = useFacets(
     props.trees,
     filters,
   );
@@ -385,7 +398,7 @@ function BarFilters({
           <ViewerOptions {...props} />
         </BarFilter>
       )}
-      {segments.length > 1 && (
+      {hasSegmentChoice && (
         <BarFilter
           label="Segment"
           summary={
@@ -415,14 +428,17 @@ function BarFilters({
 
 function TreeTable({
   rows,
-  viewers: shownViewers,
   onOpen,
 }: {
   rows: TreeRow[];
-  viewers: PhyloViewer[];
   onOpen: (choice: ViralTreeChoice) => void;
 }) {
   const hasSegments = rows.some((row) => row.segment !== null);
+  // A viewer none of the shown trees opens in (an Archaeopteryx-only family,
+  // a strain without Auspice datasets, or a viewer filter) gets no column.
+  const shownViewers = viewers.filter((viewer) =>
+    rows.some((row) => row.slots[viewer].state !== "none"),
+  );
   return (
     <Table disableScrollWrapper>
       <TableHeader variant="muted" className="sticky top-0 z-10">

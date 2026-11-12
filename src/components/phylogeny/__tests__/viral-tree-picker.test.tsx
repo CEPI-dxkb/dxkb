@@ -411,6 +411,42 @@ describe("ViralTreePicker", () => {
     expect(container.querySelector("main")).not.toBeInTheDocument();
   });
 
+  it("lets the table column shrink beside the sidebar so its scroller takes a wide table", () => {
+    const { container } = render(
+      <ViralTreePicker
+        block={block}
+        nextstrainInventory={{ status: "ready", ids: new Set() }}
+        onOpen={vi.fn()}
+      />,
+    );
+
+    // The column must shrink beside the sidebar so its scroller, not the
+    // frame's overflow-hidden, takes a wide table.
+    expect(
+      container.querySelector("[data-slot=tree-results-column]"),
+    ).toHaveClass("min-w-0");
+  });
+
+  it("names each filter popover and caps it to the screen height", async () => {
+    const user = userEvent.setup();
+    render(
+      <ViralTreePicker
+        block={mixedBlock}
+        nextstrainInventory={{ status: "ready", ids: new Set() }}
+        onOpen={vi.fn()}
+      />,
+    );
+
+    const bar = screen.getByRole("toolbar", { name: "Filters" });
+    await user.click(within(bar).getByRole("button", { name: "Segment Any" }));
+    // jsdom has no layout, so assert the class contract for the height cap.
+    const dialog = screen.getByRole("dialog", { name: "Segment" });
+    expect(dialog).toHaveClass("max-h-(--available-height)", "overflow-y-auto");
+    expect(within(dialog).getByText("Segment")).toHaveClass(
+      "text-muted-foreground",
+    );
+  });
+
   it("labels the columns, putting the name before the strain", () => {
     render(
       <ViralTreePicker
@@ -454,6 +490,79 @@ describe("ViralTreePicker", () => {
     expect(
       screen.getByRole("columnheader", { name: "Archaeopteryx" }),
     ).toBeInTheDocument();
+  });
+
+  it("gives a viewer no column when none of the shown trees open in it", async () => {
+    const user = userEvent.setup();
+    render(
+      <ViralTreePicker
+        block={mixedBlock}
+        nextstrainInventory={{ status: "ready", ids: new Set() }}
+        onOpen={vi.fn()}
+      />,
+    );
+
+    expect(
+      screen.getByRole("columnheader", { name: "Auspice" }),
+    ).toBeInTheDocument();
+    await user.click(screen.getByRole("radio", { name: /H5N1/ }));
+    expect(
+      screen.getAllByRole("columnheader").map((cell) => cell.textContent),
+    ).toEqual(["Name", "Strain", "Segment", "Archaeopteryx", "Metadata"]);
+  });
+
+  it("shows no Auspice column for a family without Auspice datasets", () => {
+    render(
+      <ViralTreePicker
+        block={{
+          groups: [
+            {
+              key: "flaviviridae",
+              title: "Flaviviridae",
+              archaeopteryx: [{ name: "Flaviviridae tree", path: "/flavi.xml" }],
+            },
+          ],
+        }}
+        nextstrainInventory={{ status: "ready", ids: new Set() }}
+        onOpen={vi.fn()}
+      />,
+    );
+
+    expect(
+      screen.getAllByRole("columnheader").map((cell) => cell.textContent),
+    ).toEqual(["Name", "Strain", "Archaeopteryx", "Metadata"]);
+  });
+
+  it("offers the segment filter when one segment sits beside unsegmented trees", async () => {
+    const user = userEvent.setup();
+    render(
+      <ViralTreePicker
+        block={{
+          groups: [
+            {
+              key: "h3n2",
+              title: "H3N2",
+              archaeopteryx: [
+                { name: "XML HA (HA)", path: "/ha.xml" },
+                { name: "Whole genome", path: "/whole.xml" },
+              ],
+            },
+          ],
+        }}
+        nextstrainInventory={{ status: "ready", ids: new Set() }}
+        onOpen={vi.fn()}
+      />,
+    );
+
+    expect(
+      within(screen.getByRole("toolbar", { name: "Filters" })).getByRole(
+        "button",
+        { name: "Segment Any" },
+      ),
+    ).toBeInTheDocument();
+    await user.click(screen.getByRole("checkbox", { name: /^HA/ }));
+    expect(screen.queryByText("Whole genome")).not.toBeInTheDocument();
+    expect(screen.getByText("XML HA (HA)")).toBeInTheDocument();
   });
 
   it("names the concatenated tree instead of calling it 'All'", async () => {

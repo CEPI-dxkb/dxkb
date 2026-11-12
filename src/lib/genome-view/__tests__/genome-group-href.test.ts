@@ -2,17 +2,17 @@ import { genomeGroupHref } from "@/lib/genome-view/genome-group-href";
 import { maxRqlInValues } from "@/lib/data-api/rql";
 
 describe("genomeGroupHref", () => {
-  it("opens the Genome list Overview scoped to the group's ids", () => {
+  it("opens the Genome list table scoped to the group's ids", () => {
     expect(genomeGroupHref(["29461.10", "1218315.3"])).toEqual({
       ok: true,
-      href: "/genome?rql=in(genome_id,(29461.10,1218315.3))&tab=overview",
+      href: "/genome?rql=in(genome_id,(29461.10,1218315.3))&tab=genomes",
     });
   });
 
   it("drops blank and duplicate ids", () => {
     expect(genomeGroupHref(["1.1", "", "1.1", "2.2"])).toEqual({
       ok: true,
-      href: "/genome?rql=in(genome_id,(1.1,2.2))&tab=overview",
+      href: "/genome?rql=in(genome_id,(1.1,2.2))&tab=genomes",
     });
   });
 

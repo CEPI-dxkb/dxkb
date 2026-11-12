@@ -6,8 +6,10 @@ export type GenomeGroupHrefResult =
   | { ok: false; message: string };
 
 /**
- * The Genome list's Overview tab scoped to a genome group's members, the
- * React counterpart of BV-BRC's `/view/GenomeGroup/<path>`. The list's RQL
+ * The Genome list's Genomes table scoped to a genome group's members, the
+ * React counterpart of BV-BRC's `/view/GenomeGroup/<path>`. Not the Overview
+ * tab: its charts read the Data API without the user's token, so a group's
+ * private genomes would be missing from them. The list's RQL
  * takes explicit ids only (no `GenomeGroup(path)`), capped at
  * `maxRqlInValues`, so an empty or oversized group is a message instead.
  */
@@ -26,6 +28,6 @@ export function genomeGroupHref(
   }
   const params = new URLSearchParams();
   params.set("rql", serializeInClause("genome", "genome_id", ids));
-  params.set("tab", "overview");
+  params.set("tab", "genomes");
   return { ok: true, href: `/genome?${toQueryString(params)}` };
 }

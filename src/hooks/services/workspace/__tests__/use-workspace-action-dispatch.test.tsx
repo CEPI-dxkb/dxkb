@@ -354,7 +354,7 @@ describe("useWorkspaceActionDispatch", () => {
       );
     }
 
-    it("opens the genome Overview scoped to the group's members", async () => {
+    it("opens the Genomes table scoped to the group's members", async () => {
       const requested = serveGroup(() =>
         HttpResponse.json({
           result: [
@@ -375,7 +375,7 @@ describe("useWorkspaceActionDispatch", () => {
 
       await waitFor(() => {
         expect(mockPush).toHaveBeenCalledWith(
-          "/genome?rql=in(genome_id,(29461.10,1218315.3))&tab=overview",
+          "/genome?rql=in(genome_id,(29461.10,1218315.3))&tab=genomes",
         );
       });
       expect(requested).toEqual([[groupItem.path]]);

@@ -33,7 +33,6 @@ const featureTabIcons: Record<FeatureTab, ReactNode> = {
   overview: viewIcons.overview,
   "genome-browser": viewIcons.genomeBrowser,
   "compare-region": viewIcons.compareRegion,
-  transcriptomics: viewIcons.transcriptomics,
   interactions: viewIcons.interactions,
   domains: viewIcons.domainsAndMotifs,
   structures: viewIcons.proteinStructures,

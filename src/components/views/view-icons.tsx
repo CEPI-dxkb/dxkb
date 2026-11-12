@@ -2,7 +2,6 @@ import {
   Activity,
   Binary,
   Blocks,
-  ChartNoAxesCombined,
   CircleDashed,
   Database,
   Dna,
@@ -52,7 +51,6 @@ export const viewIcons = {
   genomeBrowser: <ScanLine />,
   circularViewer: <CircleDashed />,
   compareRegion: <GitCompareArrows />,
-  transcriptomics: <ChartNoAxesCombined />,
 } as const satisfies Record<string, ReactNode>;
 
 export type ViewIconKey = keyof typeof viewIcons;

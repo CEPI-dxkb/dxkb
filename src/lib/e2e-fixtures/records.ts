@@ -406,7 +406,7 @@ export const biosetRecord: BiosetFixtureRecord = {
   exp_type: "Transcript Quantification",
   bioset_name: "Infected versus mock",
   bioset_description: "Differentially expressed genes.",
-  bioset_type: "Transcriptomics Differential Expression",
+  bioset_type: "Differential Expression",
   bioset_criteria: "absolute fold change > 1.5",
   organism: "Middle East respiratory syndrome-related coronavirus",
   strain: "E2E strain",

@@ -55,6 +55,7 @@ vi.mock("lucide-react", () => {
     BookOpen: icon,
     Type: icon,
     Share2: icon,
+    Eye: icon,
   };
 });
 
@@ -206,6 +207,48 @@ describe("WorkspaceActionBar", () => {
       render(<WorkspaceActionBar {...defaultProps} selection={[ordinaryItem]} />);
       const deleteButton = screen.getByRole("button", { name: /delete/i });
       expect(deleteButton).not.toBeDisabled();
+    });
+  });
+
+  describe("VIEW action", () => {
+    const group = makeItem({
+      path: "/user/home/Genome Groups/Brucella Group",
+      name: "Brucella Group",
+      type: "genome_group",
+    });
+
+    it("shows VIEW for a single genome group and passes it to onAction", async () => {
+      const onAction = vi.fn();
+      render(
+        <WorkspaceActionBar {...defaultProps} onAction={onAction} selection={[group]} />,
+      );
+      await userEvent.click(screen.getByRole("button", { name: /view/i }));
+      expect(onAction).toHaveBeenCalledWith("view", [group]);
+    });
+
+    it("hides VIEW for other types", () => {
+      render(
+        <WorkspaceActionBar
+          {...defaultProps}
+          selection={[makeItem({ type: "feature_group" })]}
+        />,
+      );
+      expect(screen.queryByRole("button", { name: /^view$/i })).not.toBeInTheDocument();
+    });
+
+    it("hides VIEW when more than one genome group is selected", () => {
+      render(
+        <WorkspaceActionBar
+          {...defaultProps}
+          selection={[group, makeItem({ id: "id-2", type: "genome_group" })]}
+        />,
+      );
+      expect(screen.queryByRole("button", { name: /^view$/i })).not.toBeInTheDocument();
+    });
+
+    it("keeps VIEW in a read-only (public) workspace", () => {
+      render(<WorkspaceActionBar {...defaultProps} readOnly selection={[group]} />);
+      expect(screen.getByRole("button", { name: /^view$/i })).toBeInTheDocument();
     });
   });
 

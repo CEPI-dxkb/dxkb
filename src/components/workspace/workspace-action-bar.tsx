@@ -19,6 +19,7 @@ import {
   BookOpen,
   Type,
   Share2,
+  Eye,
   type LucideIcon,
 } from "lucide-react";
 
@@ -29,6 +30,7 @@ const writePermissions = new Set(["o", "a", "w"]);
 
 export type WorkspaceActionId =
   | "guide"
+  | "view"
   | "download"
   | "delete"
   | "rename"
@@ -52,6 +54,13 @@ interface ActionConfig {
 // TODO: Add "View" button for FASTA files once the viewer/datagrid is implemented fully.
 const actionConfig: ActionConfig[] = [
   { id: "guide", label: "GUIDE", icon: BookOpen, validTypes: "*" },
+  {
+    id: "view",
+    label: "VIEW",
+    icon: Eye,
+    validTypes: ["genome_group"],
+    singleOnly: true,
+  },
   { id: "download", label: "DWNLD", icon: Download, validTypes: "*" },
   {
     id: "delete",
@@ -159,7 +168,7 @@ export interface WorkspaceActionBarProps {
   onAction?: (actionId: WorkspaceActionId, selection: WorkspaceItem[]) => void;
 }
 
-const readOnlyAllowedActions = new Set(["guide", "download"]);
+const readOnlyAllowedActions = new Set(["guide", "view", "download"]);
 
 export function WorkspaceActionBar({
   selection,

@@ -1,6 +1,7 @@
 "use client";
 
 import { useMutation, type QueryClient } from "@tanstack/react-query";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import type { WorkspaceItem } from "@/lib/services/workspace/domain";
 import { useWorkspaceRepository } from "@/contexts/workspace-repository-context";
@@ -17,6 +18,8 @@ const forbiddenDownloadTypeSet = new Set<string>(forbiddenDownloadTypes);
 import { workspaceQueryKeys } from "@/lib/services/workspace/workspace-query-keys";
 import { useWorkspaceDialog } from "@/contexts/workspace-dialog-context";
 import { getStructureViewerUrl } from "@/components/workspace/file-viewer/file-viewer-registry";
+import { getGenomeIdsFromGroup } from "@/lib/services/genome";
+import { genomeGroupHref } from "@/lib/genome-view/genome-group-href";
 
 export interface UseWorkspaceActionDispatchOptions {
   currentUser: string;
@@ -37,6 +40,24 @@ export function useWorkspaceActionDispatch({
     isPublic ? "public" : "authenticated",
   );
   const { dispatch } = useWorkspaceDialog();
+  const router = useRouter();
+
+  const viewGroupMutation = useMutation({
+    mutationFn: async (groupPath: string) =>
+      genomeGroupHref(await getGenomeIdsFromGroup(groupPath)),
+    onSuccess: (result) => {
+      if (result.ok) {
+        router.push(result.href);
+      } else {
+        toast.error(result.message);
+      }
+    },
+    onError: (err) => {
+      const message =
+        err instanceof Error ? err.message : "Failed to open genome group.";
+      toast.error(message);
+    },
+  });
 
   const favoriteMutation = useMutation({
     mutationFn: async (folderPath: string) => {
@@ -83,6 +104,7 @@ export function useWorkspaceActionDispatch({
 
   const { mutate: favoriteMutate } = favoriteMutation;
   const { mutate: downloadMutate } = downloadMutation;
+  const { mutate: viewGroupMutate } = viewGroupMutation;
 
   const handleAction = (actionId: string, selection: WorkspaceItem[]) => {
     if (actionId === "delete") {
@@ -101,6 +123,13 @@ export function useWorkspaceActionDispatch({
       const single = selection.at(0);
       if (single?.path) {
         dispatch({ type: "OPEN_EDIT_TYPE", item: single });
+      }
+      return;
+    }
+    if (actionId === "view") {
+      const single = selection.at(0);
+      if (single?.path && single.type === "genome_group") {
+        viewGroupMutate(single.path);
       }
       return;
     }
@@ -177,5 +206,6 @@ export function useWorkspaceActionDispatch({
     favoriteMutate: favoriteMutation.mutate,
     isDownloading: downloadMutation.isPending,
     isFavoriting: favoriteMutation.isPending,
+    isViewingGroup: viewGroupMutation.isPending,
   };
 }

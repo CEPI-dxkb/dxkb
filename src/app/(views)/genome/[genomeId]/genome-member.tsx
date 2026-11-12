@@ -22,6 +22,7 @@ import { featureListDefaultFilters } from "@/lib/feature-view";
 import type { LineageCrumb } from "@/lib/taxonomy-view";
 import { taxonomyHref } from "@/lib/views/hrefs";
 import {
+  genomeAmrRql,
   genomeDomainsRql,
   genomeFeatureRql,
   genomeProteinRql,
@@ -83,6 +84,7 @@ function breadcrumbs(
 
 const genomeTabIcons: Record<GenomeTab, ReactNode> = {
   overview: viewIcons.overview,
+  amr: viewIcons.amrPhenotypes,
   sequences: viewIcons.sequences,
   interactions: viewIcons.interactions,
   "genome-browser": viewIcons.genomeBrowser,
@@ -104,7 +106,14 @@ export function GenomeMember({
   activeTab: GenomeTab;
 }) {
   let content = <GenomeOverview genome={genome} />;
-  if (activeTab === "sequences") {
+  if (activeTab === "amr") {
+    content = (
+      <ResourceChildCollection
+        {...genomeChildCollections.amr}
+        rql={genomeAmrRql(genome.genome_id)}
+      />
+    );
+  } else if (activeTab === "sequences") {
     content = (
       <ResourceChildCollection
         {...genomeChildCollections.sequences}

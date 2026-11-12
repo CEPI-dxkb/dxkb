@@ -222,7 +222,7 @@ export const searchActionConfig: SearchActionConfig[] = [
     id: "group",
     label: "GROUP",
     icon: Group,
-    validSearchTypes: ["genome", "strain", "genome_feature", "ppi"],
+    validSearchTypes: ["genome", "strain", "genome_feature", "genome_amr", "ppi"],
     requiresSelection: true,
     disabledWithTooltip: notReady,
   },

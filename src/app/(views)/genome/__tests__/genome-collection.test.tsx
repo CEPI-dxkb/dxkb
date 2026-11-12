@@ -31,6 +31,7 @@ interface ChildProps {
   columns?: unknown;
   profile?: unknown;
   keywordMode?: string;
+  urlKey?: string;
 }
 
 interface GenomeProps {
@@ -119,6 +120,7 @@ describe("GenomeCollection", () => {
     expect(screen.getByRole("button", { name: "Strains" })).toBeEnabled();
     expect(screen.getByRole("button", { name: "Genomes" })).toBeEnabled();
     expect(screen.getByRole("button", { name: "Sequences" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "AMR Phenotypes" })).toBeEnabled();
     expect(screen.getByRole("button", { name: "Features" })).toBeEnabled();
     expect(screen.getByRole("button", { name: "Proteins" })).toBeEnabled();
     expect(
@@ -154,6 +156,7 @@ describe("GenomeCollection", () => {
       ["strains", true],
       ["genomes", true],
       ["sequences", true],
+      ["amr", true],
       ["features", true],
       ["proteins", true],
       ["structures", true],
@@ -359,6 +362,7 @@ describe("GenomeCollection", () => {
 
   it.each([
     ["sequences", "eq(sequence_id,*)"],
+    ["amr", "eq(id,*)"],
     ["features", "eq(feature_id,*)"],
     ["proteins", proteinFeatureRql],
     ["structures", "eq(pdb_id,*)"],
@@ -746,6 +750,28 @@ describe("GenomeCollection", () => {
     );
     expect(childProps.current?.columns).toBeUndefined();
     expect(childProps.current?.profile).toBeUndefined();
+  });
+
+  it("lists the listed genomes' AMR phenotypes through the genome join", () => {
+    searchParams.current = new URLSearchParams(
+      "rql=in(genome_id,(1.1,1.2))&tab=amr",
+    );
+
+    render(<GenomeCollection initialState={initialState} />);
+
+    expect(childProps.current).toEqual(
+      expect.objectContaining({
+        urlKey: "amr",
+        resource: "genome_amr",
+        label: "AMR Phenotypes",
+        idField: "id",
+        defaultSort: "unsorted",
+        keywordMode: "server",
+        serverKeywordMode: "exact",
+        rql: "and(eq(genome_id,*),genome(in(genome_id,(1.1,1.2))))",
+      }),
+    );
+    expect(childProps.current?.columns).toBeUndefined();
   });
 
   it.each(["sequences", "features", "proteins", "structures", "domains"])(

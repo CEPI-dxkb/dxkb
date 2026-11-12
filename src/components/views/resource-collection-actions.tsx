@@ -115,7 +115,8 @@ const selectionActionsConfigByResource = {
   },
   genome_amr: {
     searchType: "genome_amr",
-    actionIds: copyAndServicesSelectionActionIds,
+    // Legacy AMRPanelGridContainer's GROUP adds the rows' genomes to a Genome Group.
+    actionIds: genomeSelectionActionIds,
     extraEnabledActionIds: [],
     idField: "genome_id",
     idKind: "genome",

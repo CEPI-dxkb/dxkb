@@ -1172,6 +1172,17 @@ const actionMatrixFixtures: {
     enabledActions: [...sequenceSelectionActionIds, "features"],
   },
   {
+    resource: "genome_amr",
+    label: "AMR Phenotypes",
+    idField: "id",
+    rows: [
+      { id: "amr-1", genome_id: "83332.12" },
+      { id: "amr-2", genome_id: "83332.12" },
+    ],
+    enabledActions: [...genomeSelectionActionIds],
+    noServices: "AMR Phenotype",
+  },
+  {
     resource: "protein_feature",
     label: "Domains and Motifs",
     idField: "id",

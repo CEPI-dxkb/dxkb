@@ -357,6 +357,35 @@ describe("Genome member route", () => {
     );
   });
 
+  it("renders the exact genome's AMR phenotypes", async () => {
+    render(
+      await GenomePage({
+        params: Promise.resolve({ genomeId: "83332.12" }),
+        searchParams: Promise.resolve({ tab: "amr" }),
+      }),
+    );
+    const collection = screen.getByTestId("resource-collection");
+    expect(collection).toHaveAttribute("data-resource", "genome_amr");
+    expect(collection).toHaveAttribute("data-id-field", "id");
+    expect(collection).toHaveAttribute("data-rql", "eq(genome_id,83332.12)");
+    expect(collection).toHaveAttribute("data-default-sort", "unsorted");
+    expect(mocks.redirect).not.toHaveBeenCalled();
+  });
+
+  it("redirects a viral genome's AMR tab to the overview", async () => {
+    mocks.getGenome.mockResolvedValue({
+      genome_id: "11320.1",
+      genome_name: "Influenza A",
+      superkingdom: "Viruses",
+    });
+    await expect(
+      GenomePage({
+        params: Promise.resolve({ genomeId: "11320.1" }),
+        searchParams: Promise.resolve({ tab: "amr" }),
+      }),
+    ).rejects.toThrow("NEXT_REDIRECT:/genome/11320.1");
+  });
+
   it("renders exact-genome domains and motifs", async () => {
     render(
       await GenomePage({

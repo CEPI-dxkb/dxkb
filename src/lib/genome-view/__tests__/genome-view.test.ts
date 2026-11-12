@@ -22,6 +22,7 @@ import {
   isGenomeId,
   parseGenomeCollectionState,
   recentGenomeRql,
+  supportsAmrPhenotypes,
   supportsCircularViewer,
   type GenomeViewRecord,
 } from "@/lib/genome-view";
@@ -679,5 +680,58 @@ describe("Interactions tab", () => {
       });
       expect(canonicalGenomeTab("interactions", genome)).toBe("interactions");
     }
+  });
+});
+
+describe("AMR Phenotypes tab", () => {
+  const record = (fields: Partial<GenomeViewRecord>): GenomeViewRecord => ({
+    genome_id: "83332.12",
+    ...fields,
+  });
+
+  it("sits right after Overview, as in legacy Genome.js", () => {
+    const keys = buildGenomeTabs(record({ superkingdom: "Bacteria" })).map(
+      (tab) => tab.key,
+    );
+    expect(keys.slice(0, 2)).toEqual(["overview", "amr"]);
+    expect(
+      buildGenomeTabs(record({})).find((tab) => tab.key === "amr"),
+    ).toMatchObject({ label: "AMR Phenotypes" });
+  });
+
+  it("is disabled for viral genomes only, as legacy removes it only for Viruses", () => {
+    expect(supportsAmrPhenotypes(record({ superkingdom: "Bacteria" }))).toBe(true);
+    expect(supportsAmrPhenotypes(record({ superkingdom: "Archaea" }))).toBe(true);
+    expect(
+      supportsAmrPhenotypes(
+        record({ superkingdom: "Eukaryota", taxon_lineage_ids: [2759] }),
+      ),
+    ).toBe(true);
+    expect(supportsAmrPhenotypes(record({}))).toBe(true);
+    expect(supportsAmrPhenotypes(record({ superkingdom: "Viruses" }))).toBe(false);
+    expect(
+      supportsAmrPhenotypes(
+        record({ superkingdom: "null", taxon_lineage_ids: [10239] }),
+      ),
+    ).toBe(false);
+    expect(
+      supportsAmrPhenotypes(
+        record({ superkingdom: "null", taxon_lineage_names: ["Viruses"] }),
+      ),
+    ).toBe(false);
+  });
+
+  it("falls back to Overview on a viral genome and keeps legacy's view_tab name", () => {
+    const viral = record({ superkingdom: "Viruses" });
+    expect(canonicalGenomeTab("amr", record({ superkingdom: "Bacteria" }))).toBe(
+      "amr",
+    );
+    expect(canonicalGenomeTab("amr", viral)).toBe("overview");
+    expect(buildGenomeTabs(viral).find((tab) => tab.key === "amr")).toMatchObject(
+      {
+        enabled: false,
+        disabledReason: "AMR phenotypes do not apply to viral genomes.",
+      },
+    );
   });
 });

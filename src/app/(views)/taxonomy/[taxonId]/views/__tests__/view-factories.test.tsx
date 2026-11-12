@@ -291,7 +291,7 @@ describe("makeSequencesView", () => {
 });
 
 describe("makeAmrPhenotypesView", () => {
-  it("scopes genome_amr through the genome join, as legacy's taxon AMR tab does", () => {
+  it("scopes genome_amr through the genome join, less Deprecated genomes, as legacy's taxon AMR tab does", () => {
     // genome_amr has no taxon_lineage_ids, so a direct lineage filter would
     // miss descendants' phenotypes.
     const AmrPhenotypesView = makeAmrPhenotypesView({ scope });
@@ -300,7 +300,7 @@ describe("makeAmrPhenotypesView", () => {
     expect(panel).toHaveAttribute("data-resource", "genome_amr");
     expect(panel).toHaveAttribute(
       "data-q",
-      "and(eq(genome_id,*),genome(eq(taxon_lineage_ids,1234)))",
+      "and(eq(genome_id,*),genome(and(eq(taxon_lineage_ids,1234),ne(genome_status,Deprecated))))",
     );
   });
 });
@@ -416,7 +416,7 @@ describe("composite scope queries", () => {
     [
       "genome_amr",
       makeAmrPhenotypesView,
-      `and(eq(genome_id,*),genome(${compositeClause}))`,
+      `and(eq(genome_id,*),genome(and(${compositeClause},ne(genome_status,Deprecated))))`,
     ],
     [
       "protein_structure",

@@ -24,6 +24,18 @@ function byId(id: SearchActionConfig["id"]) {
 }
 
 describe("visibleSearchActions", () => {
+  it("offers legacy's AMR Phenotypes selection actions", () => {
+    const ids = (selectedCount: number) =>
+      visibleSearchActions({
+        searchType: "genome_amr",
+        selectedCount,
+        hasGuideUrl: true,
+      }).map((action) => action.id);
+    expect(ids(0)).toEqual(["guide"]);
+    expect(ids(1)).toEqual(["guide", "copyRows", "services", "genome", "group"]);
+    expect(ids(2)).toEqual(["guide", "copyRows", "services", "group"]);
+  });
+
   it("drops actions outside the search type", () => {
     const visible = visibleSearchActions({
       searchType: "taxonomy",

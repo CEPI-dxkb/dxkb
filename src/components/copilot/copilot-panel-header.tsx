@@ -3,13 +3,17 @@
 import { ArrowLeft, Bot, History, Minus, SquarePen, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { copilotName } from "@/lib/copilot/name";
-import { ChatOptionsMenu } from "./copilot-options-menu";
-import { useAskClarkDock, useAskClarkHeader } from "./prototype/dock-state"; // PROTOTYPE (DXKBCORE-342)
-import { PrototypeHeader } from "./prototype/header-variants"; // PROTOTYPE (DXKBCORE-342)
+import { cn } from "@/lib/utils";
+import { CopilotLayoutMenu } from "./copilot-layout-menu";
 
-// PROTOTYPE (DXKBCORE-342): "dock" is the pushed/docked prototype surface; remove with the prototype.
-export type CopilotPanelVariant = "sheet" | "floating" | "page" | "dock";
+export type CopilotPanelVariant = "sheet" | "floating" | "page";
 
+/**
+ * One row. The side panel and the floating window get icon buttons (history, new chat, layout,
+ * minimize, close) so the title keeps its room at the window's 320px minimum, and the Beta badge
+ * shows only when the header is wider than 24rem. The full page keeps a labelled Chats button,
+ * which stands in for its chat list on a phone.
+ */
 export function CopilotPanelHeader({
   variant,
   title,
@@ -33,42 +37,41 @@ export function CopilotPanelHeader({
   onMinimize?: () => void;
   onPointerDown?: (event: React.PointerEvent<HTMLElement>) => void;
 }) {
-  const dock = useAskClarkDock();
-  const layout = useAskClarkHeader();
-  if (dock && layout !== "0" && variant !== "page") {
-    return (
-      <PrototypeHeader
-        layout={layout}
-        variant={variant}
-        title={title}
-        titleId={titleId}
-        showHistory={showHistory}
-        onToggleHistory={onToggleHistory}
-        newChatDisabled={newChatDisabled}
-        onNewChat={onNewChat}
-        onClose={onClose}
-        onMinimize={onMinimize}
-        onPointerDown={onPointerDown}
-      />
-    );
-  }
+  const page = variant === "page";
+  const historyLabel = showHistory ? "Back to the chat" : "Your earlier chats";
+  const HistoryIcon = showHistory ? ArrowLeft : History;
   return (
     <header
-      className="flex shrink-0 items-center gap-1 border-b px-2 py-1.5"
+      className={cn(
+        "flex shrink-0 items-center gap-1 border-b px-2 py-1.5",
+        !page && "@container",
+      )}
       onPointerDown={onPointerDown}
     >
-      {/* On a phone the sidebar is hidden, so this button stands in for it. */}
-      <Button
-        variant="ghost"
-        size="sm"
-        className={variant === "page" ? "md:hidden" : undefined}
-        aria-pressed={showHistory}
-        title={showHistory ? "Back to the chat" : "Your earlier chats"}
-        onClick={onToggleHistory}
-      >
-        {showHistory ? <ArrowLeft aria-hidden /> : <History aria-hidden />}
-        {showHistory ? "Back" : "Chats"}
-      </Button>
+      {page ? (
+        <Button
+          variant="ghost"
+          size="sm"
+          className="md:hidden"
+          aria-pressed={showHistory}
+          title={historyLabel}
+          onClick={onToggleHistory}
+        >
+          <HistoryIcon aria-hidden />
+          {showHistory ? "Back" : "Chats"}
+        </Button>
+      ) : (
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          aria-pressed={showHistory}
+          aria-label={historyLabel}
+          title={historyLabel}
+          onClick={onToggleHistory}
+        >
+          <HistoryIcon aria-hidden />
+        </Button>
+      )}
       <Bot
         className="ml-1 size-4 shrink-0 text-primary dark:text-link"
         aria-hidden
@@ -78,7 +81,12 @@ export function CopilotPanelHeader({
         className="min-w-0 flex-1 truncate text-sm font-medium"
       >
         {showHistory ? "Your chats" : title}
-        <span className="ml-2 rounded bg-primary/10 px-1.5 py-0.5 text-3xs font-medium text-primary uppercase dark:bg-primary/25 dark:text-link">
+        <span
+          className={cn(
+            "ml-2 rounded bg-primary/10 px-1.5 py-0.5 text-3xs font-medium text-primary uppercase dark:bg-primary/25 dark:text-link",
+            !page && "hidden @sm:inline",
+          )}
+        >
           Beta
         </span>
       </h2>
@@ -92,7 +100,7 @@ export function CopilotPanelHeader({
       >
         <SquarePen aria-hidden />
       </Button>
-      <ChatOptionsMenu variant={variant} />
+      {!page && <CopilotLayoutMenu surface={variant} />}
       {onMinimize && (
         <Button
           variant="ghost"

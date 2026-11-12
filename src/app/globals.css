@@ -1091,14 +1091,17 @@
   @apply border-chart-9/50 bg-chart-9/15 text-foreground;
 }
 
-/* PROTOTYPE (DXKBCORE-342): AskClark dock variants. Delete with src/components/copilot/prototype. */
-@utility askclark-shell {
-  padding-bottom: var(--ac-bottom, 0px);
+/* AskClark's side panel pushes the page instead of covering it from `lg` up: while it is open
+   (`data-dock` on the shell names its side), the page's outermost `main` gives up the panel's
+   width on that side, on the same soft-landing curve the panel slides on. The navbar sits outside
+   `main` and keeps its width. Nested `main`s are skipped so the margin is not applied twice.
+   Below `lg` there is no room to give, so the panel overlays the page (at most the viewport wide).
+   `--dock-top` (the navbar's visible bottom) is kept current by `CopilotDockShell` while scrolling. */
+@utility copilot-dock-shell {
+  --dock-width: 420px;
+  --dock-top: 0px;
 
-  /* Only the content below the navbar makes room for a side dock; the navbar keeps its width. */
-  & main {
-    margin-left: var(--ac-left, 0px);
-    margin-right: var(--ac-right, 0px);
+  & main:not(main main) {
     transition: margin 420ms cubic-bezier(0.32, 0.72, 0, 1);
 
     @media (prefers-reduced-motion: reduce) {
@@ -1106,29 +1109,20 @@
     }
   }
 
-  /* The views shell is exactly one window tall, so it gives up the bottom dock's height. */
-  & .h-screen {
-    height: calc(100dvh - var(--ac-bottom, 0px));
+  @variant lg {
+    &[data-dock="left"] main:not(main main) {
+      margin-left: var(--dock-width);
+    }
+
+    &[data-dock="right"] main:not(main main) {
+      margin-right: var(--dock-width);
+    }
   }
 }
 
-@utility ac-vertical {
-  writing-mode: vertical-rl;
-}
-
-@utility ac-switcher {
-  left: calc(var(--ac-left, 0px) + 1rem);
-  bottom: calc(var(--ac-bottom, 0px) + 4.5rem);
-
-  /* Opposite the edge tab, so it is not on top of the chat. */
-  &[data-side="right"] {
-    left: auto;
-    right: calc(var(--ac-right, 0px) + 1rem);
-  }
-}
-
-/* The side panel slides off its screen edge: the box and the page's margin share one soft-landing curve. */
-@utility ac-slide {
+/* The side panel slides off its screen edge. Minimized (`data-closed`), it is hidden once the
+   slide ends, since a zero-width box still paints its border as a hairline. */
+@utility copilot-dock-slide {
   transition:
     width 420ms cubic-bezier(0.32, 0.72, 0, 1),
     visibility 0s linear 0s;
@@ -1143,18 +1137,22 @@
   }
 }
 
-/* The panel's content rides with the slide, and fades a beat later on the way in. */
-@utility ac-slide-content {
+/* The panel's content rides outward with the slide and fades, fading back in a beat later. */
+@utility copilot-dock-slide-content {
   transition:
     opacity 280ms ease-out 80ms,
     transform 420ms cubic-bezier(0.32, 0.72, 0, 1);
 
   &[data-hidden] {
     opacity: 0;
-    transform: translateX(var(--ac-shift, 2.5rem));
+    transform: translateX(2.5rem);
     transition:
       opacity 200ms ease-in,
       transform 420ms cubic-bezier(0.32, 0.72, 0, 1);
+  }
+
+  &[data-hidden][data-side="left"] {
+    transform: translateX(-2.5rem);
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -1162,31 +1160,31 @@
   }
 }
 
-/* The edge tab slides in from its edge once the window or panel has folded away. */
-@keyframes ac-tab-in-right {
+/* The minimized chat's edge tab slides in from its edge once the window or panel has folded away. */
+@keyframes copilot-tab-in-right {
   from {
     transform: translateX(100%);
   }
 }
 
-@keyframes ac-tab-in-left {
+@keyframes copilot-tab-in-left {
   from {
     transform: translateX(-100%);
   }
 }
 
-@utility ac-tab-in-right {
-  animation: ac-tab-in-right 300ms cubic-bezier(0.32, 0.72, 0, 1)
-    100ms backwards;
+@utility copilot-tab-in-right {
+  animation: copilot-tab-in-right 300ms cubic-bezier(0.32, 0.72, 0, 1) 100ms
+    backwards;
 
   @media (prefers-reduced-motion: reduce) {
     animation: none;
   }
 }
 
-@utility ac-tab-in-left {
-  animation: ac-tab-in-left 300ms cubic-bezier(0.32, 0.72, 0, 1)
-    100ms backwards;
+@utility copilot-tab-in-left {
+  animation: copilot-tab-in-left 300ms cubic-bezier(0.32, 0.72, 0, 1) 100ms
+    backwards;
 
   @media (prefers-reduced-motion: reduce) {
     animation: none;

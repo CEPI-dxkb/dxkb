@@ -1,25 +1,12 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useId } from "react";
-import { Sheet, SheetContent } from "@/components/ui/sheet";
-import { Spinner } from "@/components/ui/spinner";
+import { useUiPreference } from "@/lib/ui-preferences/provider";
+import { CopilotEdgeTab } from "./copilot-edge-tab";
 import { useCopilot } from "./copilot-provider";
-import { useAskClarkVariant } from "./prototype/dock-state"; // PROTOTYPE (DXKBCORE-342)
+import { CopilotSideDock } from "./copilot-side-dock";
 
-function PanelLoading() {
-  return (
-    <div className="flex size-full items-center justify-center">
-      <Spinner />
-    </div>
-  );
-}
-
-// The chat (markdown, scroller) loads on first open, keeping it out of every route's bundle.
-const CopilotPanel = dynamic(
-  () => import("./copilot-panel").then((module) => module.CopilotPanel),
-  { ssr: false, loading: PanelLoading },
-);
+// The window (and the chat in it) loads on first open, keeping it out of every route's bundle.
 const CopilotFloatingWindow = dynamic(
   () =>
     import("./copilot-floating-window").then(
@@ -28,36 +15,30 @@ const CopilotFloatingWindow = dynamic(
   { ssr: false },
 );
 
-function CopilotSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const titleId = useId();
-  return (
-    <Sheet
-      open={open}
-      onOpenChange={(next) => {
-        if (!next) onClose();
-      }}
-    >
-      <SheetContent
-        side="right"
-        size="wide"
-        showCloseButton={false}
-        aria-labelledby={titleId}
-      >
-        {open && <CopilotPanel variant="sheet" titleId={titleId} onClose={onClose} />}
-      </SheetContent>
-    </Sheet>
-  );
-}
-
+/** The open chat, as the side panel or the floating window, both on the edge tab's side; minimized, the tab too. */
 export function CopilotSurfaces() {
-  const { available, openSurface, close } = useCopilot();
-  // PROTOTYPE (DXKBCORE-342): a variant draws its own dock.
-  const prototypeVariant = useAskClarkVariant();
-  if (!available || prototypeVariant) return null;
+  const { openSurface, minimized, minimize, close } = useCopilot();
+  const [tab, setTab] = useUiPreference("copilotTab");
+  if (openSurface === null) return null;
   return (
     <>
-      <CopilotSheet open={openSurface === "sheet"} onClose={close} />
-      {openSurface === "floating" && <CopilotFloatingWindow onClose={close} />}
+      {openSurface === "floating" ? (
+        <CopilotFloatingWindow
+          edge={tab}
+          minimized={minimized}
+          onMinimize={minimize}
+          onClose={close}
+        />
+      ) : (
+        <CopilotSideDock
+          side={tab.side}
+          minimized={minimized}
+          onMinimize={minimize}
+          onClose={close}
+        />
+      )}
+      {/* The tab arrives as the window or panel finishes folding away. */}
+      {minimized && <CopilotEdgeTab placement={tab} onPlace={setTab} />}
     </>
   );
 }

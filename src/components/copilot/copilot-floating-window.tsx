@@ -1,7 +1,10 @@
 "use client";
 
 import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
-import type { CopilotFloatingRect } from "@/lib/ui-preferences/definitions";
+import type {
+  CopilotFloatingRect,
+  CopilotTabPlacement,
+} from "@/lib/ui-preferences/definitions";
 import { useUiPreference } from "@/lib/ui-preferences/provider";
 import {
   clampFloatingRect,
@@ -11,7 +14,7 @@ import {
 } from "@/lib/copilot/floating-rect";
 import { playTuck } from "@/lib/copilot/tuck";
 import { cn } from "@/lib/utils";
-import { CopilotPanel, type CopilotPanelVariant } from "./copilot-panel";
+import { CopilotPanel } from "./copilot-panel";
 
 const handles: { direction: ResizeDirection; className: string }[] = [
   { direction: "n", className: "inset-x-3 top-0 h-1.5 cursor-ns-resize" },
@@ -38,34 +41,28 @@ type Gesture =
       start: CopilotFloatingRect;
     };
 
-/** The edge tab the window belongs to: which window edge, and how far down it (0 to 1). */
-export interface CopilotFloatingEdge {
-  side: "left" | "right";
-  top: number;
-}
-
 // The physical edge a handle sits on becomes the opposite one when the window hangs off the left.
 const mirroredDirection = (direction: ResizeDirection): ResizeDirection =>
   direction.replace(/[ew]/, (edge) => (edge === "e" ? "w" : "e")) as ResizeDirection;
 
-// PROTOTYPE (DXKBCORE-342): `minimized` hides the window without unmounting it (state and scroll
-// survive), `onMinimize` shows the header's Minimize button, `panelVariant` "dock" hides the surface
-// menu, and `edge` hangs the window off the tab's side and tucks it into the tab on minimize.
+/**
+ * The draggable, resizable chat window. It hangs off the edge tab's side (`edge`): on the left the
+ * saved `right` offset is measured from the left edge instead. Minimized, it stays mounted but
+ * hidden and inert, so the chat, its scroll position and the window's place survive, and it tucks
+ * into the tab and grows back out of it.
+ */
 export function CopilotFloatingWindow({
-  onClose,
-  onMinimize,
-  minimized = false,
-  panelVariant = "floating",
   edge,
+  minimized,
+  onMinimize,
+  onClose,
 }: {
+  edge: CopilotTabPlacement;
+  minimized: boolean;
+  onMinimize: () => void;
   onClose: () => void;
-  onMinimize?: () => void;
-  minimized?: boolean;
-  panelVariant?: CopilotPanelVariant;
-  edge?: CopilotFloatingEdge;
 }) {
-  // On the left, the saved `right` offset is measured from the left edge instead.
-  const mirrored = edge?.side === "left";
+  const mirrored = edge.side === "left";
   const titleId = useId();
   const [saved, setSaved] = useUiPreference("copilotFloatingRect");
   const [rect, setRect] = useState<CopilotFloatingRect>(saved);
@@ -96,7 +93,7 @@ export function CopilotFloatingWindow({
     if (wasMinimized.current === minimized) return;
     wasMinimized.current = minimized;
     const element = windowRef.current;
-    if (!element || !edge) return;
+    if (!element) return;
     tuck.current?.cancel();
     const bounds = element.getBoundingClientRect();
     tuck.current = playTuck(
@@ -109,7 +106,7 @@ export function CopilotFloatingWindow({
     );
   }, [minimized, edge]);
 
-  // React delivers portal events (the options menu) to React parents too, so check the real DOM.
+  // React delivers portal events (the layout, model and mode menus) to React parents too, so check the real DOM.
   const isInside = (target: EventTarget) =>
     windowRef.current?.contains(target as Node) ?? false;
 
@@ -215,7 +212,7 @@ export function CopilotFloatingWindow({
         />
       ))}
       <CopilotPanel
-        variant={panelVariant}
+        variant="floating"
         titleId={titleId}
         onClose={onClose}
         onMinimize={onMinimize}

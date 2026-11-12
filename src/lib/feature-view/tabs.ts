@@ -10,7 +10,6 @@ export const featureTabKeys = [
   "overview",
   "genome-browser",
   "compare-region",
-  "transcriptomics",
   "interactions",
   "domains",
   "structures",
@@ -73,12 +72,6 @@ export function buildFeatureTabs(
       disabledReason: comparable
         ? undefined
         : "Compare Region Viewer is only available for CDS features with a BRC ID.",
-    },
-    {
-      key: "transcriptomics",
-      label: "Transcriptomics",
-      enabled: false,
-      disabledReason: "Feature-scoped transcriptomics is not yet available.",
     },
     { key: "interactions", label: "Interactions", enabled: hasInteractionId },
     { key: "domains", label: "Domains and Motifs" },

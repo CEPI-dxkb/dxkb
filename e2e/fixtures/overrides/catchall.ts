@@ -181,7 +181,7 @@ export const biosetScenarioOverrides: JsonOverride[] = [
     body: buildGatewayCollectionEnvelope(biosetRows, {
       facets: {
         bioset_type: [
-          { value: "Transcriptomics Differential Expression", count: 1 },
+          { value: "Differential Expression", count: 1 },
         ],
         organism: [
           {

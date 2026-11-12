@@ -38,7 +38,7 @@ describe("ExperimentOverview", () => {
           exp_description: "Description A",
           exp_poc: "Contact A",
           experimenters: ["Alice", "Bob"],
-          exp_type: "Transcriptomics",
+          exp_type: "Transcript Quantification",
           measurement_technique: "RNA-seq",
         })}
       />,

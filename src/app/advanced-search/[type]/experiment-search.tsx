@@ -98,7 +98,7 @@ export function ExperimentSearch() {
               <ServiceLabel htmlFor="study-title">Study Title</ServiceLabel>
               <ServiceInput
                 id="study-title"
-                placeholder="e.g. Influenza transcriptome"
+                placeholder="e.g. Influenza host response"
                 value={studyTitle}
                 onChange={(e) => { setStudyTitle(e.target.value); }}
               />

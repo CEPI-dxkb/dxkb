@@ -3,6 +3,7 @@
 import { useEffect, useId, useState, type ReactNode } from "react";
 import { PanelRightClose, PanelRightOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { DetailEmptyState } from "@/components/detail-panel/detail-empty-state";
 import {
   ResizableHandle,
   ResizablePanel,
@@ -17,6 +18,8 @@ interface ResourceWorkspaceProps {
   actionBar?: ReactNode;
   hasSidePanel?: boolean;
   hasActionRail?: boolean;
+  /** What the panel says when the toggle opens it with nothing selected. */
+  emptySelectionMessage?: string;
 }
 
 /**
@@ -58,6 +61,7 @@ export function ResourceWorkspace({
   actionBar,
   hasSidePanel = true,
   hasActionRail = true,
+  emptySelectionMessage = "Select a row to view details",
 }: ResourceWorkspaceProps) {
   // The library writes a panel's id straight into the DOM, so namespace it to
   // avoid duplicate ids across workspaces.
@@ -74,8 +78,13 @@ export function ResourceWorkspace({
     useState(hasSidePanel);
   if (previousHasSidePanel !== hasSidePanel) {
     setPreviousHasSidePanel(hasSidePanel);
-    if (hasSidePanel) setPanelExpanded(true);
+    // A selection opens the panel and clearing it closes the panel, so the
+    // table gets its width back; the toggle can still open the empty state.
+    setPanelExpanded(hasSidePanel);
   }
+  // With nothing selected the toggle opens an empty-state panel, so it never
+  // flips its label with no panel behind it.
+  const showPanel = panelExpanded && (hasSidePanel || hasActionRail);
 
   useEffect(() => {
     if (typeof window.matchMedia !== "function") return;
@@ -149,7 +158,7 @@ export function ResourceWorkspace({
             </aside>
           )}
         </ResizablePanel>
-        {hasSidePanel && panelExpanded && (
+        {showPanel && (
           <>
             <ResizableHandle withHandle className="max-md:hidden" />
             <ResizablePanel
@@ -163,7 +172,11 @@ export function ResourceWorkspace({
                  inner div, so a shadow above the top edge would be
                  clipped; hence none here. */}
               <div className="absolute inset-0 flex flex-col overflow-hidden border-t max-md:overflow-auto max-md:bg-background">
-                {sidePanel}
+                {hasSidePanel ? (
+                  sidePanel
+                ) : (
+                  <DetailEmptyState message={emptySelectionMessage} />
+                )}
               </div>
             </ResizablePanel>
           </>

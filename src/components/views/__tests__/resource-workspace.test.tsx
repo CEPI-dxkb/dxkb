@@ -256,6 +256,93 @@ describe("ResourceWorkspace layout", () => {
   });
 });
 
+describe("ResourceWorkspace panel toggle", () => {
+  it("opens and closes an empty-state panel while nothing is selected", () => {
+    mockViewport(false);
+    renderWorkspace(false);
+
+    expect(screen.queryByText("Select a row to view details")).not.toBeInTheDocument();
+    expect(panelShares()).toHaveLength(1);
+
+    fireEvent.click(screen.getByRole("button", { name: "Show" }));
+    expect(screen.getByText("Select a row to view details")).toBeInTheDocument();
+    expect(screen.queryByText("Details")).not.toBeInTheDocument();
+    expect(panelShares()).toHaveLength(2);
+
+    fireEvent.click(screen.getByRole("button", { name: "Hide" }));
+    expect(screen.queryByText("Select a row to view details")).not.toBeInTheDocument();
+    expect(panelShares()).toHaveLength(1);
+  });
+
+  it("uses the caller's empty-state message", () => {
+    mockViewport(false);
+    render(
+      <ResourceWorkspace
+        hasSidePanel={false}
+        emptySelectionMessage="Select a leaf in the tree to view details"
+        sidePanel={<span>Details</span>}
+      >
+        <span>Table</span>
+      </ResourceWorkspace>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Show" }));
+    expect(
+      screen.getByText("Select a leaf in the tree to view details"),
+    ).toBeInTheDocument();
+  });
+
+  it("hides and shows the details once a selection exists", () => {
+    mockViewport(false);
+    renderWorkspace(true);
+
+    expect(screen.getByText("Details")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Hide" }));
+    expect(screen.queryByText("Details")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Show" }));
+    expect(screen.getByText("Details")).toBeInTheDocument();
+  });
+
+  it("swaps the empty state for details when a selection arrives", () => {
+    mockViewport(false);
+    const { rerender } = renderWorkspace(false);
+    fireEvent.click(screen.getByRole("button", { name: "Show" }));
+    expect(screen.getByText("Select a row to view details")).toBeInTheDocument();
+
+    rerender(
+      <ResourceWorkspace
+        hasSidePanel
+        actionBar={<span>Actions</span>}
+        sidePanel={<span>Details</span>}
+      >
+        <span>Table</span>
+      </ResourceWorkspace>,
+    );
+
+    expect(screen.getByText("Details")).toBeInTheDocument();
+    expect(screen.queryByText("Select a row to view details")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Hide" })).toBeInTheDocument();
+  });
+
+  it("offers no panel without the action rail", () => {
+    mockViewport(false);
+    render(
+      <ResourceWorkspace
+        hasSidePanel={false}
+        hasActionRail={false}
+        sidePanel={<span>Details</span>}
+      >
+        <span>Table</span>
+      </ResourceWorkspace>,
+    );
+
+    expect(screen.queryByRole("button", { name: "Show" })).not.toBeInTheDocument();
+    expect(panelShares()).toHaveLength(1);
+  });
+});
+
 describe("ResourceWorkspace slot mounting", () => {
   it("mounts each slot once, already stacked, on an initially narrow viewport", () => {
     mockViewport(true);

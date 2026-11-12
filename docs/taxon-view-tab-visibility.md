@@ -26,8 +26,11 @@ deliberately avoids legacy code so the rules stand on their own.
 > Of the bacterial cluster, only **AMR Phenotypes** and **Interactions** are
 > implemented as tabs today; Specialty Genes, Pathways and Subsystems were removed
 > from the strip until they have real views. AMR Phenotypes lists `genome_amr`
-> rows scoped through the genome join, `and(eq(genome_id,*),genome(<lineage>))`,
-> because `genome_amr` carries no `taxon_lineage_ids` (legacy sends the same query).
+> rows scoped through the genome join,
+> `and(eq(genome_id,*),genome(and(<lineage>,ne(genome_status,Deprecated))))`,
+> because `genome_amr` carries no `taxon_lineage_ids`. Legacy's Taxonomy view
+> sends the same query, Deprecated clause included, and so do the Overview's AMR
+> chart and the Sequences tab.
 
 ---
 

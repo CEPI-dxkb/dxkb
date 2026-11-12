@@ -55,10 +55,14 @@ describe("AMR Phenotypes collection profile", () => {
   });
 
   it("scopes a taxon through a genome join the Data API accepts", () => {
-    const rql = genomesChildRql("eq(taxon_lineage_ids,1386)");
-    expect(rql).toBe("and(eq(genome_id,*),genome(eq(taxon_lineage_ids,1386)))");
+    const rql = genomesChildRql(
+      "and(eq(taxon_lineage_ids,1386),ne(genome_status,Deprecated))",
+    );
+    expect(rql).toBe(
+      "and(eq(genome_id,*),genome(and(eq(taxon_lineage_ids,1386),ne(genome_status,Deprecated))))",
+    );
     expect(validateRql("genome_amr", rql)).toBe(
-      "and(eq(genome_id,%2A),genome(eq(taxon_lineage_ids,1386)))",
+      "and(eq(genome_id,%2A),genome(and(eq(taxon_lineage_ids,1386),ne(genome_status,Deprecated))))",
     );
   });
 });

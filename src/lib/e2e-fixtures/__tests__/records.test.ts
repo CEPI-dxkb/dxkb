@@ -501,7 +501,7 @@ describe("genomeAmrRecord agrees with what the registry declares", () => {
   );
 
   it("matches the registry's inferred type for every scalar field it carries", () => {
-    // `measurement_value` and `testing_standard_year` are left to inferType's string default so the gateway accepts non-numeric facet values.
+    // `measurement_value` and `testing_standard_year` are left to inferType's string default so the gateway accepts non-numeric values such as `>=32` (`testing_standard_year` is also a facet).
     const jsTypeFor: Record<string, string> = {
       string: "string",
       number: "number",

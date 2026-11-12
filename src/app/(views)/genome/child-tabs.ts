@@ -17,8 +17,8 @@ interface GenomeChildCollection {
 }
 
 /**
- * `genome_feature`, `protein_feature` and `protein_structure` carry no columns:
- * ResourceChildCollection substitutes the resource's own collection profile.
+ * No entry carries columns: ResourceChildCollection substitutes each
+ * resource's own collection profile.
  */
 export const genomeChildCollections = {
   // Legacy AMRPanelGrid adds no sort; genome_amr's own profile supplies the

@@ -362,6 +362,7 @@ describe("GenomeCollection", () => {
 
   it.each([
     ["sequences", "eq(sequence_id,*)"],
+    ["amr", "eq(id,*)"],
     ["features", "eq(feature_id,*)"],
     ["proteins", proteinFeatureRql],
     ["structures", "eq(pdb_id,*)"],

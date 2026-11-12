@@ -302,8 +302,6 @@ function renderSearchInfoPanel(
         "genome_id",
         "genome_name",
         "antibiotic",
-        "evidence",
-        "pmid",
         "resistant_phenotype",
         "measurement_sign",
         "measurement_value",
@@ -317,6 +315,8 @@ function renderSearchInfoPanel(
         "computational_method",
         "computational_method_version",
         "computational_method_performance",
+        "evidence",
+        "pmid",
       ];
       order = [
         "Summary",

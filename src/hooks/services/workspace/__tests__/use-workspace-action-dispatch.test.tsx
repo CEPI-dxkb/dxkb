@@ -1,4 +1,7 @@
 import { renderHook, act, waitFor } from "@testing-library/react";
+import { http, HttpResponse } from "msw";
+import { toast } from "sonner";
+import { server } from "@/test-helpers/msw-server";
 import type { ReactNode } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { WorkspaceItem } from "@/lib/services/workspace/domain";
@@ -24,7 +27,13 @@ function makeWrapper(repo: InMemoryWorkspaceRepository) {
   };
 }
 
-const { mockDispatch } = vi.hoisted(() => ({ mockDispatch: vi.fn() }));
+const { mockDispatch, mockPush } = vi.hoisted(() => ({
+  mockDispatch: vi.fn(),
+  mockPush: vi.fn(),
+}));
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: mockPush }),
+}));
 vi.mock("@/contexts/workspace-dialog-context", () => ({
   useWorkspaceDialog: () => ({ dispatch: mockDispatch }),
 }));
@@ -315,6 +324,114 @@ describe("useWorkspaceActionDispatch", () => {
 
     expect(openSpy).not.toHaveBeenCalled();
     openSpy.mockRestore();
+  });
+
+  describe("view action", () => {
+    const groupItem = makeItem({
+      name: "Brucella Group",
+      path: "/user@bvbrc/home/Genome Groups/Brucella Group",
+      type: "genome_group",
+    });
+
+    function serveGroup(response: () => Response) {
+      const requested: string[][] = [];
+      server.use(
+        http.post("/api/services/workspace", async ({ request }) => {
+          const body = (await request.json()) as {
+            params: [{ objects: string[] }];
+          };
+          requested.push(body.params[0].objects);
+          return response();
+        }),
+      );
+      return requested;
+    }
+
+    function renderDispatch() {
+      return renderHook(
+        () => useWorkspaceActionDispatch(createDefaultOptions() as never),
+        { wrapper: makeWrapper(new InMemoryWorkspaceRepository()) },
+      );
+    }
+
+    it("opens the Genomes table scoped to the group's members", async () => {
+      const requested = serveGroup(() =>
+        HttpResponse.json({
+          result: [
+            [
+              [
+                "metadata",
+                JSON.stringify({ id_list: { genome_id: ["29461.10", "1218315.3"] } }),
+              ],
+            ],
+          ],
+        }),
+      );
+      const { result } = renderDispatch();
+
+      act(() => {
+        result.current.handleAction("view", [groupItem]);
+      });
+
+      await waitFor(() => {
+        expect(mockPush).toHaveBeenCalledWith(
+          "/genome?rql=in(genome_id,(29461.10,1218315.3))&tab=genomes",
+        );
+      });
+      expect(requested).toEqual([[groupItem.path]]);
+      expect(result.current.isViewingGroup).toBe(false);
+    });
+
+    it("shows a toast instead of navigating for an empty group", async () => {
+      serveGroup(() =>
+        HttpResponse.json({
+          result: [[["metadata", JSON.stringify({ id_list: { genome_id: [] } })]]],
+        }),
+      );
+      const { result } = renderDispatch();
+
+      act(() => {
+        result.current.handleAction("view", [groupItem]);
+      });
+
+      await waitFor(() => {
+        expect(toast.error).toHaveBeenCalledWith(
+          "This genome group has no genomes.",
+        );
+      });
+      expect(mockPush).not.toHaveBeenCalled();
+    });
+
+    it("shows the workspace error when the group cannot be read", async () => {
+      serveGroup(() =>
+        HttpResponse.json(
+          { error: { message: "_ERROR_Object not found_ERROR_" } },
+          { status: 500 },
+        ),
+      );
+      const { result } = renderDispatch();
+
+      act(() => {
+        result.current.handleAction("view", [groupItem]);
+      });
+
+      await waitFor(() => {
+        expect(toast.error).toHaveBeenCalledWith("Object not found");
+      });
+      expect(mockPush).not.toHaveBeenCalled();
+    });
+
+    it("ignores a selection that is not a genome group", () => {
+      const requested = serveGroup(() => HttpResponse.json({}));
+      const { result } = renderDispatch();
+
+      act(() => {
+        result.current.handleAction("view", [makeItem({ type: "feature_group" })]);
+      });
+
+      expect(requested).toEqual([]);
+      expect(mockPush).not.toHaveBeenCalled();
+    });
   });
 
   it("ignores unknown action ids", () => {

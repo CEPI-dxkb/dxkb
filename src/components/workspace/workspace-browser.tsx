@@ -232,8 +232,13 @@ function useWorkspaceBrowser({
     basePath: jobResultBasePath,
   });
 
-  const { handleAction, favoriteMutate, isDownloading, isFavoriting } =
-    useWorkspaceActionDispatch({
+  const {
+    handleAction,
+    favoriteMutate,
+    isDownloading,
+    isFavoriting,
+    isViewingGroup,
+  } = useWorkspaceActionDispatch({
       currentUser,
       myWorkspaceRoot,
       queryClient,
@@ -413,6 +418,7 @@ function useWorkspaceBrowser({
   const { activeDialog } = dialogState;
   const disabledAndLoading: WorkspaceActionId[] = [
     ...(isDownloading ? (["download"] as const) : []),
+    ...(isViewingGroup ? (["view"] as const) : []),
     ...(isDialogLoading && activeDialog?.type === "delete"
       ? (["delete"] as const)
       : []),

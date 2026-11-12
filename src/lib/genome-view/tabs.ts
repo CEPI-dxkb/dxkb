@@ -3,6 +3,7 @@ import type { GenomeViewRecord } from "./schema";
 
 export const genomeTabKeys = [
   "overview",
+  "amr",
   "sequences",
   "interactions",
   "genome-browser",
@@ -56,12 +57,28 @@ export function supportsCircularViewer(genome: GenomeViewRecord): boolean {
   return kingdom !== "viruses" && kingdom !== "eukaryota";
 }
 
+/** Legacy `Genome.js` removed the AMR Phenotypes tab for viruses only (eukaryotic and archaeal genomes keep it); lineage ids, names and `superkingdom` each exclude on their own so a `"null"` kingdom cannot hide the lineage. */
+export function supportsAmrPhenotypes(genome: GenomeViewRecord): boolean {
+  if (lineageIds(genome).includes("10239")) return false;
+  if (lineageNames(genome).includes("Viruses")) return false;
+  return genome.superkingdom?.toLowerCase() !== "viruses";
+}
+
 export function buildGenomeTabs(
   genome: GenomeViewRecord,
 ): readonly EntityViewTab<GenomeTab>[] {
   const circular = supportsCircularViewer(genome);
+  const amr = supportsAmrPhenotypes(genome);
   return [
     { key: "overview", label: "Overview" },
+    {
+      key: "amr",
+      label: "AMR Phenotypes",
+      enabled: amr,
+      disabledReason: amr
+        ? undefined
+        : "AMR phenotypes do not apply to viral genomes.",
+    },
     { key: "sequences", label: "Sequences" },
     // Open for every genome; one with no interaction records shows the empty state.
     { key: "interactions", label: "Interactions" },

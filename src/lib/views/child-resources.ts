@@ -95,6 +95,10 @@ export function genomeSequenceRql(genomeId: string): string {
   return eq("genome_sequence", "genome_id", genomeId);
 }
 
+export function genomeAmrRql(genomeId: string): string {
+  return eq("genome_amr", "genome_id", genomeId);
+}
+
 export function taxonomySequenceRql(lineageClause: string): string {
   return `and(eq(genome_id,*),genome(and(${lineageClause},ne(genome_status,Deprecated))))`;
 }

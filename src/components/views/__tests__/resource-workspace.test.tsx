@@ -256,6 +256,76 @@ describe("ResourceWorkspace layout", () => {
   });
 });
 
+describe("ResourceWorkspace panel toggle", () => {
+  it("disables Show with a selection hint while there is no side panel", () => {
+    mockViewport(false);
+    renderWorkspace(false);
+
+    const toggle = screen.getByRole("button", { name: /show panel/i });
+    expect(toggle).toBeDisabled();
+    expect(toggle).toHaveAccessibleName(
+      "Show panel. Select a row to show its details",
+    );
+
+    fireEvent.click(toggle);
+    expect(screen.getByText("Show")).toBeInTheDocument();
+    expect(screen.queryByText("Details")).not.toBeInTheDocument();
+  });
+
+  it("uses the caller's hint for what to select", () => {
+    mockViewport(false);
+    render(
+      <ResourceWorkspace
+        hasSidePanel={false}
+        emptySelectionHint="Select a leaf in the tree to show its details"
+        sidePanel={<span>Details</span>}
+      >
+        <span>Table</span>
+      </ResourceWorkspace>,
+    );
+
+    expect(
+      screen.getByRole("button", { name: /show panel/i }),
+    ).toHaveAccessibleName(
+      "Show panel. Select a leaf in the tree to show its details",
+    );
+  });
+
+  it("hides and shows the panel once a selection exists", () => {
+    mockViewport(false);
+    renderWorkspace(true);
+
+    const hide = screen.getByRole("button", { name: "Hide" });
+    expect(hide).toBeEnabled();
+    expect(screen.getByText("Details")).toBeInTheDocument();
+
+    fireEvent.click(hide);
+    expect(screen.queryByText("Details")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Show" }));
+    expect(screen.getByText("Details")).toBeInTheDocument();
+  });
+
+  it("enables the toggle and opens the panel when a selection arrives", () => {
+    mockViewport(false);
+    const { rerender } = renderWorkspace(false);
+    expect(screen.getByRole("button", { name: /show panel/i })).toBeDisabled();
+
+    rerender(
+      <ResourceWorkspace
+        hasSidePanel
+        actionBar={<span>Actions</span>}
+        sidePanel={<span>Details</span>}
+      >
+        <span>Table</span>
+      </ResourceWorkspace>,
+    );
+
+    expect(screen.getByRole("button", { name: "Hide" })).toBeEnabled();
+    expect(screen.getByText("Details")).toBeInTheDocument();
+  });
+});
+
 describe("ResourceWorkspace slot mounting", () => {
   it("mounts each slot once, already stacked, on an initially narrow viewport", () => {
     mockViewport(true);

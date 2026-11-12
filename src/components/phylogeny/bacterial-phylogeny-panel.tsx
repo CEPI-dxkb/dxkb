@@ -59,6 +59,7 @@ export function BacterialPhylogenyPanel({
   return (
     <ResourceWorkspace
       hasSidePanel={!!selected}
+      emptySelectionHint="Select a leaf in the tree to show its details"
       sidePanel={
         <div className="h-full overflow-auto p-5">
           {selected ? (

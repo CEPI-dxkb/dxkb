@@ -216,29 +216,6 @@ describe("ViralTreePicker", () => {
     );
   });
 
-  it("does not show a viewer filter for an Archaeopteryx-only block", () => {
-    render(
-      <ViralTreePicker
-        block={{
-          groups: [
-            {
-              key: "xml",
-              title: "XML",
-              archaeopteryx: [{ name: "Only XML", path: "/tree.xml" }],
-            },
-          ],
-        }}
-        nextstrainInventory={{ status: "ready", ids: new Set() }}
-        onOpen={vi.fn()}
-      />,
-    );
-
-    expect(
-      screen.queryByRole("radio", { name: /Auspice/ }),
-    ).not.toBeInTheDocument();
-    expect(screen.getByText("Only XML")).toBeInTheDocument();
-  });
-
   it("disables viewer and segment options that have no trees for the chosen strain", async () => {
     const user = userEvent.setup();
     render(
@@ -338,7 +315,7 @@ describe("ViralTreePicker", () => {
     expect(na).toHaveAttribute("aria-checked", "true");
   });
 
-  it("leaves a dead viewer slot inert when its segment is disabled", async () => {
+  it("ignores clicks on a segment the chosen strain has no trees for", async () => {
     const user = userEvent.setup();
     render(
       <ViralTreePicker

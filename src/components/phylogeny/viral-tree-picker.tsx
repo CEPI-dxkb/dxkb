@@ -47,8 +47,6 @@ import {
   type PhyloFamilyBlock,
 } from "@/lib/services/organisms/phylogeny";
 
-export type { NextstrainInventory };
-
 const viewers = Object.keys(viewerLabel) as PhyloViewer[];
 
 /** Label and tooltip for an Auspice dataset that cannot be opened yet. */

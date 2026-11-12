@@ -28,8 +28,10 @@ interface Point {
   y: number;
 }
 
-export function clampTabTop(top: number): number {
-  return Math.min(tabTopMax, Math.max(tabTopMin, top));
+/** Where the tab really sits: `top` held between the limits, and under the navbar's floor on a short window. */
+export function clampTabTop(top: number, viewportHeight: number): number {
+  const min = Math.max(tabTopMin, tabMinTopPx / viewportHeight);
+  return Math.min(tabTopMax, Math.max(min, top));
 }
 
 export function isTabDrag(from: Point, to: Point): boolean {
@@ -42,17 +44,26 @@ export function tabPlacementAt(
   viewport: { width: number; height: number },
 ): CopilotTabPlacement {
   const side: CopilotTabSide = point.x < viewport.width / 2 ? "left" : "right";
-  return { side, top: clampTabTop(point.y / viewport.height) };
+  return { side, top: clampTabTop(point.y / viewport.height, viewport.height) };
 }
 
-/** Up and Down move the tab along its edge, Left and Right switch edges; null for any other key. */
+/**
+ * Up and Down move the tab along its edge, Left and Right switch edges; null for any other key.
+ * Each press starts from where the tab is drawn, so one never moves a tab that is held at the floor.
+ */
 export function tabPlacementForKey(
   placement: CopilotTabPlacement,
   key: string,
+  viewportHeight: number,
 ): CopilotTabPlacement | null {
-  const { side, top } = placement;
-  if (key === "ArrowUp") return { side, top: clampTabTop(top - tabKeyStep) };
-  if (key === "ArrowDown") return { side, top: clampTabTop(top + tabKeyStep) };
+  const { side } = placement;
+  const top = clampTabTop(placement.top, viewportHeight);
+  if (key === "ArrowUp") {
+    return { side, top: clampTabTop(top - tabKeyStep, viewportHeight) };
+  }
+  if (key === "ArrowDown") {
+    return { side, top: clampTabTop(top + tabKeyStep, viewportHeight) };
+  }
   if (key === "ArrowLeft") return { side: "left", top };
   if (key === "ArrowRight") return { side: "right", top };
   return null;

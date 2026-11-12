@@ -3,6 +3,7 @@ import {
   clampTabTop,
   isTabDrag,
   tabPlacementAt,
+  tabMinTopPx,
   tabPlacementForKey,
   tabTitle,
   tabTopMax,
@@ -11,9 +12,14 @@ import {
 
 describe("clampTabTop", () => {
   it("keeps the tab between the top and bottom limits", () => {
-    expect(clampTabTop(0)).toBe(tabTopMin);
-    expect(clampTabTop(1)).toBe(tabTopMax);
-    expect(clampTabTop(0.5)).toBe(0.5);
+    expect(clampTabTop(0, 2000)).toBe(tabTopMin);
+    expect(clampTabTop(1, 2000)).toBe(tabTopMax);
+    expect(clampTabTop(0.5, 2000)).toBe(0.5);
+  });
+
+  it("holds the tab under the navbar on a short window", () => {
+    expect(clampTabTop(0.08, 600)).toBeCloseTo(tabMinTopPx / 600);
+    expect(clampTabTop(0.5, 600)).toBe(0.5);
   });
 });
 
@@ -33,7 +39,8 @@ describe("tabPlacementAt", () => {
   });
 
   it("clamps a drop near the top or bottom", () => {
-    expect(tabPlacementAt({ x: 900, y: 0 }, viewport).top).toBe(tabTopMin);
+    // On an 800px window the navbar floor (112px) is above the 8% limit.
+    expect(tabPlacementAt({ x: 900, y: 0 }, viewport).top).toBeCloseTo(tabMinTopPx / 800);
     expect(tabPlacementAt({ x: 900, y: 800 }, viewport).top).toBe(tabTopMax);
   });
 });
@@ -42,21 +49,28 @@ describe("tabPlacementForKey", () => {
   const placement = { side: "right", top: 0.5 } as const;
 
   it("moves along the edge with Up and Down", () => {
-    expect(tabPlacementForKey(placement, "ArrowUp")?.top).toBeCloseTo(0.45);
-    expect(tabPlacementForKey(placement, "ArrowDown")?.top).toBeCloseTo(0.55);
-    expect(tabPlacementForKey({ side: "left", top: 0.92 }, "ArrowDown")).toEqual({
+    expect(tabPlacementForKey(placement, "ArrowUp", 800)?.top).toBeCloseTo(0.45);
+    expect(tabPlacementForKey(placement, "ArrowDown", 800)?.top).toBeCloseTo(0.55);
+    expect(tabPlacementForKey({ side: "left", top: 0.92 }, "ArrowDown", 800)).toEqual({
       side: "left",
       top: tabTopMax,
     });
   });
 
+  it("moves from where the tab is drawn when it is held under the navbar", () => {
+    // Saved at 0.08, drawn at 112 / 600 = 0.1867: the next ArrowDown moves it a full step.
+    const held = { side: "right", top: 0.08 } as const;
+    expect(tabPlacementForKey(held, "ArrowDown", 600)?.top).toBeCloseTo(112 / 600 + 0.05);
+    expect(tabPlacementForKey(held, "ArrowUp", 600)?.top).toBeCloseTo(112 / 600);
+  });
+
   it("switches edges with Left and Right, keeping the height", () => {
-    expect(tabPlacementForKey(placement, "ArrowLeft")).toEqual({ side: "left", top: 0.5 });
-    expect(tabPlacementForKey(placement, "ArrowRight")).toEqual(placement);
+    expect(tabPlacementForKey(placement, "ArrowLeft", 800)).toEqual({ side: "left", top: 0.5 });
+    expect(tabPlacementForKey(placement, "ArrowRight", 800)).toEqual(placement);
   });
 
   it("ignores other keys", () => {
-    expect(tabPlacementForKey(placement, "Enter")).toBeNull();
+    expect(tabPlacementForKey(placement, "Enter", 800)).toBeNull();
   });
 });
 

@@ -77,7 +77,7 @@ export function CopilotEdgeTab({
         copilot.restore();
       }}
       onKeyDown={(event) => {
-        const next = tabPlacementForKey(placement, event.key);
+        const next = tabPlacementForKey(placement, event.key, window.innerHeight);
         if (!next) return;
         event.preventDefault();
         onPlace(next);

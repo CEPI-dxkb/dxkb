@@ -6,6 +6,7 @@ import {
   Bot,
   History,
   Maximize2,
+  Minus,
   PanelRight,
   Settings2,
   SquarePen,
@@ -28,7 +29,8 @@ import { copilotPagePath } from "@/lib/copilot/paths";
 import { useCopilot } from "./copilot-provider";
 import { copilotName } from "@/lib/copilot/name";
 
-export type CopilotPanelVariant = "sheet" | "floating" | "page";
+// PROTOTYPE (DXKBCORE-342): "dock" is the pushed/docked prototype surface; remove with the prototype.
+export type CopilotPanelVariant = "sheet" | "floating" | "page" | "dock";
 
 function ChatOptionsMenu({ variant }: { variant: CopilotPanelVariant }) {
   const copilot = useCopilot();
@@ -70,8 +72,8 @@ function ChatOptionsMenu({ variant }: { variant: CopilotPanelVariant }) {
             </DropdownMenuRadioGroup>
           )}
         </DropdownMenuGroup>
-        {variant !== "page" && <DropdownMenuSeparator />}
-        {variant !== "page" && (
+        {variant !== "page" && variant !== "dock" && <DropdownMenuSeparator />}
+        {variant !== "page" && variant !== "dock" && (
           <DropdownMenuGroup>
             <DropdownMenuLabel>Show {copilotName} as</DropdownMenuLabel>
             <DropdownMenuItem
@@ -112,6 +114,7 @@ export function CopilotPanelHeader({
   newChatDisabled,
   onNewChat,
   onClose,
+  onMinimize,
   onPointerDown,
 }: {
   variant: CopilotPanelVariant;
@@ -122,6 +125,7 @@ export function CopilotPanelHeader({
   newChatDisabled: boolean;
   onNewChat: () => void;
   onClose?: () => void;
+  onMinimize?: () => void;
   onPointerDown?: (event: React.PointerEvent<HTMLElement>) => void;
 }) {
   return (
@@ -165,6 +169,17 @@ export function CopilotPanelHeader({
         <SquarePen aria-hidden />
       </Button>
       <ChatOptionsMenu variant={variant} />
+      {onMinimize && (
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          aria-label={`Minimize ${copilotName}`}
+          title="Minimize"
+          onClick={onMinimize}
+        >
+          <Minus aria-hidden />
+        </Button>
+      )}
       {onClose && (
         <Button
           variant="ghost"

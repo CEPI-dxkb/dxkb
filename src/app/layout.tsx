@@ -12,6 +12,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { CommandPalette } from "@/components/search/command-palette";
 import { CopilotProvider } from "@/components/copilot/copilot-provider";
 import { CopilotSurfaces } from "@/components/copilot/copilot-surfaces";
+import { AskClarkDockShell } from "@/components/copilot/prototype/dock-shell"; // PROTOTYPE (DXKBCORE-342)
 import { UiPreferencesProvider } from "@/lib/ui-preferences/provider";
 import { readUiPreferences } from "@/lib/ui-preferences/server";
 
@@ -55,7 +56,7 @@ export default async function RootLayout({
               <UiPreferencesProvider initialPreferences={initialPreferences}>
                 <CopilotProvider>
                   <TooltipProvider>
-                    {children}
+                    <AskClarkDockShell>{children}</AskClarkDockShell>
                     <CopilotSurfaces />
                   </TooltipProvider>
                   <CommandPalette />

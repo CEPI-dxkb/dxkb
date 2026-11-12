@@ -152,7 +152,13 @@ export function CopilotTranscript({
       : null;
 
   if (messages.length === 0 && !turn && !busyElsewhere && !sessionError) {
-    return <EmptyState onSuggestion={onSuggestion} />;
+    // Scrolls inside its own box: in a short window the suggestions would otherwise spill over the
+    // composer below.
+    return (
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+        <EmptyState onSuggestion={onSuggestion} />
+      </div>
+    );
   }
 
   return (

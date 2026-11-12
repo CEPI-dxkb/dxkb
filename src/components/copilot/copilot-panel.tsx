@@ -64,11 +64,13 @@ function useSessionTitle(sessionId: string | null): string {
 export function CopilotPanel({
   variant,
   onClose,
+  onMinimize,
   onHeaderPointerDown,
   titleId,
 }: {
   variant: CopilotPanelVariant;
   onClose?: () => void;
+  onMinimize?: () => void;
   onHeaderPointerDown?: (event: React.PointerEvent<HTMLElement>) => void;
   titleId?: string;
 }) {
@@ -196,6 +198,7 @@ export function CopilotPanel({
           setShowHistory(false);
         }}
         onClose={onClose}
+        onMinimize={onMinimize}
         onPointerDown={onHeaderPointerDown}
       />
 

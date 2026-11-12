@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import type { CopilotFloatingRect } from "@/lib/ui-preferences/definitions";
 import { useUiPreference } from "@/lib/ui-preferences/provider";
 import {
@@ -9,7 +9,9 @@ import {
   type ResizeDirection,
   type Viewport,
 } from "@/lib/copilot/floating-rect";
-import { CopilotPanel } from "./copilot-panel";
+import { playTuck } from "@/lib/copilot/tuck";
+import { cn } from "@/lib/utils";
+import { CopilotPanel, type CopilotPanelVariant } from "./copilot-panel";
 
 const handles: { direction: ResizeDirection; className: string }[] = [
   { direction: "n", className: "inset-x-3 top-0 h-1.5 cursor-ns-resize" },
@@ -36,7 +38,34 @@ type Gesture =
       start: CopilotFloatingRect;
     };
 
-export function CopilotFloatingWindow({ onClose }: { onClose: () => void }) {
+/** The edge tab the window belongs to: which window edge, and how far down it (0 to 1). */
+export interface CopilotFloatingEdge {
+  side: "left" | "right";
+  top: number;
+}
+
+// The physical edge a handle sits on becomes the opposite one when the window hangs off the left.
+const mirroredDirection = (direction: ResizeDirection): ResizeDirection =>
+  direction.replace(/[ew]/, (edge) => (edge === "e" ? "w" : "e")) as ResizeDirection;
+
+// PROTOTYPE (DXKBCORE-342): `minimized` hides the window without unmounting it (state and scroll
+// survive), `onMinimize` shows the header's Minimize button, `panelVariant` "dock" hides the surface
+// menu, and `edge` hangs the window off the tab's side and tucks it into the tab on minimize.
+export function CopilotFloatingWindow({
+  onClose,
+  onMinimize,
+  minimized = false,
+  panelVariant = "floating",
+  edge,
+}: {
+  onClose: () => void;
+  onMinimize?: () => void;
+  minimized?: boolean;
+  panelVariant?: CopilotPanelVariant;
+  edge?: CopilotFloatingEdge;
+}) {
+  // On the left, the saved `right` offset is measured from the left edge instead.
+  const mirrored = edge?.side === "left";
   const titleId = useId();
   const [saved, setSaved] = useUiPreference("copilotFloatingRect");
   const [rect, setRect] = useState<CopilotFloatingRect>(saved);
@@ -59,6 +88,26 @@ export function CopilotFloatingWindow({ onClose }: { onClose: () => void }) {
   useEffect(() => {
     windowRef.current?.querySelector<HTMLElement>("textarea")?.focus();
   }, []);
+
+  // Minimize and restore tuck the window into, and out of, the edge tab.
+  const wasMinimized = useRef(minimized);
+  const tuck = useRef<Animation | null>(null);
+  useLayoutEffect(() => {
+    if (wasMinimized.current === minimized) return;
+    wasMinimized.current = minimized;
+    const element = windowRef.current;
+    if (!element || !edge) return;
+    tuck.current?.cancel();
+    const bounds = element.getBoundingClientRect();
+    tuck.current = playTuck(
+      element,
+      {
+        x: (edge.side === "right" ? window.innerWidth - 16 : 16) - bounds.left,
+        y: edge.top * window.innerHeight - bounds.top,
+      },
+      minimized ? "minimize" : "restore",
+    );
+  }, [minimized, edge]);
 
   // React delivers portal events (the options menu) to React parents too, so check the real DOM.
   const isInside = (target: EventTarget) =>
@@ -96,12 +145,18 @@ export function CopilotFloatingWindow({ onClose }: { onClose: () => void }) {
         ? clampFloatingRect(
             {
               ...current.start,
-              right: current.start.right - dx,
+              right: current.start.right - (mirrored ? -dx : dx),
               bottom: current.start.bottom - dy,
             },
             viewport(),
           )
-        : resizeFloatingRect(current.start, current.direction, dx, dy, viewport());
+        : resizeFloatingRect(
+            current.start,
+            mirrored ? mirroredDirection(current.direction) : current.direction,
+            mirrored ? -dx : dx,
+            dy,
+            viewport(),
+          );
     gestureRect.current = next;
     setRect(next);
   };
@@ -121,7 +176,12 @@ export function CopilotFloatingWindow({ onClose }: { onClose: () => void }) {
       role="dialog"
       aria-modal="false"
       aria-labelledby={titleId}
-      className="fixed right-(--copilot-right) bottom-(--copilot-bottom) z-50 flex h-(--copilot-height) w-(--copilot-width) flex-col overflow-hidden rounded-lg border bg-background shadow-2xl"
+      inert={minimized}
+      className={cn(
+        "fixed bottom-(--copilot-bottom) z-50 flex h-(--copilot-height) w-(--copilot-width) flex-col overflow-hidden rounded-lg border bg-background shadow-2xl",
+        mirrored ? "left-(--copilot-right)" : "right-(--copilot-right)",
+        minimized && "pointer-events-none invisible",
+      )}
       style={
         {
           "--copilot-right": `${String(rect.right)}px`,
@@ -155,9 +215,10 @@ export function CopilotFloatingWindow({ onClose }: { onClose: () => void }) {
         />
       ))}
       <CopilotPanel
-        variant="floating"
+        variant={panelVariant}
         titleId={titleId}
         onClose={onClose}
+        onMinimize={onMinimize}
         onHeaderPointerDown={(event) => {
           begin({ kind: "move" }, event);
         }}

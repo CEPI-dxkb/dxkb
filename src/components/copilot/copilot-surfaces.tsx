@@ -5,6 +5,7 @@ import { useId } from "react";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { Spinner } from "@/components/ui/spinner";
 import { useCopilot } from "./copilot-provider";
+import { useAskClarkVariant } from "./prototype/dock-state"; // PROTOTYPE (DXKBCORE-342)
 
 function PanelLoading() {
   return (
@@ -50,7 +51,9 @@ function CopilotSheet({ open, onClose }: { open: boolean; onClose: () => void })
 
 export function CopilotSurfaces() {
   const { available, openSurface, close } = useCopilot();
-  if (!available) return null;
+  // PROTOTYPE (DXKBCORE-342): a variant draws its own dock.
+  const prototypeVariant = useAskClarkVariant();
+  if (!available || prototypeVariant) return null;
   return (
     <>
       <CopilotSheet open={openSurface === "sheet"} onClose={close} />

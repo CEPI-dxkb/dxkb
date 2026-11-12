@@ -105,3 +105,59 @@ export function useAskClarkVariant(): VariantKey | null {
   const variant = useSyncExternalStore(subscribeVariant, readVariant, () => null);
   return process.env.NODE_ENV === "production" ? null : variant;
 }
+
+// The header layout under test (`?header=`), kept the same way. "0" is today's header, with no
+// button for the full page.
+export const headerKeys = ["0", "1", "2", "3"] as const;
+export type HeaderKey = (typeof headerKeys)[number];
+
+export const headerNames: Record<HeaderKey, string> = {
+  "0": "Today",
+  "1": "Two rows",
+  "2": "Regrouped",
+  "3": "Layout menu",
+};
+
+let currentHeader: HeaderKey | undefined;
+const headerListeners = new Set<() => void>();
+
+function isHeaderKey(value: string | null): value is HeaderKey {
+  return headerKeys.some((key) => key === value);
+}
+
+function readHeader(): HeaderKey {
+  if (currentHeader === undefined) {
+    const param = new URLSearchParams(window.location.search).get("header");
+    currentHeader = isHeaderKey(param) ? param : "3";
+  }
+  return currentHeader;
+}
+
+function subscribeHeader(onChange: () => void): () => void {
+  headerListeners.add(onChange);
+  return () => {
+    headerListeners.delete(onChange);
+  };
+}
+
+export function setAskClarkHeader(next: HeaderKey): void {
+  currentHeader = next;
+  replaceQuery((params) => {
+    params.set("header", next);
+  });
+  headerListeners.forEach((listener) => {
+    listener();
+  });
+}
+
+/** The key behind the switcher; the panel header uses {@link useAskClarkHeader}. */
+export function useAskClarkHeaderKey(): HeaderKey {
+  return useSyncExternalStore(subscribeHeader, readHeader, () => "3");
+}
+
+/** "0" (today's header) unless a prototype variant is active, and always in production. */
+export function useAskClarkHeader(): HeaderKey {
+  const dock = useAskClarkDock();
+  const key = useAskClarkHeaderKey();
+  return dock ? key : "0";
+}

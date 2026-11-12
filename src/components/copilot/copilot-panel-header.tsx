@@ -1,109 +1,14 @@
 "use client";
 
-import {
-  AppWindow,
-  ArrowLeft,
-  Bot,
-  History,
-  Maximize2,
-  Minus,
-  PanelRight,
-  Settings2,
-  SquarePen,
-  X,
-} from "lucide-react";
-import Link from "next/link";
+import { ArrowLeft, Bot, History, Minus, SquarePen, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { copilotPagePath } from "@/lib/copilot/paths";
-import { useCopilot } from "./copilot-provider";
 import { copilotName } from "@/lib/copilot/name";
+import { ChatOptionsMenu } from "./copilot-options-menu";
+import { useAskClarkDock, useAskClarkHeader } from "./prototype/dock-state"; // PROTOTYPE (DXKBCORE-342)
+import { PrototypeHeader } from "./prototype/header-variants"; // PROTOTYPE (DXKBCORE-342)
 
 // PROTOTYPE (DXKBCORE-342): "dock" is the pushed/docked prototype surface; remove with the prototype.
 export type CopilotPanelVariant = "sheet" | "floating" | "page" | "dock";
-
-function ChatOptionsMenu({ variant }: { variant: CopilotPanelVariant }) {
-  const copilot = useCopilot();
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger
-        render={
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            aria-label={`${copilotName} options`}
-            title="Options"
-          >
-            <Settings2 aria-hidden />
-          </Button>
-        }
-      />
-      <DropdownMenuContent align="end" className="w-64">
-        <DropdownMenuGroup>
-          <DropdownMenuLabel>Model</DropdownMenuLabel>
-          {copilot.models.length === 0 ? (
-            <DropdownMenuItem disabled>
-              {copilot.modelsLoading
-                ? "Loading models…"
-                : "No models available"}
-            </DropdownMenuItem>
-          ) : (
-            <DropdownMenuRadioGroup
-              value={copilot.model ?? ""}
-              onValueChange={(value: string) => {
-                copilot.setModel(value);
-              }}
-            >
-              {copilot.models.map((model) => (
-                <DropdownMenuRadioItem key={model.model} value={model.model}>
-                  <span className="truncate">{model.model}</span>
-                </DropdownMenuRadioItem>
-              ))}
-            </DropdownMenuRadioGroup>
-          )}
-        </DropdownMenuGroup>
-        {variant !== "page" && variant !== "dock" && <DropdownMenuSeparator />}
-        {variant !== "page" && variant !== "dock" && (
-          <DropdownMenuGroup>
-            <DropdownMenuLabel>Show {copilotName} as</DropdownMenuLabel>
-            <DropdownMenuItem
-              disabled={variant === "sheet"}
-              onClick={() => {
-                copilot.open("sheet");
-              }}
-            >
-              <PanelRight aria-hidden />
-              Side panel
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              disabled={variant === "floating"}
-              onClick={() => {
-                copilot.open("floating");
-              }}
-            >
-              <AppWindow aria-hidden />
-              Floating window
-            </DropdownMenuItem>
-            <DropdownMenuItem render={<Link href={copilotPagePath} />}>
-              <Maximize2 aria-hidden />
-              Full page
-            </DropdownMenuItem>
-          </DropdownMenuGroup>
-        )}
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
-}
 
 export function CopilotPanelHeader({
   variant,
@@ -128,6 +33,25 @@ export function CopilotPanelHeader({
   onMinimize?: () => void;
   onPointerDown?: (event: React.PointerEvent<HTMLElement>) => void;
 }) {
+  const dock = useAskClarkDock();
+  const layout = useAskClarkHeader();
+  if (dock && layout !== "0" && variant !== "page") {
+    return (
+      <PrototypeHeader
+        layout={layout}
+        variant={variant}
+        title={title}
+        titleId={titleId}
+        showHistory={showHistory}
+        onToggleHistory={onToggleHistory}
+        newChatDisabled={newChatDisabled}
+        onNewChat={onNewChat}
+        onClose={onClose}
+        onMinimize={onMinimize}
+        onPointerDown={onPointerDown}
+      />
+    );
+  }
   return (
     <header
       className="flex shrink-0 items-center gap-1 border-b px-2 py-1.5"

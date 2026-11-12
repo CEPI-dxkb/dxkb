@@ -1,35 +1,43 @@
-import { CircleOff, Download, Filter } from "lucide-react";
-import {
-  Fragment,
-  useEffect,
-  useRef,
-  useState,
-  type CSSProperties,
-} from "react";
+import { ChevronDown, Download } from "lucide-react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
-import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { buttonVariants } from "@/components/ui/button-variants";
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
 import { Label } from "@/components/ui/label";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
+  buildTreeRows,
   choiceKey,
   filterViralTrees,
   flattenViralTrees,
-  isUnavailable,
   pruneViralFilters,
-  segmentColor,
-  segmentRows,
+  segmentLabel,
   sortedSegments,
   viewerLabel,
   viralFacetCounts,
+  type NextstrainInventory,
   type PhyloViewer,
-  type SegmentRow,
+  type TreeRow,
+  type ViewerSlot,
   type ViralFilters,
   type ViralTreeChoice,
 } from "@/lib/phylogeny/viral-facets";
@@ -38,13 +46,38 @@ import {
   type PhyloFamilyBlock,
 } from "@/lib/services/organisms/phylogeny";
 
-const viewerEntries = Object.entries(viewerLabel) as [PhyloViewer, string][];
+export type { NextstrainInventory };
+
 const viewers = Object.keys(viewerLabel) as PhyloViewer[];
 
-export type NextstrainInventory =
-  | { status: "pending" }
-  | { status: "error"; message: string }
-  | { status: "ready"; ids: ReadonlySet<string> };
+/** Label and tooltip for an Auspice dataset that cannot be opened yet. */
+const pendingSlot: Record<
+  Exclude<ViewerSlot["state"], "open" | "none">,
+  { label: string; title: string }
+> = {
+  checking: {
+    label: "Checking Availability",
+    title: "Auspice dataset availability has not been confirmed",
+  },
+  unconfirmed: {
+    label: "Availability Unconfirmed",
+    title: "Auspice dataset availability could not be confirmed",
+  },
+  missing: {
+    label: "Not Available",
+    title: "Auspice dataset is not available",
+  },
+};
+
+function isViewer(value: unknown): value is PhyloViewer {
+  return value === "archaeopteryx" || value === "nextstrain";
+}
+
+interface FilterProps {
+  trees: ViralTreeChoice[];
+  filters: ViralFilters;
+  update: (next: ViralFilters) => void;
+}
 
 export function ViralTreePicker({
   block,
@@ -64,17 +97,16 @@ export function ViralTreePicker({
     viewer: null,
     segments: new Set(),
   });
-  const strains = [
-    ...new Map(trees.map((tree) => [tree.groupKey, tree.groupTitle])).entries(),
-  ];
-  const availableViewers = [...new Set(trees.map((tree) => tree.viewer))];
-  const segments = sortedSegments(trees);
-  const visible = filterViralTrees(trees, filters);
-  const counts = viralFacetCounts(trees, filters);
-
   const update = (next: ViralFilters) => {
     setFilters(pruneViralFilters(trees, next));
   };
+  const rows = buildTreeRows(
+    filterViralTrees(trees, filters),
+    nextstrainInventory,
+  );
+  const total = buildTreeRows(trees, nextstrainInventory).length;
+  // A viewer filter drops the other viewer's column instead of leaving it blank.
+  const shownViewers = filters.viewer ? [filters.viewer] : viewers;
 
   useEffect(() => {
     if (!focusChoiceKey) return;
@@ -90,367 +122,438 @@ export function ViralTreePicker({
   return (
     <div
       ref={containerRef}
-      className="flex h-full min-h-0 flex-col overflow-hidden bg-muted/15"
+      className="flex h-full min-h-0 flex-col overflow-hidden bg-background"
     >
-      <div className="border-b bg-background px-5 py-4">
-        <h2 className="text-lg font-semibold">Available phylogenetic trees</h2>
-        <p className="text-sm text-muted-foreground">
-          Choose a strain, viewer, and genome segment.
-        </p>
-      </div>
-      {/* lg: each column scrolls independently so Filters stay pinned. */}
-      <div className="grid min-h-0 flex-1 grid-cols-1 overflow-auto lg:grid-cols-[260px_1fr] lg:overflow-hidden">
-        <aside className="border-b bg-background p-4 lg:min-h-0 lg:overflow-y-auto lg:border-r lg:border-b-0">
-          <Collapsible defaultOpen>
-            <CollapsibleTrigger className="flex w-full items-center justify-between rounded-md px-1 py-2 text-sm font-semibold">
-              <span className="flex items-center gap-2">
-                <Filter className="size-4" /> Filters
-              </span>
-              <Badge variant="secondary">{visible.length}</Badge>
-            </CollapsibleTrigger>
-            <CollapsibleContent className="space-y-5 pt-4">
-              <fieldset>
-                <legend className="mb-3 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-                  Strain
-                </legend>
-                {/* grid-cols-1 pins the column to the sidebar width; otherwise the
-                    auto column sizes to the longest strain name. */}
-                <RadioGroup
-                  className="grid-cols-1"
-                  value={filters.strain ?? "all"}
-                  onValueChange={(value: unknown) => {
-                    if (typeof value === "string")
-                      update({
-                        ...filters,
-                        strain: value === "all" ? null : value,
-                      });
-                  }}
-                >
-                  <Label>
-                    <RadioGroupItem value="all" />
-                    All strains{" "}
-                    <span className="ml-auto text-xs text-muted-foreground">
-                      {counts.allStrains}
-                    </span>
-                  </Label>
-                  {/* Never disabled: leaving strain unconstrained means picking a
-                      viewer cannot lock the user out of a strain. */}
-                  {strains.map(([key, title]) => (
-                    <Label key={key}>
-                      <RadioGroupItem value={key} />
-                      <span className="min-w-0 truncate" title={title}>
-                        {title}
-                      </span>
-                      <span className="ml-auto shrink-0 text-xs text-muted-foreground">
-                        {counts.strain(key)}
-                      </span>
-                    </Label>
-                  ))}
-                </RadioGroup>
-              </fieldset>
-              {availableViewers.length > 1 && (
-                <fieldset>
-                  <legend className="mb-3 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-                    Viewer
-                  </legend>
-                  <RadioGroup
-                    value={filters.viewer ?? "all"}
-                    onValueChange={(value: unknown) => {
-                      if (
-                        value === "all" ||
-                        value === "archaeopteryx" ||
-                        value === "nextstrain"
-                      ) {
-                        update({
-                          ...filters,
-                          viewer: value === "all" ? null : value,
-                        });
-                      }
-                    }}
-                  >
-                    <Label>
-                      <RadioGroupItem value="all" />
-                      All viewers{" "}
-                      <span className="ml-auto text-xs text-muted-foreground">
-                        {counts.allViewers}
-                      </span>
-                    </Label>
-                    {viewerEntries.map(([value, title]) => {
-                      const count = counts.viewer(value);
-                      return (
-                        <Label key={value}>
-                          <RadioGroupItem
-                            value={value}
-                            disabled={count === 0}
-                          />
-                          {title}
-                          <span className="ml-auto text-xs text-muted-foreground">
-                            {count}
-                          </span>
-                        </Label>
-                      );
-                    })}
-                  </RadioGroup>
-                </fieldset>
-              )}
-              {segments.length > 1 && (
-                <fieldset>
-                  <legend className="mb-3 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-                    Segment
-                  </legend>
-                  <div className="space-y-2">
-                    {segments.map((segment) => {
-                      const count = counts.segment(segment);
-                      return (
-                        <Label key={segment}>
-                          <Checkbox
-                            checked={filters.segments.has(segment)}
-                            disabled={count === 0}
-                            onCheckedChange={(checked) => {
-                              const next = new Set(filters.segments);
-                              if (checked) next.add(segment);
-                              else next.delete(segment);
-                              update({ ...filters, segments: next });
-                            }}
-                          />
-                          {segment}
-                          <span className="ml-auto text-xs text-muted-foreground">
-                            {count}
-                          </span>
-                        </Label>
-                      );
-                    })}
-                  </div>
-                </fieldset>
-              )}
-            </CollapsibleContent>
-          </Collapsible>
-        </aside>
-        <div
-          data-slot="tree-results-scroll"
-          className="lg:min-h-0 lg:overflow-y-auto"
-        >
+      <h2 className="sr-only">Available phylogenetic trees</h2>
+      {/* Below lg the sidebar would stack above the table and push it off
+          screen, so a one-line filter bar takes its place. */}
+      <div className="flex min-h-0 flex-1 flex-col lg:grid lg:grid-cols-[260px_1fr]">
+        <SidebarFilters trees={trees} filters={filters} update={update} />
+        <div className="flex min-h-0 flex-1 flex-col">
+          <BarFilters
+            trees={trees}
+            filters={filters}
+            update={update}
+            shown={rows.length}
+            total={total}
+          />
           {nextstrainInventory.status !== "ready" && (
-            <div
-              className="border-b bg-background px-5 py-3 text-sm text-muted-foreground"
+            <p
               role="status"
+              className="border-b px-4 py-2 text-sm text-muted-foreground"
             >
               {nextstrainInventory.status === "pending"
                 ? "Checking Auspice dataset availability..."
                 : `Auspice dataset availability could not be checked: ${nextstrainInventory.message}`}
-            </div>
+            </p>
           )}
-          <TreeResults
-            visible={visible}
-            nextstrainInventory={nextstrainInventory}
-            onOpen={onOpen}
-          />
+          <div
+            data-slot="tree-results-scroll"
+            className="min-h-0 flex-1 overflow-auto"
+          >
+            {rows.length === 0 ? (
+              <p className="grid min-h-64 place-items-center p-5 text-sm text-muted-foreground">
+                No trees found for the selected filters.
+              </p>
+            ) : (
+              <TreeTable rows={rows} viewers={shownViewers} onOpen={onOpen} />
+            )}
+          </div>
         </div>
       </div>
     </div>
   );
 }
 
-function TreeResults({
-  visible,
-  nextstrainInventory,
-  onOpen,
-}: {
-  visible: ViralTreeChoice[];
-  nextstrainInventory: NextstrainInventory;
-  onOpen: (choice: ViralTreeChoice) => void;
-}) {
-  const rows = segmentRows(visible);
-  const multiStrain = new Set(rows.map((row) => row.strainKey)).size > 1;
-
-  if (rows.length === 0) {
-    return (
-      <div className="grid min-h-64 place-items-center p-5 text-center text-sm text-muted-foreground">
-        No trees found for the selected filters.
-      </div>
-    );
-  }
-
+function Count({ value }: { value: number }) {
   return (
-    <div className="pb-6">
-      {rows.map((row, index) => {
-        const newStrain =
-          multiStrain &&
-          (index === 0 || rows[index - 1]?.strainKey !== row.strainKey);
-        const primary = row.choices[0];
-        const metadata = row.choices
-          .map((choice) => choice.ref.metadata)
-          .find(Boolean);
+    <span className="ml-auto shrink-0 text-xs text-muted-foreground tabular-nums">
+      {value}
+    </span>
+  );
+}
 
-        return (
-          <Fragment
-            key={`${row.strainKey}:${row.segment ?? "none"}:${choiceKey(primary)}`}
-          >
-            {newStrain && (
-              <StrainRule
-                title={row.strainTitle}
-                count={
-                  visible.filter((tree) => tree.groupKey === row.strainKey)
-                    .length
-                }
-                first={index === 0}
-              />
-            )}
-            <div
-              data-slot="tree-row"
-              className="group grid grid-cols-[3.5rem_1fr] items-center gap-y-2 border-b border-border/50 px-5 py-3 transition-colors hover:bg-muted/25 lg:grid-cols-[3.5rem_1fr_auto] lg:gap-y-0 lg:py-0"
-              style={
-                { "--seg": segmentColor(row.segment) } as CSSProperties
-              }
-            >
-              <span className="relative py-1 font-mono text-xs font-semibold text-(--seg) lg:py-3.5">
-                <span
-                  aria-hidden
-                  className="absolute top-1/2 -left-5 h-full w-0.75 -translate-y-1/2 rounded-r-sm bg-(--seg) opacity-0 transition-opacity group-hover:opacity-100"
-                />
-                {row.segment ?? "—"}
-              </span>
+function useFacets(trees: ViralTreeChoice[], filters: ViralFilters) {
+  return {
+    strains: [
+      ...new Map(trees.map((tree) => [tree.groupKey, tree.groupTitle])),
+    ],
+    hasViewerChoice: new Set(trees.map((tree) => tree.viewer)).size > 1,
+    segments: sortedSegments(trees),
+    counts: viralFacetCounts(trees, filters),
+  };
+}
 
-              <span className="min-w-0 py-1 pr-6 lg:py-3.5">
-                <span className="block truncate text-sm font-medium">
-                  {primary.ref.name}
-                </span>
-                {primary.ref.definition && (
-                  <span className="mt-0.5 block truncate text-xs text-muted-foreground">
-                    {primary.ref.definition}
-                  </span>
-                )}
-              </span>
+function StrainOptions({ trees, filters, update }: FilterProps) {
+  const { strains, counts } = useFacets(trees, filters);
+  return (
+    // grid-cols-1 pins the column to its container; otherwise the auto column
+    // sizes to the longest strain name.
+    <RadioGroup
+      className="grid-cols-1"
+      value={filters.strain ?? "all"}
+      onValueChange={(value: unknown) => {
+        if (typeof value === "string")
+          update({ ...filters, strain: value === "all" ? null : value });
+      }}
+    >
+      <Label>
+        <RadioGroupItem value="all" />
+        All strains
+        <Count value={counts.allStrains} />
+      </Label>
+      {/* Never disabled: leaving strain unconstrained means picking a viewer
+          cannot lock the user out of a strain. */}
+      {strains.map(([key, title]) => (
+        <Label key={key}>
+          <RadioGroupItem value={key} />
+          <span className="min-w-0 truncate" title={title}>
+            {title}
+          </span>
+          <Count value={counts.strain(key)} />
+        </Label>
+      ))}
+    </RadioGroup>
+  );
+}
 
-              <span className="col-span-2 flex items-center gap-2 py-2 lg:col-span-1">
-                {viewers.map((viewer) => (
-                  <PeerButton
-                    key={viewer}
-                    viewer={viewer}
-                    row={row}
-                    nextstrainInventory={nextstrainInventory}
-                    onOpen={onOpen}
-                  />
-                ))}
-                <span aria-hidden className="mx-0.5 h-5 w-px bg-border" />
-                <MetadataButton
-                  url={metadata ? resolvePhylogenyUrl(metadata) : null}
-                  name={primary.ref.name}
-                />
-              </span>
-            </div>
-          </Fragment>
-        );
-      })}
+function ViewerOptions({ trees, filters, update }: FilterProps) {
+  const { counts } = useFacets(trees, filters);
+  return (
+    <RadioGroup
+      value={filters.viewer ?? "all"}
+      onValueChange={(value: unknown) => {
+        if (value === "all" || isViewer(value))
+          update({ ...filters, viewer: value === "all" ? null : value });
+      }}
+    >
+      <Label>
+        <RadioGroupItem value="all" />
+        All viewers
+        <Count value={counts.allViewers} />
+      </Label>
+      {viewers.map((viewer) => (
+        <Label key={viewer}>
+          <RadioGroupItem
+            value={viewer}
+            disabled={counts.viewer(viewer) === 0}
+          />
+          {viewerLabel[viewer]}
+          <Count value={counts.viewer(viewer)} />
+        </Label>
+      ))}
+    </RadioGroup>
+  );
+}
+
+function SegmentOptions({ trees, filters, update }: FilterProps) {
+  const { segments, counts } = useFacets(trees, filters);
+  return (
+    <div className="space-y-2">
+      {segments.map((segment) => (
+        <Label key={segment}>
+          <Checkbox
+            checked={filters.segments.has(segment)}
+            disabled={counts.segment(segment) === 0}
+            onCheckedChange={(checked) => {
+              const next = new Set(filters.segments);
+              if (checked) next.add(segment);
+              else next.delete(segment);
+              update({ ...filters, segments: next });
+            }}
+          />
+          {segmentLabel(segment)}
+          <Count value={counts.segment(segment)} />
+        </Label>
+      ))}
     </div>
   );
 }
 
-function StrainRule({
-  title,
-  count,
-  first,
+function SidebarFilters(props: FilterProps) {
+  const { hasViewerChoice, segments } = useFacets(props.trees, props.filters);
+  return (
+    <aside className="hidden space-y-5 border-r p-4 lg:block lg:min-h-0 lg:overflow-y-auto">
+      <h3 className="text-sm font-semibold">Filters</h3>
+      <fieldset>
+        <legend className="mb-2 text-sm font-medium text-muted-foreground">
+          Strain
+        </legend>
+        <StrainOptions {...props} />
+      </fieldset>
+      {hasViewerChoice && (
+        <fieldset>
+          <legend className="mb-2 text-sm font-medium text-muted-foreground">
+            Viewer
+          </legend>
+          <ViewerOptions {...props} />
+        </fieldset>
+      )}
+      {segments.length > 1 && (
+        <fieldset>
+          <legend className="mb-2 text-sm font-medium text-muted-foreground">
+            Segment
+          </legend>
+          <SegmentOptions {...props} />
+        </fieldset>
+      )}
+    </aside>
+  );
+}
+
+/** Small-screen filter: an outline button showing the choice, opening its list. */
+function BarFilter({
+  label,
+  summary,
+  onClear,
+  children,
 }: {
-  title: string;
-  count: number;
-  first: boolean;
+  label: string;
+  summary: string;
+  onClear: (() => void) | null;
+  children: ReactNode;
 }) {
+  return (
+    <Popover>
+      {/* The visible "Strain All" is the accessible name; an aria-label that
+          differs from it fails axe's label-content-name-mismatch. */}
+      <PopoverTrigger render={<Button variant="outline" size="sm" />}>
+        <span className="text-muted-foreground">{label}</span>{" "}
+        <span className="max-w-40 truncate">{summary}</span>
+        <ChevronDown aria-hidden className="text-muted-foreground" />
+      </PopoverTrigger>
+      <PopoverContent align="start" className="w-64">
+        <div className="flex items-center justify-between">
+          <span className="text-sm font-medium text-muted-foreground">
+            {label}
+          </span>
+          {onClear && (
+            <Button variant="ghost" size="xs" onClick={onClear}>
+              Clear
+            </Button>
+          )}
+        </div>
+        {children}
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+function BarFilters({
+  shown,
+  total,
+  ...props
+}: FilterProps & { shown: number; total: number }) {
+  const { filters, update } = props;
+  const { strains, hasViewerChoice, segments } = useFacets(
+    props.trees,
+    filters,
+  );
+  const chosen = segments.filter((segment) => filters.segments.has(segment));
+  const chosenLabels = chosen.map(segmentLabel);
   return (
     <div
-      className={`flex items-center gap-3 px-5 pb-2 ${first ? "pt-4" : "pt-8"}`}
+      role="toolbar"
+      aria-label="Filters"
+      className="flex shrink-0 flex-wrap items-center gap-2 border-b px-4 py-2 lg:hidden"
     >
-      <span className="text-2xs font-semibold tracking-[0.18em] text-muted-foreground uppercase">
-        {title}
-      </span>
-      <span className="h-px flex-1 bg-border" />
-      <span className="font-mono text-2xs text-muted-foreground/70">
-        {count} trees
+      <BarFilter
+        label="Strain"
+        summary={strains.find(([key]) => key === filters.strain)?.[1] ?? "All"}
+        onClear={
+          filters.strain
+            ? () => {
+                update({ ...filters, strain: null });
+              }
+            : null
+        }
+      >
+        <StrainOptions {...props} />
+      </BarFilter>
+      {hasViewerChoice && (
+        <BarFilter
+          label="Viewer"
+          summary={filters.viewer ? viewerLabel[filters.viewer] : "All"}
+          onClear={
+            filters.viewer
+              ? () => {
+                  update({ ...filters, viewer: null });
+                }
+              : null
+          }
+        >
+          <ViewerOptions {...props} />
+        </BarFilter>
+      )}
+      {segments.length > 1 && (
+        <BarFilter
+          label="Segment"
+          summary={
+            chosen.length === 0
+              ? "Any"
+              : chosen.length <= 2
+                ? chosenLabels.join(", ")
+                : `${chosenLabels.slice(0, 2).join(", ")} +${String(chosen.length - 2)}`
+          }
+          onClear={
+            chosen.length > 0
+              ? () => {
+                  update({ ...filters, segments: new Set() });
+                }
+              : null
+          }
+        >
+          <SegmentOptions {...props} />
+        </BarFilter>
+      )}
+      <span className="ml-auto text-sm text-muted-foreground">
+        {shown} of {total} trees
       </span>
     </div>
   );
 }
 
-function PeerButton({
-  viewer,
-  row,
-  nextstrainInventory,
+function TreeTable({
+  rows,
+  viewers: shownViewers,
   onOpen,
 }: {
-  viewer: PhyloViewer;
-  row: SegmentRow;
-  nextstrainInventory: NextstrainInventory;
+  rows: TreeRow[];
+  viewers: PhyloViewer[];
   onOpen: (choice: ViralTreeChoice) => void;
 }) {
-  const choice = row.choices.find((candidate) => candidate.viewer === viewer);
-  let placeholder: { title: string; label: string } | null = null;
+  const hasSegments = rows.some((row) => row.segment !== null);
+  return (
+    <Table disableScrollWrapper>
+      <TableHeader variant="muted" className="sticky top-0 z-10">
+        <TableRow variant="static">
+          {/* h-8.5 matches a body row: an h-6 button, py-1, and its line box. */}
+          <TableHead variant="divider-strong" className="h-8.5 px-4">
+            Name
+          </TableHead>
+          <TableHead variant="divider-strong" className="h-8.5 px-4">
+            Strain
+          </TableHead>
+          {hasSegments && (
+            <TableHead variant="divider-strong" className="h-8.5 w-24 px-4">
+              Segment
+            </TableHead>
+          )}
+          {shownViewers.map((viewer) => (
+            <TableHead
+              key={viewer}
+              variant="divider-strong"
+              className="h-8.5 w-36 px-4"
+            >
+              {viewerLabel[viewer]}
+            </TableHead>
+          ))}
+          <TableHead className="h-8.5 w-24 px-4 text-center">
+            Metadata
+          </TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {rows.map((row) => {
+          const metadataUrl = row.metadata
+            ? resolvePhylogenyUrl(row.metadata)
+            : null;
+          return (
+            <TableRow key={row.key} data-slot="tree-row" className="h-8">
+              <TableCell variant="divider-strong" className="px-4 py-1">
+                <span className="font-medium">{row.name}</span>
+              </TableCell>
+              <TableCell variant="divider-strong" className="px-4 py-1">
+                {row.strainTitle}
+              </TableCell>
+              {hasSegments && (
+                <TableCell variant="divider-strong" className="px-4 py-1">
+                  <span className="font-mono text-xs">
+                    {row.segment ? segmentLabel(row.segment) : "—"}
+                  </span>
+                </TableCell>
+              )}
+              {shownViewers.map((viewer) => (
+                <TableCell
+                  key={viewer}
+                  variant="divider-strong"
+                  className="px-4 py-1"
+                >
+                  <ViewerCell
+                    slot={row.slots[viewer]}
+                    viewer={viewer}
+                    onOpen={onOpen}
+                  />
+                </TableCell>
+              ))}
+              <TableCell className="px-4 py-1 text-center">
+                {metadataUrl && (
+                  <MetadataLink url={metadataUrl} name={row.name} />
+                )}
+              </TableCell>
+            </TableRow>
+          );
+        })}
+      </TableBody>
+    </Table>
+  );
+}
 
-  if (choice && viewer === "nextstrain") {
-    if (nextstrainInventory.status === "pending") {
-      placeholder = {
-        title: "Auspice dataset availability has not been confirmed",
-        label: "Checking Availability",
-      };
-    } else if (nextstrainInventory.status === "error") {
-      placeholder = {
-        title: "Auspice dataset availability could not be confirmed",
-        label: "Availability Unconfirmed",
-      };
-    } else if (isUnavailable(choice, nextstrainInventory.ids)) {
-      placeholder = {
-        title: "Auspice dataset is not available",
-        label: "Not Available",
-      };
-    }
-  }
-
-  if (!choice || placeholder) {
+function ViewerCell({
+  slot,
+  viewer,
+  onOpen,
+}: {
+  slot: ViewerSlot;
+  viewer: PhyloViewer;
+  onOpen: (choice: ViralTreeChoice) => void;
+}) {
+  if (slot.state === "none") return null;
+  if (slot.state !== "open") {
+    const { label, title } = pendingSlot[slot.state];
     return (
       <span
-        className="grid h-7 flex-1 cursor-not-allowed place-items-center rounded-md border border-dashed border-border/60 text-2xs text-muted-foreground/45 lg:w-30 lg:flex-initial"
-        title={
-          placeholder?.title ??
-          `No ${viewerLabel[viewer]} tree for this segment`
-        }
+        title={title}
+        className="cursor-not-allowed text-xs text-muted-foreground"
       >
-        {placeholder?.label ?? "Not Available"}
+        {label}
       </span>
     );
   }
-
+  const { choice } = slot;
   return (
-    <button
-      type="button"
+    <Button
+      variant="outline"
+      size="xs"
+      className="w-28"
       data-choice-key={choiceKey(choice)}
+      aria-label={`Open ${choice.ref.name} in ${viewerLabel[viewer]}`}
       onClick={() => {
         onOpen(choice);
       }}
-      aria-label={`Open ${choice.ref.name} in ${viewerLabel[viewer]}`}
-      className="h-7 flex-1 rounded-md border border-border bg-background text-xs font-medium transition-colors hover:border-(--seg)/55 hover:bg-(--seg)/14 focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none lg:w-30 lg:flex-initial"
     >
-      {viewerLabel[viewer]}
-    </button>
+      Open
+    </Button>
   );
 }
 
-function MetadataButton({ url, name }: { url: string | null; name: string }) {
-  if (!url) {
-    return (
-      <CircleOff aria-hidden className="size-4 text-muted-foreground/40" />
-    );
-  }
+function MetadataLink({ url, name }: { url: string; name: string }) {
   return (
-    <a
-      href={url}
-      target="_blank"
-      rel="noopener noreferrer"
-      aria-label={`Download metadata for ${name}`}
-      className={buttonVariants({
-        variant: "ghost",
-        size: "icon-xs",
-        className: "text-foreground/75 transition-colors hover:text-foreground",
-      })}
-    >
-      <Download />
-    </a>
+    <Tooltip>
+      <TooltipTrigger
+        render={
+          <a
+            href={url}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label={`Download metadata for ${name}`}
+            className={buttonVariants({ variant: "ghost", size: "icon-xs" })}
+          />
+        }
+      >
+        <Download />
+      </TooltipTrigger>
+      <TooltipContent>Download metadata</TooltipContent>
+    </Tooltip>
   );
 }

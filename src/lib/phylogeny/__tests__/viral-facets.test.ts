@@ -1,13 +1,13 @@
 import type { PhyloFamilyBlock } from "@/lib/services/organisms/phylogeny";
 import {
+  buildTreeRows,
   choiceKey,
   filterViralTrees,
   flattenViralTrees,
   isUnavailable,
   parseSegment,
   pruneViralFilters,
-  segmentColor,
-  segmentRows,
+  segmentLabel,
   sortedSegments,
   viewerLabel,
   viralFacetCounts,
@@ -146,57 +146,104 @@ describe("viewerLabel", () => {
   });
 });
 
-describe("segmentColor", () => {
-  it("maps a known segment to a stable chart variable", () => {
-    expect(segmentColor("HA")).toBe(segmentColor("HA"));
-    expect(segmentColor("HA")).toMatch(/^var\(--chart-\d+\)$/);
-  });
-
-  it("falls back to a hashed slot for an unrecognized segment", () => {
-    expect(segmentColor("ZZ")).toMatch(/^var\(--chart-\d+\)$/);
-  });
-
-  it("uses the muted foreground token when there is no segment", () => {
-    expect(segmentColor(null)).toBe("var(--muted-foreground)");
+describe("segmentLabel", () => {
+  it("names the concatenated tree so it does not read as 'no filter'", () => {
+    expect(segmentLabel("All")).toBe("Concatenated");
+    expect(segmentLabel("HA")).toBe("HA");
   });
 });
 
-describe("segmentRows", () => {
-  it("groups trees into one row per strain and segment, collapsing viewers", () => {
-    const trees = flattenViralTrees(block);
-    const rows = segmentRows(trees);
+describe("buildTreeRows", () => {
+  const ready = (ids: string[]) => ({ status: "ready" as const, ids: new Set(ids) });
+
+  it("orders rows by strain, then segment, with one slot per viewer", () => {
+    const rows = buildTreeRows(flattenViralTrees(block), ready([]));
 
     expect(rows.map(row => [row.strainKey, row.segment])).toEqual([
       ["b", "All"],
       ["b", "HA"],
       ["a", "M1"],
     ]);
-    const haRow = rows.find(row => row.segment === "HA");
-    expect(haRow?.choices).toHaveLength(1);
-    expect(haRow?.choices[0]?.viewer).toBe("nextstrain");
+    const ha = rows.find(row => row.segment === "HA");
+    expect(ha?.slots.archaeopteryx).toEqual({ state: "none" });
+    expect(ha?.slots.nextstrain.state).toBe("missing");
   });
 
-  it("keeps distinct non-segmented references in separate rows", () => {
-    const trees = flattenViralTrees({
-      groups: [{
-        key: "ebola",
-        title: "Ebola",
-        nextstrain: [
-          { name: "100 samples", path: "Orthoebolavirus/100" },
-          { name: "500 samples", path: "Orthoebolavirus/500" },
-        ],
-      }],
-    });
+  it("pairs same-named unsegmented trees across viewers into one row", () => {
+    const rows = buildTreeRows(
+      flattenViralTrees({
+        groups: [{
+          key: "ebola",
+          title: "Ebola",
+          archaeopteryx: [
+            { name: "Ebola - 100", path: "/100.xml", metadata: "/100.tar.gz" },
+            { name: "Ebola - 500", path: "/500.xml" },
+          ],
+          nextstrain: [
+            { name: "Ebola - 100", path: "Orthoebolavirus/100" },
+            { name: "Ebola - 500", path: "Orthoebolavirus/500" },
+          ],
+        }],
+      }),
+      ready(["Orthoebolavirus/100"]),
+    );
 
-    const rows = segmentRows(trees);
-    expect(rows).toHaveLength(2);
-    expect(rows.map(row => row.choices.map(choice => choice.ref.path))).toEqual([
-      ["Orthoebolavirus/100"],
-      ["Orthoebolavirus/500"],
+    expect(rows.map(row => row.name)).toEqual(["Ebola - 100", "Ebola - 500"]);
+    expect(rows[0]?.metadata).toBe("/100.tar.gz");
+    expect(rows.map(row => [row.slots.archaeopteryx.state, row.slots.nextstrain.state])).toEqual([
+      ["open", "open"],
+      ["open", "missing"],
     ]);
   });
 
+  it("keeps distinct unsegmented trees of one viewer in separate rows", () => {
+    const rows = buildTreeRows(
+      flattenViralTrees({
+        groups: [{
+          key: "ebola",
+          title: "Ebola",
+          nextstrain: [
+            { name: "100 samples", path: "Orthoebolavirus/100" },
+            { name: "500 samples", path: "Orthoebolavirus/500" },
+          ],
+        }],
+      }),
+      ready(["Orthoebolavirus/100", "Orthoebolavirus/500"]),
+    );
+
+    expect(rows).toHaveLength(2);
+    expect(rows.map(row => row.slots.archaeopteryx.state)).toEqual(["none", "none"]);
+  });
+
+  it("keeps a second tree for the same strain and segment instead of dropping it", () => {
+    const rows = buildTreeRows(
+      flattenViralTrees({
+        groups: [{
+          key: "h3n2",
+          title: "H3N2",
+          archaeopteryx: [
+            { name: "HA 100 (HA)", path: "/ha-100.xml" },
+            { name: "HA 500 (HA)", path: "/ha-500.xml" },
+          ],
+        }],
+      }),
+      ready([]),
+    );
+
+    expect(rows.map(row => row.name)).toEqual(["HA 100 (HA)", "HA 500 (HA)"]);
+  });
+
+  it("marks Auspice slots as checking or unconfirmed until the inventory is known", () => {
+    const trees = flattenViralTrees(block);
+    const ha = (inventory: Parameters<typeof buildTreeRows>[1]) =>
+      buildTreeRows(trees, inventory).find(row => row.segment === "HA")?.slots.nextstrain.state;
+
+    expect(ha({ status: "pending" })).toBe("checking");
+    expect(ha({ status: "error", message: "down" })).toBe("unconfirmed");
+    expect(buildTreeRows(trees, { status: "pending" }).find(row => row.segment === "All")?.slots.archaeopteryx.state).toBe("open");
+  });
+
   it("returns no rows for an empty tree list", () => {
-    expect(segmentRows([])).toEqual([]);
+    expect(buildTreeRows([], ready([]))).toEqual([]);
   });
 });

@@ -158,45 +158,92 @@ export const viewerLabel = {
   nextstrain: "Auspice",
 } as const;
 
-function hashSegment(value: string): number {
-  let out = 0;
-  for (const character of value) out = (out * 31 + character.charCodeAt(0)) | 0;
-  return out;
+/** Display label for a segment; "All" is the concatenated tree, not "no filter". */
+export function segmentLabel(segment: string): string {
+  return segment === "All" ? "Concatenated" : segment;
 }
 
-export function segmentColor(segment: string | null): string {
-  if (!segment) return "var(--muted-foreground)";
-  const index = segmentOrder.indexOf(segment);
-  const slot = index === -1 ? Math.abs(hashSegment(segment)) % 10 : index % 10;
-  return `var(--chart-${String(slot + 1)})`;
-}
+export type NextstrainInventory =
+  | { status: "pending" }
+  | { status: "error"; message: string }
+  | { status: "ready"; ids: ReadonlySet<string> };
 
-export interface SegmentRow {
+/** A viewer's cell in a tree row: openable, an Auspice dataset that cannot be opened yet, or no tree. */
+export type ViewerSlot =
+  | { state: "open"; choice: ViralTreeChoice }
+  | { state: "checking" | "unconfirmed" | "missing"; choice: ViralTreeChoice }
+  | { state: "none" };
+
+export interface TreeRow {
+  key: string;
   strainKey: string;
   strainTitle: string;
   segment: string | null;
-  choices: ViralTreeChoice[];
+  name: string;
+  metadata?: string;
+  slots: Record<PhyloViewer, ViewerSlot>;
 }
 
-/** Segmented peers share a row; unsegmented references remain distinct. */
-export function segmentRows(trees: ViralTreeChoice[]): SegmentRow[] {
+function viewerSlot(
+  choice: ViralTreeChoice | undefined,
+  inventory: NextstrainInventory,
+): ViewerSlot {
+  if (!choice) return { state: "none" };
+  if (choice.viewer === "nextstrain") {
+    if (inventory.status === "pending") return { state: "checking", choice };
+    if (inventory.status === "error") return { state: "unconfirmed", choice };
+    if (isUnavailable(choice, inventory.ids))
+      return { state: "missing", choice };
+  }
+  return { state: "open", choice };
+}
+
+/**
+ * One row per tree, with a slot per viewer. Peers share a row when they have
+ * the same strain and segment, or, unsegmented, the same name; the nth tree of
+ * each viewer pairs with the nth of the other, so none is dropped.
+ */
+export function buildTreeRows(
+  trees: ViralTreeChoice[],
+  inventory: NextstrainInventory,
+): TreeRow[] {
+  const groups = new Map<
+    string,
+    Partial<Record<PhyloViewer, ViralTreeChoice>>
+  >();
+  const seen = new Map<string, number>();
+  for (const tree of trees) {
+    const base = `${tree.groupKey}\u0000${tree.segment ?? `name:${tree.ref.name.trim()}`}`;
+    const nth = seen.get(`${base}\u0000${tree.viewer}`) ?? 0;
+    seen.set(`${base}\u0000${tree.viewer}`, nth + 1);
+    const key = `${base}\u0000${String(nth)}`;
+    groups.set(key, { ...groups.get(key), [tree.viewer]: tree });
+  }
+  const strainOrder = [...new Set(trees.map((tree) => tree.groupKey))];
   const order = sortedSegments(trees);
-  const strains = [
-    ...new Map(trees.map((tree) => [tree.groupKey, tree.groupTitle])).entries(),
-  ];
-  return strains.flatMap(([strainKey, strainTitle]) => [
-    ...order.flatMap((segment) => {
-      const choices = trees.filter(
-        (tree) => tree.groupKey === strainKey && tree.segment === segment,
-      );
-      return choices.length === 0
-        ? []
-        : [{ strainKey, strainTitle, segment, choices }];
-    }),
-    ...trees.flatMap((choice) =>
-      choice.groupKey === strainKey && choice.segment === null
-        ? [{ strainKey, strainTitle, segment: null, choices: [choice] }]
-        : [],
-    ),
-  ]);
+  const segmentRank = (segment: string | null) =>
+    segment === null ? order.length : order.indexOf(segment);
+  return [...groups.entries()]
+    .map(([key, byViewer]): TreeRow => {
+      const choices = Object.values(byViewer);
+      const primary = byViewer.archaeopteryx ?? choices[0];
+      return {
+        key,
+        strainKey: primary.groupKey,
+        strainTitle: primary.groupTitle,
+        segment: primary.segment,
+        name: primary.ref.name,
+        metadata: choices.map((choice) => choice.ref.metadata).find(Boolean),
+        slots: {
+          archaeopteryx: viewerSlot(byViewer.archaeopteryx, inventory),
+          nextstrain: viewerSlot(byViewer.nextstrain, inventory),
+        },
+      };
+    })
+    .sort(
+      (left, right) =>
+        strainOrder.indexOf(left.strainKey) -
+          strainOrder.indexOf(right.strainKey) ||
+        segmentRank(left.segment) - segmentRank(right.segment),
+    );
 }

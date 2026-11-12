@@ -282,7 +282,7 @@ test("keeps the filter sidebar pinned while the tree grid scrolls", async ({ pag
   await mockAuspice(page, 200, scrollFamily);
   await openPicker(page);
 
-  const filters = page.getByRole("button", { name: /Filters/ });
+  const filters = page.locator("aside").getByRole("heading", { name: "Filters" });
   // The picker is server-rendered inside the lazy tab's Suspense boundary, so a hidden
   // streamed copy can sit beside the live one.
   const grid = page.locator('[data-slot="tree-results-scroll"]').filter({ visible: true });
@@ -408,7 +408,11 @@ test("supports keyboard activation and mobile containment", async ({ page, brows
   await page.setViewportSize({ width: 390, height: 844 });
   await mockAuspice(page);
   await openPicker(page);
-  await page.getByRole("radio", { name: "Auspice" }).click();
+  // Below lg the sidebar is a filter bar of popover buttons.
+  await page.getByRole("button", { name: "Viewer All" }).click();
+  await page.getByRole("dialog").getByRole("radio", { name: "Auspice" }).click();
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("button", { name: "Viewer Auspice" })).toBeVisible();
 
   const available = row(page, "H3N2 segment 4 (HA)").getByRole("button", {
     name: "Open H3N2 segment 4 (HA) in Auspice",

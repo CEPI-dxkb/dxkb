@@ -114,11 +114,10 @@ describe("ViralTreePicker", () => {
         "Auspice dataset availability has not been confirmed",
       ),
     ).toHaveTextContent("Checking Availability");
-    expect(
-      within(row("XML PB2 (PB2)")).getByTitle(
-        "No Auspice tree for this segment",
-      ),
-    ).toHaveTextContent("Not Available");
+    // No Auspice tree at all leaves the cell empty rather than labelled.
+    const pb2 = row("XML PB2 (PB2)");
+    expect(within(pb2).queryByText(/Not Available|Checking/)).toBeNull();
+    expect(within(pb2).getAllByRole("button")).toHaveLength(1);
   });
 
   it("keeps Auspice choices fail-closed without claiming they are unavailable when inventory loading fails", () => {
@@ -387,7 +386,7 @@ describe("ViralTreePicker", () => {
     expect(screen.getAllByRole("checkbox")).toHaveLength(2);
   });
 
-  it("scrolls the sidebar and grid independently at lg so filters stay pinned", () => {
+  it("swaps the sidebar for a filter bar below lg and lets the table fill the rest", () => {
     const { container } = render(
       <ViralTreePicker
         block={block}
@@ -398,21 +397,132 @@ describe("ViralTreePicker", () => {
 
     // jsdom has no layout, so assert the class contract;
     // e2e/tests/organisms/auspice.spec.ts measures the real scroll behaviour.
-    const grid = container.querySelector(
-      "div.grid.lg\\:grid-cols-\\[260px_1fr\\]",
+    expect(container.querySelector("aside")).toHaveClass(
+      "hidden",
+      "lg:block",
+      "lg:overflow-y-auto",
     );
-    const aside = container.querySelector("aside");
-    const results = grid?.lastElementChild;
-
-    expect(grid).toHaveClass("lg:overflow-hidden");
+    expect(screen.getByRole("toolbar", { name: "Filters" })).toHaveClass(
+      "lg:hidden",
+    );
+    expect(
+      container.querySelector("[data-slot=tree-results-scroll]"),
+    ).toHaveClass("flex-1", "overflow-auto");
     expect(container.querySelector("main")).not.toBeInTheDocument();
-    for (const column of [aside, results]) {
-      expect(column).toHaveClass("lg:min-h-0", "lg:overflow-y-auto");
-    }
   });
 
-  it("shows unavailable metadata without adding an interactive control", () => {
-    const { container } = render(
+  it("labels the columns, putting the name before the strain", () => {
+    render(
+      <ViralTreePicker
+        block={mixedBlock}
+        nextstrainInventory={{ status: "ready", ids: new Set() }}
+        onOpen={vi.fn()}
+      />,
+    );
+
+    expect(
+      screen.getAllByRole("columnheader").map((cell) => cell.textContent),
+    ).toEqual([
+      "Name",
+      "Strain",
+      "Segment",
+      "Archaeopteryx",
+      "Auspice",
+      "Metadata",
+    ]);
+    expect(
+      within(row("XML PB2 (PB2)"))
+        .getAllByRole("cell")
+        .map((cell) => cell.textContent),
+    ).toEqual(["XML PB2 (PB2)", "H5N1", "PB2", "Open", "", ""]);
+  });
+
+  it("drops the other viewer's column while a viewer filter is set", async () => {
+    const user = userEvent.setup();
+    render(
+      <ViralTreePicker
+        block={mixedBlock}
+        nextstrainInventory={{ status: "ready", ids: new Set() }}
+        onOpen={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByRole("radio", { name: /Archaeopteryx/ }));
+    expect(
+      screen.queryByRole("columnheader", { name: "Auspice" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("columnheader", { name: "Archaeopteryx" }),
+    ).toBeInTheDocument();
+  });
+
+  it("names the concatenated tree instead of calling it 'All'", async () => {
+    const user = userEvent.setup();
+    render(
+      <ViralTreePicker
+        block={{
+          groups: [
+            {
+              key: "h3n2",
+              title: "H3N2",
+              archaeopteryx: [
+                { name: "H3N2 All concatenated", path: "/all.xml" },
+                { name: "H3N2 HA (HA)", path: "/ha.xml" },
+              ],
+            },
+          ],
+        }}
+        nextstrainInventory={{ status: "ready", ids: new Set() }}
+        onOpen={vi.fn()}
+      />,
+    );
+
+    expect(
+      within(row("H3N2 All concatenated")).getByText("Concatenated"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("checkbox", { name: /^Concatenated/ }),
+    ).toBeInTheDocument();
+    // The small-screen Segment button says "Any" when nothing is checked, so it
+    // cannot be mistaken for the concatenated tree.
+    await user.click(screen.getByRole("button", { name: "Segment Any" }));
+    expect(
+      screen.getAllByRole("checkbox", { name: /^Concatenated/ }),
+    ).toHaveLength(2);
+  });
+
+  it("filters from the small-screen bar and summarises the choice on its button", async () => {
+    const user = userEvent.setup();
+    render(
+      <ViralTreePicker
+        block={mixedBlock}
+        nextstrainInventory={{ status: "ready", ids: new Set() }}
+        onOpen={vi.fn()}
+      />,
+    );
+
+    const bar = screen.getByRole("toolbar", { name: "Filters" });
+    expect(within(bar).getByText("3 of 3 trees")).toBeInTheDocument();
+    await user.click(within(bar).getByRole("button", { name: "Strain All" }));
+    // The sidebar's copy plus the popover's: pick the popover's.
+    const h5n1 = screen.getAllByRole("radio", { name: /H5N1/ }).at(-1);
+    if (!h5n1) throw new Error("H5N1 option not found");
+    await user.click(h5n1);
+
+    expect(
+      within(bar).getByRole("button", { name: "Strain H5N1" }),
+    ).toBeInTheDocument();
+    expect(within(bar).getByText("1 of 3 trees")).toBeInTheDocument();
+    expect(screen.queryByText("XML HA (HA)")).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Clear" }));
+    expect(
+      within(bar).getByRole("button", { name: "Strain All" }),
+    ).toBeInTheDocument();
+  });
+
+  it("shows no metadata control when a tree has no metadata", () => {
+    render(
       <ViralTreePicker
         block={{
           groups: [
@@ -433,12 +543,8 @@ describe("ViralTreePicker", () => {
       />,
     );
 
-    expect(container.querySelector(".lucide-circle-off")).toHaveAttribute(
-      "aria-hidden",
-      "true",
-    );
     expect(
-      screen.queryByRole("button", { name: /download metadata/i }),
+      screen.queryByRole("link", { name: /download metadata/i }),
     ).not.toBeInTheDocument();
   });
 

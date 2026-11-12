@@ -257,59 +257,59 @@ describe("ResourceWorkspace layout", () => {
 });
 
 describe("ResourceWorkspace panel toggle", () => {
-  it("disables Show with a selection hint while there is no side panel", () => {
+  it("opens and closes an empty-state panel while nothing is selected", () => {
     mockViewport(false);
     renderWorkspace(false);
 
-    const toggle = screen.getByRole("button", { name: /show panel/i });
-    expect(toggle).toBeDisabled();
-    expect(toggle).toHaveAccessibleName(
-      "Show panel. Select a row to show its details",
-    );
+    expect(screen.queryByText("Select a row to view details")).not.toBeInTheDocument();
+    expect(panelShares()).toHaveLength(1);
 
-    fireEvent.click(toggle);
-    expect(screen.getByText("Show")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Show" }));
+    expect(screen.getByText("Select a row to view details")).toBeInTheDocument();
     expect(screen.queryByText("Details")).not.toBeInTheDocument();
+    expect(panelShares()).toHaveLength(2);
+
+    fireEvent.click(screen.getByRole("button", { name: "Hide" }));
+    expect(screen.queryByText("Select a row to view details")).not.toBeInTheDocument();
+    expect(panelShares()).toHaveLength(1);
   });
 
-  it("uses the caller's hint for what to select", () => {
+  it("uses the caller's empty-state message", () => {
     mockViewport(false);
     render(
       <ResourceWorkspace
         hasSidePanel={false}
-        emptySelectionHint="Select a leaf in the tree to show its details"
+        emptySelectionMessage="Select a leaf in the tree to view details"
         sidePanel={<span>Details</span>}
       >
         <span>Table</span>
       </ResourceWorkspace>,
     );
 
+    fireEvent.click(screen.getByRole("button", { name: "Show" }));
     expect(
-      screen.getByRole("button", { name: /show panel/i }),
-    ).toHaveAccessibleName(
-      "Show panel. Select a leaf in the tree to show its details",
-    );
+      screen.getByText("Select a leaf in the tree to view details"),
+    ).toBeInTheDocument();
   });
 
-  it("hides and shows the panel once a selection exists", () => {
+  it("hides and shows the details once a selection exists", () => {
     mockViewport(false);
     renderWorkspace(true);
 
-    const hide = screen.getByRole("button", { name: "Hide" });
-    expect(hide).toBeEnabled();
     expect(screen.getByText("Details")).toBeInTheDocument();
 
-    fireEvent.click(hide);
+    fireEvent.click(screen.getByRole("button", { name: "Hide" }));
     expect(screen.queryByText("Details")).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Show" }));
     expect(screen.getByText("Details")).toBeInTheDocument();
   });
 
-  it("enables the toggle and opens the panel when a selection arrives", () => {
+  it("swaps the empty state for details when a selection arrives", () => {
     mockViewport(false);
     const { rerender } = renderWorkspace(false);
-    expect(screen.getByRole("button", { name: /show panel/i })).toBeDisabled();
+    fireEvent.click(screen.getByRole("button", { name: "Show" }));
+    expect(screen.getByText("Select a row to view details")).toBeInTheDocument();
 
     rerender(
       <ResourceWorkspace
@@ -321,8 +321,25 @@ describe("ResourceWorkspace panel toggle", () => {
       </ResourceWorkspace>,
     );
 
-    expect(screen.getByRole("button", { name: "Hide" })).toBeEnabled();
     expect(screen.getByText("Details")).toBeInTheDocument();
+    expect(screen.queryByText("Select a row to view details")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Hide" })).toBeInTheDocument();
+  });
+
+  it("offers no panel without the action rail", () => {
+    mockViewport(false);
+    render(
+      <ResourceWorkspace
+        hasSidePanel={false}
+        hasActionRail={false}
+        sidePanel={<span>Details</span>}
+      >
+        <span>Table</span>
+      </ResourceWorkspace>,
+    );
+
+    expect(screen.queryByRole("button", { name: "Show" })).not.toBeInTheDocument();
+    expect(panelShares()).toHaveLength(1);
   });
 });
 

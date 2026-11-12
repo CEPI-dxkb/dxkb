@@ -3,11 +3,7 @@
 import { useEffect, useId, useState, type ReactNode } from "react";
 import { PanelRightClose, PanelRightOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { DetailEmptyState } from "@/components/detail-panel/detail-empty-state";
 import {
   ResizableHandle,
   ResizablePanel,
@@ -22,8 +18,8 @@ interface ResourceWorkspaceProps {
   actionBar?: ReactNode;
   hasSidePanel?: boolean;
   hasActionRail?: boolean;
-  /** Tooltip on the disabled Show toggle while there is nothing to show. */
-  emptySelectionHint?: string;
+  /** What the panel says when the toggle opens it with nothing selected. */
+  emptySelectionMessage?: string;
 }
 
 /**
@@ -65,7 +61,7 @@ export function ResourceWorkspace({
   actionBar,
   hasSidePanel = true,
   hasActionRail = true,
-  emptySelectionHint = "Select a row to show its details",
+  emptySelectionMessage = "Select a row to view details",
 }: ResourceWorkspaceProps) {
   // The library writes a panel's id straight into the DOM, so namespace it to
   // avoid duplicate ids across workspaces.
@@ -82,8 +78,13 @@ export function ResourceWorkspace({
     useState(hasSidePanel);
   if (previousHasSidePanel !== hasSidePanel) {
     setPreviousHasSidePanel(hasSidePanel);
-    if (hasSidePanel) setPanelExpanded(true);
+    // A selection opens the panel and clearing it closes the panel, so the
+    // table gets its width back; the toggle can still open the empty state.
+    setPanelExpanded(hasSidePanel);
   }
+  // With nothing selected the toggle opens an empty-state panel, so it never
+  // flips its label with no panel behind it.
+  const showPanel = panelExpanded && (hasSidePanel || hasActionRail);
 
   useEffect(() => {
     if (typeof window.matchMedia !== "function") return;
@@ -131,52 +132,24 @@ export function ResourceWorkspace({
             <aside className="shrink-0 max-md:max-h-20 max-md:min-w-0">
               <div className="flex h-full min-h-0 w-20 shrink-0 flex-col rounded-l-lg border-l bg-muted max-md:h-20 max-md:w-full max-md:flex-row max-md:rounded-l-none max-md:border-t max-md:border-l-0">
                 <div className="border-b p-2 max-md:border-r max-md:border-b-0">
-                  {hasSidePanel ? (
-                    <Button
-                      variant="ghost"
-                      size="rail"
-                      onClick={() => {
-                        setPanelExpanded((current) => !current);
-                      }}
-                      title={panelExpanded ? "Hide panel" : "Show panel"}
-                      className="flex w-full flex-col items-center max-md:w-16"
-                    >
-                      {panelExpanded ? (
-                        <PanelRightClose className="size-4" />
-                      ) : (
-                        <PanelRightOpen className="size-4" />
-                      )}
-                      <span className="text-xs">
-                        {panelExpanded ? "Hide" : "Show"}
-                      </span>
-                    </Button>
-                  ) : (
-                    // Nothing to show until a selection exists, so the toggle
-                    // is disabled rather than flipping a label with no panel
-                    // behind it. A disabled button gets no pointer events, so
-                    // the tooltip hangs off a wrapper.
-                    <Tooltip>
-                      <TooltipTrigger
-                        render={
-                          <span className="inline-flex w-full cursor-not-allowed max-md:w-16" />
-                        }
-                      >
-                        <Button
-                          variant="ghost"
-                          size="rail"
-                          disabled
-                          aria-label={`Show panel. ${emptySelectionHint}`}
-                          className="flex w-full flex-col items-center"
-                        >
-                          <PanelRightOpen className="size-4" />
-                          <span className="text-xs">Show</span>
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent side="left">
-                        {emptySelectionHint}
-                      </TooltipContent>
-                    </Tooltip>
-                  )}
+                  <Button
+                    variant="ghost"
+                    size="rail"
+                    onClick={() => {
+                      setPanelExpanded((current) => !current);
+                    }}
+                    title={panelExpanded ? "Hide panel" : "Show panel"}
+                    className="flex w-full flex-col items-center max-md:w-16"
+                  >
+                    {panelExpanded ? (
+                      <PanelRightClose className="size-4" />
+                    ) : (
+                      <PanelRightOpen className="size-4" />
+                    )}
+                    <span className="text-xs">
+                      {panelExpanded ? "Hide" : "Show"}
+                    </span>
+                  </Button>
                 </div>
                 <div className="scrollbar-themed min-h-0 flex-1 overflow-y-auto px-1.5 py-2 max-md:min-w-0 max-md:overflow-x-auto max-md:overflow-y-hidden">
                   {actionBar}
@@ -185,7 +158,7 @@ export function ResourceWorkspace({
             </aside>
           )}
         </ResizablePanel>
-        {hasSidePanel && panelExpanded && (
+        {showPanel && (
           <>
             <ResizableHandle withHandle className="max-md:hidden" />
             <ResizablePanel
@@ -199,7 +172,11 @@ export function ResourceWorkspace({
                  inner div, so a shadow above the top edge would be
                  clipped; hence none here. */}
               <div className="absolute inset-0 flex flex-col overflow-hidden border-t max-md:overflow-auto max-md:bg-background">
-                {sidePanel}
+                {hasSidePanel ? (
+                  sidePanel
+                ) : (
+                  <DetailEmptyState message={emptySelectionMessage} />
+                )}
               </div>
             </ResizablePanel>
           </>

@@ -34,7 +34,7 @@ export function CopilotLauncher({ compact = false }: { compact?: boolean }) {
     >
       <span className="relative">
         <Bot className={working ? "size-4 animate-pulse" : "size-4"} aria-hidden />
-        {minimized && (
+        {minimized && copilot.unread && (
           <span
             aria-hidden
             className="absolute -top-1 -right-1 size-2 rounded-full bg-info ring-2 ring-primary"

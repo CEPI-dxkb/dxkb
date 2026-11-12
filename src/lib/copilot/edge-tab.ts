@@ -8,9 +8,14 @@ import type {
   CopilotTabSide,
 } from "@/lib/ui-preferences/definitions";
 
-/** The tab's top stays between these fractions of the window height, clear of the navbar and the bottom edge. */
+/** The tab's top stays between these fractions of the window height, clear of the bottom edge. */
 export const tabTopMin = 0.08;
 export const tabTopMax = 0.94;
+/**
+ * The tab is centred on its top, so it also never rises above this many px: the navbar (72px) plus
+ * half the tab (32px) and a gap, so on a short window it still stays off the navbar's avatar.
+ */
+export const tabMinTopPx = 112;
 /** How far ArrowUp / ArrowDown move the tab, as a fraction of the window height. */
 export const tabKeyStep = 0.05;
 /** A press that moves less than this (px) is a click, not a drag. */

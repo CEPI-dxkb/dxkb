@@ -30,7 +30,7 @@ vi.mock("next/dynamic", async () => {
             data-variant={props.variant ?? "floating-window"}
             data-minimized={String(props.minimized ?? "")}
           >
-            <textarea aria-label="Ask AskClark" />
+            <textarea aria-label="Ask AskClark" data-copilot-composer="" />
             {createPortal(<button type="button">Portaled menu item</button>, document.body)}
           </div>
         );
@@ -88,6 +88,7 @@ beforeEach(() => {
       observe() {
         this.callback();
       }
+      unobserve = vi.fn();
       disconnect = vi.fn();
     },
   );
@@ -190,6 +191,28 @@ describe("CopilotDockShell navbar tracking", () => {
     fireEvent.scroll(window);
     expect(frames).toHaveLength(0);
   });
+
+  it("follows a navbar that navigation replaced, not the detached one", () => {
+    const frames: FrameRequestCallback[] = [];
+    vi.stubGlobal(
+      "requestAnimationFrame",
+      vi.fn((callback: FrameRequestCallback) => frames.push(callback)),
+    );
+    vi.stubGlobal("cancelAnimationFrame", vi.fn());
+    const oldNavbar = mountNavbar({ value: 72 });
+    const { shell } = renderApp({});
+    expect(shell.style.getPropertyValue("--dock-top")).toBe("72px");
+
+    // A detached element measures as zero; the new layout's navbar is 56px tall.
+    oldNavbar.remove();
+    oldNavbar.getBoundingClientRect = () => ({ bottom: 0 }) as DOMRect;
+    mountNavbar({ value: 56 });
+    fireEvent.scroll(window);
+    act(() => {
+      frames.shift()?.(0);
+    });
+    expect(shell.style.getPropertyValue("--dock-top")).toBe("56px");
+  });
 });
 
 describe("CopilotSideDock", () => {
@@ -276,6 +299,30 @@ describe("CopilotEdgeTab", () => {
   it("says an answer is ready after a turn ran while minimized", () => {
     const { tab } = renderTab({ unread: true });
     expect(tab).toHaveAttribute("title", "AskClark: answer ready. Drag to move.");
+  });
+
+  it("takes focus when minimizing left it on the panel that went inert", () => {
+    const panel = document.createElement("div");
+    panel.setAttribute("inert", "");
+    const inside = document.createElement("button");
+    panel.append(inside);
+    document.body.append(panel);
+    inside.focus();
+
+    const { tab } = renderTab();
+    expect(tab).toHaveFocus();
+    panel.remove();
+  });
+
+  it("leaves focus where it is when the navbar button minimized the chat", () => {
+    const navbarButton = document.createElement("button");
+    document.body.append(navbarButton);
+    navbarButton.focus();
+
+    const { tab } = renderTab();
+    expect(tab).not.toHaveFocus();
+    expect(navbarButton).toHaveFocus();
+    navbarButton.remove();
   });
 
   it("moves with the arrow keys", () => {

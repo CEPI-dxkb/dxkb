@@ -41,6 +41,21 @@ describe("CopilotLauncher", () => {
     expect(copilot.restore).toHaveBeenCalledTimes(1);
   });
 
+  it("shows the dot only for an answer that arrived while minimized, as the tab does", () => {
+    const dot = () => document.querySelector(".bg-info");
+    vi.mocked(useOptionalCopilot).mockReturnValue(
+      fakeCopilot({ minimized: true, unread: false }),
+    );
+    const { rerender } = render(<CopilotLauncher />);
+    expect(dot()).toBeNull();
+
+    vi.mocked(useOptionalCopilot).mockReturnValue(
+      fakeCopilot({ minimized: true, unread: true }),
+    );
+    rerender(<CopilotLauncher />);
+    expect(dot()).not.toBeNull();
+  });
+
   it("is absent on the full page and when signed out", () => {
     vi.mocked(useOptionalCopilot).mockReturnValue(
       fakeCopilot({ onCopilotPage: true, openSurface: null }),

@@ -1,11 +1,17 @@
 import { focusComposerWhenReady } from "../focus-composer";
 
+function composerBox() {
+  const box = document.createElement("textarea");
+  box.setAttribute("data-copilot-composer", "");
+  return box;
+}
+
 function surface(textarea?: { disabled: boolean }) {
   const container = document.createElement("div");
   document.body.append(container);
   let box: HTMLTextAreaElement | null = null;
   if (textarea) {
-    box = document.createElement("textarea");
+    box = composerBox();
     box.disabled = textarea.disabled;
     container.append(box);
   }
@@ -34,11 +40,20 @@ describe("focusComposerWhenReady", () => {
 
     const late = surface();
     focusComposerWhenReady(late.container);
-    const loaded = document.createElement("textarea");
+    const loaded = composerBox();
     late.container.append(loaded);
     await vi.waitFor(() => {
       expect(loaded).toHaveFocus();
     });
+  });
+
+  it("skips another textarea in the chat, such as a plan step being edited", () => {
+    const { container, box } = surface({ disabled: false });
+    const step = document.createElement("textarea");
+    container.prepend(step);
+    focusComposerWhenReady(container);
+    expect(step).not.toHaveFocus();
+    expect(box).toHaveFocus();
   });
 
   it("gives up when the user has focused something else meanwhile", async () => {

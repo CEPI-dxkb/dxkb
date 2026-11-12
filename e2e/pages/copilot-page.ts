@@ -19,6 +19,8 @@ export type CopilotResizeDirection =
 export class CopilotPage {
   readonly page: Page;
 
+  /** The page's own content, which the side panel pushes aside on a desktop. */
+  readonly main: Locator;
   /** The navbar button while the chat is closed. */
   readonly launcher: Locator;
   readonly panel: Locator;
@@ -70,6 +72,7 @@ export class CopilotPage {
   constructor(page: Page) {
     this.page = page;
 
+    this.main = page.locator("main");
     this.launcher = this.navbarButton("Open");
     this.sidePanel = page.getByRole("complementary", {
       name: copilotName,
@@ -151,6 +154,16 @@ export class CopilotPage {
   async gotoAndOpen(path = "/jobs"): Promise<void> {
     await this.goto(path);
     await this.open();
+  }
+
+  /** The width of the page's content, which shrinks while the side panel pushes it. */
+  async mainWidth(): Promise<number> {
+    return this.main.evaluate((element) => element.getBoundingClientRect().width);
+  }
+
+  /** The width of the window's viewport, without a scrollbar. */
+  async pageWidth(): Promise<number> {
+    return this.page.evaluate(() => document.documentElement.clientWidth);
   }
 
   async openFullPage(): Promise<void> {

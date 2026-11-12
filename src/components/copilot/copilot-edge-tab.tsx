@@ -1,12 +1,13 @@
 "use client";
 
 import { Bot, ChevronLeft, ChevronRight } from "lucide-react";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useCopilotSession } from "@/hooks/copilot/use-copilot-queries";
 import {
   answerPreview,
   isTabDrag,
   tabClickGuardMs,
+  tabMinTopPx,
   tabPlacementAt,
   tabPlacementForKey,
   tabTitle,
@@ -36,6 +37,16 @@ export function CopilotEdgeTab({
   const [drag, setDrag] = useState<{ x: number; y: number } | null>(null);
   const start = useRef<{ x: number; y: number; moved: boolean } | null>(null);
   const lastDragEnd = useRef(0);
+  const tabRef = useRef<HTMLButtonElement>(null);
+
+  // Minimizing from inside the chat leaves focus on the panel that just went inert, so a keyboard
+  // user would land on the page. Hand it to the tab; a click on the navbar button keeps its focus.
+  useEffect(() => {
+    const active = document.activeElement;
+    if (!active || active === document.body || active.closest("[inert]")) {
+      tabRef.current?.focus();
+    }
+  }, []);
 
   const working = isCopilotTurnActive(copilot.chat.active?.turn ?? null);
   // The panel already read this chat, so the newest answer comes from the cache.
@@ -55,6 +66,7 @@ export function CopilotEdgeTab({
 
   return (
     <button
+      ref={tabRef}
       type="button"
       aria-label={`Restore ${copilotName}`}
       aria-keyshortcuts="ArrowUp ArrowDown ArrowLeft ArrowRight"
@@ -111,7 +123,9 @@ export function CopilotEdgeTab({
       )}
       style={
         {
-          "--tab-top": drag ? `${String(drag.y)}px` : `${String(top * 100)}%`,
+          "--tab-top": drag
+            ? `${String(drag.y)}px`
+            : `max(${String(top * 100)}%, ${String(tabMinTopPx)}px)`,
           "--tab-x": drag ? `${String(drag.x)}px` : "0px",
         } as React.CSSProperties
       }

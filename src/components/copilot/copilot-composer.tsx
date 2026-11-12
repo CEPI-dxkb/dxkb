@@ -317,6 +317,7 @@ export function CopilotComposer({
       <InputGroup>
         <InputGroupTextarea
           ref={textareaRef}
+          data-copilot-composer=""
           value={value}
           rows={1}
           aria-label={`Ask ${copilotName}`}

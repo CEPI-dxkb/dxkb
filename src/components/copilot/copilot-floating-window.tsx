@@ -12,6 +12,7 @@ import {
   type ResizeDirection,
   type Viewport,
 } from "@/lib/copilot/floating-rect";
+import { focusComposerWhenReady } from "@/lib/copilot/focus-composer";
 import { playTuck } from "@/lib/copilot/tuck";
 import { cn } from "@/lib/utils";
 import { CopilotPanel } from "./copilot-panel";
@@ -82,9 +83,12 @@ export function CopilotFloatingWindow({
     };
   }, []);
 
+  // On open (mount) and on restore; the composer may still be loading or disabled when the window appears.
   useEffect(() => {
-    windowRef.current?.querySelector<HTMLElement>("textarea")?.focus();
-  }, []);
+    const element = windowRef.current;
+    if (minimized || !element) return;
+    return focusComposerWhenReady(element);
+  }, [minimized]);
 
   // Minimize and restore tuck the window into, and out of, the edge tab.
   const wasMinimized = useRef(minimized);

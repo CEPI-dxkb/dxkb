@@ -2,8 +2,11 @@
 // loading) or disabled (the chat is still being read) when the surface opens, so this waits for an
 // enabled textarea. It gives up if the user has meanwhile focused something else on the page.
 
+// Only the composer: a plan step being edited has a textarea of its own, higher up in the chat.
 function enabledTextarea(container: HTMLElement): HTMLTextAreaElement | null {
-  return container.querySelector<HTMLTextAreaElement>("textarea:not(:disabled)");
+  return container.querySelector<HTMLTextAreaElement>(
+    "textarea[data-copilot-composer]:not(:disabled)",
+  );
 }
 
 /** Focuses the composer in `container` once it can take focus; returns a cleanup that stops waiting. */

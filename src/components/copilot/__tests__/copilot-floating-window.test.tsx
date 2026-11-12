@@ -20,6 +20,7 @@ vi.mock("../copilot-panel", () => ({
   }) => (
     <div data-testid="header" onPointerDown={onHeaderPointerDown}>
       header <input aria-label="field" />
+      <textarea aria-label="composer" data-copilot-composer="" />
     </div>
   ),
 }));
@@ -110,6 +111,18 @@ describe("CopilotFloatingWindow", () => {
     const [element, , direction] = vi.mocked(playTuck).mock.calls[0];
     expect(element).toBe(dialog);
     expect(direction).toBe("minimize");
+  });
+
+  it("focuses the composer when it opens and again when restored", () => {
+    const { rerender } = renderWindow();
+    const composer = screen.getByRole("textbox", { name: "composer" });
+    expect(composer).toHaveFocus();
+
+    const props = { edge: rightEdge, onMinimize: vi.fn(), onClose: vi.fn() };
+    rerender(<CopilotFloatingWindow {...props} minimized />);
+    composer.blur();
+    rerender(<CopilotFloatingWindow {...props} minimized={false} />);
+    expect(composer).toHaveFocus();
   });
 
   it("closes on Escape pressed inside it", () => {

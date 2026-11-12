@@ -33,6 +33,7 @@ type GenomeCollectionTab =
   | "strains"
   | "genomes"
   | "sequences"
+  | "amr"
   | "features"
   | "proteins"
   | "structures"
@@ -46,6 +47,7 @@ const genomeCollectionTabs: readonly EntityViewTab<GenomeCollectionTab>[] = [
   { key: "strains", label: "Strains", icon: viewIcons.strains },
   { key: "genomes", label: "Genomes", icon: viewIcons.genomes },
   { key: "sequences", label: "Sequences", icon: viewIcons.sequences },
+  { key: "amr", label: "AMR Phenotypes", icon: viewIcons.amrPhenotypes },
   { key: "features", label: "Features", icon: viewIcons.features },
   { key: "proteins", label: "Proteins", icon: viewIcons.proteins },
   {
@@ -161,6 +163,15 @@ export function GenomeCollection({
       <ResourceChildCollection
         {...genomeChildCollections.sequences}
         rql={relatedRql(genomeChildCollections.sequences.idField)}
+        keywordMode="server"
+        serverKeywordMode="exact"
+      />
+    );
+  } else if (activeTab === "amr") {
+    content = (
+      <ResourceChildCollection
+        {...genomeChildCollections.amr}
+        rql={relatedRql(genomeChildCollections.amr.idField)}
         keywordMode="server"
         serverKeywordMode="exact"
       />

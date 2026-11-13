@@ -5,8 +5,11 @@ import { RecordUnavailable } from "@/components/errors/record-unavailable";
 import { DataApiError } from "@/lib/data-api/repository";
 import {
   canonicalFeatureTab,
+  currentCompareRegionAvailability,
   featureDisplayName,
   isFeatureId,
+  parseFeatureTab,
+  settledCompareRegionAvailability,
 } from "@/lib/feature-view";
 import { resolveCompareRegionAvailability } from "@/lib/feature-view/compare-region-peg-server";
 import { getFeature, type FeatureLookup } from "@/lib/feature-view/server";
@@ -104,8 +107,19 @@ export default async function FeaturePage({
     );
   }
   const { feature } = loaded;
-  const compare = await resolveCompareRegionAvailability(feature);
-  const activeTab = canonicalFeatureTab(query.tab, feature, compare);
+  // Only the Compare Region tab needs the counterpart lookup's answer before it
+  // renders (to redirect a closed tab and to feed the panel); any other tab
+  // streams it to the rail, so a slow lookup holds no content.
+  const lookup =
+    settledCompareRegionAvailability(feature) ??
+    resolveCompareRegionAvailability(feature);
+  const compare =
+    parseFeatureTab(query.tab) === "compare-region" ? await lookup : lookup;
+  const activeTab = canonicalFeatureTab(
+    query.tab,
+    feature,
+    currentCompareRegionAvailability(compare),
+  );
   const canonicalQuery = canonicalizeMemberTabQuery(query, activeTab);
   if (canonicalQuery !== null) {
     redirect(

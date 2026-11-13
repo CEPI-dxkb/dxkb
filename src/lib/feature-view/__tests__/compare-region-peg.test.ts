@@ -1,9 +1,12 @@
 import {
   compareRegionAvailability,
   compareRegionNoBrcIdReason,
+  compareRegionPendingReason,
   compareRegionTwinRql,
+  currentCompareRegionAvailability,
   ownCompareRegionPeg,
   patricIdGenomeId,
+  settledCompareRegionAvailability,
 } from "../compare-region-peg";
 import { featureViewRecordSchema } from "../schema";
 
@@ -160,5 +163,61 @@ describe("compareRegionAvailability", () => {
         reason: compareRegionNoBrcIdReason,
       });
     }
+  });
+});
+
+describe("settledCompareRegionAvailability", () => {
+  const locatedRefseq = {
+    annotation: "RefSeq",
+    feature_type: "CDS",
+    genome_id: "1.1",
+    sequence_id: "NC_1",
+    end: 100,
+    strand: "+",
+  };
+
+  it("answers from a feature's own BRC ID without a lookup", () => {
+    expect(
+      settledCompareRegionAvailability(
+        record({ feature_type: "CDS", patric_id: "fig|1.1.peg.1" }),
+      ),
+    ).toEqual({ peg: "fig|1.1.peg.1" });
+  });
+
+  it("closes the tab when nothing locates a counterpart", () => {
+    expect(
+      settledCompareRegionAvailability(
+        record({ ...locatedRefseq, end: undefined }),
+      ),
+    ).toEqual({ peg: null, reason: compareRegionNoBrcIdReason });
+    expect(
+      settledCompareRegionAvailability(
+        record({ annotation: "PATRIC", feature_type: "source" }),
+      ),
+    ).toEqual({ peg: null, reason: compareRegionNoBrcIdReason });
+  });
+
+  it("leaves a feature that needs its counterpart to the lookup", () => {
+    expect(settledCompareRegionAvailability(record(locatedRefseq))).toBeNull();
+    // Another genome's BRC ID is refused, so the counterpart decides.
+    expect(
+      settledCompareRegionAvailability(
+        record({ ...locatedRefseq, patric_id: "fig|9.9.peg.1" }),
+      ),
+    ).toBeNull();
+  });
+});
+
+describe("currentCompareRegionAvailability", () => {
+  it("keeps a settled answer", () => {
+    expect(currentCompareRegionAvailability({ peg: "fig|1.1.peg.1" })).toEqual(
+      { peg: "fig|1.1.peg.1" },
+    );
+  });
+
+  it("keeps the tab off with the pending reason while the lookup runs", () => {
+    expect(
+      currentCompareRegionAvailability(new Promise(() => undefined)),
+    ).toEqual({ peg: null, reason: compareRegionPendingReason });
   });
 });

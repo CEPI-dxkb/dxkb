@@ -1,7 +1,13 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useOptimistic, useTransition, type ReactNode } from "react";
+import {
+  Suspense,
+  use,
+  useOptimistic,
+  useTransition,
+  type ReactNode,
+} from "react";
 import { useViewNavCollapsed } from "@/hooks/use-view-nav-collapsed";
 import { LandingMobileNav } from "@/components/organisms/landing-shell/landing-mobile-nav";
 import { LandingNav } from "@/components/organisms/landing-shell/landing-nav";
@@ -26,6 +32,12 @@ export interface EntityViewShellProps<Key extends string = string> {
   metadataSummary?: ReactNode;
   metadataActions?: ReactNode;
   tabs: readonly EntityViewTab<Key>[];
+  /**
+   * Tabs that replace `tabs` once they resolve, for a rail whose availability
+   * needs a slow lookup. Only the tab rail suspends on them, showing `tabs`
+   * meanwhile, so the header and content never wait. Must not reject.
+   */
+  streamedTabs?: Promise<readonly EntityViewTab<Key>[]>;
   activeTab: Key;
   defaultTab: Key;
   layout?: "scroll" | "fill";
@@ -37,6 +49,20 @@ export interface EntityViewShellProps<Key extends string = string> {
   children: ReactNode;
 }
 
+function toNavItems<Key extends string>(tabs: readonly EntityViewTab<Key>[]) {
+  return tabs.map((tab) => ({ ...tab, icon: tab.icon ?? null }));
+}
+
+function ResolvedTabs<Key extends string>({
+  tabs,
+  children,
+}: {
+  tabs: Promise<readonly EntityViewTab<Key>[]>;
+  children: (tabs: readonly EntityViewTab<Key>[]) => ReactNode;
+}) {
+  return children(use(tabs));
+}
+
 export function EntityViewShell<Key extends string>({
   viewLabel,
   title,
@@ -45,6 +71,7 @@ export function EntityViewShell<Key extends string>({
   metadataSummary,
   metadataActions,
   tabs,
+  streamedTabs,
   activeTab,
   defaultTab,
   layout = "scroll",
@@ -55,10 +82,9 @@ export function EntityViewShell<Key extends string>({
   const [isPending, startTransition] = useTransition();
   const [optimisticTab, setOptimisticTab] = useOptimistic(activeTab);
   const { collapsed: navCollapsed, toggle: toggleNav } = useViewNavCollapsed();
-  const navItems = tabs.map((tab) => ({ ...tab, icon: tab.icon ?? null }));
 
-  const navigate = (key: Key) => {
-    const tab = tabs.find((item) => item.key === key);
+  const navigate = (key: Key, shown: readonly EntityViewTab<Key>[]) => {
+    const tab = shown.find((item) => item.key === key);
     if (tab?.enabled === false) return;
     const url = new URL(window.location.href);
     const params = new URLSearchParams(url.search);
@@ -72,6 +98,16 @@ export function EntityViewShell<Key extends string>({
       router.push(destination);
     });
   };
+
+  // Each rail suspends on its own; the fallback is the same rail over `tabs`.
+  const rail = (render: (shown: readonly EntityViewTab<Key>[]) => ReactNode) =>
+    streamedTabs ? (
+      <Suspense fallback={render(tabs)}>
+        <ResolvedTabs tabs={streamedTabs}>{render}</ResolvedTabs>
+      </Suspense>
+    ) : (
+      render(tabs)
+    );
 
   const content = serverTab ? (
     <TabContentSearchParams tab={activeTab === defaultTab ? null : activeTab}>
@@ -100,22 +136,30 @@ export function EntityViewShell<Key extends string>({
   return (
     <>
       <div className="lg:hidden">
-        <LandingMobileNav
-          items={navItems}
-          activeView={optimisticTab}
-          onChange={navigate}
-        />
+        {rail((shown) => (
+          <LandingMobileNav
+            items={toNavItems(shown)}
+            activeView={optimisticTab}
+            onChange={(key) => {
+              navigate(key, shown);
+            }}
+          />
+        ))}
       </div>
       <div className="mx-auto flex min-h-0 w-full max-w-none flex-1 flex-row gap-3 px-2 sm:px-3 lg:px-4">
         <div className="hidden lg:block">
-          <LandingNav
-            items={navItems}
-            activeView={optimisticTab}
-            ariaLabel="Entity views"
-            collapsed={navCollapsed}
-            onChange={navigate}
-            onCollapseToggle={toggleNav}
-          />
+          {rail((shown) => (
+            <LandingNav
+              items={toNavItems(shown)}
+              activeView={optimisticTab}
+              ariaLabel="Entity views"
+              collapsed={navCollapsed}
+              onChange={(key) => {
+                navigate(key, shown);
+              }}
+              onCollapseToggle={toggleNav}
+            />
+          ))}
         </div>
         <article
           aria-busy={isPending || undefined}

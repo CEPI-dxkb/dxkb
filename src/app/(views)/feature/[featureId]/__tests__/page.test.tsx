@@ -1,4 +1,4 @@
-import { act, render, screen } from "@testing-library/react";
+import { act, render, screen, within } from "@testing-library/react";
 import { DataApiError } from "@/lib/data-api/repository";
 import { createQueryClientWrapper } from "@/test-helpers/react";
 
@@ -72,7 +72,11 @@ vi.mock("@/components/compare-region", () => ({
 }));
 
 import type { FeatureViewRecord } from "@/lib/feature-view";
-import { compareRegionAvailability } from "@/lib/feature-view/compare-region-peg";
+import {
+  compareRegionAvailability,
+  compareRegionNoBrcIdReason,
+  compareRegionPendingReason,
+} from "@/lib/feature-view/compare-region-peg";
 import FeaturePage, { generateMetadata } from "../page";
 
 const feature = {
@@ -86,6 +90,23 @@ const feature = {
   location: "1..100",
   product: "replicase polyprotein",
 };
+
+/** A RefSeq feature with no BRC ID of its own: its tab needs the counterpart lookup. */
+const refseq = {
+  feature_id: "RefSeq.1282460.2049.NC_1.CDS.1.100.fwd",
+  genome_id: "1282460.2049",
+  annotation: "RefSeq",
+  feature_type: "CDS",
+  sequence_id: "NC_1",
+  end: 100,
+  strand: "+",
+};
+
+function compareTab() {
+  return within(
+    screen.getByRole("navigation", { name: "Entity views" }),
+  ).getByRole("button", { name: "Compare Region Viewer" });
+}
 
 describe("Feature member route", () => {
   beforeEach(() => {
@@ -376,15 +397,6 @@ describe("Feature member route", () => {
   });
 
   it("opens the Compare Region Viewer on a RefSeq feature's PATRIC counterpart", async () => {
-    const refseq = {
-      feature_id: "RefSeq.1282460.2049.NC_1.CDS.1.100.fwd",
-      genome_id: "1282460.2049",
-      annotation: "RefSeq",
-      feature_type: "CDS",
-      sequence_id: "NC_1",
-      end: 100,
-      strand: "+",
-    };
     mocks.getFeature.mockResolvedValue({ feature: refseq, usedAlternateId: false });
     mocks.resolveCompare.mockResolvedValue({ peg: "fig|1282460.2049.peg.1" });
 
@@ -402,19 +414,129 @@ describe("Feature member route", () => {
     expect(mocks.redirect).not.toHaveBeenCalled();
   });
 
-  it("sends a closed Compare Region tab back to the overview", async () => {
+  it("waits for the lookup on the Compare Region tab and sends a closed one back to the overview", async () => {
+    mocks.getFeature.mockResolvedValue({ feature: refseq, usedAlternateId: false });
     mocks.resolveCompare.mockResolvedValue({
       peg: null,
-      reason: "This feature has no BRC ID (PATRIC annotation), which the Compare Region Viewer needs.",
+      reason: compareRegionNoBrcIdReason,
+    });
+
+    await expect(
+      FeaturePage({
+        params: Promise.resolve({ featureId: refseq.feature_id }),
+        searchParams: Promise.resolve({ tab: "compare-region" }),
+      }),
+    ).rejects.toThrow(`NEXT_REDIRECT:/feature/${refseq.feature_id}`);
+    expect(mocks.resolveCompare).toHaveBeenCalledOnce();
+  });
+
+  it("sends a closed Compare Region tab back to the overview without a lookup", async () => {
+    const { patric_id: _omitted, ...withoutBrcId } = feature;
+    mocks.getFeature.mockResolvedValue({
+      feature: withoutBrcId,
+      usedAlternateId: false,
     });
 
     await expect(
       FeaturePage({
         params: Promise.resolve({ featureId: feature.feature_id }),
-        searchParams: Promise.resolve({ tab: "compare-region" }),
+        searchParams: Promise.resolve({ tab: "compareRegionViewer" }),
       }),
     ).rejects.toThrow(`NEXT_REDIRECT:/feature/${feature.feature_id}`);
+    expect(mocks.resolveCompare).not.toHaveBeenCalled();
   });
+
+  it("needs no lookup for a feature with its own BRC ID", async () => {
+    render(
+      await FeaturePage({
+        params: Promise.resolve({ featureId: feature.feature_id }),
+        searchParams: Promise.resolve({}),
+      }),
+    );
+    expect(mocks.resolveCompare).not.toHaveBeenCalled();
+    // Settled on the first render: no pending state.
+    expect(compareTab()).not.toHaveAttribute("aria-disabled");
+  });
+
+  it.each([
+    ["the overview", {}, () => screen.getByText("Genome and source")],
+    [
+      "the interactions tab",
+      { tab: "interactions" },
+      () => screen.getByTestId("resource-collection"),
+    ],
+  ])(
+    "renders %s without waiting for the BRC ID lookup",
+    async (_label, searchParams, shown) => {
+      mocks.getFeature.mockResolvedValue({ feature: refseq, usedAlternateId: false });
+      mocks.resolveCompare.mockReturnValue(new Promise(() => undefined));
+
+      render(
+        await FeaturePage({
+          params: Promise.resolve({ featureId: refseq.feature_id }),
+          searchParams: Promise.resolve(searchParams),
+        }),
+      );
+
+      expect(mocks.resolveCompare).toHaveBeenCalledOnce();
+      expect(shown()).toBeInTheDocument();
+      expect(compareTab()).toHaveAttribute("aria-disabled", "true");
+      expect(compareTab()).toHaveAttribute("title", compareRegionPendingReason);
+    },
+  );
+
+  it.each([
+    [
+      "opens",
+      { peg: "fig|1282460.2049.peg.1" },
+      (tab: HTMLElement) => {
+        expect(tab).not.toHaveAttribute("aria-disabled");
+      },
+    ],
+    [
+      "closes",
+      {
+        peg: null,
+        reason: "Could not look up this feature's BRC ID: Data API unavailable",
+      },
+      (tab: HTMLElement) => {
+        expect(tab).toHaveAttribute("aria-disabled", "true");
+        expect(tab).toHaveAttribute(
+          "title",
+          "Could not look up this feature's BRC ID: Data API unavailable",
+        );
+      },
+    ],
+  ])(
+    "%s the Compare Region tab once the streamed lookup answers",
+    async (_label, answer, check) => {
+      mocks.getFeature.mockResolvedValue({ feature: refseq, usedAlternateId: false });
+      let settle: (value: unknown) => void = () => undefined;
+      mocks.resolveCompare.mockReturnValue(
+        new Promise((resolve) => {
+          settle = resolve;
+        }),
+      );
+      const page = await FeaturePage({
+        params: Promise.resolve({ featureId: refseq.feature_id }),
+        searchParams: Promise.resolve({}),
+      });
+      // An awaited act lets React retry the suspended rail when the lookup settles.
+      await act(async () => {
+        render(page);
+        await Promise.resolve();
+      });
+      expect(compareTab()).toHaveAttribute("title", compareRegionPendingReason);
+
+      await act(async () => {
+        settle(answer);
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      });
+
+      check(compareTab());
+      expect(screen.getByText("Genome and source")).toBeInTheDocument();
+    },
+  );
 
   it("keeps the query when it redirects a BRC ID to the feature's own URL", async () => {
     mocks.getFeature.mockResolvedValue({ feature, usedAlternateId: true });

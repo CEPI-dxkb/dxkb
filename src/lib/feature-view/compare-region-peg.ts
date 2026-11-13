@@ -76,3 +76,36 @@ export function compareRegionAvailability(
   const peg = ownCompareRegionPeg(feature) ?? twinPeg;
   return peg ? { peg } : { peg: null, reason: compareRegionNoBrcIdReason };
 }
+
+/**
+ * The availability when the record alone decides it (an own BRC ID, or no
+ * location to look a counterpart up by), else null: only the PATRIC
+ * counterpart lookup can say.
+ */
+export function settledCompareRegionAvailability(
+  feature: FeatureViewRecord,
+): CompareRegionAvailability | null {
+  return ownCompareRegionPeg(feature) || compareRegionTwinRql(feature) === null
+    ? compareRegionAvailability(feature)
+    : null;
+}
+
+/**
+ * The tab's answer as the page holds it: settled, or the counterpart lookup
+ * still streaming in (a promise that never rejects).
+ */
+export type CompareRegionLookup =
+  | CompareRegionAvailability
+  | Promise<CompareRegionAvailability>;
+
+export const compareRegionPendingReason =
+  "Looking up this feature's BRC ID…";
+
+/** The answer to render now: a lookup still in flight keeps the tab off with the pending reason. */
+export function currentCompareRegionAvailability(
+  lookup: CompareRegionLookup,
+): CompareRegionAvailability {
+  return lookup instanceof Promise
+    ? { peg: null, reason: compareRegionPendingReason }
+    : lookup;
+}

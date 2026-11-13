@@ -3,6 +3,8 @@ import {
   canonicalFeatureTab,
   compareRegionAvailability,
   compareRegionNoBrcIdReason,
+  compareRegionPendingReason,
+  currentCompareRegionAvailability,
   featureCollectionOptions,
   featureCollectionProfile,
   featureGenomeBrowserTarget,
@@ -192,6 +194,23 @@ describe("Feature view contracts", () => {
     expect(compareTab(lookupFailed)?.disabledReason).toBe(
       "Could not look up this feature's BRC ID: HTTP 503",
     );
+  });
+  it("keeps the tab off while the lookup streams, leaving every other tab as asked", () => {
+    const refseq = featureViewRecordSchema.parse({
+      feature_id: "RefSeq.1",
+      annotation: "RefSeq",
+      feature_type: "CDS",
+    });
+    const pending = currentCompareRegionAvailability(
+      new Promise(() => undefined),
+    );
+    const compareTab = buildFeatureTabs(refseq, pending).find(
+      (tab) => tab.key === "compare-region",
+    );
+    expect(compareTab?.enabled).toBe(false);
+    expect(compareTab?.disabledReason).toBe(compareRegionPendingReason);
+    expect(canonicalFeatureTab(undefined, refseq, pending)).toBe("overview");
+    expect(canonicalFeatureTab("domains", refseq, pending)).toBe("domains");
   });
 });
 

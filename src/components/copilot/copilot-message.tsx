@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/message";
 import { copilotQueryKeys, rateCopilotMessage } from "@/lib/copilot/client";
 import { readClarificationCard, readExecutionCard } from "@/lib/copilot/cards";
+import { shortModelName } from "@/lib/copilot/models";
 import { readCopilotPlan } from "@/lib/copilot/plan";
 import type {
   CopilotAttachmentInfo,
@@ -237,10 +238,6 @@ function RatingButtons({
   );
 }
 
-export function shortModelName(model: string): string {
-  return model.slice(model.lastIndexOf("/") + 1) || model;
-}
-
 function AssistantAvatar() {
   return (
     <MessageAvatar>
@@ -299,7 +296,7 @@ export function CopilotUserMessage({
 }) {
   return (
     <Message align="end">
-      <MessageContent>
+      <MessageContent density="compact">
         <AttachmentList attachments={attachments} />
         <Bubble>
           <BubbleContent>
@@ -354,7 +351,7 @@ export function CopilotAssistantMessage({
   return (
     <Message>
       <AssistantAvatar />
-      <MessageContent>
+      <MessageContent density="compact">
         <Bubble variant="ghost">
           <BubbleContent>
             <div className="flex flex-col gap-2">
@@ -400,7 +397,7 @@ export function CopilotStreamingMessage({
   return (
     <Message>
       <AssistantAvatar />
-      <MessageContent>
+      <MessageContent density="compact">
         <Bubble variant="ghost">
           <BubbleContent>
             <div className="flex flex-col gap-2">

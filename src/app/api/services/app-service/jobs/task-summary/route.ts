@@ -12,7 +12,7 @@ export const POST = withAuth(async (request: NextRequest, { token }) => {
 
   const appService = createAppService(token);
 
-  const summary = await appService.queryTaskSummaryFiltered({
+  const summary = await appService.queryTaskSummaryFresh({
     include_archived,
   });
 

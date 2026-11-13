@@ -57,7 +57,7 @@ describe("Surveillance view contracts", () => {
     expect(formatCoordinates(0, "   ")).toBeNull();
   });
 
-  it("supports repeated friendly facets and explicit RQL precedence", () => {
+  it("supports repeated friendly facets and keeps them beside explicit RQL", () => {
     const state = parseSurveillanceCollectionState({
       pathogen_test_type: ["PCR", "RAT/antigen", "PCR"],
       collection_country: "US",
@@ -73,8 +73,10 @@ describe("Surveillance view contracts", () => {
       pathogen_test_type: "PCR",
       rql: "eq(collection_country,US)",
     });
-    expect(explicit.filters).toEqual({});
-    expect(surveillanceStructuralRql(explicit)).toBeUndefined();
+    expect(explicit.filters).toEqual({ pathogen_test_type: ["PCR"] });
+    expect(surveillanceStructuralRql(explicit)).toBe(
+      'eq(pathogen_test_type,"PCR")',
+    );
     expect(() =>
       parseSurveillanceCollectionState({ rql: "sort(+sample_identifier)" }),
     ).toThrow("Transport operator");

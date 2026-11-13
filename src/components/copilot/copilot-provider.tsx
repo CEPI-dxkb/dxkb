@@ -18,6 +18,7 @@ import { useAuth } from "@/lib/auth/provider";
 import { writeStorageItem } from "@/lib/browser-storage";
 import { resolveCopilotModel } from "@/lib/copilot/models";
 import { copilotPagePath } from "@/lib/copilot/paths";
+import { isCopilotTurnActive } from "@/lib/copilot/turn";
 import type { CopilotModel } from "@/lib/copilot/types";
 import type { CopilotSurface } from "@/lib/ui-preferences/definitions";
 import { useUiPreference } from "@/lib/ui-preferences/provider";
@@ -36,6 +37,12 @@ interface CopilotContextValue {
   preferredSurface: CopilotSurface;
   open: (surface?: CopilotSurface) => void;
   close: () => void;
+  /** The open surface is folded into the edge tab: still mounted (chat, scroll and draft kept) but hidden and inert. */
+  minimized: boolean;
+  /** A turn ran while minimized; cleared on restore. */
+  unread: boolean;
+  minimize: () => void;
+  restore: () => void;
   sessionId: string | null;
   selectSession: (sessionId: string) => void;
   newChat: () => void;
@@ -56,12 +63,23 @@ export function CopilotProvider({ children }: PropsWithChildren) {
   const onCopilotPage = pathname === copilotPagePath;
   const [preferredSurface, setPreferredSurface] = useUiPreference("copilotSurface");
   const [openSurface, setOpenSurface] = useState<CopilotSurface | null>(null);
+  const [minimized, setMinimized] = useState(false);
+  const [unread, setUnread] = useState(false);
+
+  // Every way of closing, or of opening a surface, starts the next one open rather than minimized.
+  const unminimize = () => {
+    setMinimized(false);
+    setUnread(false);
+  };
 
   // The full page replaces the panel or window; leaving it does not reopen them.
   const [wasOnCopilotPage, setWasOnCopilotPage] = useState(onCopilotPage);
   if (onCopilotPage !== wasOnCopilotPage) {
     setWasOnCopilotPage(onCopilotPage);
-    if (onCopilotPage) setOpenSurface(null);
+    if (onCopilotPage) {
+      setOpenSurface(null);
+      unminimize();
+    }
   }
 
   const available = user !== null;
@@ -84,19 +102,33 @@ export function CopilotProvider({ children }: PropsWithChildren) {
 
   const chat = useCopilotChat(user?.username ?? null);
 
+  const visibleSurface = onCopilotPage || !available ? null : openSurface;
+  const isMinimized = visibleSurface !== null && minimized;
+  if (isMinimized && !unread && isCopilotTurnActive(chat.active?.turn ?? null)) {
+    setUnread(true);
+  }
+
   const value: CopilotContextValue = {
     available,
     username: user?.username ?? null,
     onCopilotPage,
-    openSurface: onCopilotPage ? null : openSurface,
+    openSurface: visibleSurface,
     preferredSurface,
     open: (surface = preferredSurface) => {
       if (surface !== preferredSurface) setPreferredSurface(surface);
       setOpenSurface(surface);
+      unminimize();
     },
     close: () => {
       setOpenSurface(null);
+      unminimize();
     },
+    minimized: isMinimized,
+    unread: isMinimized && unread,
+    minimize: () => {
+      if (visibleSurface !== null) setMinimized(true);
+    },
+    restore: unminimize,
     sessionId,
     selectSession: (next) => {
       if (storageKey) writeStorageItem(storageKey, next);

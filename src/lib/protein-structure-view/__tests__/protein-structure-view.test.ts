@@ -300,15 +300,15 @@ describe("Protein Structure view contracts", () => {
     );
   });
 
-  it("gives explicit RQL precedence and validates sort", () => {
+  it("keeps friendly filters beside explicit RQL and validates sort", () => {
     const state = parseProteinStructureCollectionState({
       rql: "eq(method,Predicted)",
-      genome_id: "ignored",
+      genome_id: "83332.12",
       sort: "missing:asc",
     });
-    expect(state.filters).toEqual({});
+    expect(state.filters).toEqual({ genome_id: ["83332.12"] });
     expect(state.sort).toBe("unsorted");
-    expect(proteinStructureStructuralRql(state)).toBeUndefined();
+    expect(proteinStructureStructuralRql(state)).toBe("eq(genome_id,83332.12)");
     expect(() =>
       parseProteinStructureCollectionState({ rql: "sort(+pdb_id)" }),
     ).toThrow("Transport operator");

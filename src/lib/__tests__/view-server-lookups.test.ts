@@ -223,6 +223,30 @@ describe("getFeature alternate identifier", () => {
     expect(urls[0]).toContain("eq(feature_id");
   });
 
+  // DXKBCORE-415: the Data API answers HTTP 400 for an apostrophe in an RQL
+  // value however it is encoded, so the lookup sends `?` and keeps the exact
+  // row (a RefSeq sibling shares the genome but not the ID).
+  it.each([
+    ["feature_id", "PATRIC.1173523.10.JQ434005.5'UTR.1.384.fwd", "eq(feature_id,PATRIC.1173523.10.JQ434005.5?UTR.1.384.fwd)"],
+    ["patric_id", "fig|1173523.10.5'UTR.1", "eq(patric_id,fig|1173523.10.5?UTR.1)"],
+  ])("loads a 5'UTR feature by %s", async (_field, id, clause) => {
+    const row = {
+      feature_id: "PATRIC.1173523.10.JQ434005.5'UTR.1.384.fwd",
+      patric_id: "fig|1173523.10.5'UTR.1",
+    };
+    const { urls } = upstream("genome_feature", [
+      row,
+      { feature_id: "PATRIC.1173523.10.JQ434005.5xUTR.1.384.fwd", patric_id: "fig|1173523.10.5xUTR.1" },
+    ]);
+
+    await expect(getFeature(id)).resolves.toEqual({
+      feature: row,
+      usedAlternateId: id.startsWith("fig|"),
+    });
+    expect(urls[0]).toContain(clause);
+    expect(urls[0]).not.toContain("'");
+  });
+
   // The flag reports the identifier used, not whether a row came back; the page needs it to redirect even when the lookup misses.
   it("still reports the alternate ID when a fig| lookup matches nothing", async () => {
     upstream("genome_feature", []);

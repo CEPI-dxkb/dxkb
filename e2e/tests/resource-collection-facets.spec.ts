@@ -5,7 +5,7 @@ import {
   emptyBackendFallbackOverrides,
   genomeScenarioOverrides,
 } from "../fixtures/overrides";
-import { ResourceCollectionPage } from "../pages";
+import { ResourceCollectionPage, TaxonPage } from "../pages";
 
 test.use({ storageState: { cookies: [], origins: [] } });
 
@@ -14,6 +14,9 @@ test.use({ storageState: { cookies: [], origins: [] } });
  * menu or a pill). A field's counts leave its own filter out. This spec covers the real
  * page; the unit suites stub the hook or table.
  */
+
+// Taxon 11520 (Orthomyxoviridae) offers the Genomes tab.
+const influenzaTaxonId = "11520";
 
 const firstRow = { genome_id: "1282460.2049", genome_name: "Selected genome" };
 const secondRow = { genome_id: "1282460.2050", genome_name: "Next genome" };
@@ -35,6 +38,12 @@ function facetCounts(fields: readonly string[]) {
       { value: "", count: 3 },
     ],
     culture_collection: [{ value: "FDA:FDAARGOS_855", count: 2 }],
+    isolation_country: [{ value: "USA", count: 5 }],
+    state_province: [{ value: "Texas", count: 3 }],
+    geographic_group: [{ value: "North America", count: 4 }],
+    subtype: [{ value: "H1N1", count: 4 }],
+    h_type: [{ value: "5", count: 2 }],
+    n_type: [{ value: "1", count: 2 }],
   };
   return Object.fromEntries(fields.map((field) => [field, counts[field] ?? []]));
 }
@@ -103,6 +112,60 @@ async function openGenomeCollection(page: Page) {
 
 function facetsOf(read: URL | undefined) {
   return read?.searchParams.getAll("facet") ?? [];
+}
+
+function rqlOf(read: URL | undefined) {
+  return read?.searchParams.get("rql") ?? "";
+}
+
+/** The `rql` of every Genome rows read (not a facet count read), in order. */
+function recordRowQueries(page: Page) {
+  const queries: string[] = [];
+  page.on("request", (request: Request) => {
+    const url = new URL(request.url());
+    if (url.pathname === "/api/data/genome" && !isFacetRead(url)) {
+      queries.push(url.searchParams.get("rql") ?? "");
+    }
+  });
+  return queries;
+}
+
+/**
+ * Holds the app's RSC navigation request to `pathname` whose address
+ * `matches` (a pick's `router.push`; prefetches pass) until `release` is
+ * called; `requested` settles once it is held.
+ */
+async function holdNavigation(
+  page: Page,
+  pathname: string,
+  matches: (url: URL) => boolean,
+) {
+  let release!: () => void;
+  const released = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  let markRequested!: () => void;
+  const requested = new Promise<void>((resolve) => {
+    markRequested = resolve;
+  });
+  await page.route(
+    (url) => url.pathname === pathname && url.searchParams.has("_rsc"),
+    async (route) => {
+      const request = route.request();
+      const headers = request.headers();
+      const url = new URL(request.url());
+      if (
+        headers.rsc === "1" &&
+        !("next-router-prefetch" in headers) &&
+        matches(url)
+      ) {
+        markRequested();
+        await released;
+      }
+      await route.fallback();
+    },
+  );
+  return { requested, release };
 }
 
 test.describe("resource collection facet counts", () => {
@@ -231,6 +294,88 @@ test.describe("resource collection facet counts", () => {
     ).toBe(false);
   });
 
+  test("narrows a custom-query list by a pick instead of replacing the query", async ({
+    page,
+  }) => {
+    // A "Show these genomes" link: a hand-written rql, no friendly filters.
+    const customClauses = [
+      "in(taxon_lineage_ids,(3050294))",
+      "ne(genome_status,Deprecated)",
+    ];
+    const customRql = `and(${customClauses.join(",")})`;
+    const picked = "eq(genome_status,Complete)";
+    const collection = await openGenomeCollection(page);
+    const { toolbar } = collection;
+    const facetReads = await routeFacetReads(page);
+    const rowReads: URL[] = [];
+    page.on("request", (request: Request) => {
+      const url = new URL(request.url());
+      if (
+        url.pathname === "/api/data/genome" &&
+        url.searchParams.get("operation") === "collection" &&
+        !isFacetRead(url)
+      ) {
+        rowReads.push(url);
+      }
+    });
+
+    await collection.gotoQuery(`rql=${customRql}`);
+    await expect(toolbar.customQueryBadge()).toBeVisible();
+    await toolbar.openFacet("Genome Status");
+    await expect(
+      toolbar.facetValueOption("Genome Status", "Complete", 5),
+    ).toBeVisible();
+    // The reads capture the rql they carry before the pick: a pick that
+    // dropped the query could not be told from a capture that never saw it.
+    expect(facetReads).toHaveLength(1);
+    for (const read of [rowReads[0], facetReads[0]]) {
+      for (const clause of customClauses) {
+        expect(rqlOf(read)).toContain(clause);
+      }
+      expect(rqlOf(read)).not.toContain(picked);
+    }
+
+    await toolbar.pickFacetValue("Genome Status", "Complete");
+    // The pick lands beside the query in the URL; it used to replace it
+    // (`/genome?genome_status=Complete`).
+    await expect(page).toHaveURL(/[?&]genome_status=Complete(?:&|$)/);
+    expect(new URL(page.url()).searchParams.get("rql")).toBe(customRql);
+    await expect(toolbar.filtersButton()).toHaveAccessibleName(
+      "Filters, 1 active",
+    );
+    await expect(toolbar.customQueryBadge()).toBeVisible();
+
+    // Rows and the other facets' counts are both read for the query narrowed
+    // by the pick (Genome Status keeps its own counts, so it is not re-read).
+    await expect.poll(() => facetReads.length).toBe(2);
+    await expect
+      .poll(() => rowReads.some((read) => rqlOf(read).includes(picked)))
+      .toBe(true);
+    const narrowed = [
+      facetReads[1],
+      ...rowReads.filter((read) => rqlOf(read).includes(picked)),
+    ];
+    for (const read of narrowed) {
+      for (const clause of [...customClauses, picked]) {
+        expect(rqlOf(read)).toContain(clause);
+      }
+    }
+    expect(facetsOf(facetReads[1])).not.toContain("genome_status");
+
+    // The server renders the same list from the link.
+    await toolbar.closeFilters();
+    await page.reload();
+    await expect(collection.rowCheckbox(firstRow.genome_id)).toBeVisible();
+    await expect(toolbar.filtersButton()).toHaveAccessibleName(
+      "Filters, 1 active",
+    );
+    await expect(toolbar.customQueryBadge()).toBeVisible();
+    expect(new URL(page.url()).searchParams.get("rql")).toBe(customRql);
+    expect(new URL(page.url()).searchParams.get("genome_status")).toBe(
+      "Complete",
+    );
+  });
+
   test("keeps a pick on a facet the URL used to drop, on its (empty) bucket, and on a value with a colon", async ({
     page,
   }) => {
@@ -289,6 +434,131 @@ test.describe("resource collection facet counts", () => {
     await expect(toolbar.filtersButton()).toHaveAccessibleName(
       "Filters, 2 active",
     );
+  });
+
+  test("keeps a pick on every facet reported in DXKBCORE-344", async ({
+    page,
+  }) => {
+    const collection = await openGenomeCollection(page);
+    const { toolbar } = collection;
+    await routeFacetReads(page);
+    const queries = recordRowQueries(page);
+
+    await collection.goto("influenza");
+    // The overlay shows a pick as selected while its navigation is pending
+    // whether or not the page keeps it, so each pick is checked in the URL
+    // and in the rows read, not by `aria-selected`.
+    const picks = [
+      ["Isolation Country", "isolation_country", "USA", "eq(isolation_country,USA)"],
+      ["State/Province", "state_province", "Texas", "eq(state_province,Texas)"],
+      [
+        "Geographic Group",
+        "geographic_group",
+        "North America",
+        'eq(geographic_group,"North%20America")',
+      ],
+      ["Segment", "segment", "4", "eq(segment,4)"],
+      ["Subtype", "subtype", "H1N1", "eq(subtype,H1N1)"],
+      ["H_type", "h_type", "5", "eq(h_type,5)"],
+      ["N_type", "n_type", "1", "eq(n_type,1)"],
+    ] as const;
+    for (const [label, field, value, clause] of picks) {
+      await toolbar.pickFacetValue(label, value);
+      await expect(page).toHaveURL(
+        (url) => url.searchParams.get(field) === value,
+      );
+      await expect
+        .poll(() => queries.at(-1) ?? "", { message: `rows read with ${clause}` })
+        .toContain(clause);
+    }
+    await expect(toolbar.filtersButton()).toHaveAccessibleName(
+      `Filters, ${String(picks.length)} active`,
+    );
+
+    await toolbar.closeFilters();
+    // Pills follow the facet order; those past the toolbar's width fold into
+    // one "+N" button that names them.
+    await expect(toolbar.activeFilterPill("Segment")).toHaveAccessibleName(
+      "Segment: 4. Edit filter",
+    );
+    const shownPills = await toolbar.activeFilterPills().count();
+    const foldedPills = picks.length - shownPills;
+    await expect(toolbar.moreFiltersButton()).toHaveAccessibleName(
+      new RegExp(
+        `^${String(foldedPills)} more filters: .*Isolation Country, State/Province, Geographic Group\\.`,
+      ),
+    );
+
+    // The URL holds every pick, so a reload keeps them.
+    await page.reload();
+    await expect(toolbar.filtersButton()).toHaveAccessibleName(
+      `Filters, ${String(picks.length)} active`,
+    );
+    await expect(toolbar.activeFilterPills()).toHaveCount(shownPills);
+    await expect(toolbar.moreFiltersButton()).toHaveAccessibleName(
+      new RegExp(`^${String(foldedPills)} more filters: `),
+    );
+  });
+
+  test("keeps a pick while the page is slow to answer", async ({ page }) => {
+    const collection = await openGenomeCollection(page);
+    const { toolbar } = collection;
+    await routeFacetReads(page);
+    const queries = recordRowQueries(page);
+    const navigation = await holdNavigation(
+      page,
+      "/genome",
+      (url) => url.searchParams.get("isolation_country") === "USA",
+    );
+
+    await collection.goto("influenza");
+    await toolbar.openFacet("Isolation Country");
+    const option = toolbar.facetValueOption("Isolation Country", "USA");
+    const selection = await toolbar.watchValueSelection(
+      "Isolation Country",
+      "USA",
+    );
+    await option.click();
+    await navigation.requested;
+
+    // Past the 3 s the overlay used to last, with the navigation still held.
+    await page.waitForTimeout(4_000);
+    await expect(option).toHaveAttribute("aria-selected", "true");
+    expect(new URL(page.url()).searchParams.has("isolation_country")).toBe(
+      false,
+    );
+    expect(queries.some((rql) => rql.includes("isolation_country"))).toBe(
+      false,
+    );
+
+    navigation.release();
+    await expect(page).toHaveURL(
+      (url) => url.searchParams.get("isolation_country") === "USA",
+    );
+    await expect
+      .poll(() => queries.at(-1) ?? "")
+      .toContain("eq(isolation_country,USA)");
+    await expect(option).toHaveAttribute("aria-selected", "true");
+    expect(await selection()).toEqual(["false", "true"]);
+  });
+
+  test("keeps a Segment pick on the taxon Genomes tab", async ({ page }) => {
+    await applyBackendMocks(page, {
+      overrides: [...genomeScenarioOverrides, ...emptyBackendFallbackOverrides],
+    });
+    await routeFacetReads(page);
+    const queries = recordRowQueries(page);
+    const taxon = new TaxonPage(page);
+
+    await taxon.goto(influenzaTaxonId, "genomes");
+    await taxon.toolbar.pickFacetValue("Segment", "4");
+
+    await expect(page).toHaveURL(
+      (url) =>
+        url.searchParams.get("tab") === "genomes" &&
+        url.searchParams.get("segment") === "4",
+    );
+    await expect.poll(() => queries.at(-1) ?? "").toContain("eq(segment,4)");
   });
 
   test("shows why the counts could not be loaded, keeps the rows, and retries the counts alone", async ({

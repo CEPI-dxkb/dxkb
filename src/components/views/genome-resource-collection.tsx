@@ -6,7 +6,10 @@ import {
   genomeCollectionProfile,
   type GenomeViewRecord,
 } from "@/lib/genome-view";
-import type { CollectionState } from "@/lib/views/collection-state";
+import {
+  filtersBesideRql,
+  type CollectionState,
+} from "@/lib/views/collection-state";
 import { useCollectionUrlState } from "@/hooks/views/use-collection-url-state";
 import { ResourceCollection } from "./resource-collection";
 
@@ -39,6 +42,9 @@ export function GenomeResourceCollection({
       }
       repository={repository}
       state={state}
+      filtersBesideRql={[
+        ...filtersBesideRql(state.rql, genomeCollectionOptions),
+      ]}
       onStateChange={setState}
       baseRql={baseRql}
       enableRowLinks={enableRowLinks}

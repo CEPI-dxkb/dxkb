@@ -152,21 +152,27 @@ export function CopilotTranscript({
       : null;
 
   if (messages.length === 0 && !turn && !busyElsewhere && !sessionError) {
-    return <EmptyState onSuggestion={onSuggestion} />;
+    // Scrolls inside its own box: in a short window the suggestions would otherwise spill over the
+    // composer below.
+    return (
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+        <EmptyState onSuggestion={onSuggestion} />
+      </div>
+    );
   }
 
   return (
     <MessageScrollerProvider autoScroll defaultScrollPosition="last-anchor">
       <MessageScroller>
         <MessageScrollerViewport aria-label={`${copilotName} conversation`}>
-          <MessageScrollerContent aria-busy={running}>
+          <MessageScrollerContent aria-busy={running} density="compact">
             {messages.map((message) => (
               <MessageScrollerItem
                 key={message.id}
                 messageId={message.id}
                 scrollAnchor={message.id === lastQuestionId}
               >
-                <div className="px-4 pt-2">
+                <div className="px-4">
                   {message.role === "user" ? (
                     <CopilotUserMessage
                       content={message.content}
@@ -197,7 +203,7 @@ export function CopilotTranscript({
             ))}
             {turn && !active?.hidden && (
               <MessageScrollerItem messageId={turn.id} scrollAnchor>
-                <div className="px-4 pt-2">
+                <div className="px-4">
                   <CopilotUserMessage
                     content={turn.query}
                     answers={active?.clarificationAnswers ?? []}

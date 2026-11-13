@@ -114,8 +114,10 @@ function StatusBadge({ status }: { status: string }) {
     running: "bg-accent text-accent-foreground",
     "in-progress": "bg-accent text-accent-foreground",
     queued: "bg-warning/10 text-warning",
-    pending: "bg-muted text-muted-foreground",
+    pending: "bg-warning/10 text-warning",
+    init: "bg-warning/10 text-warning",
     cancelled: "bg-muted text-muted-foreground",
+    deleted: "bg-muted text-muted-foreground",
   };
   const colors = colorMap[status] ?? "bg-muted text-muted-foreground";
   return (

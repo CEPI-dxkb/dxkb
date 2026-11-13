@@ -148,7 +148,7 @@ function duplicateIds(container: HTMLElement) {
 }
 
 describe("ResourceWorkspace layout", () => {
-  it("renders an 85/15 side-by-side split the user can actually resize", () => {
+  it("renders a 70/30 side-by-side split the user can actually resize", () => {
     mockViewport(false);
     renderWorkspace();
 
@@ -156,15 +156,15 @@ describe("ResourceWorkspace layout", () => {
       "data-layout",
       "resizable",
     );
-    expect(panelShares()).toStrictEqual(["85", "15"]);
+    expect(panelShares()).toStrictEqual(["70", "30"]);
     expect(panelGroup().style.flexDirection).toBe("row");
     expect(separator()).toHaveAttribute("aria-orientation", "vertical");
-    expect(resizeWindow()).toStrictEqual(["40", "85", "90"]);
+    expect(resizeWindow()).toStrictEqual(["40", "70", "90"]);
 
     pressOnSeparator("ArrowLeft");
-    expect(panelShares()).toStrictEqual(["80", "20"]);
+    expect(panelShares()).toStrictEqual(["65", "35"]);
     pressOnSeparator("ArrowRight");
-    expect(panelShares()).toStrictEqual(["85", "15"]);
+    expect(panelShares()).toStrictEqual(["70", "30"]);
   });
 
   it("renders a 55/45 stacked split that refuses to resize when narrow", () => {
@@ -205,9 +205,9 @@ describe("ResourceWorkspace layout", () => {
       >
         <span>Table</span>
       </ResourceWorkspace>,
-      { wrapper: createUiPreferencesWrapper({ resourceDetailPanelSize: 30 }) },
+      { wrapper: createUiPreferencesWrapper({ resourceDetailPanelSize: 40 }) },
     );
-    expect(panelShares()).toStrictEqual(["70", "30"]);
+    expect(panelShares()).toStrictEqual(["60", "40"]);
   });
 
   it("remembers a side-by-side resize but never the stacked split", () => {
@@ -224,7 +224,7 @@ describe("ResourceWorkspace layout", () => {
     );
     pressOnSeparator("ArrowLeft");
     expect(cookieSpy).toHaveBeenCalledWith(
-      expect.stringContaining("dxkb-resource-detail-panel-size=20;"),
+      expect.stringContaining("dxkb-resource-detail-panel-size=35;"),
     );
     cookieSpy.mockClear();
     viewport.crossBreakpoint(true);
@@ -383,7 +383,7 @@ describe("ResourceWorkspace slot mounting", () => {
           screen.getByText("Table").closest("[data-layout]"),
         ).toHaveAttribute("data-layout", narrow ? "stacked" : "resizable");
         expect(panelShares()).toStrictEqual(
-          narrow ? ["55", "45"] : ["85", "15"],
+          narrow ? ["55", "45"] : ["70", "30"],
         );
         expect(panelGroup().style.flexDirection).toBe(
           narrow ? "column" : "row",
@@ -413,12 +413,12 @@ describe("ResourceWorkspace slot mounting", () => {
 
     renderProbedWorkspace(probes);
     pressOnSeparator("ArrowLeft");
-    expect(panelShares()).toStrictEqual(["80", "20"]);
+    expect(panelShares()).toStrictEqual(["65", "35"]);
 
     viewport.crossBreakpoint(true);
     expect(panelShares()).toStrictEqual(["55", "45"]);
     viewport.crossBreakpoint(false);
-    expect(panelShares()).toStrictEqual(["80", "20"]);
+    expect(panelShares()).toStrictEqual(["65", "35"]);
     viewport.crossBreakpoint(true);
     expect(panelShares()).toStrictEqual(["55", "45"]);
     expect(probes.counts()).toStrictEqual({ mounts: 3, cleanups: 0 });

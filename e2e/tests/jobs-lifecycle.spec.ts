@@ -7,7 +7,7 @@ import {
   mockLifecycleJobs,
   workspacePopulatedOverrides,
 } from "../fixtures/overrides";
-import { JobsListPage } from "../pages";
+import { JobsListPage, Navbar } from "../pages";
 import { harOverridesFor } from "../scripts/har-overrides";
 
 test.describe("jobs lifecycle", () => {
@@ -133,7 +133,7 @@ test.describe("jobs lifecycle", () => {
     await expect(page.getByText(/error loading jobs/i)).not.toBeVisible();
     await expect(jobs.rowById("22976705")).toContainText("production-shaped-output");
 
-    await page.getByRole("button", { name: /view job status/i }).click();
+    await new Navbar(page).jobStatusPill().click();
     const jobPopover = page.getByRole("dialog", { name: /my jobs/i });
     await expect(jobPopover.getByText("Predict Structure")).toBeVisible();
     await expect(jobPopover.getByText("production-shaped-output")).toBeVisible();

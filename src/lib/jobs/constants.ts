@@ -4,6 +4,7 @@ import {
   Clock,
   AlertCircle,
   Ban,
+  Trash2,
 } from "lucide-react";
 import { CirclePlaySpinner } from "./icons";
 
@@ -29,6 +30,7 @@ export const statusConfig: Record<
     label: "Running",
   },
   queued: { icon: Clock, className: "text-muted-foreground", label: "Queued" },
+  init: { icon: Clock, className: "text-muted-foreground", label: "Queued" },
   pending: {
     icon: Clock,
     className: "text-muted-foreground",
@@ -38,6 +40,11 @@ export const statusConfig: Record<
     icon: Ban,
     className: "text-muted-foreground",
     label: "Cancelled",
+  },
+  deleted: {
+    icon: Trash2,
+    className: "text-muted-foreground",
+    label: "Deleted",
   },
 };
 
@@ -49,12 +56,25 @@ export const statusOptions = [
   { value: "failed", label: "Failed" },
 ];
 
-export const activeJobStatuses = [
-  "pending",
-  "queued",
-  "running",
-  "in-progress",
+/** Waiting to start. Legacy BV-BRC-Web counts `queued + pending + init`. */
+export const queuedJobStatuses = ["queued", "pending", "init"] as const;
+
+export const runningJobStatuses = ["running", "in-progress"] as const;
+
+export const failedJobStatuses = ["failed", "error"] as const;
+
+export const activeJobStatuses: readonly string[] = [
+  ...queuedJobStatuses,
+  ...runningJobStatuses,
 ];
+
+/** Sum a status-count summary over a group of statuses; a missing key counts 0. */
+export function sumStatusCounts(
+  summary: Readonly<Record<string, number | undefined>> | undefined,
+  statuses: readonly string[],
+): number {
+  return statuses.reduce((total, s) => total + (summary?.[s] ?? 0), 0);
+}
 
 export const pageSizeOptions = [25, 50, 100, 200, 500, 1000] as const;
 

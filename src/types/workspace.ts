@@ -19,12 +19,14 @@ export interface JsonRpcResponse<T = unknown> {
 export type JobStatus =
   | "pending"
   | "queued"
+  | "init"
   | "running"
   | "in-progress"
   | "completed"
   | "failed"
   | "cancelled"
-  | "error";
+  | "error"
+  | "deleted";
 
 export interface JobBase {
   id: string;
@@ -132,6 +134,8 @@ export interface EnumerateTasksFilteredParams {
   app?: string;
   start_time?: string;
   end_time?: string;
+  /** Exact `service_status` match; the backend counts it in `totalTasks` too. */
+  status?: string;
 }
 
 export interface EnumerateTasksFilteredResponse {

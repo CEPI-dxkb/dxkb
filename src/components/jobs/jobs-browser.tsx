@@ -47,6 +47,9 @@ import { rerunJob } from "@/lib/rerun-utility";
 import {
   defaultJobsColumnOrder,
   activeJobStatuses,
+  queuedJobStatuses,
+  runningJobStatuses,
+  failedJobStatuses,
 } from "@/lib/jobs/constants";
 import {
   fromLocalDateParam,
@@ -205,6 +208,13 @@ function JobsTableBody({
   ));
 }
 
+/** Filters that stand for several statuses (legacy groups queued + pending + init). */
+const statusFilterGroups: Partial<Record<string, readonly string[]>> = {
+  running: runningJobStatuses,
+  queued: queuedJobStatuses,
+  failed: failedJobStatuses,
+};
+
 function useJobsBrowser() {
   const router = useRouter();
 
@@ -333,10 +343,11 @@ function useJobsBrowser() {
     if (!job.id || !job.app) return false;
 
     if (statusFilter !== "all") {
-      const isRunning =
-        statusFilter === "running" &&
-        (job.status === "running" || job.status === "in-progress");
-      if (!isRunning && job.status !== statusFilter) return false;
+      const group = statusFilterGroups[statusFilter];
+      const matches = group
+        ? group.includes(job.status)
+        : job.status === statusFilter;
+      if (!matches) return false;
     }
 
     if (searchQuery) {

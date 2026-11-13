@@ -1,4 +1,4 @@
-import { resolveCopilotModel } from "@/lib/copilot/models";
+import { resolveCopilotModel, shortModelName } from "@/lib/copilot/models";
 import type { CopilotModel } from "@/lib/copilot/types";
 
 function model(name: string, isDefault = false): CopilotModel {
@@ -28,5 +28,16 @@ describe("resolveCopilotModel", () => {
   it("is null when the gateway offers no models", () => {
     expect(resolveCopilotModel([], "picked")).toBeNull();
     expect(resolveCopilotModel([], null)).toBeNull();
+  });
+});
+
+describe("shortModelName", () => {
+  it.each([
+    ["openai/gpt-oss-120b", "gpt-oss-120b"],
+    ["together/meta-llama/Llama-3.3-70B", "Llama-3.3-70B"],
+    ["gpt-oss-120b", "gpt-oss-120b"],
+    ["trailing/", "trailing/"],
+  ])("shows %s as %s", (full, short) => {
+    expect(shortModelName(full)).toBe(short);
   });
 });

@@ -15,7 +15,12 @@ export class ResourceCollectionPage {
   }
 
   async goto(keyword: string) {
-    await this.page.goto(`/${this.route}?keyword=${encodeURIComponent(keyword)}`);
+    await this.gotoQuery(`keyword=${encodeURIComponent(keyword)}`);
+  }
+
+  /** Opens the collection at a raw query string (`rql=...`), as a shared link carries it. */
+  async gotoQuery(query: string) {
+    await this.page.goto(`/${this.route}?${query}`);
     await expect(
       this.page.getByRole("checkbox", { name: `Select row ${this.selectedId}` }),
     ).toBeVisible();

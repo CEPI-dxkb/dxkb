@@ -34,6 +34,15 @@ import { useCompareRegionSettings } from "./use-compare-region-settings";
 
 const signInHint = `Sign in, or choose "${compareRegionFilterLabels.reference}" or "${compareRegionFilterLabels.all}" under Genomes.`;
 
+/** Under "All genomes" a lone row means the gene has no counterparts; under a narrower filter more genomes may hold one. */
+function singleGenomeNotice(filter: CompareRegionSettings["filter"]): string {
+  const ownGenome =
+    "Only this feature's own genome was returned, so there is nothing to compare.";
+  return filter === "all"
+    ? `${ownGenome} RNAs, repeats and genes that belong to no protein family, as many viral genes do, have no counterparts in other genomes.`
+    : `${ownGenome} Choose "${compareRegionFilterLabels.all}" under Genomes to compare against every genome, or note that RNAs, repeats and genes that belong to no protein family have no counterparts in other genomes.`;
+}
+
 interface CompareRegionBodyProps {
   applied: CompareRegionSettings;
   busy: boolean;
@@ -87,15 +96,25 @@ function CompareRegionBody({
   }
   if (width === 0) return renderBar(null, null);
   return (
-    <CompareRegionChart
-      rows={rows}
-      width={width}
-      settings={applied}
-      density={density}
-      onDensityChange={onDensityChange}
-      renderBar={renderBar}
-      onExport={onExport}
-    />
+    <>
+      {rows.length === 1 && (
+        <p
+          role="status"
+          className="border-b px-3 py-2 text-sm text-muted-foreground"
+        >
+          {singleGenomeNotice(applied.filter)}
+        </p>
+      )}
+      <CompareRegionChart
+        rows={rows}
+        width={width}
+        settings={applied}
+        density={density}
+        onDensityChange={onDensityChange}
+        renderBar={renderBar}
+        onExport={onExport}
+      />
+    </>
   );
 }
 

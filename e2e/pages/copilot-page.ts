@@ -13,24 +13,29 @@ export type CopilotResizeDirection =
 
 /**
  * Page object for the BV-BRC Copilot. Cards and the composer live inside
- * `panel`, the open Copilot dialog whichever surface shows it; backend mocks
- * stay in the spec.
+ * `panel`, the open chat whichever surface shows it (the side panel is a
+ * landmark, the floating window a dialog); backend mocks stay in the spec.
  */
 export class CopilotPage {
   readonly page: Page;
 
+  /** The page's own content, which the side panel pushes aside on a desktop. */
+  readonly main: Locator;
+  /** The navbar button while the chat is closed. */
   readonly launcher: Locator;
   readonly panel: Locator;
   readonly floating: Locator;
   readonly newChatDialog: Locator;
-  readonly sideSheet: Locator;
-  readonly sideSheetOverlay: Locator;
+  readonly sidePanel: Locator;
+  /** The minimized chat's tab on the window edge. */
+  readonly edgeTab: Locator;
   readonly chatList: Locator;
   readonly emptyChatList: Locator;
   readonly emptyState: Locator;
 
-  readonly optionsButton: Locator;
+  readonly layoutButton: Locator;
   readonly menu: Locator;
+  readonly minimizeButton: Locator;
   readonly closeButton: Locator;
 
   readonly composer: Locator;
@@ -67,21 +72,32 @@ export class CopilotPage {
   constructor(page: Page) {
     this.page = page;
 
-    this.launcher = page.getByRole("button", { name: `Open ${copilotName}` });
-    this.panel = page.getByRole("dialog");
+    this.main = page.locator("main");
+    this.launcher = this.navbarButton("Open");
+    this.sidePanel = page.getByRole("complementary", {
+      name: copilotName,
+      exact: true,
+    });
+    this.panel = this.sidePanel.or(page.getByRole("dialog"));
     this.floating = page.locator('[role="dialog"][aria-modal="false"]');
     this.newChatDialog = page.getByRole("dialog", { name: /New chat/ });
-    this.sideSheet = page.locator('[data-slot="sheet-content"]');
-    this.sideSheetOverlay = page.locator('[data-slot="sheet-overlay"]');
+    this.edgeTab = page
+      .getByRole("button", { name: `Restore ${copilotName}` })
+      .and(page.getByTitle(/Drag to move\./));
     this.chatList = page.getByRole("complementary", { name: "Your chats" });
     this.emptyChatList = page.getByText("No chats yet.");
     this.emptyState = page.getByText(`Ask ${copilotName}`);
 
-    this.optionsButton = page.getByRole("button", { name: `${copilotName} options` });
+    this.layoutButton = page.getByRole("button", {
+      name: `Change ${copilotName} layout`,
+    });
     this.menu = page.getByRole("menu");
-    this.closeButton = page
-      .getByRole("button", { name: `Close ${copilotName}` })
-      .first();
+    this.minimizeButton = this.panel.getByRole("button", {
+      name: `Minimize ${copilotName}`,
+    });
+    this.closeButton = this.panel.getByRole("button", {
+      name: `Close ${copilotName}`,
+    });
 
     const panel = this.panel;
     this.composer = panel.getByRole("textbox", { name: `Ask ${copilotName}` });
@@ -140,28 +156,44 @@ export class CopilotPage {
     await this.open();
   }
 
+  /** The width of the page's content, which shrinks while the side panel pushes it. */
+  async mainWidth(): Promise<number> {
+    return this.main.evaluate((element) => element.getBoundingClientRect().width);
+  }
+
+  /** The width of the window's viewport, without a scrollbar. */
+  async pageWidth(): Promise<number> {
+    return this.page.evaluate(() => document.documentElement.clientWidth);
+  }
+
   async openFullPage(): Promise<void> {
     await this.goto("/copilot");
   }
 
-  async openOptions(): Promise<void> {
-    await this.optionsButton.click();
+  /** The navbar's AskClark button: Open while closed, Minimize while open, Restore while minimized. */
+  navbarButton(action: "Open" | "Minimize" | "Restore"): Locator {
+    return this.page
+      .locator("#navbar-container")
+      .getByRole("button", { name: `${action} ${copilotName}` });
+  }
+
+  async openLayoutMenu(): Promise<void> {
+    await this.layoutButton.click();
   }
 
   async moveToFloating(): Promise<void> {
-    await this.openOptions();
+    await this.openLayoutMenu();
     await this.page.getByRole("menuitem", { name: "Floating window" }).click();
   }
 
   async moveToSidePanel(): Promise<void> {
-    await this.openOptions();
+    await this.openLayoutMenu();
     await this.page.getByRole("menuitem", { name: "Side panel" }).click();
   }
 
-  /** Waits so a press cannot land on the backdrop. */
+  /** Waits so a press cannot land on the closing layout menu. */
   async waitForFloatingSettled(): Promise<void> {
     await expect(this.floating).toBeVisible();
-    await expect(this.sideSheetOverlay).toHaveCount(0);
     await expect(this.menu).toBeHidden();
   }
 
@@ -182,8 +214,14 @@ export class CopilotPage {
     await this.sendButton.click();
   }
 
-  modeRadio(mode: "Plan" | "Execute"): Locator {
-    return this.panel.getByRole("radio", { name: mode });
+  /** The composer's mode menu button; it names the current mode. */
+  modeButton(mode: "Plan" | "Execute"): Locator {
+    return this.panel.getByRole("button", { name: `${copilotName} mode: ${mode}` });
+  }
+
+  async chooseMode(from: "Plan" | "Execute", to: "Plan" | "Execute"): Promise<void> {
+    await this.modeButton(from).click();
+    await this.page.getByRole("menuitemradio", { name: new RegExp(to) }).click();
   }
 
   async attach(file: {

@@ -33,14 +33,14 @@ describe("Taxonomy view contract", () => {
     );
   });
 
-  it("validates explicit RQL and makes it authoritative", () => {
+  it("validates explicit RQL and keeps friendly filters beside it", () => {
     const state = parseTaxonomyCollectionState({
       rql: "eq(lineage_ids,10239)",
       division: "Viruses",
     });
     expect(state.rql).toBe("eq(lineage_ids,10239)");
-    expect(state.filters).toEqual({});
-    expect(taxonomyStructuralRql(state)).toBeUndefined();
+    expect(state.filters).toEqual({ division: ["Viruses"] });
+    expect(taxonomyStructuralRql(state)).toBe("eq(division,Viruses)");
     expect(() =>
       parseTaxonomyCollectionState({ rql: "limit(10)" }),
     ).toThrow(/transport operator/i);

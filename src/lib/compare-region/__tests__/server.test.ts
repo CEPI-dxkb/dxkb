@@ -396,6 +396,67 @@ describe("readCompareRegion", () => {
     expect(rows.map((row) => row.genomeId)).toEqual(["1004954.3"]);
   });
 
+  it("keeps the service's message and drops the Perl trace behind it", async () => {
+    const firstLine =
+      "Compare regions: feature fig|1.1.peg.9 was not found (a private genome without a token?)";
+    const withTrace = `${firstLine}\n at /disk/perl/Foo.pm line 12\n at /disk/perl/Bar.pm line 99`;
+    server.use(
+      http.post(serviceUrl, () =>
+        HttpResponse.json(
+          {
+            jsonrpc: "2.0",
+            id: 1,
+            error: { code: -32603, message: withTrace, data: withTrace },
+          },
+          { status: 500 },
+        ),
+      ),
+    );
+    const { readCompareRegion } = await import("../server");
+
+    const failure = await readCompareRegion(query, undefined).catch((error: unknown) => error);
+
+    expect(failure).toMatchObject({
+      name: "JsonRpcError",
+      code: -32603,
+      message: firstLine,
+      data: firstLine,
+    });
+    expect((failure as Error).message).not.toContain("/disk/perl");
+    expect((failure as Error).message).not.toContain("line 12");
+    expect(String((failure as { data: unknown }).data)).not.toContain("/disk/perl");
+    const original = (failure as Error).cause;
+    expect(original).toBeInstanceOf(Error);
+    expect((original as Error).message).toContain("/disk/perl/Foo.pm");
+  });
+
+  it("leaves a data value that is not a string as the service sent it", async () => {
+    server.use(
+      http.post(serviceUrl, () =>
+        HttpResponse.json(
+          {
+            jsonrpc: "2.0",
+            id: 1,
+            error: {
+              code: -32603,
+              message: "Compare regions: bad size\n at /disk/perl/Foo.pm line 12",
+              data: { size: 0 },
+            },
+          },
+          { status: 500 },
+        ),
+      ),
+    );
+    const { readCompareRegion } = await import("../server");
+
+    const failure = await readCompareRegion(query, undefined).catch((error: unknown) => error);
+
+    expect(failure).toMatchObject({
+      message: "Compare regions: bad size",
+      data: { size: 0 },
+    });
+  });
+
   it("never sends a request whose caller left while it waited", async () => {
     const sent: string[] = [];
     server.use(

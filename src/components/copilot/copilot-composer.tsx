@@ -2,6 +2,7 @@
 
 import {
   ArrowUp,
+  ChevronDown,
   FileText,
   FolderOpen,
   Image as ImageIcon,
@@ -9,19 +10,27 @@ import {
   Square,
   X,
 } from "lucide-react";
-import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type KeyboardEvent,
+  type ReactNode,
+} from "react";
 import {
   InputGroup,
   InputGroupAddon,
   InputGroupButton,
   InputGroupTextarea,
 } from "@/components/ui/input-group";
-import { WorkspaceFolderPickerDialog } from "@/components/workspace/folder-picker/folder-picker-dialog-lazy";
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { WorkspaceFolderPickerDialog } from "@/components/workspace/folder-picker/folder-picker-dialog-lazy";
 import {
   copilotAttachmentAccept,
   maxCopilotAttachments,
@@ -59,6 +68,8 @@ export interface CopilotComposerProps {
   focusKey?: number;
   executionMode: CopilotExecutionMode;
   onExecutionModeChange: (mode: CopilotExecutionMode) => void;
+  /** Sits after the mode menu in the toolbar (the model picker). */
+  toolbarExtra?: ReactNode;
   attachments: CopilotAttachment[];
   onAttach: (files: File[]) => void;
   onRemoveAttachment: (id: string) => void;
@@ -125,20 +136,25 @@ function AttachmentChips({
   );
 }
 
-const modes: { value: CopilotExecutionMode; label: string; hint: string }[] = [
+const modes: {
+  value: CopilotExecutionMode;
+  label: string;
+  description: string;
+}[] = [
   {
     value: "plan",
     label: "Plan",
-    hint: `Plan: ${copilotName} prepares jobs and asks before submitting them.`,
+    description: `${copilotName} prepares jobs and asks before submitting them.`,
   },
   {
     value: "execute",
     label: "Execute",
-    hint: `Execute: ${copilotName} may submit jobs and create groups without asking.`,
+    description: `${copilotName} may submit jobs and create groups without asking.`,
   },
 ];
 
-function ModeToggle({
+/** A menu rather than a toggle: two buttons cost about 130px of a toolbar that is 280px at its narrowest. */
+function ModeMenu({
   value,
   onChange,
   disabled,
@@ -147,43 +163,46 @@ function ModeToggle({
   onChange: (mode: CopilotExecutionMode) => void;
   disabled: boolean;
 }) {
-  const hintId = useId();
+  const current = modes.find((mode) => mode.value === value) ?? modes[0];
   return (
-    <div
-      role="radiogroup"
-      aria-label={`${copilotName} mode`}
-      className="flex items-center rounded-md border p-0.5"
-    >
-      {/* A tooltip, not a title: a title shows late, and never on touch. */}
-      {modes.map((mode) => (
-        <Tooltip key={mode.value}>
-          <TooltipTrigger
-            render={
-              <InputGroupButton
-                type="button"
-                role="radio"
-                aria-checked={value === mode.value}
-                aria-describedby={`${hintId}-${mode.value}`}
-                size="xs"
-                variant={value === mode.value ? "secondary" : "ghost"}
-                disabled={disabled}
-                onClick={() => {
-                  onChange(mode.value);
-                }}
-              >
-                {mode.label}
-              </InputGroupButton>
-            }
-          />
-          <TooltipContent>{mode.hint}</TooltipContent>
-        </Tooltip>
-      ))}
-      {modes.map((mode) => (
-        <span key={mode.value} id={`${hintId}-${mode.value}`} hidden>
-          {mode.hint}
-        </span>
-      ))}
-    </div>
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        render={
+          <InputGroupButton
+            type="button"
+            size="xs"
+            // Execute is the one to notice: it fills in, Plan stays quiet.
+            variant={value === "execute" ? "secondary" : "ghost"}
+            aria-label={`${copilotName} mode: ${current.label}`}
+            title={current.description}
+            disabled={disabled}
+          >
+            {current.label}
+            <ChevronDown aria-hidden />
+          </InputGroupButton>
+        }
+      />
+      <DropdownMenuContent side="top" align="start" className="w-72">
+        <DropdownMenuRadioGroup
+          value={value}
+          onValueChange={(next: string) => {
+            const mode = modes.find((candidate) => candidate.value === next);
+            if (mode) onChange(mode.value);
+          }}
+        >
+          {modes.map((mode) => (
+            <DropdownMenuRadioItem key={mode.value} value={mode.value}>
+              <span className="flex flex-col gap-0.5">
+                <span>{mode.label}</span>
+                <span className="text-xs text-muted-foreground">
+                  {mode.description}
+                </span>
+              </span>
+            </DropdownMenuRadioItem>
+          ))}
+        </DropdownMenuRadioGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 
@@ -197,6 +216,7 @@ export function CopilotComposer({
   focusKey = 0,
   executionMode,
   onExecutionModeChange,
+  toolbarExtra,
   attachments,
   onAttach,
   onRemoveAttachment,
@@ -297,6 +317,7 @@ export function CopilotComposer({
       <InputGroup>
         <InputGroupTextarea
           ref={textareaRef}
+          data-copilot-composer=""
           value={value}
           rows={1}
           aria-label={`Ask ${copilotName}`}
@@ -350,14 +371,12 @@ export function CopilotComposer({
           >
             <FolderOpen aria-hidden />
           </InputGroupButton>
-          <ModeToggle
+          <ModeMenu
             value={executionMode}
             onChange={onExecutionModeChange}
             disabled={running || disabled}
           />
-          <span className="hidden text-2xs text-muted-foreground sm:group-focus-within/input-group:inline">
-            Shift+Enter for a new line
-          </span>
+          {toolbarExtra}
           {running ? (
             <InputGroupButton
               type="button"

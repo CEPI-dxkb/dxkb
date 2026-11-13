@@ -11,7 +11,9 @@ import {
 } from "@/components/views";
 import {
   buildFeatureTabs,
-  featureCompareRegionPeg,
+  type CompareRegionAvailability,
+  type CompareRegionLookup,
+  currentCompareRegionAvailability,
   featureDisplayName,
   featureFastaTypes,
   featureGenomeBrowserTarget,
@@ -37,6 +39,16 @@ const featureTabIcons: Record<FeatureTab, ReactNode> = {
   domains: viewIcons.domainsAndMotifs,
   structures: viewIcons.proteinStructures,
 };
+
+function featureRailTabs(
+  feature: FeatureViewRecord,
+  compare: CompareRegionAvailability,
+) {
+  return buildFeatureTabs(feature, compare).map((tab) => ({
+    ...tab,
+    icon: featureTabIcons[tab.key],
+  }));
+}
 
 interface CrumbTrailProps {
   feature: FeatureViewRecord;
@@ -119,6 +131,13 @@ function breadcrumbs(
 
 interface FeatureMemberProps {
   feature: FeatureViewRecord;
+  /**
+   * The Compare Region tab's gene (the feature's own BRC ID or its PATRIC
+   * counterpart's), or why there is none. A promise while the counterpart
+   * lookup runs, so it holds the tab rail, not the page; the page awaits it
+   * whenever the Compare Region tab itself is open.
+   */
+  compare: CompareRegionLookup;
   /** A promise, so a slow taxonomy lookup holds the breadcrumb, not the page. */
   lineage: Promise<readonly LineageCrumb[]>;
   activeTab: FeatureTab;
@@ -126,11 +145,13 @@ interface FeatureMemberProps {
 
 export function FeatureMember({
   feature,
+  compare,
   lineage,
   activeTab,
 }: FeatureMemberProps) {
   const browserTarget = featureGenomeBrowserTarget(feature);
-  const comparePeg = featureCompareRegionPeg(feature);
+  const compareNow = currentCompareRegionAvailability(compare);
+  const comparePeg = compareNow.peg;
   const content =
     activeTab === "genome-browser" && browserTarget ? (
       <GenomeBrowserPanel
@@ -167,10 +188,13 @@ export function FeatureMember({
     ) : (
       <FeatureOverview feature={feature} />
     );
-  const tabs = buildFeatureTabs(feature).map((tab) => ({
-    ...tab,
-    icon: featureTabIcons[tab.key],
-  }));
+  const tabs = featureRailTabs(feature, compareNow);
+  // Never rejects: `resolveCompareRegionAvailability` answers a failed lookup
+  // with its reason.
+  const streamedTabs =
+    compare instanceof Promise
+      ? compare.then((answer) => featureRailTabs(feature, answer))
+      : undefined;
   const displayName = featureDisplayName(feature);
   const fastaTypes = featureFastaTypes(feature);
   return (
@@ -205,6 +229,7 @@ export function FeatureMember({
         ) : undefined
       }
       tabs={tabs}
+      streamedTabs={streamedTabs}
       activeTab={activeTab}
       defaultTab="overview"
       serverTab

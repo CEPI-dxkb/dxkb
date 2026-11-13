@@ -10,9 +10,9 @@ export interface CollectionStateOptions<Sort extends string = string> {
    * Every key must also be a `friendlyFilters` entry. A default is omitted from
    * URLs; once removed, the URL carries `<name>=*` so the removal survives
    * reload.
-   * A default stays beside an explicit `rql` unless that rql names its field
-   * (`filtersBesideRql`), so the view's structural RQL builder must apply it
-   * under an rql too.
+   * Beside an explicit `rql` that names a default's field the default is not
+   * applied implicitly (`defaultShadowed`); an explicit value for that field
+   * still ANDs with the rql like any other filter (`filtersBesideRql`).
    */
   defaultFilters?: Readonly<Record<string, readonly string[]>>;
   legacyRqlFilter?: boolean;
@@ -96,22 +96,6 @@ function defaultFilterValues<Sort extends string>(
     : undefined;
 }
 
-function selectedFilterValues<Sort extends string>(
-  name: string,
-  requested: readonly string[],
-  options: CollectionStateOptions<Sort>,
-): string[] {
-  const fallback = defaultFilterValues(name, options);
-  if (!fallback) return allowedValues(name, requested, options);
-  const selected = allowedValues(
-    name,
-    requested.filter((value) => value !== clearedFilterValue),
-    options,
-  );
-  if (selected.length > 0) return selected;
-  return requested.includes(clearedFilterValue) ? [] : [...fallback];
-}
-
 /**
  * A value at the start of an `in(...)` list is not an operator's argument. Read
  * the validated rql where there is one: values there cannot hold a literal `(`.
@@ -120,22 +104,68 @@ export function rqlNamesField(rql: string, field: string): boolean {
   return new RegExp(`[a-z]\\(\\s*${field}\\s*,`).test(rql);
 }
 
-/** An rql that picks its own annotation replaces the PATRIC default. */
-export function filtersBesideRql<Sort extends string>(
+/**
+ * An rql that names a default's field (Feature's `eq(annotation,RefSeq)`) keeps
+ * the default from applying implicitly, since ANDing it with the rql's own
+ * choice could empty the list. Only the implicit default is held back: an
+ * explicit value is the user's and still applies, and so is written to the URL
+ * even when it equals the default. An independent filter's default always
+ * applies.
+ */
+function defaultShadowed<Sort extends string>(
+  name: string,
   rql: string | undefined,
   options: CollectionStateOptions<Sort>,
-): Set<string> {
-  const friendly = options.friendlyFilters ?? [];
-  if (rql === undefined) return new Set(friendly);
-  const independent = new Set(options.independentFilters);
-  return new Set(
-    friendly.filter(
-      (name) =>
-        independent.has(name) ||
-        (defaultFilterValues(name, options) !== undefined &&
-          !rqlNamesField(rql, name)),
-    ),
+): boolean {
+  return (
+    rql !== undefined &&
+    defaultFilterValues(name, options) !== undefined &&
+    !(options.independentFilters ?? []).includes(name) &&
+    rqlNamesField(rql, name)
   );
+}
+
+/** The default a filter falls back to without an explicit value, if any. */
+function implicitDefault<Sort extends string>(
+  name: string,
+  rql: string | undefined,
+  options: CollectionStateOptions<Sort>,
+): readonly string[] | undefined {
+  return defaultShadowed(name, rql, options)
+    ? undefined
+    : defaultFilterValues(name, options);
+}
+
+function selectedFilterValues<Sort extends string>(
+  name: string,
+  requested: readonly string[],
+  rql: string | undefined,
+  options: CollectionStateOptions<Sort>,
+): string[] {
+  if (!defaultFilterValues(name, options)) {
+    return allowedValues(name, requested, options);
+  }
+  const selected = allowedValues(
+    name,
+    requested.filter((value) => value !== clearedFilterValue),
+    options,
+  );
+  if (selected.length > 0) return selected;
+  const fallback = implicitDefault(name, rql, options);
+  return !fallback || requested.includes(clearedFilterValue) ? [] : [...fallback];
+}
+
+/**
+ * Every friendly filter, a default's included, stays beside an explicit `rql`,
+ * so a facet pick ANDs with the query and narrows it instead of replacing it.
+ * The rql changes only whether a default applies implicitly
+ * (`defaultShadowed`). Clear all still removes the rql and every filter.
+ */
+export function filtersBesideRql<Sort extends string>(
+  _rql: string | undefined,
+  options: CollectionStateOptions<Sort>,
+): Set<string> {
+  return new Set(options.friendlyFilters ?? []);
 }
 
 function sameValues(left: readonly string[], right: readonly string[]): boolean {
@@ -186,11 +216,15 @@ export function parseCollectionState<Sort extends string>(
   const sort = parseSort(rawSort ?? options.defaultSort, options);
   const filters: Record<string, string[]> = {};
 
-  // Keyword is deliberately independent of an explicit structural expression.
-  const applied = filtersBesideRql(rql, options);
+  // Keyword and friendly filters both AND with an explicit structural
+  // expression.
   for (const name of options.friendlyFilters ?? []) {
-    if (!applied.has(name)) continue;
-    const selected = selectedFilterValues(name, values(params, name), options);
+    const selected = selectedFilterValues(
+      name,
+      values(params, name),
+      rql,
+      options,
+    );
     if (selected.length > 0) filters[name] = selected;
   }
 
@@ -212,10 +246,8 @@ export function canonicalizeCollectionState<Sort extends string>(
   const refine = state.refine || undefined;
   const rql = state.rql || undefined;
   const filters: Record<string, string[]> = {};
-  const applied = filtersBesideRql(rql, options);
 
   for (const name of options.friendlyFilters ?? []) {
-    if (!applied.has(name)) continue;
     // "" stays: it is the "(empty)" bucket (see `values`).
     const selected = allowedValues(
       name,
@@ -237,12 +269,12 @@ export function serializeCollectionState<Sort extends string>(
   if (canonical.keyword !== undefined) params.set("keyword", canonical.keyword);
   if (canonical.refine !== undefined) params.set("refine", canonical.refine);
   if (canonical.rql !== undefined) params.set("rql", canonical.rql);
-  const applied = filtersBesideRql(canonical.rql, options);
   for (const name of options.friendlyFilters ?? []) {
-    if (!applied.has(name)) continue;
     const selected = canonical.filters[name] ?? [];
-    const fallback = defaultFilterValues(name, options);
+    const fallback = implicitDefault(name, canonical.rql, options);
     // A default is implicit; a removed one is written so it survives reload.
+    // An rql naming the default's field leaves no implicit default
+    // (`implicitDefault`), so the values are written as they are.
     if (fallback && sameValues(selected, fallback)) continue;
     if (fallback && selected.length === 0) {
       params.append(name, clearedFilterValue);
@@ -257,11 +289,23 @@ export function serializeCollectionState<Sort extends string>(
 }
 
 /**
- * While an rql names a default's field the default drops out of parsed filters,
- * so without this a next state with no rql could not tell "hidden" from
- * "removed" and would serialize the cleared marker.
- * A full-state replacement skips it, since only the caller knows whether the
- * change meant to remove everything.
+ * While an rql names a default's field the default is not applied implicitly
+ * (`defaultShadowed`), so a change that moves the rql across that line has to
+ * move the default with it, in both directions:
+ *
+ * - The rql starts naming the field: a stored value equal to the default was
+ *   the implicit one (the previous state did not shadow it), so it is dropped.
+ *   Left in, it would be written beside the rql as an explicit pick and AND
+ *   with the rql's own choice (`eq(annotation,RefSeq)` and `annotation=PATRIC`
+ *   match nothing).
+ * - The rql stops naming it: the default is restored, since without this the
+ *   next state could not tell "never applied" from "removed" and would
+ *   serialize the cleared marker.
+ *
+ * A value the change itself set, a stored value that differs from the default,
+ * and any value beside an rql that already named the field (an explicit pick)
+ * are left alone. A full-state replacement skips this, since only the caller
+ * knows whether the change meant to remove everything.
  */
 export function withUnshadowedDefaults<Sort extends string>(
   previousRql: string | undefined,
@@ -269,12 +313,21 @@ export function withUnshadowedDefaults<Sort extends string>(
   options: CollectionStateOptions<Sort>,
   explicit: ReadonlySet<string> = new Set(),
 ): CollectionState<Sort> {
-  if (previousRql === undefined || !options.defaultFilters) return next;
-  const before = filtersBesideRql(previousRql, options);
-  const after = filtersBesideRql(next.rql || undefined, options);
+  if (!options.defaultFilters) return next;
+  const nextRql = next.rql || undefined;
   let filters = next.filters;
   for (const [name, fallback] of Object.entries(options.defaultFilters)) {
-    if (before.has(name) || !after.has(name) || explicit.has(name)) continue;
+    if (explicit.has(name)) continue;
+    const wasShadowed = defaultShadowed(name, previousRql, options);
+    if (defaultShadowed(name, nextRql, options)) {
+      if (!wasShadowed && sameValues(filters[name] ?? [], fallback)) {
+        filters = Object.fromEntries(
+          Object.entries(filters).filter(([key]) => key !== name),
+        );
+      }
+      continue;
+    }
+    if (!wasShadowed) continue;
     if (Object.hasOwn(filters, name) && filters[name].length > 0) continue;
     filters = { ...filters, [name]: [...fallback] };
   }
@@ -381,7 +434,9 @@ function sameFilters(
 /**
  * While the filters are exactly the view's defaults they are left out, so a
  * default's own facet still counts the values it hides (legacy's annotation
- * facet shows RefSeq beside PATRIC).
+ * facet shows RefSeq beside PATRIC). Beside an rql that names a default's field
+ * a value equal to the default is the user's pick, not the default, so it
+ * stays in the counts as it does in the list.
  * Independent filters are a scope the view keeps, so they neither touch the
  * defaults nor drop out of the counts.
  */
@@ -395,10 +450,13 @@ export function facetCountState<Sort extends string>(
   const shown = Object.entries(state.filters).filter(
     ([name]) => !independentFilters.has(name),
   );
+  const rql = state.rql || undefined;
   const untouched =
     shown.length === defaults.length &&
-    defaults.every(([name, selected]) =>
-      sameValues(state.filters[name] ?? [], selected),
+    defaults.every(
+      ([name, selected]) =>
+        !defaultShadowed(name, rql, options) &&
+        sameValues(state.filters[name] ?? [], selected),
     );
   if (!untouched) return state;
   return {

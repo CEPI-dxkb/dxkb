@@ -5,9 +5,13 @@ import { RecordUnavailable } from "@/components/errors/record-unavailable";
 import { DataApiError } from "@/lib/data-api/repository";
 import {
   canonicalFeatureTab,
+  currentCompareRegionAvailability,
   featureDisplayName,
   isFeatureId,
+  parseFeatureTab,
+  settledCompareRegionAvailability,
 } from "@/lib/feature-view";
+import { resolveCompareRegionAvailability } from "@/lib/feature-view/compare-region-peg-server";
 import { getFeature, type FeatureLookup } from "@/lib/feature-view/server";
 import { loadLineageCrumbs } from "@/lib/taxonomy-view/lineage-server";
 import { toQueryString } from "@/lib/url";
@@ -103,7 +107,19 @@ export default async function FeaturePage({
     );
   }
   const { feature } = loaded;
-  const activeTab = canonicalFeatureTab(query.tab, feature);
+  // Only the Compare Region tab needs the counterpart lookup's answer before it
+  // renders (to redirect a closed tab and to feed the panel); any other tab
+  // streams it to the rail, so a slow lookup holds no content.
+  const lookup =
+    settledCompareRegionAvailability(feature) ??
+    resolveCompareRegionAvailability(feature);
+  const compare =
+    parseFeatureTab(query.tab) === "compare-region" ? await lookup : lookup;
+  const activeTab = canonicalFeatureTab(
+    query.tab,
+    feature,
+    currentCompareRegionAvailability(compare),
+  );
   const canonicalQuery = canonicalizeMemberTabQuery(query, activeTab);
   if (canonicalQuery !== null) {
     redirect(
@@ -113,6 +129,7 @@ export default async function FeaturePage({
   return (
     <FeatureMember
       feature={feature}
+      compare={compare}
       lineage={loadLineageCrumbs(String(feature.taxon_id ?? ""), `feature/${feature.feature_id}`)}
       activeTab={activeTab}
     />

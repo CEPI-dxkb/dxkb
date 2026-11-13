@@ -41,23 +41,41 @@ describe("Compare Region contract", () => {
     ).toBeNull();
   });
 
-  it("links only genes and RNAs, which have Feature Views", () => {
-    expect(isCompareRegionLinkable("fig|1004954.3.peg.1")).toBe(true);
-    expect(isCompareRegionLinkable("fig|254945.26.rna.14")).toBe(true);
-    expect(isCompareRegionLinkable("fig|1004954.3.peg.1.BLAST")).toBe(false);
-    expect(isCompareRegionLinkable("fig|1004954.3.pg.1")).toBe(false);
-    expect(isCompareRegionLinkable("fig|155892.7.repeat.75")).toBe(false);
+  it("links every gene PATRIC names, not BLAST hits", () => {
+    for (const fid of [
+      "fig|1004954.3.peg.1",
+      "fig|2697049.6703420.CDS.11",
+      "fig|254945.26.rna.14",
+      "fig|1004954.3.pg.1",
+      "fig|155892.7.repeat.75",
+      "fig|2697049.6699399.mat_peptide.10",
+      "fig|Dm_GEO12.peg.245",
+    ]) {
+      expect(isCompareRegionLinkable(fid)).toBe(true);
+    }
   });
 
   it.each([
-    ["fig|1.1.peg.2", true, true],
-    ["fig|1.1.rna.3", false, true],
-    ["fig|1.1.peg.2.BLAST", false, false],
+    ["not-a-fig-id"],
+    ["fig|1004954.3.peg.1.BLAST"],
+    ["fig|1004954.3.peg"],
+    ["fig|peg.1"],
+  ])("does not link %s", (fid) => {
+    expect(isCompareRegionLinkable(fid)).toBe(false);
+    expect(hasCompareRegionTab(fid)).toBe(false);
+  });
+
+  it.each([
+    ["fig|1.1.peg.2", true],
+    ["fig|2697049.6703420.CDS.11", true],
+    ["fig|1.1.rna.3", true],
+    ["fig|Dm_GEO12.peg.245", true],
+    ["fig|1.1.peg.2.BLAST", false],
   ])(
-    "offers %s a comparison link (%s) and a feature link (%s): only a CDS has the tab",
-    (fid, tab, linkable) => {
-      expect(hasCompareRegionTab(fid)).toBe(tab);
-      expect(isCompareRegionLinkable(fid)).toBe(linkable);
+    "offers %s a comparison link and a feature link (%s): every PATRIC gene has the tab",
+    (fid, offered) => {
+      expect(hasCompareRegionTab(fid)).toBe(offered);
+      expect(isCompareRegionLinkable(fid)).toBe(offered);
     },
   );
 

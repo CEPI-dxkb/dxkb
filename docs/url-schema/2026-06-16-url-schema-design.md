@@ -136,7 +136,9 @@ dxkb.org/strain?keyword=H1N1                                           # strain 
   `/feature?annotation=*` lists every annotation and survives reload and sharing. The default
   stays beside an explicit `rql`, as legacy's does beside a link's query
   (`/feature?rql=eq(genome_id,83332.12)` lists that genome's 5,425 PATRIC features, not all
-  10,940), unless the rql filters on `annotation` itself (`filtersBesideRql`). That carve-out
+  10,940), unless the rql filters on `annotation` itself: then the default is not applied
+  implicitly (`rqlNamesField`), while an explicit `annotation=` pick still ANDs with the rql
+  like every facet pick, and is written to the URL even when it is `PATRIC`. That carve-out
   differs from legacy, which ANDs PATRIC onto every query: legacy's
   `FeatureList/?and(eq(genome_id,83332.12),eq(annotation,RefSeq))` lists 0 rows until the
   chip is removed, DXKB's the genome's 5,515 RefSeq features. The Genome list's and Genome
@@ -227,8 +229,10 @@ dxkb.org/strain?keyword=H1N1                                           # strain 
   are ANDed. Facet counts remain constrained by the active query, including that facet's values,
   except while a view's default filters are untouched: `/feature` and the Features tabs that
   carry its default then count the annotation facet without it, so it still shows RefSeq
-  (§5.6). Beside an explicit `rql`, picking a facet value replaces the rql, except a value of a
-  filter the rql keeps, such as the PATRIC default's `annotation`.
+  (§5.6). Beside an explicit `rql`, every facet pick, a default's included, narrows it: the
+  pick is a friendly-filter param ANDed with the rql. The only thing an rql that names a
+  default's field (Feature's PATRIC `annotation`) changes is that the default value is not
+  applied implicitly. Clear all removes the rql and every filter.
 - Changing keyword, structural filters, facets, or sort resets the page to 1. URL updates
   preserve unrelated parameters. Collection parameters are unprefixed; changing resource tabs
   removes parameters invalid for the destination resource.
@@ -321,9 +325,11 @@ Each is a single loop over `viewRegistry`:
 - **Multi-value facets** use repeated parameters. Values for one field are ORed and separate
   fields are ANDed.
 - **Raw escape hatch**: `?rql=` is accepted after validation/sanitization.
-- **Precedence**: an explicit `?rql=` wins over friendly structural facets, except a view's
-  default filter on a field the rql does not name (the Feature list's PATRIC default stays);
-  keyword remains independently combinable with either form.
+- **Precedence**: an explicit `?rql=` and the friendly structural facets are ANDed, so every
+  facet pick narrows a custom query, a default's included. A view's default filter on a field
+  the rql names is only not applied implicitly (the Feature list adds no PATRIC default to an
+  rql that names `annotation`, but an explicit annotation pick ANDs with it); keyword remains
+  independently combinable with either form.
 - **Named special params** (carried verbatim/mapped per legacy doc): `pathogen_test_type`
   (surveillance), `test_type` (serology), `accession`/`path` (protein-structure),
   `filter` (feature list grid default).
@@ -465,8 +471,9 @@ Genome Phase 1 replaces both scaffold handlers with explicit routes:
 - `/genome` is a Genome collection backed by the `genome` resource. It supports
   `keyword`, `taxon_id` (mapped to `taxon_lineage_ids`), `rql`, `page`, and validated `sort`.
   It always exposes the legacy GenomeList tab set; unsupported tabs are capability-gated.
-  The Genomes tab reads the *effective* Genome predicate: the explicit `?rql=` when one is present;
-  otherwise it is the implicit recent scope
+  The Genomes tab reads the *effective* Genome predicate: the explicit `?rql=` when one is
+  present, ANDed with any friendly structural filters picked beside it; otherwise it is the
+  implicit recent scope
   (`and(gt(completion_date,NOW-1YEARS),ne(genome_status,Deprecated))`) combined with any
   friendly structural filters. An explicit `rql` replaces that implicit scope rather than
   narrowing it, and so do a `keyword` (legacy GenomeList sends `keyword(...)` alone) and a
@@ -514,12 +521,12 @@ Genome Phase 1 replaces both scaffold handlers with explicit routes:
   FeatureList's removable `annotation=PATRIC` default (§2.8), and while that default is
   untouched its facet counts leave it out, so the annotation facet still shows RefSeq.
   The default stays beside an explicit `rql` that does not filter on `annotation`, as on
-  legacy (an rql that does filter on it replaces the default, where legacy still ANDs
+  legacy (an rql that does filter on it gets no implicit default, where legacy still ANDs
   PATRIC: §2.8): the Genome overview's count links (`/feature?rql=and(eq(genome_id,83332.12),
   eq(feature_type,CDS))`) list the 4,367 PATRIC CDS they count, not all 8,356, and the user
   can remove the chip (`&annotation=*`) without losing the link's rql. DXKB's own links that
   pin `eq(annotation,PATRIC)` (sequence and taxon FEATURES actions, the sequence ID link)
-  replace the default with their own clause. The Proteins search
+  carry their own clause instead of the default, and an annotation pick there ANDs with it. The Proteins search
   (`filter=protein`) has no default (`featureListOptionsFor`): its `proteinFeatureRql`
   already pins `eq(annotation,PATRIC)`, so a removable chip would change nothing, as
   legacy ProteinList's removal changes nothing (2,122,451 rows for Dnak either way). A `keyword` is sent
@@ -546,7 +553,7 @@ Genome Phase 1 replaces both scaffold handlers with explicit routes:
   member defaults to the first 100 kb of its longest sequence. The `browser.` params are
   tab-owned, so a tab switch clears them. Legacy `#view_tab=browser` (Genome) and
   `#view_tab=genomeBrowser` (Feature) with `loc`, `tracks` and `highlight` map onto them.
-- The Compare Region Viewer tab (Feature member, a CDS with a BRC ID) is
+- The Compare Region Viewer tab (Feature member, a feature with a BRC ID, its own or its PATRIC counterpart's) is
   `?tab=compare-region` with five settings params: `compare.size` (the window, bp: `5000`,
   `10000`, `15000`, `20000`, `50000`, `75000` or `100000`), `compare.genomes` (`5`, `10`,
   `15`, `20` or `50`), `compare.method` (`pgfam` or `plfam`), `compare.filter`

@@ -51,11 +51,20 @@ describe("Feature collection route", () => {
     ).resolves.toEqual({ annotation: ["PATRIC"] });
   });
 
-  it("lets an explicit RQL that picks an annotation replace the default", async () => {
+  it("adds no default beside an explicit RQL that picks an annotation", async () => {
     await expect(
       renderedFilters({
         rql: "and(eq(genome_id,83332.12),eq(annotation,RefSeq))",
       }),
     ).resolves.toEqual({});
+  });
+
+  it("keeps an annotation pick beside an explicit RQL that picks one", async () => {
+    await expect(
+      renderedFilters({
+        rql: "and(eq(genome_id,83332.12),eq(annotation,RefSeq))",
+        annotation: "PATRIC",
+      }),
+    ).resolves.toEqual({ annotation: ["PATRIC"] });
   });
 });

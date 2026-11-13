@@ -24,18 +24,18 @@ export interface StructuralFilterOptions {
 }
 
 /**
- * An explicit `state.rql` bypasses friendly filters entirely (returns
- * `undefined`).
- * Feature's wrapper is the exception: its independent `filter` and PATRIC
- * default stay beside `state.rql` (`filtersBesideRql`), and any view giving
- * another resource `defaultFilters` needs the same.
+ * Builds the clause for `state.filters` only. An explicit `state.rql` is not
+ * folded in here: `ResourceCollection` ANDs it with this clause, so a facet
+ * pick narrows a custom query. Every friendly filter stays beside an rql
+ * (`filtersBesideRql` in the collection state); the collection state
+ * (`defaultShadowed` / `implicitDefault`) decides only whether a default value
+ * applies implicitly.
  */
 export function structuralFilterRql(
   resource: DataResource,
   state: CollectionState,
   options: StructuralFilterOptions = {},
 ): string | undefined {
-  if (state.rql) return undefined;
   const { fieldMap = {}, unknownFilters = "passthrough" } = options;
   const clauses = Object.entries(state.filters).flatMap(([name, selected]) => {
     const field = fieldMap[name] ?? (unknownFilters === "drop" ? undefined : name);

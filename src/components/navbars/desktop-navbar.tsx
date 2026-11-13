@@ -18,7 +18,10 @@ import {
   NavigationMenuList,
   NavigationMenuTrigger,
 } from "@/components/ui/navigation-menu";
+import { Search } from "lucide-react";
+import { openCommandPalette } from "@/components/search/command-palette-events";
 import { SearchBar } from "@/components/search/search-bar";
+import { Button } from "@/components/ui/button";
 import { buttonVariants } from "@/components/ui/button-variants";
 import Logo from "@/components/ui/logo";
 import { useAuth } from "@/lib/auth/provider";
@@ -167,9 +170,25 @@ const DesktopNavbar = () => {
           </NavigationMenu>
         </div>
 
+        {/* The full search bar needs about 1280px: with the AskClark button, the job counters and the
+            avatar, it pushes the navbar wider than the window, so the page scrolls sideways. Below that
+            a button opens the command palette instead. */}
         {!isHome && (
-          <div className="hidden flex-1 items-center justify-end px-2 lg:flex">
+          <div className="hidden flex-1 items-center justify-end px-2 xl:flex">
             <SearchBar className="max-w-250" showAdvanced />
+          </div>
+        )}
+        {!isHome && (
+          <div className="flex flex-1 items-center justify-end px-2 xl:hidden">
+            <Button
+              variant="ghost-inverse"
+              size="sm"
+              onClick={openCommandPalette}
+              aria-label="Search"
+              aria-keyshortcuts="Meta+K Control+K"
+            >
+              <Search size={18} aria-hidden />
+            </Button>
           </div>
         )}
 

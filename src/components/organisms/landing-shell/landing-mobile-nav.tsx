@@ -23,6 +23,13 @@ interface LandingMobileNavProps<Key extends string = OrganismViewKey> {
   /** The pill's and the sheet's heading. */
   title?: string;
   onChange: (view: Key) => void;
+  /**
+   * Controls the sheet from outside, for an owner that can remount the nav
+   * (a rail swapped from a Suspense fallback) and must keep it open; left
+   * out, the nav keeps its own open state.
+   */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 /** Floating bottom pill that opens a sheet of view tiles below `lg`; it hides on scroll-down unless the sheet is open or focus is inside. */
@@ -31,8 +38,15 @@ export function LandingMobileNav<Key extends string>({
   activeView,
   title = "Views",
   onChange,
+  open: controlledOpen,
+  onOpenChange,
 }: LandingMobileNavProps<Key>) {
-  const [open, setOpen] = useState(false);
+  const [ownOpen, setOwnOpen] = useState(false);
+  const open = controlledOpen ?? ownOpen;
+  const setOpen = (next: boolean) => {
+    setOwnOpen(next);
+    onOpenChange?.(next);
+  };
   const active = items.find((item) => item.key === activeView) ?? items[0];
   const hidden = useHideOnScroll(open);
 

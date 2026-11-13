@@ -402,6 +402,38 @@ describe("streamedTabs", () => {
     expect(pushSpy).toHaveBeenCalledWith("/records/alpha?tab=records");
   });
 
+  it("keeps the mobile Views sheet open while the tabs resolve", async () => {
+    const user = userEvent.setup();
+    let settle: (value: readonly EntityViewTab<TabKey>[]) => void = () =>
+      undefined;
+    await renderStreamed(
+      new Promise((resolve) => {
+        settle = resolve;
+      }),
+    );
+    await user.click(screen.getByRole("button", { name: "Views: Summary" }));
+    const sheetTile = () =>
+      within(screen.getByRole("dialog", { name: "Views" })).getByRole(
+        "button",
+        { name: "Records" },
+      );
+    expect(sheetTile()).toHaveAttribute("aria-disabled", "true");
+
+    await act(async () => {
+      settle([
+        { key: "summary", label: "Summary" },
+        { key: "records", label: "Records" },
+      ]);
+      await Promise.resolve();
+    });
+
+    expect(screen.getByRole("dialog", { name: "Views" })).toBeInTheDocument();
+    expect(sheetTile()).not.toHaveAttribute("aria-disabled");
+    await user.click(sheetTile());
+    expect(pushSpy).toHaveBeenCalledWith("/records/alpha?tab=records");
+    expect(screen.queryByRole("dialog", { name: "Views" })).toBeNull();
+  });
+
   it("keeps a tab the resolved rail closes from navigating", async () => {
     const user = userEvent.setup();
     await renderStreamed(

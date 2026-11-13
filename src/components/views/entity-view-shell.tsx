@@ -5,6 +5,7 @@ import {
   Suspense,
   use,
   useOptimistic,
+  useState,
   useTransition,
   type ReactNode,
 } from "react";
@@ -82,6 +83,9 @@ export function EntityViewShell<Key extends string>({
   const [isPending, startTransition] = useTransition();
   const [optimisticTab, setOptimisticTab] = useOptimistic(activeTab);
   const { collapsed: navCollapsed, toggle: toggleNav } = useViewNavCollapsed();
+  // The streamed tabs swap the mobile rail for a new one, so the shell holds
+  // the sheet's open state and a sheet opened while they load stays open.
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   const navigate = (key: Key, shown: readonly EntityViewTab<Key>[]) => {
     const tab = shown.find((item) => item.key === key);
@@ -143,6 +147,8 @@ export function EntityViewShell<Key extends string>({
             onChange={(key) => {
               navigate(key, shown);
             }}
+            open={streamedTabs ? mobileNavOpen : undefined}
+            onOpenChange={streamedTabs ? setMobileNavOpen : undefined}
           />
         ))}
       </div>

@@ -54,6 +54,7 @@ describe("Compare Region contract", () => {
     }
     expect(isCompareRegionLinkable("fig|1004954.3.peg.1.BLAST")).toBe(false);
     expect(isCompareRegionLinkable("not-a-fig-id")).toBe(false);
+    expect(isCompareRegionLinkable("fig|abc.peg.1")).toBe(false);
   });
 
   it.each([

@@ -5,7 +5,6 @@ import {
   compareRegionNoBrcIdReason,
   featureCollectionOptions,
   featureCollectionProfile,
-  featureCompareRegionPeg,
   featureGenomeBrowserTarget,
   featureListCollectionOptions,
   featureListOptionsFor,
@@ -144,7 +143,7 @@ describe("Feature view contracts", () => {
       feature_type: "CDS",
       patric_id: "fig|1.1.peg.1",
     });
-    expect(featureCompareRegionPeg(cds)).toBe("fig|1.1.peg.1");
+    expect(compareRegionAvailability(cds).peg).toBe("fig|1.1.peg.1");
     expect(canonicalFeatureTab("compare-region", cds)).toBe("compare-region");
     expect(canonicalFeatureTab("compareRegionViewer", cds)).toBe("compare-region");
 
@@ -154,14 +153,14 @@ describe("Feature view contracts", () => {
       feature_type: "tRNA",
       patric_id: "fig|1.1.rna.3",
     });
-    expect(featureCompareRegionPeg(trna)).toBe("fig|1.1.rna.3");
+    expect(compareRegionAvailability(trna).peg).toBe("fig|1.1.rna.3");
     expect(canonicalFeatureTab("compare-region", trna)).toBe("compare-region");
 
     const unnamed = featureViewRecordSchema.parse({
       feature_id: "PATRIC.1",
       feature_type: "CDS",
     });
-    expect(featureCompareRegionPeg(unnamed)).toBeNull();
+    expect(compareRegionAvailability(unnamed).peg).toBeNull();
     expect(canonicalFeatureTab("compare-region", unnamed)).toBe("overview");
   });
 
@@ -183,6 +182,16 @@ describe("Feature view contracts", () => {
     expect(compareTab(closed)?.enabled).toBe(false);
     expect(compareTab(closed)?.disabledReason).toBe(compareRegionNoBrcIdReason);
     expect(canonicalFeatureTab("compare-region", refseq, closed)).toBe("overview");
+
+    // A failed lookup reaches the tab as its own message, not the generic "no BRC ID" one.
+    const lookupFailed: CompareRegionAvailability = {
+      peg: null,
+      reason: "Could not look up this feature's BRC ID: HTTP 503",
+    };
+    expect(compareTab(lookupFailed)?.enabled).toBe(false);
+    expect(compareTab(lookupFailed)?.disabledReason).toBe(
+      "Could not look up this feature's BRC ID: HTTP 503",
+    );
   });
 });
 

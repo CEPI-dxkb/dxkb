@@ -77,6 +77,29 @@ describe("resolveCompareRegionAvailability", () => {
     expect(ranges).toEqual(["items=0-1"]);
   });
 
+  it.each([
+    ["names another genome", "fig|6666666.253573.peg.1140"],
+    ["has no numeric genome part", "fig|Dm_GEO12.peg.245"],
+  ])(
+    "still looks the counterpart up for a RefSeq CDS whose BRC ID %s",
+    async (_case, patricId) => {
+      const { urls } = answer([
+        { feature_id: "PATRIC.x", patric_id: "fig|511145.12.peg.1" },
+      ]);
+      const foreignId = featureViewRecordSchema.parse({
+        ...refseqThrA,
+        patric_id: patricId,
+        genome_id: "511145.12",
+      });
+
+      await expect(resolveCompareRegionAvailability(foreignId)).resolves.toEqual({
+        peg: "fig|511145.12.peg.1",
+      });
+      expect(urls).toHaveLength(1);
+      expect(urls[0]).toContain("eq(genome_id,511145.12)");
+    },
+  );
+
   it("looks a RefSeq tRNA's own type up", async () => {
     const { urls } = answer([{ feature_id: "PATRIC.t", patric_id: "fig|511145.12.rna.7" }]);
     const trna = featureViewRecordSchema.parse({ ...refseqThrA, feature_type: "tRNA" });

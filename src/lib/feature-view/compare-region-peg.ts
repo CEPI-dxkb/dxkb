@@ -17,15 +17,17 @@ export function patricIdGenomeId(patricId: string): string | null {
 /**
  * The BRC ID the Compare Region Viewer centers on when the feature carries one,
  * whatever its type: the service answers every PATRIC `fig|` id. A CDS compares
- * across genomes; any other type gets its own neighbourhood only. About 657,000
- * RefSeq CDS carry a BRC ID of another genome, which the service answers with a
- * row that never names the pinned gene, so those are refused.
+ * across genomes; any other type gets its own neighbourhood only. Nearly all of
+ * the ~657,000 RefSeq CDS that carry a BRC ID (657,076 in total) name another
+ * genome or carry an id with no numeric genome part (`fig|Dm_GEO12.peg.245`),
+ * which the service answers with a row that never names the pinned gene, so
+ * those are refused. With a `genome_id` on the record the id is trusted only
+ * when its genome part parses and matches; without one a `fig|` id is trusted.
  */
 export function ownCompareRegionPeg(feature: FeatureViewRecord): string | null {
   const peg = feature.patric_id;
   if (!peg || !isPatricFeatureId(peg)) return null;
-  const genomeId = patricIdGenomeId(peg);
-  if (feature.genome_id && genomeId && genomeId !== feature.genome_id) {
+  if (feature.genome_id && patricIdGenomeId(peg) !== feature.genome_id) {
     return null;
   }
   return peg;

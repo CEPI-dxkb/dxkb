@@ -45,11 +45,6 @@ export function featureGenomeBrowserTarget(
     : null;
 }
 
-/** The gene the Compare Region Viewer centers on when the feature carries a usable BRC ID of its own, or null. The page also tries the feature's PATRIC counterpart (`resolveCompareRegionAvailability`). */
-export function featureCompareRegionPeg(feature: FeatureViewRecord): string | null {
-  return compareRegionAvailability(feature).peg;
-}
-
 export function buildFeatureTabs(
   feature: FeatureViewRecord,
   compare: CompareRegionAvailability = compareRegionAvailability(feature),

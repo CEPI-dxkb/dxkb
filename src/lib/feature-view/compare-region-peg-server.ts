@@ -25,7 +25,7 @@ async function findTwinPeg(rql: string): Promise<string | null> {
 /**
  * The Compare Region tab's gene for a feature: its own BRC ID, else its PATRIC
  * counterpart's (one Data API read, only for a feature that lacks its own, which
- * is every RefSeq feature). A failed read leaves the tab off with the upstream
+ * is almost every RefSeq feature). A failed read leaves the tab off with the upstream
  * message as its reason rather than taking the whole Feature View down.
  */
 export async function resolveCompareRegionAvailability(

@@ -79,6 +79,15 @@ describe("ownCompareRegionPeg", () => {
       ),
     ).toBeNull();
   });
+
+  it("refuses a BRC ID whose genome part is not numeric when the record names a genome", () => {
+    const nonNumeric = { feature_type: "CDS", patric_id: "fig|Dm_GEO12.peg.245" };
+    expect(
+      ownCompareRegionPeg(record({ ...nonNumeric, genome_id: "61435.38" })),
+    ).toBeNull();
+    // Without a genome to compare against, a fig| id is still trusted.
+    expect(ownCompareRegionPeg(record(nonNumeric))).toBe("fig|Dm_GEO12.peg.245");
+  });
 });
 
 describe("compareRegionTwinRql", () => {

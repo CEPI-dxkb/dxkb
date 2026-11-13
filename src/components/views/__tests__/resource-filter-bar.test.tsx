@@ -37,6 +37,10 @@ const facets = {
 const definitions = [
   { field: "genome_status", label: "Genome Status" },
 ];
+const explicitRql = {
+  raw: "and(eq(genome_status,Complete),eq(host_name,Human))",
+  clauses: ["Genome Status is Complete", "Host Name is Human"],
+};
 
 const layoutKey = "collection:genome";
 const layoutStorageKey = "dxkb-table-layout:v1:collection:genome";
@@ -322,7 +326,7 @@ describe("ResourceFilterBar picks", () => {
     const onChange = navigatesSlowly();
     render(
       <WithPendingNavigation
-        {...filterBarProps({ hasExplicitRql: true, onChange })}
+        {...filterBarProps({ explicitRql, onChange })}
       />,
     );
     await openFilters(user);
@@ -341,6 +345,28 @@ describe("ResourceFilterBar picks", () => {
     });
   });
 
+  it("keeps the chip's rql removal when the keyword commits during the navigation", async () => {
+    const onChange = navigatesSlowly();
+    render(
+      <WithPendingNavigation {...filterBarProps({ explicitRql, onChange })} />,
+    );
+    vi.useFakeTimers();
+
+    fireEvent.change(screen.getByRole("searchbox"), {
+      target: { value: "influenza" },
+    });
+    await clickDuringNavigation(
+      screen.getByRole("button", { name: "Remove advanced query" }),
+    );
+    await elapseDuringNavigation(300);
+
+    expect(onChange).toHaveBeenLastCalledWith({
+      keyword: "influenza",
+      filters: {},
+      clearRql: true,
+    });
+  });
+
   it("keeps a pending pick's rql replacement through a pick kept beside the rql", async () => {
     const user = userEvent.setup();
     const onChange = navigatesSlowly();
@@ -353,7 +379,7 @@ describe("ResourceFilterBar picks", () => {
             ...definitions,
             { field: "host", label: "Host" },
           ],
-          hasExplicitRql: true,
+          explicitRql,
           filtersBesideRql: ["host"],
           onChange,
         })}
@@ -431,7 +457,7 @@ describe("ResourceFilterBar picks", () => {
     ).toBeInTheDocument();
   });
 
-  it("clears the keyword, every filter and the rql with Clear all", async () => {
+  it("clears the keyword and every filter with Clear all", async () => {
     const user = userEvent.setup();
     const onChange = navigatesSlowly();
     render(
@@ -450,7 +476,7 @@ describe("ResourceFilterBar picks", () => {
     expect(onChange).toHaveBeenCalledWith({
       keyword: undefined,
       filters: {},
-      clearRql: true,
+      clearRql: false,
       clearAll: true,
     });
     expect(screen.getByRole("searchbox")).toHaveValue("");
@@ -478,7 +504,7 @@ describe("ResourceFilterBar beside an explicit rql", () => {
     render(
       <ResourceFilterBar
         {...filterBarProps({
-          hasExplicitRql: true,
+          explicitRql,
           filtersBesideRql: ["genome_status"],
           onChange,
         })}
@@ -500,7 +526,7 @@ describe("ResourceFilterBar beside an explicit rql", () => {
     const onChange = vi.fn();
     render(
       <ResourceFilterBar
-        {...filterBarProps({ hasExplicitRql: true, onChange })}
+        {...filterBarProps({ explicitRql, onChange })}
       />,
     );
     await openFilters(user);
@@ -514,23 +540,66 @@ describe("ResourceFilterBar beside an explicit rql", () => {
     });
   });
 
-  it("marks Clear all apart from a pick that replaces the rql", async () => {
+  it("leaves the rql to the chip when Clear all clears keyword and filters", async () => {
     const user = userEvent.setup();
     const onChange = vi.fn();
     render(
       <ResourceFilterBar
-        {...filterBarProps({ hasExplicitRql: true, onChange })}
+        {...filterBarProps({
+          explicitRql,
+          keyword: "abc",
+          filters: { genome_status: ["WGS"] },
+          onChange,
+        })}
       />,
     );
-    expect(screen.getByText("Custom query")).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Clear all" }));
 
     expect(onChange).toHaveBeenLastCalledWith({
       keyword: undefined,
       filters: {},
-      clearRql: true,
+      clearRql: false,
       clearAll: true,
+    });
+    expect(
+      screen.getByRole("button", { name: "Advanced query. Show details" }),
+    ).toBeInTheDocument();
+  });
+
+  it("offers no Clear all for an explicit rql alone", () => {
+    render(<ResourceFilterBar {...filterBarProps({ explicitRql })} />);
+
+    expect(
+      screen.getByRole("button", { name: "Advanced query. Show details" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Clear all" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("removes only the rql from the chip, keeping keyword and filters", async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    render(
+      <ResourceFilterBar
+        {...filterBarProps({
+          explicitRql,
+          keyword: "abc",
+          filters: { genome_status: ["WGS"] },
+          onChange,
+        })}
+      />,
+    );
+
+    await user.click(
+      screen.getByRole("button", { name: "Remove advanced query" }),
+    );
+
+    expect(onChange).toHaveBeenLastCalledWith({
+      keyword: "abc",
+      filters: { genome_status: ["WGS"] },
+      clearRql: true,
     });
   });
 });

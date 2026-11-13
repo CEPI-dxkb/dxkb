@@ -13,7 +13,10 @@ import {
 } from "@/lib/table-layout";
 import type { CollectionState } from "@/lib/views/collection-state";
 import { CollectionToolbar } from "./collection-filters/collection-toolbar";
-import type { CollectionColumnControls } from "./collection-filters/types";
+import type {
+  CollectionColumnControls,
+  ExplicitRqlView,
+} from "./collection-filters/types";
 import type { ResourceCollectionFacet } from "./resource-collection";
 
 interface ResourceFilterBarProps extends CollectionColumnControls {
@@ -29,7 +32,7 @@ interface ResourceFilterBarProps extends CollectionColumnControls {
   onFacetsWanted: () => void;
   onPrefetchFacets: () => void;
   definitions: readonly ResourceCollectionFacet[];
-  hasExplicitRql?: boolean;
+  explicitRql?: ExplicitRqlView;
   filtersBesideRql?: readonly string[];
   keywordPlaceholder?: string;
   onChange: (update: {
@@ -53,7 +56,7 @@ export function ResourceFilterBar({
   onFacetsWanted,
   onPrefetchFacets,
   definitions,
-  hasExplicitRql = false,
+  explicitRql,
   filtersBesideRql = [],
   keywordPlaceholder,
   onChange,
@@ -61,6 +64,7 @@ export function ResourceFilterBar({
   setColumns,
   resetColumns,
 }: ResourceFilterBarProps) {
+  const hasExplicitRql = explicitRql !== undefined;
   // A pick is shown at once and kept while its write is in flight: `onChange`
   // runs in a transition, and `router.push` (a navigation that commits only
   // when the server answers) joins it. When the transition settles, the
@@ -106,6 +110,13 @@ export function ResourceFilterBar({
     });
   };
 
+  const clearExplicitRql = () => {
+    startTransition(() => {
+      setPending({ filters: shownFilters, clearRql: true });
+      onChange({ keyword, filters: shownFilters, clearRql: true });
+    });
+  };
+
   return (
     <CollectionToolbar
       keyword={keywordDraft}
@@ -141,23 +152,25 @@ export function ResourceFilterBar({
       }}
       setFieldValues={setFieldValues}
       clearAll={() => {
+        // The explicit rql has its own control (the chip's ×), so Clear all
+        // leaves it alone; it only carries on a replacement a pick started.
+        const clearRql = Boolean(pending?.clearRql);
         setKeywordDraft("");
         startTransition(() => {
-          setPending({ filters: {}, clearRql: true });
+          setPending({ filters: {}, clearRql });
           onChange({
             keyword: undefined,
             filters: {},
-            clearRql: true,
+            clearRql,
             clearAll: true,
           });
         });
       }}
       canClear={
-        Boolean(keywordDraft) ||
-        Object.keys(shownFilters).length > 0 ||
-        hasExplicitRql
+        Boolean(keywordDraft) || Object.keys(shownFilters).length > 0
       }
-      hasExplicitRql={hasExplicitRql}
+      explicitRql={explicitRql}
+      clearExplicitRql={clearExplicitRql}
       columns={columns}
       setColumns={setColumns}
       resetColumns={resetColumns}

@@ -10,6 +10,7 @@ export {
   resourceRegistry,
   getResourceDefinition,
   isDataResource,
+  resourceFieldLabel,
 } from "./resources";
 export {
   eq,

@@ -175,9 +175,12 @@ export class CollectionToolbar {
     await this.clearAllButton().click();
   }
 
-  /** Exact: the hidden description beside it quotes the same words. */
-  customQueryBadge(): Locator {
-    return this.root().getByText("Custom query", { exact: true });
+  /** The chip for a hand-written `rql`; it opens a popover with the query. */
+  advancedQueryChip(): Locator {
+    return this.root().getByRole("button", {
+      name: "Advanced query. Show details",
+      exact: true,
+    });
   }
 
   /** Filtered by text: Next's route announcer is an alert too. */

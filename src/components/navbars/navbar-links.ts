@@ -238,7 +238,7 @@ interface WorkspaceNavSection {
   items: WorkspaceNavItem[];
 }
 
-/** A `public` filter, a removable chip, rather than an `rql`, a "Custom query" that only Clear all removes. */
+/** A `public` filter, a removable chip, rather than an `rql`, an "Advanced query" chip that only its own × removes. */
 const myGenomesHref = "/genome?public=false";
 
 const workspaceNavItems: Record<string, WorkspaceNavSection> = {

@@ -54,6 +54,7 @@ export function renderToolbar({
     onFacetsWanted: vi.fn<() => void>(),
     onPrefetchFacets: vi.fn<() => void>(),
     clearAll: vi.fn<() => void>(),
+    clearExplicitRql: vi.fn<() => void>(),
   };
   const state = {
     favorites: new Set(initialFavorites),
@@ -116,7 +117,8 @@ export function renderToolbar({
           setFilters({});
         }}
         canClear={Object.keys(filters).length > 0}
-        hasExplicitRql={false}
+        explicitRql={undefined}
+        clearExplicitRql={spies.clearExplicitRql}
         columns={[]}
         setColumns={vi.fn()}
         resetColumns={vi.fn()}

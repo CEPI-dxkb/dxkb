@@ -63,9 +63,8 @@ export function deleteChildCollectionParams(params: URLSearchParams): void {
 const urlOnlyParamNames = new Set(["rql", "refine"]);
 
 /**
- * `rql` and `refine` are dropped before parsing: an explicit `rql` makes
- * `parseCollectionState` skip friendly filters, so a stray `features.rql` would
- * erase `features.feature_type`.
+ * `rql` and `refine` are dropped before parsing, so a stray `features.rql`
+ * never reaches the parsed state or, unvalidated, the Data API.
  */
 function ownParams(
   params: SearchParamsRecord,

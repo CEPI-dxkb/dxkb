@@ -58,14 +58,14 @@ describe("collection URL state", () => {
     ).toBe("keep=yes");
   });
 
-  it("keeps keyword independent and gives explicit rql precedence over friendly filters", () => {
+  it("keeps keyword independent and friendly filters beside an explicit rql", () => {
     const state = parseCollectionState(
       { keyword: "influenza", rql: "eq(public,true)", taxon_id: "11520" },
       options,
     );
     expect(state.keyword).toBe("influenza");
     expect(state.rql).toBe("eq(public,true)");
-    expect(state.filters).toEqual({});
+    expect(state.filters).toEqual({ taxon_id: ["11520"] });
   });
 
   it("preserves explicitly independent filters alongside rql", () => {
@@ -78,9 +78,9 @@ describe("collection URL state", () => {
       { rql: "eq(public,true)", taxon_id: "2", filter: "protein" },
       independentOptions,
     );
-    expect(state.filters).toEqual({ filter: ["protein"] });
+    expect(state.filters).toEqual({ taxon_id: ["2"], filter: ["protein"] });
     expect(serializeCollectionState(state, independentOptions).toString()).toBe(
-      "rql=eq%28public%2Ctrue%29&filter=protein",
+      "rql=eq%28public%2Ctrue%29&taxon_id=2&filter=protein",
     );
   });
 
@@ -213,12 +213,14 @@ describe("collection URL state", () => {
     expect(canonical.toString()).toBe("tab=genomes&keep=a&keep=b");
   });
 
-  it("drops friendly filters from the canonical URL when rql is explicit", () => {
+  it("keeps friendly filters beside an explicit rql in the canonical URL", () => {
     const canonical = canonicalizeCollectionSearchParams(
       { rql: "eq(public,true)", taxon_id: "2", keyword: "flu" },
       options,
     );
-    expect(canonical.toString()).toBe("keyword=flu&rql=eq%28public%2Ctrue%29");
+    expect(canonical.toString()).toBe(
+      "keyword=flu&rql=eq%28public%2Ctrue%29&taxon_id=2",
+    );
   });
 
   it.each([
@@ -559,7 +561,7 @@ describe("default filters", () => {
   it("keeps a default beside an explicit rql, removable as without one", () => {
     const rql = "eq(public,true)";
     expect(parseCollectionState({ rql, taxon_id: "2" }, withDefault).filters).toEqual(
-      { host: ["human"] },
+      { taxon_id: ["2"], host: ["human"] },
     );
     expect(
       parseCollectionState({ rql, host: "*" }, withDefault).filters,
@@ -569,7 +571,7 @@ describe("default filters", () => {
     ).toEqual({ host: ["swine"] });
     expect(
       canonicalizeCollectionSearchParams({ rql, taxon_id: "2" }, withDefault).toString(),
-    ).toBe("rql=eq%28public%2Ctrue%29");
+    ).toBe("rql=eq%28public%2Ctrue%29&taxon_id=2");
     expect(
       canonicalizeCollectionSearchParams({ rql, host: "*" }, withDefault).toString(),
     ).toBe("rql=eq%28public%2Ctrue%29&host=*");
@@ -578,7 +580,7 @@ describe("default filters", () => {
     ).toBe("rql=eq%28public%2Ctrue%29&host=*");
   });
 
-  it("lets an rql that names the default's field replace it", () => {
+  it("does not apply a default implicitly beside an rql that names its field", () => {
     for (const rql of ["eq(host,swine)", "and(eq(public,true),in(host,(swine,human)))"]) {
       expect(parseCollectionState({ rql }, withDefault).filters).toEqual({});
       expect(parseCollectionState({ rql, host: "*" }, withDefault).filters).toEqual({});
@@ -624,21 +626,21 @@ describe("default filters", () => {
     ).toBe("host=*");
     expect(
       updateCollectionSearchParams(shadowing, { rql: null }, withDefault).toString(),
-    ).toBe("");
+    ).toBe("taxon_id=2");
     expect(
       updateCollectionSearchParams(
         shadowing,
         { rql: "eq(public,true)" },
         withDefault,
       ).toString(),
-    ).toBe("rql=eq%28public%2Ctrue%29");
+    ).toBe("rql=eq%28public%2Ctrue%29&taxon_id=2");
     expect(
       updateCollectionSearchParams(
         shadowing,
         { rql: null, filters: { host: null } },
         withDefault,
       ).toString(),
-    ).toBe("host=*");
+    ).toBe("taxon_id=2&host=*");
     expect(
       withUnshadowedDefaults(
         "eq(public,true)",
@@ -648,7 +650,117 @@ describe("default filters", () => {
     ).toEqual({});
   });
 
-  it("lists the filters an explicit rql keeps", () => {
+  // The implicit default parsed into the state would otherwise be written
+  // beside the rql and AND with its own choice: the rql and `host=human` match
+  // nothing.
+  describe("an update that sets an rql naming the default's field", () => {
+    const state = (
+      rql: string | undefined,
+      filters: Record<string, string[]>,
+    ) => ({ rql, filters, page: 1, sort: "relevance" as const });
+
+    it("drops the implicit default from the written URL", () => {
+      expect(
+        updateCollectionSearchParams(
+          {},
+          { rql: "eq(host,swine)" },
+          withDefault,
+        ).toString(),
+      ).toBe("rql=eq%28host%2Cswine%29");
+    });
+
+    it("drops it when the previous rql did not name the field either", () => {
+      expect(
+        updateCollectionSearchParams(
+          { rql: "eq(public,true)" },
+          { rql: "eq(host,swine)" },
+          withDefault,
+        ).toString(),
+      ).toBe("rql=eq%28host%2Cswine%29");
+    });
+
+    it("keeps the other filters the update leaves in place", () => {
+      expect(
+        updateCollectionSearchParams(
+          { taxon_id: "2" },
+          { rql: "eq(host,swine)" },
+          withDefault,
+        ).toString(),
+      ).toBe("rql=eq%28host%2Cswine%29&taxon_id=2");
+    });
+
+    it("keeps an explicit pick equal to the default set in the same update", () => {
+      expect(
+        updateCollectionSearchParams(
+          {},
+          { rql: "eq(host,swine)", filters: { host: ["human"] } },
+          withDefault,
+        ).toString(),
+      ).toBe("rql=eq%28host%2Cswine%29&host=human");
+    });
+
+    it("keeps a different stored value, which the user chose", () => {
+      expect(
+        updateCollectionSearchParams(
+          { host: "swine" },
+          { rql: "eq(host,swine)" },
+          withDefault,
+        ).toString(),
+      ).toBe("rql=eq%28host%2Cswine%29&host=swine");
+    });
+
+    it("removes the implicit default from a state with no previous rql", () => {
+      const next = state("eq(host,swine)", { host: ["human"] });
+      expect(
+        withUnshadowedDefaults(undefined, next, withDefault).filters,
+      ).toEqual({});
+      expect(
+        withUnshadowedDefaults(
+          "eq(public,true)",
+          state("eq(host,swine)", { host: ["human"], taxon_id: ["2"] }),
+          withDefault,
+        ).filters,
+      ).toEqual({ taxon_id: ["2"] });
+    });
+
+    it("keeps a stored value that differs from the default", () => {
+      const next = state("eq(host,swine)", { host: ["swine"] });
+      expect(withUnshadowedDefaults(undefined, next, withDefault)).toBe(next);
+    });
+
+    it("keeps a value the change set explicitly, even equal to the default", () => {
+      const next = state("eq(host,swine)", { host: ["human"] });
+      expect(
+        withUnshadowedDefaults(
+          undefined,
+          next,
+          withDefault,
+          new Set(["host"]),
+        ),
+      ).toBe(next);
+    });
+
+    it("leaves a filter alone when the previous rql already named its field", () => {
+      // Whatever is stored beside such an rql is an explicit pick.
+      const next = state("eq(host,pig)", { host: ["human"] });
+      expect(withUnshadowedDefaults("eq(host,swine)", next, withDefault)).toBe(
+        next,
+      );
+    });
+
+    it("returns the state untouched without defaults", () => {
+      const next = state("eq(host,swine)", { host: ["human"] });
+      expect(withUnshadowedDefaults(undefined, next, options)).toBe(next);
+    });
+  });
+
+  it("keeps a plain filter beside an rql that names its field", () => {
+    expect([...filtersBesideRql("eq(taxon_id,2)", options)]).toContain(
+      "taxon_id",
+    );
+  });
+
+  it("keeps every filter, a default's included, beside an explicit rql", () => {
     const scoped = {
       ...withDefault,
       independentFilters: ["taxon_id"],
@@ -657,13 +769,117 @@ describe("default filters", () => {
       "host",
       "taxon_id",
     ]);
-    expect([...filtersBesideRql("eq(host,swine)", scoped)]).toEqual([
+    expect([...filtersBesideRql("eq(host,swine)", scoped)].sort()).toEqual([
+      "host",
       "taxon_id",
     ]);
     expect([...filtersBesideRql(undefined, options)].sort()).toEqual([
       "host",
       "taxon_id",
     ]);
+  });
+
+  describe("an explicit pick beside an rql that names the default's field", () => {
+    const rql = "eq(host,swine)";
+    const encodedRql = "rql=eq%28host%2Cswine%29";
+
+    it("reads a pick from the URL and keeps it beside the rql", () => {
+      expect(
+        parseCollectionState({ rql, host: "swine" }, withDefault).filters,
+      ).toEqual({ host: ["swine"] });
+      expect(
+        canonicalizeCollectionSearchParams({ rql, host: "swine" }, withDefault).toString(),
+      ).toBe(`${encodedRql}&host=swine`);
+    });
+
+    it("writes a pick equal to the default, since the rql keeps it from being implicit", () => {
+      const state = {
+        rql,
+        filters: { host: ["human"] },
+        page: 1,
+        sort: "relevance" as const,
+      };
+      const url = serializeCollectionState(state, withDefault);
+      expect(url.toString()).toBe(`${encodedRql}&host=human`);
+      expect(
+        parseCollectionState(toSearchParamsRecord(url), withDefault),
+      ).toEqual({ ...state, keyword: undefined, refine: undefined });
+      expect(
+        canonicalizeCollectionSearchParams(toSearchParamsRecord(url), withDefault).toString(),
+      ).toBe(url.toString());
+    });
+
+    it("writes neither the default nor the cleared marker without a pick", () => {
+      expect(parseCollectionState({ rql }, withDefault).filters).toEqual({});
+      expect(
+        serializeCollectionState(
+          { rql, filters: {}, page: 1, sort: "relevance" },
+          withDefault,
+        ).toString(),
+      ).toBe(encodedRql);
+      // A stale marker from a legacy link canonicalizes away and stays away.
+      const canonical = canonicalizeCollectionSearchParams(
+        { rql, host: "*" },
+        withDefault,
+      );
+      expect(canonical.toString()).toBe(encodedRql);
+      expect(
+        canonicalizeCollectionSearchParams(
+          toSearchParamsRecord(canonical),
+          withDefault,
+        ).toString(),
+      ).toBe(encodedRql);
+    });
+
+    it("narrows the rql through an update and a full-state replace", () => {
+      expect(
+        updateCollectionSearchParams(
+          { rql },
+          { filters: { host: ["human"] } },
+          withDefault,
+        ).toString(),
+      ).toBe(`${encodedRql}&host=human`);
+      expect(
+        replaceCollectionSearchParams(
+          { rql },
+          { rql, filters: { host: ["human"] }, page: 1, sort: "relevance" },
+          withDefault,
+        ).toString(),
+      ).toBe(`${encodedRql}&host=human`);
+      expect(
+        updateCollectionSearchParams(
+          { rql, host: "human" },
+          { filters: { host: null } },
+          withDefault,
+        ).toString(),
+      ).toBe(encodedRql);
+    });
+
+    it("leaves a pick alone when the rql goes, and reapplies the default only without one", () => {
+      expect(
+        withUnshadowedDefaults(
+          rql,
+          { filters: { host: ["swine"] }, page: 1, sort: "relevance" },
+          withDefault,
+        ).filters,
+      ).toEqual({ host: ["swine"] });
+      expect(
+        updateCollectionSearchParams(
+          { rql, host: "swine" },
+          { rql: null },
+          withDefault,
+        ).toString(),
+      ).toBe("host=swine");
+      expect(
+        updateCollectionSearchParams({ rql }, { rql: null }, withDefault).toString(),
+      ).toBe("");
+    });
+
+    it("counts facets with a pick equal to the default, which is not implicit here", () => {
+      const picked = parseCollectionState({ rql, host: "human" }, withDefault);
+      expect(picked.filters).toEqual({ host: ["human"] });
+      expect(facetCountState(picked, withDefault)).toBe(picked);
+    });
   });
 
   it("leaves an untouched default beside rql out of the facet-count state", () => {

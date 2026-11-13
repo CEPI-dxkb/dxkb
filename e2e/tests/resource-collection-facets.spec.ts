@@ -114,6 +114,10 @@ function facetsOf(read: URL | undefined) {
   return read?.searchParams.getAll("facet") ?? [];
 }
 
+function rqlOf(read: URL | undefined) {
+  return read?.searchParams.get("rql") ?? "";
+}
+
 /** Holds the reads `held` matches until `release` is called. */
 function holdReads(held: (url: URL) => boolean) {
   let release!: () => void;
@@ -331,6 +335,88 @@ test.describe("resource collection facet counts", () => {
         read.searchParams.get("rql")?.includes("genome_status"),
       ),
     ).toBe(false);
+  });
+
+  test("narrows a custom-query list by a pick instead of replacing the query", async ({
+    page,
+  }) => {
+    // A "Show these genomes" link: a hand-written rql, no friendly filters.
+    const customClauses = [
+      "in(taxon_lineage_ids,(3050294))",
+      "ne(genome_status,Deprecated)",
+    ];
+    const customRql = `and(${customClauses.join(",")})`;
+    const picked = "eq(genome_status,Complete)";
+    const collection = await openGenomeCollection(page);
+    const { toolbar } = collection;
+    const facetReads = await routeFacetReads(page);
+    const rowReads: URL[] = [];
+    page.on("request", (request: Request) => {
+      const url = new URL(request.url());
+      if (
+        url.pathname === "/api/data/genome" &&
+        url.searchParams.get("operation") === "collection" &&
+        !isFacetRead(url)
+      ) {
+        rowReads.push(url);
+      }
+    });
+
+    await collection.gotoQuery(`rql=${customRql}`);
+    await expect(toolbar.customQueryBadge()).toBeVisible();
+    await toolbar.openFacet("Genome Status");
+    await expect(
+      toolbar.facetValueOption("Genome Status", "Complete", 5),
+    ).toBeVisible();
+    // The reads capture the rql they carry before the pick: a pick that
+    // dropped the query could not be told from a capture that never saw it.
+    expect(facetReads).toHaveLength(1);
+    for (const read of [rowReads[0], facetReads[0]]) {
+      for (const clause of customClauses) {
+        expect(rqlOf(read)).toContain(clause);
+      }
+      expect(rqlOf(read)).not.toContain(picked);
+    }
+
+    await toolbar.pickFacetValue("Genome Status", "Complete");
+    // The pick lands beside the query in the URL; it used to replace it
+    // (`/genome?genome_status=Complete`).
+    await expect(page).toHaveURL(/[?&]genome_status=Complete(?:&|$)/);
+    expect(new URL(page.url()).searchParams.get("rql")).toBe(customRql);
+    await expect(toolbar.filtersButton()).toHaveAccessibleName(
+      "Filters, 1 active",
+    );
+    await expect(toolbar.customQueryBadge()).toBeVisible();
+
+    // Rows and the other facets' counts are both read for the query narrowed
+    // by the pick (Genome Status keeps its own counts, so it is not re-read).
+    await expect.poll(() => facetReads.length).toBe(2);
+    await expect
+      .poll(() => rowReads.some((read) => rqlOf(read).includes(picked)))
+      .toBe(true);
+    const narrowed = [
+      facetReads[1],
+      ...rowReads.filter((read) => rqlOf(read).includes(picked)),
+    ];
+    for (const read of narrowed) {
+      for (const clause of [...customClauses, picked]) {
+        expect(rqlOf(read)).toContain(clause);
+      }
+    }
+    expect(facetsOf(facetReads[1])).not.toContain("genome_status");
+
+    // The server renders the same list from the link.
+    await toolbar.closeFilters();
+    await page.reload();
+    await expect(collection.rowCheckbox(firstRow.genome_id)).toBeVisible();
+    await expect(toolbar.filtersButton()).toHaveAccessibleName(
+      "Filters, 1 active",
+    );
+    await expect(toolbar.customQueryBadge()).toBeVisible();
+    expect(new URL(page.url()).searchParams.get("rql")).toBe(customRql);
+    expect(new URL(page.url()).searchParams.get("genome_status")).toBe(
+      "Complete",
+    );
   });
 
   test("keeps a pick on a facet the URL used to drop, on its (empty) bucket, and on a value with a colon", async ({

@@ -31,7 +31,7 @@ describe("view collection state exports", () => {
     expect(resourceCollectionPageSize).toBe(200);
   });
 
-  it("keeps explicit rql independent from keyword and ahead of friendly filters", () => {
+  it("keeps explicit rql independent from keyword and friendly filters beside it", () => {
     expect(
       parseCollectionState(
         {
@@ -48,7 +48,7 @@ describe("view collection state exports", () => {
       rql: "eq(host,human)",
       page: 3,
       sort: "year:desc",
-      filters: {},
+      filters: { taxon_id: ["123"] },
     });
   });
 

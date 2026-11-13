@@ -28,6 +28,7 @@ import {
 } from "@/lib/genome-view";
 import {
   parseCollectionState,
+  replaceCollectionSearchParams,
   toSearchParamsRecord,
   updateCollectionSearchParams,
   type CollectionState,
@@ -148,14 +149,37 @@ describe("Genome view contracts", () => {
     );
   });
 
-  it("gives explicit rql precedence without adding Deprecated filters", () => {
+  it("keeps facet picks beside an explicit rql instead of dropping them", () => {
     const state = parseGenomeCollectionState({
       taxon_id: "561",
       rql: "eq(genome_status,Complete)",
     });
-    expect(state.filters).toEqual({});
+    expect(state.filters).toEqual({ taxon_id: ["561"] });
     expect(state.rql).toBe("eq(genome_status,Complete)");
-    expect(genomeStructuralRql(state)).toBeUndefined();
+    expect(genomeStructuralRql(state)).toBe("eq(taxon_lineage_ids,561)");
+    expect(genomeBaseRql(state)).toBeUndefined();
+  });
+
+  it("narrows an Advanced Search query with a facet pick (DXKBCORE-345)", () => {
+    const rql =
+      "and(in(taxon_lineage_ids,(3050294)),ne(genome_status,Deprecated))";
+    // The app's write path: `useCollectionUrlState`'s `setState`, handed the
+    // filter bar's next state.
+    const params = { rql };
+    const current = parseGenomeCollectionState(params);
+    const next = replaceCollectionSearchParams(
+      params,
+      { ...current, filters: { genome_status: ["Complete"] }, page: 1 },
+      genomeCollectionOptions,
+    );
+    expect(next.get("rql")).toBe(rql);
+    expect(next.getAll("genome_status")).toEqual(["Complete"]);
+
+    const state = parseGenomeCollectionState(toSearchParamsRecord(next));
+    expect(state.rql).toContain("taxon_lineage_ids");
+    expect(state.filters).toEqual({ genome_status: ["Complete"] });
+    expect(genomeStructuralRql(state)).toBe("eq(genome_status,Complete)");
+    expect(genomeBaseRql(state)).toBeUndefined();
   });
 
   it("scopes the My Genomes link to private genomes without the recent default", () => {

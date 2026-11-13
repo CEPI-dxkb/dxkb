@@ -123,6 +123,44 @@ describe("Experiment view", () => {
     expect(parseExperimentCollectionTab("missing")).toBe("experiments");
   });
 
+  it("keeps facet picks beside an explicit rql (DXKBCORE-345)", () => {
+    const rql = "eq(exp_type,RNA)";
+    const state = parseExperimentCollectionState({
+      rql,
+      taxon_id: "561",
+      exp_type: "Proteomics",
+    });
+    expect(state.rql).toBe(rql);
+    expect(state.filters).toEqual({
+      taxon_id: ["561"],
+      exp_type: ["Proteomics"],
+    });
+    expect(experimentStructuralRql(state)).toBe(
+      "and(eq(taxon_lineage_ids,561),eq(exp_type,Proteomics))",
+    );
+  });
+
+  it("builds Bioset facet clauses beside an explicit rql, which the caller ANDs", () => {
+    const state = {
+      rql: "eq(exp_id,00042)",
+      filters: { organism: ["Escherichia coli"] },
+      page: 1,
+      sort: "bioset_id:asc",
+    };
+    expect(biosetStructuralRql(state)).toBe('eq(organism,"Escherichia%20coli")');
+  });
+
+  it("scopes the collection Biosets tab by the rql, the facet picks beside it and the refinement", () => {
+    const state = parseExperimentCollectionState({
+      rql: "eq(exp_type,RNA)",
+      taxon_id: "11320",
+      refine: "influenza",
+    });
+    expect(experimentCollectionScopeRql(state)).toBe(
+      "and(eq(taxon_lineage_ids,11320),keyword(influenza),eq(exp_type,RNA))",
+    );
+  });
+
   it("defines member links and canonical tabs", () => {
     expect(experimentCollectionProfile.rowHref?.({ exp_id: "00042" })).toBe(
       "/experiment/00042",

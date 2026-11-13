@@ -95,13 +95,13 @@ describe("Strain view contracts", () => {
     );
   });
 
-  it("gives explicit RQL precedence and rejects transport operators", () => {
+  it("keeps friendly filters beside explicit RQL and rejects transport operators", () => {
     const state = parseStrainCollectionState({
       strain: "H1N1",
       rql: "eq(status,Complete)",
     });
-    expect(state.filters).toEqual({});
-    expect(strainStructuralRql(state)).toBeUndefined();
+    expect(state.filters).toEqual({ strain: ["H1N1"] });
+    expect(strainStructuralRql(state)).toBe('eq(strain,"H1N1")');
     expect(() => parseStrainCollectionState({ rql: "sort(+strain)" })).toThrow(
       "Transport operator",
     );

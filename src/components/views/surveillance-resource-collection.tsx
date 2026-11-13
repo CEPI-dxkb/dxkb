@@ -7,7 +7,10 @@ import {
   surveillanceCollectionProfile,
   type SurveillanceViewRecord,
 } from "@/lib/surveillance-view";
-import type { CollectionState } from "@/lib/views/collection-state";
+import {
+  filtersBesideRql,
+  type CollectionState,
+} from "@/lib/views/collection-state";
 import { ResourceCollection } from "./resource-collection";
 
 const repository = new DataRepository();
@@ -42,6 +45,9 @@ export function SurveillanceResourceCollection({
       profile={serverKeywordMode ? { ...profile, serverKeywordMode } : profile}
       repository={repository}
       state={state}
+      filtersBesideRql={[
+        ...filtersBesideRql(state.rql, surveillanceCollectionOptions),
+      ]}
       onStateChange={setState}
       baseRql={baseRql}
       enableRowLinks={enableRowLinks}

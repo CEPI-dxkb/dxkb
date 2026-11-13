@@ -536,6 +536,10 @@ describe("AppService", () => {
         expect.stringMatching(
           /queued: count queued failed; in-progress: count in-progress failed/,
         ),
+        {
+          queued: new Error("count queued failed"),
+          "in-progress": new Error("count in-progress failed"),
+        },
       );
       warn.mockRestore();
     });
@@ -569,6 +573,7 @@ describe("AppService", () => {
           expect.stringContaining(
             "queued: the job service answered no total count",
           ),
+          { queued: new Error("the job service answered no total count") },
         );
         warn.mockRestore();
       },

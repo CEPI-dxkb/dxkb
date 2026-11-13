@@ -6,7 +6,7 @@ import {
   journeyOverrides,
   mockLifecycleJobs,
 } from "../../fixtures/overrides";
-import { JobsListPage, ServiceFormPage } from "../../pages";
+import { JobsListPage, Navbar, ServiceFormPage } from "../../pages";
 import { harOverridesFor } from "../../scripts/har-overrides";
 
 test.describe("genome assembly submission", () => {
@@ -158,7 +158,7 @@ test.describe("genome assembly submission", () => {
     await form.goto("/services/genome-assembly?rerun_key=e2e-rerun");
     await expect(page.getByRole("button", { name: /assemble/i })).toBeEnabled();
 
-    const pill = page.getByRole("button", { name: /view job status/i });
+    const pill = new Navbar(page).jobStatusPill();
     // One empty answer must have landed, or "no pill" proves nothing.
     await emptyAnswer;
     await expect(pill).toHaveCount(0);
@@ -167,7 +167,7 @@ test.describe("genome assembly submission", () => {
 
     // Well under the 30 s idle interval; the 3 s poll window shows the job.
     await expect(pill).toBeVisible({ timeout: 10_000 });
-    await expect(pill).toHaveAccessibleName(/^1\b.*view job status/i);
+    await expect(pill).toHaveAccessibleName(/^1 queued\b.*view job status/i);
   });
 
   test("number inputs preserve keyboard, focus, limit, and button behavior without runtime errors", async ({

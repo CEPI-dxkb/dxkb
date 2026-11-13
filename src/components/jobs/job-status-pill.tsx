@@ -228,8 +228,8 @@ export function JobStatusPill() {
           <Button
             variant="inverse-outline"
             size="pill"
-            // Opens with the visible counts (WCAG 2.5.3), e.g. "0 1 1".
-            aria-label={`${statusGroups.map(({ count }) => String(count)).join(" ")}, view job status`}
+            // Opens with the visible counts (WCAG 2.5.3) and names each group, e.g. "0 queued, 1 running, 1 completed".
+            aria-label={`${statusGroups.map(({ key, count }) => `${String(count)} ${key}`).join(", ")}, view job status`}
             onPointerEnter={warmRecentJobs}
             onFocus={warmRecentJobs}
           >

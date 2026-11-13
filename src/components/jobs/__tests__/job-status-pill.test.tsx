@@ -121,7 +121,7 @@ describe("JobStatusPill", () => {
     const pill = await screen.findByRole("button", {
       name: /view job status/i,
     });
-    expect(pill).toHaveAccessibleName("0 0 4 3, view job status");
+    expect(pill).toHaveAccessibleName("0 queued, 0 running, 4 completed, 3 failed, view job status");
     expect(within(pill).getByText("3")).toBeInTheDocument();
   });
 
@@ -131,7 +131,22 @@ describe("JobStatusPill", () => {
     const pill = await screen.findByRole("button", {
       name: /view job status/i,
     });
-    expect(pill).toHaveAccessibleName("0 0 2, view job status");
+    expect(pill).toHaveAccessibleName("0 queued, 0 running, 2 failed, view job status");
+  });
+
+  it("names a completed-only and a failed-only pill differently", async () => {
+    mockSummary({ completed: 2 });
+    const first = renderPill();
+    const completedName = (
+      await screen.findByRole("button", { name: /view job status/i })
+    ).getAttribute("aria-label");
+    first.unmount();
+    mockSummary({ failed: 2 });
+    renderPill();
+    const failedName = (
+      await screen.findByRole("button", { name: /view job status/i })
+    ).getAttribute("aria-label");
+    expect(completedName).not.toEqual(failedName);
   });
 
   it("hides the failed group at zero", async () => {
@@ -140,7 +155,7 @@ describe("JobStatusPill", () => {
     const pill = await screen.findByRole("button", {
       name: /view job status/i,
     });
-    expect(pill).toHaveAccessibleName("0 0 4, view job status");
+    expect(pill).toHaveAccessibleName("0 queued, 0 running, 4 completed, view job status");
   });
 
   it("renders the pill with completed count", async () => {

@@ -127,9 +127,15 @@ describe("POST /api/services/app-service/jobs/task-summary", () => {
       failed: 0,
     });
     expect(warn).toHaveBeenCalledTimes(1);
-    expect(warn).toHaveBeenCalledWith(
-      expect.stringContaining("queued: count queued failed"),
-    );
+    const [message, errors] = warn.mock.calls[0] as [
+      string,
+      Record<string, Error>,
+    ];
+    expect(message).toContain("queued: count queued failed");
+    // The error objects ride along, so a logged UpstreamError keeps its host and cause.
+    expect(Object.keys(errors)).toEqual(["queued", "pending"]);
+    expect(errors.queued).toBeInstanceOf(Error);
+    expect(errors.pending.message).toBe("count pending failed");
   });
 
   it("counts each fresh status with include_archived and no search term", async () => {

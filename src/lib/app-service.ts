@@ -217,18 +217,21 @@ export class AppService {
     );
     const counts: Record<string, number> = {};
     const failures: string[] = [];
+    const errors: Record<string, unknown> = {};
     results.forEach((result, index) => {
       const status = statuses[index];
       if (result.status === "fulfilled") {
         counts[status] = result.value;
       } else {
         const reason: unknown = result.reason;
+        errors[status] = reason;
         failures.push(`${status}: ${reason instanceof Error ? reason.message : String(reason)}`);
       }
     });
     if (failures.length > 0) {
       console.warn(
         `[app-service] fresh job status counts failed, keeping the cached counts for ${failures.join("; ")}`,
+        errors,
       );
     }
     return counts;

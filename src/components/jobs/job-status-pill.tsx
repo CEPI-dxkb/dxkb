@@ -228,18 +228,20 @@ export function JobStatusPill() {
           <Button
             variant="inverse-outline"
             size="pill"
-            // Opens with the visible counts (WCAG 2.5.3) and names each group, e.g. "0 queued, 1 running, 1 completed".
-            aria-label={`${statusGroups.map(({ key, count }) => `${String(count)} ${key}`).join(", ")}, view job status`}
             onPointerEnter={warmRecentJobs}
             onFocus={warmRecentJobs}
           >
             {statusGroups.map(({ key, count, icon: Icon, className }) => (
-              <span key={key} className="flex items-center gap-1">
+              <span key={key} aria-hidden className="flex items-center gap-1">
                 <Icon className={cn("size-3.5", className)} />
-                <span className="text-sm">{count}</span>
-                {" "}
+                <span className="text-sm">{count}</span>{" "}
               </span>
             ))}
+            {/* Named from content, not aria-label, which axe's label-content-name-mismatch would hold to the
+                bare visible counts; the counts stay in visible order: "0 queued, 1 running, 1 completed, view job status". */}
+            <span className="sr-only">
+              {`${statusGroups.map(({ key, count }) => `${String(count)} ${key}`).join(", ")}, view job status`}
+            </span>
           </Button>
         }
       />

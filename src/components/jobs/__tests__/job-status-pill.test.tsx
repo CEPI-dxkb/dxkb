@@ -115,7 +115,7 @@ describe("JobStatusPill", () => {
     ).toBeNull();
   });
 
-  it("shows a failed group summing failed and error, last in the aria-label", async () => {
+  it("shows a failed group summing failed and error, last in the accessible name", async () => {
     mockSummary({ completed: 4, failed: 2, error: 1, cancelled: 3 });
     renderPill();
     const pill = await screen.findByRole("button", {
@@ -137,16 +137,23 @@ describe("JobStatusPill", () => {
   it("names a completed-only and a failed-only pill differently", async () => {
     mockSummary({ completed: 2 });
     const first = renderPill();
-    const completedName = (
-      await screen.findByRole("button", { name: /view job status/i })
-    ).getAttribute("aria-label");
+    expect(
+      await screen.findByRole("button", { name: /view job status/i }),
+    ).toHaveAccessibleName("0 queued, 0 running, 2 completed, view job status");
     first.unmount();
     mockSummary({ failed: 2 });
     renderPill();
-    const failedName = (
-      await screen.findByRole("button", { name: /view job status/i })
-    ).getAttribute("aria-label");
-    expect(completedName).not.toEqual(failedName);
+    expect(
+      await screen.findByRole("button", { name: /view job status/i }),
+    ).toHaveAccessibleName("0 queued, 0 running, 2 failed, view job status");
+  });
+
+  // axe's label-content-name-mismatch holds an aria-label to the bare visible counts ("0 0 2"), which cannot name the groups.
+  it("names the pill from its content, not an aria-label", async () => {
+    mockSummary({ completed: 2 });
+    renderPill();
+    const pill = await screen.findByRole("button", { name: /view job status/i });
+    expect(pill).not.toHaveAttribute("aria-label");
   });
 
   it("hides the failed group at zero", async () => {

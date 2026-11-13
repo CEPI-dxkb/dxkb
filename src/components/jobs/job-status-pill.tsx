@@ -126,7 +126,7 @@ export function JobStatusPill() {
       key: "failed",
       count: failedCount,
       icon: XCircle,
-      // `text-destructive` is under 3:1 on the navbar fill in every theme.
+      // `destructive` clashes with the blue navbar fill; this is a softer red.
       className: "text-destructive-inverse",
       alwaysShown: false,
     },

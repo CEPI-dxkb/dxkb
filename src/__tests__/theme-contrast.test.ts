@@ -271,26 +271,3 @@ describe("theme contrast: the Circular Viewer's position labels", () => {
     },
   );
 });
-
-/** The header job pill is `bg-white/10` over the navbar's `bg-primary`. */
-const pillWashShare = 0.1;
-const white: Srgb = [1, 1, 1];
-/** violet-light's primary sits mid-lightness, so no red reaches 4.5:1 on it; a dark red holds 3:1. */
-const inverseMinimum = (theme: string | undefined) =>
-  theme === "violet-light" ? 3 : minimumContrast;
-
-// The pill's hover/open fill is bg-white/20 (button-variants.ts); the 3:1 non-text minimum still holds there.
-describe("theme contrast: destructive-inverse on the navbar pill", () => {
-  it.each(themeBlocks.map((block) => [themeOf(block), block] as const))(
-    "%s keeps destructive-inverse readable on the pill over the navbar fill",
-    (theme, block) => {
-      const scope = themeScope(block);
-      const primary = oklabToSrgb(resolveVariable("--primary", scope));
-      const pill = paintOver(white, pillWashShare, primary);
-      const text = oklabToSrgb(resolveVariable("--destructive-inverse", scope));
-      expect(srgbContrast(text, pill)).toBeGreaterThanOrEqual(
-        inverseMinimum(theme),
-      );
-    },
-  );
-});

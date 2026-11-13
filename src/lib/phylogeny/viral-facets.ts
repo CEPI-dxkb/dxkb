@@ -100,7 +100,65 @@ export function pruneViralFilters(
   };
 }
 
-/** Counts per facet option, cascading strain -> viewer -> segment like pruneViralFilters; strain is counted against every tree so choosing a viewer cannot lock a strain out. */
+type ViewerPair = Partial<Record<PhyloViewer, ViralTreeChoice>>;
+
+function nameKey(choice: ViralTreeChoice): string {
+  return choice.ref.name.trim().toLowerCase();
+}
+
+/**
+ * Pairs one bucket's trees across viewers. Same names pair first, so a lone
+ * Auspice "HA 500" joins Archaeopteryx "HA 500", not the bucket's first HA
+ * tree. A bucket holding one tree per viewer pairs them even when the names
+ * differ, because the viewers can name one tree differently ("All
+ * concatenated" / "H3N2 all concatenated"). Other leftovers get their own
+ * rows: pairing them by position could put one tree's Open button on another
+ * tree's row.
+ */
+function pairBucket(
+  archaeopteryx: ViralTreeChoice[],
+  nextstrain: ViralTreeChoice[],
+): ViewerPair[] {
+  const unmatched = [...nextstrain];
+  const pairs: ViewerPair[] = archaeopteryx.map((tree) => {
+    const index = unmatched.findIndex((peer) => nameKey(peer) === nameKey(tree));
+    if (index === -1) return { archaeopteryx: tree };
+    const [peer] = unmatched.splice(index, 1);
+    return { archaeopteryx: tree, nextstrain: peer };
+  });
+  if (archaeopteryx.length === 1 && nextstrain.length === 1 && !pairs[0].nextstrain) {
+    return [{ archaeopteryx: archaeopteryx[0], nextstrain: nextstrain[0] }];
+  }
+  return [...pairs, ...unmatched.map((tree) => ({ nextstrain: tree }))];
+}
+
+/**
+ * Groups trees into table rows: a bucket is a strain and segment or, for an
+ * unsegmented tree, a strain and name; pairBucket pairs within it.
+ */
+function pairTrees(trees: ViralTreeChoice[]): Map<string, ViewerPair> {
+  const buckets = new Map<string, Record<PhyloViewer, ViralTreeChoice[]>>();
+  for (const tree of trees) {
+    const base = `${tree.groupKey}\u0000${tree.segment ?? `name:${nameKey(tree)}`}`;
+    const bucket = buckets.get(base) ?? { archaeopteryx: [], nextstrain: [] };
+    bucket[tree.viewer].push(tree);
+    buckets.set(base, bucket);
+  }
+  const rows = new Map<string, ViewerPair>();
+  for (const [base, bucket] of buckets) {
+    pairBucket(bucket.archaeopteryx, bucket.nextstrain).forEach((pair, index) => {
+      rows.set(`${base}\u0000${String(index)}`, pair);
+    });
+  }
+  return rows;
+}
+
+/**
+ * Counts per facet option, in table rows (a tree both viewers open counts
+ * once, as in "N of M trees"), cascading strain -> viewer -> segment like
+ * pruneViralFilters; strain is counted against every tree so choosing a
+ * viewer cannot lock a strain out.
+ */
 export function viralFacetCounts(
   trees: ViralTreeChoice[],
   filters: ViralFilters,
@@ -111,15 +169,17 @@ export function viralFacetCounts(
   const viewerTrees = strainTrees.filter(
     (tree) => !filters.viewer || tree.viewer === filters.viewer,
   );
+  const rowCount = (subset: ViralTreeChoice[]) => pairTrees(subset).size;
   return {
-    allStrains: trees.length,
-    allViewers: strainTrees.length,
+    allStrains: rowCount(trees),
+    allViewers: rowCount(strainTrees),
     strain: (key: string) =>
-      trees.filter((tree) => tree.groupKey === key).length,
+      rowCount(trees.filter((tree) => tree.groupKey === key)),
+    // One viewer's trees never share a row, so its row count is its tree count.
     viewer: (value: PhyloViewer) =>
       strainTrees.filter((tree) => tree.viewer === value).length,
     segment: (segment: string) =>
-      viewerTrees.filter((tree) => tree.segment === segment).length,
+      rowCount(viewerTrees.filter((tree) => tree.segment === segment)),
   };
 }
 
@@ -158,45 +218,88 @@ export const viewerLabel = {
   nextstrain: "Auspice",
 } as const;
 
-function hashSegment(value: string): number {
-  let out = 0;
-  for (const character of value) out = (out * 31 + character.charCodeAt(0)) | 0;
-  return out;
+/** Display label for a segment; "All" is the concatenated tree, not "no filter". */
+export function segmentLabel(segment: string): string {
+  return segment === "All" ? "Concatenated" : segment;
 }
 
-export function segmentColor(segment: string | null): string {
-  if (!segment) return "var(--muted-foreground)";
-  const index = segmentOrder.indexOf(segment);
-  const slot = index === -1 ? Math.abs(hashSegment(segment)) % 10 : index % 10;
-  return `var(--chart-${String(slot + 1)})`;
-}
+export type NextstrainInventory =
+  | { status: "pending" }
+  | { status: "error"; message: string }
+  | { status: "ready"; ids: ReadonlySet<string> };
 
-export interface SegmentRow {
+/** A viewer's cell in a tree row: openable, an Auspice dataset that cannot be opened yet, or no tree. */
+export type ViewerSlot =
+  | { state: "open"; choice: ViralTreeChoice }
+  | { state: "checking" | "unconfirmed" | "missing"; choice: ViralTreeChoice }
+  | { state: "none" };
+
+export interface TreeRow {
+  key: string;
   strainKey: string;
   strainTitle: string;
   segment: string | null;
-  choices: ViralTreeChoice[];
+  name: string;
+  /** The first paired tree with a metadata file, named for its own tree. */
+  metadata?: { url: string; treeName: string };
+  slots: Record<PhyloViewer, ViewerSlot>;
 }
 
-/** Segmented peers share a row; unsegmented references remain distinct. */
-export function segmentRows(trees: ViralTreeChoice[]): SegmentRow[] {
+function rowMetadata(choices: ViralTreeChoice[]): TreeRow["metadata"] {
+  const source = choices.find((choice) => choice.ref.metadata);
+  return source?.ref.metadata
+    ? { url: source.ref.metadata, treeName: source.ref.name }
+    : undefined;
+}
+
+function viewerSlot(
+  choice: ViralTreeChoice | undefined,
+  inventory: NextstrainInventory,
+): ViewerSlot {
+  if (!choice) return { state: "none" };
+  if (choice.viewer === "nextstrain") {
+    if (inventory.status === "pending") return { state: "checking", choice };
+    if (inventory.status === "error") return { state: "unconfirmed", choice };
+    if (isUnavailable(choice, inventory.ids))
+      return { state: "missing", choice };
+  }
+  return { state: "open", choice };
+}
+
+/**
+ * One row per tree, with a slot per viewer. Peers share a row when they have
+ * the same strain and segment, or, unsegmented, the same name; pairBucket
+ * decides how a segment's several trees pair.
+ */
+export function buildTreeRows(
+  trees: ViralTreeChoice[],
+  inventory: NextstrainInventory,
+): TreeRow[] {
+  const strainOrder = [...new Set(trees.map((tree) => tree.groupKey))];
   const order = sortedSegments(trees);
-  const strains = [
-    ...new Map(trees.map((tree) => [tree.groupKey, tree.groupTitle])).entries(),
-  ];
-  return strains.flatMap(([strainKey, strainTitle]) => [
-    ...order.flatMap((segment) => {
-      const choices = trees.filter(
-        (tree) => tree.groupKey === strainKey && tree.segment === segment,
-      );
-      return choices.length === 0
-        ? []
-        : [{ strainKey, strainTitle, segment, choices }];
-    }),
-    ...trees.flatMap((choice) =>
-      choice.groupKey === strainKey && choice.segment === null
-        ? [{ strainKey, strainTitle, segment: null, choices: [choice] }]
-        : [],
-    ),
-  ]);
+  const segmentRank = (segment: string | null) =>
+    segment === null ? order.length : order.indexOf(segment);
+  return [...pairTrees(trees)]
+    .map(([key, byViewer]): TreeRow => {
+      const choices = Object.values(byViewer);
+      const primary = byViewer.archaeopteryx ?? choices[0];
+      return {
+        key,
+        strainKey: primary.groupKey,
+        strainTitle: primary.groupTitle,
+        segment: primary.segment,
+        name: primary.ref.name,
+        metadata: rowMetadata(choices),
+        slots: {
+          archaeopteryx: viewerSlot(byViewer.archaeopteryx, inventory),
+          nextstrain: viewerSlot(byViewer.nextstrain, inventory),
+        },
+      };
+    })
+    .sort(
+      (left, right) =>
+        strainOrder.indexOf(left.strainKey) -
+          strainOrder.indexOf(right.strainKey) ||
+        segmentRank(left.segment) - segmentRank(right.segment),
+    );
 }

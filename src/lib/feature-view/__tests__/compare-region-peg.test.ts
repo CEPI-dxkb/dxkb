@@ -102,6 +102,14 @@ describe("compareRegionTwinRql", () => {
     ).toContain("eq(feature_type,tRNA)");
   });
 
+  it("keeps the twin in the feature's own genome when it names one", () => {
+    expect(
+      compareRegionTwinRql(record({ ...refseq, genome_id: "511145.12" })),
+    ).toBe(
+      "and(eq(annotation,PATRIC),eq(genome_id,511145.12),eq(feature_type,CDS),eq(sequence_id,NC_000913),eq(end,2799),eq(strand,%22%2B%22))",
+    );
+  });
+
   it("looks a RefSeq gene's CDS up, because PATRIC has no gene type", () => {
     expect(
       compareRegionTwinRql(record({ ...refseq, feature_type: "gene" })),

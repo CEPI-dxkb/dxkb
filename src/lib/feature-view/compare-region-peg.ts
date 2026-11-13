@@ -47,8 +47,10 @@ function twinFeatureType(featureType: string | undefined): string | null {
  * counterpart up by sequence, end and strand (the end, not the start, because
  * the two annotations can start a gene at different codons). The type is added
  * so a viral mat_peptide, which shares its end with its polyprotein CDS, finds
- * its own twin. Null when the feature is already PATRIC or lacks a location or
- * type.
+ * its own twin. The genome is added when the feature names one, because an
+ * accession such as NC_000913 recurs across many genome records and the first
+ * row of another genome would pin the wrong gene. Null when the feature is
+ * already PATRIC or lacks a location or type.
  */
 export function compareRegionTwinRql(feature: FeatureViewRecord): string | null {
   if (feature.annotation === "PATRIC") return null;
@@ -58,7 +60,10 @@ export function compareRegionTwinRql(feature: FeatureViewRecord): string | null 
   if (!type || !sequenceId || end === undefined || end === "" || !strandLiteral) {
     return null;
   }
-  return `and(eq(annotation,PATRIC),eq(feature_type,${escapeRqlValue(type)}),eq(sequence_id,${escapeRqlValue(sequenceId)}),eq(end,${escapeRqlValue(String(end))}),eq(strand,${strandLiteral}))`;
+  const genomeClause = feature.genome_id
+    ? `eq(genome_id,${escapeRqlValue(feature.genome_id)}),`
+    : "";
+  return `and(eq(annotation,PATRIC),${genomeClause}eq(feature_type,${escapeRqlValue(type)}),eq(sequence_id,${escapeRqlValue(sequenceId)}),eq(end,${escapeRqlValue(String(end))}),eq(strand,${strandLiteral}))`;
 }
 
 /** A twin only matters when the feature has no usable BRC ID of its own. */

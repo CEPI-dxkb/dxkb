@@ -4,7 +4,7 @@ import {
   diffBooleanOverrides,
   mergeTableLayout,
   parseTableLayout,
-  resolveFacetVisibility,
+  resolveFavoriteFacets,
   sameOrder,
 } from "../table-layout";
 
@@ -176,20 +176,24 @@ describe("applyColumnOrder", () => {
   });
 });
 
-describe("resolveFacetVisibility", () => {
-  it("applies saved choices over each facet's own default and ignores stale ids", () => {
+describe("resolveFavoriteFacets", () => {
+  it("starts with no favorites, applies the saved stars and ignores stale ids", () => {
     expect(
-      resolveFacetVisibility(
-        [
-          { field: "a" },
-          { field: "b", initiallyVisible: false },
-          { field: "c", initiallyVisible: true },
-        ],
-        { a: false, b: true, gone: true },
-      ),
+      resolveFavoriteFacets([{ field: "a" }, { field: "b" }, { field: "c" }], {
+        a: false,
+        b: true,
+        gone: true,
+      }),
     ).toStrictEqual({
-      defaults: { a: true, b: false, c: true },
-      visibility: { a: false, b: true, c: true },
+      defaults: { a: false, b: false, c: false },
+      favorites: { a: false, b: true, c: false },
     });
+  });
+
+  it("leaves every facet unstarred when nothing is saved", () => {
+    expect(
+      resolveFavoriteFacets([{ field: "a" }, { field: "b" }], undefined)
+        .favorites,
+    ).toStrictEqual({ a: false, b: false });
   });
 });

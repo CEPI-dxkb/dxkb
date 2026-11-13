@@ -1,6 +1,4 @@
 import { act, render, screen, waitFor } from "@testing-library/react";
-import { hydrateRoot } from "react-dom/client";
-import { renderToString } from "react-dom/server";
 import userEvent from "@testing-library/user-event";
 import type { DataRepository } from "@/lib/data-api";
 import type { DownloadRequest } from "@/lib/data-api/downloads";
@@ -1450,21 +1448,15 @@ describe("ResourceCollection column layout", () => {
     expect(prefetchFacets).not.toHaveBeenCalled();
   });
 
-  it("counts the pinned facets once the toolbar wants them, and the peeked ones beside them", () => {
+  it("counts every facet once the toolbar wants them", () => {
     const prefetchFacets = vi.fn();
     useResourceCollection.mockReturnValue(collectionResult({ prefetchFacets }));
-    const facetsShownByDefault = (genomeCollectionProfile.facets ?? []).filter(
-      (facet) => facet.initiallyVisible !== false,
+    const everyFacet = (genomeCollectionProfile.facets ?? []).map(
+      (facet) => facet.field,
     );
-    const collapsedByUser = facetsShownByDefault.at(0);
-    if (!collapsedByUser)
-      throw new Error("fixture needs a default-visible facet");
-    const stillShown = facetsShownByDefault
-      .slice(1)
-      .map((facet) => facet.field);
     localStorage.setItem(
       storageKey,
-      JSON.stringify({ facets: { [collapsedByUser.field]: false } }),
+      JSON.stringify({ facets: { [everyFacet[0]]: false } }),
     );
 
     render(
@@ -1480,88 +1472,15 @@ describe("ResourceCollection column layout", () => {
     );
 
     callToolbar("onPrefetchFacets");
-    expect(prefetchFacets).toHaveBeenLastCalledWith(stillShown);
+    expect(prefetchFacets).toHaveBeenLastCalledWith(everyFacet);
     expect(useResourceCollection.mock.calls.at(-1)?.[0].facetFields).toEqual(
       [],
     );
 
     callToolbar("onFacetsWanted");
     expect(useResourceCollection.mock.calls.at(-1)?.[0].facetFields).toEqual(
-      stillShown,
+      everyFacet,
     );
-
-    callToolbar(
-      "onPeekedFieldsChange",
-      new Set([collapsedByUser.field, stillShown[0]]),
-    );
-    expect(useResourceCollection.mock.calls.at(-1)?.[0].facetFields).toEqual([
-      ...stillShown,
-      collapsedByUser.field,
-    ]);
-    expect(filterBarProps.peekedFields).toEqual(
-      new Set([collapsedByUser.field, stillShown[0]]),
-    );
-    callToolbar("onPrefetchFacets");
-    expect(prefetchFacets).toHaveBeenLastCalledWith([
-      ...stillShown,
-      collapsedByUser.field,
-    ]);
-  });
-
-  it("waits for the saved facet set before requesting counts", () => {
-    const prefetchFacets = vi.fn();
-    useResourceCollection.mockReturnValue(collectionResult({ prefetchFacets }));
-    const facetsShownByDefault = (genomeCollectionProfile.facets ?? []).filter(
-      (facet) => facet.initiallyVisible !== false,
-    );
-    const collapsedByUser = facetsShownByDefault.at(0);
-    if (!collapsedByUser)
-      throw new Error("fixture needs a default-visible facet");
-    localStorage.setItem(
-      storageKey,
-      JSON.stringify({ facets: { [collapsedByUser.field]: false } }),
-    );
-    const tree = (
-      <ResourceCollection
-        profile={genomeCollectionProfile}
-        repository={repository()}
-        state={state}
-        onStateChange={vi.fn()}
-      />
-    );
-
-    const container = document.createElement("div");
-    document.body.append(container);
-    let root: ReturnType<typeof hydrateRoot> | undefined;
-    try {
-      container.innerHTML = renderToString(tree);
-      expect(
-        useResourceCollection.mock.calls.map(
-          ([options]) => options.facetFields,
-        ),
-      ).toEqual([[]]);
-      callToolbar("onPrefetchFacets");
-      expect(prefetchFacets).not.toHaveBeenCalled();
-
-      act(() => {
-        root = hydrateRoot(container, tree);
-      });
-      callToolbar("onFacetsWanted");
-
-      expect(
-        useResourceCollection.mock.calls.every(
-          ([options]) => !options.facetFields?.includes(collapsedByUser.field),
-        ),
-      ).toBe(true);
-      expect(useResourceCollection.mock.calls.at(-1)?.[0].facetFields).toEqual(
-        facetsShownByDefault.slice(1).map((facet) => facet.field),
-      );
-    } finally {
-      act(() => {
-        root?.unmount();
-      });
-      container.remove();
-    }
   });
 
   it("hands DataTable the saved column order, the selection column first", () => {

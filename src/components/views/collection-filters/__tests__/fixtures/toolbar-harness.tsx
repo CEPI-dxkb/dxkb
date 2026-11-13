@@ -8,12 +8,8 @@ import type { CollectionToolbarProps, FacetStatus } from "../../types";
 export const toolbarDefinitions: ResourceCollectionFacet[] = [
   { field: "genome_status", label: "Genome Status" },
   { field: "host_name", label: "Host Name" },
-  {
-    field: "isolation_country",
-    label: "Isolation Country",
-    initiallyVisible: false,
-  },
-  { field: "species", label: "Species", initiallyVisible: false },
+  { field: "isolation_country", label: "Isolation Country" },
+  { field: "species", label: "Species" },
 ];
 
 export const toolbarFacets: ResourceFacets = {
@@ -39,8 +35,7 @@ interface ToolbarOptions {
   facets?: ResourceFacets;
   statuses?: Partial<Record<string, FacetStatus>>;
   filters?: Filters;
-  pinned?: string[];
-  peeked?: string[];
+  favorites?: string[];
   overrides?: Partial<CollectionToolbarProps>;
 }
 
@@ -49,13 +44,11 @@ export function renderToolbar({
   facets = toolbarFacets,
   statuses = {},
   filters: initialFilters = {},
-  pinned: initialPinned = ["genome_status", "host_name"],
-  peeked: initialPeeked = [],
+  favorites: initialFavorites = ["genome_status", "host_name"],
   overrides = {},
 }: ToolbarOptions = {}) {
   const spies = {
-    setFieldPinned: vi.fn<(field: string, pinned: boolean) => void>(),
-    setPeekedFields: vi.fn<(fields: ReadonlySet<string>) => void>(),
+    setFieldFavorite: vi.fn<(field: string, favorite: boolean) => void>(),
     toggleValue: vi.fn<(field: string, value: string) => void>(),
     setFieldValues: vi.fn<(field: string, values: string[]) => void>(),
     onFacetsWanted: vi.fn<() => void>(),
@@ -63,17 +56,14 @@ export function renderToolbar({
     clearAll: vi.fn<() => void>(),
   };
   const state = {
-    pinned: new Set(initialPinned),
-    peeked: new Set(initialPeeked),
+    favorites: new Set(initialFavorites),
     filters: initialFilters,
   };
 
   function Harness() {
-    const [pinned, setPinned] = useState<ReadonlySet<string>>(state.pinned);
-    const [peeked, setPeeked] = useState<ReadonlySet<string>>(state.peeked);
+    const [favorites, setFavorites] = useState<ReadonlySet<string>>(state.favorites);
     const [filters, setFilters] = useState<Filters>(state.filters);
-    state.pinned = new Set(pinned);
-    state.peeked = new Set(peeked);
+    state.favorites = new Set(favorites);
     state.filters = filters;
 
     const setFieldValues = (field: string, values: string[]) => {
@@ -91,20 +81,15 @@ export function renderToolbar({
         keyword=""
         onKeywordChange={vi.fn()}
         definitions={definitions}
-        pinnedFields={pinned}
-        setFieldPinned={(field, next) => {
-          spies.setFieldPinned(field, next);
-          setPinned((current) => {
+        favoriteFields={favorites}
+        setFieldFavorite={(field, next) => {
+          spies.setFieldFavorite(field, next);
+          setFavorites((current) => {
             const updated = new Set(current);
             if (next) updated.add(field);
             else updated.delete(field);
             return updated;
           });
-        }}
-        peekedFields={peeked}
-        setPeekedFields={(fields) => {
-          spies.setPeekedFields(fields);
-          setPeeked(fields);
         }}
         facets={facets}
         facetStatus={(field) =>

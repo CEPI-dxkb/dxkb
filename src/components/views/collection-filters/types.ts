@@ -30,10 +30,8 @@ export interface CollectionToolbarProps extends CollectionColumnControls {
   keywordPlaceholder?: string;
 
   definitions: readonly ResourceCollectionFacet[];
-  pinnedFields: ReadonlySet<string>;
-  setFieldPinned: (field: string, pinned: boolean) => void;
-  peekedFields: ReadonlySet<string>;
-  setPeekedFields: (fields: ReadonlySet<string>) => void;
+  favoriteFields: ReadonlySet<string>;
+  setFieldFavorite: (field: string, favorite: boolean) => void;
 
   facets: ResourceFacets;
   facetStatus: (field: string) => FacetStatus;

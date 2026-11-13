@@ -16,14 +16,12 @@ import {
 } from "@/components/shared/data-table";
 import { useResourceCollection } from "@/hooks/views/use-resource-collection";
 import { useTableLayout } from "@/hooks/use-table-layout";
-import { useIsMounted } from "@/hooks/use-is-mounted";
 import { dataSort, type CollectionState } from "@/lib/views/collection-state";
 import { rqlKeyword } from "@/lib/views/rql";
 import {
   applyBooleanOverrides,
   applyColumnOrder,
   diffBooleanOverrides,
-  resolveFacetVisibility,
   sameOrder,
 } from "@/lib/table-layout";
 import { formatUserFacingErrorMessage } from "@/lib/utils";
@@ -152,27 +150,10 @@ export function ResourceCollection<Row extends DataTableRow>({
     });
   };
   const [facetsWanted, setFacetsWanted] = useState(false);
-  const [peekedFacetFields, setPeekedFacetFields] = useState<
-    ReadonlySet<string>
-  >(() => new Set());
-  // The saved facet set reads empty until the render after hydration, so counts
-  // wait for the set shown.
-  const facetsSettled = useIsMounted();
-  const { visibility: facetVisibility } = resolveFacetVisibility(
-    profile.facets ?? [],
-    tableLayout.facets,
-  );
-  const pinnedFacetFields = (profile.facets ?? [])
-    .map((facet) => facet.field)
-    .filter((field) => facetVisibility[field]);
-  const countedFacetFields = [
-    ...pinnedFacetFields,
-    ...[...peekedFacetFields].filter(
-      (field) => !pinnedFacetFields.includes(field),
-    ),
-  ];
-  const shownFacetFields =
-    facetsWanted && facetsSettled ? countedFacetFields : [];
+  // Every facet the profile defines is counted, in one read, once the user
+  // reaches for the filters.
+  const facetFieldList = (profile.facets ?? []).map((facet) => facet.field);
+  const shownFacetFields = facetsWanted ? facetFieldList : [];
   const defaultColumnOrder = profile.columns.map((column) => column.id);
   const orderedColumnIds = applyColumnOrder(
     defaultColumnOrder,
@@ -434,13 +415,11 @@ export function ResourceCollection<Row extends DataTableRow>({
       facetsUnavailable={Boolean(facetsRetry.error && collectionError)}
       facetsRetrying={facetsRetry.retrying}
       onRetryFacets={facetsRetry.retry}
-      peekedFields={peekedFacetFields}
-      onPeekedFieldsChange={setPeekedFacetFields}
       onFacetsWanted={() => {
         setFacetsWanted(true);
       }}
       onPrefetchFacets={() => {
-        if (facetsSettled) collection.prefetchFacets(countedFacetFields);
+        collection.prefetchFacets(facetFieldList);
       }}
       columns={orderedColumnIds.map((id) => ({
         id,

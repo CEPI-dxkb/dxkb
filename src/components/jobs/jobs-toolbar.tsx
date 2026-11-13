@@ -31,6 +31,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { formatServiceName } from "@/lib/jobs/formatting";
 import {
+  failedJobStatuses,
   queuedJobStatuses,
   runningJobStatuses,
   statusOptions,
@@ -92,6 +93,7 @@ export function JobsToolbar({
   const lastUpdatedText = formatTimestamp(dataUpdatedAt);
   const runningCount = sumStatusCounts(statusSummary, runningJobStatuses);
   const queuedCount = sumStatusCounts(statusSummary, queuedJobStatuses);
+  const failedCount = sumStatusCounts(statusSummary, failedJobStatuses);
   const RunningIcon = runningCount > 0 ? CirclePlaySpinner : CirclePlay;
   return (
     <div className="space-y-3">
@@ -226,7 +228,7 @@ export function JobsToolbar({
               <XCircle className="size-3.5 text-destructive" />
               failed:{" "}
               <span className="font-medium text-foreground">
-                {statusSummary.failed ?? 0}
+                {failedCount}
               </span>
             </span>
             {summaryError && (

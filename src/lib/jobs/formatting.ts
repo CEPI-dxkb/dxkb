@@ -28,7 +28,7 @@ export function getOutputName(job: JobListItem): string {
 }
 
 /**
- * `undefined` when the job records no output location is deleted, or is still active (the location is set at
+ * `undefined` when the job records no output location, is deleted, or is still active (the location is set at
  * submission, before any result exists).
  */
 export function getJobResultHref(job: JobListItem): string | undefined {

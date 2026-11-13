@@ -279,6 +279,7 @@ const white: Srgb = [1, 1, 1];
 const inverseMinimum = (theme: string | undefined) =>
   theme === "violet-light" ? 3 : minimumContrast;
 
+// The pill's hover/open fill is bg-white/20 (button-variants.ts); the 3:1 non-text minimum still holds there.
 describe("theme contrast: destructive-inverse on the navbar pill", () => {
   it.each(themeBlocks.map((block) => [themeOf(block), block] as const))(
     "%s keeps destructive-inverse readable on the pill over the navbar fill",

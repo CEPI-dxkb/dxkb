@@ -238,6 +238,7 @@ export class AppService {
   async queryTaskSummaryFresh(
     params: QueryTaskSummaryFilteredParams,
   ): Promise<QueryTaskSummaryFilteredResponse> {
+    // On a partial count failure a fresh count may sit beside a cached one, so a job that just changed status can be counted twice for one poll (accepted degraded mode).
     const [cached, fresh] = await Promise.all([
       this.queryTaskSummaryFiltered(params),
       this.queryFreshStatusCounts({

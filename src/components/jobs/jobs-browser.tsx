@@ -49,6 +49,7 @@ import {
   activeJobStatuses,
   queuedJobStatuses,
   runningJobStatuses,
+  failedJobStatuses,
 } from "@/lib/jobs/constants";
 import {
   fromLocalDateParam,
@@ -211,6 +212,7 @@ function JobsTableBody({
 const statusFilterGroups: Partial<Record<string, readonly string[]>> = {
   running: runningJobStatuses,
   queued: queuedJobStatuses,
+  failed: failedJobStatuses,
 };
 
 function useJobsBrowser() {

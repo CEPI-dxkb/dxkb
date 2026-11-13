@@ -1216,8 +1216,8 @@ describe("api/e2e-mock catch-all — fail-closed dispatch", () => {
     );
   }
 
-  function rpc(path: string[], method: string) {
-    return post(path, { id: 1, jsonrpc: "2.0", method, params: [] });
+  function rpc(path: string[], method: string, params: unknown[] = []) {
+    return post(path, { id: 1, jsonrpc: "2.0", method, params });
   }
 
   it.each([
@@ -1235,6 +1235,42 @@ describe("api/e2e-mock catch-all — fail-closed dispatch", () => {
         id: 1,
         jsonrpc: "2.0",
         result,
+      });
+    },
+  );
+
+  it("POST app-service answers a status-filtered enumerate_tasks_filtered with no rows and a 0 count", async () => {
+    const resp = await rpc(["app-service"], "AppService.enumerate_tasks_filtered", [
+      0,
+      1,
+      { include_archived: 1, status: "queued" },
+    ]);
+
+    expect(resp.status).toBe(200);
+    expect((await resp.json()) as unknown).toEqual({
+      id: 1,
+      jsonrpc: "2.0",
+      result: [[], 0],
+    });
+  });
+
+  it.each([
+    ["no opts", [0, 25]],
+    ["opts without a status", [0, 25, { sort_field: "submit_time" }]],
+    ["an empty status", [0, 1, { status: "" }]],
+  ])(
+    "POST app-service rejects an enumerate_tasks_filtered list call with %s",
+    async (_label, params) => {
+      const resp = await rpc(["app-service"], "AppService.enumerate_tasks_filtered", params);
+
+      expect(resp.status).toBe(400);
+      expect((await resp.json()) as unknown).toMatchObject({
+        error: {
+          code: -32601,
+          message: expect.stringContaining(
+            "no fixture for JSON-RPC method 'AppService.enumerate_tasks_filtered' without a status filter at endpoint 'app-service'",
+          ) as unknown,
+        },
       });
     },
   );

@@ -1009,6 +1009,24 @@ const loopbackRpcResults: Record<string, Record<string, unknown>> = {
   },
 };
 
+const statusCountMethod = "AppService.enumerate_tasks_filtered";
+
+// The task summary routes overlay one `{ status }` count per fresh status
+// (`queryTaskSummaryFresh`). The loopback has no job rows, so every count is
+// 0, consistent with the empty summary above. An enumerate without a status
+// (a job list) has no fixture and stays fail-closed.
+function findStatusCountResult(
+  endpoint: string,
+  method: string,
+  params: unknown,
+): { result: unknown } | undefined {
+  if (endpoint !== "app-service" || method !== statusCountMethod) return undefined;
+  const opts: unknown = Array.isArray(params) ? params[2] : undefined;
+  const status: unknown =
+    opts && typeof opts === "object" ? (opts as { status?: unknown }).status : undefined;
+  return typeof status === "string" && status !== "" ? { result: [[], 0] } : undefined;
+}
+
 function findRpcResult(
   endpoint: string,
   method: string,
@@ -1056,9 +1074,14 @@ export async function POST(
   const path = await resolvePath(context.params);
 
   let rpcMethod: string | undefined;
+  let rpcParams: unknown;
   try {
-    const body = (await request.clone().json()) as { method?: unknown } | null;
+    const body = (await request.clone().json()) as {
+      method?: unknown;
+      params?: unknown;
+    } | null;
     if (body && typeof body.method === "string") rpcMethod = body.method;
+    rpcParams = body?.params;
   } catch {
     // Non-JSON body (e.g. form upload).
   }
@@ -1095,11 +1118,15 @@ export async function POST(
     );
   }
 
-  const matched = findRpcResult(endpoint, rpcMethod);
+  const matched =
+    findRpcResult(endpoint, rpcMethod) ??
+    findStatusCountResult(endpoint, rpcMethod, rpcParams);
   if (!matched) {
-    const reason = Object.hasOwn(loopbackRpcResults, endpoint)
-      ? `no fixture for JSON-RPC method '${rpcMethod}' at endpoint '${endpoint}'`
-      : `no JSON-RPC endpoint '${endpoint}' is mocked`;
+    const reason = !Object.hasOwn(loopbackRpcResults, endpoint)
+      ? `no JSON-RPC endpoint '${endpoint}' is mocked`
+      : rpcMethod === statusCountMethod
+        ? `no fixture for JSON-RPC method '${rpcMethod}' without a status filter at endpoint '${endpoint}' — only the task summary's per-status counts are mocked`
+        : `no fixture for JSON-RPC method '${rpcMethod}' at endpoint '${endpoint}'`;
     return unhandledRpcResponse("unhandled JSON-RPC call", reason);
   }
 

@@ -28,11 +28,13 @@ export function getOutputName(job: JobListItem): string {
 }
 
 /**
- * `undefined` when the job records no output location or is still active (the location is set at
+ * `undefined` when the job records no output location, is deleted, or is still active (the location is set at
  * submission, before any result exists).
  */
 export function getJobResultHref(job: JobListItem): string | undefined {
-  if (activeJobStatuses.includes(job.status)) return undefined;
+  if (activeJobStatuses.includes(job.status) || job.status === "deleted") {
+    return undefined;
+  }
   const outputPath =
     job.output_path ?? ((job.parameters.output_path as string | undefined) ?? "");
   const outputFile = getOutputFile(job);

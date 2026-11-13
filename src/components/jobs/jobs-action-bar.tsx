@@ -10,6 +10,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import type { JobListItem } from "@/types/workspace";
+import { activeJobStatuses } from "@/lib/jobs/constants";
 
 interface ActionConfig {
   id: string;
@@ -54,12 +55,7 @@ const actionConfig: ActionConfig[] = [
     icon: StopCircle,
     isVisible: (jobs) =>
       jobs.length >= 1 &&
-      jobs.every(
-        (j) =>
-          j.status === "running" ||
-          j.status === "in-progress" ||
-          j.status === "queued",
-      ),
+      jobs.every((j) => activeJobStatuses.includes(j.status)),
   },
 ];
 

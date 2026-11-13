@@ -1,4 +1,5 @@
 import { http, HttpResponse } from "msw";
+import type { Mock } from "vitest";
 import { server } from "@/test-helpers/msw-server";
 import { AppService, createAppService } from "@/lib/app-service";
 import { createBvBrcClient } from "@/lib/jsonrpc-client";
@@ -388,6 +389,34 @@ describe("AppService", () => {
       );
     });
 
+    it("passes a status filter through in opts", async () => {
+      mockClient.call.mockResolvedValue([[], 3]);
+
+      const result = await service.enumerateTasksFiltered({
+        offset: 0,
+        limit: 1,
+        status: "queued",
+      });
+
+      expect(mockClient.call).toHaveBeenCalledWith(
+        "AppService.enumerate_tasks_filtered",
+        [0, 1, { status: "queued" }],
+      );
+      expect(result.totalTasks).toBe(3);
+    });
+
+    it("answers totalTasks 0 to a list caller when the service sends no numeric total", async () => {
+      const jobs = [{ id: "job-1" }];
+      mockClient.call.mockResolvedValue([jobs]);
+
+      const result = await service.enumerateTasksFiltered({
+        offset: 0,
+        limit: 25,
+      });
+
+      expect(result).toEqual({ jobs, totalTasks: 0 });
+    });
+
     it("parses [[...jobs], totalTasks] response format", async () => {
       const jobs = [{ id: "job-1" }, { id: "job-2" }];
       mockClient.call.mockResolvedValue([jobs, 42]);
@@ -421,6 +450,144 @@ describe("AppService", () => {
       expect(mockClient.call).toHaveBeenCalledWith(
         "AppService.query_task_summary_filtered",
         [{}],
+      );
+    });
+  });
+
+  describe("queryTaskSummaryFresh", () => {
+    /** `mockClient.call` typed as the async JSON-RPC call it stands in for. */
+    function rpcCall() {
+      return mockClient.call as Mock<
+        (method: string, params: unknown[]) => Promise<unknown>
+      >;
+    }
+
+    /** Answers the cached summary and each status count; a status in `failing` rejects. */
+    function answer(
+      cached: unknown,
+      counts: Record<string, number>,
+      failing: string[] = [],
+    ) {
+      rpcCall().mockImplementation((method, params) => {
+        if (method === "AppService.query_task_summary_filtered") {
+          return Promise.resolve(cached);
+        }
+        const status = (params[2] as { status?: string }).status ?? "";
+        if (failing.includes(status)) {
+          return Promise.reject(new Error(`count ${status} failed`));
+        }
+        return Promise.resolve([[], counts[status] ?? 0]);
+      });
+    }
+
+    it("overlays fresh counts on a one-element cached summary and keeps its other keys", async () => {
+      answer([{ "in-progress": 1, completed: 5, deleted: 2 }], {
+        queued: 1,
+        completed: 6,
+      });
+
+      const result = await service.queryTaskSummaryFresh({});
+
+      expect(result).toEqual({
+        queued: 1,
+        pending: 0,
+        "in-progress": 0,
+        completed: 6,
+        failed: 0,
+        deleted: 2,
+      });
+    });
+
+    it("accepts a cached summary that is a plain record", async () => {
+      answer({ queued: 3 }, { queued: 1 });
+
+      const result = await service.queryTaskSummaryFresh({});
+
+      expect(result).toEqual(expect.objectContaining({ queued: 1 }));
+    });
+
+    it("counts each fresh status once, with limit 1, include_archived and no search", async () => {
+      answer([{}], {});
+
+      await service.queryTaskSummaryFresh({ include_archived: true });
+
+      const countCalls = mockClient.call.mock.calls.filter(
+        ([method]) => method === "AppService.enumerate_tasks_filtered",
+      );
+      expect(countCalls).toEqual(
+        ["queued", "pending", "in-progress", "completed", "failed"].map(
+          (status) => [
+            "AppService.enumerate_tasks_filtered",
+            [0, 1, { include_archived: 1, status }],
+          ],
+        ),
+      );
+    });
+
+    it("keeps the cached count when a status call fails and logs the failures once", async () => {
+      const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+      answer([{ queued: 4, failed: 2 }], { failed: 3 }, ["queued", "in-progress"]);
+
+      const result = await service.queryTaskSummaryFresh({});
+
+      expect(result).toEqual({ queued: 4, pending: 0, completed: 0, failed: 3 });
+      expect(warn).toHaveBeenCalledTimes(1);
+      expect(warn).toHaveBeenCalledWith(
+        expect.stringMatching(
+          /queued: count queued failed; in-progress: count in-progress failed/,
+        ),
+        {
+          queued: new Error("count queued failed"),
+          "in-progress": new Error("count in-progress failed"),
+        },
+      );
+      warn.mockRestore();
+    });
+
+    it.each([
+      ["no total", [[]]],
+      ["a non-numeric total", [[], "3"]],
+    ])(
+      "keeps the cached count when a status call answers %s, and logs it",
+      async (_label, countAnswer) => {
+        const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+        rpcCall().mockImplementation((method, params) => {
+          if (method === "AppService.query_task_summary_filtered") {
+            return Promise.resolve([{ queued: 2 }]);
+          }
+          const status = (params[2] as { status?: string }).status;
+          return Promise.resolve(status === "queued" ? countAnswer : [[], 0]);
+        });
+
+        const result = await service.queryTaskSummaryFresh({});
+
+        expect(result).toEqual({
+          queued: 2,
+          pending: 0,
+          "in-progress": 0,
+          completed: 0,
+          failed: 0,
+        });
+        expect(warn).toHaveBeenCalledTimes(1);
+        expect(warn).toHaveBeenCalledWith(
+          expect.stringContaining(
+            "queued: the job service answered no total count",
+          ),
+          { queued: new Error("the job service answered no total count") },
+        );
+        warn.mockRestore();
+      },
+    );
+
+    it("fails when the cached summary call fails", async () => {
+      rpcCall().mockImplementation((method) =>
+        method === "AppService.query_task_summary_filtered"
+          ? Promise.reject(new Error("Service down"))
+          : Promise.resolve([[], 0]),
+      );
+
+      await expect(service.queryTaskSummaryFresh({})).rejects.toThrow(
+        "Service down",
       );
     });
   });

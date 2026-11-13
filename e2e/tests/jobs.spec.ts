@@ -3,7 +3,7 @@ import {
   journeyOverrides,
   workspacePopulatedOverrides,
 } from "../fixtures/overrides";
-import { JobsListPage, WorkspacePage } from "../pages";
+import { JobsListPage, Navbar, WorkspacePage } from "../pages";
 
 test.describe("jobs page", () => {
   test.beforeEach(async ({ page }) => {
@@ -23,13 +23,13 @@ test.describe("jobs page", () => {
 
   test("shows job status pill in navbar for signed-in user with jobs", async ({ page }) => {
     await page.goto("/jobs");
-    const pill = page.getByRole("button", { name: /view job status/i });
+    const pill = new Navbar(page).jobStatusPill();
     await expect(pill).toBeVisible();
   });
 
   test("job status pill opens popover with job list on click", async ({ page }) => {
     await page.goto("/jobs");
-    const pill = page.getByRole("button", { name: /view job status/i });
+    const pill = new Navbar(page).jobStatusPill();
     await expect(pill).toBeVisible();
     await pill.click();
     await expect(page.getByText("My Jobs")).toBeVisible();

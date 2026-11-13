@@ -121,6 +121,17 @@ describe("getJobResultHref", () => {
     );
   });
 
+  it("returns undefined for a deleted job", () => {
+    const job = {
+      status: "deleted",
+      output_path: "/user@bvbrc/home",
+      output_file: "run-1",
+      parameters: {},
+    } as unknown as JobListItem;
+
+    expect(getJobResultHref(job)).toBeUndefined();
+  });
+
   it("falls back to the submitted parameters", () => {
     const job = {
       parameters: { output_path: "/user@bvbrc/home", output_file: "run-2" },

@@ -28,6 +28,10 @@ import {
   type CopilotTurn,
 } from "@/lib/copilot/turn";
 import { copilotName } from "@/lib/copilot/name";
+import {
+  invalidateJobsQueries,
+  refreshJobsAfterSubmit,
+} from "@/lib/jobs/recent-submit";
 
 export interface CopilotActiveTurn {
   sessionId: string;
@@ -144,6 +148,10 @@ async function runCopilotTurn(
     try {
       for await (const frame of readSseFrames(body, run.controller.signal)) {
         const event = decodeCopilotEvent(frame, noteId);
+        // `started` names the turn's own gateway job, not a BV-BRC job, so only a plan submit counts.
+        if (frame.event === "plan_workflow_submitted" && !isAbandoned()) {
+          refreshJobsAfterSubmit(deps.queryClient);
+        }
         if (!event) continue;
         const next = reduceCopilotTurn(turn, event);
         if (!deps.onFrame(next)) break;
@@ -320,6 +328,8 @@ export function useCopilotChat(account: string | null) {
         void queryClient.invalidateQueries({
           queryKey: copilotQueryKeys.workflowWatches(sessionId),
         });
+        // A Copilot tool may submit a job without a plan frame.
+        invalidateJobsQueries(queryClient);
         if (ended.status === "error") {
           setError({
             sessionId,

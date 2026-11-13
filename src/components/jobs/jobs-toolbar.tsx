@@ -30,7 +30,13 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { formatServiceName } from "@/lib/jobs/formatting";
-import { statusOptions } from "@/lib/jobs/constants";
+import {
+  failedJobStatuses,
+  queuedJobStatuses,
+  runningJobStatuses,
+  statusOptions,
+  sumStatusCounts,
+} from "@/lib/jobs/constants";
 import { JobsDateFilter } from "./jobs-date-filter";
 
 function formatTimestamp(ts: number | undefined): string | null {
@@ -85,8 +91,9 @@ export function JobsToolbar({
 }: JobsToolbarProps) {
 
   const lastUpdatedText = formatTimestamp(dataUpdatedAt);
-  const runningCount =
-    (statusSummary?.running ?? 0) + (statusSummary?.["in-progress"] ?? 0);
+  const runningCount = sumStatusCounts(statusSummary, runningJobStatuses);
+  const queuedCount = sumStatusCounts(statusSummary, queuedJobStatuses);
+  const failedCount = sumStatusCounts(statusSummary, failedJobStatuses);
   const RunningIcon = runningCount > 0 ? CirclePlaySpinner : CirclePlay;
   return (
     <div className="space-y-3">
@@ -197,7 +204,7 @@ export function JobsToolbar({
               <Clock className="size-3.5 text-muted-foreground" />
               queued:{" "}
               <span className="font-medium text-foreground">
-                {statusSummary.queued ?? 0}
+                {queuedCount}
               </span>
             </span>
             <span>&middot;</span>
@@ -221,7 +228,7 @@ export function JobsToolbar({
               <XCircle className="size-3.5 text-destructive" />
               failed:{" "}
               <span className="font-medium text-foreground">
-                {statusSummary.failed ?? 0}
+                {failedCount}
               </span>
             </span>
             {summaryError && (

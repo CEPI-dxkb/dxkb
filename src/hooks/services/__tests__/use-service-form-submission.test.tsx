@@ -5,6 +5,8 @@ import React from "react";
 
 import { useServiceFormSubmission } from "@/hooks/services/use-service-form-submission";
 import { server } from "@/test-helpers/msw-server";
+import { clearAccountCaches } from "@/lib/account-caches";
+import { isInSubmitWindow } from "@/lib/jobs/recent-submit";
 
 vi.mock("sonner", () => ({
   toast: { success: vi.fn(), error: vi.fn() },
@@ -19,7 +21,111 @@ function wrapper({ children }: { children: React.ReactNode }) {
   );
 }
 
+afterEach(() => {
+  clearAccountCaches();
+});
+
 describe("useServiceFormSubmission", () => {
+  it("refreshes the jobs summary and list and opens the fast-poll window on success", async () => {
+    server.use(
+      http.post("*/api/services/app-service/submit", () =>
+        HttpResponse.json({ job: [{ id: "job-789" }] }),
+      ),
+    );
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+    });
+    const invalidate = vi.spyOn(queryClient, "invalidateQueries");
+    const ownWrapper = ({ children }: { children: React.ReactNode }) => (
+      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    );
+    const { result } = renderHook(
+      () =>
+        useServiceFormSubmission({
+          serviceName: "GenomeAssembly2",
+          displayName: "Genome Assembly",
+        }),
+      { wrapper: ownWrapper },
+    );
+    expect(isInSubmitWindow()).toBe(false);
+
+    await act(async () => {
+      await result.current.submit({});
+    });
+
+    expect(isInSubmitWindow()).toBe(true);
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ["jobs-summary"] });
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ["jobs-filtered"] });
+  });
+
+  it("watches for the job when the submit timed out and may have been queued", async () => {
+    server.use(
+      http.post("*/api/services/app-service/submit", () =>
+        HttpResponse.json(
+          {
+            error:
+              "The BV-BRC job service did not respond within 30 s. Your job may still have been queued: check Jobs before you submit it again.",
+            code: "upstream_timeout",
+          },
+          { status: 504 },
+        ),
+      ),
+    );
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+    });
+    const invalidate = vi.spyOn(queryClient, "invalidateQueries");
+    const ownWrapper = ({ children }: { children: React.ReactNode }) => (
+      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    );
+    const { result } = renderHook(
+      () =>
+        useServiceFormSubmission({
+          serviceName: "GenomeAssembly2",
+          displayName: "Genome Assembly",
+        }),
+      { wrapper: ownWrapper },
+    );
+
+    await act(async () => {
+      await result.current.submit({});
+    });
+
+    expect(isInSubmitWindow()).toBe(true);
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ["jobs-summary"] });
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ["jobs-filtered"] });
+  });
+
+  it("leaves the jobs queries and the fast-poll window alone when the submit fails", async () => {
+    server.use(
+      http.post("*/api/services/app-service/submit", () =>
+        HttpResponse.json({ error: "bad params" }, { status: 400 }),
+      ),
+    );
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+    });
+    const invalidate = vi.spyOn(queryClient, "invalidateQueries");
+    const ownWrapper = ({ children }: { children: React.ReactNode }) => (
+      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    );
+    const { result } = renderHook(
+      () =>
+        useServiceFormSubmission({
+          serviceName: "GenomeAssembly2",
+          displayName: "Genome Assembly",
+        }),
+      { wrapper: ownWrapper },
+    );
+
+    await act(async () => {
+      await result.current.submit({});
+    });
+
+    expect(isInSubmitWindow()).toBe(false);
+    expect(invalidate).not.toHaveBeenCalled();
+  });
+
   it("posts params to /api/services/app-service/submit and resolves", async () => {
     let captured: unknown = null;
     server.use(

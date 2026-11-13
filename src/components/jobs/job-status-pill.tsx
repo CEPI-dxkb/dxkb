@@ -9,6 +9,7 @@ import {
   CirclePlay,
   Clock,
   Loader2,
+  XCircle,
 } from "lucide-react";
 import { cn, formatUserFacingErrorMessage, noop } from "@/lib/utils";
 import { useAuth } from "@/lib/auth/provider";
@@ -28,7 +29,13 @@ import { Button } from "@/components/ui/button";
 import { buttonVariants } from "@/components/ui/button-variants";
 import { QueryRetryButton } from "@/components/views/query-retry-button";
 import { useRetryKeepingError } from "@/components/views/use-retry-keeping-error";
-import { statusConfig } from "@/lib/jobs/constants";
+import {
+  failedJobStatuses,
+  queuedJobStatuses,
+  runningJobStatuses,
+  statusConfig,
+  sumStatusCounts,
+} from "@/lib/jobs/constants";
 import { CirclePlaySpinner } from "@/lib/jobs/icons";
 import {
   formatServiceName,
@@ -87,11 +94,11 @@ export function JobStatusPill() {
   const taskSummary = summary?.taskSummary ?? {};
 
   const completedCount = taskSummary["completed"] ?? 0;
-  const runningCount =
-    (taskSummary["running"] ?? 0) + (taskSummary["in-progress"] ?? 0);
-  const queuedCount =
-    (taskSummary["queued"] ?? 0) + (taskSummary["pending"] ?? 0);
-  const displayableCount = completedCount + runningCount + queuedCount;
+  const runningCount = sumStatusCounts(taskSummary, runningJobStatuses);
+  const queuedCount = sumStatusCounts(taskSummary, queuedJobStatuses);
+  const failedCount = sumStatusCounts(taskSummary, failedJobStatuses);
+  const displayableCount =
+    completedCount + runningCount + queuedCount + failedCount;
 
   const statusGroups = [
     {
@@ -113,6 +120,14 @@ export function JobStatusPill() {
       count: completedCount,
       icon: CheckCircle2,
       className: "text-emerald-400",
+      alwaysShown: false,
+    },
+    {
+      key: "failed",
+      count: failedCount,
+      icon: XCircle,
+      // `destructive` clashes with the blue navbar fill; this is a softer red.
+      className: "text-destructive-inverse",
       alwaysShown: false,
     },
   ].filter(({ count, alwaysShown }) => alwaysShown || count > 0);
@@ -213,18 +228,20 @@ export function JobStatusPill() {
           <Button
             variant="inverse-outline"
             size="pill"
-            // Opens with the visible counts (WCAG 2.5.3), e.g. "0 1 1".
-            aria-label={`${statusGroups.map(({ count }) => String(count)).join(" ")}, view job status`}
             onPointerEnter={warmRecentJobs}
             onFocus={warmRecentJobs}
           >
             {statusGroups.map(({ key, count, icon: Icon, className }) => (
-              <span key={key} className="flex items-center gap-1">
+              <span key={key} aria-hidden className="flex items-center gap-1">
                 <Icon className={cn("size-3.5", className)} />
-                <span className="text-sm">{count}</span>
-                {" "}
+                <span className="text-sm">{count}</span>{" "}
               </span>
             ))}
+            {/* Named from content, not aria-label, which axe's label-content-name-mismatch would hold to the
+                bare visible counts; the counts stay in visible order: "0 queued, 1 running, 1 completed, view job status". */}
+            <span className="sr-only">
+              {`${statusGroups.map(({ key, count }) => `${String(count)} ${key}`).join(", ")}, view job status`}
+            </span>
           </Button>
         }
       />

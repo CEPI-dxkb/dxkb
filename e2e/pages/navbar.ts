@@ -3,6 +3,10 @@ import { expect, type Locator, type Page } from "@playwright/test";
 export class Navbar {
   constructor(private readonly page: Page) {}
 
+  jobStatusPill(): Locator {
+    return this.page.getByRole("button", { name: /view job status/i });
+  }
+
   async openServicesMenu(): Promise<Locator> {
     await this.page
       .getByRole("button", { name: "Services" })

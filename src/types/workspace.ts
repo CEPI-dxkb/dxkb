@@ -19,12 +19,14 @@ export interface JsonRpcResponse<T = unknown> {
 export type JobStatus =
   | "pending"
   | "queued"
+  | "init"
   | "running"
   | "in-progress"
   | "completed"
   | "failed"
   | "cancelled"
-  | "error";
+  | "error"
+  | "deleted";
 
 export interface JobBase {
   id: string;

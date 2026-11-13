@@ -151,6 +151,18 @@ describe("JobStatusPill", () => {
     expect(screen.getByText("3")).toBeInTheDocument();
   });
 
+  it("counts an init job as queued", async () => {
+    mockSummary({ init: 1 });
+    mockJobsList([]);
+    renderPill();
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: /view job status/i }),
+      ).toBeInTheDocument(),
+    );
+    expect(screen.getByText("1")).toBeInTheDocument();
+  });
+
   it("renders multiple status groups without index-based keys causing stale order", async () => {
     mockSummary({ completed: 4, running: 2, queued: 1 });
     mockJobsList([]);

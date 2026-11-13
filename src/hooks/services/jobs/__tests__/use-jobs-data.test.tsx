@@ -35,6 +35,13 @@ const defaultParams = {
 };
 
 describe("parseJobsResponse", () => {
+  it.each(["init", "deleted"])("parses a %s job", (status) => {
+    expect(
+      parseJobsResponse({ jobs: [{ ...validJob, status }], totalTasks: 1 }).jobs[0]
+        ?.status,
+    ).toBe(status);
+  });
+
   it.each([
     ["zero", 0, "0"],
     ["positive safe integer", 12345, "12345"],

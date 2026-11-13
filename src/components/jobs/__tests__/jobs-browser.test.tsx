@@ -317,6 +317,61 @@ function heldResponse() {
   return { response, release };
 }
 
+describe("JobsBrowser queued count", () => {
+  beforeEach(() => {
+    history.replaceState(null, "", "/jobs");
+  });
+
+  it.each([["pending"], ["init"]])(
+    "shows queued: 1 for a summary of {%s: 1}",
+    async (status) => {
+      server.use(
+        http.post(summaryUrl, () =>
+          HttpResponse.json({
+            taskSummary: { [status]: 1 },
+            appSummary: { GenomeAssembly2: 1 },
+          }),
+        ),
+        http.post(listUrl, () =>
+          HttpResponse.json({ jobs: [{ ...job, status }], totalTasks: 1 }),
+        ),
+      );
+
+      renderBrowser();
+
+      await waitFor(() => {
+        const label = screen.getByText(/^queued:/);
+        expect(label).toHaveTextContent("queued: 1");
+      });
+    },
+  );
+});
+
+describe("JobsBrowser queued filter", () => {
+  it("keeps queued, pending and init rows and drops the rest", async () => {
+    history.replaceState(null, "", "/jobs?status=queued");
+    const rows = [
+      { ...job, id: "9000011", status: "queued" },
+      { ...job, id: "9000012", status: "pending" },
+      { ...job, id: "9000013", status: "init" },
+      { ...job, id: "9000014", status: "completed" },
+    ];
+    server.use(
+      http.post(summaryUrl, okSummary),
+      http.post(listUrl, () =>
+        HttpResponse.json({ jobs: rows, totalTasks: rows.length }),
+      ),
+    );
+
+    renderBrowser();
+
+    expect(await screen.findByText("9000011")).toBeInTheDocument();
+    expect(screen.getByText("9000012")).toBeInTheDocument();
+    expect(screen.getByText("9000013")).toBeInTheDocument();
+    expect(screen.queryByText("9000014")).toBeNull();
+  });
+});
+
 describe("JobsBrowser background polls during an outage", () => {
   beforeEach(() => {
     history.replaceState(null, "", "/jobs");

@@ -2,13 +2,12 @@ import type { QueryState } from "@tanstack/react-query";
 import { useApiQuery } from "@/lib/api/hooks";
 import { apiCall } from "@/lib/api/client";
 import { errorBackoffPollInterval } from "@/lib/api/poll-backoff";
+import { activeJobStatuses } from "@/lib/jobs/constants";
 
 interface JobsSummaryData {
   taskSummary: Record<string, number>;
   appSummary: Record<string, number>;
 }
-
-const activeStatuses = ["running", "in-progress", "queued", "pending"];
 
 interface UseJobsSummaryOptions {
   /** `false` fetches once, then only on demand (`refetch`). */
@@ -32,7 +31,7 @@ export function jobsSummaryRefetchInterval(poll: boolean) {
     const data = query.state.data;
     if (!data) return 5_000;
     const { taskSummary } = data;
-    const hasActive = activeStatuses.some((s) => (taskSummary[s] ?? 0) > 0);
+    const hasActive = activeJobStatuses.some((s) => (taskSummary[s] ?? 0) > 0);
     return hasActive ? 3_000 : 30_000;
   };
 }

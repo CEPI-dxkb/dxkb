@@ -28,7 +28,12 @@ import { Button } from "@/components/ui/button";
 import { buttonVariants } from "@/components/ui/button-variants";
 import { QueryRetryButton } from "@/components/views/query-retry-button";
 import { useRetryKeepingError } from "@/components/views/use-retry-keeping-error";
-import { statusConfig } from "@/lib/jobs/constants";
+import {
+  queuedJobStatuses,
+  runningJobStatuses,
+  statusConfig,
+  sumStatusCounts,
+} from "@/lib/jobs/constants";
 import { CirclePlaySpinner } from "@/lib/jobs/icons";
 import {
   formatServiceName,
@@ -87,10 +92,8 @@ export function JobStatusPill() {
   const taskSummary = summary?.taskSummary ?? {};
 
   const completedCount = taskSummary["completed"] ?? 0;
-  const runningCount =
-    (taskSummary["running"] ?? 0) + (taskSummary["in-progress"] ?? 0);
-  const queuedCount =
-    (taskSummary["queued"] ?? 0) + (taskSummary["pending"] ?? 0);
+  const runningCount = sumStatusCounts(taskSummary, runningJobStatuses);
+  const queuedCount = sumStatusCounts(taskSummary, queuedJobStatuses);
   const displayableCount = completedCount + runningCount + queuedCount;
 
   const statusGroups = [

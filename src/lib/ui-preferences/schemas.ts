@@ -4,8 +4,10 @@ import { workspacePanelIds } from "@/constants/workspace-panels";
 import { jobsPanelIds } from "@/constants/jobs-panels";
 import { workspaceSortFields } from "@/constants/workspace-sort";
 import { compareRegionDensities } from "@/lib/compare-region/density-options";
+import { tabTopMax, tabTopMin } from "@/lib/copilot/edge-tab";
 import {
   copilotSurfaces,
+  copilotTabSides,
   mapUiPreferences,
   uiPreferenceDefinitions,
   type UiPreferenceKey,
@@ -43,6 +45,10 @@ export const uiPreferenceSchemas: {
     bottom: z.number().min(0).max(10_000),
     width: z.number().min(0).max(10_000),
     height: z.number().min(0).max(10_000),
+  }),
+  copilotTab: z.strictObject({
+    side: z.enum(copilotTabSides),
+    top: z.number().min(tabTopMin).max(tabTopMax),
   }),
 };
 

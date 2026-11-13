@@ -111,6 +111,65 @@ export class CollectionToolbar {
     await expect(option).toHaveAttribute("aria-selected", "true");
   }
 
+  /**
+   * Records every `aria-selected` state a value option shows, sampled each
+   * animation frame from now on, so a pick that blinks off for a moment is
+   * caught. The returned function stops the sampling and gives the states in
+   * order, consecutive repeats collapsed ("missing" while the option is gone).
+   */
+  async watchValueSelection(
+    label: string,
+    value: string,
+  ): Promise<() => Promise<string[]>> {
+    const watcher = await this.page.evaluateHandle(
+      ([listLabel, optionValue]) => {
+        const states: string[] = [];
+        let stopped = false;
+        const sample = () => {
+          if (stopped) return;
+          const list = [
+            ...document.querySelectorAll('[role="listbox"]'),
+          ].find((element) => element.getAttribute("aria-label") === listLabel);
+          const option = [
+            ...(list?.querySelectorAll('[role="option"]') ?? []),
+          ].find(
+            (element) =>
+              element.querySelector("span[title]")?.getAttribute("title") ===
+              optionValue,
+          );
+          const state = option?.getAttribute("aria-selected") ?? "missing";
+          if (states.at(-1) !== state) states.push(state);
+          requestAnimationFrame(sample);
+        };
+        sample();
+        return {
+          states,
+          stop: () => {
+            stopped = true;
+          },
+        };
+      },
+      [`${label} values`, value] as const,
+    );
+    return () =>
+      watcher.evaluate((recorded) => {
+        recorded.stop();
+        return recorded.states;
+      });
+  }
+
+  /** Every active filter's pill, whichever facet it belongs to. */
+  activeFilterPills(): Locator {
+    return this.root().getByRole("button", { name: /: .*\. Edit filter$/ });
+  }
+
+  /** The "+N" button the pills past the toolbar's width fold into. */
+  moreFiltersButton(): Locator {
+    return this.root().getByRole("button", {
+      name: /^\d+ more filters: .*\. Open in the Filters menu$/,
+    });
+  }
+
   activeFilterPill(label: string): Locator {
     return this.root().getByRole("button", {
       name: new RegExp(`^${escapeRegExp(label)}: .*\\. Edit filter$`),

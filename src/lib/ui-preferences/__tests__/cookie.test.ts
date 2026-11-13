@@ -79,6 +79,34 @@ describe("compareRegionDensity", () => {
   });
 });
 
+describe("copilotTab", () => {
+  it("is its own cookie, on the right three quarters down unless moved", () => {
+    expect(uiPreferenceDefinitions.copilotTab.cookieName).toBe("dxkb-copilot-tab");
+    expect(parseUiPreference("copilotTab", undefined)).toStrictEqual({
+      side: "right",
+      top: 0.75,
+    });
+  });
+
+  it("accepts a side and a height inside the tab's range", () => {
+    expect(parseUiPreference("copilotTab", '{"side":"left","top":0.3}')).toStrictEqual({
+      side: "left",
+      top: 0.3,
+    });
+  });
+
+  it.each([
+    ["an unknown side", '{"side":"top","top":0.3}'],
+    ["a height above the range", '{"side":"left","top":0.99}'],
+    ["a height below the range", '{"side":"left","top":0.01}'],
+    ["an extra field", '{"side":"left","top":0.3,"x":1}'],
+  ])("falls back to the default on %s", (_label, raw) => {
+    expect(parseUiPreference("copilotTab", raw)).toStrictEqual(
+      defaultUiPreferences.copilotTab,
+    );
+  });
+});
+
 describe("out-of-schema cookie values", () => {
   it("yield the default for every key", () => {
     expect(

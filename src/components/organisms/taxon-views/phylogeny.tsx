@@ -15,9 +15,11 @@ export function makePhylogenyView({
   function PhylogenyView() {
     if (!taxon) return null;
     // Border and radius live here so every phylogeny state is framed identically;
-    // overflow-hidden clips children to the rounded corner.
+    // overflow-hidden clips children to the rounded corner. mt-2.5 plus the
+    // header's mb-0.5 gives the same 12px gap as between the Views rail and
+    // the content.
     return (
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-tl-lg border">
+      <div className="mt-2.5 flex min-h-0 flex-1 flex-col overflow-hidden rounded-tl-lg border">
         {taxon.lineageNames.includes("Bacteria") ? (
           <LazyBacterialPhylogenyPanel
             key={taxon.taxonId}

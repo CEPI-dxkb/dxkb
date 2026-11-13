@@ -1090,3 +1090,103 @@
 [data-slot="badge"][data-rank="isolate"] {
   @apply border-chart-9/50 bg-chart-9/15 text-foreground;
 }
+
+/* AskClark's side panel pushes the page instead of covering it from `lg` up: while it is open
+   (`data-dock` on the shell names its side), the page's outermost `main` gives up the panel's
+   width on that side, on the same soft-landing curve the panel slides on. The navbar sits outside
+   `main` and keeps its width. Nested `main`s are skipped so the margin is not applied twice.
+   Below `lg` there is no room to give, so the panel overlays the page (at most the viewport wide).
+   `--dock-top` (the navbar's visible bottom) is kept current by `CopilotDockShell` while scrolling. */
+@utility copilot-dock-shell {
+  --dock-width: 420px;
+  --dock-top: 0px;
+
+  & main:not(main main) {
+    transition: margin 420ms cubic-bezier(0.32, 0.72, 0, 1);
+
+    @media (prefers-reduced-motion: reduce) {
+      transition: none;
+    }
+  }
+
+  @variant lg {
+    &[data-dock="left"] main:not(main main) {
+      margin-left: var(--dock-width);
+    }
+
+    &[data-dock="right"] main:not(main main) {
+      margin-right: var(--dock-width);
+    }
+  }
+}
+
+/* The side panel slides off its screen edge. Minimized (`data-closed`), it is hidden once the
+   slide ends, since a zero-width box still paints its border as a hairline. */
+@utility copilot-dock-slide {
+  transition:
+    width 420ms cubic-bezier(0.32, 0.72, 0, 1),
+    visibility 0s linear 0s;
+
+  &[data-closed] {
+    visibility: hidden;
+    transition-delay: 0s, 420ms;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+  }
+}
+
+/* The panel's content rides outward with the slide and fades, fading back in a beat later. */
+@utility copilot-dock-slide-content {
+  transition:
+    opacity 280ms ease-out 80ms,
+    transform 420ms cubic-bezier(0.32, 0.72, 0, 1);
+
+  &[data-hidden] {
+    opacity: 0;
+    transform: translateX(2.5rem);
+    transition:
+      opacity 200ms ease-in,
+      transform 420ms cubic-bezier(0.32, 0.72, 0, 1);
+  }
+
+  &[data-hidden][data-side="left"] {
+    transform: translateX(-2.5rem);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+  }
+}
+
+/* The minimized chat's edge tab slides in from its edge once the window or panel has folded away. */
+@keyframes copilot-tab-in-right {
+  from {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes copilot-tab-in-left {
+  from {
+    transform: translateX(-100%);
+  }
+}
+
+@utility copilot-tab-in-right {
+  animation: copilot-tab-in-right 300ms cubic-bezier(0.32, 0.72, 0, 1) 100ms
+    backwards;
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+}
+
+@utility copilot-tab-in-left {
+  animation: copilot-tab-in-left 300ms cubic-bezier(0.32, 0.72, 0, 1) 100ms
+    backwards;
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+}

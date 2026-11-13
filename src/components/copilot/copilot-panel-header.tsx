@@ -1,108 +1,19 @@
 "use client";
 
-import {
-  AppWindow,
-  ArrowLeft,
-  Bot,
-  History,
-  Maximize2,
-  PanelRight,
-  Settings2,
-  SquarePen,
-  X,
-} from "lucide-react";
-import Link from "next/link";
+import { ArrowLeft, Bot, History, Minus, SquarePen, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { copilotPagePath } from "@/lib/copilot/paths";
-import { useCopilot } from "./copilot-provider";
 import { copilotName } from "@/lib/copilot/name";
+import { cn } from "@/lib/utils";
+import { CopilotLayoutMenu } from "./copilot-layout-menu";
 
 export type CopilotPanelVariant = "sheet" | "floating" | "page";
 
-function ChatOptionsMenu({ variant }: { variant: CopilotPanelVariant }) {
-  const copilot = useCopilot();
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger
-        render={
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            aria-label={`${copilotName} options`}
-            title="Options"
-          >
-            <Settings2 aria-hidden />
-          </Button>
-        }
-      />
-      <DropdownMenuContent align="end" className="w-64">
-        <DropdownMenuGroup>
-          <DropdownMenuLabel>Model</DropdownMenuLabel>
-          {copilot.models.length === 0 ? (
-            <DropdownMenuItem disabled>
-              {copilot.modelsLoading
-                ? "Loading models…"
-                : "No models available"}
-            </DropdownMenuItem>
-          ) : (
-            <DropdownMenuRadioGroup
-              value={copilot.model ?? ""}
-              onValueChange={(value: string) => {
-                copilot.setModel(value);
-              }}
-            >
-              {copilot.models.map((model) => (
-                <DropdownMenuRadioItem key={model.model} value={model.model}>
-                  <span className="truncate">{model.model}</span>
-                </DropdownMenuRadioItem>
-              ))}
-            </DropdownMenuRadioGroup>
-          )}
-        </DropdownMenuGroup>
-        {variant !== "page" && <DropdownMenuSeparator />}
-        {variant !== "page" && (
-          <DropdownMenuGroup>
-            <DropdownMenuLabel>Show {copilotName} as</DropdownMenuLabel>
-            <DropdownMenuItem
-              disabled={variant === "sheet"}
-              onClick={() => {
-                copilot.open("sheet");
-              }}
-            >
-              <PanelRight aria-hidden />
-              Side panel
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              disabled={variant === "floating"}
-              onClick={() => {
-                copilot.open("floating");
-              }}
-            >
-              <AppWindow aria-hidden />
-              Floating window
-            </DropdownMenuItem>
-            <DropdownMenuItem render={<Link href={copilotPagePath} />}>
-              <Maximize2 aria-hidden />
-              Full page
-            </DropdownMenuItem>
-          </DropdownMenuGroup>
-        )}
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
-}
-
+/**
+ * One row. The side panel and the floating window get icon buttons (history, new chat, layout,
+ * minimize, close) so the title keeps its room at the window's 320px minimum, and the Beta badge
+ * shows only when the header is wider than 24rem. The full page keeps a labelled Chats button,
+ * which stands in for its chat list on a phone.
+ */
 export function CopilotPanelHeader({
   variant,
   title,
@@ -112,6 +23,7 @@ export function CopilotPanelHeader({
   newChatDisabled,
   onNewChat,
   onClose,
+  onMinimize,
   onPointerDown,
 }: {
   variant: CopilotPanelVariant;
@@ -122,25 +34,44 @@ export function CopilotPanelHeader({
   newChatDisabled: boolean;
   onNewChat: () => void;
   onClose?: () => void;
+  onMinimize?: () => void;
   onPointerDown?: (event: React.PointerEvent<HTMLElement>) => void;
 }) {
+  const page = variant === "page";
+  const historyLabel = showHistory ? "Back to the chat" : "Your earlier chats";
+  const HistoryIcon = showHistory ? ArrowLeft : History;
   return (
     <header
-      className="flex shrink-0 items-center gap-1 border-b px-2 py-1.5"
+      className={cn(
+        "flex shrink-0 items-center gap-1 border-b px-2 py-1.5",
+        !page && "@container",
+      )}
       onPointerDown={onPointerDown}
     >
-      {/* On a phone the sidebar is hidden, so this button stands in for it. */}
-      <Button
-        variant="ghost"
-        size="sm"
-        className={variant === "page" ? "md:hidden" : undefined}
-        aria-pressed={showHistory}
-        title={showHistory ? "Back to the chat" : "Your earlier chats"}
-        onClick={onToggleHistory}
-      >
-        {showHistory ? <ArrowLeft aria-hidden /> : <History aria-hidden />}
-        {showHistory ? "Back" : "Chats"}
-      </Button>
+      {page ? (
+        <Button
+          variant="ghost"
+          size="sm"
+          className="md:hidden"
+          aria-pressed={showHistory}
+          title={historyLabel}
+          onClick={onToggleHistory}
+        >
+          <HistoryIcon aria-hidden />
+          {showHistory ? "Back" : "Chats"}
+        </Button>
+      ) : (
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          aria-pressed={showHistory}
+          aria-label={historyLabel}
+          title={historyLabel}
+          onClick={onToggleHistory}
+        >
+          <HistoryIcon aria-hidden />
+        </Button>
+      )}
       <Bot
         className="ml-1 size-4 shrink-0 text-primary dark:text-link"
         aria-hidden
@@ -150,7 +81,12 @@ export function CopilotPanelHeader({
         className="min-w-0 flex-1 truncate text-sm font-medium"
       >
         {showHistory ? "Your chats" : title}
-        <span className="ml-2 rounded bg-primary/10 px-1.5 py-0.5 text-3xs font-medium text-primary uppercase dark:bg-primary/25 dark:text-link">
+        <span
+          className={cn(
+            "ml-2 rounded bg-primary/10 px-1.5 py-0.5 text-3xs font-medium text-primary uppercase dark:bg-primary/25 dark:text-link",
+            !page && "hidden @sm:inline",
+          )}
+        >
           Beta
         </span>
       </h2>
@@ -164,7 +100,18 @@ export function CopilotPanelHeader({
       >
         <SquarePen aria-hidden />
       </Button>
-      <ChatOptionsMenu variant={variant} />
+      {!page && <CopilotLayoutMenu surface={variant} />}
+      {onMinimize && (
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          aria-label={`Minimize ${copilotName}`}
+          title="Minimize"
+          onClick={onMinimize}
+        >
+          <Minus aria-hidden />
+        </Button>
+      )}
       {onClose && (
         <Button
           variant="ghost"

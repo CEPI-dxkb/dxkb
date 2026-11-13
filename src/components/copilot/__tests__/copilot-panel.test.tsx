@@ -3,7 +3,7 @@ import { createEvent, fireEvent, render, screen, waitFor } from "@testing-librar
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import { toast } from "sonner";
-import type { CopilotChat, CopilotChatError } from "@/hooks/copilot/use-copilot-chat";
+import type { CopilotChatError } from "@/hooks/copilot/use-copilot-chat";
 import { copilotQueryKeys } from "@/lib/copilot/client";
 import { clearCopilotDrafts } from "@/lib/copilot/drafts";
 import type { CopilotMessage, CopilotSessionDetail } from "@/lib/copilot/types";
@@ -12,6 +12,7 @@ import { createQueryClientWrapper } from "@/test-helpers/react";
 import { CopilotPanel, type CopilotPanelVariant } from "../copilot-panel";
 import { useCopilot } from "../copilot-provider";
 import { useCopilotActions } from "../use-copilot-actions";
+import { fakeCopilot } from "./fixtures/fake-copilot";
 import { copilotName } from "@/lib/copilot/name";
 
 // The provider and turn driver are faked; session reads go through MSW.
@@ -25,60 +26,10 @@ vi.mock("../use-copilot-actions", () => ({
 }));
 vi.mock("next/dynamic", () => ({ default: () => () => null }));
 
-type CopilotValue = ReturnType<typeof useCopilot>;
 type CopilotActions = ReturnType<typeof useCopilotActions>;
 
 const sendTurn = vi.fn<CopilotActions["sendTurn"]>();
 const sendQuestion = vi.fn<CopilotActions["sendQuestion"]>();
-
-function fakeChat(overrides: Partial<CopilotChat> = {}): CopilotChat {
-  return {
-    active: null,
-    error: null,
-    stopping: false,
-    dismissError: vi.fn(),
-    send: vi.fn(),
-    stop: vi.fn(),
-    reload: vi.fn(),
-    pausedPlans: new Set(),
-    pausePlan: vi.fn(),
-    resumePlan: vi.fn(),
-    isPlanPaused: () => false,
-    ...overrides,
-  };
-}
-
-function fakeCopilot(
-  overrides: { sessionId?: string; chat?: Partial<CopilotChat> } = {},
-): CopilotValue {
-  return {
-    available: true,
-    username: "alice",
-    onCopilotPage: false,
-    openSurface: "sheet",
-    preferredSurface: "sheet",
-    open: vi.fn(),
-    close: vi.fn(),
-    sessionId: overrides.sessionId ?? "s1",
-    selectSession: vi.fn(),
-    newChat: vi.fn(),
-    models: [
-      {
-        model: "m1",
-        modelType: null,
-        priority: null,
-        maxTokens: null,
-        supportsImage: true,
-        isDefault: true,
-      },
-    ],
-    modelsError: null,
-    modelsLoading: false,
-    model: "m1",
-    setModel: vi.fn(),
-    chat: fakeChat(overrides.chat),
-  };
-}
 
 function fakeActions(): CopilotActions {
   return {

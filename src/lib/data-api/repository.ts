@@ -32,6 +32,7 @@ import {
   keywordClauses,
   serializeInClause,
   serializeRql,
+  upstreamRql,
 } from "./rql";
 import type {
   CollectionRequest,
@@ -114,8 +115,12 @@ function quotedHtmlPage(message: string): string {
   return start === -1 ? "" : message.slice(start);
 }
 
+const rqlQueryContentType = "application/rqlquery+x-www-form-urlencoded";
+
+/** Every GET clause passes here, so each one leaves through `upstreamRql`. */
 function appendQuery(url: URL, clause: string): void {
-  url.search = url.search ? `${url.search.slice(1)}&${clause}` : clause;
+  const upstream = upstreamRql(clause);
+  url.search = url.search ? `${url.search.slice(1)}&${upstream}` : upstream;
 }
 
 function predicateClause(request: DownloadQuery): string | undefined {
@@ -443,8 +448,19 @@ export class ServerDataRepository {
       );
     const endpoint = this.endpoint(resource);
     const { url } = endpoint;
-    appendQuery(url, eq(resource, idField, request.id));
-    const projectLocally = addFields(url, request.fields, definition.idField);
+    const clause = eq(resource, idField, request.id);
+    // `upstreamRql` sends a wildcard in place of a character the Data API
+    // cannot round-trip, which can also match a neighbouring ID, so the rows
+    // are narrowed to the exact one below; the projection must carry the field
+    // that narrowing reads, and drops it again afterwards.
+    const wildcard = upstreamRql(clause) !== clause;
+    const carryLookupField = wildcard && Boolean(request.fields?.length);
+    const selected = carryLookupField
+      ? [...(request.fields ?? []), idField]
+      : request.fields;
+    appendQuery(url, clause);
+    const projectLocally =
+      addFields(url, selected, definition.idField) || carryLookupField;
     const payload = await this.request(
       endpoint,
       0,
@@ -453,8 +469,11 @@ export class ServerDataRepository {
       "application/json",
     );
     const parsedRows = this.parseRows(resource, normalizeRows(payload));
+    const matches = wildcard
+      ? parsedRows.filter((row) => row[idField] === request.id)
+      : parsedRows;
     const rows = projectRows(
-      parsedRows,
+      matches,
       request.fields,
       definition.idField,
       projectLocally,
@@ -876,7 +895,7 @@ export class ServerDataRepository {
     method = "GET",
     body?: string,
     streamBody = false,
-    contentType = "application/rqlquery+x-www-form-urlencoded",
+    contentType = rqlQueryContentType,
   ): Promise<Response> {
     if (this.options.token && url.protocol !== "https:") {
       throw new DataApiError(
@@ -892,6 +911,9 @@ export class ServerDataRepository {
     });
     if (this.options.token) headers.set("Authorization", this.options.token);
     if (body) headers.set("Content-Type", contentType);
+    // A POSTed RQL body reaches the same parser as a GET clause.
+    const upstreamBody =
+      body && contentType === rqlQueryContentType ? upstreamRql(body) : body;
     let response: Response;
     try {
       response = await fetchUpstream(
@@ -899,7 +921,7 @@ export class ServerDataRepository {
         {
           method,
           headers,
-          body,
+          body: upstreamBody,
           signal,
           ...(this.options.token ? { redirect: "error" as const } : {}),
           cache: this.options.cache,

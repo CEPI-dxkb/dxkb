@@ -21,6 +21,7 @@ export interface UiPreferences {
   compareRegionDensity: CompareRegionDensity;
   copilotSurface: CopilotSurface;
   copilotFloatingRect: CopilotFloatingRect;
+  copilotTab: CopilotTabPlacement;
 }
 
 export const copilotSurfaces = ["sheet", "floating"] as const;
@@ -31,6 +32,15 @@ export interface CopilotFloatingRect {
   bottom: number;
   width: number;
   height: number;
+}
+
+export const copilotTabSides = ["left", "right"] as const;
+export type CopilotTabSide = (typeof copilotTabSides)[number];
+
+/** Where the minimized chat's edge tab sits: which window edge, and how far down the window (0 to 1). The side panel and the floating window open on the same side. */
+export interface CopilotTabPlacement {
+  side: CopilotTabSide;
+  top: number;
 }
 
 export type UiPreferenceKey = keyof UiPreferences;
@@ -85,6 +95,10 @@ export const uiPreferenceDefinitions: {
     cookieName: "dxkb-copilot-floating-rect",
     // Anchored to the bottom-right so a smaller window still shows; the component clamps into the viewport.
     defaultValue: { right: 24, bottom: 24, width: 420, height: 640 },
+  },
+  copilotTab: {
+    cookieName: "dxkb-copilot-tab",
+    defaultValue: { side: "right", top: 0.75 },
   },
 };
 

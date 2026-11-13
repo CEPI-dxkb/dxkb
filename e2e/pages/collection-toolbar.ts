@@ -131,6 +131,11 @@ export class CollectionToolbar {
     await this.clearAllButton().click();
   }
 
+  /** Exact: the hidden description beside it quotes the same words. */
+  customQueryBadge(): Locator {
+    return this.root().getByText("Custom query", { exact: true });
+  }
+
   /** Filtered by text: Next's route announcer is an alert too. */
   facetError(): Locator {
     return this.root()

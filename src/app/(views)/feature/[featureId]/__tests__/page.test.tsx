@@ -4,6 +4,7 @@ import { createQueryClientWrapper } from "@/test-helpers/react";
 
 const mocks = vi.hoisted(() => ({
   getFeature: vi.fn(),
+  resolveCompare: vi.fn(),
   getTaxonomy: vi.fn(),
   notFound: vi.fn(() => {
     throw new Error("NEXT_NOT_FOUND");
@@ -24,6 +25,9 @@ vi.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams(),
 }));
 vi.mock("@/lib/feature-view/server", () => ({ getFeature: mocks.getFeature }));
+vi.mock("@/lib/feature-view/compare-region-peg-server", () => ({
+  resolveCompareRegionAvailability: mocks.resolveCompare,
+}));
 vi.mock("@/lib/taxonomy-view/server", () => ({
   getTaxonomy: mocks.getTaxonomy,
 }));
@@ -67,6 +71,8 @@ vi.mock("@/components/compare-region", () => ({
   ),
 }));
 
+import type { FeatureViewRecord } from "@/lib/feature-view";
+import { compareRegionAvailability } from "@/lib/feature-view/compare-region-peg";
 import FeaturePage, { generateMetadata } from "../page";
 
 const feature = {
@@ -88,6 +94,10 @@ describe("Feature member route", () => {
     mocks.permanentRedirect.mockClear();
     mocks.redirect.mockClear();
     mocks.getFeature.mockResolvedValue({ feature, usedAlternateId: false });
+    mocks.resolveCompare.mockReset();
+    mocks.resolveCompare.mockImplementation((record: FeatureViewRecord) =>
+      Promise.resolve(compareRegionAvailability(record)),
+    );
     mocks.getTaxonomy.mockReset();
     mocks.getTaxonomy.mockResolvedValue(null);
   });
@@ -363,6 +373,47 @@ describe("Feature member route", () => {
       "data-peg",
       feature.patric_id,
     );
+  });
+
+  it("opens the Compare Region Viewer on a RefSeq feature's PATRIC counterpart", async () => {
+    const refseq = {
+      feature_id: "RefSeq.1282460.2049.NC_1.CDS.1.100.fwd",
+      genome_id: "1282460.2049",
+      annotation: "RefSeq",
+      feature_type: "CDS",
+      sequence_id: "NC_1",
+      end: 100,
+      strand: "+",
+    };
+    mocks.getFeature.mockResolvedValue({ feature: refseq, usedAlternateId: false });
+    mocks.resolveCompare.mockResolvedValue({ peg: "fig|1282460.2049.peg.1" });
+
+    render(
+      await FeaturePage({
+        params: Promise.resolve({ featureId: refseq.feature_id }),
+        searchParams: Promise.resolve({ tab: "compare-region" }),
+      }),
+    );
+
+    expect(screen.getByTestId("compare-region")).toHaveAttribute(
+      "data-peg",
+      "fig|1282460.2049.peg.1",
+    );
+    expect(mocks.redirect).not.toHaveBeenCalled();
+  });
+
+  it("sends a closed Compare Region tab back to the overview", async () => {
+    mocks.resolveCompare.mockResolvedValue({
+      peg: null,
+      reason: "This feature has no BRC ID (PATRIC annotation), which the Compare Region Viewer needs.",
+    });
+
+    await expect(
+      FeaturePage({
+        params: Promise.resolve({ featureId: feature.feature_id }),
+        searchParams: Promise.resolve({ tab: "compare-region" }),
+      }),
+    ).rejects.toThrow(`NEXT_REDIRECT:/feature/${feature.feature_id}`);
   });
 
   it("keeps the query when it redirects a BRC ID to the feature's own URL", async () => {

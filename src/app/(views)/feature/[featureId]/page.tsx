@@ -8,6 +8,7 @@ import {
   featureDisplayName,
   isFeatureId,
 } from "@/lib/feature-view";
+import { resolveCompareRegionAvailability } from "@/lib/feature-view/compare-region-peg-server";
 import { getFeature, type FeatureLookup } from "@/lib/feature-view/server";
 import { loadLineageCrumbs } from "@/lib/taxonomy-view/lineage-server";
 import { toQueryString } from "@/lib/url";
@@ -103,7 +104,8 @@ export default async function FeaturePage({
     );
   }
   const { feature } = loaded;
-  const activeTab = canonicalFeatureTab(query.tab, feature);
+  const compare = await resolveCompareRegionAvailability(feature);
+  const activeTab = canonicalFeatureTab(query.tab, feature, compare);
   const canonicalQuery = canonicalizeMemberTabQuery(query, activeTab);
   if (canonicalQuery !== null) {
     redirect(
@@ -113,6 +115,7 @@ export default async function FeaturePage({
   return (
     <FeatureMember
       feature={feature}
+      compare={compare}
       lineage={loadLineageCrumbs(String(feature.taxon_id ?? ""), `feature/${feature.feature_id}`)}
       activeTab={activeTab}
     />

@@ -11,7 +11,7 @@ import {
 } from "@/components/views";
 import {
   buildFeatureTabs,
-  featureCompareRegionPeg,
+  type CompareRegionAvailability,
   featureDisplayName,
   featureFastaTypes,
   featureGenomeBrowserTarget,
@@ -119,6 +119,8 @@ function breadcrumbs(
 
 interface FeatureMemberProps {
   feature: FeatureViewRecord;
+  /** The Compare Region tab's gene (the feature's own BRC ID or its PATRIC counterpart's), or why there is none. */
+  compare: CompareRegionAvailability;
   /** A promise, so a slow taxonomy lookup holds the breadcrumb, not the page. */
   lineage: Promise<readonly LineageCrumb[]>;
   activeTab: FeatureTab;
@@ -126,11 +128,12 @@ interface FeatureMemberProps {
 
 export function FeatureMember({
   feature,
+  compare,
   lineage,
   activeTab,
 }: FeatureMemberProps) {
   const browserTarget = featureGenomeBrowserTarget(feature);
-  const comparePeg = featureCompareRegionPeg(feature);
+  const comparePeg = compare.peg;
   const content =
     activeTab === "genome-browser" && browserTarget ? (
       <GenomeBrowserPanel
@@ -167,7 +170,7 @@ export function FeatureMember({
     ) : (
       <FeatureOverview feature={feature} />
     );
-  const tabs = buildFeatureTabs(feature).map((tab) => ({
+  const tabs = buildFeatureTabs(feature, compare).map((tab) => ({
     ...tab,
     icon: featureTabIcons[tab.key],
   }));

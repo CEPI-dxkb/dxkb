@@ -23,7 +23,7 @@ const unfilteredGenomeState: CollectionState = {
 
 /**
  * `state` narrowed to genomes whose `field` is `value`, as a friendly filter shown as a removable chip.
- * An explicit `rql` keeps friendly filters out (`filtersBesideRql`), so beside one the value joins the rql; `undefined` for a field with no filter.
+ * Beside an explicit `rql` the value joins the rql instead, so the drill-down URL stays the one it has always been; `undefined` for a field with no filter.
  */
 export function genomeStateWithValue(
   state: CollectionState,

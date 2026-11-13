@@ -58,14 +58,14 @@ describe("collection URL state", () => {
     ).toBe("keep=yes");
   });
 
-  it("keeps keyword independent and gives explicit rql precedence over friendly filters", () => {
+  it("keeps keyword independent and friendly filters beside an explicit rql", () => {
     const state = parseCollectionState(
       { keyword: "influenza", rql: "eq(public,true)", taxon_id: "11520" },
       options,
     );
     expect(state.keyword).toBe("influenza");
     expect(state.rql).toBe("eq(public,true)");
-    expect(state.filters).toEqual({});
+    expect(state.filters).toEqual({ taxon_id: ["11520"] });
   });
 
   it("preserves explicitly independent filters alongside rql", () => {
@@ -78,9 +78,9 @@ describe("collection URL state", () => {
       { rql: "eq(public,true)", taxon_id: "2", filter: "protein" },
       independentOptions,
     );
-    expect(state.filters).toEqual({ filter: ["protein"] });
+    expect(state.filters).toEqual({ taxon_id: ["2"], filter: ["protein"] });
     expect(serializeCollectionState(state, independentOptions).toString()).toBe(
-      "rql=eq%28public%2Ctrue%29&filter=protein",
+      "rql=eq%28public%2Ctrue%29&taxon_id=2&filter=protein",
     );
   });
 
@@ -213,12 +213,14 @@ describe("collection URL state", () => {
     expect(canonical.toString()).toBe("tab=genomes&keep=a&keep=b");
   });
 
-  it("drops friendly filters from the canonical URL when rql is explicit", () => {
+  it("keeps friendly filters beside an explicit rql in the canonical URL", () => {
     const canonical = canonicalizeCollectionSearchParams(
       { rql: "eq(public,true)", taxon_id: "2", keyword: "flu" },
       options,
     );
-    expect(canonical.toString()).toBe("keyword=flu&rql=eq%28public%2Ctrue%29");
+    expect(canonical.toString()).toBe(
+      "keyword=flu&rql=eq%28public%2Ctrue%29&taxon_id=2",
+    );
   });
 
   it.each([
@@ -559,7 +561,7 @@ describe("default filters", () => {
   it("keeps a default beside an explicit rql, removable as without one", () => {
     const rql = "eq(public,true)";
     expect(parseCollectionState({ rql, taxon_id: "2" }, withDefault).filters).toEqual(
-      { host: ["human"] },
+      { taxon_id: ["2"], host: ["human"] },
     );
     expect(
       parseCollectionState({ rql, host: "*" }, withDefault).filters,
@@ -569,7 +571,7 @@ describe("default filters", () => {
     ).toEqual({ host: ["swine"] });
     expect(
       canonicalizeCollectionSearchParams({ rql, taxon_id: "2" }, withDefault).toString(),
-    ).toBe("rql=eq%28public%2Ctrue%29");
+    ).toBe("rql=eq%28public%2Ctrue%29&taxon_id=2");
     expect(
       canonicalizeCollectionSearchParams({ rql, host: "*" }, withDefault).toString(),
     ).toBe("rql=eq%28public%2Ctrue%29&host=*");
@@ -624,21 +626,21 @@ describe("default filters", () => {
     ).toBe("host=*");
     expect(
       updateCollectionSearchParams(shadowing, { rql: null }, withDefault).toString(),
-    ).toBe("");
+    ).toBe("taxon_id=2");
     expect(
       updateCollectionSearchParams(
         shadowing,
         { rql: "eq(public,true)" },
         withDefault,
       ).toString(),
-    ).toBe("rql=eq%28public%2Ctrue%29");
+    ).toBe("rql=eq%28public%2Ctrue%29&taxon_id=2");
     expect(
       updateCollectionSearchParams(
         shadowing,
         { rql: null, filters: { host: null } },
         withDefault,
       ).toString(),
-    ).toBe("host=*");
+    ).toBe("taxon_id=2&host=*");
     expect(
       withUnshadowedDefaults(
         "eq(public,true)",
@@ -646,6 +648,12 @@ describe("default filters", () => {
         withDefault,
       ).filters,
     ).toEqual({});
+  });
+
+  it("keeps a plain filter beside an rql that names its field", () => {
+    expect([...filtersBesideRql("eq(taxon_id,2)", options)]).toContain(
+      "taxon_id",
+    );
   });
 
   it("lists the filters an explicit rql keeps", () => {

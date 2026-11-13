@@ -10,9 +10,8 @@ export interface CollectionStateOptions<Sort extends string = string> {
    * Every key must also be a `friendlyFilters` entry. A default is omitted from
    * URLs; once removed, the URL carries `<name>=*` so the removal survives
    * reload.
-   * A default stays beside an explicit `rql` unless that rql names its field
-   * (`filtersBesideRql`), so the view's structural RQL builder must apply it
-   * under an rql too.
+   * Every filter, a default included, stays beside an explicit `rql`
+   * (`filtersBesideRql`) unless a default's field is named by that rql.
    */
   defaultFilters?: Readonly<Record<string, readonly string[]>>;
   legacyRqlFilter?: boolean;
@@ -120,7 +119,12 @@ export function rqlNamesField(rql: string, field: string): boolean {
   return new RegExp(`[a-z]\\(\\s*${field}\\s*,`).test(rql);
 }
 
-/** An rql that picks its own annotation replaces the PATRIC default. */
+/**
+ * Every friendly filter stays beside an explicit `rql`, so a facet pick narrows
+ * the query. The one exception is a default (such as Feature's PATRIC
+ * annotation) the rql names itself: the rql's own choice replaces the default.
+ * An independent filter stays regardless.
+ */
 export function filtersBesideRql<Sort extends string>(
   rql: string | undefined,
   options: CollectionStateOptions<Sort>,
@@ -132,8 +136,8 @@ export function filtersBesideRql<Sort extends string>(
     friendly.filter(
       (name) =>
         independent.has(name) ||
-        (defaultFilterValues(name, options) !== undefined &&
-          !rqlNamesField(rql, name)),
+        defaultFilterValues(name, options) === undefined ||
+        !rqlNamesField(rql, name),
     ),
   );
 }

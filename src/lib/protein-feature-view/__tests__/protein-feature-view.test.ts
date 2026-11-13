@@ -79,7 +79,7 @@ describe("Domains and Motifs view contracts", () => {
     );
   });
 
-  it("validates sorts and gives explicit RQL precedence", () => {
+  it("validates sorts and keeps friendly filters beside explicit RQL", () => {
     expect(
       parseProteinFeatureCollectionState({ sort: "source:desc" }).sort,
     ).toBe("source:desc");
@@ -87,11 +87,11 @@ describe("Domains and Motifs view contracts", () => {
       parseProteinFeatureCollectionState({ sort: "missing:asc" }).sort,
     ).toBe("unsorted");
     const state = parseProteinFeatureCollectionState({
-      genome_id: "ignored",
+      genome_id: "83332.12",
       rql: "eq(source,InterPro)",
     });
-    expect(state.filters).toEqual({});
-    expect(proteinFeatureStructuralRql(state)).toBeUndefined();
+    expect(state.filters).toEqual({ genome_id: ["83332.12"] });
+    expect(proteinFeatureStructuralRql(state)).toBe("eq(genome_id,83332.12)");
     expect(() =>
       parseProteinFeatureCollectionState({ rql: "sort(+source)" }),
     ).toThrow("Transport operator");

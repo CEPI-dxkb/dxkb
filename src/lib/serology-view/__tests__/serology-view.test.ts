@@ -73,8 +73,8 @@ describe("Serology view contracts", () => {
       test_type: "ELISA",
       rql: "eq(collection_country,US)",
     });
-    expect(explicit.filters).toEqual({});
-    expect(serologyStructuralRql(explicit)).toBeUndefined();
+    expect(explicit.filters).toEqual({ test_type: ["ELISA"] });
+    expect(serologyStructuralRql(explicit)).toBe("eq(test_type,ELISA)");
   });
 
   it("queries an (empty) Test Type pick instead of throwing", () => {

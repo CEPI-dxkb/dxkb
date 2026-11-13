@@ -28,10 +28,10 @@ describe("Epitope view contracts", () => {
     expect(epitopeStructuralRql(state)).toBe('and(eq(taxon_lineage_ids,11520),or(eq(epitope_type,"Linear%20peptide"),eq(epitope_type,"Discontinuous%20peptide")))');
   });
 
-  it("gives explicit RQL precedence and rejects transport operators", () => {
+  it("keeps friendly filters beside explicit RQL and rejects transport operators", () => {
     const state = parseEpitopeCollectionState({ taxon_id: "11520", rql: "eq(epitope_type,B-cell)" });
-    expect(state.filters).toEqual({});
-    expect(epitopeStructuralRql(state)).toBeUndefined();
+    expect(state.filters).toEqual({ taxon_id: ["11520"] });
+    expect(epitopeStructuralRql(state)).toBe("eq(taxon_lineage_ids,11520)");
     expect(() => parseEpitopeCollectionState({ rql: "sort(+epitope_id)" })).toThrow("Transport operator");
   });
 

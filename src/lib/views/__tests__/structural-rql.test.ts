@@ -79,19 +79,19 @@ describe("structuralFilterRql", () => {
     ).toBe("eq(taxon_lineage_ids,561)");
   });
 
-  it("lets explicit RQL bypass friendly filters entirely, regardless of mode", () => {
+  it("builds filter clauses beside an explicit RQL; the RQL itself is the caller's to AND", () => {
     const state: CollectionState = {
       ...emptyState,
       rql: "eq(genome_status,Complete)",
       filters: { genome_quality: ["Good"] },
     };
-    expect(structuralFilterRql("genome", state)).toBeUndefined();
+    expect(structuralFilterRql("genome", state)).toBe("eq(genome_quality,Good)");
     expect(
       structuralFilterRql("genome", state, {
         fieldMap: { genome_quality: "genome_quality" },
         unknownFilters: "drop",
       }),
-    ).toBeUndefined();
+    ).toBe("eq(genome_quality,Good)");
   });
 
   it("passes an unmapped filter name through unchanged by default (passthrough mode)", () => {
@@ -298,9 +298,9 @@ describe("structural filter behavior preservation across the nine consolidated m
     expect(build()).toBe(expected);
   });
 
-  it.each(cases)("$name still gives explicit RQL precedence over friendly filters", ({ name }) => {
+  it.each(cases)("$name still builds nothing for an explicit RQL and no filters", ({ name }) => {
     const stateWithRql: CollectionState = {
-      filters: { unused: ["value"] },
+      filters: {},
       page: 1,
       sort: "unsorted",
       rql: "eq(id,*)",

@@ -18,6 +18,10 @@ import { useResourceCollection } from "@/hooks/views/use-resource-collection";
 import { useTableLayout } from "@/hooks/use-table-layout";
 import { useIsMounted } from "@/hooks/use-is-mounted";
 import { dataSort, type CollectionState } from "@/lib/views/collection-state";
+import {
+  collectionFieldLabeler,
+  describeRql,
+} from "@/lib/views/describe-rql";
 import { rqlKeyword } from "@/lib/views/rql";
 import {
   applyBooleanOverrides,
@@ -185,6 +189,16 @@ export function ResourceCollection<Row extends DataTableRow>({
   const columnById = new Map(
     profile.columns.map((column) => [column.id, column]),
   );
+  const explicitRql = state.rql
+    ? {
+        raw: state.rql,
+        clauses: describeRql(
+          profile.resource,
+          state.rql,
+          collectionFieldLabeler(profile),
+        ),
+      }
+    : undefined;
   const structuralRql = combinePredicates(
     baseRql,
     profile.buildStructuralRql?.(state) ?? profile.basePredicate,
@@ -470,7 +484,7 @@ export function ResourceCollection<Row extends DataTableRow>({
         updateTableLayout({ visibility: undefined, order: undefined });
       }}
       definitions={profile.facets ?? []}
-      hasExplicitRql={Boolean(state.rql)}
+      explicitRql={explicitRql}
       filtersBesideRql={filtersBesideRql}
       keywordPlaceholder={keywordPlaceholder}
       onChange={({ keyword, filters, clearRql, clearAll }) => {

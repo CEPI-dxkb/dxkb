@@ -1,37 +1,52 @@
-import { act, screen, waitFor } from "@testing-library/react";
+import { act, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { stubMenuLayout } from "@/test-helpers/menu-layout";
+import { settleBackgroundWork } from "@/test-helpers/settle";
 import { renderToolbar } from "./fixtures/toolbar-harness";
 
 stubMenuLayout();
 
-describe("CollectionToolbar custom query badge", () => {
-  it("describes the badge for screen readers without the tooltip", () => {
-    renderToolbar({ overrides: { hasExplicitRql: true } });
+const explicitRql = {
+  raw: "eq(genome_status,Complete)",
+  clauses: ["Genome Status is Complete"],
+};
 
-    expect(screen.getByText("Custom query")).toHaveAccessibleDescription(
-      "The link carries a hand-written query the filters cannot show. Clear all removes it.",
-    );
-  });
+describe("CollectionToolbar advanced query chip", () => {
+  it("shows the chip, with no tooltip standing in for the explanation", async () => {
+    const user = userEvent.setup();
+    renderToolbar({ overrides: { explicitRql } });
 
-  it("hides the tooltip popup from screen readers so the explanation is announced once", async () => {
-    renderToolbar({ overrides: { hasExplicitRql: true } });
-
-    const badge = screen.getByText("Custom query");
+    const chip = screen.getByRole("button", {
+      name: "Advanced query. Show details",
+    });
+    // The old chip's tooltip opened on focus and hover (delay 0); give one the
+    // chance to mount before asserting there is none.
     act(() => {
-      badge.focus();
+      chip.focus();
     });
-    const popup = await waitFor(() => {
-      const found = document.querySelector("[data-slot='tooltip-content']");
-      expect(found).not.toBeNull();
-      return found as Element;
-    });
-    expect(popup).toHaveAttribute("aria-hidden", "true");
-    expect(popup).toHaveTextContent("hand-written query");
+    await user.hover(chip);
+    await settleBackgroundWork();
+
+    expect(document.querySelector("[data-slot='tooltip-content']")).toBeNull();
   });
 
-  it("omits the badge without an explicit query", () => {
+  it("removes the query without Clear all", async () => {
+    const user = userEvent.setup();
+    const { spies } = renderToolbar({ overrides: { explicitRql } });
+
+    await user.click(
+      screen.getByRole("button", { name: "Remove advanced query" }),
+    );
+
+    expect(spies.clearExplicitRql).toHaveBeenCalledTimes(1);
+    expect(spies.clearAll).not.toHaveBeenCalled();
+  });
+
+  it("omits the chip without an explicit query", () => {
     renderToolbar();
 
-    expect(screen.queryByText("Custom query")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /Advanced query/ }),
+    ).not.toBeInTheDocument();
   });
 });

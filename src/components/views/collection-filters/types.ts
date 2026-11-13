@@ -24,6 +24,13 @@ export interface CollectionColumnControls {
   resetColumns: () => void;
 }
 
+export interface ExplicitRqlView {
+  /** The `rql` URL value as the link carries it (percent-encoded). */
+  raw: string;
+  /** One readable line per top-level condition; null when `raw` does not parse. */
+  clauses: readonly string[] | null;
+}
+
 export interface CollectionToolbarProps extends CollectionColumnControls {
   keyword: string;
   onKeywordChange: (value: string) => void;
@@ -49,5 +56,8 @@ export interface CollectionToolbarProps extends CollectionColumnControls {
   setFieldValues: (field: string, values: string[]) => void;
   clearAll: () => void;
   canClear: boolean;
-  hasExplicitRql: boolean;
+  /** Present when the URL carries a hand-written rql the facets cannot show. */
+  explicitRql?: ExplicitRqlView;
+  /** Drops only the rql: keyword and filters stay (Clear all drops those too). */
+  clearExplicitRql: () => void;
 }

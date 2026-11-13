@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useOptimistic, useTransition } from "react";
 import { useDebouncedDraft } from "@/hooks/use-debounced-draft";
 import { useTableLayout } from "@/hooks/use-table-layout";
 import type {
@@ -42,8 +42,6 @@ interface ResourceFilterBarProps extends CollectionColumnControls {
   }) => void;
 }
 
-const optimisticFiltersMs = 3000;
-
 export function ResourceFilterBar({
   layoutKey,
   keyword,
@@ -67,24 +65,16 @@ export function ResourceFilterBar({
   setColumns,
   resetColumns,
 }: ResourceFilterBarProps) {
-  const [optimistic, setOptimistic] = useState<{
+  // A pick is shown at once and kept while its write is in flight: `onChange`
+  // runs in a transition, and `router.push` (a navigation that commits only
+  // when the server answers) joins it. When the transition settles, the
+  // overlay gives way to the page's filters in the same commit, so a slow
+  // navigation keeps the pick and a pick the page dropped reverts then.
+  const [, startTransition] = useTransition();
+  const [pending, setPending] = useOptimistic<{
     filters: CollectionState["filters"];
     clearRql: boolean;
   } | null>(null);
-  const optimisticMatched =
-    optimistic !== null &&
-    JSON.stringify(optimistic.filters) === JSON.stringify(filters);
-  if (optimisticMatched) setOptimistic(null);
-  useEffect(() => {
-    if (!optimistic) return;
-    const timer = window.setTimeout(() => {
-      setOptimistic(null);
-    }, optimisticFiltersMs);
-    return () => {
-      window.clearTimeout(timer);
-    };
-  }, [optimistic]);
-  const pending = optimistic && !optimisticMatched ? optimistic : null;
   // `filters` itself, not a copy, when nothing is pending: loaded keyword mode
   // tells a keyword-only write apart by identity.
   const shownFilters = pending ? pending.filters : filters;
@@ -114,8 +104,10 @@ export function ResourceFilterBar({
     const clearRql =
       Boolean(pending?.clearRql) ||
       (hasExplicitRql && !filtersBesideRql.includes(field));
-    setOptimistic({ filters: next, clearRql });
-    onChange({ keyword, filters: next, clearRql });
+    startTransition(() => {
+      setPending({ filters: next, clearRql });
+      onChange({ keyword, filters: next, clearRql });
+    });
   };
 
   return (
@@ -156,12 +148,14 @@ export function ResourceFilterBar({
       setFieldValues={setFieldValues}
       clearAll={() => {
         setKeywordDraft("");
-        setOptimistic({ filters: {}, clearRql: true });
-        onChange({
-          keyword: undefined,
-          filters: {},
-          clearRql: true,
-          clearAll: true,
+        startTransition(() => {
+          setPending({ filters: {}, clearRql: true });
+          onChange({
+            keyword: undefined,
+            filters: {},
+            clearRql: true,
+            clearAll: true,
+          });
         });
       }}
       canClear={

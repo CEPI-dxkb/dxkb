@@ -7,8 +7,14 @@ import {
   within,
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { useState, type ComponentProps } from "react";
+import {
+  startTransition,
+  Suspense,
+  useState,
+  type ComponentProps,
+} from "react";
 import { stubMenuLayout } from "@/test-helpers/menu-layout";
+import { createPendingNavigation } from "@/test-helpers/pending-navigation";
 import { jsdomLocalStorage } from "@/test-helpers/storage";
 import { ResourceFilterBar } from "../resource-filter-bar";
 
@@ -55,6 +61,47 @@ function filterBarProps(overrides: Partial<FilterBarProps> = {}): FilterBarProps
 async function openFilters(user: ReturnType<typeof userEvent.setup>) {
   await user.click(screen.getByRole("button", { name: /^Filters/ }));
   return screen.findByRole("listbox", { name: "Facets" });
+}
+
+const pendingNavigation = createPendingNavigation();
+
+/**
+ * An `onChange` whose navigation never commits. Like `router.push`, it starts
+ * its own transition, so the old timer overlay is tested on the same footing.
+ */
+const navigatesSlowly = () =>
+  vi.fn<FilterBarProps["onChange"]>(() => {
+    startTransition(() => {
+      pendingNavigation.arm();
+    });
+  });
+
+/**
+ * A synchronous `act` (`fireEvent`, `act(() => …)`) commits nothing more once
+ * a transition has suspended on the pending navigation, so a test that needs
+ * the page to keep rendering meanwhile clicks and waits in an async `act`.
+ */
+async function clickDuringNavigation(element: HTMLElement) {
+  await act(() => {
+    fireEvent.click(element);
+    return Promise.resolve();
+  });
+}
+
+async function elapseDuringNavigation(ms: number) {
+  await act(() => vi.advanceTimersByTimeAsync(ms));
+}
+
+/** The filter bar beside the Suspense boundary a pending navigation suspends in. */
+function WithPendingNavigation(props: FilterBarProps) {
+  return (
+    <>
+      <ResourceFilterBar {...props} />
+      <Suspense fallback={null}>
+        <pendingNavigation.Suspender />
+      </Suspense>
+    </>
+  );
 }
 
 const statusValues = () =>
@@ -145,13 +192,12 @@ describe("ResourceFilterBar keyword", () => {
 describe("ResourceFilterBar picks", () => {
   it("shows a pick at once, before the page's filters catch up", async () => {
     const user = userEvent.setup();
-    const onChange = vi.fn();
+    const onChange = navigatesSlowly();
     const props = filterBarProps({ onChange });
-    const { rerender } = render(<ResourceFilterBar {...props} />);
+    const { rerender } = render(<WithPendingNavigation {...props} />);
     await openFilters(user);
-    vi.useFakeTimers();
 
-    fireEvent.click(statusOption("WGS"));
+    await clickDuringNavigation(statusOption("WGS"));
 
     expect(onChange).toHaveBeenCalledWith({
       keyword: undefined,
@@ -163,29 +209,70 @@ describe("ResourceFilterBar picks", () => {
       screen.getByRole("button", { name: "Genome Status: WGS. Edit filter" }),
     ).toBeInTheDocument();
 
-    rerender(
-      <ResourceFilterBar {...props} filters={{ genome_status: ["WGS"] }} />,
-    );
-    act(() => {
-      vi.advanceTimersByTime(5000);
+    await act(() => {
+      rerender(
+        <WithPendingNavigation
+          {...props}
+          filters={{ genome_status: ["WGS"] }}
+        />,
+      );
+      return Promise.resolve();
     });
     expect(statusOption("WGS")).toHaveAttribute("aria-selected", "true");
   });
 
+  it("keeps a pick selected for as long as its navigation is pending", async () => {
+    const user = userEvent.setup();
+    render(
+      <WithPendingNavigation
+        {...filterBarProps({ onChange: navigatesSlowly() })}
+      />,
+    );
+    await openFilters(user);
+    vi.useFakeTimers();
+
+    await clickDuringNavigation(statusOption("WGS"));
+    await elapseDuringNavigation(10_000);
+
+    expect(statusOption("WGS")).toHaveAttribute("aria-selected", "true");
+    expect(
+      screen.getByRole("button", { name: "Genome Status: WGS. Edit filter" }),
+    ).toBeInTheDocument();
+  });
+
+  it("builds a second pick on a first whose navigation is still pending", async () => {
+    const user = userEvent.setup();
+    const onChange = navigatesSlowly();
+    render(<WithPendingNavigation {...filterBarProps({ onChange })} />);
+    await openFilters(user);
+    vi.useFakeTimers();
+
+    await clickDuringNavigation(statusOption("Complete"));
+    await elapseDuringNavigation(5000);
+    await clickDuringNavigation(statusOption("WGS"));
+
+    expect(onChange).toHaveBeenLastCalledWith({
+      keyword: undefined,
+      filters: { genome_status: ["Complete", "WGS"] },
+      clearRql: false,
+    });
+    expect(
+      within(statusValues()).getAllByRole("option", { selected: true }),
+    ).toHaveLength(2);
+  });
+
   it("commits a keyword with a pick made while it was pending", async () => {
     const user = userEvent.setup();
-    const onChange = vi.fn();
-    render(<ResourceFilterBar {...filterBarProps({ onChange })} />);
+    const onChange = navigatesSlowly();
+    render(<WithPendingNavigation {...filterBarProps({ onChange })} />);
     await openFilters(user);
     vi.useFakeTimers();
 
     fireEvent.change(screen.getByRole("searchbox", { hidden: true }), {
       target: { value: "influenza" },
     });
-    fireEvent.click(statusOption("WGS"));
-    act(() => {
-      vi.advanceTimersByTime(300);
-    });
+    await clickDuringNavigation(statusOption("WGS"));
+    await elapseDuringNavigation(300);
 
     expect(onChange).toHaveBeenLastCalledWith({
       keyword: "influenza",
@@ -196,9 +283,9 @@ describe("ResourceFilterBar picks", () => {
 
   it("keeps a pending pick's rql replacement when the keyword commits", async () => {
     const user = userEvent.setup();
-    const onChange = vi.fn();
+    const onChange = navigatesSlowly();
     render(
-      <ResourceFilterBar
+      <WithPendingNavigation
         {...filterBarProps({ hasExplicitRql: true, onChange })}
       />,
     );
@@ -208,10 +295,8 @@ describe("ResourceFilterBar picks", () => {
     fireEvent.change(screen.getByRole("searchbox", { hidden: true }), {
       target: { value: "influenza" },
     });
-    fireEvent.click(statusOption("WGS"));
-    act(() => {
-      vi.advanceTimersByTime(300);
-    });
+    await clickDuringNavigation(statusOption("WGS"));
+    await elapseDuringNavigation(300);
 
     expect(onChange).toHaveBeenLastCalledWith({
       keyword: "influenza",
@@ -222,9 +307,9 @@ describe("ResourceFilterBar picks", () => {
 
   it("keeps a pending pick's rql replacement through a pick kept beside the rql", async () => {
     const user = userEvent.setup();
-    const onChange = vi.fn();
+    const onChange = navigatesSlowly();
     render(
-      <ResourceFilterBar
+      <WithPendingNavigation
         {...filterBarProps({
           facets: { ...facets, host: [{ value: "Human", count: 5 }] },
           facetStatuses: { genome_status: "ready", host: "ready" },
@@ -255,21 +340,17 @@ describe("ResourceFilterBar picks", () => {
     });
   });
 
-  it("reverts a pick the page drops", async () => {
+  it("reverts a pick the page drops once the navigation settles", async () => {
     const user = userEvent.setup();
-    render(<ResourceFilterBar {...filterBarProps()} />);
+    const onChange = vi.fn();
+    render(<ResourceFilterBar {...filterBarProps({ onChange })} />);
     await openFilters(user);
     vi.useFakeTimers();
 
     fireEvent.click(statusOption("WGS"));
-    act(() => {
-      vi.advanceTimersByTime(2999);
-    });
-    expect(statusOption("WGS")).toHaveAttribute("aria-selected", "true");
 
-    act(() => {
-      vi.advanceTimersByTime(1);
-    });
+    // The page echoed nothing and its navigation settled with the click: no timer.
+    expect(onChange).toHaveBeenCalledOnce();
     expect(statusOption("WGS")).toHaveAttribute("aria-selected", "false");
     expect(
       screen.getByRole("button", { name: "Filters" }),
@@ -316,9 +397,9 @@ describe("ResourceFilterBar picks", () => {
 
   it("clears the keyword, every filter and the rql with Clear all", async () => {
     const user = userEvent.setup();
-    const onChange = vi.fn();
+    const onChange = navigatesSlowly();
     render(
-      <ResourceFilterBar
+      <WithPendingNavigation
         {...filterBarProps({
           keyword: "coli",
           filters: { genome_status: ["WGS"] },

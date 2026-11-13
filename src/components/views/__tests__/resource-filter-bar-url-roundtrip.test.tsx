@@ -58,8 +58,6 @@ function Page({
         filters={state.filters}
         facets={facets}
         facetStatuses={facetStatuses}
-        peekedFields={new Set()}
-        onPeekedFieldsChange={() => undefined}
         onFacetsWanted={() => undefined}
         onPrefetchFacets={() => undefined}
         definitions={genomeFacets}
@@ -89,7 +87,7 @@ const addressFilters = () =>
     .filters;
 
 const facetOption = (label: string) =>
-  within(screen.getByRole("listbox", { name: "Facets" })).queryByRole(
+  within(screen.getByRole("listbox", { name: "Filters" })).queryByRole(
     "option",
     { name: new RegExp(`^${escapeRegExp(label)}(?::|,|$)`) },
   );
@@ -102,14 +100,11 @@ const valueOption = (label: string, value: string) =>
 
 async function openFilters(user: ReturnType<typeof userEvent.setup>) {
   await user.click(screen.getByRole("button", { name: /^Filters/ }));
-  return screen.findByRole("listbox", { name: "Facets" });
+  return screen.findByRole("listbox", { name: "Filters" });
 }
 
-/** Opens a facet's values, unfolding More first when the facet is not pinned. */
+/** Opens a facet's values from the list of every filter. */
 function openFacet(label: string) {
-  if (!facetOption(label)) {
-    fireEvent.click(screen.getByRole("option", { name: /^Show \d+ more facets?$/ }));
-  }
   const option = facetOption(label);
   expect(option).not.toBeNull();
   if (option) fireEvent.click(option);

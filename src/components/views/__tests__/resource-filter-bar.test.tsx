@@ -35,7 +35,7 @@ const facets = {
   ],
 };
 const definitions = [
-  { field: "genome_status", label: "Genome Status", initiallyVisible: true },
+  { field: "genome_status", label: "Genome Status" },
 ];
 const explicitRql = {
   raw: "and(eq(genome_status,Complete),eq(host_name,Human))",
@@ -46,7 +46,7 @@ const layoutKey = "collection:genome";
 const layoutStorageKey = "dxkb-table-layout:v1:collection:genome";
 const pickableDefinitions = [
   { field: "a", label: "Facet A" },
-  { field: "b", label: "Facet B", initiallyVisible: false },
+  { field: "b", label: "Facet B" },
 ];
 
 function filterBarProps(overrides: Partial<FilterBarProps> = {}): FilterBarProps {
@@ -55,8 +55,6 @@ function filterBarProps(overrides: Partial<FilterBarProps> = {}): FilterBarProps
     filters: {},
     facets,
     facetStatuses: { genome_status: "ready" },
-    peekedFields: new Set(),
-    onPeekedFieldsChange: vi.fn(),
     onFacetsWanted: vi.fn(),
     onPrefetchFacets: vi.fn(),
     definitions,
@@ -70,7 +68,7 @@ function filterBarProps(overrides: Partial<FilterBarProps> = {}): FilterBarProps
 
 async function openFilters(user: ReturnType<typeof userEvent.setup>) {
   await user.click(screen.getByRole("button", { name: /^Filters/ }));
-  return screen.findByRole("listbox", { name: "Facets" });
+  return screen.findByRole("listbox", { name: "Filters" });
 }
 
 const pendingNavigation = createPendingNavigation();
@@ -379,7 +377,7 @@ describe("ResourceFilterBar picks", () => {
           facetStatuses: { genome_status: "ready", host: "ready" },
           definitions: [
             ...definitions,
-            { field: "host", label: "Host", initiallyVisible: true },
+            { field: "host", label: "Host" },
           ],
           explicitRql,
           filtersBesideRql: ["host"],
@@ -755,8 +753,29 @@ describe("ResourceFilterBar facet counts", () => {
   });
 });
 
-describe("ResourceFilterBar pinned facets", () => {
-  it("lists the facets the user pinned on an earlier visit", async () => {
+describe("ResourceFilterBar favorite facets", () => {
+  it("starts with no favorites: every facet in one plain list", async () => {
+    const user = userEvent.setup();
+    render(
+      <ResourceFilterBar
+        {...filterBarProps({
+          facets: {},
+          facetStatuses: {},
+          definitions: pickableDefinitions,
+        })}
+      />,
+    );
+    await openFilters(user);
+
+    expect(
+      screen
+        .getAllByRole("option")
+        .map((option) => option.getAttribute("aria-label")),
+    ).toEqual(["Facet A", "Facet B"]);
+    expect(screen.queryByRole("group")).not.toBeInTheDocument();
+  });
+
+  it("lists the facets the user favorited on an earlier visit", async () => {
     const user = userEvent.setup();
     localStorage.setItem(
       layoutStorageKey,
@@ -774,17 +793,12 @@ describe("ResourceFilterBar pinned facets", () => {
     await openFilters(user);
 
     expect(
-      screen.getByRole("option", { name: "Facet B, pinned" }),
+      screen.getByRole("option", { name: "Facet B, favorite" }),
     ).toBeInTheDocument();
-    expect(
-      screen.getByRole("option", { name: "Show 1 more facet" }),
-    ).toBeInTheDocument();
-    expect(
-      screen.queryByRole("option", { name: /^Facet A/ }),
-    ).not.toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Facet A" })).toBeInTheDocument();
   });
 
-  it("stores only the difference from the defaults when a facet is pinned", async () => {
+  it("stores only the difference from the defaults when a facet is favorited", async () => {
     const user = userEvent.setup();
     render(
       <ResourceFilterBar
@@ -796,12 +810,11 @@ describe("ResourceFilterBar pinned facets", () => {
       />,
     );
     await openFilters(user);
-    await user.click(screen.getByRole("option", { name: "Show 1 more facet" }));
     await user.click(screen.getByRole("option", { name: "Facet B" }));
 
-    await user.click(screen.getByRole("button", { name: "Pin" }));
+    await user.click(screen.getByRole("button", { name: "Favorite" }));
 
-    expect(screen.getByRole("button", { name: "Pinned" })).toHaveAttribute(
+    expect(screen.getByRole("button", { name: "Favorited" })).toHaveAttribute(
       "aria-pressed",
       "true",
     );
@@ -809,16 +822,16 @@ describe("ResourceFilterBar pinned facets", () => {
       JSON.parse(localStorage.getItem(layoutStorageKey) ?? "null"),
     ).toStrictEqual({ facets: { b: true } });
 
-    await user.click(screen.getByRole("button", { name: "Pinned" }));
+    await user.click(screen.getByRole("button", { name: "Favorited" }));
 
-    expect(screen.getByRole("button", { name: "Pin" })).toHaveAttribute(
+    expect(screen.getByRole("button", { name: "Favorite" })).toHaveAttribute(
       "aria-pressed",
       "false",
     );
     expect(localStorage.getItem(layoutStorageKey)).toBeNull();
   });
 
-  it("keeps the column layout stored under the same key when a facet is pinned", async () => {
+  it("keeps the column layout stored under the same key when a facet is favorited", async () => {
     const user = userEvent.setup();
     localStorage.setItem(
       layoutStorageKey,
@@ -834,10 +847,9 @@ describe("ResourceFilterBar pinned facets", () => {
       />,
     );
     await openFilters(user);
-    await user.click(screen.getByRole("option", { name: "Show 1 more facet" }));
     await user.click(screen.getByRole("option", { name: "Facet B" }));
 
-    await user.click(screen.getByRole("button", { name: "Pin" }));
+    await user.click(screen.getByRole("button", { name: "Favorite" }));
 
     await waitFor(() => {
       expect(

@@ -118,27 +118,6 @@ function rqlOf(read: URL | undefined) {
   return read?.searchParams.get("rql") ?? "";
 }
 
-/** Holds the reads `held` matches until `release` is called. */
-function holdReads(held: (url: URL) => boolean) {
-  let release!: () => void;
-  const released = new Promise<void>((resolve) => {
-    release = resolve;
-  });
-  const respond = async (route: Route, url: URL) => {
-    if (held(url)) await released;
-    await route.fulfill({
-      json: {
-        rows: [],
-        total: 401,
-        facets: facetCounts(url.searchParams.getAll("facet")),
-        page: 1,
-        pageSize: 1,
-      },
-    });
-  };
-  return { respond, release };
-}
-
 /** The `rql` of every Genome rows read (not a facet count read), in order. */
 function recordRowQueries(page: Page) {
   const queries: string[] = [];
@@ -190,7 +169,7 @@ async function holdNavigation(
 }
 
 test.describe("resource collection facet counts", () => {
-  test("reads no counts before Filters opens, then the pinned facets in one read, and none for a page change", async ({
+  test("reads no counts before Filters opens, then every facet in one read, and none for a page change", async ({
     page,
   }) => {
     const collection = await openGenomeCollection(page);
@@ -220,10 +199,12 @@ test.describe("resource collection facet counts", () => {
     expect(read.searchParams.has("sort")).toBe(false);
     expect(read.searchParams.get("keyword")).toBe("influenza");
     const requested = facetsOf(read);
-    await expect(toolbar.pinnedFacetOptions()).toHaveCount(requested.length);
+    await expect(
+      page.getByRole("listbox", { name: "Filters" }).getByRole("option"),
+    ).toHaveCount(requested.length);
     expect(requested).toContain("genome_status");
-    expect(requested).not.toContain("superkingdom");
-    expect(requested).not.toContain("genus");
+    expect(requested).toContain("superkingdom");
+    expect(requested).toContain("genus");
 
     await toolbar.closeFilters();
     await collection.goToPage(2);
@@ -236,54 +217,30 @@ test.describe("resource collection facet counts", () => {
     expect(reads).toHaveLength(1);
   });
 
-  test("counts the More facets together once More is unfolded, leaving the counted ones as they are", async ({
+  test("moves a starred facet into Favorites at once and reads no more counts", async ({
     page,
   }) => {
     const collection = await openGenomeCollection(page);
     const { toolbar } = collection;
-    const genus = holdReads((url) => facetsOf(url).includes("genus"));
-    const reads = await routeFacetReads(page, genus.respond);
+    const reads = await routeFacetReads(page);
 
     await collection.goto("influenza");
-    await toolbar.openFacet("Genome Status");
+    await toolbar.openFacet("Genus");
     await expect(
-      toolbar.facetValueOption("Genome Status", "Complete", 5),
+      toolbar.facetValueOption("Genus", "Alphainfluenzavirus", 5),
     ).toBeVisible();
     expect(reads).toHaveLength(1);
+    await expect(toolbar.favoriteToggle()).toHaveAttribute("aria-pressed", "false");
+    await toolbar.favoriteToggle().click();
+    await expect(toolbar.favoriteToggle()).toHaveAttribute("aria-pressed", "true");
 
-    await toolbar.openFacet("Genus");
-    await expect.poll(() => reads.length).toBe(2);
-    const more = facetsOf(reads[1]);
-    expect(more).toContain("genus");
-    expect(more).toContain("superkingdom");
-    expect(more).not.toContain("genome_status");
-    await expect(toolbar.valuePlaceholders("Genus").first()).toBeAttached();
-    await expect(toolbar.noValues("Genus")).toHaveCount(0);
-    await toolbar.openFacet("Genome Status");
-    await expect(
-      toolbar.facetValueOption("Genome Status", "Complete", 5),
-    ).toBeVisible();
-    await expect(toolbar.valuePlaceholders("Genome Status")).toHaveCount(0);
-
-    genus.release();
-    await toolbar.openFacet("Genus");
-    await expect(
-      toolbar.facetValueOption("Genus", "Alphainfluenzavirus", 5),
-    ).toBeVisible();
-    await expect(toolbar.valuePlaceholders("Genus")).toHaveCount(0);
-    await expect(toolbar.pinToggle()).toHaveAttribute("aria-pressed", "false");
-    await toolbar.pinToggle().click();
-    await expect(toolbar.pinToggle()).toHaveAttribute("aria-pressed", "true");
-    await toolbar.closeFilters();
-    await toolbar.openFilters();
     await expect(toolbar.facetOption("Genus")).toHaveAccessibleName(
-      "Genus, pinned",
+      "Genus, favorite",
     );
-    await toolbar.openFacet("Genus");
     await expect(
-      toolbar.facetValueOption("Genus", "Alphainfluenzavirus", 5),
-    ).toBeVisible();
-    expect(reads).toHaveLength(2);
+      page.getByRole("listbox", { name: "Filters" }).getByRole("option").first(),
+    ).toHaveAccessibleName("Genus, favorite");
+    expect(reads).toHaveLength(1);
   });
 
   test("after a pick, re-reads the other facets with the filter and keeps the picked facet's own counts", async ({
@@ -299,7 +256,7 @@ test.describe("resource collection facet counts", () => {
       toolbar.facetValueOption("Genome Status", "Complete", 5),
     ).toBeVisible();
     expect(reads).toHaveLength(1);
-    const pinned = facetsOf(reads[0]);
+    const requestedFacets = facetsOf(reads[0]);
 
     await toolbar.pickFacetValue("Genome Status", "Complete");
     await expect(toolbar.filtersButton()).toHaveAccessibleName(
@@ -308,7 +265,7 @@ test.describe("resource collection facet counts", () => {
     await expect.poll(() => reads.length).toBe(2);
     const afterPick = reads[1];
     expect(facetsOf(afterPick)).toEqual(
-      pinned.filter((field) => field !== "genome_status"),
+      requestedFacets.filter((field) => field !== "genome_status"),
     );
     expect(afterPick.searchParams.get("rql")).toContain(
       "eq(genome_status,Complete)",

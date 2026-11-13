@@ -30,11 +30,11 @@ export class CollectionToolbar {
   }
 
   facetList(): Locator {
-    return this.page.getByRole("listbox", { name: "Facets" });
+    return this.page.getByRole("listbox", { name: "Filters" });
   }
 
   facetSearch(): Locator {
-    return this.page.getByRole("combobox", { name: "Find a facet or value" });
+    return this.page.getByRole("combobox", { name: "Find a filter or value" });
   }
 
   async openFilters(): Promise<void> {
@@ -54,24 +54,9 @@ export class CollectionToolbar {
     });
   }
 
-  pinnedFacetOptions(): Locator {
-    return this.facetList().getByRole("option", { name: /, pinned$/ });
-  }
-
-  moreFacetsToggle(): Locator {
-    return this.facetList().getByRole("option", {
-      name: /^(?:Show|Hide) \d+ more facets?$/,
-    });
-  }
-
   async openFacet(label: string): Promise<void> {
     await this.openFilters();
     const option = this.facetOption(label);
-    if (!(await option.isVisible())) {
-      const toggle = this.moreFacetsToggle();
-      await expect(toggle).toHaveAccessibleName(/^Show /);
-      await toggle.click();
-    }
     await option.click();
     await expect(option).toHaveAttribute("aria-selected", "true");
   }
@@ -100,8 +85,8 @@ export class CollectionToolbar {
     return this.valueList(label).getByText("No values in these results");
   }
 
-  pinToggle(): Locator {
-    return this.page.getByRole("button", { name: /^Pin(?:ned)?$/ });
+  favoriteToggle(): Locator {
+    return this.page.getByRole("button", { name: /^Favorite(?:d)?$/ });
   }
 
   async pickFacetValue(label: string, value: string): Promise<void> {

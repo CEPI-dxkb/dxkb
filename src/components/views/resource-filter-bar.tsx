@@ -9,7 +9,7 @@ import type {
 } from "@/hooks/views/use-resource-collection";
 import {
   diffBooleanOverrides,
-  resolveFacetVisibility,
+  resolveFavoriteFacets,
 } from "@/lib/table-layout";
 import type { CollectionState } from "@/lib/views/collection-state";
 import { CollectionToolbar } from "./collection-filters/collection-toolbar";
@@ -29,8 +29,6 @@ interface ResourceFilterBarProps extends CollectionColumnControls {
   onRetryFacets?: () => void;
   facetsRetrying?: boolean;
   facetsUnavailable?: boolean;
-  peekedFields: ReadonlySet<string>;
-  onPeekedFieldsChange: (fields: ReadonlySet<string>) => void;
   onFacetsWanted: () => void;
   onPrefetchFacets: () => void;
   definitions: readonly ResourceCollectionFacet[];
@@ -55,8 +53,6 @@ export function ResourceFilterBar({
   onRetryFacets,
   facetsRetrying = false,
   facetsUnavailable = false,
-  peekedFields,
-  onPeekedFieldsChange,
   onFacetsWanted,
   onPrefetchFacets,
   definitions,
@@ -95,10 +91,10 @@ export function ResourceFilterBar({
     { normalize: (value) => value.trim() },
   );
   const [layout, updateLayout] = useTableLayout(layoutKey);
-  const { defaults: defaultFacetVisibility, visibility: facetVisibility } =
-    resolveFacetVisibility(definitions, layout.facets);
-  const pinnedFields = new Set(
-    Object.keys(facetVisibility).filter((field) => facetVisibility[field]),
+  const { defaults: noFavorites, favorites: favoriteState } =
+    resolveFavoriteFacets(definitions, layout.facets);
+  const favoriteFields = new Set(
+    Object.keys(favoriteState).filter((field) => favoriteState[field]),
   );
 
   const setFieldValues = (field: string, values: string[]) => {
@@ -127,17 +123,15 @@ export function ResourceFilterBar({
       onKeywordChange={setKeywordDraft}
       keywordPlaceholder={keywordPlaceholder}
       definitions={definitions}
-      pinnedFields={pinnedFields}
-      setFieldPinned={(field, pinned) => {
+      favoriteFields={favoriteFields}
+      setFieldFavorite={(field, favorite) => {
         updateLayout({
-          facets: diffBooleanOverrides(defaultFacetVisibility, {
-            ...facetVisibility,
-            [field]: pinned,
+          facets: diffBooleanOverrides(noFavorites, {
+            ...favoriteState,
+            [field]: favorite,
           }),
         });
       }}
-      peekedFields={peekedFields}
-      setPeekedFields={onPeekedFieldsChange}
       facets={facets}
       facetStatus={(field) => facetStatuses[field] ?? "loading"}
       facetsError={facetsError}

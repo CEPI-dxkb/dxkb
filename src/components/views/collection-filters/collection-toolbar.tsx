@@ -26,7 +26,6 @@ import {
   type FacetGroup,
 } from "./filters-menu";
 import type { CollectionToolbarProps } from "./types";
-import { useFacetActions } from "./use-facet-actions";
 
 export function CollectionToolbar(props: CollectionToolbarProps) {
   const {
@@ -34,14 +33,15 @@ export function CollectionToolbar(props: CollectionToolbarProps) {
     onKeywordChange,
     keywordPlaceholder,
     definitions,
-    pinnedFields,
-    peekedFields,
+    favoriteFields,
+    setFieldFavorite,
     facets,
     facetStatus,
     facetsError,
     onRetryFacets,
     facetsRetrying,
     facetsUnavailable,
+    onFacetsWanted,
     onPrefetchFacets,
     filters,
     toggleValue,
@@ -81,23 +81,33 @@ export function CollectionToolbar(props: CollectionToolbarProps) {
   const hiddenPills = rowFields.filter((field) => overflow.has(field));
   const hiddenPillLabels = hiddenPills.map(labelFor).join(", ");
 
-  const liveGroup = (field: string): FacetGroup => {
-    if (hasFilter(field)) return "active";
-    if (pinnedFields.has(field)) return "pinned";
-    return "more";
-  };
+  const starredGroup = (field: string): FacetGroup =>
+    favoriteFields.has(field) ? "favorite" : "other";
+  const liveGroup = (field: string): FacetGroup =>
+    hasFilter(field) ? "active" : starredGroup(field);
+  // Opens on the top row: the first active facet, else the first favorite,
+  // else the first facet.
   const menu = useFiltersMenuState(
     menuFields,
     activeFields.at(0) ??
-      definedFields.find((field) => pinnedFields.has(field)) ??
+      definedFields.find((field) => favoriteFields.has(field)) ??
+      definedFields.at(0) ??
       null,
     () => new Map(menuFields.map((field) => [field, liveGroup(field)])),
   );
-  const groupOf = (field: string): FacetGroup =>
-    (menu.open ? menu.groupAtOpen(field) : undefined) ?? liveGroup(field);
+  // A facet that was active when the menu opened keeps its row while it is
+  // open, so a pick never moves it; a star moves a facet between Favorites and
+  // All filters at once.
+  const groupOf = (field: string): FacetGroup => {
+    const opened = menu.open ? menu.groupAtOpen(field) : undefined;
+    if (opened === "active") return "active";
+    return opened === undefined ? liveGroup(field) : starredGroup(field);
+  };
 
-  const idle = !menu.open && heldField === null;
-  const facetActions = useFacetActions(props, idle);
+  const toggleFavorite = (field: string) => {
+    if (!isDefined(field)) return;
+    setFieldFavorite(field, !favoriteFields.has(field));
+  };
 
   const viewOf = (field: string): FacetView => {
     const values = filters[field] ?? [];
@@ -111,12 +121,9 @@ export function CollectionToolbar(props: CollectionToolbarProps) {
     };
   };
 
-  const refreshing = [...pinnedFields, ...peekedFields].some(
+  const refreshing = definedFields.some(
     (field) => facetStatus(field) === "stale",
   );
-  const countActiveFacets = () => {
-    facetActions.peek(activeFields);
-  };
 
   const facetsErrorMessage =
     facetsError && `Could not load filter values: ${facetsError}`;
@@ -139,7 +146,7 @@ export function CollectionToolbar(props: CollectionToolbarProps) {
             menu={{
               ...menu,
               setOpen: (next) => {
-                if (next) countActiveFacets();
+                if (next) onFacetsWanted();
                 menu.setOpen(next);
               },
             }}
@@ -149,7 +156,8 @@ export function CollectionToolbar(props: CollectionToolbarProps) {
             isDefined={isDefined}
             labelFor={labelFor}
             filters={filters}
-            facetActions={facetActions}
+            favoriteFields={favoriteFields}
+            onToggleFavorite={toggleFavorite}
             refreshing={refreshing}
             activeCount={activeFields.length}
             toggleValue={toggleValue}
@@ -189,7 +197,7 @@ export function CollectionToolbar(props: CollectionToolbarProps) {
               onOpenChange={(open) => {
                 if (open) {
                   setHeldField(field);
-                  countActiveFacets();
+                  onFacetsWanted();
                 } else {
                   setHeldField((current) => (current === field ? null : current));
                 }
@@ -202,7 +210,7 @@ export function CollectionToolbar(props: CollectionToolbarProps) {
               aria-label={`${String(hiddenPills.length)} more filters: ${hiddenPillLabels}. Open in the Filters menu`}
               title={hiddenPillLabels}
               onClick={() => {
-                countActiveFacets();
+                onFacetsWanted();
                 menu.openAt(hiddenPills[0]);
               }}
               className="shrink-0 rounded-md outline-none focus-visible:ring-3 focus-visible:ring-ring/50"

@@ -7,74 +7,65 @@ stubMenuLayout();
 
 async function openFilters(user: ReturnType<typeof userEvent.setup>) {
   await user.click(screen.getByRole("button", { name: /^Filters/ }));
-  return screen.findByRole("listbox", { name: "Facets" });
+  return screen.findByRole("listbox", { name: "Filters" });
 }
 
-const facetList = () => screen.getByRole("listbox", { name: "Facets" });
+const facetList = () => screen.getByRole("listbox", { name: "Filters" });
 const leftSearch = () =>
-  screen.getByRole("combobox", { name: "Find a facet or value" });
+  screen.getByRole("combobox", { name: "Find a filter or value" });
 const groupNamed = (name: string) =>
   within(facetList()).getByRole("group", { name });
 const valueList = (label: string) =>
   screen.getByRole("listbox", { name: `${label} values` });
 
 describe("FiltersMenu groups", () => {
-  it("lists active facets, then the pinned set, then a folded More group", async () => {
+  it("lists active facets, then the favorites, then the other facets", async () => {
     const user = userEvent.setup();
     renderToolbar({ filters: { host_name: ["Human"] } });
     await openFilters(user);
 
     expect(
       within(groupNamed("Active")).getByRole("option", {
-        name: "Host Name: Human, pinned",
+        name: "Host Name: Human, favorite",
       }),
     ).toBeInTheDocument();
     expect(
-      within(groupNamed("Facets")).getByRole("option", {
-        name: "Genome Status, pinned",
+      within(groupNamed("Favorites")).getByRole("option", {
+        name: "Genome Status, favorite",
       }),
     ).toBeInTheDocument();
-
-    const more = screen.getByRole("option", { name: "Show 2 more facets" });
-    expect(more).toHaveTextContent("More2Show all");
     expect(
-      screen.queryByRole("option", { name: "Isolation Country" }),
-    ).not.toBeInTheDocument();
+      within(groupNamed("All filters"))
+        .getAllByRole("option")
+        .map((option) => option.getAttribute("aria-label"))
+    ).toEqual(["Isolation Country", "Species"]);
 
     expect(valueList("Host Name")).toBeInTheDocument();
   });
 
-  it("unfolds and folds the More group from its header", async () => {
+  it("lists every facet at once, with no fold to open", async () => {
     const user = userEvent.setup();
     renderToolbar();
     await openFilters(user);
 
-    await user.click(screen.getByRole("option", { name: "Show 2 more facets" }));
-
-    const header = screen.getByRole("option", { name: "Hide 2 more facets" });
-    expect(header).toHaveTextContent("Show less");
-    const moreGroup = within(facetList()).getByRole("group", {
-      name: "More facets",
-    });
     expect(
-      within(moreGroup)
-        .getAllByRole("option")
-        .map((option) => option.getAttribute("aria-label")),
-    ).toEqual(["Isolation Country", "Species"]);
-
-    await user.click(header);
-
-    expect(
-      screen.getByRole("option", { name: "Show 2 more facets" }),
-    ).toBeInTheDocument();
-    expect(
-      screen.queryByRole("option", { name: "Isolation Country" }),
+      screen.queryByRole("option", { name: /more facets?$/ }),
     ).not.toBeInTheDocument();
+    expect(
+      within(groupNamed("Favorites"))
+        .getAllByRole("option")
+        .map((option) => option.getAttribute("aria-label"))
+    ).toEqual(["Genome Status, favorite", "Host Name, favorite"]);
+    expect(
+      within(groupNamed("All filters"))
+        .getAllByRole("option")
+        .map((option) => option.getAttribute("aria-label"))
+    ).toEqual(["Isolation Country", "Species"]);
   });
 
-  it("drops the group headings when the pinned facets are all there is", async () => {
+  it("drops the group headings when the favorite facets are all there is", async () => {
     const user = userEvent.setup();
-    renderToolbar({ pinned: toolbarFields() });
+    renderToolbar({ favorites: toolbarFields() });
     await openFilters(user);
 
     expect(
@@ -83,7 +74,43 @@ describe("FiltersMenu groups", () => {
     expect(within(facetList()).getAllByRole("option")).toHaveLength(4);
   });
 
-  it("unfolds More while searching, so a facet outside the set is found", async () => {
+  it("explains beside the Favorites heading that favorites are kept per data type", async () => {
+    const user = userEvent.setup();
+    renderToolbar();
+    await openFilters(user);
+
+    const info = within(groupNamed("Favorites")).getByRole("button", {
+      name: "About favorites",
+    });
+
+    expect(info).toHaveAccessibleDescription(
+      "Each data type (Genomes, Features, etc.) keeps its own set of favorites.",
+    );
+  });
+
+  it("shows no favorites note while nothing is a favorite", async () => {
+    const user = userEvent.setup();
+    renderToolbar({ favorites: [] });
+    await openFilters(user);
+
+    expect(
+      screen.queryByRole("button", { name: "About favorites" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("drops the group headings when nothing is a favorite", async () => {
+    const user = userEvent.setup();
+    renderToolbar({ favorites: [] });
+    await openFilters(user);
+
+    expect(
+      within(facetList()).queryByRole("group"),
+    ).not.toBeInTheDocument();
+    expect(within(facetList()).getAllByRole("option")).toHaveLength(4);
+    expect(valueList("Genome Status")).toBeInTheDocument();
+  });
+
+  it("finds a facet outside the favorites by search", async () => {
     const user = userEvent.setup();
     renderToolbar();
     await openFilters(user);
@@ -92,18 +119,13 @@ describe("FiltersMenu groups", () => {
 
     expect(screen.getByRole("option", { name: "Species" })).toBeInTheDocument();
     expect(
-      screen.queryByRole("option", { name: /more facets?$/ }),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole("option", { name: "Genome Status, pinned" }),
+      screen.queryByRole("option", { name: "Genome Status, favorite" }),
     ).not.toBeInTheDocument();
     expect(screen.getByRole("option", { name: "Species" })).toHaveAttribute(
       "data-active",
       "true",
     );
-    expect(
-      screen.queryByRole("listbox", { name: "Species values" }),
-    ).not.toBeInTheDocument();
+    expect(valueList("Species")).toBeInTheDocument();
   });
 
   it("says so when nothing matches the search", async () => {
@@ -123,7 +145,6 @@ describe("FiltersMenu value search", () => {
     const user = userEvent.setup();
     const { spies } = renderToolbar();
     await openFilters(user);
-    await user.click(screen.getByRole("option", { name: "Show 2 more facets" }));
 
     await user.type(leftSearch(), "germ");
 
@@ -174,7 +195,7 @@ describe("FiltersMenu value search", () => {
 });
 
 describe("FiltersMenu counting", () => {
-  it("counts the active facets outside the pinned set when the menu opens", async () => {
+  it("asks for the counts when the menu opens", async () => {
     const user = userEvent.setup();
     const { spies } = renderToolbar({
       filters: { isolation_country: ["Germany"] },
@@ -183,39 +204,24 @@ describe("FiltersMenu counting", () => {
     await openFilters(user);
 
     expect(spies.onFacetsWanted).toHaveBeenCalled();
-    expect(spies.setPeekedFields).toHaveBeenCalledOnce();
-    expect(spies.setPeekedFields).toHaveBeenCalledWith(
-      new Set(["isolation_country"]),
-    );
   });
 
-  it("counts nothing outside the pinned set until More is unfolded, then all of it at once", async () => {
+  it("opens any facet's checklist at once, loading until its counts arrive", async () => {
     const user = userEvent.setup();
-    const { spies } = renderToolbar();
+    renderToolbar();
     await openFilters(user);
-    expect(spies.onFacetsWanted).toHaveBeenCalled();
-    expect(spies.setPeekedFields).not.toHaveBeenCalled();
-
-    await user.click(screen.getByRole("option", { name: "Show 2 more facets" }));
-
-    expect(spies.setPeekedFields).toHaveBeenCalledOnce();
-    expect(spies.setPeekedFields).toHaveBeenCalledWith(
-      new Set(["isolation_country", "species"]),
-    );
 
     await user.click(screen.getByRole("option", { name: "Species" }));
 
-    expect(spies.setPeekedFields).toHaveBeenCalledOnce();
     expect(valueList("Species")).toBeInTheDocument();
     expect(valueList("Species")).toHaveAttribute("aria-busy", "true");
     expect(screen.getByText("Loading values…")).toBeInTheDocument();
   });
 
-  it("switches the pane on hover once More is counted", async () => {
+  it("switches the pane on hover", async () => {
     const user = userEvent.setup();
     renderToolbar();
     await openFilters(user);
-    await user.click(screen.getByRole("option", { name: "Show 2 more facets" }));
 
     fireEvent.mouseMove(screen.getByRole("option", { name: "Species" }), {
       clientX: 40,
@@ -225,36 +231,12 @@ describe("FiltersMenu counting", () => {
     expect(valueList("Species")).toBeInTheDocument();
   });
 
-  it("only highlights a More facet a search lists while More is folded, and counts More when it is opened", async () => {
-    const user = userEvent.setup();
-    const { spies } = renderToolbar();
-    await openFilters(user);
-
-    await user.type(leftSearch(), "spec");
-    const species = screen.getByRole("option", { name: "Species" });
-    fireEvent.mouseMove(species, { clientX: 40, clientY: 120 });
-
-    expect(species).toHaveAttribute("data-active", "true");
-    expect(spies.setPeekedFields).not.toHaveBeenCalled();
-    expect(
-      screen.queryByRole("listbox", { name: "Species values" }),
-    ).not.toBeInTheDocument();
-
-    await user.keyboard("{Enter}");
-
-    expect(spies.setPeekedFields).toHaveBeenCalledWith(
-      new Set(["isolation_country", "species"]),
-    );
-    expect(valueList("Species")).toBeInTheDocument();
-  });
-
-  it("ignores a row moving under a still pointer, as unfolding More scrolls the list", async () => {
+  it("ignores a row moving under a still pointer", async () => {
     const user = userEvent.setup();
     renderToolbar();
     await openFilters(user);
-    await user.click(screen.getByRole("option", { name: "Show 2 more facets" }));
     fireEvent.mouseMove(
-      screen.getByRole("option", { name: "Genome Status, pinned" }),
+      screen.getByRole("option", { name: "Genome Status, favorite" }),
       { clientX: 40, clientY: 60 },
     );
 
@@ -266,88 +248,101 @@ describe("FiltersMenu counting", () => {
 
     expect(valueList("Genome Status")).toBeInTheDocument();
   });
-
-  it("drops the unfiltered More counts when the menu closes and keeps a filtered one", async () => {
-    const user = userEvent.setup();
-    const { state } = renderToolbar();
-    await openFilters(user);
-    await user.click(screen.getByRole("option", { name: "Show 2 more facets" }));
-    await user.click(screen.getByRole("option", { name: "Isolation Country" }));
-    await user.click(
-      within(valueList("Isolation Country")).getByRole("option", {
-        name: /^France/,
-      }),
-    );
-    expect(state.peeked).toEqual(new Set(["isolation_country", "species"]));
-
-    await user.keyboard("{Escape}");
-
-    await waitFor(() => {
-      expect(state.peeked).toEqual(new Set(["isolation_country"]));
-    });
-  });
 });
 
-describe("FiltersMenu pinning", () => {
-  it("pins a More facet from its row without moving it while the menu is open", async () => {
+describe("FiltersMenu favorites", () => {
+  it("moves a facet into Favorites at once when it is starred from its row", async () => {
     const user = userEvent.setup();
     const { spies } = renderToolbar();
     await openFilters(user);
-    await user.click(screen.getByRole("option", { name: "Show 2 more facets" }));
     const row = screen.getByRole("option", { name: "Species" });
 
-    await user.click(within(row).getByTitle("Pin to keep this facet in your set"));
+    await user.click(within(row).getByTitle("Add to favorites"));
 
-    expect(spies.setFieldPinned).toHaveBeenCalledWith("species", true);
-    const moreGroup = within(facetList()).getByRole("group", {
-      name: "More facets",
-    });
+    expect(spies.setFieldFavorite).toHaveBeenCalledWith("species", true);
     expect(
-      within(moreGroup).getByRole("option", { name: "Species, pinned" }),
-    ).toBeInTheDocument();
+      within(groupNamed("Favorites"))
+        .getAllByRole("option")
+        .map((option) => option.getAttribute("aria-label")),
+    ).toEqual(["Genome Status, favorite", "Host Name, favorite", "Species, favorite"]);
+    expect(
+      within(groupNamed("All filters"))
+        .getAllByRole("option")
+        .map((option) => option.getAttribute("aria-label")),
+    ).toEqual(["Isolation Country"]);
+  });
 
-    await user.keyboard("{Escape}");
-    await waitFor(() => {
-      expect(
-        screen.queryByRole("listbox", { name: "Facets" }),
-      ).not.toBeInTheDocument();
-    });
+  it("moves a facet back to All filters at once when it is unstarred", async () => {
+    const user = userEvent.setup();
+    renderToolbar({ favorites: ["genome_status", "host_name", "species"] });
     await openFilters(user);
+    const row = screen.getByRole("option", { name: "Species, favorite" });
+
+    await user.click(
+      within(row).getByTitle("Favorite: its counts load up front. Click to remove."),
+    );
+
     expect(
-      within(groupNamed("Facets")).getByRole("option", {
-        name: "Species, pinned",
+      within(groupNamed("Favorites"))
+        .getAllByRole("option")
+        .map((option) => option.getAttribute("aria-label")),
+    ).toEqual(["Genome Status, favorite", "Host Name, favorite"]);
+    expect(
+      within(groupNamed("All filters"))
+        .getAllByRole("option")
+        .map((option) => option.getAttribute("aria-label")),
+    ).toEqual(["Isolation Country", "Species"]);
+  });
+
+  it("keeps a facet out of Active while the menu is open, so a pick never moves its row", async () => {
+    const user = userEvent.setup();
+    renderToolbar();
+    await openFilters(user);
+
+    await user.click(
+      within(valueList("Genome Status")).getByRole("option", { name: /^WGS/ }),
+    );
+
+    expect(
+      within(groupNamed("Favorites")).getByRole("option", {
+        name: "Genome Status: WGS, favorite",
       }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("option", { name: "Show 1 more facet" }),
-    ).toBeInTheDocument();
+      within(facetList()).queryByRole("group", { name: "Active" }),
+    ).not.toBeInTheDocument();
   });
 
-  it("toggles the shown facet's pin from the pane header", async () => {
+  it("toggles the shown facet's favorite from the pane header", async () => {
     const user = userEvent.setup();
-    const { spies, state } = renderToolbar();
+    const { spies } = renderToolbar();
     await openFilters(user);
-    const pin = screen.getByRole("button", { name: "Pinned" });
-    expect(pin).toHaveAttribute("aria-pressed", "true");
+    const favoriteToggle = screen.getByRole("button", { name: "Favorited" });
+    expect(favoriteToggle).toHaveAttribute("aria-pressed", "true");
 
-    await user.click(pin);
+    await user.click(favoriteToggle);
 
-    expect(spies.setFieldPinned).toHaveBeenLastCalledWith("genome_status", false);
-    expect(screen.getByRole("button", { name: "Pin" })).toHaveAttribute(
+    expect(spies.setFieldFavorite).toHaveBeenLastCalledWith("genome_status", false);
+    expect(screen.getByRole("button", { name: "Favorite" })).toHaveAttribute(
       "aria-pressed",
       "false",
     );
-    expect(state.peeked).toEqual(new Set(["genome_status"]));
     expect(
-      within(groupNamed("Facets")).getByRole("option", { name: "Genome Status" }),
+      within(groupNamed("All filters")).getByRole("option", {
+        name: "Genome Status",
+      }),
     ).toBeInTheDocument();
     expect(valueList("Genome Status")).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "Pin" }));
+    await user.click(screen.getByRole("button", { name: "Favorite" }));
 
-    expect(spies.setFieldPinned).toHaveBeenLastCalledWith("genome_status", true);
-    expect(state.peeked).toEqual(new Set());
-    expect(screen.getByRole("button", { name: "Pinned" })).toHaveAttribute(
+    expect(spies.setFieldFavorite).toHaveBeenLastCalledWith("genome_status", true);
+    expect(
+      within(groupNamed("Favorites")).getByRole("option", {
+        name: "Genome Status, favorite",
+      }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Favorited" })).toHaveAttribute(
       "aria-pressed",
       "true",
     );
@@ -366,7 +361,7 @@ describe("FiltersMenu keyboard", () => {
 
     await user.keyboard("{ArrowDown}");
 
-    const host = screen.getByRole("option", { name: "Host Name, pinned" });
+    const host = screen.getByRole("option", { name: "Host Name, favorite" });
     expect(search).toHaveAttribute("aria-activedescendant", host.id);
     expect(valueList("Host Name")).toBeInTheDocument();
 
@@ -374,36 +369,9 @@ describe("FiltersMenu keyboard", () => {
 
     expect(search).toHaveAttribute(
       "aria-activedescendant",
-      screen.getByRole("option", { name: "Genome Status, pinned" }).id,
+      screen.getByRole("option", { name: "Genome Status, favorite" }).id,
     );
     expect(valueList("Genome Status")).toBeInTheDocument();
-  });
-
-  it("folds More with Enter and Space on its header", async () => {
-    const user = userEvent.setup();
-    renderToolbar();
-    await openFilters(user);
-    await waitFor(() => {
-      expect(leftSearch()).toHaveFocus();
-    });
-
-    await user.keyboard("{ArrowDown}{ArrowDown}");
-    expect(leftSearch()).toHaveAttribute(
-      "aria-activedescendant",
-      screen.getByRole("option", { name: "Show 2 more facets" }).id,
-    );
-
-    await user.keyboard("{Enter}");
-    expect(
-      screen.getByRole("option", { name: "Hide 2 more facets" }),
-    ).toBeInTheDocument();
-    expect(screen.getByRole("option", { name: "Species" })).toBeInTheDocument();
-
-    await user.keyboard(" ");
-    expect(
-      screen.getByRole("option", { name: "Show 2 more facets" }),
-    ).toBeInTheDocument();
-    expect(leftSearch()).toHaveValue("");
   });
 
   it("moves into the checklist with → or Enter and back with ←", async () => {
@@ -436,7 +404,7 @@ describe("FiltersMenu keyboard", () => {
     expect(leftSearch()).toHaveFocus();
   });
 
-  it("focuses the new checklist when Enter or → opens an uncounted facet", async () => {
+  it("focuses the new checklist when Enter or → opens a facet", async () => {
     const user = userEvent.setup();
     renderToolbar();
     await openFilters(user);
@@ -557,9 +525,9 @@ describe("FiltersMenu checklist", () => {
       within(groupNamed("Active")).getByRole("option", { name: "strain: K-12" }),
     ).toBeInTheDocument();
     expect(
-      screen.getByText("This filter has no facet, so its values are not counted."),
+      screen.getByText("This filter has no list of values, so its values are not counted."),
     ).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /^Pin/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^Favorite/ })).not.toBeInTheDocument();
   });
 });
 

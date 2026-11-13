@@ -290,11 +290,22 @@ export function serializeCollectionState<Sort extends string>(
 
 /**
  * While an rql names a default's field the default is not applied implicitly
- * (`defaultShadowed`), so without this a next state that drops that rql could
- * not tell "never applied" from "removed" and would serialize the cleared
- * marker. A filter with values, or one the change itself set, is left alone.
- * A full-state replacement skips it, since only the caller knows whether the
- * change meant to remove everything.
+ * (`defaultShadowed`), so a change that moves the rql across that line has to
+ * move the default with it, in both directions:
+ *
+ * - The rql starts naming the field: a stored value equal to the default was
+ *   the implicit one (the previous state did not shadow it), so it is dropped.
+ *   Left in, it would be written beside the rql as an explicit pick and AND
+ *   with the rql's own choice (`eq(annotation,RefSeq)` and `annotation=PATRIC`
+ *   match nothing).
+ * - The rql stops naming it: the default is restored, since without this the
+ *   next state could not tell "never applied" from "removed" and would
+ *   serialize the cleared marker.
+ *
+ * A value the change itself set, a stored value that differs from the default,
+ * and any value beside an rql that already named the field (an explicit pick)
+ * are left alone. A full-state replacement skips this, since only the caller
+ * knows whether the change meant to remove everything.
  */
 export function withUnshadowedDefaults<Sort extends string>(
   previousRql: string | undefined,
@@ -302,16 +313,21 @@ export function withUnshadowedDefaults<Sort extends string>(
   options: CollectionStateOptions<Sort>,
   explicit: ReadonlySet<string> = new Set(),
 ): CollectionState<Sort> {
-  if (previousRql === undefined || !options.defaultFilters) return next;
+  if (!options.defaultFilters) return next;
   const nextRql = next.rql || undefined;
   let filters = next.filters;
   for (const [name, fallback] of Object.entries(options.defaultFilters)) {
-    if (
-      !defaultShadowed(name, previousRql, options) ||
-      defaultShadowed(name, nextRql, options) ||
-      explicit.has(name)
-    )
+    if (explicit.has(name)) continue;
+    const wasShadowed = defaultShadowed(name, previousRql, options);
+    if (defaultShadowed(name, nextRql, options)) {
+      if (!wasShadowed && sameValues(filters[name] ?? [], fallback)) {
+        filters = Object.fromEntries(
+          Object.entries(filters).filter(([key]) => key !== name),
+        );
+      }
       continue;
+    }
+    if (!wasShadowed) continue;
     if (Object.hasOwn(filters, name) && filters[name].length > 0) continue;
     filters = { ...filters, [name]: [...fallback] };
   }

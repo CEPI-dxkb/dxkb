@@ -650,6 +650,110 @@ describe("default filters", () => {
     ).toEqual({});
   });
 
+  // The implicit default parsed into the state would otherwise be written
+  // beside the rql and AND with its own choice: the rql and `host=human` match
+  // nothing.
+  describe("an update that sets an rql naming the default's field", () => {
+    const state = (
+      rql: string | undefined,
+      filters: Record<string, string[]>,
+    ) => ({ rql, filters, page: 1, sort: "relevance" as const });
+
+    it("drops the implicit default from the written URL", () => {
+      expect(
+        updateCollectionSearchParams(
+          {},
+          { rql: "eq(host,swine)" },
+          withDefault,
+        ).toString(),
+      ).toBe("rql=eq%28host%2Cswine%29");
+    });
+
+    it("drops it when the previous rql did not name the field either", () => {
+      expect(
+        updateCollectionSearchParams(
+          { rql: "eq(public,true)" },
+          { rql: "eq(host,swine)" },
+          withDefault,
+        ).toString(),
+      ).toBe("rql=eq%28host%2Cswine%29");
+    });
+
+    it("keeps the other filters the update leaves in place", () => {
+      expect(
+        updateCollectionSearchParams(
+          { taxon_id: "2" },
+          { rql: "eq(host,swine)" },
+          withDefault,
+        ).toString(),
+      ).toBe("rql=eq%28host%2Cswine%29&taxon_id=2");
+    });
+
+    it("keeps an explicit pick equal to the default set in the same update", () => {
+      expect(
+        updateCollectionSearchParams(
+          {},
+          { rql: "eq(host,swine)", filters: { host: ["human"] } },
+          withDefault,
+        ).toString(),
+      ).toBe("rql=eq%28host%2Cswine%29&host=human");
+    });
+
+    it("keeps a different stored value, which the user chose", () => {
+      expect(
+        updateCollectionSearchParams(
+          { host: "swine" },
+          { rql: "eq(host,swine)" },
+          withDefault,
+        ).toString(),
+      ).toBe("rql=eq%28host%2Cswine%29&host=swine");
+    });
+
+    it("removes the implicit default from a state with no previous rql", () => {
+      const next = state("eq(host,swine)", { host: ["human"] });
+      expect(
+        withUnshadowedDefaults(undefined, next, withDefault).filters,
+      ).toEqual({});
+      expect(
+        withUnshadowedDefaults(
+          "eq(public,true)",
+          state("eq(host,swine)", { host: ["human"], taxon_id: ["2"] }),
+          withDefault,
+        ).filters,
+      ).toEqual({ taxon_id: ["2"] });
+    });
+
+    it("keeps a stored value that differs from the default", () => {
+      const next = state("eq(host,swine)", { host: ["swine"] });
+      expect(withUnshadowedDefaults(undefined, next, withDefault)).toBe(next);
+    });
+
+    it("keeps a value the change set explicitly, even equal to the default", () => {
+      const next = state("eq(host,swine)", { host: ["human"] });
+      expect(
+        withUnshadowedDefaults(
+          undefined,
+          next,
+          withDefault,
+          new Set(["host"]),
+        ),
+      ).toBe(next);
+    });
+
+    it("leaves a filter alone when the previous rql already named its field", () => {
+      // Whatever is stored beside such an rql is an explicit pick.
+      const next = state("eq(host,pig)", { host: ["human"] });
+      expect(withUnshadowedDefaults("eq(host,swine)", next, withDefault)).toBe(
+        next,
+      );
+    });
+
+    it("returns the state untouched without defaults", () => {
+      const next = state("eq(host,swine)", { host: ["human"] });
+      expect(withUnshadowedDefaults(undefined, next, options)).toBe(next);
+    });
+  });
+
   it("keeps a plain filter beside an rql that names its field", () => {
     expect([...filtersBesideRql("eq(taxon_id,2)", options)]).toContain(
       "taxon_id",

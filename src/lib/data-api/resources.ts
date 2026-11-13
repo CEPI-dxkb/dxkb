@@ -292,6 +292,19 @@ export function booleanFilterValues(
   );
 }
 
+/**
+ * The label a resource's field metadata (`src/constants/datafields`) gives
+ * `field`, or undefined when the resource has no metadata or no such field.
+ */
+export function resourceFieldLabel(
+  resource: DataResource,
+  field: string,
+): string | undefined {
+  const source = sourceFields[resource];
+  if (!source) return undefined;
+  return Object.values(source).find((entry) => entry.field === field)?.label;
+}
+
 export function isDataResource(value: string): value is DataResource {
   return Object.hasOwn(resourceRegistry, value);
 }

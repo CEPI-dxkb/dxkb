@@ -363,7 +363,7 @@ test.describe("resource collection facet counts", () => {
     });
 
     await collection.gotoQuery(`rql=${customRql}`);
-    await expect(toolbar.customQueryBadge()).toBeVisible();
+    await expect(toolbar.advancedQueryChip()).toBeVisible();
     await toolbar.openFacet("Genome Status");
     await expect(
       toolbar.facetValueOption("Genome Status", "Complete", 5),
@@ -386,7 +386,7 @@ test.describe("resource collection facet counts", () => {
     await expect(toolbar.filtersButton()).toHaveAccessibleName(
       "Filters, 1 active",
     );
-    await expect(toolbar.customQueryBadge()).toBeVisible();
+    await expect(toolbar.advancedQueryChip()).toBeVisible();
 
     // Rows and the other facets' counts are both read for the query narrowed
     // by the pick (Genome Status keeps its own counts, so it is not re-read).
@@ -412,7 +412,7 @@ test.describe("resource collection facet counts", () => {
     await expect(toolbar.filtersButton()).toHaveAccessibleName(
       "Filters, 1 active",
     );
-    await expect(toolbar.customQueryBadge()).toBeVisible();
+    await expect(toolbar.advancedQueryChip()).toBeVisible();
     expect(new URL(page.url()).searchParams.get("rql")).toBe(customRql);
     expect(new URL(page.url()).searchParams.get("genome_status")).toBe(
       "Complete",

@@ -1,7 +1,7 @@
 "use client";
 
-import { useId, useRef, useState } from "react";
-import { Braces, CircleAlert, Search, X } from "lucide-react";
+import { useRef, useState } from "react";
+import { CircleAlert, Search, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
@@ -18,6 +18,7 @@ import {
   type FacetView,
 } from "./active-filter-pill";
 import { ColumnsMenu } from "./columns-menu";
+import { ExplicitRqlChip } from "./explicit-rql-chip";
 import { facetValueOptions } from "./facet-values";
 import {
   FiltersMenu,
@@ -27,11 +28,7 @@ import {
 import type { CollectionToolbarProps } from "./types";
 import { useFacetActions } from "./use-facet-actions";
 
-const customQueryExplanation =
-  "The link carries a hand-written query the filters cannot show. Clear all removes it.";
-
 export function CollectionToolbar(props: CollectionToolbarProps) {
-  const customQueryDescriptionId = useId();
   const {
     keyword,
     onKeywordChange,
@@ -51,7 +48,8 @@ export function CollectionToolbar(props: CollectionToolbarProps) {
     setFieldValues,
     clearAll,
     canClear,
-    hasExplicitRql,
+    explicitRql,
+    clearExplicitRql,
     columns,
     setColumns,
     resetColumns,
@@ -241,31 +239,8 @@ export function CollectionToolbar(props: CollectionToolbarProps) {
           </div>
         )}
 
-        {hasExplicitRql && (
-          <>
-            {/* Base UI tooltips set no aria-describedby, so screen readers
-               get the explanation once, through the hidden span. */}
-            <Tooltip>
-              <TooltipTrigger
-                render={
-                  <span
-                    tabIndex={0}
-                    aria-describedby={customQueryDescriptionId}
-                    className="inline-flex h-8 shrink-0 items-center gap-1 rounded-md border border-info/40 bg-info/10 px-2 text-2xs font-medium text-info outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
-                  />
-                }
-              >
-                <Braces aria-hidden="true" className="size-3" />
-                Custom query
-              </TooltipTrigger>
-              <TooltipContent side="bottom" aria-hidden="true">
-                {customQueryExplanation}
-              </TooltipContent>
-            </Tooltip>
-            <span id={customQueryDescriptionId} hidden>
-              {customQueryExplanation}
-            </span>
-          </>
+        {explicitRql && (
+          <ExplicitRqlChip query={explicitRql} onClear={clearExplicitRql} />
         )}
 
         {canClear && (

@@ -238,7 +238,7 @@ interface WorkspaceNavSection {
   items: WorkspaceNavItem[];
 }
 
-/** A `public` filter rather than `rql`, which selecting a facet would clear. */
+/** A `public` filter, a removable chip, rather than an `rql`, a "Custom query" that only Clear all removes. */
 const myGenomesHref = "/genome?public=false";
 
 const workspaceNavItems: Record<string, WorkspaceNavSection> = {

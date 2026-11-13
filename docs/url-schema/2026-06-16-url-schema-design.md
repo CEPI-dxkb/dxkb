@@ -227,8 +227,10 @@ dxkb.org/strain?keyword=H1N1                                           # strain 
   are ANDed. Facet counts remain constrained by the active query, including that facet's values,
   except while a view's default filters are untouched: `/feature` and the Features tabs that
   carry its default then count the annotation facet without it, so it still shows RefSeq
-  (§5.6). Beside an explicit `rql`, picking a facet value replaces the rql, except a value of a
-  filter the rql keeps, such as the PATRIC default's `annotation`.
+  (§5.6). Beside an explicit `rql`, picking a facet value narrows it: the pick is a
+  friendly-filter param ANDed with the rql. The one exception is a default (Feature's PATRIC
+  `annotation`) whose field the rql names; the rql's own choice replaces that default. Clear
+  all removes the rql and every filter.
 - Changing keyword, structural filters, facets, or sort resets the page to 1. URL updates
   preserve unrelated parameters. Collection parameters are unprefixed; changing resource tabs
   removes parameters invalid for the destination resource.
@@ -321,8 +323,9 @@ Each is a single loop over `viewRegistry`:
 - **Multi-value facets** use repeated parameters. Values for one field are ORed and separate
   fields are ANDed.
 - **Raw escape hatch**: `?rql=` is accepted after validation/sanitization.
-- **Precedence**: an explicit `?rql=` wins over friendly structural facets, except a view's
-  default filter on a field the rql does not name (the Feature list's PATRIC default stays);
+- **Precedence**: an explicit `?rql=` and the friendly structural facets are ANDed, so a facet
+  pick narrows a custom query. The one exception is a view's default filter on a field the rql
+  names (the Feature list's PATRIC default yields to an rql that names `annotation`);
   keyword remains independently combinable with either form.
 - **Named special params** (carried verbatim/mapped per legacy doc): `pathogen_test_type`
   (surveillance), `test_type` (serology), `accession`/`path` (protein-structure),
@@ -465,8 +468,9 @@ Genome Phase 1 replaces both scaffold handlers with explicit routes:
 - `/genome` is a Genome collection backed by the `genome` resource. It supports
   `keyword`, `taxon_id` (mapped to `taxon_lineage_ids`), `rql`, `page`, and validated `sort`.
   It always exposes the legacy GenomeList tab set; unsupported tabs are capability-gated.
-  The Genomes tab reads the *effective* Genome predicate: the explicit `?rql=` when one is present;
-  otherwise it is the implicit recent scope
+  The Genomes tab reads the *effective* Genome predicate: the explicit `?rql=` when one is
+  present, ANDed with any friendly structural filters picked beside it; otherwise it is the
+  implicit recent scope
   (`and(gt(completion_date,NOW-1YEARS),ne(genome_status,Deprecated))`) combined with any
   friendly structural filters. An explicit `rql` replaces that implicit scope rather than
   narrowing it, and so do a `keyword` (legacy GenomeList sends `keyword(...)` alone) and a

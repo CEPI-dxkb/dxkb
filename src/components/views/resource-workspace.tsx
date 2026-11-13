@@ -42,7 +42,7 @@ const detailPanelSizes = {
   },
   sideBySide: {
     panelId: "detail-side",
-    defaultSize: "15%",
+    defaultSize: "30%",
     minSize: "10%",
     maxSize: "60%",
   },

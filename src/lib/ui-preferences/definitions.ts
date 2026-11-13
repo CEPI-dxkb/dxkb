@@ -63,7 +63,7 @@ export const uiPreferenceDefinitions: {
   },
   resourceDetailPanelSize: {
     cookieName: "dxkb-resource-detail-panel-size",
-    defaultValue: 15,
+    defaultValue: 30,
   },
   workspaceShowHiddenFiles: {
     cookieName: "dxkb-workspace-show-hidden",

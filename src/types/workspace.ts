@@ -134,6 +134,8 @@ export interface EnumerateTasksFilteredParams {
   app?: string;
   start_time?: string;
   end_time?: string;
+  /** Exact `service_status` match; the backend counts it in `totalTasks` too. */
+  status?: string;
 }
 
 export interface EnumerateTasksFilteredResponse {

@@ -13,7 +13,7 @@ export const POST = withAuth(async (request: NextRequest, { token }) => {
   const appService = createAppService(token);
 
   const [taskSummary, appSummary] = await Promise.all([
-    appService.queryTaskSummaryFiltered({ include_archived }),
+    appService.queryTaskSummaryFresh({ include_archived }),
     appService.queryAppSummaryFiltered({ include_archived }),
   ]);
 

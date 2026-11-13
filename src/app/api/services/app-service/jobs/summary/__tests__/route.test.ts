@@ -1,32 +1,78 @@
+import { http, HttpResponse } from "msw";
+import { server } from "@/test-helpers/msw-server";
 import { clearTestCookies, mockNextRequest, setTestSession } from "@/test-helpers/api-route-helpers";
-
-vi.mock("@/lib/app-service", () => ({
-  createAppService: vi.fn(),
-}));
-
+import { maintenancePage } from "@/test-helpers/upstream-failures";
 import { POST } from "../route";
-import { createAppService } from "@/lib/app-service";
 
-const mockCreateAppService = vi.mocked(createAppService);
+const appServiceUrl = "https://p3.theseed.test/services/app_service";
 
-const mockAppService = {
-  queryTaskSummaryFiltered: vi.fn(),
-  queryAppSummaryFiltered: vi.fn(),
-};
+interface RpcBody {
+  id: number;
+  method: string;
+  params: unknown[];
+}
+
+interface AppServiceAnswers {
+  /** The cached `query_task_summary_filtered` result. */
+  taskSummary: unknown;
+  appSummary: unknown;
+  /** Fresh `enumerate_tasks_filtered` totals by status; a missing status counts 0. */
+  counts?: Record<string, number>;
+}
+
+/** Answers both cached summaries and the per-status count calls the route makes; records every call. */
+function answerAppService({ taskSummary, appSummary, counts = {} }: AppServiceAnswers) {
+  const calls: RpcBody[] = [];
+  server.use(
+    http.post(appServiceUrl, async ({ request }) => {
+      const body = (await request.json()) as RpcBody;
+      calls.push(body);
+      const answer = (result: unknown) =>
+        HttpResponse.json({ id: body.id, jsonrpc: "2.0", result });
+      switch (body.method) {
+        case "AppService.query_task_summary_filtered":
+          return answer(taskSummary);
+        case "AppService.query_app_summary_filtered":
+          return answer(appSummary);
+        case "AppService.enumerate_tasks_filtered": {
+          const status = (body.params[2] as { status?: string }).status ?? "";
+          return answer([[], counts[status] ?? 0]);
+        }
+        default:
+          return HttpResponse.json({ error: `unexpected ${body.method}` }, { status: 400 });
+      }
+    }),
+  );
+  return calls;
+}
+
+async function postSummary(body: Record<string, unknown> = {}) {
+  const response = await POST(mockNextRequest({ method: "POST", body }), {});
+  return {
+    response,
+    data: (await response.json()) as {
+      taskSummary?: Record<string, number>;
+      appSummary?: unknown;
+      error?: string;
+    },
+  };
+}
 
 describe("POST /api/services/app-service/jobs/summary", () => {
   beforeEach(() => {
+    process.env.APP_SERVICE_URL = appServiceUrl;
     setTestSession();
-    mockCreateAppService.mockReturnValue(mockAppService as never);
+  });
+
+  afterEach(() => {
+    delete process.env.APP_SERVICE_URL;
+    vi.restoreAllMocks();
   });
 
   it("returns 401 when no auth token is available", async () => {
     clearTestCookies();
 
-    const request = mockNextRequest({ method: "POST", body: {} });
-
-    const response = await POST(request, {});
-    const data = (await response.json()) as { error?: string };
+    const { response, data } = await postSummary();
 
     expect(response.status).toBe(401);
     expect(data).toEqual(
@@ -34,72 +80,91 @@ describe("POST /api/services/app-service/jobs/summary", () => {
     );
   });
 
-  it("returns both task and app summaries on success", async () => {
-    const taskData = { queued: 2, completed: 10 };
-    const appData = { GenomeAssembly2: 5, BLAST: 7 };
-    mockAppService.queryTaskSummaryFiltered.mockResolvedValue(taskData);
-    mockAppService.queryAppSummaryFiltered.mockResolvedValue(appData);
+  it("counts a queued job the backend's cached task summary does not show yet", async () => {
+    answerAppService({
+      taskSummary: [{ "in-progress": 1 }],
+      appSummary: [{ GenomeAssembly2: 1 }],
+      counts: { queued: 1 },
+    });
 
-    const request = mockNextRequest({ method: "POST", body: {} });
-
-    const response = await POST(request, {});
-    const data = (await response.json()) as {
-      taskSummary?: typeof taskData;
-      appSummary?: typeof appData;
-    };
+    const { response, data } = await postSummary();
 
     expect(response.status).toBe(200);
-    expect(data).toEqual({ taskSummary: taskData, appSummary: appData });
+    expect(data.taskSummary).toEqual(expect.objectContaining({ queued: 1 }));
   });
 
-  it("passes include_archived=true when specified", async () => {
-    mockAppService.queryTaskSummaryFiltered.mockResolvedValue({});
-    mockAppService.queryAppSummaryFiltered.mockResolvedValue({});
-
-    const request = mockNextRequest({
-      method: "POST",
-      body: { include_archived: true },
+  it("overlays the fresh counts on the task summary and passes the app summary through", async () => {
+    const appSummary = [{ GenomeAssembly2: 5, BLAST: 7 }];
+    answerAppService({
+      taskSummary: [{ completed: 10, deleted: 2 }],
+      appSummary,
+      counts: { queued: 2, completed: 10 },
     });
 
-    await POST(request, {});
+    const { data } = await postSummary();
 
-    expect(mockAppService.queryTaskSummaryFiltered).toHaveBeenCalledWith({
-      include_archived: true,
-    });
-    expect(mockAppService.queryAppSummaryFiltered).toHaveBeenCalledWith({
-      include_archived: true,
-    });
-  });
-
-  it("defaults include_archived to false", async () => {
-    mockAppService.queryTaskSummaryFiltered.mockResolvedValue({});
-    mockAppService.queryAppSummaryFiltered.mockResolvedValue({});
-
-    const request = mockNextRequest({ method: "POST", body: {} });
-
-    await POST(request, {});
-
-    expect(mockAppService.queryTaskSummaryFiltered).toHaveBeenCalledWith({
-      include_archived: false,
-    });
-    expect(mockAppService.queryAppSummaryFiltered).toHaveBeenCalledWith({
-      include_archived: false,
+    expect(data).toEqual({
+      taskSummary: {
+        queued: 2,
+        pending: 0,
+        "in-progress": 0,
+        completed: 10,
+        failed: 0,
+        deleted: 2,
+      },
+      appSummary,
     });
   });
 
-  it("returns 500 when an error is thrown", async () => {
-    mockAppService.queryTaskSummaryFiltered.mockRejectedValue(
-      new Error("DB connection lost"),
+  it.each([
+    [true, { include_archived: 1 }],
+    [false, {}],
+  ])("sends include_archived=%s to every call", async (includeArchived, opts) => {
+    const calls = answerAppService({ taskSummary: [{}], appSummary: [{}] });
+
+    await postSummary({ include_archived: includeArchived });
+
+    expect(calls).toHaveLength(7);
+    for (const call of calls) {
+      expect(call.params.at(-1)).toEqual(expect.objectContaining(opts));
+      if (!includeArchived) {
+        expect(call.params.at(-1)).not.toHaveProperty("include_archived");
+      }
+    }
+  });
+
+  it("answers the backend's error message when the cached task summary call fails", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    server.use(
+      http.post(appServiceUrl, async ({ request }) => {
+        const body = (await request.json()) as RpcBody;
+        if (body.method === "AppService.query_task_summary_filtered") {
+          return HttpResponse.json(
+            { id: body.id, jsonrpc: "2.0", error: { code: -32603, message: "DB connection lost" } },
+            { status: 500 },
+          );
+        }
+        const result = body.method === "AppService.enumerate_tasks_filtered" ? [[], 0] : [{}];
+        return HttpResponse.json({ id: body.id, jsonrpc: "2.0", result });
+      }),
     );
 
-    const request = mockNextRequest({ method: "POST", body: {} });
-
-    const response = await POST(request, {});
-    const data = (await response.json()) as { error?: string };
+    const { response, data } = await postSummary();
 
     expect(response.status).toBe(500);
     expect(data).toEqual(
       expect.objectContaining({ error: "DB connection lost" }),
     );
+  });
+
+  it("answers an outage of the job service as 503", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    server.use(http.post(appServiceUrl, () => maintenancePage()));
+
+    const { response, data } = await postSummary();
+
+    expect(response.status).toBe(503);
+    expect(data.error).toContain("BV-BRC job service");
   });
 });

@@ -14,7 +14,7 @@ interface UseJobsSummaryOptions {
   poll?: boolean;
 }
 
-/** The service answers a record, or a one-element array holding it. */
+/** The service answers a record, or a one-element array holding it. The server's twin is `unwrapCounts` in `src/lib/app-service.ts`. */
 function unwrapCounts(raw: unknown): Record<string, number> {
   return ((Array.isArray(raw) ? raw[0] : raw) ?? {}) as Record<string, number>;
 }

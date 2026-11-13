@@ -1,10 +1,17 @@
-import { renderHook, waitFor } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import React from "react";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import {
+  focusManager,
+  QueryClient,
+  QueryClientProvider,
+} from "@tanstack/react-query";
 import { http, HttpResponse } from "msw";
 import { server } from "@/test-helpers/msw-server";
 import { ApiCallError } from "@/lib/api/types";
 import { nextRefetchInterval } from "@/test-helpers/react";
+import { settleBackgroundWork } from "@/test-helpers/settle";
+import { clearAccountCaches } from "@/lib/account-caches";
+import { markJobSubmitted } from "@/lib/jobs/recent-submit";
 
 function createWrapper(queryClient = new QueryClient({
   defaultOptions: { queries: { retry: false } },
@@ -16,6 +23,21 @@ function createWrapper(queryClient = new QueryClient({
 }
 
 import { useJobsSummary, useJobsTaskSummary } from "../use-jobs-summary";
+
+/** The app's query defaults (`src/app/providers.tsx`): no focus refetch, 60 s stale time. */
+function appQueryClient() {
+  return new QueryClient({
+    defaultOptions: {
+      queries: { retry: false, staleTime: 60_000, refetchOnWindowFocus: false },
+    },
+  });
+}
+
+afterEach(() => {
+  clearAccountCaches();
+  focusManager.setFocused(undefined);
+  vi.useRealTimers();
+});
 
 describe("useJobsSummary", () => {
   it("returns summary data on success", async () => {
@@ -155,6 +177,118 @@ describe("useJobsSummary", () => {
     expect(nextRefetchInterval(queryClient, ["jobs-summary", false])).toBe(3_000);
   });
 
+  it("polls an empty summary every 3 s for 90 s after a submit, then every 30 s", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-11-13T12:00:00Z"));
+    server.use(
+      http.post("/api/services/app-service/jobs/summary", () =>
+        HttpResponse.json({ taskSummary: { completed: 4 }, appSummary: {} }),
+      ),
+    );
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    const { result } = renderHook(() => useJobsSummary(false), {
+      wrapper: createWrapper(queryClient),
+    });
+    await waitFor(() => { expect(result.current.isSuccess).toBe(true); });
+    expect(nextRefetchInterval(queryClient, ["jobs-summary", false])).toBe(30_000);
+
+    markJobSubmitted();
+    expect(nextRefetchInterval(queryClient, ["jobs-summary", false])).toBe(3_000);
+
+    vi.setSystemTime(Date.now() + 89_000);
+    expect(nextRefetchInterval(queryClient, ["jobs-summary", false])).toBe(3_000);
+
+    vi.setSystemTime(Date.now() + 1_000);
+    expect(nextRefetchInterval(queryClient, ["jobs-summary", false])).toBe(30_000);
+  });
+
+  it("does not poll after a submit when poll is false", async () => {
+    server.use(
+      http.post("/api/services/app-service/jobs/summary", () =>
+        HttpResponse.json({ taskSummary: {}, appSummary: {} }),
+      ),
+    );
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    const { result } = renderHook(
+      () => useJobsSummary(false, { poll: false }),
+      { wrapper: createWrapper(queryClient) },
+    );
+    await waitFor(() => { expect(result.current.isSuccess).toBe(true); });
+
+    markJobSubmitted();
+    expect(nextRefetchInterval(queryClient, ["jobs-summary", false])).toBe(false);
+  });
+
+  it("keeps the error back-off ahead of the submit window", async () => {
+    server.use(
+      http.post("/api/services/app-service/jobs/summary", () =>
+        HttpResponse.json({ error: "JSON-RPC call failed: fetch failed" }, { status: 500 }),
+      ),
+    );
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    const { result } = renderHook(() => useJobsSummary(false), {
+      wrapper: createWrapper(queryClient),
+    });
+    await waitFor(() => { expect(result.current.isError).toBe(true); });
+
+    markJobSubmitted();
+    expect(nextRefetchInterval(queryClient, ["jobs-summary", false])).toBe(30_000);
+  });
+
+  it("refetches even fresh counts when the window regains focus, unlike the app default", async () => {
+    let calls = 0;
+    server.use(
+      http.post("/api/services/app-service/jobs/summary", () => {
+        calls += 1;
+        return HttpResponse.json({ taskSummary: {}, appSummary: {} });
+      }),
+    );
+    vi.useFakeTimers({ toFake: ["Date"] });
+    const { result } = renderHook(() => useJobsSummary(false), {
+      wrapper: createWrapper(appQueryClient()),
+    });
+    await waitFor(() => { expect(result.current.isSuccess).toBe(true); });
+    expect(calls).toBe(1);
+
+    // Fresh under the app's 60 s stale time: a plain `true` would skip this refetch.
+    vi.setSystemTime(Date.now() + 5_000);
+    act(() => {
+      focusManager.setFocused(false);
+      focusManager.setFocused(true);
+    });
+
+    await waitFor(() => { expect(calls).toBe(2); });
+  });
+
+  it("does not refetch on focus when poll is false", async () => {
+    let calls = 0;
+    server.use(
+      http.post("/api/services/app-service/jobs/summary", () => {
+        calls += 1;
+        return HttpResponse.json({ taskSummary: {}, appSummary: {} });
+      }),
+    );
+    const { result } = renderHook(
+      () => useJobsSummary(false, { poll: false }),
+      { wrapper: createWrapper(appQueryClient()) },
+    );
+    await waitFor(() => { expect(result.current.isSuccess).toBe(true); });
+
+    act(() => {
+      focusManager.setFocused(false);
+      focusManager.setFocused(true);
+    });
+    await settleBackgroundWork();
+
+    expect(calls).toBe(1);
+  });
+
   it("fetches once and does not poll when poll is false", async () => {
     let calls = 0;
     server.use(
@@ -221,5 +355,53 @@ describe("useJobsTaskSummary", () => {
     expect(nextRefetchInterval(queryClient, ["jobs-summary", "tasks", false])).toBe(3_000);
     await queryClient.invalidateQueries({ queryKey: ["jobs-summary"] });
     expect(queryClient.getQueryState(["jobs-summary", "tasks", false])?.dataUpdateCount).toBe(2);
+  });
+
+  it("refetches even fresh counts when the window regains focus, unlike the app default", async () => {
+    let calls = 0;
+    server.use(
+      http.post("/api/services/app-service/jobs/task-summary", () => {
+        calls += 1;
+        return HttpResponse.json({ summary: {} });
+      }),
+    );
+    vi.useFakeTimers({ toFake: ["Date"] });
+    const { result } = renderHook(() => useJobsTaskSummary(false), {
+      wrapper: createWrapper(appQueryClient()),
+    });
+    await waitFor(() => { expect(result.current.isSuccess).toBe(true); });
+    expect(calls).toBe(1);
+
+    // Fresh under the app's 60 s stale time: a plain `true` would skip this refetch.
+    vi.setSystemTime(Date.now() + 5_000);
+    act(() => {
+      focusManager.setFocused(false);
+      focusManager.setFocused(true);
+    });
+
+    await waitFor(() => { expect(calls).toBe(2); });
+  });
+
+  it("does not refetch on focus when poll is false", async () => {
+    let calls = 0;
+    server.use(
+      http.post("/api/services/app-service/jobs/task-summary", () => {
+        calls += 1;
+        return HttpResponse.json({ summary: {} });
+      }),
+    );
+    const { result } = renderHook(
+      () => useJobsTaskSummary(false, { poll: false }),
+      { wrapper: createWrapper(appQueryClient()) },
+    );
+    await waitFor(() => { expect(result.current.isSuccess).toBe(true); });
+
+    act(() => {
+      focusManager.setFocused(false);
+      focusManager.setFocused(true);
+    });
+    await settleBackgroundWork();
+
+    expect(calls).toBe(1);
   });
 });

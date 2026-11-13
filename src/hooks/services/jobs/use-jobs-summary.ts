@@ -3,6 +3,7 @@ import { useApiQuery } from "@/lib/api/hooks";
 import { apiCall } from "@/lib/api/client";
 import { errorBackoffPollInterval } from "@/lib/api/poll-backoff";
 import { activeJobStatuses } from "@/lib/jobs/constants";
+import { isInSubmitWindow } from "@/lib/jobs/recent-submit";
 
 interface JobsSummaryData {
   taskSummary: Record<string, number>;
@@ -19,7 +20,7 @@ function unwrapCounts(raw: unknown): Record<string, number> {
   return ((Array.isArray(raw) ? raw[0] : raw) ?? {}) as Record<string, number>;
 }
 
-/** Shared by the full summary and the pill's task summary. */
+/** Shared by the full summary and the pill's task summary. Re-run after every fetch, so the submit window closes on its own. */
 export function jobsSummaryRefetchInterval(poll: boolean) {
   return (query: {
     state: Pick<QueryState<{ taskSummary: Record<string, number> }>, "status" | "errorUpdateCount" | "data">;
@@ -28,6 +29,8 @@ export function jobsSummaryRefetchInterval(poll: boolean) {
     const backoff = errorBackoffPollInterval(query);
     if (!poll) return false;
     if (backoff !== undefined) return backoff;
+    // Just after a submit, the new job may not be counted yet.
+    if (isInSubmitWindow()) return 3_000;
     const data = query.state.data;
     if (!data) return 5_000;
     const { taskSummary } = data;
@@ -45,6 +48,9 @@ export function useJobsTaskSummary(
     queryKey: ["jobs-summary", "tasks", includeArchived],
     refetchInterval: jobsSummaryRefetchInterval(poll),
     refetchIntervalInBackground: false,
+    // The app default is off, and its 60 s stale time would skip most returns; a hidden tab does not poll.
+    // "always" also refetches during error back-off, on purpose: a return to the tab is a manual retry.
+    refetchOnWindowFocus: poll ? "always" : false,
     queryFn: async () => {
       const data = await apiCall<{ summary: unknown }>(
         "/api/services/app-service/jobs/task-summary",
@@ -63,6 +69,9 @@ export function useJobsSummary(
     queryKey: ["jobs-summary", includeArchived],
     refetchInterval: jobsSummaryRefetchInterval(poll),
     refetchIntervalInBackground: false,
+    // The app default is off, and its 60 s stale time would skip most returns; a hidden tab does not poll.
+    // "always" also refetches during error back-off, on purpose: a return to the tab is a manual retry.
+    refetchOnWindowFocus: poll ? "always" : false,
     queryFn: async () => {
       const data = await apiCall<{
         taskSummary: unknown;

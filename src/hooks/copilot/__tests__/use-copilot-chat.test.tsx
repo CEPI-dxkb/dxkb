@@ -4,6 +4,8 @@ import { http, HttpResponse } from "msw";
 import { createElement, type ReactNode } from "react";
 import { copilotQueryKeys } from "@/lib/copilot/client";
 import { isCopilotTurnActive } from "@/lib/copilot/turn";
+import { clearAccountCaches } from "@/lib/account-caches";
+import { isInSubmitWindow } from "@/lib/jobs/recent-submit";
 import { server } from "@/test-helpers/msw-server";
 import { createQueryClientWrapper, nextRefetchInterval } from "@/test-helpers/react";
 import { useCopilotChat, type CopilotSendResult } from "../use-copilot-chat";
@@ -92,6 +94,7 @@ async function advance(ms: number) {
 }
 
 afterEach(() => {
+  clearAccountCaches();
   vi.useRealTimers();
 });
 
@@ -730,5 +733,59 @@ describe("useCopilotChat", () => {
     expect(sessionGets).toHaveBeenCalledTimes(1);
     expect(result.current.active).toBeNull();
     turn.end();
+  });
+
+  describe("refreshing the jobs pill", () => {
+    async function sendFrames(frames: string[]) {
+      server.use(
+        http.post("*/api/copilot/chat", () => sse(...frames)),
+        http.get("*/api/copilot/sessions/:id", () => storedSession()),
+        http.post("*/api/copilot/sessions/:id/title", () =>
+          HttpResponse.json({ title: null }),
+        ),
+      );
+      const queryClient = new QueryClient({
+        defaultOptions: { queries: { retry: false } },
+      });
+      const invalidate = vi.spyOn(queryClient, "invalidateQueries");
+      const wrapper = ({ children }: { children: ReactNode }) =>
+        createElement(QueryClientProvider, { client: queryClient }, children);
+      const { result } = renderHook(() => useCopilotChat("user-a"), { wrapper });
+      await act(async () => {
+        await result.current.send(sendOptions);
+      });
+      const jobsInvalidations = invalidate.mock.calls.filter(([filters]) => {
+        const head = filters?.queryKey?.[0];
+        return head === "jobs-summary" || head === "jobs-filtered";
+      });
+      return jobsInvalidations.map(([filters]) => filters?.queryKey);
+    }
+
+    it("refreshes the jobs summary and list once when a turn ends, without the fast-poll window", async () => {
+      expect(isInSubmitWindow()).toBe(false);
+
+      // `started` names the turn's own gateway job, which is not a BV-BRC job.
+      const keys = await sendFrames(doneFrames);
+
+      expect(keys).toEqual([["jobs-summary"], ["jobs-filtered"]]);
+      expect(isInSubmitWindow()).toBe(false);
+    });
+
+    it("refreshes them and opens the fast-poll window on a plan_workflow_submitted frame", async () => {
+      const keys = await sendFrames([
+        'event: started\ndata: {"job_id":"j1"}\n\n',
+        'event: plan_workflow_submitted\ndata: {"plan_id":"p1","step_index":0,"submission_ids":["s1"]}\n\n',
+        'event: done\ndata: {}\n\n',
+      ]);
+
+      // Once for the submit frame, once when the turn ends.
+      expect(keys).toEqual([
+        ["jobs-summary"],
+        ["jobs-filtered"],
+        ["jobs-summary"],
+        ["jobs-filtered"],
+      ]);
+      expect(isInSubmitWindow()).toBe(true);
+    });
   });
 });

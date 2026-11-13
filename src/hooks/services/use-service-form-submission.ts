@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
+import { refreshJobsAfterSubmit } from "@/lib/jobs/recent-submit";
 import { submitServiceJob } from "@/lib/services/service-utils";
 import { formatUserFacingErrorMessage } from "@/lib/utils";
 
@@ -68,16 +69,16 @@ export function useServiceFormSubmission(
           action: { label: "View Job", onClick: () => { router.push("/jobs"); } },
         }),
       });
-      void queryClient.invalidateQueries({ queryKey: ["jobs-summary"] });
-      void queryClient.invalidateQueries({ queryKey: ["jobs-filtered"] });
+      refreshJobsAfterSubmit(queryClient);
       onSuccess?.();
     },
     onError: (error) => {
       console.error(`Failed to submit ${displayName} job:`, error);
       const { title, message, mayHaveBeenQueued } =
         describeServiceSubmitError(error);
-      // 504: the job may still have been queued; keep the error on screen.
+      // 504: the job may still have been queued; keep the error on screen and watch for it.
       if (mayHaveBeenQueued) {
+        refreshJobsAfterSubmit(queryClient);
         toast.error(title, {
           description: message,
           closeButton: true,

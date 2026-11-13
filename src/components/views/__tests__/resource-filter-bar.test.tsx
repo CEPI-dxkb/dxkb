@@ -13,6 +13,12 @@ import {
   useState,
   type ComponentProps,
 } from "react";
+import { genomeCollectionOptions } from "@/lib/genome-view";
+import {
+  parseCollectionState,
+  replaceCollectionSearchParams,
+  toSearchParamsRecord,
+} from "@/lib/views/collection-state";
 import { stubMenuLayout } from "@/test-helpers/menu-layout";
 import { createPendingNavigation } from "@/test-helpers/pending-navigation";
 import { jsdomLocalStorage } from "@/test-helpers/storage";
@@ -75,6 +81,38 @@ const navigatesSlowly = () =>
       pendingNavigation.arm();
     });
   });
+
+/**
+ * `navigatesSlowly` that also writes each update the way a page does, through
+ * the real URL state, so a test that asserts a pick is kept can also assert
+ * the URL accepts it: the overlay alone shows a pick the URL would drop.
+ * `landedFilters()` parses the latest write back.
+ */
+function navigatesSlowlyThroughUrl() {
+  const writes: string[] = [];
+  const onChange = vi.fn<FilterBarProps["onChange"]>((update) => {
+    writes.push(
+      replaceCollectionSearchParams(
+        {},
+        {
+          ...parseCollectionState({}, genomeCollectionOptions),
+          keyword: update.keyword,
+          filters: update.filters,
+        },
+        genomeCollectionOptions,
+      ).toString(),
+    );
+    startTransition(() => {
+      pendingNavigation.arm();
+    });
+  });
+  const landedFilters = () =>
+    parseCollectionState(
+      toSearchParamsRecord(new URLSearchParams(writes.at(-1) ?? "")),
+      genomeCollectionOptions,
+    ).filters;
+  return { onChange, landedFilters };
+}
 
 /**
  * A synchronous `act` (`fireEvent`, `act(() => …)`) commits nothing more once
@@ -192,7 +230,7 @@ describe("ResourceFilterBar keyword", () => {
 describe("ResourceFilterBar picks", () => {
   it("shows a pick at once, before the page's filters catch up", async () => {
     const user = userEvent.setup();
-    const onChange = navigatesSlowly();
+    const { onChange, landedFilters } = navigatesSlowlyThroughUrl();
     const props = filterBarProps({ onChange });
     const { rerender } = render(<WithPendingNavigation {...props} />);
     await openFilters(user);
@@ -204,6 +242,7 @@ describe("ResourceFilterBar picks", () => {
       filters: { genome_status: ["WGS"] },
       clearRql: false,
     });
+    expect(landedFilters()).toEqual({ genome_status: ["WGS"] });
     expect(statusOption("WGS")).toHaveAttribute("aria-selected", "true");
     expect(
       screen.getByRole("button", { name: "Genome Status: WGS. Edit filter" }),
@@ -223,17 +262,15 @@ describe("ResourceFilterBar picks", () => {
 
   it("keeps a pick selected for as long as its navigation is pending", async () => {
     const user = userEvent.setup();
-    render(
-      <WithPendingNavigation
-        {...filterBarProps({ onChange: navigatesSlowly() })}
-      />,
-    );
+    const { onChange, landedFilters } = navigatesSlowlyThroughUrl();
+    render(<WithPendingNavigation {...filterBarProps({ onChange })} />);
     await openFilters(user);
     vi.useFakeTimers();
 
     await clickDuringNavigation(statusOption("WGS"));
     await elapseDuringNavigation(10_000);
 
+    expect(landedFilters()).toEqual({ genome_status: ["WGS"] });
     expect(statusOption("WGS")).toHaveAttribute("aria-selected", "true");
     expect(
       screen.getByRole("button", { name: "Genome Status: WGS. Edit filter" }),
@@ -242,7 +279,7 @@ describe("ResourceFilterBar picks", () => {
 
   it("builds a second pick on a first whose navigation is still pending", async () => {
     const user = userEvent.setup();
-    const onChange = navigatesSlowly();
+    const { onChange, landedFilters } = navigatesSlowlyThroughUrl();
     render(<WithPendingNavigation {...filterBarProps({ onChange })} />);
     await openFilters(user);
     vi.useFakeTimers();
@@ -256,6 +293,7 @@ describe("ResourceFilterBar picks", () => {
       filters: { genome_status: ["Complete", "WGS"] },
       clearRql: false,
     });
+    expect(landedFilters()).toEqual({ genome_status: ["Complete", "WGS"] });
     expect(
       within(statusValues()).getAllByRole("option", { selected: true }),
     ).toHaveLength(2);

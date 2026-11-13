@@ -106,13 +106,41 @@ describe("JobStatusPill", () => {
     ).toBeNull();
   });
 
-  it("renders nothing when only failed/error/cancelled jobs exist", async () => {
-    mockSummary({ failed: 2, error: 1, cancelled: 3 });
+  it("renders nothing when only cancelled jobs exist", async () => {
+    mockSummary({ cancelled: 3 });
     renderPill();
     await new Promise((r) => setTimeout(r, 50));
     expect(
       screen.queryByRole("button", { name: /view job status/i }),
     ).toBeNull();
+  });
+
+  it("shows a failed group summing failed and error, last in the aria-label", async () => {
+    mockSummary({ completed: 4, failed: 2, error: 1, cancelled: 3 });
+    renderPill();
+    const pill = await screen.findByRole("button", {
+      name: /view job status/i,
+    });
+    expect(pill).toHaveAccessibleName("0 0 4 3, view job status");
+    expect(within(pill).getByText("3")).toBeInTheDocument();
+  });
+
+  it("shows the pill for a user whose only jobs failed", async () => {
+    mockSummary({ failed: 2 });
+    renderPill();
+    const pill = await screen.findByRole("button", {
+      name: /view job status/i,
+    });
+    expect(pill).toHaveAccessibleName("0 0 2, view job status");
+  });
+
+  it("hides the failed group at zero", async () => {
+    mockSummary({ completed: 4, failed: 0, error: 0 });
+    renderPill();
+    const pill = await screen.findByRole("button", {
+      name: /view job status/i,
+    });
+    expect(pill).toHaveAccessibleName("0 0 4, view job status");
   });
 
   it("renders the pill with completed count", async () => {
@@ -190,7 +218,7 @@ describe("JobStatusPill", () => {
   });
 
   it("hides the completed count when there are no completed jobs", async () => {
-    mockSummary({ running: 1, failed: 2 });
+    mockSummary({ running: 1, cancelled: 2 });
     mockJobsList([]);
     renderPill();
     await waitFor(() =>

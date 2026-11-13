@@ -9,6 +9,7 @@ import {
   CirclePlay,
   Clock,
   Loader2,
+  XCircle,
 } from "lucide-react";
 import { cn, formatUserFacingErrorMessage, noop } from "@/lib/utils";
 import { useAuth } from "@/lib/auth/provider";
@@ -29,6 +30,7 @@ import { buttonVariants } from "@/components/ui/button-variants";
 import { QueryRetryButton } from "@/components/views/query-retry-button";
 import { useRetryKeepingError } from "@/components/views/use-retry-keeping-error";
 import {
+  failedJobStatuses,
   queuedJobStatuses,
   runningJobStatuses,
   statusConfig,
@@ -94,7 +96,9 @@ export function JobStatusPill() {
   const completedCount = taskSummary["completed"] ?? 0;
   const runningCount = sumStatusCounts(taskSummary, runningJobStatuses);
   const queuedCount = sumStatusCounts(taskSummary, queuedJobStatuses);
-  const displayableCount = completedCount + runningCount + queuedCount;
+  const failedCount = sumStatusCounts(taskSummary, failedJobStatuses);
+  const displayableCount =
+    completedCount + runningCount + queuedCount + failedCount;
 
   const statusGroups = [
     {
@@ -116,6 +120,14 @@ export function JobStatusPill() {
       count: completedCount,
       icon: CheckCircle2,
       className: "text-emerald-400",
+      alwaysShown: false,
+    },
+    {
+      key: "failed",
+      count: failedCount,
+      icon: XCircle,
+      // `text-destructive` is under 3:1 on the navbar fill in every theme.
+      className: "text-destructive-inverse",
       alwaysShown: false,
     },
   ].filter(({ count, alwaysShown }) => alwaysShown || count > 0);

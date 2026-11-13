@@ -167,6 +167,9 @@
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
+  /* Red text on the navbar fill (`--primary`), where --destructive is under 3:1;
+     a literal per theme, checked by theme-contrast.test.ts. */
+  --color-destructive-inverse: var(--destructive-inverse);
   --color-success: var(--success);
   --color-warning: var(--warning);
   --color-info: var(--info);
@@ -223,6 +226,7 @@
   --accent: oklch(84.57% 0.167 84.87);
   --accent-foreground: oklch(0.205 0 0);
   --destructive: oklch(0.577 0.245 27.325);
+  --destructive-inverse: oklch(0.96 0.07 22);
   --success: oklch(0.627 0.194 149.214);
   --warning: oklch(0.555 0.163 48.998);
   --info: oklch(0.488 0.243 264.376);
@@ -276,6 +280,7 @@
   --accent: oklch(84.57% 0.167 84.87);
   --accent-foreground: oklch(0.205 0 0);
   --destructive: oklch(0.704 0.191 22.216);
+  --destructive-inverse: oklch(0.96 0.07 22);
   --success: oklch(0.792 0.209 151.711);
   --warning: oklch(0.828 0.189 84.429);
   --info: oklch(0.707 0.165 254.624);

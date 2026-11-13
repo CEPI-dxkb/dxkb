@@ -61,6 +61,8 @@ export const queuedJobStatuses = ["queued", "pending", "init"] as const;
 
 export const runningJobStatuses = ["running", "in-progress"] as const;
 
+export const failedJobStatuses = ["failed", "error"] as const;
+
 export const activeJobStatuses: readonly string[] = [
   ...queuedJobStatuses,
   ...runningJobStatuses,

@@ -26,8 +26,10 @@ export interface StructuralFilterOptions {
 /**
  * Builds the clause for `state.filters` only. An explicit `state.rql` is not
  * folded in here: `ResourceCollection` ANDs it with this clause, so a facet
- * pick narrows a custom query. Whether a filter survives beside an rql is
- * decided earlier, by `filtersBesideRql` in the collection state.
+ * pick narrows a custom query. Every friendly filter stays beside an rql
+ * (`filtersBesideRql` in the collection state); the collection state
+ * (`defaultShadowed` / `implicitDefault`) decides only whether a default value
+ * applies implicitly.
  */
 export function structuralFilterRql(
   resource: DataResource,

@@ -281,12 +281,23 @@ describe("Feature list URL schema", () => {
     expect(state.filters).toEqual({});
   });
 
-  it("lets an RQL that picks an annotation replace the default", () => {
+  it("does not add the default beside an RQL that picks an annotation", () => {
     const state = parseFeatureListState({
       rql: "and(eq(sequence_id,NC_000962),eq(annotation,PATRIC),eq(feature_type,CDS))",
     });
     expect(state.filters).toEqual({});
     expect(featureStructuralRql(state)).toBeUndefined();
+  });
+
+  it("narrows an RQL that picks an annotation with the user's annotation pick", () => {
+    // Like the Taxonomy "Features" action's rql, which ends in eq(annotation,PATRIC).
+    const rql = "and(eq(genome_id,83332.12),eq(annotation,PATRIC))";
+    for (const annotation of ["PATRIC", "RefSeq"]) {
+      const state = parseFeatureListState({ rql, annotation });
+      expect(state.rql).toBe(rql);
+      expect(state.filters).toEqual({ annotation: [annotation] });
+      expect(featureStructuralRql(state)).toBe(`eq(annotation,${annotation})`);
+    }
   });
 
   it("leaves the embedded schema without the default", () => {

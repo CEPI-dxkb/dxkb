@@ -108,7 +108,7 @@ describe("FeatureResourceCollection", () => {
     });
   });
 
-  it("lets the user change the PATRIC default beside a link's rql", () => {
+  it("lets the user change the annotation beside any rql, one that names annotation included", () => {
     const linked: CollectionState = {
       ...listState,
       keyword: undefined,
@@ -140,6 +140,7 @@ describe("FeatureResourceCollection", () => {
     );
     expect(collectionProps.current?.filtersBesideRql).toEqual([
       "genome_id",
+      "annotation",
       "feature_type",
       "public",
       "filter",
@@ -181,7 +182,24 @@ describe("FeatureResourceCollection", () => {
       return onStateChange;
     }
 
-    it("brings the PATRIC default back when a facet pick replaces the rql", () => {
+    it("keeps the rql when the user picks an annotation beside it", () => {
+      const picked = { ...shadowed, filters: { annotation: ["PATRIC"] } };
+      renderShadowed()(picked);
+
+      expect(setUrlState).toHaveBeenCalledWith(picked);
+
+      // The pick equals the default, but beside this rql it is the user's, so
+      // the facet counts honour it as they do the list.
+      render(
+        <FeatureResourceCollection
+          collectionOptions={featureListCollectionOptions}
+          initialState={picked}
+        />,
+      );
+      expect(collectionProps.current?.facetState).toBe(picked);
+    });
+
+    it("brings the PATRIC default back when a change drops the rql without Clear All Filters", () => {
       renderShadowed()({
         ...shadowed,
         rql: undefined,

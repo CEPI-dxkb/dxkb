@@ -28,6 +28,7 @@ import {
 } from "@/lib/genome-view";
 import {
   parseCollectionState,
+  replaceCollectionSearchParams,
   toSearchParamsRecord,
   updateCollectionSearchParams,
   type CollectionState,
@@ -162,9 +163,13 @@ describe("Genome view contracts", () => {
   it("narrows an Advanced Search query with a facet pick (DXKBCORE-345)", () => {
     const rql =
       "and(in(taxon_lineage_ids,(3050294)),ne(genome_status,Deprecated))";
-    const next = updateCollectionSearchParams(
-      { rql },
-      { filters: { genome_status: ["Complete"] } },
+    // The app's write path: `useCollectionUrlState`'s `setState`, handed the
+    // filter bar's next state.
+    const params = { rql };
+    const current = parseGenomeCollectionState(params);
+    const next = replaceCollectionSearchParams(
+      params,
+      { ...current, filters: { genome_status: ["Complete"] }, page: 1 },
       genomeCollectionOptions,
     );
     expect(next.get("rql")).toBe(rql);

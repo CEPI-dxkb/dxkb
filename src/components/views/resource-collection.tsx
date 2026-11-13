@@ -94,9 +94,10 @@ export interface ResourceCollectionProps<Row extends DataTableRow> {
   state: CollectionState;
   /**
    * `change.clearAll` removes the rql and every filter, a view's defaults
-   * included. Any other change that drops the rql (a pick on a default the rql
-   * names, since `filtersBesideRql` leaves it out; a pick on any other filter
-   * keeps the rql and narrows it) leaves the defaults for the caller to
+   * included. A pick on a filter listed in `filtersBesideRql` (every wrapper
+   * lists them all, a default's included) keeps the rql and narrows it. Any
+   * other change that drops the rql (a pick on an unlisted filter, or one made
+   * before a Clear all reaches the URL) leaves the defaults for the caller to
    * restore.
    */
   onStateChange: (

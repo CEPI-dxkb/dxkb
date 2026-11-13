@@ -319,6 +319,24 @@ describe("CompareRegionPanel", () => {
     expect(message.parentElement).toHaveClass("p-3");
   });
 
+  it("says so when only the focus genome came back", async () => {
+    answer({ rows: [focusRow] });
+    renderPanel();
+
+    await screen.findByRole("group", { name: figureName });
+    expect(screen.getByText(/nothing to compare/)).toHaveTextContent(
+      "Only this feature's own genome was returned, so there is nothing to compare.",
+    );
+  });
+
+  it("stays quiet when other genomes came back", async () => {
+    answer({ rows: [focusRow, mirroredRow] });
+    renderPanel();
+
+    await screen.findByRole("group", { name: figureName });
+    expect(screen.queryByText(/nothing to compare/)).not.toBeInTheDocument();
+  });
+
   it("switches the figure's density", async () => {
     const user = userEvent.setup();
     answer({ rows: [focusRow, mirroredRow] });

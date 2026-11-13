@@ -8,7 +8,10 @@ import {
   proteinStructureCollectionProfile,
   type ProteinStructureViewRecord,
 } from "@/lib/protein-structure-view";
-import type { CollectionState } from "@/lib/views/collection-state";
+import {
+  filtersBesideRql,
+  type CollectionState,
+} from "@/lib/views/collection-state";
 import { ResourceCollection } from "./resource-collection";
 
 const repository = new DataRepository();
@@ -43,6 +46,9 @@ function ProteinStructureResourceCollectionContent({
       profile={serverKeywordMode ? { ...profile, serverKeywordMode } : profile}
       repository={repository}
       state={state}
+      filtersBesideRql={[
+        ...filtersBesideRql(state.rql, proteinStructureCollectionOptions),
+      ]}
       onStateChange={setState}
       baseRql={baseRql}
       enableRowLinks={enableRowLinks}

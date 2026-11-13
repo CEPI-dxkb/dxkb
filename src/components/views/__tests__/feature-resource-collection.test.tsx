@@ -121,7 +121,10 @@ describe("FeatureResourceCollection", () => {
       />,
     );
     expect(collectionProps.current?.filtersBesideRql).toEqual([
+      "genome_id",
       "annotation",
+      "feature_type",
+      "public",
       "filter",
     ]);
 
@@ -135,7 +138,12 @@ describe("FeatureResourceCollection", () => {
         }}
       />,
     );
-    expect(collectionProps.current?.filtersBesideRql).toEqual(["filter"]);
+    expect(collectionProps.current?.filtersBesideRql).toEqual([
+      "genome_id",
+      "feature_type",
+      "public",
+      "filter",
+    ]);
   });
 
   it("counts facets with every filter once the user picks one", () => {

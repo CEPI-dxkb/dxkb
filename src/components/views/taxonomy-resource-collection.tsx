@@ -6,7 +6,10 @@ import {
   taxonomyCollectionProfile,
   type TaxonomyViewRecord,
 } from "@/lib/taxonomy-view";
-import type { CollectionState } from "@/lib/views/collection-state";
+import {
+  filtersBesideRql,
+  type CollectionState,
+} from "@/lib/views/collection-state";
 import { useCollectionUrlState } from "@/hooks/views/use-collection-url-state";
 import { ResourceCollection } from "./resource-collection";
 
@@ -25,6 +28,9 @@ export function TaxonomyResourceCollection({
       profile={taxonomyCollectionProfile}
       repository={repository}
       state={initialState}
+      filtersBesideRql={[
+        ...filtersBesideRql(initialState.rql, taxonomyCollectionOptions),
+      ]}
       onStateChange={setState}
       keywordMode="refine"
     />

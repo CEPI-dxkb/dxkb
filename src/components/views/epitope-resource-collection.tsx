@@ -6,7 +6,10 @@ import {
   epitopeCollectionProfile,
   type EpitopeViewRecord,
 } from "@/lib/epitope-view";
-import type { CollectionState } from "@/lib/views/collection-state";
+import {
+  filtersBesideRql,
+  type CollectionState,
+} from "@/lib/views/collection-state";
 import { useCollectionUrlState } from "@/hooks/views/use-collection-url-state";
 import { ResourceCollection } from "./resource-collection";
 
@@ -39,6 +42,9 @@ export function EpitopeResourceCollection({
       profile={serverKeywordMode ? { ...profile, serverKeywordMode } : profile}
       repository={repository}
       state={state}
+      filtersBesideRql={[
+        ...filtersBesideRql(state.rql, epitopeCollectionOptions),
+      ]}
       onStateChange={setState}
       baseRql={baseRql}
       enableRowLinks={enableRowLinks}

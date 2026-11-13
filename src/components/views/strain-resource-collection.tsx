@@ -8,7 +8,10 @@ import {
   strainCollectionProfile,
   type StrainViewRecord,
 } from "@/lib/strain-view";
-import type { CollectionState } from "@/lib/views/collection-state";
+import {
+  filtersBesideRql,
+  type CollectionState,
+} from "@/lib/views/collection-state";
 import { ResourceCollection } from "./resource-collection";
 
 const repository = new DataRepository();
@@ -41,6 +44,9 @@ function StrainResourceCollectionContent({
       profile={serverKeywordMode ? { ...profile, serverKeywordMode } : profile}
       repository={repository}
       state={state}
+      filtersBesideRql={[
+        ...filtersBesideRql(state.rql, strainCollectionOptions),
+      ]}
       onStateChange={setState}
       baseRql={baseRql}
       enableRowLinks={enableRowLinks}

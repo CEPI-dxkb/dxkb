@@ -342,6 +342,86 @@ describe("ServerDataRepository", () => {
     expect(requested[0].headers.get("Authorization")).toBe("raw-token");
   });
 
+  describe("values the Data API cannot round-trip (DXKBCORE-415)", () => {
+    const utrId = "PATRIC.1173523.10.JQ434005.5'UTR.1.384.fwd";
+
+    it("looks a member up through the wildcard and keeps only the exact match", async () => {
+      // `?` would also match `5xUTR`; the member lookup must not return it, nor
+      // read two rows as an ambiguous member.
+      const requested = captureGets("genome_feature", [
+        { feature_id: "PATRIC.1173523.10.JQ434005.5xUTR.1.384.fwd" },
+        { feature_id: utrId },
+      ]);
+
+      await expect(
+        new ServerDataRepository({ baseUrl: "https://data.test" }).member(
+          "genome_feature",
+          { operation: "member", id: utrId },
+        ),
+      ).resolves.toEqual({ row: { feature_id: utrId } });
+      expect(requested[0].url).toContain(
+        "eq(feature_id,PATRIC.1173523.10.JQ434005.5%3FUTR.1.384.fwd)",
+      );
+      expect(requested[0].url).not.toContain("%27");
+    });
+
+    it("selects an alternate lookup field the exact match reads, then drops it", async () => {
+      const requested = captureGets("genome_feature", [
+        {
+          feature_id: utrId,
+          patric_id: "fig|1173523.10.5'UTR.1",
+          product: "type-IV IRES",
+        },
+      ]);
+
+      await expect(
+        new ServerDataRepository({ baseUrl: "https://data.test" }).member(
+          "genome_feature",
+          {
+            operation: "member",
+            id: "fig|1173523.10.5'UTR.1",
+            idField: "patric_id",
+            fields: ["product"],
+          },
+        ),
+      ).resolves.toEqual({
+        row: { feature_id: utrId, product: "type-IV IRES" },
+      });
+      expect(requested[0].url).toContain(
+        "eq(patric_id,fig%7C1173523.10.5%3FUTR.1)",
+      );
+      expect(requested[0].url).toContain("select(product,patric_id,feature_id)");
+    });
+
+    it("finds no member when only a wildcard neighbour matched", async () => {
+      captureGets("genome_feature", [
+        { feature_id: "PATRIC.1173523.10.JQ434005.5xUTR.1.384.fwd" },
+      ]);
+
+      await expect(
+        new ServerDataRepository({ baseUrl: "https://data.test" }).member(
+          "genome_feature",
+          { operation: "member", id: utrId },
+        ),
+      ).resolves.toEqual({ row: null });
+    });
+
+    it("rewrites a collection's RQL on its way upstream", async () => {
+      const requested = captureGets("genome_feature");
+
+      await new ServerDataRepository({
+        baseUrl: "https://data.test",
+      }).collection("genome_feature", {
+        operation: "collection",
+        rql: "and(eq(genome_id,1173523.10),eq(feature_type,5%27UTR))",
+      });
+
+      expect(requested[0].url).toContain(
+        "and(eq(genome_id,1173523.10),eq(feature_type,5%3FUTR))",
+      );
+    });
+  });
+
   it.each([{ response: { unsupported: [] } }, { items: null }, { rows: {} }])(
     "rejects unsupported row envelopes",
     async (payload) => {
@@ -964,6 +1044,25 @@ describe("ServerDataRepository.fasta", () => {
         authorization: "secret",
       },
     ]);
+  });
+
+  it("rewrites an id the Data API cannot round-trip in the POST body (DXKBCORE-415)", async () => {
+    const captured = captureFasta(
+      "genome_feature",
+      () =>
+        new Response(record, {
+          headers: { "Content-Type": "application/dna+fasta" },
+        }),
+    );
+
+    await new ServerDataRepository({ baseUrl: "https://data.test" }).fasta(
+      "genome_feature",
+      { type: "dna", ids: ["PATRIC.1173523.10.JQ434005.5'UTR.1.384.fwd"] },
+    );
+
+    expect(captured[0].body).toBe(
+      "in(feature_id,(PATRIC.1173523.10.JQ434005.5%3FUTR.1.384.fwd))",
+    );
   });
 
   it("keys a contig request off genome_sequence's own idField and asks for DNA", async () => {

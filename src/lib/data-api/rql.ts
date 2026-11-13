@@ -286,6 +286,29 @@ function percentEncode(value: string): string {
   );
 }
 
+/** `! ' ( ) ~`: what `encodeURIComponent` leaves raw that RQL rejects. */
+const dataApiUnsafeValueChars = /%(?:21|27|28|29|7E)/gi;
+
+/**
+ * Rewrites canonical RQL for the Data API only. The Data API decodes each
+ * value, re-encodes it with `encodeURIComponent` (which leaves `! ' ( ) ~`
+ * raw) and parses the result again, so a value holding one of those
+ * characters is HTTP 400 however it is encoded (`5'UTR` feature IDs, the
+ * `262(1)S` serology sample). Outside quotes, Solr's single-character wildcard
+ * `?` matches the character instead. Inside quotes the wildcard is unreliable
+ * (a phrase on a tokenized field can match another row), so a quoted value
+ * keeps its encoding and its visible error. Browser URLs and URL state keep the
+ * real value; only the request leaving the server is rewritten.
+ */
+export function upstreamRql(rql: string): string {
+  return rql
+    .split('"')
+    .map((part, index) =>
+      index % 2 === 0 ? part.replace(dataApiUnsafeValueChars, "%3F") : part,
+    )
+    .join('"');
+}
+
 function serializeValue(value: RqlValue, field?: ResourceField): string {
   if (typeof value !== "string") return String(value);
   // "" has no unquoted form (`eq(test_type,)` is HTTP 400), so even a field

@@ -5,6 +5,7 @@ import {
   maxRqlInValues,
   parseRql,
   serializeRql,
+  upstreamRql,
   validateRql,
 } from "../rql";
 import type { RqlIn } from "../rql";
@@ -422,5 +423,56 @@ describe("validateRql keyword values", () => {
     expect(() => validateRql("genome", "keyword(%E0%A4%A)")).toThrow(
       "RQL contains invalid percent encoding.",
     );
+  });
+});
+
+describe("upstreamRql", () => {
+  // The Data API decodes each value, re-encodes it with encodeURIComponent
+  // (which leaves `! ' ( ) ~` raw), and parses again, so those characters fail
+  // however DXKB encodes them. The single-character wildcard matches them.
+  it("swaps the characters the Data API cannot round-trip for a wildcard", () => {
+    expect(
+      upstreamRql(
+        eq("genome_feature", "feature_id", "PATRIC.1173523.10.JQ434005.5'UTR.1.384.fwd"),
+      ),
+    ).toBe("eq(feature_id,PATRIC.1173523.10.JQ434005.5%3FUTR.1.384.fwd)");
+    expect(upstreamRql(eq("serology", "sample_identifier", "262(1)S"))).toBe(
+      "eq(sample_identifier,262%3F1%3FS)",
+    );
+    expect(upstreamRql("eq(feature_id,a%21b%7ec)")).toBe(
+      "eq(feature_id,a%3Fb%3Fc)",
+    );
+  });
+
+  it("rewrites every value of an in() list and leaves structure alone", () => {
+    expect(
+      upstreamRql(
+        serializeRql("genome_feature", {
+          operator: "in",
+          field: "feature_id",
+          values: ["fig|1173523.10.5'UTR.1", "fig|83332.12.peg.1"],
+        }),
+      ),
+    ).toBe("in(feature_id,(fig%7C1173523.10.5%3FUTR.1,fig%7C83332.12.peg.1))");
+  });
+
+  it("leaves a quoted value as written, where a wildcard is unreliable", () => {
+    const rql = validateRql(
+      "genome",
+      "and(eq(genome_id,83332.12),eq(isolation_source,Johne's disease))",
+    );
+    expect(rql).toBe(
+      'and(eq(genome_id,83332.12),eq(isolation_source,"Johne%27s%20disease"))',
+    );
+    expect(upstreamRql(rql)).toBe(rql);
+  });
+
+  it("leaves keyword phrases and clauses without those characters unchanged", () => {
+    for (const rql of [
+      "keyword(%22DNA%20polymerase%22)",
+      "and(eq(genome_id,83332.12),keyword(coli%2A))",
+      "eq(feature_type,CDS)",
+    ])
+      expect(upstreamRql(rql)).toBe(rql);
   });
 });

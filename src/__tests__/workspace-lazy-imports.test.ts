@@ -13,6 +13,8 @@ const zoomPan =
   /^@\/components\/workspace\/file-viewer\/viewers\/zoom-pan-frame$|^react-zoom-pan-pinch$/;
 const chatMarkdown =
   /^@\/components\/copilot\/copilot-markdown$|^react-markdown$|^remark-gfm$/;
+const chatSurfaces =
+  /^@\/components\/copilot\/(?:copilot-panel|copilot-floating-window)$/;
 
 // Modules on service forms, collections, the workspace browser and the chat
 // that reach these dialogs, viewers and the chat's markdown renderer only
@@ -28,10 +30,15 @@ const lazyImporters: [file: string, heavy: RegExp][] = [
   ["components/copilot/copilot-panel.tsx", chatMarkdown],
   ["components/copilot/copilot-transcript.tsx", chatMarkdown],
   ["components/copilot/copilot-message.tsx", chatMarkdown],
+  // Mounted by the root layout on every route: the chat loads on first open.
+  ["components/copilot/copilot-surfaces.tsx", chatSurfaces],
+  ["components/copilot/copilot-side-dock.tsx", chatSurfaces],
+  ["components/copilot/copilot-dock-shell.tsx", chatSurfaces],
+  ["components/copilot/copilot-edge-tab.tsx", chatSurfaces],
 ];
 
 describe("workspace lazy imports", () => {
-  it("keep the folder picker, group dialog, CSV viewer, zoom and chat markdown out of the static graph", () => {
+  it("keep the folder picker, group dialog, CSV viewer, zoom, chat markdown and chat surfaces out of the static graph", () => {
     const offenders = lazyImporters.flatMap(([file, heavy]) => {
       const path = resolve(srcDir, file);
       return valueImportsMatching(
@@ -84,6 +91,13 @@ describe("workspace lazy imports", () => {
         chatMarkdown,
       ),
     ).toEqual(["./copilot-markdown", "react-markdown"]);
+    expect(
+      imports(
+        'import { CopilotPanel } from "./copilot-panel";\nimport { CopilotFloatingWindow } from "./copilot-floating-window";\nimport type { CopilotPanelVariant } from "./copilot-panel";',
+        resolve(srcDir, "components/copilot"),
+        chatSurfaces,
+      ),
+    ).toEqual(["./copilot-panel", "./copilot-floating-window"]);
     // The lazy wrappers are the sanctioned imports.
     expect(
       imports(

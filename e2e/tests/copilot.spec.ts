@@ -312,9 +312,69 @@ test.describe("Copilot", () => {
 
     await copilot.moveToSidePanel();
 
-    await expect(copilot.sideSheet).toBeVisible();
-    await expect(copilot.sideSheet.getByText(`Ask ${copilotName}`)).toBeVisible();
+    await expect(copilot.sidePanel).toBeVisible();
+    await expect(copilot.sidePanel.getByText(`Ask ${copilotName}`)).toBeVisible();
     await expect(copilot.floating).toHaveCount(0);
+  });
+
+  test("minimizes to the edge tab and restores with the conversation and draft", async ({ page }) => {
+    const chat = chatOverrides();
+    await applyBackendMocks(page, { overrides: [...chat.overrides, ...allOverrides] });
+    const copilot = new CopilotPage(page);
+    await copilot.gotoAndOpen();
+    // The side panel pushes the page instead of covering it.
+    await expect(copilot.main).toHaveCSS("margin-right", "420px");
+    await copilot.ask(question);
+    await expect(copilot.answerText("I found")).toBeVisible();
+    await copilot.composer.fill("a follow-up");
+
+    // The navbar button minimizes an open chat; the page gets its room back.
+    await copilot.navbarButton("Minimize").click();
+    await expect(copilot.panel).toBeHidden();
+    await expect(copilot.main).toHaveCSS("margin-right", "0px");
+    await expect(copilot.navbarButton("Restore")).toBeVisible();
+
+    await copilot.edgeTab.click();
+    await expect(copilot.edgeTab).toBeHidden();
+    await expect(copilot.panel.getByText("I found")).toBeVisible();
+    await expect(copilot.composer).toHaveValue("a follow-up");
+    await expect(copilot.composer).toBeFocused();
+
+    // The header's Minimize does the same, and the navbar button restores.
+    await copilot.minimizeButton.click();
+    await expect(copilot.edgeTab).toBeVisible();
+    await copilot.navbarButton("Restore").click();
+    await expect(copilot.composer).toHaveValue("a follow-up");
+
+    // Only Close closes; the next open starts open.
+    await copilot.closeButton.click();
+    await expect(copilot.panel).toBeHidden();
+    await copilot.open();
+    await expect(copilot.panel.getByText("I found")).toBeVisible();
+  });
+
+  test("overlays the page with the side panel on a phone and pushes it on a desktop", async ({ page }) => {
+    await applyBackendMocks(page, { overrides: allOverrides });
+    const copilot = new CopilotPage(page);
+    await page.setViewportSize({ width: 390, height: 844 });
+    await copilot.gotoAndOpen();
+    await expect(copilot.sidePanel).toBeVisible();
+    await expect(copilot.composer).toBeFocused();
+    const phoneWidth = await copilot.pageWidth();
+    await expect.poll(() => copilot.mainWidth()).toBe(phoneWidth);
+    const panelBox = await copilot.sidePanel.boundingBox();
+    expect(panelBox?.width).toBeLessThanOrEqual(390);
+    expect(panelBox?.x).toBeGreaterThanOrEqual(0);
+    await copilot.closeButton.click();
+
+    await page.setViewportSize({ width: 1440, height: 900 });
+    const closedWidth = await copilot.mainWidth();
+    await copilot.open();
+    await expect.poll(() => copilot.mainWidth()).toBe(closedWidth - 420);
+    // Escape inside the panel closes it, and the page gets its room back.
+    await copilot.composer.press("Escape");
+    await expect(copilot.panel).toBeHidden();
+    await expect.poll(() => copilot.mainWidth()).toBe(closedWidth);
   });
 
   test("resizes the floating window from an edge and a corner", async ({ page }) => {
@@ -322,7 +382,7 @@ test.describe("Copilot", () => {
     const copilot = new CopilotPage(page);
     await copilot.gotoAndOpen();
     await copilot.moveToFloating();
-    // The side panel animates closed and its backdrop covers the page until it is gone.
+    // The layout menu animates closed over the window.
     await copilot.waitForFloatingSettled();
     const before = await copilot.floatingBox();
 
@@ -437,8 +497,9 @@ test.describe("Copilot", () => {
     const copilot = new CopilotPage(page);
     await copilot.gotoAndOpen();
 
-    await expect(copilot.modeRadio("Plan")).toHaveAttribute("aria-checked", "true");
-    await copilot.modeRadio("Execute").click();
+    await expect(copilot.modeButton("Plan")).toBeVisible();
+    await copilot.chooseMode("Plan", "Execute");
+    await expect(copilot.modeButton("Execute")).toBeVisible();
     await expect(copilot.executeNotice).toBeVisible();
 
     await copilot.ask(question);

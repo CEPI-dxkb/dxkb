@@ -1,4 +1,5 @@
 import { createEvent, fireEvent, render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import {
   CopilotComposer,
   type CopilotComposerProps,
@@ -128,5 +129,32 @@ describe("CopilotComposer Execute mode", () => {
   it("does not warn in Plan mode", () => {
     renderComposer();
     expect(screen.queryByText(/^Execute mode:/)).not.toBeInTheDocument();
+  });
+});
+
+describe("CopilotComposer toolbar", () => {
+  it("shows the mode as a menu button that names the current mode", () => {
+    renderComposer({ executionMode: "execute" });
+    expect(
+      screen.getByRole("button", { name: `${copilotName} mode: Execute` }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("radio")).not.toBeInTheDocument();
+  });
+
+  it("changes the mode from the menu", async () => {
+    const onExecutionModeChange = vi.fn();
+    renderComposer({ onExecutionModeChange });
+    const user = userEvent.setup();
+    await user.click(
+      screen.getByRole("button", { name: `${copilotName} mode: Plan` }),
+    );
+    await user.click(await screen.findByRole("menuitemradio", { name: /Execute/ }));
+    expect(onExecutionModeChange).toHaveBeenCalledWith("execute");
+  });
+
+  it("puts the extra toolbar control after the mode menu, and drops the Shift+Enter hint", () => {
+    renderComposer({ toolbarExtra: <button type="button">Model picker</button> });
+    expect(screen.getByRole("button", { name: "Model picker" })).toBeInTheDocument();
+    expect(screen.queryByText(/Shift\+Enter/)).not.toBeInTheDocument();
   });
 });

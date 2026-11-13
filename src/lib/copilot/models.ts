@@ -8,3 +8,8 @@ export function resolveCopilotModel(
   const fallback = models.find((model) => model.isDefault) ?? models.at(0);
   return fallback ? fallback.model : null;
 }
+
+/** A model as people read it: without its provider ("openai/gpt-oss-120b" is "gpt-oss-120b"). */
+export function shortModelName(model: string): string {
+  return model.slice(model.lastIndexOf("/") + 1) || model;
+}

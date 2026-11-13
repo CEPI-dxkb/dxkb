@@ -42,12 +42,19 @@ function MessageAvatar({ className, ...props }: React.ComponentProps<"div">) {
   )
 }
 
-function MessageContent({ className, ...props }: React.ComponentProps<"div">) {
+// Local edit: `density="compact"` tightens the gap between the bubble and its footer, for chat
+// surfaces that are short on height.
+function MessageContent({
+  className,
+  density = "default",
+  ...props
+}: React.ComponentProps<"div"> & { density?: "default" | "compact" }) {
   return (
     <div
       data-slot="message-content"
       className={cn(
-        "flex w-full min-w-0 flex-col gap-2.5 wrap-break-word group-data-[align=end]/message:*:data-slot:self-end",
+        "flex w-full min-w-0 flex-col wrap-break-word group-data-[align=end]/message:*:data-slot:self-end",
+        density === "compact" ? "gap-1" : "gap-2.5",
         className
       )}
       {...props}

@@ -51,14 +51,22 @@ function MessageScrollerViewport({
   )
 }
 
+// Local edit: `density="compact"` narrows the gap between messages.
 function MessageScrollerContent({
   className,
+  density = "default",
   ...props
-}: React.ComponentProps<typeof MessageScrollerPrimitive.Content>) {
+}: React.ComponentProps<typeof MessageScrollerPrimitive.Content> & {
+  density?: "default" | "compact"
+}) {
   return (
     <MessageScrollerPrimitive.Content
       data-slot="message-scroller-content"
-      className={cn("flex h-max min-h-full flex-col gap-4 pb-4", className)}
+      className={cn(
+        "flex h-max min-h-full flex-col pb-4",
+        density === "compact" ? "gap-1" : "gap-4",
+        className
+      )}
       {...props}
     />
   )

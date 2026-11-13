@@ -49,18 +49,27 @@ describe("Compare Region contract", () => {
       "fig|1004954.3.pg.1",
       "fig|155892.7.repeat.75",
       "fig|2697049.6699399.mat_peptide.10",
+      "fig|Dm_GEO12.peg.245",
     ]) {
       expect(isCompareRegionLinkable(fid)).toBe(true);
     }
-    expect(isCompareRegionLinkable("fig|1004954.3.peg.1.BLAST")).toBe(false);
-    expect(isCompareRegionLinkable("not-a-fig-id")).toBe(false);
-    expect(isCompareRegionLinkable("fig|abc.peg.1")).toBe(false);
+  });
+
+  it.each([
+    ["not-a-fig-id"],
+    ["fig|1004954.3.peg.1.BLAST"],
+    ["fig|1004954.3.peg"],
+    ["fig|peg.1"],
+  ])("does not link %s", (fid) => {
+    expect(isCompareRegionLinkable(fid)).toBe(false);
+    expect(hasCompareRegionTab(fid)).toBe(false);
   });
 
   it.each([
     ["fig|1.1.peg.2", true],
     ["fig|2697049.6703420.CDS.11", true],
     ["fig|1.1.rna.3", true],
+    ["fig|Dm_GEO12.peg.245", true],
     ["fig|1.1.peg.2.BLAST", false],
   ])(
     "offers %s a comparison link and a feature link (%s): every PATRIC gene has the tab",

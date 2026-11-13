@@ -145,11 +145,13 @@ export function parseCompareRegionSettings(
 /**
  * A PATRIC gene the service names: `fig|<genome>.<type>.<n>` (`peg` for a
  * bacterial CDS, `CDS` for a viral one, `rna`, `pg`, `repeat`, …), each a
- * `genome_feature` record with a `patric_id`. A BLAST hit carries a trailing
- * `.BLAST` and is not.
+ * `genome_feature` record with a `patric_id`. Neither the genome part nor the
+ * type is constrained: BV-BRC has genome ids that are not `<digits>.<digits>`
+ * (`fig|Dm_GEO12.peg.245`), and the feature page opens any `fig|` id. A BLAST
+ * hit, `fig|<genome>.<type>.<n>.BLAST`, ends in a non-number and is not one.
  */
 export function isCompareRegionLinkable(fid: string): boolean {
-  return /^fig\|\d+\.\d+\.[^.]+\.\d+$/.test(fid);
+  return /^fig\|.+\.[^.]+\.\d+$/.test(fid);
 }
 
 /** Every linkable gene has the tab: the feature page accepts any `fig|` BRC ID. */

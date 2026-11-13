@@ -1,8 +1,11 @@
 import { render } from "@testing-library/react";
+import { genomeCollectionOptions } from "@/lib/genome-view";
+import type { CollectionState } from "@/lib/views/collection-state";
 import { GenomeResourceCollection } from "../genome-resource-collection";
 
 interface CapturedCollectionProps {
   profile: { serverKeywordMode?: string };
+  filtersBesideRql?: readonly string[];
 }
 
 const { collectionProps } = vi.hoisted(() => ({
@@ -37,5 +40,19 @@ describe("GenomeResourceCollection", () => {
     render(<GenomeResourceCollection serverKeywordMode="exact" />);
 
     expect(collectionProps.current?.profile.serverKeywordMode).toBe("exact");
+  });
+
+  it("keeps every genome facet beside a custom query", () => {
+    const linked: CollectionState = {
+      filters: {},
+      page: 1,
+      sort: "unsorted",
+      rql: "and(in(taxon_lineage_ids,(3050294)),ne(genome_status,Deprecated))",
+    };
+    render(<GenomeResourceCollection initialState={linked} />);
+
+    expect(collectionProps.current?.filtersBesideRql).toEqual(
+      genomeCollectionOptions.friendlyFilters,
+    );
   });
 });

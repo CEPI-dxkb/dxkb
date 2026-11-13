@@ -1,3 +1,4 @@
+export * from "./compare-region-peg";
 export * from "./display";
 export * from "./profile";
 export * from "./query";

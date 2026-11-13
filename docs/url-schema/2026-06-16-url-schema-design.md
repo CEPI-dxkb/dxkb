@@ -553,7 +553,7 @@ Genome Phase 1 replaces both scaffold handlers with explicit routes:
   member defaults to the first 100 kb of its longest sequence. The `browser.` params are
   tab-owned, so a tab switch clears them. Legacy `#view_tab=browser` (Genome) and
   `#view_tab=genomeBrowser` (Feature) with `loc`, `tracks` and `highlight` map onto them.
-- The Compare Region Viewer tab (Feature member, a CDS with a BRC ID) is
+- The Compare Region Viewer tab (Feature member, a feature with a BRC ID, its own or its PATRIC counterpart's) is
   `?tab=compare-region` with five settings params: `compare.size` (the window, bp: `5000`,
   `10000`, `15000`, `20000`, `50000`, `75000` or `100000`), `compare.genomes` (`5`, `10`,
   `15`, `20` or `50`), `compare.method` (`pgfam` or `plfam`), `compare.filter`

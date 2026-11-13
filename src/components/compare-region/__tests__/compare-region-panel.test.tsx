@@ -319,6 +319,44 @@ describe("CompareRegionPanel", () => {
     expect(message.parentElement).toHaveClass("p-3");
   });
 
+  it("says so, and offers every genome, when only the focus genome came back under a narrower filter", async () => {
+    answer({ rows: [focusRow] });
+    renderPanel();
+
+    await screen.findByRole("group", { name: figureName });
+    // The zoom readout is an <output> (also role "status"), so find the notice by its text.
+    const notice = screen.getByText(/nothing to compare/);
+    expect(notice).toHaveAttribute("role", "status");
+    expect(notice).toHaveTextContent(
+      "Only this feature's own genome was returned, so there is nothing to compare.",
+    );
+    expect(notice).toHaveTextContent('Choose "All genomes" under Genomes');
+  });
+
+  it("blames the feature, not the filter, when only the focus genome came back from every genome", async () => {
+    search.value = "tab=compare-region&compare.filter=all";
+    answer({ rows: [focusRow] });
+    renderPanel();
+
+    await screen.findByRole("group", { name: figureName });
+    // The zoom readout is an <output> (also role "status"), so find the notice by its text.
+    const notice = screen.getByText(/nothing to compare/);
+    expect(notice).toHaveAttribute("role", "status");
+    expect(notice).toHaveTextContent(
+      "Only this feature's own genome was returned, so there is nothing to compare.",
+    );
+    expect(notice).toHaveTextContent("as many viral genes do");
+    expect(notice).not.toHaveTextContent("Choose");
+  });
+
+  it("stays quiet when other genomes came back", async () => {
+    answer({ rows: [focusRow, mirroredRow] });
+    renderPanel();
+
+    await screen.findByRole("group", { name: figureName });
+    expect(screen.queryByText(/nothing to compare/)).not.toBeInTheDocument();
+  });
+
   it("switches the figure's density", async () => {
     const user = userEvent.setup();
     answer({ rows: [focusRow, mirroredRow] });

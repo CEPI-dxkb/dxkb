@@ -1,9 +1,12 @@
 import {
   buildFeatureTabs,
   canonicalFeatureTab,
+  compareRegionAvailability,
+  compareRegionNoBrcIdReason,
+  compareRegionPendingReason,
+  currentCompareRegionAvailability,
   featureCollectionOptions,
   featureCollectionProfile,
-  featureCompareRegionPeg,
   featureGenomeBrowserTarget,
   featureListCollectionOptions,
   featureListOptionsFor,
@@ -13,6 +16,7 @@ import {
   isPatricFeatureId,
   parseFeatureCollectionState,
   parseFeatureListState,
+  type CompareRegionAvailability,
 } from "@/lib/feature-view";
 import {
   featureDomainsRql,
@@ -135,25 +139,78 @@ describe("Feature view contracts", () => {
       ).toBe(featureGenomeBrowserTarget(record) !== null);
     }
   });
-  it("opens the Compare Region Viewer for a CDS with a BRC ID, as legacy did", () => {
+  it("opens the Compare Region Viewer for any feature with a BRC ID of its own", () => {
     const cds = featureViewRecordSchema.parse({
       feature_id: "PATRIC.1",
       feature_type: "CDS",
       patric_id: "fig|1.1.peg.1",
     });
-    expect(featureCompareRegionPeg(cds)).toBe("fig|1.1.peg.1");
+    expect(compareRegionAvailability(cds).peg).toBe("fig|1.1.peg.1");
     expect(canonicalFeatureTab("compare-region", cds)).toBe("compare-region");
     expect(canonicalFeatureTab("compareRegionViewer", cds)).toBe("compare-region");
 
-    const trna = featureViewRecordSchema.parse({ ...cds, feature_type: "tRNA" });
+    // Beyond legacy, which refused a non-CDS: the service answers every fig| id.
+    const trna = featureViewRecordSchema.parse({
+      ...cds,
+      feature_type: "tRNA",
+      patric_id: "fig|1.1.rna.3",
+    });
+    expect(compareRegionAvailability(trna).peg).toBe("fig|1.1.rna.3");
+    expect(canonicalFeatureTab("compare-region", trna)).toBe("compare-region");
+
     const unnamed = featureViewRecordSchema.parse({
       feature_id: "PATRIC.1",
       feature_type: "CDS",
     });
-    for (const record of [trna, unnamed]) {
-      expect(featureCompareRegionPeg(record)).toBeNull();
-      expect(canonicalFeatureTab("compare-region", record)).toBe("overview");
-    }
+    expect(compareRegionAvailability(unnamed).peg).toBeNull();
+    expect(canonicalFeatureTab("compare-region", unnamed)).toBe("overview");
+  });
+
+  it("opens the tab on a counterpart's BRC ID and explains a closed tab", () => {
+    const refseq = featureViewRecordSchema.parse({
+      feature_id: "RefSeq.1",
+      annotation: "RefSeq",
+      feature_type: "CDS",
+    });
+    const compareTab = (compare: CompareRegionAvailability) =>
+      buildFeatureTabs(refseq, compare).find((tab) => tab.key === "compare-region");
+
+    const open: CompareRegionAvailability = { peg: "fig|1.1.peg.9" };
+    expect(compareTab(open)?.enabled).toBe(true);
+    expect(compareTab(open)?.disabledReason).toBeUndefined();
+    expect(canonicalFeatureTab("compare-region", refseq, open)).toBe("compare-region");
+
+    const closed = compareRegionAvailability(refseq);
+    expect(compareTab(closed)?.enabled).toBe(false);
+    expect(compareTab(closed)?.disabledReason).toBe(compareRegionNoBrcIdReason);
+    expect(canonicalFeatureTab("compare-region", refseq, closed)).toBe("overview");
+
+    // A failed lookup reaches the tab as its own message, not the generic "no BRC ID" one.
+    const lookupFailed: CompareRegionAvailability = {
+      peg: null,
+      reason: "Could not look up this feature's BRC ID: HTTP 503",
+    };
+    expect(compareTab(lookupFailed)?.enabled).toBe(false);
+    expect(compareTab(lookupFailed)?.disabledReason).toBe(
+      "Could not look up this feature's BRC ID: HTTP 503",
+    );
+  });
+  it("keeps the tab off while the lookup streams, leaving every other tab as asked", () => {
+    const refseq = featureViewRecordSchema.parse({
+      feature_id: "RefSeq.1",
+      annotation: "RefSeq",
+      feature_type: "CDS",
+    });
+    const pending = currentCompareRegionAvailability(
+      new Promise(() => undefined),
+    );
+    const compareTab = buildFeatureTabs(refseq, pending).find(
+      (tab) => tab.key === "compare-region",
+    );
+    expect(compareTab?.enabled).toBe(false);
+    expect(compareTab?.disabledReason).toBe(compareRegionPendingReason);
+    expect(canonicalFeatureTab(undefined, refseq, pending)).toBe("overview");
+    expect(canonicalFeatureTab("domains", refseq, pending)).toBe("domains");
   });
 });
 

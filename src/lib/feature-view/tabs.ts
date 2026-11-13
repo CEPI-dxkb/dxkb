@@ -4,7 +4,11 @@ import {
   type GenomeBrowserFocus,
 } from "@/lib/genome-browser/contract";
 import { featureProteinStructureRql } from "@/lib/protein-structure-view/scope";
-import { isPatricFeatureId, type FeatureViewRecord } from "./schema";
+import {
+  compareRegionAvailability,
+  type CompareRegionAvailability,
+} from "./compare-region-peg";
+import type { FeatureViewRecord } from "./schema";
 
 export const featureTabKeys = [
   "overview",
@@ -41,20 +45,12 @@ export function featureGenomeBrowserTarget(
     : null;
 }
 
-/** The gene the Compare Region Viewer centers on (CDS only, as in legacy; the service takes the BRC ID), or null. Shared by `enabled` and the panel. */
-export function featureCompareRegionPeg(feature: FeatureViewRecord): string | null {
-  const peg = feature.patric_id;
-  return feature.feature_type === "CDS" && peg && isPatricFeatureId(peg)
-    ? peg
-    : null;
-}
-
 export function buildFeatureTabs(
   feature: FeatureViewRecord,
+  compare: CompareRegionAvailability = compareRegionAvailability(feature),
 ): readonly EntityViewTab<FeatureTab>[] {
   const hasInteractionId = Boolean(feature.feature_id);
   const browsable = featureGenomeBrowserTarget(feature) !== null;
-  const comparable = featureCompareRegionPeg(feature) !== null;
   return [
     { key: "overview", label: "Overview" },
     {
@@ -68,10 +64,8 @@ export function buildFeatureTabs(
     {
       key: "compare-region",
       label: "Compare Region Viewer",
-      enabled: comparable,
-      disabledReason: comparable
-        ? undefined
-        : "Compare Region Viewer is only available for CDS features with a BRC ID.",
+      enabled: compare.peg !== null,
+      disabledReason: compare.reason,
     },
     { key: "interactions", label: "Interactions", enabled: hasInteractionId },
     { key: "domains", label: "Domains and Motifs" },
@@ -89,10 +83,11 @@ export function buildFeatureTabs(
 export function canonicalFeatureTab(
   requested: string | string[] | undefined,
   feature: FeatureViewRecord,
+  compare: CompareRegionAvailability = compareRegionAvailability(feature),
 ): FeatureTab {
   const tab = parseFeatureTab(requested);
-  return buildFeatureTabs(feature).find((item) => item.key === tab)?.enabled ===
-    false
+  return buildFeatureTabs(feature, compare).find((item) => item.key === tab)
+    ?.enabled === false
     ? "overview"
     : tab;
 }

@@ -7,7 +7,7 @@ import {
   upstreamTimeoutMs,
 } from "@/lib/api/upstream-failure";
 import { isPatricFeatureId } from "@/lib/feature-view/schema";
-import { JsonRpcClient } from "@/lib/jsonrpc-client";
+import { JsonRpcClient, JsonRpcError } from "@/lib/jsonrpc-client";
 import { noop } from "@/lib/utils";
 import {
   parseCompareRegionSettings,
@@ -189,6 +189,53 @@ export function normalizeCompareRegionRows(
   return rows.filter((row) => row !== null);
 }
 
+function firstLineOf(text: string): string {
+  return text.split("\n", 1)[0].trim();
+}
+
+/**
+ * The service appends its server-side stack trace to a JSON-RPC error's
+ * message, and repeats the whole thing in `data` (which `errorResponse` sends
+ * to the browser as `details`), so both are cut to their first line. This
+ * assumes the first line carries the meaning, which holds for this service's
+ * errors (message and data both start with it). The original error stays as
+ * `cause`, so the trace is still in the server logs.
+ */
+function withoutServiceTrace(error: unknown): unknown {
+  if (!(error instanceof JsonRpcError)) return error;
+  const message = firstLineOf(error.message);
+  if (!message) return error;
+  const data =
+    typeof error.data === "string" ? firstLineOf(error.data) : error.data;
+  if (message === error.message && data === error.data) return error;
+  const trimmed = new JsonRpcError(message, error.code, data);
+  trimmed.cause = error;
+  return trimmed;
+}
+
+async function callService(
+  client: JsonRpcClient,
+  query: CompareRegionQuery,
+  signal?: AbortSignal,
+): Promise<unknown> {
+  try {
+    return await takeTurn(
+      () =>
+        client.call("SEED.compare_regions_for_peg2", [
+          query.peg,
+          query.size,
+          query.genomes,
+          query.method,
+          serviceFilters[query.filter],
+          serviceOptions(query),
+        ]),
+      signal,
+    );
+  } catch (error) {
+    throw withoutServiceTrace(error);
+  }
+}
+
 /**
  * Throws `CompareRegionBusyError` when too many requests are in line, and
  * `UpstreamError`/`JsonRpcError` when the service fails, is not configured, or
@@ -203,18 +250,7 @@ export async function readCompareRegion(
     service: upstreamServices.compareRegion,
     timeoutMs: upstreamTimeoutMs.compareRegion,
   });
-  const result = await takeTurn(
-    () =>
-      client.call("SEED.compare_regions_for_peg2", [
-        query.peg,
-        query.size,
-        query.genomes,
-        query.method,
-        serviceFilters[query.filter],
-        serviceOptions(query),
-      ]),
-    signal,
-  );
+  const result = await callService(client, query, signal);
   return normalizeCompareRegionRows(
     Array.isArray(result) ? result.at(0) : undefined,
     query.method,

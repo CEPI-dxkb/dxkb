@@ -166,7 +166,7 @@ describe("SelectionStrip", () => {
     expect(onDensityChange).toHaveBeenCalledExactlyOnceWith("comfortable", 1);
   });
 
-  it("offers Compare regions for a protein-coding gene only", () => {
+  it("offers Compare regions for an RNA gene too: every PATRIC gene has the tab", () => {
     renderStrip({
       selected: { rowIndex: 0, featureIndex: 3 },
       rows: [rnaRow, mirroredRow],
@@ -177,8 +177,8 @@ describe("SelectionStrip", () => {
       featureHref("fig|1.1.rna.3"),
     );
     expect(
-      screen.queryByRole("link", { name: "Compare regions" }),
-    ).not.toBeInTheDocument();
+      screen.getByRole("link", { name: "Compare regions" }),
+    ).toHaveAttribute("href", `${featureHref("fig|1.1.rna.3")}?tab=compare-region`);
   });
 
   it("links no page for a BLAST hit", () => {

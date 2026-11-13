@@ -99,6 +99,57 @@ describe("LandingMobileNav", () => {
   });
 });
 
+describe("LandingMobileNav — controlled sheet", () => {
+  it("shows the sheet its owner holds open and reports every change", async () => {
+    const onOpenChange = vi.fn();
+    const onChange = vi.fn();
+    const { rerender } = render(
+      <LandingMobileNav
+        items={items}
+        activeView="overview"
+        onChange={onChange}
+        open
+        onOpenChange={onOpenChange}
+      />,
+    );
+    expect(screen.getByRole("dialog", { name: "Views" })).toBeInTheDocument();
+
+    // A remount (a new instance) opens straight onto the owner's state.
+    rerender(
+      <LandingMobileNav
+        key="remounted"
+        items={items}
+        activeView="overview"
+        onChange={onChange}
+        open
+        onOpenChange={onOpenChange}
+      />,
+    );
+    expect(screen.getByRole("dialog", { name: "Views" })).toBeInTheDocument();
+
+    const [genomes] = screen.getAllByRole("button", { name: /Genomes/ });
+    await userEvent.click(genomes);
+    expect(onChange).toHaveBeenCalledWith("genomes");
+    expect(onOpenChange).toHaveBeenLastCalledWith(false);
+  });
+
+  it("asks its owner to open the sheet and waits for it", async () => {
+    const onOpenChange = vi.fn();
+    render(
+      <LandingMobileNav
+        items={items}
+        activeView="overview"
+        onChange={vi.fn()}
+        open={false}
+        onOpenChange={onOpenChange}
+      />,
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Views: Overview" }));
+    expect(onOpenChange).toHaveBeenLastCalledWith(true);
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+});
+
 describe("LandingMobileNav — disabled tabs", () => {
   it("renders a disabled tile that cannot be selected", async () => {
     const onChange = vi.fn();

@@ -101,6 +101,75 @@ test.describe("genome assembly submission", () => {
     await expect(jobs.rowById(submittedJob.id)).toBeVisible();
   });
 
+  test("the header job pill shows a just-submitted job within seconds, not after the idle interval", async ({
+    page,
+  }) => {
+    const submittedJob = {
+      id: "job-new-assembly",
+      app: "GenomeAssembly2",
+      status: "queued" as const,
+      submit_time: "2026-04-24T12:00:00Z",
+      owner: "e2e-test-user",
+      parameters: {},
+    };
+    // The summary has no active jobs until the submit request is seen, and the
+    // first answer after it is still the stale one: that is the refetch the
+    // submit's invalidation triggers. Only a later answer carries the job, so
+    // the post-submit poll window (3 s) is what is under test. Counters, not
+    // timers, drive the flip.
+    let submitted = false;
+    let answersAfterSubmit = 0;
+    const summaryCounts = () => {
+      if (!submitted) return {};
+      answersAfterSubmit += 1;
+      return answersAfterSubmit >= 2 ? { queued: 1 } : {};
+    };
+    await applyBackendMocks(page, {
+      overrides: [
+        {
+          url: /\/api\/services\/app-service\/submit$/,
+          method: "POST",
+          body: () => {
+            submitted = true;
+            return { job: [submittedJob] };
+          },
+        },
+        {
+          url: /\/api\/services\/app-service\/jobs\/task-summary$/,
+          method: "POST",
+          body: () => ({ summary: summaryCounts() }),
+        },
+        {
+          url: /\/api\/services\/app-service\/jobs\/summary$/,
+          method: "POST",
+          body: () => ({ taskSummary: {}, appSummary: {} }),
+        },
+        ...buildWorkspaceOverrides(),
+        ...buildJobsOverrides({ jobs: [] }),
+        ...journeyOverrides,
+      ],
+    });
+
+    await preFillRerunData(page);
+    const emptyAnswer = page.waitForResponse((res) =>
+      /\/jobs\/task-summary$/.test(res.url()),
+    );
+    const form = new ServiceFormPage(page, /genome assembly/i);
+    await form.goto("/services/genome-assembly?rerun_key=e2e-rerun");
+    await expect(page.getByRole("button", { name: /assemble/i })).toBeEnabled();
+
+    const pill = page.getByRole("button", { name: /view job status/i });
+    // One empty answer must have landed, or "no pill" proves nothing.
+    await emptyAnswer;
+    await expect(pill).toHaveCount(0);
+
+    await form.submit(/assemble/i);
+
+    // Well under the 30 s idle interval; the 3 s poll window shows the job.
+    await expect(pill).toBeVisible({ timeout: 10_000 });
+    await expect(pill).toHaveAccessibleName(/^1\b.*view job status/i);
+  });
+
   test("number inputs preserve keyboard, focus, limit, and button behavior without runtime errors", async ({
     page,
   }) => {

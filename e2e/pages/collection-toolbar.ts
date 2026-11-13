@@ -30,11 +30,11 @@ export class CollectionToolbar {
   }
 
   facetList(): Locator {
-    return this.page.getByRole("listbox", { name: "Facets" });
+    return this.page.getByRole("listbox", { name: "Filters" });
   }
 
   facetSearch(): Locator {
-    return this.page.getByRole("combobox", { name: "Find a facet or value" });
+    return this.page.getByRole("combobox", { name: "Find a filter or value" });
   }
 
   async openFilters(): Promise<void> {

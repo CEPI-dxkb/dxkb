@@ -99,7 +99,7 @@ export function CollectionToolbar(props: CollectionToolbarProps) {
   );
   // A facet that was active when the menu opened keeps its row while it is
   // open, so a pick never moves it; a star moves a facet between Favorites and
-  // Other facets at once.
+  // All filters at once.
   const groupOf = (field: string): FacetGroup => {
     const opened = menu.open ? menu.groupAtOpen(field) : undefined;
     if (opened === "active") return "active";

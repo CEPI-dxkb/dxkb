@@ -108,7 +108,7 @@ describe("ActiveFilterPill", () => {
     expect(list).toBeInTheDocument();
     expect(within(list).getByText("No values picked")).toBeInTheDocument();
     expect(
-      within(list).getByText("Without a facet, only picked values are listed."),
+      within(list).getByText("Without a list of values, only picked values are shown."),
     ).toBeInTheDocument();
     expect(
       screen.queryByText("None of the matching records has this field set."),
@@ -147,7 +147,7 @@ describe("ActiveFilterPill", () => {
       expect(search).toHaveFocus();
     });
     expect(
-      screen.getByRole("listbox", { name: "Facets" }),
+      screen.getByRole("listbox", { name: "Filters" }),
     ).toBeInTheDocument();
   });
 

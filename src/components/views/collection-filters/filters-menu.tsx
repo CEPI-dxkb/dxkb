@@ -11,6 +11,7 @@ import {
 import { flushSync } from "react-dom";
 import {
   ChevronDown,
+  Info,
   ListFilter,
   SearchX,
   SlidersHorizontal,
@@ -21,6 +22,11 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import type { FacetView } from "./active-filter-pill";
 import {
@@ -101,6 +107,9 @@ export type FiltersMenuState = ReturnType<typeof useFiltersMenuState>;
 type LeftRow =
   | { kind: "facet"; key: string; field: string; group: FacetGroup }
   | { kind: "value"; key: string; field: string; value: string; count?: number };
+
+const favoritesExplanation =
+  "Each data type (Genomes, Features, etc.) keeps its own set of favorites.";
 
 const maxValueRowsPerFacet = 5;
 const maxValueRows = 24;
@@ -384,7 +393,7 @@ export function FiltersMenu({
               className={cn(
                 "flex size-5 shrink-0 items-center justify-center rounded-sm opacity-0 group-data-active/row:opacity-100 group-data-current/row:opacity-100 hover:bg-foreground/5",
                 favorite
-                  ? "text-primary dark:text-foreground"
+                  ? "text-highlight"
                   : "text-muted-foreground hover:text-foreground",
               )}
             >
@@ -478,14 +487,14 @@ export function FiltersMenu({
       >
         <div className="relative flex h-120 max-h-(--available-height) flex-col @lg:h-90 @lg:flex-row">
           <RefreshHairline active={busy} />
-          <div className="flex h-44 shrink-0 flex-col border-b border-border @lg:h-auto @lg:w-56 @lg:border-r @lg:border-b-0">
+          <div className="flex h-44 shrink-0 flex-col border-b border-border @lg:h-auto @lg:w-52 @lg:border-r @lg:border-b-0">
             <MenuSearch
               inputRef={leftInputRef}
-              label="Find a facet or value"
+              label="Find a filter or value"
               listId={listId}
               activeId={rows.length > 0 ? optionId(activeIndex) : undefined}
               value={menu.leftQuery}
-              placeholder="Facet or value…"
+              placeholder="Filter or value…"
               onFocus={() => {
                 menu.setFocusTarget("left");
               }}
@@ -501,7 +510,7 @@ export function FiltersMenu({
               ref={leftListRef}
               id={listId}
               role="listbox"
-              aria-label="Facets"
+              aria-label="Filters"
               onMouseLeave={() => {
                 setActiveKey(null);
               }}
@@ -513,12 +522,12 @@ export function FiltersMenu({
                   title={
                     searching
                       ? `Nothing matches “${menu.leftQuery.trim()}”`
-                      : "No facets"
+                      : "No filters"
                   }
                   detail={
                     searching
-                      ? "Searched every facet's name and the values in loaded counts."
-                      : "This table offers no facets."
+                      ? "Searched every filter's name and the values in loaded counts."
+                      : "This table offers no filters."
                   }
                 />
               ) : (
@@ -529,6 +538,11 @@ export function FiltersMenu({
                   <RowGroup
                     label="Favorites"
                     count={favoriteRows.length}
+                    info={
+                      <InfoTip label="About favorites">
+                        {favoritesExplanation}
+                      </InfoTip>
+                    }
                     bare={
                       activeRows.length === 0 &&
                       otherRows.length === 0 &&
@@ -538,7 +552,7 @@ export function FiltersMenu({
                     {favoriteRows.map(renderRow)}
                   </RowGroup>
                   <RowGroup
-                    label="Other facets"
+                    label="All filters"
                     count={otherRows.length}
                     bare={
                       activeRows.length === 0 &&
@@ -602,7 +616,7 @@ export function FiltersMenu({
                       className={cn(
                         "inline-flex h-6 w-22 items-center justify-center gap-1 rounded-md px-1.5 text-2xs font-medium outline-none hover:bg-foreground/5 focus-visible:ring-2 focus-visible:ring-ring",
                         shownFavorite
-                          ? "text-primary dark:text-foreground"
+                          ? "text-highlight"
                           : "text-muted-foreground hover:text-foreground",
                       )}
                     >
@@ -621,7 +635,7 @@ export function FiltersMenu({
                   aria-hidden="true"
                   className="size-5 opacity-50"
                 />
-                Pick a facet on the left to see its values.
+                Pick a filter on the left to see its values.
               </div>
             )}
           </div>
@@ -635,11 +649,13 @@ function RowGroup({
   label,
   count,
   bare = false,
+  info,
   children,
 }: {
   label: string;
   count: number;
   bare?: boolean;
+  info?: ReactNode;
   children: ReactNode;
 }) {
   const labelId = useId();
@@ -654,18 +670,56 @@ function RowGroup({
       <div className="flex h-6 shrink-0 items-center gap-1.5 px-4">
         <span
           id={labelId}
-          className="text-3xs font-medium tracking-wider text-muted-foreground uppercase"
+          className="text-2xs font-semibold tracking-wider text-foreground uppercase"
         >
           {label}
         </span>
+        {info}
         <span
           aria-hidden="true"
-          className="text-3xs text-muted-foreground/70 tabular-nums"
+          className="ml-auto text-2xs font-medium text-muted-foreground tabular-nums"
         >
           {count}
         </span>
       </div>
       {children}
     </div>
+  );
+}
+
+/**
+ * A small "i" beside a group heading. The button only carries the hover and
+ * focus tooltip, so a press keeps the search box focused; Base UI tooltips set
+ * no aria-describedby, so screen readers get the text once, through the
+ * hidden span.
+ */
+function InfoTip({ label, children }: { label: string; children: string }) {
+  const descriptionId = useId();
+  return (
+    <>
+      <Tooltip>
+        <TooltipTrigger
+          render={
+            <button
+              type="button"
+              aria-label={label}
+              aria-describedby={descriptionId}
+              onMouseDown={(event) => {
+                event.preventDefault();
+              }}
+              className="inline-flex size-4 shrink-0 items-center justify-center rounded-full text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+            />
+          }
+        >
+          <Info aria-hidden="true" className="size-3" />
+        </TooltipTrigger>
+        <TooltipContent side="bottom" aria-hidden="true">
+          {children}
+        </TooltipContent>
+      </Tooltip>
+      <span id={descriptionId} hidden>
+        {children}
+      </span>
+    </>
   );
 }

@@ -52,7 +52,7 @@ function filterBarProps(overrides: Partial<FilterBarProps> = {}): FilterBarProps
 
 async function openFilters(user: ReturnType<typeof userEvent.setup>) {
   await user.click(screen.getByRole("button", { name: /^Filters/ }));
-  return screen.findByRole("listbox", { name: "Facets" });
+  return screen.findByRole("listbox", { name: "Filters" });
 }
 
 const statusValues = () =>

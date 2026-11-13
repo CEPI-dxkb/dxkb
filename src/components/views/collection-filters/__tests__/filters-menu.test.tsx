@@ -7,12 +7,12 @@ stubMenuLayout();
 
 async function openFilters(user: ReturnType<typeof userEvent.setup>) {
   await user.click(screen.getByRole("button", { name: /^Filters/ }));
-  return screen.findByRole("listbox", { name: "Facets" });
+  return screen.findByRole("listbox", { name: "Filters" });
 }
 
-const facetList = () => screen.getByRole("listbox", { name: "Facets" });
+const facetList = () => screen.getByRole("listbox", { name: "Filters" });
 const leftSearch = () =>
-  screen.getByRole("combobox", { name: "Find a facet or value" });
+  screen.getByRole("combobox", { name: "Find a filter or value" });
 const groupNamed = (name: string) =>
   within(facetList()).getByRole("group", { name });
 const valueList = (label: string) =>
@@ -35,7 +35,7 @@ describe("FiltersMenu groups", () => {
       }),
     ).toBeInTheDocument();
     expect(
-      within(groupNamed("Other facets"))
+      within(groupNamed("All filters"))
         .getAllByRole("option")
         .map((option) => option.getAttribute("aria-label"))
     ).toEqual(["Isolation Country", "Species"]);
@@ -57,7 +57,7 @@ describe("FiltersMenu groups", () => {
         .map((option) => option.getAttribute("aria-label"))
     ).toEqual(["Genome Status, favorite", "Host Name, favorite"]);
     expect(
-      within(groupNamed("Other facets"))
+      within(groupNamed("All filters"))
         .getAllByRole("option")
         .map((option) => option.getAttribute("aria-label"))
     ).toEqual(["Isolation Country", "Species"]);
@@ -72,6 +72,30 @@ describe("FiltersMenu groups", () => {
       within(facetList()).queryByRole("group"),
     ).not.toBeInTheDocument();
     expect(within(facetList()).getAllByRole("option")).toHaveLength(4);
+  });
+
+  it("explains beside the Favorites heading that favorites are kept per data type", async () => {
+    const user = userEvent.setup();
+    renderToolbar();
+    await openFilters(user);
+
+    const info = within(groupNamed("Favorites")).getByRole("button", {
+      name: "About favorites",
+    });
+
+    expect(info).toHaveAccessibleDescription(
+      "Each data type (Genomes, Features, etc.) keeps its own set of favorites.",
+    );
+  });
+
+  it("shows no favorites note while nothing is a favorite", async () => {
+    const user = userEvent.setup();
+    renderToolbar({ favorites: [] });
+    await openFilters(user);
+
+    expect(
+      screen.queryByRole("button", { name: "About favorites" }),
+    ).not.toBeInTheDocument();
   });
 
   it("drops the group headings when nothing is a favorite", async () => {
@@ -242,13 +266,13 @@ describe("FiltersMenu favorites", () => {
         .map((option) => option.getAttribute("aria-label")),
     ).toEqual(["Genome Status, favorite", "Host Name, favorite", "Species, favorite"]);
     expect(
-      within(groupNamed("Other facets"))
+      within(groupNamed("All filters"))
         .getAllByRole("option")
         .map((option) => option.getAttribute("aria-label")),
     ).toEqual(["Isolation Country"]);
   });
 
-  it("moves a facet back to Other facets at once when it is unstarred", async () => {
+  it("moves a facet back to All filters at once when it is unstarred", async () => {
     const user = userEvent.setup();
     renderToolbar({ favorites: ["genome_status", "host_name", "species"] });
     await openFilters(user);
@@ -264,7 +288,7 @@ describe("FiltersMenu favorites", () => {
         .map((option) => option.getAttribute("aria-label")),
     ).toEqual(["Genome Status, favorite", "Host Name, favorite"]);
     expect(
-      within(groupNamed("Other facets"))
+      within(groupNamed("All filters"))
         .getAllByRole("option")
         .map((option) => option.getAttribute("aria-label")),
     ).toEqual(["Isolation Country", "Species"]);
@@ -304,7 +328,7 @@ describe("FiltersMenu favorites", () => {
       "false",
     );
     expect(
-      within(groupNamed("Other facets")).getByRole("option", {
+      within(groupNamed("All filters")).getByRole("option", {
         name: "Genome Status",
       }),
     ).toBeInTheDocument();
@@ -501,7 +525,7 @@ describe("FiltersMenu checklist", () => {
       within(groupNamed("Active")).getByRole("option", { name: "strain: K-12" }),
     ).toBeInTheDocument();
     expect(
-      screen.getByText("This filter has no facet, so its values are not counted."),
+      screen.getByText("This filter has no list of values, so its values are not counted."),
     ).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /^Favorite/ })).not.toBeInTheDocument();
   });

@@ -170,11 +170,49 @@ describe("fetchDbStatistics", () => {
 
     await fetchDbStatistics();
 
-    const filteredUrl = capturedUrls.find((u) => u.includes("eq(superkingdom,Viruses)"));
+    const filteredUrl = capturedUrls.find((u) => u.includes("eq(taxon_lineage_ids,10239)"));
     expect(filteredUrl).toBeDefined();
     expect(filteredUrl).toContain("/genome/");
     expect(filteredUrl).toContain("limit(1)");
     expect(capturedAccepts.every((a) => a === "application/solr+json")).toBe(true);
+  });
+
+  it("leaves Deprecated genomes out of the two genome counts and requests the other six as before", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const requested: string[] = [];
+    const countByUrl: Partial<Record<string, number>> = {
+      [`${dataApi}/genome/?and(eq(taxon_lineage_ids,10239),ne(genome_status,Deprecated))&limit(1)`]: 1,
+      [`${dataApi}/genome_feature/?eq(feature_type,CDS)&limit(1)`]: 2,
+      [`${dataApi}/taxonomy/?and(eq(taxon_rank,species),eq(lineage,*Viruses*))&limit(1)`]: 3,
+      [`${dataApi}/epitope/?limit(1)`]: 4,
+      [`${dataApi}/taxonomy/?limit(1)`]: 5,
+      [`${dataApi}/protein_structure/?limit(1)`]: 6,
+      [`${dataApi}/protein_feature/?limit(1)`]: 7,
+      [`${dataApi}/genome/?ne(genome_status,Deprecated)&limit(1)`]: 8,
+    };
+    server.use(
+      http.get(`${dataApi}/:core/`, ({ request }) => {
+        requested.push(request.url);
+        const count = countByUrl[request.url];
+        return count === undefined
+          ? HttpResponse.text(`unexpected statistics request ${request.url}`, { status: 500 })
+          : solrCount(count);
+      }),
+    );
+
+    const { counts } = await fetchDbStatistics();
+
+    expect(counts).toEqual({
+      viralGenomes: 1,
+      proteinEntries: 2,
+      virusSpecies: 3,
+      epitopes: 4,
+      taxons: 5,
+      proteinStructures: 6,
+      proteinFeatures: 7,
+      genomes: 8,
+    });
+    expect(requested.toSorted()).toEqual(Object.keys(countByUrl).toSorted());
   });
 
   it("reduces a maintenance page to its title in the reason and the log, never its markup", async () => {

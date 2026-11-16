@@ -5,6 +5,10 @@ import {
   upstreamTimeoutMs,
 } from "@/lib/api/upstream-failure";
 import { getRequiredEnv } from "@/lib/env";
+import {
+  genomeScopeRql,
+  nonDeprecatedGenomeClause,
+} from "@/lib/services/organisms/genome-scope";
 import { createSharedCache } from "@/lib/shared-cache";
 import { formatUserFacingErrorMessage } from "@/lib/utils";
 
@@ -25,15 +29,18 @@ export interface StatisticDefinition {
   readonly filter: string;
 }
 
+/** NCBI "Viruses": the taxon the Viruses landing tile and Taxonomy header count under. */
+const virusesTaxonId = 10239;
+
 export const dbStatisticsDefinitions: readonly StatisticDefinition[] = Object.freeze([
-  { key: "viralGenomes", label: "Viral Genomes", core: "genome", filter: "eq(superkingdom,Viruses)" },
+  { key: "viralGenomes", label: "Viral Genomes", core: "genome", filter: genomeScopeRql(virusesTaxonId) },
   { key: "proteinEntries", label: "Protein Entries", core: "genome_feature", filter: "eq(feature_type,CDS)" },
   { key: "virusSpecies", label: "Virus Species", core: "taxonomy", filter: "and(eq(taxon_rank,species),eq(lineage,*Viruses*))" },
   { key: "epitopes", label: "Epitopes", core: "epitope", filter: "" },
   { key: "taxons", label: "Taxons", core: "taxonomy", filter: "" },
   { key: "proteinStructures", label: "Protein Structures", core: "protein_structure", filter: "" },
   { key: "proteinFeatures", label: "Protein Features", core: "protein_feature", filter: "" },
-  { key: "genomes", label: "Genomes", core: "genome", filter: "" },
+  { key: "genomes", label: "Genomes", core: "genome", filter: nonDeprecatedGenomeClause },
 ] as const);
 
 export type StatisticCounts = Record<StatisticKey, number | null>;

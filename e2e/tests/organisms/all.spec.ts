@@ -2,6 +2,7 @@ import { test, expect, applyBackendMocks } from "../../mocks/backends";
 import {
   emptyBackendFallbackOverrides,
   genomeScenarioOverrides,
+  taxonGenomeCounts,
   taxonomyTreeScenarioOverrides,
   workspaceOverrides,
 } from "../../fixtures/overrides";
@@ -37,7 +38,9 @@ test.describe("all organisms landing page", () => {
 
     await expect(page.getByRole("heading", { level: 1, name: "All Organisms" })).toBeVisible();
     await expect(page.getByRole("contentinfo")).toHaveCount(0);
-    await expect(landing.getKpi("Genomes")).toContainText("9,800,000");
+    await expect(landing.getKpi("Genomes")).toContainText(
+      taxonGenomeCounts["131567"].toLocaleString("en-US"),
+    );
     await expect(page.getByRole("heading", { name: "Featured Organisms" })).toBeVisible();
     await expect(page.getByRole("heading", { level: 3, name: "Domains and Viruses" })).toBeVisible();
     await expect(page.getByRole("link", { name: "View Viruses overview" })).toHaveAttribute(

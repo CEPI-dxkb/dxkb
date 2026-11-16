@@ -1,4 +1,5 @@
 import { Card } from "@/components/ui/card";
+import { fetchTaxonGenomeCount } from "@/lib/services/organisms/genome-count";
 import { fetchOrganismSummary } from "@/lib/services/organisms/summary";
 import type { OrganismSummary } from "@/lib/services/organisms/types";
 import { numberFormatter } from "@/lib/services/organisms/utils";
@@ -42,12 +43,19 @@ function formatCount(value: number | null): string {
 }
 
 export async function DataSummary({ taxonId }: { taxonId: number }) {
-  const summary = await fetchOrganismSummary(taxonId);
+  // The Genomes tile counts like the Taxonomy header, not like the summary's
+  // `count`. A landing page is public, so the count is anonymous (and cached).
+  const [summary, genomeCount] = await Promise.all([
+    fetchOrganismSummary(taxonId),
+    fetchTaxonGenomeCount(taxonId),
+  ]);
 
   return (
     <div className="grid grid-cols-[repeat(auto-fit,minmax(8rem,1fr))] gap-1.5">
       {summaryMetrics.map((metric) => {
-        const formattedValue = formatCount(summary[metric.key]);
+        const formattedValue = formatCount(
+          metric.key === "count" ? genomeCount : summary[metric.key],
+        );
 
         return (
           <Card

@@ -78,9 +78,12 @@ export function GenomeTable({
         : [...genomes].sort((a, b) => {
             // Equal names fall back to the id, so a re-sort is stable and the
             // GenBank/RefSeq copies of one genome always come in the same order.
+            // Ids compare as strings, like the server's sort(+genome_name,
+            // +genome_id), so the first client sort keeps the server's order of
+            // ties instead of swapping "x.9" and "x.10".
             const cmp =
               a.genome_name.localeCompare(b.genome_name) ||
-              a.genome_id.localeCompare(b.genome_id, undefined, { numeric: true });
+              a.genome_id.localeCompare(b.genome_id);
             return sortDir === "asc" ? cmp : -cmp;
           }),
     [genomes, sortDir],
@@ -104,7 +107,8 @@ export function GenomeTable({
 
   // The widest the Type column may grow: what the table has left once Genome
   // Name keeps its minimum and the accession column keeps the width it renders
-  // at, which is none below sm, where that column is hidden.
+  // at, which is none while the scroll container is narrower than @md, where
+  // that column is hidden.
   function maxTypeWidth() {
     const tableWidth = parentRef.current?.clientWidth;
     if (!tableWidth) return maxTypeColumnWidth;
@@ -176,9 +180,10 @@ export function GenomeTable({
             style={{ "--type-col-width": `${String(typeColumnWidth)}px` } as CSSProperties}
           />
           <col />
-          {/* The accession column shows only when the card (the scroll
-              container above, not the viewport: on desktop the card sits in a
-              narrow column) is at least @md (448px) wide, so Genome Name keeps
+          {/* The accession column shows only when the scroll container above
+              (not the viewport: on desktop the card sits in a narrow column,
+              and the container is about 26px narrower than the card) is at
+              least @md (448px) wide, so Genome Name keeps
               its 160px beside Type (144px) and this column (144px: its header
               label needs about 138px). Zero-width below that, not
               display:none: the empty row's colSpan={3} would otherwise make the
@@ -299,7 +304,14 @@ export function GenomeTable({
                         href={genomeHref(g.genome_id)}
                         prefetch={false}
                         className="block truncate text-sm text-primary hover:underline dark:text-link"
-                        title={g.genome_name}
+                        // The accession is what tells the GenBank and RefSeq
+                        // copies of one genome apart where the accession
+                        // column is hidden (the narrow desktop column).
+                        title={
+                          g.genbank_accessions
+                            ? `${g.genome_name} (${g.genbank_accessions})`
+                            : g.genome_name
+                        }
                       >
                         {g.genome_name}
                       </Link>

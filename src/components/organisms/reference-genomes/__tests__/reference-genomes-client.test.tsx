@@ -33,7 +33,14 @@ const genomes = [
   { genome_id: "234.4", genome_name: "Delta strain", reference_genome: "Representative", genbank_accessions: "AC0004" },
 ];
 
-const empty = { rows: [], counts: {}, total: 0, hrefs: { byType: {} } };
+// What the service returns for a scope with no reference genomes: both known
+// types, zero-filled.
+const empty = {
+  rows: [],
+  counts: { Reference: 0, Representative: 0 },
+  total: 0,
+  hrefs: { byType: {} },
+};
 
 const complete = {
   rows: genomes,
@@ -109,7 +116,8 @@ describe("ReferenceGenomesClient", () => {
   });
 
   it("keeps the Type column resizable on a narrow table, where the accession column is hidden", () => {
-    // jsdom measures every offsetWidth as 0, like the accession header below sm.
+    // jsdom measures every offsetWidth as 0, like the accession header while
+    // the scroll container is narrower than @md.
     const clientWidth = vi
       .spyOn(HTMLElement.prototype, "clientWidth", "get")
       .mockReturnValue(375);
@@ -219,6 +227,31 @@ describe("ReferenceGenomesClient", () => {
     expect(reference.queryByText("Representative")).not.toBeInTheDocument();
   });
 
+  it("orders ids that differ only in digit count as strings, like the server's sort(+genome_name,+genome_id)", () => {
+    const twins = [
+      { genome_id: "1541205.9", genome_name: "Zhejiang2013", reference_genome: "Reference", genbank_accessions: "KF636752" },
+      { genome_id: "1541205.10", genome_name: "Zhejiang2013", reference_genome: "Reference", genbank_accessions: "NC_025217" },
+    ];
+    render(
+      <ReferenceGenomesClient
+        rows={twins}
+        counts={{ Reference: 2 }}
+        total={2}
+        hrefs={{ byType: {} }}
+      />,
+    );
+
+    const all = within(screen.getByRole("tabpanel"));
+    fireEvent.click(all.getByRole("button", { name: /Sort by genome name/ }));
+
+    // "…10" before "…9", as a lexical id sort puts them; a numeric one would
+    // swap them against the order the server returned.
+    expect(all.getAllByRole("link").map((link) => link.getAttribute("href"))).toEqual([
+      "/genome/1541205.10",
+      "/genome/1541205.9",
+    ]);
+  });
+
   it("orders genomes that share a name by genome id when sorting", () => {
     const twins = [
       { genome_id: "1541205.21", genome_name: "Zhejiang2013", reference_genome: "Reference", genbank_accessions: "KF636752" },
@@ -269,6 +302,28 @@ describe("ReferenceGenomesClient", () => {
     } finally {
       consoleError.mockRestore();
     }
+  });
+
+  it("tells same-named genomes apart by the GenBank accession in each name link's tooltip", () => {
+    const rows = [
+      { genome_id: "1541205.20", genome_name: "Zhejiang2013", reference_genome: "Reference", genbank_accessions: "NC_025217" },
+      { genome_id: "1541205.21", genome_name: "Zhejiang2013", reference_genome: "Reference", genbank_accessions: "KF636752" },
+      { genome_id: "234.1", genome_name: "No accession strain", reference_genome: "Reference", genbank_accessions: "" },
+    ];
+    render(
+      <ReferenceGenomesClient
+        rows={rows}
+        counts={{ Reference: 3 }}
+        total={3}
+        hrefs={{ byType: {} }}
+      />,
+    );
+
+    const [refSeq, genBank, bare] = within(screen.getByRole("tabpanel")).getAllByRole("link");
+    expect(refSeq).toHaveAttribute("title", "Zhejiang2013 (NC_025217)");
+    expect(genBank).toHaveAttribute("title", "Zhejiang2013 (KF636752)");
+    expect(refSeq.getAttribute("title")).not.toBe(genBank.getAttribute("title"));
+    expect(bare).toHaveAttribute("title", "No accession strain");
   });
 
   it("gives the table three columns and spans the empty-state row across them", () => {
@@ -443,6 +498,16 @@ describe("ReferenceGenomesClient", () => {
       "Alpha strain",
       "Bravo strain",
       "Delta strain",
+    ]);
+  });
+
+  it("keeps a tab for each type, each counting zero, when nothing is listed at all", () => {
+    render(<ReferenceGenomesClient {...empty} />);
+
+    expect(screen.getAllByRole("tab").map((tab) => tab.textContent)).toEqual([
+      "All (0)",
+      "Reference (0)",
+      "Representative (0)",
     ]);
   });
 

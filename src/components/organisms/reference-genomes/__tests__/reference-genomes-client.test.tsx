@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 
 import { GenomeTable, ReferenceGenomesClient } from "../reference-genomes-client";
 
@@ -175,6 +175,139 @@ describe("ReferenceGenomesClient", () => {
       offsetWidth.mockRestore();
       clientWidth.mockRestore();
     }
+  });
+
+  describe("when the card resizes", () => {
+    // jsdom has no ResizeObserver, so the table's effect returns early. This
+    // stub records the callback so a test can fire it, with a container width
+    // and an accession header width it controls.
+    function stubTableMeasurements(initial: {
+      containerWidth: number;
+      accessionWidth: number;
+    }) {
+      const measurements = { ...initial };
+      const callbacks: ResizeObserverCallback[] = [];
+      class RecordingResizeObserver {
+        constructor(callback: ResizeObserverCallback) {
+          callbacks.push(callback);
+        }
+        observe = vi.fn();
+        unobserve = vi.fn();
+        disconnect = vi.fn();
+      }
+      const originalResizeObserver = globalThis.ResizeObserver;
+      globalThis.ResizeObserver = RecordingResizeObserver;
+      const clientWidth = vi
+        .spyOn(HTMLElement.prototype, "clientWidth", "get")
+        .mockImplementation(() => measurements.containerWidth);
+      const offsetWidth = vi
+        .spyOn(HTMLElement.prototype, "offsetWidth", "get")
+        .mockImplementation(function (this: HTMLElement) {
+          return this.textContent === "GenBank Accession"
+            ? measurements.accessionWidth
+            : 0;
+        });
+      return {
+        resizeTo(next: { containerWidth: number; accessionWidth: number }) {
+          Object.assign(measurements, next);
+          act(() => {
+            for (const callback of callbacks) {
+              callback(
+                [{ contentRect: { height: 320 } } as ResizeObserverEntry],
+                {} as ResizeObserver,
+              );
+            }
+          });
+        },
+        restore() {
+          offsetWidth.mockRestore();
+          clientWidth.mockRestore();
+          globalThis.ResizeObserver = originalResizeObserver;
+        },
+      };
+    }
+
+    function widenTypeColumn(separator: HTMLElement, steps: number) {
+      for (let index = 0; index < steps; index += 1) {
+        fireEvent.keyDown(separator, { key: "ArrowRight" });
+      }
+    }
+
+    it("re-clamps a widened Type column when the accession column appears", () => {
+      const table = stubTableMeasurements({
+        containerWidth: 440,
+        accessionWidth: 0,
+      });
+      try {
+        render(<ReferenceGenomesClient {...empty} />);
+
+        const separator = screen.getByRole("separator", {
+          name: "Resize Type column",
+        });
+        const typeColumn = document.querySelector("col");
+
+        // 440 - 160 (Genome Name keeps) with no accession column rendered.
+        widenTypeColumn(separator, 20);
+        expect(separator).toHaveAttribute("aria-valuenow", "280");
+
+        // The container reaches @md (448px) and the accession column renders
+        // at 144px: only 448 - 160 - 144 = 144px is left for Type.
+        table.resizeTo({ containerWidth: 448, accessionWidth: 144 });
+
+        expect(separator).toHaveAttribute("aria-valuenow", "144");
+        expect(typeColumn).toHaveStyle("--type-col-width: 144px");
+      } finally {
+        table.restore();
+      }
+    });
+
+    it("never shrinks the default Type width below it on a narrow card", () => {
+      // The raw cap here is 96 (244 - 160 leaves less than the minimum), below
+      // the 144px default, which a "Representative" badge needs.
+      const table = stubTableMeasurements({
+        containerWidth: 244,
+        accessionWidth: 0,
+      });
+      try {
+        render(<ReferenceGenomesClient {...empty} />);
+
+        const separator = screen.getByRole("separator", {
+          name: "Resize Type column",
+        });
+        const typeColumn = document.querySelector("col");
+
+        table.resizeTo({ containerWidth: 244, accessionWidth: 0 });
+
+        expect(separator).toHaveAttribute("aria-valuenow", "144");
+        expect(typeColumn).toHaveStyle("--type-col-width: 144px");
+      } finally {
+        table.restore();
+      }
+    });
+
+    it("keeps a widened Type column that still fits when the card resizes", () => {
+      const table = stubTableMeasurements({
+        containerWidth: 440,
+        accessionWidth: 0,
+      });
+      try {
+        render(<ReferenceGenomesClient {...empty} />);
+
+        const separator = screen.getByRole("separator", {
+          name: "Resize Type column",
+        });
+
+        widenTypeColumn(separator, 5);
+        expect(separator).toHaveAttribute("aria-valuenow", "194");
+
+        // The cap is now 600 - 160 - 144 = 296, above the stored 194.
+        table.resizeTo({ containerWidth: 600, accessionWidth: 144 });
+
+        expect(separator).toHaveAttribute("aria-valuenow", "194");
+      } finally {
+        table.restore();
+      }
+    });
   });
 
   it("renders one tab per reference type plus an All tab", () => {

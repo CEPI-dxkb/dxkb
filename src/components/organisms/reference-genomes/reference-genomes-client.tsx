@@ -33,6 +33,26 @@ const minTypeColumnWidth = 96;
 const maxTypeColumnWidth = 480;
 const minGenomeNameColumnWidth = 160;
 
+// The widest the Type column may grow: what the scroll container has left once
+// Genome Name keeps its minimum and the accession column keeps the width it
+// renders at, which is none while the container is narrower than @md, where
+// that column is hidden.
+function maxTypeColumnWidthFor(
+  container: HTMLElement | null,
+  accessionHeader: HTMLElement | null,
+) {
+  const tableWidth = container?.clientWidth;
+  if (!tableWidth) return maxTypeColumnWidth;
+  const accessionWidth = accessionHeader?.offsetWidth ?? 0;
+  return Math.min(
+    maxTypeColumnWidth,
+    Math.max(
+      minTypeColumnWidth,
+      tableWidth - minGenomeNameColumnWidth - accessionWidth,
+    ),
+  );
+}
+
 // Exported for the test that pins its memoized sort; the card is the only user.
 export function GenomeTable({
   genomes,
@@ -64,6 +84,15 @@ export function GenomeTable({
     const ro = new ResizeObserver(([entry]) => {
       const h = entry.contentRect.height;
       if (h && h > 0) setContainerHeight(h);
+      // The cap moves with the card's width and with the accession column
+      // appearing, so pull a widened Type column back to it, but never below
+      // the default width (a narrow card's raw cap is below it, and the
+      // "Representative" badge needs the default).
+      const cap = Math.max(
+        maxTypeColumnWidthFor(node, accessionHeaderRef.current),
+        defaultTypeColumnWidth,
+      );
+      setTypeColumnWidth((width) => Math.min(width, cap));
     });
     ro.observe(node);
     return () => { ro.disconnect(); };
@@ -105,20 +134,10 @@ export function GenomeTable({
     setSortDir((d) => (d === null ? "asc" : d === "asc" ? "desc" : null));
   }
 
-  // The widest the Type column may grow: what the table has left once Genome
-  // Name keeps its minimum and the accession column keeps the width it renders
-  // at, which is none while the scroll container is narrower than @md, where
-  // that column is hidden.
   function maxTypeWidth() {
-    const tableWidth = parentRef.current?.clientWidth;
-    if (!tableWidth) return maxTypeColumnWidth;
-    const accessionWidth = accessionHeaderRef.current?.offsetWidth ?? 0;
-    return Math.min(
-      maxTypeColumnWidth,
-      Math.max(
-        minTypeColumnWidth,
-        tableWidth - minGenomeNameColumnWidth - accessionWidth,
-      ),
+    return maxTypeColumnWidthFor(
+      parentRef.current,
+      accessionHeaderRef.current,
     );
   }
 

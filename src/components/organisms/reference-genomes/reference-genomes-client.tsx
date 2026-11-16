@@ -167,7 +167,7 @@ export function GenomeTable({
       tabIndex={0}
       role="group"
       aria-label="Genome list (scrollable)"
-      className="h-80 scrollbar-thin overflow-auto rounded-lg border xl:min-h-0 xl:flex-1"
+      className="@container h-80 scrollbar-thin overflow-auto rounded-lg border xl:min-h-0 xl:flex-1"
     >
       <Table disableScrollWrapper className="table-fixed">
         <colgroup>
@@ -176,12 +176,17 @@ export function GenomeTable({
             style={{ "--type-col-width": `${String(typeColumnWidth)}px` } as CSSProperties}
           />
           <col />
-          {/* Zero-width below sm, not display:none: the empty row's colSpan={3}
-              would otherwise make the table grid add an implicit third column
-              that takes half of the Genome Name column's width. The Type
-              column's maximum width reads the header's rendered width, so
-              nothing else repeats the 160px of sm:w-40. */}
-          <col className="w-0 sm:w-40" />
+          {/* The accession column shows only when the card (the scroll
+              container above, not the viewport: on desktop the card sits in a
+              narrow column) is at least @md (448px) wide, so Genome Name keeps
+              its 160px beside Type (144px) and this column (144px: its header
+              label needs about 138px). Zero-width below that, not
+              display:none: the empty row's colSpan={3} would otherwise make the
+              table grid add an implicit third column that takes half of the
+              Genome Name column's width. The Type column's maximum width reads
+              the header's rendered width, so nothing else repeats the 144px of
+              @md:w-36. */}
+          <col className="w-0 @md:w-36" />
         </colgroup>
         <TableHeader variant="muted" className="sticky top-0 z-10">
           <TableRow className="h-8">
@@ -248,9 +253,9 @@ export function GenomeTable({
             <TableHead
               ref={accessionHeaderRef}
               size="xs"
-              className="hidden h-[31.5px]! px-3 py-1 sm:table-cell"
+              className="hidden h-[31.5px]! px-3 py-1 @md:table-cell"
             >
-              GenBank Accession
+              <span className="block truncate">GenBank Accession</span>
             </TableHead>
           </TableRow>
         </TableHeader>
@@ -299,7 +304,7 @@ export function GenomeTable({
                         {g.genome_name}
                       </Link>
                     </TableCell>
-                    <TableCell className="hidden overflow-hidden px-3 py-1 sm:table-cell">
+                    <TableCell className="hidden overflow-hidden px-3 py-1 @md:table-cell">
                       <span
                         className="block truncate text-sm text-muted-foreground"
                         title={g.genbank_accessions}
@@ -324,7 +329,7 @@ export function GenomeTable({
                 >
                   <TableCell variant="divider-strong" className="px-3 py-1" />
                   <TableCell className="px-3 py-1" />
-                  <TableCell className="hidden px-3 py-1 sm:table-cell" />
+                  <TableCell className="hidden px-3 py-1 @md:table-cell" />
                 </TableRow>
               ))}
             </>

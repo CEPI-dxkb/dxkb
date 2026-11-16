@@ -32,6 +32,9 @@ const defaultTypeColumnWidth = 144;
 const minTypeColumnWidth = 96;
 const maxTypeColumnWidth = 480;
 const minGenomeNameColumnWidth = 160;
+const accessionColumnWidth = 160;
+// What the other two columns keep when the Type column is dragged wide.
+const minOtherColumnsWidth = minGenomeNameColumnWidth + accessionColumnWidth;
 
 // Exported for the test that pins its memoized sort; the card is the only user.
 export function GenomeTable({
@@ -105,7 +108,7 @@ export function GenomeTable({
     const maxWidth = tableWidth
       ? Math.min(
           maxTypeColumnWidth,
-          Math.max(minTypeColumnWidth, tableWidth - minGenomeNameColumnWidth),
+          Math.max(minTypeColumnWidth, tableWidth - minOtherColumnsWidth),
         )
       : maxTypeColumnWidth;
     setTypeColumnWidth(
@@ -165,6 +168,10 @@ export function GenomeTable({
             style={{ "--type-col-width": `${String(typeColumnWidth)}px` } as CSSProperties}
           />
           <col />
+          {/* Zero-width below sm, not display:none: the empty row's colSpan={3}
+              would otherwise make the table grid add an implicit third column
+              that takes half of the Genome Name column's width. */}
+          <col className="w-0 sm:w-40" />
         </colgroup>
         <TableHeader variant="muted" className="sticky top-0 z-10">
           <TableRow className="h-8">
@@ -185,7 +192,7 @@ export function GenomeTable({
                         maxTypeColumnWidth,
                         Math.max(
                           minTypeColumnWidth,
-                          parentRef.current.clientWidth - minGenomeNameColumnWidth,
+                          parentRef.current.clientWidth - minOtherColumnsWidth,
                         ),
                       )
                     : maxTypeColumnWidth
@@ -238,12 +245,18 @@ export function GenomeTable({
                 Genome Name
               </TableHead>
             )}
+            <TableHead
+              size="xs"
+              className="hidden h-[31.5px]! px-3 py-1 sm:table-cell"
+            >
+              GenBank Accession
+            </TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {sorted.length === 0 && (count ?? 0) === 0 ? (
             <TableRow>
-              <TableCell colSpan={2} className="py-4 text-center">
+              <TableCell colSpan={3} className="py-4 text-center">
                 <span className="text-muted-foreground">
                   No genomes in this category.
                 </span>
@@ -285,6 +298,14 @@ export function GenomeTable({
                         {g.genome_name}
                       </Link>
                     </TableCell>
+                    <TableCell className="hidden overflow-hidden px-3 py-1 sm:table-cell">
+                      <span
+                        className="block truncate text-sm text-muted-foreground"
+                        title={g.genbank_accessions}
+                      >
+                        {g.genbank_accessions}
+                      </span>
+                    </TableCell>
                   </TableRow>
                 );
               })}
@@ -302,6 +323,7 @@ export function GenomeTable({
                 >
                   <TableCell variant="divider-strong" className="px-3 py-1" />
                   <TableCell className="px-3 py-1" />
+                  <TableCell className="hidden px-3 py-1 sm:table-cell" />
                 </TableRow>
               ))}
             </>

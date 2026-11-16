@@ -181,6 +181,36 @@ describe("ReferenceGenomesClient", () => {
     ]);
   });
 
+  it("shows each genome's GenBank accession so same-named genomes can be told apart", () => {
+    const twins = [
+      { genome_id: "1541205.20", genome_name: "Bat Hp-betacoronavirus/Zhejiang2013", reference_genome: "Reference", genbank_accessions: "NC_025217" },
+      { genome_id: "1541205.21", genome_name: "Bat Hp-betacoronavirus/Zhejiang2013", reference_genome: "Reference", genbank_accessions: "KF636752" },
+    ];
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    render(
+      <ReferenceGenomesClient
+        rows={twins}
+        counts={{ Reference: 2 }}
+        total={2}
+        hrefs={{ byType: {} }}
+      />,
+    );
+
+    const all = within(screen.getByRole("tabpanel"));
+    expect(screen.getByRole("columnheader", { name: "GenBank Accession" })).toBeInTheDocument();
+    expect(all.getAllByRole("link", { name: "Bat Hp-betacoronavirus/Zhejiang2013" })).toHaveLength(2);
+    expect(all.getByText("NC_025217")).toBeInTheDocument();
+    expect(all.getByText("KF636752")).toBeInTheDocument();
+    expect(consoleError.mock.calls.flat().join(" ")).not.toContain("same key");
+    consoleError.mockRestore();
+  });
+
+  it("spans the empty state across all three columns", () => {
+    render(<ReferenceGenomesClient {...empty} />);
+
+    expect(document.querySelectorAll("col")).toHaveLength(3);
+  });
+
   it("renders genome rows as same-tab links to the internal genome view", () => {
     render(<ReferenceGenomesClient {...complete} />);
 

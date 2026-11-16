@@ -74,7 +74,11 @@ export function GenomeTable({
       sortDir === null
         ? genomes
         : [...genomes].sort((a, b) => {
-            const cmp = a.genome_name.localeCompare(b.genome_name);
+            // Equal names fall back to the id, so a re-sort is stable and the
+            // GenBank/RefSeq copies of one genome always come in the same order.
+            const cmp =
+              a.genome_name.localeCompare(b.genome_name) ||
+              a.genome_id.localeCompare(b.genome_id, undefined, { numeric: true });
             return sortDir === "asc" ? cmp : -cmp;
           }),
     [genomes, sortDir],

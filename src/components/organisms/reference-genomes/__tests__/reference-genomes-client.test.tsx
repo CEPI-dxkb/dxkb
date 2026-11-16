@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 
 import { GenomeTable, ReferenceGenomesClient } from "../reference-genomes-client";
 
@@ -114,6 +114,71 @@ describe("ReferenceGenomesClient", () => {
     expect(screen.getByRole("tab", { name: /All \(4\)/ })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /Reference \(2\)/ })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /Representative \(2\)/ })).toBeInTheDocument();
+  });
+
+  it("explains identical All and Reference counts with an empty Representative tab", () => {
+    // Adenoviridae: 355 Reference genomes, no Representative one.
+    render(
+      <ReferenceGenomesClient
+        rows={genomes.slice(0, 2)}
+        counts={{ Reference: 355, Representative: 0 }}
+        total={355}
+        hrefs={{ byType: {} }}
+      />,
+    );
+
+    expect(screen.getByRole("tab", { name: /All \(355\)/ })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /Reference \(355\)/ })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("tab", { name: /Representative \(0\)/ }));
+
+    expect(
+      within(screen.getByRole("tabpanel")).getByText("No genomes in this category."),
+    ).toBeInTheDocument();
+  });
+
+  it("lists each genome once in All, and Reference lists only Reference genomes", () => {
+    render(<ReferenceGenomesClient {...complete} />);
+
+    const all = within(screen.getByRole("tabpanel"));
+    expect(all.getAllByRole("link").map((link) => link.getAttribute("href"))).toEqual([
+      "/genome/234.1",
+      "/genome/234.2",
+      "/genome/234.3",
+      "/genome/234.4",
+    ]);
+
+    fireEvent.click(screen.getByRole("tab", { name: /Reference \(2\)/ }));
+
+    const reference = within(screen.getByRole("tabpanel"));
+    expect(reference.getAllByRole("link").map((link) => link.getAttribute("href"))).toEqual([
+      "/genome/234.1",
+      "/genome/234.2",
+    ]);
+    expect(reference.queryByText("Representative")).not.toBeInTheDocument();
+  });
+
+  it("orders genomes that share a name by genome id when sorting", () => {
+    const twins = [
+      { genome_id: "1541205.21", genome_name: "Zhejiang2013", reference_genome: "Reference", genbank_accessions: "KF636752" },
+      { genome_id: "1541205.20", genome_name: "Zhejiang2013", reference_genome: "Reference", genbank_accessions: "NC_025217" },
+    ];
+    render(
+      <ReferenceGenomesClient
+        rows={twins}
+        counts={{ Reference: 2 }}
+        total={2}
+        hrefs={{ byType: {} }}
+      />,
+    );
+
+    const all = within(screen.getByRole("tabpanel"));
+    fireEvent.click(all.getByRole("button", { name: /Sort by genome name/ }));
+
+    expect(all.getAllByRole("link").map((link) => link.getAttribute("href"))).toEqual([
+      "/genome/1541205.20",
+      "/genome/1541205.21",
+    ]);
   });
 
   it("renders genome rows as same-tab links to the internal genome view", () => {

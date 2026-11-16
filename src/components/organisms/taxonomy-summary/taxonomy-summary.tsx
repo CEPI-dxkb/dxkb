@@ -61,7 +61,7 @@ export async function TaxonomySummary({
       description: "Assembled genome records",
     },
     { label: "Protein Coding Genes (CDS)", value: summaryCount(summary?.cds), description: "Coding sequences" },
-    { label: "3D Protein Structures (PDB)", value: summaryCount(summary?.pdb), description: "Protein structure links" },
+    { label: "3D Protein Structures (PDB)", value: summaryCount(summary?.pdb), description: "Experimentally determined structures (AlphaFold predictions excluded)" },
   ];
 
   const tiles = (

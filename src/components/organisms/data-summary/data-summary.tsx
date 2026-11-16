@@ -33,7 +33,8 @@ const summaryMetrics: {
   {
     key: "pdb",
     label: "PDB Structures",
-    description: "Protein structure links",
+    description:
+      "Experimentally determined structures (AlphaFold predictions excluded)",
   },
 ];
 

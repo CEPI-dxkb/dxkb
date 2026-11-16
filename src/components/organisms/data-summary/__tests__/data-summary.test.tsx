@@ -56,6 +56,10 @@ describe("DataSummary", () => {
     expect(screen.getByText("482,001,224")).toBeInTheDocument();
     // The experimental count, not the payload's PDB (9,821).
     expect(screen.getByTestId("organism-kpi-pdb")).toHaveTextContent("68,899");
+    expect(screen.getByTestId("organism-kpi-pdb")).toHaveAttribute(
+      "title",
+      "Experimentally determined structures (AlphaFold predictions excluded)",
+    );
   });
 
   it("sums the Genomes tile across several roots", async () => {

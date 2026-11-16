@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 
 import { GenomeTable, ReferenceGenomesClient } from "../reference-genomes-client";
 
@@ -27,13 +27,20 @@ vi.mock("@tanstack/react-virtual", () => ({
 }));
 
 const genomes = [
-  { genome_id: "234.1", genome_name: "Charlie strain", reference_genome: "Reference" },
-  { genome_id: "234.2", genome_name: "Alpha strain", reference_genome: "Reference" },
-  { genome_id: "234.3", genome_name: "Bravo strain", reference_genome: "Representative" },
-  { genome_id: "234.4", genome_name: "Delta strain", reference_genome: "Representative" },
+  { genome_id: "234.1", genome_name: "Charlie strain", reference_genome: "Reference", genbank_accessions: "AC0001" },
+  { genome_id: "234.2", genome_name: "Alpha strain", reference_genome: "Reference", genbank_accessions: "AC0002" },
+  { genome_id: "234.3", genome_name: "Bravo strain", reference_genome: "Representative", genbank_accessions: "AC0003" },
+  { genome_id: "234.4", genome_name: "Delta strain", reference_genome: "Representative", genbank_accessions: "AC0004" },
 ];
 
-const empty = { rows: [], counts: {}, total: 0, hrefs: { byType: {} } };
+// What the service returns for a scope with no reference genomes: both known
+// types, zero-filled.
+const empty = {
+  rows: [],
+  counts: { Reference: 0, Representative: 0 },
+  total: 0,
+  hrefs: { byType: {} },
+};
 
 const complete = {
   rows: genomes,
@@ -108,12 +115,357 @@ describe("ReferenceGenomesClient", () => {
     clientWidth.mockRestore();
   });
 
+  it("keeps the Type column resizable on a narrow table, where the accession column is hidden", () => {
+    // jsdom measures every offsetWidth as 0, like the accession header while
+    // the scroll container is narrower than @md.
+    const clientWidth = vi
+      .spyOn(HTMLElement.prototype, "clientWidth", "get")
+      .mockReturnValue(375);
+    try {
+      render(<ReferenceGenomesClient {...empty} />);
+
+      const separator = screen.getByRole("separator", {
+        name: "Resize Type column",
+      });
+      const typeColumn = document.querySelector("col");
+
+      // The attribute is read from the refs on a render after the first.
+      fireEvent.keyDown(separator, { key: "ArrowRight" });
+      expect(separator).toHaveAttribute("aria-valuemax", "215");
+      expect(separator).toHaveAttribute("aria-valuenow", "154");
+      expect(typeColumn).toHaveStyle("--type-col-width: 154px");
+
+      for (let index = 0; index < 10; index += 1) {
+        fireEvent.keyDown(separator, { key: "ArrowRight" });
+      }
+      expect(separator).toHaveAttribute("aria-valuenow", "215");
+
+      fireEvent.doubleClick(separator);
+      expect(separator).toHaveAttribute("aria-valuenow", "144");
+    } finally {
+      clientWidth.mockRestore();
+    }
+  });
+
+  it("keeps the rendered accession column's width out of the Type column's reach", () => {
+    const clientWidth = vi
+      .spyOn(HTMLElement.prototype, "clientWidth", "get")
+      .mockReturnValue(600);
+    const offsetWidth = vi
+      .spyOn(HTMLElement.prototype, "offsetWidth", "get")
+      .mockImplementation(function (this: HTMLElement) {
+        return this.textContent === "GenBank Accession" ? 200 : 0;
+      });
+    try {
+      render(<ReferenceGenomesClient {...empty} />);
+
+      const separator = screen.getByRole("separator", {
+        name: "Resize Type column",
+      });
+
+      fireEvent.keyDown(separator, { key: "ArrowRight" });
+      // 600 - 160 (Genome Name keeps) - 200 (accession renders at).
+      expect(separator).toHaveAttribute("aria-valuemax", "240");
+
+      for (let index = 0; index < 10; index += 1) {
+        fireEvent.keyDown(separator, { key: "ArrowRight" });
+      }
+      expect(separator).toHaveAttribute("aria-valuenow", "240");
+    } finally {
+      offsetWidth.mockRestore();
+      clientWidth.mockRestore();
+    }
+  });
+
+  describe("when the card resizes", () => {
+    // jsdom has no ResizeObserver, so the table's effect returns early. This
+    // stub records the callback so a test can fire it, with a container width
+    // and an accession header width it controls.
+    function stubTableMeasurements(initial: {
+      containerWidth: number;
+      accessionWidth: number;
+    }) {
+      const measurements = { ...initial };
+      const callbacks: ResizeObserverCallback[] = [];
+      class RecordingResizeObserver {
+        constructor(callback: ResizeObserverCallback) {
+          callbacks.push(callback);
+        }
+        observe = vi.fn();
+        unobserve = vi.fn();
+        disconnect = vi.fn();
+      }
+      const originalResizeObserver = globalThis.ResizeObserver;
+      globalThis.ResizeObserver = RecordingResizeObserver;
+      const clientWidth = vi
+        .spyOn(HTMLElement.prototype, "clientWidth", "get")
+        .mockImplementation(() => measurements.containerWidth);
+      const offsetWidth = vi
+        .spyOn(HTMLElement.prototype, "offsetWidth", "get")
+        .mockImplementation(function (this: HTMLElement) {
+          return this.textContent === "GenBank Accession"
+            ? measurements.accessionWidth
+            : 0;
+        });
+      return {
+        resizeTo(next: { containerWidth: number; accessionWidth: number }) {
+          Object.assign(measurements, next);
+          act(() => {
+            for (const callback of callbacks) {
+              callback(
+                [{ contentRect: { height: 320 } } as ResizeObserverEntry],
+                {} as ResizeObserver,
+              );
+            }
+          });
+        },
+        restore() {
+          offsetWidth.mockRestore();
+          clientWidth.mockRestore();
+          globalThis.ResizeObserver = originalResizeObserver;
+        },
+      };
+    }
+
+    function widenTypeColumn(separator: HTMLElement, steps: number) {
+      for (let index = 0; index < steps; index += 1) {
+        fireEvent.keyDown(separator, { key: "ArrowRight" });
+      }
+    }
+
+    it("re-clamps a widened Type column when the accession column appears", () => {
+      const table = stubTableMeasurements({
+        containerWidth: 440,
+        accessionWidth: 0,
+      });
+      try {
+        render(<ReferenceGenomesClient {...empty} />);
+
+        const separator = screen.getByRole("separator", {
+          name: "Resize Type column",
+        });
+        const typeColumn = document.querySelector("col");
+
+        // 440 - 160 (Genome Name keeps) with no accession column rendered.
+        widenTypeColumn(separator, 20);
+        expect(separator).toHaveAttribute("aria-valuenow", "280");
+
+        // The container reaches @md (448px) and the accession column renders
+        // at 144px: only 448 - 160 - 144 = 144px is left for Type.
+        table.resizeTo({ containerWidth: 448, accessionWidth: 144 });
+
+        expect(separator).toHaveAttribute("aria-valuenow", "144");
+        expect(typeColumn).toHaveStyle("--type-col-width: 144px");
+      } finally {
+        table.restore();
+      }
+    });
+
+    it("never shrinks the default Type width below it on a narrow card", () => {
+      // The raw cap here is 96 (244 - 160 leaves less than the minimum), below
+      // the 144px default, which a "Representative" badge needs.
+      const table = stubTableMeasurements({
+        containerWidth: 244,
+        accessionWidth: 0,
+      });
+      try {
+        render(<ReferenceGenomesClient {...empty} />);
+
+        const separator = screen.getByRole("separator", {
+          name: "Resize Type column",
+        });
+        const typeColumn = document.querySelector("col");
+
+        table.resizeTo({ containerWidth: 244, accessionWidth: 0 });
+
+        expect(separator).toHaveAttribute("aria-valuenow", "144");
+        expect(typeColumn).toHaveStyle("--type-col-width: 144px");
+      } finally {
+        table.restore();
+      }
+    });
+
+    it("keeps a widened Type column that still fits when the card resizes", () => {
+      const table = stubTableMeasurements({
+        containerWidth: 440,
+        accessionWidth: 0,
+      });
+      try {
+        render(<ReferenceGenomesClient {...empty} />);
+
+        const separator = screen.getByRole("separator", {
+          name: "Resize Type column",
+        });
+
+        widenTypeColumn(separator, 5);
+        expect(separator).toHaveAttribute("aria-valuenow", "194");
+
+        // The cap is now 600 - 160 - 144 = 296, above the stored 194.
+        table.resizeTo({ containerWidth: 600, accessionWidth: 144 });
+
+        expect(separator).toHaveAttribute("aria-valuenow", "194");
+      } finally {
+        table.restore();
+      }
+    });
+  });
+
   it("renders one tab per reference type plus an All tab", () => {
     render(<ReferenceGenomesClient {...complete} />);
 
     expect(screen.getByRole("tab", { name: /All \(4\)/ })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /Reference \(2\)/ })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /Representative \(2\)/ })).toBeInTheDocument();
+  });
+
+  it("explains identical All and Reference counts with an empty Representative tab", () => {
+    // Adenoviridae: 355 Reference genomes, no Representative one.
+    render(
+      <ReferenceGenomesClient
+        rows={genomes.slice(0, 2)}
+        counts={{ Reference: 355, Representative: 0 }}
+        total={355}
+        hrefs={{ byType: {} }}
+      />,
+    );
+
+    expect(screen.getByRole("tab", { name: /All \(355\)/ })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /Reference \(355\)/ })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("tab", { name: /Representative \(0\)/ }));
+
+    expect(
+      within(screen.getByRole("tabpanel")).getByText("No genomes in this category."),
+    ).toBeInTheDocument();
+  });
+
+  it("lists each genome once in All, and Reference lists only Reference genomes", () => {
+    render(<ReferenceGenomesClient {...complete} />);
+
+    const all = within(screen.getByRole("tabpanel"));
+    expect(all.getAllByRole("link").map((link) => link.getAttribute("href"))).toEqual([
+      "/genome/234.1",
+      "/genome/234.2",
+      "/genome/234.3",
+      "/genome/234.4",
+    ]);
+
+    fireEvent.click(screen.getByRole("tab", { name: /Reference \(2\)/ }));
+
+    const reference = within(screen.getByRole("tabpanel"));
+    expect(reference.getAllByRole("link").map((link) => link.getAttribute("href"))).toEqual([
+      "/genome/234.1",
+      "/genome/234.2",
+    ]);
+    expect(reference.queryByText("Representative")).not.toBeInTheDocument();
+  });
+
+  it("orders ids that differ only in digit count as strings, like the server's sort(+genome_name,+genome_id)", () => {
+    const twins = [
+      { genome_id: "1541205.9", genome_name: "Zhejiang2013", reference_genome: "Reference", genbank_accessions: "KF636752" },
+      { genome_id: "1541205.10", genome_name: "Zhejiang2013", reference_genome: "Reference", genbank_accessions: "NC_025217" },
+    ];
+    render(
+      <ReferenceGenomesClient
+        rows={twins}
+        counts={{ Reference: 2 }}
+        total={2}
+        hrefs={{ byType: {} }}
+      />,
+    );
+
+    const all = within(screen.getByRole("tabpanel"));
+    fireEvent.click(all.getByRole("button", { name: /Sort by genome name/ }));
+
+    // "…10" before "…9", as a lexical id sort puts them; a numeric one would
+    // swap them against the order the server returned.
+    expect(all.getAllByRole("link").map((link) => link.getAttribute("href"))).toEqual([
+      "/genome/1541205.10",
+      "/genome/1541205.9",
+    ]);
+  });
+
+  it("orders genomes that share a name by genome id when sorting", () => {
+    const twins = [
+      { genome_id: "1541205.21", genome_name: "Zhejiang2013", reference_genome: "Reference", genbank_accessions: "KF636752" },
+      { genome_id: "1541205.20", genome_name: "Zhejiang2013", reference_genome: "Reference", genbank_accessions: "NC_025217" },
+    ];
+    render(
+      <ReferenceGenomesClient
+        rows={twins}
+        counts={{ Reference: 2 }}
+        total={2}
+        hrefs={{ byType: {} }}
+      />,
+    );
+
+    const all = within(screen.getByRole("tabpanel"));
+    fireEvent.click(all.getByRole("button", { name: /Sort by genome name/ }));
+
+    expect(all.getAllByRole("link").map((link) => link.getAttribute("href"))).toEqual([
+      "/genome/1541205.20",
+      "/genome/1541205.21",
+    ]);
+  });
+
+  it("lists same-named genomes as separate rows keyed by genome id, each with its GenBank accession", () => {
+    const twins = [
+      { genome_id: "1541205.20", genome_name: "Bat Hp-betacoronavirus/Zhejiang2013", reference_genome: "Reference", genbank_accessions: "NC_025217" },
+      { genome_id: "1541205.21", genome_name: "Bat Hp-betacoronavirus/Zhejiang2013", reference_genome: "Reference", genbank_accessions: "KF636752" },
+    ];
+    // A pass-through spy: rows keyed by name would log React's duplicate-key
+    // warning ("two children with the same key"), which this asserts is absent.
+    const consoleError = vi.spyOn(console, "error");
+    try {
+      render(
+        <ReferenceGenomesClient
+          rows={twins}
+          counts={{ Reference: 2 }}
+          total={2}
+          hrefs={{ byType: {} }}
+        />,
+      );
+
+      const all = within(screen.getByRole("tabpanel"));
+      expect(screen.getByRole("columnheader", { name: "GenBank Accession" })).toBeInTheDocument();
+      expect(all.getAllByRole("link", { name: "Bat Hp-betacoronavirus/Zhejiang2013" })).toHaveLength(2);
+      expect(all.getByText("NC_025217")).toBeInTheDocument();
+      expect(all.getByText("KF636752")).toBeInTheDocument();
+      expect(consoleError.mock.calls.flat().join(" ")).not.toContain("same key");
+    } finally {
+      consoleError.mockRestore();
+    }
+  });
+
+  it("tells same-named genomes apart by the GenBank accession in each name link's tooltip", () => {
+    const rows = [
+      { genome_id: "1541205.20", genome_name: "Zhejiang2013", reference_genome: "Reference", genbank_accessions: "NC_025217" },
+      { genome_id: "1541205.21", genome_name: "Zhejiang2013", reference_genome: "Reference", genbank_accessions: "KF636752" },
+      { genome_id: "234.1", genome_name: "No accession strain", reference_genome: "Reference", genbank_accessions: "" },
+    ];
+    render(
+      <ReferenceGenomesClient
+        rows={rows}
+        counts={{ Reference: 3 }}
+        total={3}
+        hrefs={{ byType: {} }}
+      />,
+    );
+
+    const [refSeq, genBank, bare] = within(screen.getByRole("tabpanel")).getAllByRole("link");
+    expect(refSeq).toHaveAttribute("title", "Zhejiang2013 (NC_025217)");
+    expect(genBank).toHaveAttribute("title", "Zhejiang2013 (KF636752)");
+    expect(refSeq.getAttribute("title")).not.toBe(genBank.getAttribute("title"));
+    expect(bare).toHaveAttribute("title", "No accession strain");
+  });
+
+  it("gives the table three columns and spans the empty-state row across them", () => {
+    render(<ReferenceGenomesClient {...empty} />);
+
+    expect(document.querySelectorAll("col")).toHaveLength(3);
+    expect(
+      screen.getByText("No genomes in this category.").closest("td"),
+    ).toHaveAttribute("colspan", "3");
   });
 
   it("renders genome rows as same-tab links to the internal genome view", () => {
@@ -282,6 +634,16 @@ describe("ReferenceGenomesClient", () => {
     ]);
   });
 
+  it("keeps a tab for each type, each counting zero, when nothing is listed at all", () => {
+    render(<ReferenceGenomesClient {...empty} />);
+
+    expect(screen.getAllByRole("tab").map((tab) => tab.textContent)).toEqual([
+      "All (0)",
+      "Reference (0)",
+      "Representative (0)",
+    ]);
+  });
+
   it("renders the empty-state message when nothing is listed at all", () => {
     render(<ReferenceGenomesClient {...empty} />);
     expect(screen.getByText("No genomes in this category.")).toBeInTheDocument();
@@ -306,11 +668,13 @@ describe("ReferenceGenomesClient", () => {
       genome_id: `1.${String(i)}`,
       genome_name: `Ref ${String(i)}`,
       reference_genome: "Reference",
+      genbank_accessions: "",
     }));
     const representatives = Array.from({ length: 2 }, (_, i) => ({
       genome_id: `2.${String(i)}`,
       genome_name: `Rep ${String(i)}`,
       reference_genome: "Representative",
+      genbank_accessions: "",
     }));
     render(
       <ReferenceGenomesClient

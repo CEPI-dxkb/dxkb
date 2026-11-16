@@ -33,6 +33,26 @@ const minTypeColumnWidth = 96;
 const maxTypeColumnWidth = 480;
 const minGenomeNameColumnWidth = 160;
 
+// The widest the Type column may grow: what the scroll container has left once
+// Genome Name keeps its minimum and the accession column keeps the width it
+// renders at, which is none while the container is narrower than @md, where
+// that column is hidden.
+function maxTypeColumnWidthFor(
+  container: HTMLElement | null,
+  accessionHeader: HTMLElement | null,
+) {
+  const tableWidth = container?.clientWidth;
+  if (!tableWidth) return maxTypeColumnWidth;
+  const accessionWidth = accessionHeader?.offsetWidth ?? 0;
+  return Math.min(
+    maxTypeColumnWidth,
+    Math.max(
+      minTypeColumnWidth,
+      tableWidth - minGenomeNameColumnWidth - accessionWidth,
+    ),
+  );
+}
+
 // Exported for the test that pins its memoized sort; the card is the only user.
 export function GenomeTable({
   genomes,
@@ -51,6 +71,8 @@ export function GenomeTable({
   // control to undo an earlier direction.
   const sortDir = sortable ? storedSortDir : null;
   const parentRef = useRef<HTMLDivElement>(null);
+  // Measured for the Type column's maximum width: 0 while it is display:none.
+  const accessionHeaderRef = useRef<HTMLTableCellElement>(null);
   const [containerHeight, setContainerHeight] = useState(320);
   const [typeColumnWidth, setTypeColumnWidth] = useState(defaultTypeColumnWidth);
   const [isResizingTypeColumn, setIsResizingTypeColumn] = useState(false);
@@ -62,6 +84,15 @@ export function GenomeTable({
     const ro = new ResizeObserver(([entry]) => {
       const h = entry.contentRect.height;
       if (h && h > 0) setContainerHeight(h);
+      // The cap moves with the card's width and with the accession column
+      // appearing, so pull a widened Type column back to it, but never below
+      // the default width (a narrow card's raw cap is below it, and the
+      // "Representative" badge needs the default).
+      const cap = Math.max(
+        maxTypeColumnWidthFor(node, accessionHeaderRef.current),
+        defaultTypeColumnWidth,
+      );
+      setTypeColumnWidth((width) => Math.min(width, cap));
     });
     ro.observe(node);
     return () => { ro.disconnect(); };
@@ -74,7 +105,14 @@ export function GenomeTable({
       sortDir === null
         ? genomes
         : [...genomes].sort((a, b) => {
-            const cmp = a.genome_name.localeCompare(b.genome_name);
+            // Equal names fall back to the id, so a re-sort is stable and the
+            // GenBank/RefSeq copies of one genome always come in the same order.
+            // Ids compare as strings, like the server's sort(+genome_name,
+            // +genome_id), so the first client sort keeps the server's order of
+            // ties instead of swapping "x.9" and "x.10".
+            const cmp =
+              a.genome_name.localeCompare(b.genome_name) ||
+              a.genome_id.localeCompare(b.genome_id);
             return sortDir === "asc" ? cmp : -cmp;
           }),
     [genomes, sortDir],
@@ -96,16 +134,16 @@ export function GenomeTable({
     setSortDir((d) => (d === null ? "asc" : d === "asc" ? "desc" : null));
   }
 
+  function maxTypeWidth() {
+    return maxTypeColumnWidthFor(
+      parentRef.current,
+      accessionHeaderRef.current,
+    );
+  }
+
   function resizeTypeColumn(nextWidth: number) {
-    const tableWidth = parentRef.current?.clientWidth;
-    const maxWidth = tableWidth
-      ? Math.min(
-          maxTypeColumnWidth,
-          Math.max(minTypeColumnWidth, tableWidth - minGenomeNameColumnWidth),
-        )
-      : maxTypeColumnWidth;
     setTypeColumnWidth(
-      Math.min(Math.max(nextWidth, minTypeColumnWidth), maxWidth),
+      Math.min(Math.max(nextWidth, minTypeColumnWidth), maxTypeWidth()),
     );
   }
 
@@ -152,7 +190,7 @@ export function GenomeTable({
       tabIndex={0}
       role="group"
       aria-label="Genome list (scrollable)"
-      className="h-80 scrollbar-thin overflow-auto rounded-lg border xl:min-h-0 xl:flex-1"
+      className="@container h-80 scrollbar-thin overflow-auto rounded-lg border xl:min-h-0 xl:flex-1"
     >
       <Table disableScrollWrapper className="table-fixed">
         <colgroup>
@@ -161,6 +199,18 @@ export function GenomeTable({
             style={{ "--type-col-width": `${String(typeColumnWidth)}px` } as CSSProperties}
           />
           <col />
+          {/* The accession column shows only when the scroll container above
+              (not the viewport: on desktop the card sits in a narrow column,
+              and the container is about 26px narrower than the card) is at
+              least @md (448px) wide, so Genome Name keeps
+              its 160px beside Type (144px) and this column (144px: its header
+              label needs about 138px). Zero-width below that, not
+              display:none: the empty row's colSpan={3} would otherwise make the
+              table grid add an implicit third column that takes half of the
+              Genome Name column's width. The Type column's maximum width reads
+              the header's rendered width, so nothing else repeats the 144px of
+              @md:w-36. */}
+          <col className="w-0 @md:w-36" />
         </colgroup>
         <TableHeader variant="muted" className="sticky top-0 z-10">
           <TableRow className="h-8">
@@ -175,17 +225,7 @@ export function GenomeTable({
                 aria-orientation="vertical"
                 aria-label="Resize Type column"
                 aria-valuemin={minTypeColumnWidth}
-                aria-valuemax={
-                  parentRef.current?.clientWidth
-                    ? Math.min(
-                        maxTypeColumnWidth,
-                        Math.max(
-                          minTypeColumnWidth,
-                          parentRef.current.clientWidth - minGenomeNameColumnWidth,
-                        ),
-                      )
-                    : maxTypeColumnWidth
-                }
+                aria-valuemax={maxTypeWidth()}
                 aria-valuenow={typeColumnWidth}
                 tabIndex={0}
                 onPointerDown={startColumnResize}
@@ -234,12 +274,19 @@ export function GenomeTable({
                 Genome Name
               </TableHead>
             )}
+            <TableHead
+              ref={accessionHeaderRef}
+              size="xs"
+              className="hidden h-[31.5px]! px-3 py-1 @md:table-cell"
+            >
+              <span className="block truncate">GenBank Accession</span>
+            </TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {sorted.length === 0 && (count ?? 0) === 0 ? (
             <TableRow>
-              <TableCell colSpan={2} className="py-4 text-center">
+              <TableCell colSpan={3} className="py-4 text-center">
                 <span className="text-muted-foreground">
                   No genomes in this category.
                 </span>
@@ -276,10 +323,25 @@ export function GenomeTable({
                         href={genomeHref(g.genome_id)}
                         prefetch={false}
                         className="block truncate text-sm text-primary hover:underline dark:text-link"
-                        title={g.genome_name}
+                        // The accession is what tells the GenBank and RefSeq
+                        // copies of one genome apart where the accession
+                        // column is hidden (the narrow desktop column).
+                        title={
+                          g.genbank_accessions
+                            ? `${g.genome_name} (${g.genbank_accessions})`
+                            : g.genome_name
+                        }
                       >
                         {g.genome_name}
                       </Link>
+                    </TableCell>
+                    <TableCell className="hidden overflow-hidden px-3 py-1 @md:table-cell">
+                      <span
+                        className="block truncate text-sm text-muted-foreground"
+                        title={g.genbank_accessions}
+                      >
+                        {g.genbank_accessions}
+                      </span>
                     </TableCell>
                   </TableRow>
                 );
@@ -298,6 +360,7 @@ export function GenomeTable({
                 >
                   <TableCell variant="divider-strong" className="px-3 py-1" />
                   <TableCell className="px-3 py-1" />
+                  <TableCell className="hidden px-3 py-1 @md:table-cell" />
                 </TableRow>
               ))}
             </>

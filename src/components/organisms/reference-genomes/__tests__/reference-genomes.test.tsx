@@ -1,5 +1,6 @@
 import { http, HttpResponse } from "msw";
 
+import { genomeOverviewScope, parseGenomeCollectionState } from "@/lib/genome-view";
 import { server } from "@/test-helpers/msw-server";
 
 import { LazyReferenceGenomesClient } from "../lazy-reference-genomes-client";
@@ -19,11 +20,13 @@ const reference = {
   reference_genome: "Reference",
   genome_name: "Escherichia coli K-12",
   genome_id: "511145.12",
+  genbank_accessions: "NC_000913",
 };
 const representative = {
   reference_genome: "Representative",
   genome_name: "Escherichia coli B",
   genome_id: "481805.6",
+  genbank_accessions: "CP000819",
 };
 
 describe("ReferenceGenomes", () => {
@@ -71,5 +74,52 @@ describe("ReferenceGenomes", () => {
         },
       },
     });
+  });
+
+  it("links All to the one type a type-filtered Genome list holds, not to both", async () => {
+    // /genome?reference_genome=Reference: the facet holds only Reference, and
+    // genomeListValuesHref overwrites that filter, so a link naming both types
+    // would list more genomes than the "View all N" it sits under.
+    server.use(
+      http.get(`${baseUrl}/genome/`, ({ request }) => {
+        const query = decodeURIComponent(request.url);
+        if (query.includes("facet(")) {
+          return HttpResponse.json({
+            response: { numFound: 5000, docs: [] },
+            facet_counts: {
+              facet_fields: { reference_genome: ["Reference", 5000] },
+            },
+          });
+        }
+        return HttpResponse.json({
+          response: { numFound: 5000, docs: [reference] },
+        });
+      }),
+    );
+    const state = parseGenomeCollectionState({
+      reference_genome: "Reference",
+      tab: "overview",
+    });
+    const genomeQuery = genomeOverviewScope(state);
+    if (!genomeQuery) throw new Error("expected a public genome scope");
+
+    const element = await ReferenceGenomes({
+      genomeQuery,
+      genomeList: { pathname: "/genome", state },
+    });
+
+    // objectContaining compares `hrefs` whole, so a link for the empty
+    // Representative type would fail it.
+    expect(element.props).toEqual(
+      expect.objectContaining({
+        rows: [reference],
+        counts: { Reference: 5000, Representative: 0 },
+        total: 5000,
+        hrefs: {
+          all: "/genome?reference_genome=Reference",
+          byType: { Reference: "/genome?reference_genome=Reference" },
+        },
+      }),
+    );
   });
 });

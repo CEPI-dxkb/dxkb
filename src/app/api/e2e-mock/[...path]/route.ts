@@ -136,7 +136,12 @@ function maybeSolrCount(
         query.clauses.includes(
           "and(eq(taxon_rank,species),eq(lineage,*Viruses*))",
         ))) ||
-      (core === "protein_structure" && query.clauses.length === 1));
+      // The home PDB statistic leaves out predicted models; the scope is
+      // spelled out, not imported, so a product regression (an unfiltered
+      // count) cannot drag the mock along and still read as 4567.
+      (core === "protein_structure" &&
+        query.clauses.length === 2 &&
+        query.clauses.includes("ne(method,Predicted)")));
   if (isStatisticsCount) {
     return buildLoopbackSolrEnvelope([], {
       numFound: e2eDeterministicCounts[core],
@@ -932,6 +937,37 @@ function maybeBvBrcWebsite(
       };
     }
     return { kind: "ok", body: solrFacet(field, count) };
+  }
+
+  if (endpoint === "protein_structure" || endpoint === "protein_structure/") {
+    const query = parseFixtureQuery(request);
+
+    // Organism PDB tile: a taxon's experimental structures, answered with the
+    // summary fixture's `PDB` so the tile value stays what it was. Answered
+    // only for a request that leaves out predicted (AlphaFold) models; the
+    // scope is spelled out, not imported, so a product regression cannot drag
+    // the mock along.
+    const rawTaxonId = equalsValue(query, "taxon_lineage_ids");
+    const summary =
+      rawTaxonId === undefined
+        ? undefined
+        : findOrganismSummaryRecord(rawTaxonId);
+    if (rawTaxonId === undefined || summary === undefined) {
+      return {
+        kind: "unhandled",
+        reason: `no structure count fixture for taxon ${rawTaxonId ?? "(none)"} — add a summary to organismSummaryRecords in src/lib/e2e-fixtures/records.ts`,
+      };
+    }
+    const structureScope = `and(eq(taxon_lineage_ids,${rawTaxonId}),ne(method,Predicted))`;
+    return hasClause(query, structureScope)
+      ? {
+          kind: "ok",
+          body: { response: { numFound: summary.PDB, docs: [] } },
+        }
+      : {
+          kind: "unhandled",
+          reason: `structure count for taxon ${rawTaxonId} does not leave out predicted models — expected the clause ${structureScope}`,
+        };
   }
 
   return {

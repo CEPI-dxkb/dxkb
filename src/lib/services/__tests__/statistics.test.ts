@@ -75,6 +75,29 @@ describe("fetchDbStatistics", () => {
     expect(counts.proteinFeatures).toBe(600);
   });
 
+  it("counts PDB structures only: the protein_structure query leaves out predicted models", async () => {
+    const queries: string[] = [];
+    // The catch-all core handler goes first: MSW takes the latest handler first.
+    mockAllCores({
+      genome: 1,
+      genome_feature: 1,
+      taxonomy: 1,
+      epitope: 1,
+      protein_feature: 1,
+    });
+    server.use(
+      http.get(`${dataApi}/protein_structure/`, ({ request }) => {
+        queries.push(decodeURIComponent(new URL(request.url).search));
+        return solrCount(106_967);
+      }),
+    );
+
+    const { counts } = await fetchDbStatistics();
+
+    expect(queries).toEqual(["?ne(method,Predicted)&limit(1)"]);
+    expect(counts.proteinStructures).toBe(106_967);
+  });
+
   it("returns null for a single failed metric and numbers for the rest", async () => {
     server.use(
       http.get(`${dataApi}/protein_structure/`, () =>

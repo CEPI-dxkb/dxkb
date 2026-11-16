@@ -31,7 +31,8 @@ export const dbStatisticsDefinitions: readonly StatisticDefinition[] = Object.fr
   { key: "virusSpecies", label: "Virus Species", core: "taxonomy", filter: "and(eq(taxon_rank,species),eq(lineage,*Viruses*))" },
   { key: "epitopes", label: "Epitopes", core: "epitope", filter: "" },
   { key: "taxons", label: "Taxons", core: "taxonomy", filter: "" },
-  { key: "proteinStructures", label: "Protein Structures", core: "protein_structure", filter: "" },
+  // protein_structure is ~99.7% AlphaFold models; only experimental entries are PDB structures.
+  { key: "proteinStructures", label: "PDB Structures", core: "protein_structure", filter: "ne(method,Predicted)" },
   { key: "proteinFeatures", label: "Protein Features", core: "protein_feature", filter: "" },
   { key: "genomes", label: "Genomes", core: "genome", filter: "" },
 ] as const);

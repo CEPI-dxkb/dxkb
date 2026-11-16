@@ -95,6 +95,18 @@ describe("api/e2e-mock catch-all — enabled", () => {
       23456,
     ],
     ["protein_structure", "", 4567],
+    ["protein_structure", "eq(taxon_lineage_ids,10239)&", 4567],
+    [
+      "protein_structure",
+      "and(eq(taxon_lineage_ids,10239),eq(method,Predicted))&",
+      4567,
+    ],
+    [
+      "genome",
+      "and(eq(superkingdom,Viruses),eq(genome_status,Complete))&",
+      12345,
+    ],
+    ["epitope", "eq(taxon_lineage_ids,10239)&", 7890],
   ])(
     "returns the deterministic %s total for a statistics count request",
     async (core, filter, expectedCount) => {

@@ -136,7 +136,12 @@ function maybeSolrCount(
         query.clauses.includes(
           "and(eq(taxon_rank,species),eq(lineage,*Viruses*))",
         ))) ||
-      (core === "protein_structure" && query.clauses.length === 1));
+      (core === "protein_structure" &&
+        query.clauses.every(
+          (clause) =>
+            clause === "limit(1)" ||
+            clause.includes("taxon_lineage_ids,10239"),
+        )));
   if (isStatisticsCount) {
     return buildLoopbackSolrEnvelope([], {
       numFound: e2eDeterministicCounts[core],

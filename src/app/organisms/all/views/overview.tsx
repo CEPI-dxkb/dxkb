@@ -8,11 +8,11 @@ import { MetadataDistributions } from "@/components/organisms/metadata-distribut
 import { MetadataDistributionsSkeleton } from "@/components/organisms/metadata-distributions/metadata-distributions-skeleton";
 import { withSectionError } from "@/components/organisms/shared/with-section-error";
 
-import { allOrganismsLandingConfig as config } from "../_config";
+import { allOrganismRootIds, allOrganismsLandingConfig as config } from "../_config";
 
 async function DataSummaryBoundary() {
   return withSectionError("Data summary", () =>
-    DataSummary({ taxonId: config.taxonId }),
+    DataSummary({ taxonIds: allOrganismRootIds }),
   );
 }
 

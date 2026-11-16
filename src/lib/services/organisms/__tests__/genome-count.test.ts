@@ -1,6 +1,9 @@
 import { http, HttpResponse } from "msw";
 
-import { fetchTaxonGenomeCount } from "@/lib/services/organisms/genome-count";
+import {
+  fetchTaxonGenomeCount,
+  getTaxonGenomeCount,
+} from "@/lib/services/organisms/genome-count";
 import { server } from "@/test-helpers/msw-server";
 import { maintenancePage } from "@/test-helpers/upstream-failures";
 
@@ -116,5 +119,38 @@ describe("fetchTaxonGenomeCount", () => {
     server.use(http.get(`${baseUrl}/genome/`, () => maintenancePage()));
 
     await expect(fetchTaxonGenomeCount(11320)).rejects.toThrow(/503/);
+  });
+});
+
+// Vitest runs React's client build, where `cache` is a passthrough, so these
+// tests cannot see two equal calls share one request; that sharing only shows
+// against a running server.
+describe("getTaxonGenomeCount", () => {
+  it("counts with the given token", async () => {
+    const authorizations: (string | null)[] = [];
+    server.use(
+      http.get(`${baseUrl}/genome/`, ({ request }) => {
+        authorizations.push(request.headers.get("authorization"));
+        return HttpResponse.json({ response: { numFound: 9471991, docs: [] } });
+      }),
+    );
+
+    await expect(getTaxonGenomeCount(11118, "user-token")).resolves.toBe(
+      9471991,
+    );
+    expect(authorizations).toEqual(["user-token"]);
+  });
+
+  it("counts anonymously without a token", async () => {
+    const authorizations: (string | null)[] = [];
+    server.use(
+      http.get(`${baseUrl}/genome/`, ({ request }) => {
+        authorizations.push(request.headers.get("authorization"));
+        return HttpResponse.json({ response: { numFound: 9471000, docs: [] } });
+      }),
+    );
+
+    await expect(getTaxonGenomeCount(11118, undefined)).resolves.toBe(9471000);
+    expect(authorizations).toEqual([null]);
   });
 });

@@ -1,3 +1,5 @@
+import { cache } from "react";
+
 import { genomeScopeRql } from "./genome-scope";
 import type { OrganismFetchOptions } from "./types";
 import {
@@ -38,3 +40,11 @@ export async function fetchTaxonGenomeCount(
   }
   return numFound;
 }
+
+/**
+ * One count per render: the Taxonomy header and the "Genomes / Segments" tile both ask for it, and `fetchOrganism` passes a signal, which turns Next's fetch memoization off. React's `cache` shares the call (and its failure) for the rest of the request; the arguments are primitives, so equal calls hit the same entry.
+ */
+export const getTaxonGenomeCount = cache(
+  (taxonId: number, token: string | undefined): Promise<number> =>
+    fetchTaxonGenomeCount(taxonId, { token }),
+);

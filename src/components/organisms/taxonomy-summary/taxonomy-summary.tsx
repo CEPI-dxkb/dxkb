@@ -1,7 +1,7 @@
 import { SectionRetryButton } from "@/components/organisms/shared/section-retry-button";
 import { Card } from "@/components/ui/card";
 import { readSession } from "@/lib/auth/server/session";
-import { fetchTaxonGenomeCount } from "@/lib/services/organisms/genome-count";
+import { getTaxonGenomeCount } from "@/lib/services/organisms/genome-count";
 import { fetchOrganismSummary } from "@/lib/services/organisms/summary";
 import type { OrganismTaxonomy } from "@/lib/services/organisms/types";
 import { numberFormatter } from "@/lib/services/organisms/utils";
@@ -36,10 +36,10 @@ export async function TaxonomySummary({
 }) {
   const [summaryResult, genomeCountResult] = await Promise.all([
     settle(fetchOrganismSummary(taxonId)),
-    // Same query and token as the Taxonomy header's `TaxonGenomeCount`, so the tile and the header always agree.
+    // The Taxonomy header's `TaxonGenomeCount` call, so the tile and the header always agree and share one request.
     settle(
       readSession().then((session) =>
-        fetchTaxonGenomeCount(taxonId, { token: session?.token }),
+        getTaxonGenomeCount(taxonId, session?.token),
       ),
     ),
   ]);

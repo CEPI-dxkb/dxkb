@@ -105,8 +105,21 @@ describe("QuickViralLinks", () => {
     );
 
     expect(await findAllByText("—")).toHaveLength(1);
+    expect(await findAllByText("Count unavailable")).toHaveLength(1);
     expect(await findByText("10,304,885")).toBeInTheDocument();
     expect(queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("hides the dash from assistive tech and gives a failed count a text label even with no alert", async () => {
+    mockedGetQuickAccessStatistics.mockResolvedValueOnce({
+      counts: { ...allNumeric(), epitopes: null },
+      unavailableReason: null,
+    });
+
+    const { findByText } = await renderServer(QuickViralLinks());
+
+    expect(await findByText("—")).toHaveAttribute("aria-hidden", "true");
+    expect(await findByText("Count unavailable")).toHaveClass("sr-only");
   });
 
   it("says why when every count failed, with the original reason, and keeps the cards", async () => {
@@ -125,6 +138,7 @@ describe("QuickViralLinks", () => {
       `Counts temporarily unavailable: ${reason}`,
     );
     expect(await findAllByText("—")).toHaveLength(6);
+    expect(await findAllByText("Count unavailable")).toHaveLength(6);
     expect(await findByText("Viral Genomes")).toBeInTheDocument();
   });
 
@@ -151,5 +165,6 @@ describe("QuickViralSkeleton", () => {
     expect(getByText("Complete Genomes")).toBeInTheDocument();
     expect(container.querySelectorAll('[data-slot="skeleton"]')).toHaveLength(6);
     expect(queryByText("—")).not.toBeInTheDocument();
+    expect(queryByText("Count unavailable")).not.toBeInTheDocument();
   });
 });

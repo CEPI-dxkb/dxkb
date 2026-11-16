@@ -36,10 +36,17 @@ interface CountRowProps {
   counts: StatisticCounts<QuickAccessKey> | null;
 }
 
-const formatCount = (counts: StatisticCounts<QuickAccessKey>, statKey: QuickAccessKey) => {
-  const count = counts[statKey];
-  return count === null ? "—" : numberFormatter.format(count);
-};
+// A failed count keeps its visible dash, but the dash alone is skipped or read
+// as "dash" by screen readers, so it is hidden from them and replaced by text.
+const CountValue = ({ count }: { count: number | null }) =>
+  count === null ? (
+    <>
+      <span aria-hidden="true">—</span>
+      <span className="sr-only">Count unavailable</span>
+    </>
+  ) : (
+    numberFormatter.format(count)
+  );
 
 const CountRow = ({ icon, statKey, counts }: CountRowProps) => {
   return (
@@ -51,7 +58,9 @@ const CountRow = ({ icon, statKey, counts }: CountRowProps) => {
       {counts === null ? (
         <Skeleton className="h-5 w-14" />
       ) : (
-        <Badge variant="accent">{formatCount(counts, statKey)}</Badge>
+        <Badge variant="accent">
+          <CountValue count={counts[statKey]} />
+        </Badge>
       )}
     </li>
   );

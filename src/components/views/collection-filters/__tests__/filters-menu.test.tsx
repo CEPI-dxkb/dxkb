@@ -19,21 +19,19 @@ const valueList = (label: string) =>
   screen.getByRole("listbox", { name: `${label} values` });
 
 describe("FiltersMenu groups", () => {
-  it("lists active facets, then the favorites, then the other facets", async () => {
+  it("lists the favorites, then all the other filters, with no Active group", async () => {
     const user = userEvent.setup();
     renderToolbar({ filters: { host_name: ["Human"] } });
     await openFilters(user);
 
     expect(
-      within(groupNamed("Active")).getByRole("option", {
-        name: "Host Name: Human, favorite",
-      }),
-    ).toBeInTheDocument();
+      within(facetList()).queryByRole("group", { name: "Active" }),
+    ).not.toBeInTheDocument();
     expect(
-      within(groupNamed("Favorites")).getByRole("option", {
-        name: "Genome Status, favorite",
-      }),
-    ).toBeInTheDocument();
+      within(groupNamed("Favorites"))
+        .getAllByRole("option")
+        .map((option) => option.getAttribute("aria-label"))
+    ).toEqual(["Genome Status, favorite", "Host Name: Human, favorite"]);
     expect(
       within(groupNamed("All filters"))
         .getAllByRole("option")
@@ -41,6 +39,30 @@ describe("FiltersMenu groups", () => {
     ).toEqual(["Isolation Country", "Species"]);
 
     expect(valueList("Host Name")).toBeInTheDocument();
+  });
+
+  it("draws the filters with a pick in orange, in whichever group they sit", async () => {
+    const user = userEvent.setup();
+    renderToolbar({
+      filters: { host_name: ["Human"], species: ["Escherichia coli"] },
+    });
+    await openFilters(user);
+
+    const host = screen.getByRole("option", { name: "Host Name: Human, favorite" });
+    const species = screen.getByRole("option", {
+      name: "Species: Escherichia coli",
+    });
+    expect(within(host).getByText("Host Name")).toHaveClass("text-secondary");
+    // The value is lighter than the filter's name and inherits its orange.
+    // A " - " sets it off from the name.
+    expect(within(host).getByText("- Human")).toHaveClass("font-light");
+    expect(within(host).getByText("- Human")).not.toHaveClass("text-foreground");
+    expect(within(species).getByText("Species")).toHaveClass("text-secondary");
+    expect(
+      within(screen.getByRole("option", { name: "Genome Status, favorite" })).getByText(
+        "Genome Status",
+      ),
+    ).not.toHaveClass("text-secondary");
   });
 
   it("lists every facet at once, with no fold to open", async () => {
@@ -294,7 +316,7 @@ describe("FiltersMenu favorites", () => {
     ).toEqual(["Isolation Country", "Species"]);
   });
 
-  it("keeps a facet out of Active while the menu is open, so a pick never moves its row", async () => {
+  it("keeps a facet in its group when a value is picked, so a pick never moves its row", async () => {
     const user = userEvent.setup();
     renderToolbar();
     await openFilters(user);
@@ -522,7 +544,9 @@ describe("FiltersMenu checklist", () => {
     await openFilters(user);
 
     expect(
-      within(groupNamed("Active")).getByRole("option", { name: "strain: K-12" }),
+      within(groupNamed("All filters")).getByRole("option", {
+        name: "strain: K-12",
+      }),
     ).toBeInTheDocument();
     expect(
       screen.getByText("This filter has no list of values, so its values are not counted."),

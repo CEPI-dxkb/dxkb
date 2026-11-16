@@ -38,31 +38,24 @@ import {
 } from "./facet-value-list";
 import { displayFacetValue, navigationTarget } from "./facet-values";
 
-export type FacetGroup = "active" | "favorite" | "other";
+export type FacetGroup = "favorite" | "other";
 
 type MenuFocus = "left" | "right";
 
-/**
- * `snapshotGroups` runs on every opening: while open a facet that was active
- * keeps its row, so a pick never moves it.
- */
 export function useFiltersMenuState(
   menuFields: readonly string[],
   defaultField: string | null,
-  snapshotGroups: () => Map<string, FacetGroup>,
 ) {
   const [open, setOpenState] = useState(false);
   const [field, setField] = useState<string | null>(null);
   const [leftQuery, setLeftQuery] = useState("");
   const [rightQuery, setRightQuery] = useState("");
-  const [groups, setGroups] = useState<Map<string, FacetGroup> | null>(null);
   const focusRef = useRef<MenuFocus>("left");
 
   const shownField =
     field !== null && menuFields.includes(field) ? field : defaultField;
 
   const close = () => {
-    setGroups(null);
     setField(null);
     setLeftQuery("");
     setRightQuery("");
@@ -76,10 +69,8 @@ export function useFiltersMenuState(
         close();
         return;
       }
-      setGroups(snapshotGroups());
       setOpenState(true);
     },
-    groupAtOpen: (target: string) => groups?.get(target),
     shownField,
     setField,
     leftQuery,
@@ -91,8 +82,6 @@ export function useFiltersMenuState(
       focusRef.current = target;
     },
     openAt: (target: string) => {
-      const snapshot = snapshotGroups();
-      setGroups(snapshot);
       setField(target);
       setLeftQuery("");
       setRightQuery("");
@@ -194,7 +183,6 @@ export function FiltersMenu({
     const inGroup = (group: FacetGroup) =>
       matched.filter((field) => groupOf(field) === group).map(facetRow);
     const facetRows: LeftRow[] = [
-      ...inGroup("active"),
       ...inGroup("favorite"),
       ...inGroup("other"),
     ];
@@ -317,7 +305,6 @@ export function FiltersMenu({
 
   const facetRowsIn = (group: FacetGroup) =>
     rows.filter((row) => row.kind === "facet" && row.group === group);
-  const activeRows = facetRowsIn("active");
   const favoriteRows = facetRowsIn("favorite");
   const otherRows = facetRowsIn("other");
   const valueRows = rows.filter((row) => row.kind === "value");
@@ -364,16 +351,18 @@ export function FiltersMenu({
           onClick={() => {
             openFacet(row);
           }}
-          className="group/row relative mx-1.5 flex h-7 shrink-0 cursor-pointer items-center gap-1.5 rounded-md pr-1 pl-2.5 text-xs text-muted-foreground data-active:bg-foreground/5 data-active:text-foreground data-current:font-medium data-current:text-foreground"
+          className="group/row relative mx-1.5 flex h-7 shrink-0 cursor-pointer items-center gap-1.5 rounded-md pr-1 pl-2.5 text-xs font-medium text-foreground/75 data-active:bg-foreground/5 data-active:text-foreground data-current:font-semibold data-current:text-foreground"
         >
           <span
-            aria-hidden="true"
-            className="absolute inset-y-1.5 left-0 w-0.5 rounded-full bg-primary opacity-0 group-data-current/row:opacity-100"
-          />
-          <span className="min-w-0 flex-1 truncate">
+            className={cn(
+              "min-w-0 flex-1 truncate",
+              applied.length > 0 && "text-secondary",
+            )}
+          >
             {labelFor(row.field)}
             {applied.length > 0 && (
-              <span className="ml-1.5 text-2xs font-normal text-primary dark:text-foreground">
+              <span className="font-light">
+                {" - "}
                 {appliedValues.join(", ")}
               </span>
             )}
@@ -487,7 +476,7 @@ export function FiltersMenu({
       >
         <div className="relative flex h-120 max-h-(--available-height) flex-col @lg:h-90 @lg:flex-row">
           <RefreshHairline active={busy} />
-          <div className="flex h-44 shrink-0 flex-col border-b border-border @lg:h-auto @lg:w-52 @lg:border-r @lg:border-b-0">
+          <div className="flex h-44 shrink-0 flex-col border-b border-border @lg:h-auto @lg:w-64 @lg:border-r @lg:border-b-0">
             <MenuSearch
               inputRef={leftInputRef}
               label="Find a filter or value"
@@ -532,9 +521,6 @@ export function FiltersMenu({
                 />
               ) : (
                 <>
-                  <RowGroup label="Active" count={activeRows.length}>
-                    {activeRows.map(renderRow)}
-                  </RowGroup>
                   <RowGroup
                     label="Favorites"
                     count={favoriteRows.length}
@@ -543,22 +529,14 @@ export function FiltersMenu({
                         {favoritesExplanation}
                       </InfoTip>
                     }
-                    bare={
-                      activeRows.length === 0 &&
-                      otherRows.length === 0 &&
-                      valueRows.length === 0
-                    }
+                    bare={otherRows.length === 0 && valueRows.length === 0}
                   >
                     {favoriteRows.map(renderRow)}
                   </RowGroup>
                   <RowGroup
                     label="All filters"
                     count={otherRows.length}
-                    bare={
-                      activeRows.length === 0 &&
-                      favoriteRows.length === 0 &&
-                      valueRows.length === 0
-                    }
+                    bare={favoriteRows.length === 0 && valueRows.length === 0}
                   >
                     {otherRows.map(renderRow)}
                   </RowGroup>

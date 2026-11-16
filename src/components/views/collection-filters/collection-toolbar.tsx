@@ -81,28 +81,19 @@ export function CollectionToolbar(props: CollectionToolbarProps) {
   const hiddenPills = rowFields.filter((field) => overflow.has(field));
   const hiddenPillLabels = hiddenPills.map(labelFor).join(", ");
 
-  const starredGroup = (field: string): FacetGroup =>
-    favoriteFields.has(field) ? "favorite" : "other";
-  const liveGroup = (field: string): FacetGroup =>
-    hasFilter(field) ? "active" : starredGroup(field);
-  // Opens on the top row: the first active facet, else the first favorite,
-  // else the first facet.
+  // Opens on the first filter with a pick, else the first favorite, else the
+  // first filter.
   const menu = useFiltersMenuState(
     menuFields,
     activeFields.at(0) ??
       definedFields.find((field) => favoriteFields.has(field)) ??
       definedFields.at(0) ??
       null,
-    () => new Map(menuFields.map((field) => [field, liveGroup(field)])),
   );
-  // A facet that was active when the menu opened keeps its row while it is
-  // open, so a pick never moves it; a star moves a facet between Favorites and
-  // All filters at once.
-  const groupOf = (field: string): FacetGroup => {
-    const opened = menu.open ? menu.groupAtOpen(field) : undefined;
-    if (opened === "active") return "active";
-    return opened === undefined ? liveGroup(field) : starredGroup(field);
-  };
+  // A star moves a filter between Favorites and All filters at once; a pick
+  // never moves one, since a filter with a pick is only drawn in orange.
+  const groupOf = (field: string): FacetGroup =>
+    favoriteFields.has(field) ? "favorite" : "other";
 
   const toggleFavorite = (field: string) => {
     if (!isDefined(field)) return;

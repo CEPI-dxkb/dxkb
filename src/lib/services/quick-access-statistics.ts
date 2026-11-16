@@ -11,8 +11,8 @@ export type QuickAccessKey =
   | "predictedStructures"
   | "epitopes";
 
-// Same scope as Database Statistics "Viral Genomes", so Complete + Partial +
-// WGS + Deprecated add up to that number.
+// Same scope (`eq(superkingdom,Viruses)`) as the Database Statistics "Viral
+// Genomes" count.
 const virusGenomeScope = "eq(superkingdom,Viruses)";
 // `protein_structure` and `epitope` have no `superkingdom`; they carry the
 // lineage ids instead (10239 = Viruses).
@@ -20,9 +20,11 @@ const virusLineageScope = "eq(taxon_lineage_ids,10239)";
 
 /**
  * The home page "Quick Access to Viral Data" counts, in display order. Each
- * label names exactly what its filter counts: a `genome_status` value is one
- * of Complete, Partial, WGS or Deprecated, so the three genome rows never
- * overlap. There is deliberately no "Structural Proteins" or "Enzymes" count:
+ * label names exactly what its filter counts. Complete and Partial are
+ * disjoint (a `genome_status` value is one of Complete, Partial, WGS or
+ * Deprecated). The Reference & Representative row is a subset of the
+ * non-Deprecated genomes, so it overlaps the other genome rows and the rows
+ * must not be summed. There is deliberately no "Structural Proteins" or "Enzymes" count:
  * `genome_feature` has no lineage or EC field, and joining to `genome(...)`
  * outlasts the Data API budget.
  */

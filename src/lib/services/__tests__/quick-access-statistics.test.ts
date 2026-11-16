@@ -63,11 +63,23 @@ describe("getQuickAccessStatistics", () => {
     server.use(
       http.get(`${dataApi}/:core/`, ({ request }) => {
         const url = request.url;
-        if (url.includes("eq(genome_status,Complete)")) return solrCount(1001);
-        if (url.includes("eq(genome_status,Partial)")) return solrCount(1002);
-        if (url.includes("eq(reference_genome,*)")) return solrCount(1003);
-        if (url.includes("ne(method,Predicted)")) return solrCount(1004);
-        if (url.includes("eq(method,Predicted)")) return solrCount(1005);
+        const isGenome = url.includes("/genome/");
+        const isStructure = url.includes("/protein_structure/");
+        if (isGenome && url.includes("eq(genome_status,Complete)")) {
+          return solrCount(1001);
+        }
+        if (isGenome && url.includes("eq(genome_status,Partial)")) {
+          return solrCount(1002);
+        }
+        if (isGenome && url.includes("eq(reference_genome,*)")) {
+          return solrCount(1003);
+        }
+        if (isStructure && url.includes("ne(method,Predicted)")) {
+          return solrCount(1004);
+        }
+        if (isStructure && url.includes("eq(method,Predicted)")) {
+          return solrCount(1005);
+        }
         if (url.includes("/epitope/")) return solrCount(1006);
         return HttpResponse.text("unexpected request", { status: 500 });
       }),
@@ -86,7 +98,7 @@ describe("getQuickAccessStatistics", () => {
     });
   });
 
-  it("excludes Deprecated from the reference count and scopes structures by lineage", async () => {
+  it("excludes Deprecated from the reference count and scopes structures and epitopes by lineage", async () => {
     const urls: string[] = [];
     server.use(
       http.get(`${dataApi}/:core/`, ({ request }) => {
@@ -112,6 +124,13 @@ describe("getQuickAccessStatistics", () => {
           url.includes("eq(taxon_lineage_ids,10239)"),
       ),
     ).toHaveLength(2);
+    expect(
+      urls.filter(
+        (url) =>
+          url.includes("/epitope/") &&
+          url.includes("eq(taxon_lineage_ids,10239)"),
+      ),
+    ).toHaveLength(1);
   });
 
   it("keeps a failed count null without hiding the others", async () => {

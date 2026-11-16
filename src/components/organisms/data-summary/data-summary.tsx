@@ -1,6 +1,6 @@
 import { Card } from "@/components/ui/card";
 import { fetchTaxonGenomeCount } from "@/lib/services/organisms/genome-count";
-import { fetchOrganismSummary } from "@/lib/services/organisms/summary";
+import { fetchCombinedOrganismSummary } from "@/lib/services/organisms/summary";
 import type { OrganismSummary } from "@/lib/services/organisms/types";
 import { numberFormatter } from "@/lib/services/organisms/utils";
 
@@ -42,13 +42,20 @@ function formatCount(value: number | null): string {
   return value === null ? "-" : numberFormatter.format(value);
 }
 
-export async function DataSummary({ taxonId }: { taxonId: number }) {
+export async function DataSummary({
+  taxonIds,
+}: {
+  taxonIds: readonly number[];
+}) {
   // The Genomes tile counts like the Taxonomy header, not like the summary's
-  // `count`. A landing page is public, so the count is anonymous (and cached).
-  const [summary, genomeCount] = await Promise.all([
-    fetchOrganismSummary(taxonId),
-    fetchTaxonGenomeCount(taxonId),
+  // `count`. A landing page is public, so the counts are anonymous (and
+  // cached). The roots' genome sets are disjoint, so their counts add, and a
+  // root whose count fails rejects the whole tile, as a failed summary does.
+  const [summary, genomeCounts] = await Promise.all([
+    fetchCombinedOrganismSummary(taxonIds),
+    Promise.all(taxonIds.map((taxonId) => fetchTaxonGenomeCount(taxonId))),
   ]);
+  const genomeCount = genomeCounts.reduce((total, count) => total + count, 0);
 
   return (
     <div className="grid grid-cols-[repeat(auto-fit,minmax(8rem,1fr))] gap-1.5">

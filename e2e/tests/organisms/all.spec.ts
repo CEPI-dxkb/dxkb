@@ -38,8 +38,11 @@ test.describe("all organisms landing page", () => {
 
     await expect(page.getByRole("heading", { level: 1, name: "All Organisms" })).toBeVisible();
     await expect(page.getByRole("contentinfo")).toHaveCount(0);
+    // Cellular organisms plus Viruses: the tile sums both roots' live counts.
     await expect(landing.getKpi("Genomes")).toContainText(
-      taxonGenomeCounts["131567"].toLocaleString("en-US"),
+      (taxonGenomeCounts["131567"] + taxonGenomeCounts["10239"]).toLocaleString(
+        "en-US",
+      ),
     );
     await expect(page.getByRole("heading", { name: "Featured Organisms" })).toBeVisible();
     await expect(page.getByRole("heading", { level: 3, name: "Domains and Viruses" })).toBeVisible();
@@ -47,6 +50,7 @@ test.describe("all organisms landing page", () => {
       "href",
       "/taxonomy/10239",
     );
+    // These only prove the charts render: the e2e mock keys on the first eq(taxon_lineage_ids,...), so only overview.test.tsx guards their two-root scope.
     await landing.expectDonut("Host Group");
     await landing.expectDonut("Isolation Country");
 

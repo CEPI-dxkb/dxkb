@@ -571,6 +571,18 @@ describe("BV-BRC website organism tables stay paired", () => {
     },
   );
 
+  // Cellular organisms contain Bacteria and every bacterial genus here, so a smaller count would be the All Organisms tile summing to less than its own children.
+  it.each(
+    Object.entries(organismTaxonomyRecords).filter(
+      ([taxonId, record]) =>
+        taxonId !== "131567" && record.lineage_ids.includes(131567),
+    ),
+  )("cellular organisms hold at least as many genomes as taxon %s", (taxonId) => {
+    expect(organismSummaryRecords["131567"].count).toBeGreaterThanOrEqual(
+      organismSummaryRecords[taxonId].count,
+    );
+  });
+
   it.each(Object.entries(organismTaxonomyRecords))(
     "taxon %s key matches its record taxon_id",
     (taxonId, record) => {

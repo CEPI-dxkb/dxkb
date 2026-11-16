@@ -7,19 +7,25 @@ import { FeaturedOrganismCategoriesGrid } from "@/components/organisms/genera-gr
 import { MetadataDistributions } from "@/components/organisms/metadata-distributions/metadata-distributions";
 import { MetadataDistributionsSkeleton } from "@/components/organisms/metadata-distributions/metadata-distributions-skeleton";
 import { withSectionError } from "@/components/organisms/shared/with-section-error";
+import { taxonIdsGenomesClause } from "@/components/organisms/taxon-views/scope";
 
 import { allOrganismRootIds, allOrganismsLandingConfig as config } from "../_config";
 
-async function DataSummaryBoundary() {
+/** Both roots' genomes, less Deprecated: what the Genomes tab the charts link to lists. */
+const allOrganismGenomeQuery = {
+  fieldRql: taxonIdsGenomesClause(allOrganismRootIds),
+};
+
+export async function DataSummaryBoundary() {
   return withSectionError("Data summary", () =>
     DataSummary({ taxonIds: allOrganismRootIds }),
   );
 }
 
-async function MetadataDistributionsBoundary() {
+export async function MetadataDistributionsBoundary() {
   return withSectionError("Metadata distributions", () =>
     MetadataDistributions({
-      taxonId: config.taxonId,
+      genomeQuery: allOrganismGenomeQuery,
       fields: config.metadataFields,
       genomeList: {
         pathname: "/organisms/all",

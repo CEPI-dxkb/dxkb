@@ -32,9 +32,6 @@ const defaultTypeColumnWidth = 144;
 const minTypeColumnWidth = 96;
 const maxTypeColumnWidth = 480;
 const minGenomeNameColumnWidth = 160;
-const accessionColumnWidth = 160;
-// What the other two columns keep when the Type column is dragged wide.
-const minOtherColumnsWidth = minGenomeNameColumnWidth + accessionColumnWidth;
 
 // Exported for the test that pins its memoized sort; the card is the only user.
 export function GenomeTable({
@@ -54,6 +51,8 @@ export function GenomeTable({
   // control to undo an earlier direction.
   const sortDir = sortable ? storedSortDir : null;
   const parentRef = useRef<HTMLDivElement>(null);
+  // Measured for the Type column's maximum width: 0 while it is display:none.
+  const accessionHeaderRef = useRef<HTMLTableCellElement>(null);
   const [containerHeight, setContainerHeight] = useState(320);
   const [typeColumnWidth, setTypeColumnWidth] = useState(defaultTypeColumnWidth);
   const [isResizingTypeColumn, setIsResizingTypeColumn] = useState(false);
@@ -103,16 +102,25 @@ export function GenomeTable({
     setSortDir((d) => (d === null ? "asc" : d === "asc" ? "desc" : null));
   }
 
-  function resizeTypeColumn(nextWidth: number) {
+  // The widest the Type column may grow: what the table has left once Genome
+  // Name keeps its minimum and the accession column keeps the width it renders
+  // at, which is none below sm, where that column is hidden.
+  function maxTypeWidth() {
     const tableWidth = parentRef.current?.clientWidth;
-    const maxWidth = tableWidth
-      ? Math.min(
-          maxTypeColumnWidth,
-          Math.max(minTypeColumnWidth, tableWidth - minOtherColumnsWidth),
-        )
-      : maxTypeColumnWidth;
+    if (!tableWidth) return maxTypeColumnWidth;
+    const accessionWidth = accessionHeaderRef.current?.offsetWidth ?? 0;
+    return Math.min(
+      maxTypeColumnWidth,
+      Math.max(
+        minTypeColumnWidth,
+        tableWidth - minGenomeNameColumnWidth - accessionWidth,
+      ),
+    );
+  }
+
+  function resizeTypeColumn(nextWidth: number) {
     setTypeColumnWidth(
-      Math.min(Math.max(nextWidth, minTypeColumnWidth), maxWidth),
+      Math.min(Math.max(nextWidth, minTypeColumnWidth), maxTypeWidth()),
     );
   }
 
@@ -170,7 +178,9 @@ export function GenomeTable({
           <col />
           {/* Zero-width below sm, not display:none: the empty row's colSpan={3}
               would otherwise make the table grid add an implicit third column
-              that takes half of the Genome Name column's width. */}
+              that takes half of the Genome Name column's width. The Type
+              column's maximum width reads the header's rendered width, so
+              nothing else repeats the 160px of sm:w-40. */}
           <col className="w-0 sm:w-40" />
         </colgroup>
         <TableHeader variant="muted" className="sticky top-0 z-10">
@@ -186,17 +196,7 @@ export function GenomeTable({
                 aria-orientation="vertical"
                 aria-label="Resize Type column"
                 aria-valuemin={minTypeColumnWidth}
-                aria-valuemax={
-                  parentRef.current?.clientWidth
-                    ? Math.min(
-                        maxTypeColumnWidth,
-                        Math.max(
-                          minTypeColumnWidth,
-                          parentRef.current.clientWidth - minOtherColumnsWidth,
-                        ),
-                      )
-                    : maxTypeColumnWidth
-                }
+                aria-valuemax={maxTypeWidth()}
                 aria-valuenow={typeColumnWidth}
                 tabIndex={0}
                 onPointerDown={startColumnResize}
@@ -246,6 +246,7 @@ export function GenomeTable({
               </TableHead>
             )}
             <TableHead
+              ref={accessionHeaderRef}
               size="xs"
               className="hidden h-[31.5px]! px-3 py-1 sm:table-cell"
             >

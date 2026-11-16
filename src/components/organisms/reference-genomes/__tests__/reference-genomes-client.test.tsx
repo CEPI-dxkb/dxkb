@@ -108,6 +108,67 @@ describe("ReferenceGenomesClient", () => {
     clientWidth.mockRestore();
   });
 
+  it("keeps the Type column resizable on a narrow table, where the accession column is hidden", () => {
+    // jsdom measures every offsetWidth as 0, like the accession header below sm.
+    const clientWidth = vi
+      .spyOn(HTMLElement.prototype, "clientWidth", "get")
+      .mockReturnValue(375);
+    try {
+      render(<ReferenceGenomesClient {...empty} />);
+
+      const separator = screen.getByRole("separator", {
+        name: "Resize Type column",
+      });
+      const typeColumn = document.querySelector("col");
+
+      // The attribute is read from the refs on a render after the first.
+      fireEvent.keyDown(separator, { key: "ArrowRight" });
+      expect(separator).toHaveAttribute("aria-valuemax", "215");
+      expect(separator).toHaveAttribute("aria-valuenow", "154");
+      expect(typeColumn).toHaveStyle("--type-col-width: 154px");
+
+      for (let index = 0; index < 10; index += 1) {
+        fireEvent.keyDown(separator, { key: "ArrowRight" });
+      }
+      expect(separator).toHaveAttribute("aria-valuenow", "215");
+
+      fireEvent.doubleClick(separator);
+      expect(separator).toHaveAttribute("aria-valuenow", "144");
+    } finally {
+      clientWidth.mockRestore();
+    }
+  });
+
+  it("keeps the rendered accession column's width out of the Type column's reach", () => {
+    const clientWidth = vi
+      .spyOn(HTMLElement.prototype, "clientWidth", "get")
+      .mockReturnValue(600);
+    const offsetWidth = vi
+      .spyOn(HTMLElement.prototype, "offsetWidth", "get")
+      .mockImplementation(function (this: HTMLElement) {
+        return this.textContent === "GenBank Accession" ? 200 : 0;
+      });
+    try {
+      render(<ReferenceGenomesClient {...empty} />);
+
+      const separator = screen.getByRole("separator", {
+        name: "Resize Type column",
+      });
+
+      fireEvent.keyDown(separator, { key: "ArrowRight" });
+      // 600 - 160 (Genome Name keeps) - 200 (accession renders at).
+      expect(separator).toHaveAttribute("aria-valuemax", "240");
+
+      for (let index = 0; index < 10; index += 1) {
+        fireEvent.keyDown(separator, { key: "ArrowRight" });
+      }
+      expect(separator).toHaveAttribute("aria-valuenow", "240");
+    } finally {
+      offsetWidth.mockRestore();
+      clientWidth.mockRestore();
+    }
+  });
+
   it("renders one tab per reference type plus an All tab", () => {
     render(<ReferenceGenomesClient {...complete} />);
 
@@ -181,34 +242,42 @@ describe("ReferenceGenomesClient", () => {
     ]);
   });
 
-  it("shows each genome's GenBank accession so same-named genomes can be told apart", () => {
+  it("lists same-named genomes as separate rows keyed by genome id, each with its GenBank accession", () => {
     const twins = [
       { genome_id: "1541205.20", genome_name: "Bat Hp-betacoronavirus/Zhejiang2013", reference_genome: "Reference", genbank_accessions: "NC_025217" },
       { genome_id: "1541205.21", genome_name: "Bat Hp-betacoronavirus/Zhejiang2013", reference_genome: "Reference", genbank_accessions: "KF636752" },
     ];
-    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
-    render(
-      <ReferenceGenomesClient
-        rows={twins}
-        counts={{ Reference: 2 }}
-        total={2}
-        hrefs={{ byType: {} }}
-      />,
-    );
+    // A pass-through spy: rows keyed by name would log React's duplicate-key
+    // warning ("two children with the same key"), which this asserts is absent.
+    const consoleError = vi.spyOn(console, "error");
+    try {
+      render(
+        <ReferenceGenomesClient
+          rows={twins}
+          counts={{ Reference: 2 }}
+          total={2}
+          hrefs={{ byType: {} }}
+        />,
+      );
 
-    const all = within(screen.getByRole("tabpanel"));
-    expect(screen.getByRole("columnheader", { name: "GenBank Accession" })).toBeInTheDocument();
-    expect(all.getAllByRole("link", { name: "Bat Hp-betacoronavirus/Zhejiang2013" })).toHaveLength(2);
-    expect(all.getByText("NC_025217")).toBeInTheDocument();
-    expect(all.getByText("KF636752")).toBeInTheDocument();
-    expect(consoleError.mock.calls.flat().join(" ")).not.toContain("same key");
-    consoleError.mockRestore();
+      const all = within(screen.getByRole("tabpanel"));
+      expect(screen.getByRole("columnheader", { name: "GenBank Accession" })).toBeInTheDocument();
+      expect(all.getAllByRole("link", { name: "Bat Hp-betacoronavirus/Zhejiang2013" })).toHaveLength(2);
+      expect(all.getByText("NC_025217")).toBeInTheDocument();
+      expect(all.getByText("KF636752")).toBeInTheDocument();
+      expect(consoleError.mock.calls.flat().join(" ")).not.toContain("same key");
+    } finally {
+      consoleError.mockRestore();
+    }
   });
 
-  it("spans the empty state across all three columns", () => {
+  it("gives the table three columns and spans the empty-state row across them", () => {
     render(<ReferenceGenomesClient {...empty} />);
 
     expect(document.querySelectorAll("col")).toHaveLength(3);
+    expect(
+      screen.getByText("No genomes in this category.").closest("td"),
+    ).toHaveAttribute("colspan", "3");
   });
 
   it("renders genome rows as same-tab links to the internal genome view", () => {

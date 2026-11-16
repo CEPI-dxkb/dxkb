@@ -12,9 +12,12 @@ import {
 } from "@/test-helpers/upstream-failures";
 import { upstreamTimeoutMs } from "@/lib/api/upstream-failure";
 import {
+  createStatisticsCache,
   dbStatisticsDefinitions,
   fetchDbStatistics,
+  fetchStatisticCounts,
   getDbStatistics,
+  type StatisticDefinition,
   type StatisticKey,
 } from "@/lib/services/statistics";
 
@@ -222,6 +225,72 @@ describe("fetchDbStatistics", () => {
       "proteinFeatures",
       "genomes",
     ]);
+  });
+});
+
+describe("fetchStatisticCounts", () => {
+  const definitions: readonly StatisticDefinition<"alpha" | "beta">[] = [
+    { key: "alpha", label: "Alpha", core: "genome", filter: "eq(a,b)" },
+    { key: "beta", label: "Beta", core: "epitope", filter: "" },
+  ];
+
+  it("counts any definition list and keys the result by each definition's own key", async () => {
+    const urls: string[] = [];
+    server.use(
+      http.get(`${dataApi}/:core/`, ({ request, params }) => {
+        urls.push(request.url);
+        return solrCount(params.core === "genome" ? 11 : 22);
+      }),
+    );
+
+    const { counts, unavailableReason } = await fetchStatisticCounts(definitions);
+
+    expect(counts).toEqual({ alpha: 11, beta: 22 });
+    expect(unavailableReason).toBeNull();
+    expect(urls.some((url) => url.includes("/genome/?eq(a,b)&limit(1)"))).toBe(true);
+    expect(urls.some((url) => url.includes("/epitope/?limit(1)"))).toBe(true);
+  });
+
+  it("keeps a failed count null and the rest numeric", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    server.use(
+      http.get(`${dataApi}/epitope/`, () =>
+        HttpResponse.text("down", { status: 500 }),
+      ),
+      http.get(`${dataApi}/:core/`, () => solrCount(5)),
+    );
+
+    const { counts, unavailableReason } = await fetchStatisticCounts(definitions);
+
+    expect(counts).toEqual({ alpha: 5, beta: null });
+    expect(unavailableReason).toBeNull();
+  });
+});
+
+describe("createStatisticsCache", () => {
+  it("gives each named cache its own entry", async () => {
+    const first = createStatisticsCache("test-stats-first", [
+      { key: "only", label: "Only", core: "genome", filter: "" },
+    ]);
+    const second = createStatisticsCache("test-stats-second", [
+      { key: "only", label: "Only", core: "genome", filter: "" },
+    ]);
+    let requests = 0;
+    server.use(
+      http.get(`${dataApi}/:core/`, () => {
+        requests += 1;
+        return solrCount(requests);
+      }),
+    );
+
+    const a = await first();
+    const b = await second();
+    const aAgain = await first();
+
+    expect(requests).toBe(2);
+    expect(a.counts.only).toBe(1);
+    expect(b.counts.only).toBe(2);
+    expect(aAgain.counts.only).toBe(1);
   });
 });
 

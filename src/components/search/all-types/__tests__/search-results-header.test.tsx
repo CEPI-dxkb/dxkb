@@ -31,6 +31,14 @@ describe("SearchResultsHeader best match", () => {
     ).toBeInTheDocument();
   });
 
+  it("shows a count of zero rather than leaving it out", () => {
+    renderHeader({ ...coronaviridae, genomes: 0 });
+
+    expect(
+      screen.getByText("0 genomes · Family · Taxon ID 11118"),
+    ).toBeInTheDocument();
+  });
+
   it("leaves the genome figure out when the count is unavailable", () => {
     renderHeader({ ...coronaviridae, genomes: null });
 

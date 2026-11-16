@@ -218,6 +218,61 @@ describe("POST /api/data/search", () => {
     );
   });
 
+  it("answers without the counts when the count query outlasts its short budget", async () => {
+    shortenTimeouts();
+    const consoleError = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
+    let calls = 0;
+    const seen = captureUpstream(() => {
+      calls += 1;
+      return calls === 1
+        ? HttpResponse.json({
+            taxonomy: {
+              result: { response: { numFound: 1, docs: [{ taxon_id: 11118 }] } },
+            },
+          })
+        : neverRespond();
+    });
+
+    const response = await search({ keyword: "Coronaviridae" });
+
+    expect(response.status).toBe(200);
+    expect(seen).toHaveLength(2);
+    expect(Object.keys(await json<object>(response))).toEqual(["taxonomy"]);
+    expect(consoleError).toHaveBeenCalledWith(
+      "search: taxon genome counts failed",
+      expect.objectContaining({
+        message: expect.stringContaining("timed out after 5 s") as unknown,
+      }),
+    );
+  });
+
+  it("keeps only count entries from the count answer, never replacing a type match", async () => {
+    const taxonomy = {
+      result: { response: { numFound: 1, docs: [{ taxon_id: 11118 }] } },
+    };
+    let calls = 0;
+    captureUpstream(() => {
+      calls += 1;
+      return calls === 1
+        ? HttpResponse.json({ taxonomy })
+        : HttpResponse.json({
+            taxonomy: { result: { response: { numFound: 0, docs: [] } } },
+            "taxonGenomes:11118": {
+              result: { response: { numFound: 7, docs: [] } },
+            },
+          });
+    });
+
+    const response = await search({ keyword: "Coronaviridae" });
+
+    await expect(json(response)).resolves.toEqual({
+      taxonomy,
+      "taxonGenomes:11118": { result: { response: { numFound: 7, docs: [] } } },
+    });
+  });
+
   it("answers an aborted search as aborted even when only the count query is cut off", async () => {
     const controller = new AbortController();
     let calls = 0;

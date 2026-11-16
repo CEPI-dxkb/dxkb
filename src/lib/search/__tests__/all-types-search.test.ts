@@ -373,6 +373,31 @@ describe("toAllTypesResults", () => {
     });
   });
 
+  it("shows a count of zero as 0 genomes, not as missing", () => {
+    const results = toAllTypesResults(
+      {
+        taxonomy: {
+          result: {
+            response: {
+              numFound: 1,
+              docs: [
+                { taxon_id: 11118, taxon_name: "Coronaviridae", genomes: 4 },
+              ],
+            },
+          },
+        },
+        "taxonGenomes:11118": { result: { response: { numFound: 0, docs: [] } } },
+      },
+      "Coronaviridae",
+    );
+    expect(results.bestMatch?.genomes).toBe(0);
+    const taxa = results.types.find((type) => type.id === "taxonomy");
+    expect(taxa?.rows[0].facts).toContainEqual({
+      label: "Genomes",
+      value: "0 genomes",
+    });
+  });
+
   it("omits the genome figure when the count is missing instead of showing the stored one", () => {
     const results = toAllTypesResults(
       {

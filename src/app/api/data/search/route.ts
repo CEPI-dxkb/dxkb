@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import { upstreamTimeoutMs } from "@/lib/api/upstream-failure";
 import type { ServerDataRepository } from "@/lib/data-api/repository";
 import { DataApiValidationError } from "@/lib/data-api/resources";
 import {
@@ -18,6 +19,7 @@ import {
   allTypesSearchQueries,
   isSearchableKeyword,
   maxSearchKeywordLength,
+  taxonGenomeCountKeyPrefix,
   taxonGenomeCountQueries,
 } from "@/lib/search/all-types-query";
 
@@ -48,7 +50,7 @@ function taxonIdsOf(matches: Record<string, unknown>): string[] {
   return [...new Set(ids)];
 }
 
-/** One batched count per taxon hit, so the page's genome figures follow the Taxonomy header's definition instead of the stored `taxonomy.genomes` field. A failure leaves the counts out (the page omits the figure) and is logged, never replaced by the stored value; an aborted search still answers as aborted. */
+/** One batched count per taxon hit, so the page's genome figures follow the Taxonomy header's definition instead of the stored `taxonomy.genomes` field. A failure, or no answer within its short budget, leaves the counts out (the page omits the figure) and is logged, never replaced by the stored value; an aborted search still answers as aborted. Only `taxonGenomes:` entries are kept, so the answer cannot replace a type match. */
 async function taxonGenomeCounts(
   repository: ServerDataRepository,
   matches: Record<string, unknown>,
@@ -56,13 +58,22 @@ async function taxonGenomeCounts(
 ): Promise<Record<string, unknown>> {
   const taxonIds = taxonIdsOf(matches);
   if (taxonIds.length === 0) return {};
-  return repository
-    .multiQuery(taxonGenomeCountQueries(taxonIds), signal)
-    .catch((error: unknown) => {
-      if (error instanceof Error && error.name === "AbortError") throw error;
-      console.error("search: taxon genome counts failed", error);
-      return {};
-    });
+  try {
+    const counts = await repository.multiQuery(
+      taxonGenomeCountQueries(taxonIds),
+      signal,
+      upstreamTimeoutMs.dataApiSearchGenomeCounts,
+    );
+    return Object.fromEntries(
+      Object.entries(counts).filter(([key]) =>
+        key.startsWith(taxonGenomeCountKeyPrefix),
+      ),
+    );
+  } catch (error) {
+    if (signal.aborted) throw error;
+    console.error("search: taxon genome counts failed", error);
+    return {};
+  }
 }
 
 export async function POST(request: NextRequest): Promise<NextResponse> {

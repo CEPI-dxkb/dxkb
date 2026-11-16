@@ -127,6 +127,14 @@ describe("api/e2e-mock catch-all — enabled", () => {
   it.each([
     ["a longer lineage id", "eq(taxon_lineage_ids,102390)&"],
     ["a negated lineage scope", "ne(taxon_lineage_ids,10239)&"],
+    [
+      "the taxon protein-structures tab join",
+      "and(eq(genome_id,*),genome(and(eq(taxon_lineage_ids,10239),ne(genome_status,Deprecated))))&",
+    ],
+    [
+      "a lineage clause that wraps a genome join",
+      "and(eq(taxon_lineage_ids,10239),genome(eq(genome_status,Complete)))&",
+    ],
   ])(
     "does not return the deterministic statistics total for %s",
     async (_name, filter) => {

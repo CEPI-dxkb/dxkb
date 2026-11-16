@@ -621,7 +621,7 @@ describe("GenomeCollection", () => {
     );
 
     expect(childProps.current?.rql).toBe(
-      "and(eq(genome_id,*),genome(and(eq(public,false),keyword(Dnak))))",
+      "and(eq(genome_id,*),genome(and(ne(genome_status,Deprecated),eq(public,false),keyword(Dnak))))",
     );
   });
 

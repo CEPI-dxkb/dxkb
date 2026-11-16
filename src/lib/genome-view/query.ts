@@ -30,14 +30,15 @@ export const genomeSorts = genomeMetadata.sorts;
 export const recentGenomeRql =
   "and(gt(completion_date,NOW-1YEARS),ne(genome_status,Deprecated))";
 
-/** An unscoped list defaults to recent genomes; a keyword or refinement search replaces that default but still leaves Deprecated genomes out, as the all-types search's Genomes count does so a card equals its list. An explicit `rql` or `public` filter is the user's own scope and gets no default. */
+/** An unscoped list defaults to recent genomes; a keyword or refinement search replaces that default but still leaves Deprecated genomes out, as the all-types search's Genomes count does so a card equals its list, a Public pick included. An explicit `rql`, or a `public` filter without a keyword or refinement (My Genomes), is the user's own scope and gets no default. */
 export function genomeBaseRql(state: CollectionState): string | undefined {
-  if (state.rql || Object.hasOwn(state.filters, "public")) return undefined;
+  if (state.rql) return undefined;
   if (
     keywordQuery(state.keyword ?? "").length > 0 ||
     keywordQuery(state.refine ?? "").length > 0
   )
     return nonDeprecatedGenomeClause;
+  if (Object.hasOwn(state.filters, "public")) return undefined;
   return recentGenomeRql;
 }
 

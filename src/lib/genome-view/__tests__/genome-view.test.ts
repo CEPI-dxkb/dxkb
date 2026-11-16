@@ -83,7 +83,7 @@ describe("Genome view contracts", () => {
     );
   });
 
-  it("keeps the recent-genomes default for an unscoped list and no default for an explicit rql or public filter", () => {
+  it("keeps the recent-genomes default for an unscoped list and no default for an explicit rql or a bare public filter", () => {
     expect(genomeBaseRql(parseGenomeCollectionState({}))).toBe(recentGenomeRql);
     expect(
       genomeBaseRql(parseGenomeCollectionState({ rql: "eq(genus,Escherichia)" })),
@@ -93,9 +93,30 @@ describe("Genome view contracts", () => {
     ).toBeUndefined();
     expect(
       genomeBaseRql(
-        parseGenomeCollectionState({ keyword: "Coronaviridae", public: "true" }),
+        parseGenomeCollectionState({
+          keyword: "Coronaviridae",
+          rql: "eq(genus,Betacoronavirus)",
+        }),
       ),
     ).toBeUndefined();
+  });
+
+  it("keeps Deprecated genomes out of a keyword or refined list when Public is picked", () => {
+    for (const visibility of ["true", "false"]) {
+      expect(
+        genomeBaseRql(
+          parseGenomeCollectionState({
+            keyword: "Coronaviridae",
+            public: visibility,
+          }),
+        ),
+      ).toBe("ne(genome_status,Deprecated)");
+      expect(
+        genomeBaseRql(
+          parseGenomeCollectionState({ refine: "Wuhan", public: visibility }),
+        ),
+      ).toBe("ne(genome_status,Deprecated)");
+    }
   });
 
   it("keeps Deprecated genomes out of a keyword list even beside a genome_status filter", () => {
@@ -443,7 +464,10 @@ describe("genomeRelatedScope", () => {
         filters: { public: ["false"] },
         keyword: "Dnak",
       }),
-    ).toEqual({ rql: "and(eq(public,false),keyword(Dnak))", join: true });
+    ).toEqual({
+      rql: "and(ne(genome_status,Deprecated),eq(public,false),keyword(Dnak))",
+      join: true,
+    });
     expect(
       genomeRelatedScope({
         ...bare,
@@ -538,6 +562,16 @@ describe("genomeOverviewScope", () => {
     expect(
       genomeOverviewScope({ ...bare, filters: { public: ["true"] } }),
     ).toEqual({ fieldRql: "eq(public,true)" });
+    expect(
+      genomeOverviewScope({
+        ...bare,
+        keyword: "pseudomonas",
+        filters: { public: ["true"] },
+      }),
+    ).toEqual({
+      fieldRql: "and(ne(genome_status,Deprecated),eq(public,true))",
+      keywordRql: "keyword(pseudomonas)",
+    });
   });
 
   it("keeps keyword clauses apart from genome-field clauses", () => {

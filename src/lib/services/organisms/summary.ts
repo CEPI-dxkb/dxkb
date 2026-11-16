@@ -1,3 +1,4 @@
+import { fetchExperimentalStructureCount } from "./structure-count";
 import type { OrganismFetchOptions, OrganismSummary } from "./types";
 import {
   fetchOrganism,
@@ -10,10 +11,10 @@ import {
 
 const summaryRequest: OrganismRequest = { source: "summary_by_taxon" };
 
-export async function fetchOrganismSummary(
+async function fetchSummaryPayload(
   taxonId: number,
-  options: OrganismFetchOptions = {},
-): Promise<OrganismSummary> {
+  options: OrganismFetchOptions,
+): Promise<Record<string, unknown>> {
   const baseUrl = getBvBrcWebsiteApiBaseUrl();
   const response = await fetchOrganism(`${baseUrl}/data/summary_by_taxon/${String(taxonId)}`, summaryRequest, {
     method: "GET",
@@ -23,7 +24,23 @@ export async function fetchOrganismSummary(
 
   if (!response.ok) throw await organismResponseError(response, summaryRequest);
 
-  const payload = await readJsonObject(response, summaryRequest);
+  return readJsonObject(response, summaryRequest);
+}
+
+/**
+ * `summary_by_taxon` supplies everything but `pdb`: its `PDB` is every
+ * `protein_structure` document under the taxon, AlphaFold models included
+ * (~99.7%), so `pdb` is the experimental count from `protein_structure`
+ * instead. Either request failing rejects with its own message.
+ */
+export async function fetchOrganismSummary(
+  taxonId: number,
+  options: OrganismFetchOptions = {},
+): Promise<OrganismSummary> {
+  const [payload, pdb] = await Promise.all([
+    fetchSummaryPayload(taxonId, options),
+    fetchExperimentalStructureCount(taxonId, options),
+  ]);
 
   return {
     count: numberOrNull(payload.count, "count"),
@@ -32,7 +49,7 @@ export async function fetchOrganismSummary(
     uniqueSpecies: numberOrNull(payload.unique_species, "unique_species"),
     cds: numberOrNull(payload.CDS, "CDS"),
     matPeptide: numberOrNull(payload.mat_peptide, "mat_peptide"),
-    pdb: numberOrNull(payload.PDB, "PDB"),
+    pdb,
   };
 }
 

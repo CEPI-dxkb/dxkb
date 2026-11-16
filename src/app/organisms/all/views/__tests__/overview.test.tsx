@@ -48,6 +48,13 @@ const virusesSummary = {
   PDB: 47_106,
 };
 
+// Experimental structures per root (live, 2026-11-13): summary_by_taxon's PDB
+// above counts the AlphaFold models too, so the tile takes these instead.
+const experimentalStructureCounts: Record<number, number> = {
+  131567: 79_938,
+  10239: 17_243,
+};
+
 beforeEach(() => {
   process.env.BVBRC_WEBSITE_API_URL = baseUrl;
 });
@@ -62,7 +69,23 @@ async function renderServer(node: Promise<React.ReactElement>) {
   return render(<Suspense fallback={null}>{resolved}</Suspense>);
 }
 
+function serveStructureCounts() {
+  server.use(
+    http.get(`${baseUrl}/protein_structure/`, ({ request }) => {
+      const search = decodeURIComponent(new URL(request.url).search);
+      const taxonId = Number(/eq\(taxon_lineage_ids,(\d+)\)/.exec(search)?.[1]);
+      return HttpResponse.json({
+        response: {
+          numFound: experimentalStructureCounts[taxonId] ?? 0,
+          docs: [],
+        },
+      });
+    }),
+  );
+}
+
 function serveSummaries() {
+  serveStructureCounts();
   server.use(
     http.get(`${baseUrl}/data/summary_by_taxon/131567`, () =>
       HttpResponse.json(cellularSummary),
@@ -88,8 +111,19 @@ describe("All Organisms Overview", () => {
       expect(shown).toBeGreaterThanOrEqual(virusesSummary.count);
     });
 
+    it("sums the experimental structures of both roots, not summary_by_taxon's PDB", async () => {
+      serveSummaries();
+
+      await renderServer(DataSummaryBoundary());
+
+      const structures = screen.getByTestId("organism-kpi-pdb");
+      expect(structures).toHaveTextContent("97,181");
+      expect(structures).not.toHaveTextContent("32,157,475");
+    });
+
     it("fails the whole section, with the original message and no partial total, when one root is down", async () => {
       vi.spyOn(console, "error").mockImplementation(() => undefined);
+      serveStructureCounts();
       server.use(
         http.get(`${baseUrl}/data/summary_by_taxon/131567`, () =>
           HttpResponse.json(cellularSummary),

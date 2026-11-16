@@ -15,6 +15,18 @@ afterEach(() => {
   delete process.env.BVBRC_WEBSITE_API_URL;
 });
 
+function answerStructures(counts: Record<number, number>) {
+  server.use(
+    http.get(`${baseUrl}/protein_structure/`, ({ request }) => {
+      const search = decodeURIComponent(new URL(request.url).search);
+      const taxonId = Number(/eq\(taxon_lineage_ids,(\d+)\)/.exec(search)?.[1]);
+      return HttpResponse.json({
+        response: { numFound: counts[taxonId] ?? 0, docs: [] },
+      });
+    }),
+  );
+}
+
 async function renderServer(node: Promise<React.ReactElement>) {
   const resolved = await node;
   return render(<Suspense fallback={null}>{resolved}</Suspense>);
@@ -35,16 +47,20 @@ describe("DataSummary", () => {
         }),
       ),
     );
+    answerStructures({ 2: 68_899 });
 
     await renderServer(DataSummary({ taxonIds: [2] }));
 
     expect(screen.getByText("1,337,420")).toBeInTheDocument();
     expect(screen.getByText("Families")).toBeInTheDocument();
     expect(screen.getByText("482,001,224")).toBeInTheDocument();
+    // The experimental count, not the payload's PDB (9,821).
+    expect(screen.getByTestId("organism-kpi-pdb")).toHaveTextContent("68,899");
   });
 
   it("sums the Genomes tile across several roots", async () => {
     const requested: string[] = [];
+    answerStructures({ 131567: 79_938, 10239: 17_243 });
     server.use(
       http.get(`${baseUrl}/data/summary_by_taxon/131567`, () => {
         requested.push("131567");
@@ -78,6 +94,7 @@ describe("DataSummary", () => {
       "17,815,990",
     );
     expect(screen.queryByText("1,427,115")).not.toBeInTheDocument();
+    expect(screen.getByTestId("organism-kpi-pdb")).toHaveTextContent("97,181");
     expect(requested.toSorted()).toEqual(["10239", "131567"]);
   });
 });

@@ -557,7 +557,7 @@ describe("BV-BRC website organism tables stay paired", () => {
     },
   );
 
-  // The header's genome count leaves out Deprecated genomes, so it is strictly below the summary count.
+  // The Taxonomy header and its "Genomes / Segments" tile both show this count (lineage less Deprecated genomes). It sits strictly below the summary `count` and the taxonomy record's `genomes`, so a spec can tell a tile that fell back to either of them from one that shows the header's figure.
   it("covers the same taxon ids in the header genome counts", () => {
     expect(Object.keys(taxonGenomeCounts).sort()).toEqual(
       Object.keys(organismSummaryRecords).sort(),
@@ -565,9 +565,10 @@ describe("BV-BRC website organism tables stay paired", () => {
   });
 
   it.each(Object.entries(taxonGenomeCounts))(
-    "taxon %s header genome count leaves out Deprecated genomes",
+    "taxon %s header genome count differs from the summary count and the taxonomy record's genomes",
     (taxonId, count) => {
       expect(count).toBeLessThan(organismSummaryRecords[taxonId].count);
+      expect(count).toBeLessThan(organismTaxonomyRecords[taxonId].genomes);
     },
   );
 

@@ -1,15 +1,25 @@
 import { SectionRetryButton } from "@/components/organisms/shared/section-retry-button";
 import { Card } from "@/components/ui/card";
+import { readSession } from "@/lib/auth/server/session";
+import { fetchTaxonGenomeCount } from "@/lib/services/organisms/genome-count";
 import { fetchOrganismSummary } from "@/lib/services/organisms/summary";
 import type { OrganismTaxonomy } from "@/lib/services/organisms/types";
 import { numberFormatter } from "@/lib/services/organisms/utils";
 import { formatUserFacingErrorMessage } from "@/lib/utils";
 
-/** A count the summary would have given, when the summary failed. */
+/** What a tile shows for a count whose load failed. */
 const unavailableCount = "Unavailable";
 
 /** `formatUserFacingErrorMessage` fallback for a failure that says nothing. */
 const genericSummaryErrorMessage = "the summary service did not answer.";
+
+/** Settles a promise into a tagged result so one failed count does not take the other tiles down. */
+function settle<T>(promise: Promise<T>) {
+  return promise.then(
+    (value) => ({ status: "fulfilled" as const, value }),
+    (reason: unknown) => ({ status: "rejected" as const, reason }),
+  );
+}
 
 function formatCount(value: number | null | undefined): string {
   return value === null || value === undefined
@@ -24,28 +34,38 @@ export async function TaxonomySummary({
   taxonId: number;
   taxon: OrganismTaxonomy | null;
 }) {
-  const summaryResult = await fetchOrganismSummary(taxonId).then(
-    (value) => ({ status: "fulfilled" as const, value }),
-    (reason: unknown) => ({ status: "rejected" as const, reason }),
-  );
+  const [summaryResult, genomeCountResult] = await Promise.all([
+    settle(fetchOrganismSummary(taxonId)),
+    // Same query and token as the Taxonomy header's `TaxonGenomeCount`, so the tile and the header always agree.
+    settle(
+      readSession().then((session) =>
+        fetchTaxonGenomeCount(taxonId, { token: session?.token }),
+      ),
+    ),
+  ]);
 
   const summary = summaryResult.status === "fulfilled" ? summaryResult.value : null;
 
-  if (!summary && !taxon) {
-    if (summaryResult.status === "rejected") throw summaryResult.reason;
+  if (!summary && !taxon && summaryResult.status === "rejected") {
+    throw summaryResult.reason;
   }
 
-  // A failed summary reads as Unavailable with a reason, not as "no data".
-  const summaryError =
+  const failure =
     summaryResult.status === "rejected"
-      ? formatUserFacingErrorMessage(
-          summaryResult.reason,
-          genericSummaryErrorMessage,
-        )
-      : null;
+      ? summaryResult
+      : genomeCountResult.status === "rejected"
+        ? genomeCountResult
+        : null;
+  // A failed count reads as Unavailable with a reason, not as "no data".
+  const summaryError = failure
+    ? formatUserFacingErrorMessage(failure.reason, genericSummaryErrorMessage)
+    : null;
   const summaryCount = (value: number | null | undefined): string =>
-    summaryError ? unavailableCount : formatCount(value);
-  const genomeCount = summary?.count ?? taxon?.genomes;
+    summaryResult.status === "rejected" ? unavailableCount : formatCount(value);
+  const genomeCount =
+    genomeCountResult.status === "fulfilled"
+      ? formatCount(genomeCountResult.value)
+      : unavailableCount;
 
   const metrics: { label: string; value: string; description: string }[] = [
     { label: "Taxon ID", value: taxon ? String(taxon.taxonId) : String(taxonId), description: "NCBI taxonomy identifier" },
@@ -54,10 +74,7 @@ export async function TaxonomySummary({
     { label: "Species", value: summaryCount(summary?.uniqueSpecies), description: "Unique taxonomy species" },
     {
       label: "Genomes / Segments",
-      value:
-        genomeCount === null || genomeCount === undefined
-          ? summaryCount(null)
-          : formatCount(genomeCount),
+      value: genomeCount,
       description: "Assembled genome records",
     },
     { label: "Protein Coding Genes (CDS)", value: summaryCount(summary?.cds), description: "Coding sequences" },

@@ -106,6 +106,12 @@ describe("POST /api/data/search", () => {
       accept: "application/solr+json",
       query: "keyword(influenza)&gt(genomes,1)&limit(10)&sort(-genomes)",
     });
+    expect(seen[0].body.genome).toEqual({
+      dataType: "genome",
+      accept: "application/solr+json",
+      query:
+        "keyword(influenza)&ne(genome_status,Deprecated)&limit(10)&sort(-score)",
+    });
     expect(seen[0].authorization).toBeNull();
   });
 

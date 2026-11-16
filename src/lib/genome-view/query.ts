@@ -8,7 +8,10 @@ import {
 import { keywordQuery } from "@/lib/data-api/keyword-terms";
 import { DataApiValidationError } from "@/lib/data-api/resources";
 import type { RqlExpression } from "@/lib/data-api/rql";
-import type { GenomeQueryScope } from "@/lib/services/organisms/genome-scope";
+import {
+  nonDeprecatedGenomeClause,
+  type GenomeQueryScope,
+} from "@/lib/services/organisms/genome-scope";
 import {
   parseCollectionState,
   type CollectionState,
@@ -27,14 +30,15 @@ export const genomeSorts = genomeMetadata.sorts;
 export const recentGenomeRql =
   "and(gt(completion_date,NOW-1YEARS),ne(genome_status,Deprecated))";
 
-/** The recent-genomes default applies only to an otherwise unscoped list: an explicit RQL, `public` filter, keyword search or refinement replaces it. */
+/** An unscoped list defaults to recent genomes; a keyword or refinement search replaces that default but still leaves Deprecated genomes out, as the all-types search's Genomes count does so a card equals its list. An explicit `rql` or `public` filter is the user's own scope and gets no default. */
 export function genomeBaseRql(state: CollectionState): string | undefined {
-  return state.rql ||
+  if (state.rql || Object.hasOwn(state.filters, "public")) return undefined;
+  if (
     keywordQuery(state.keyword ?? "").length > 0 ||
-    keywordQuery(state.refine ?? "").length > 0 ||
-    Object.hasOwn(state.filters, "public")
-    ? undefined
-    : recentGenomeRql;
+    keywordQuery(state.refine ?? "").length > 0
+  )
+    return nonDeprecatedGenomeClause;
+  return recentGenomeRql;
 }
 
 export const genomeCollectionOptions: CollectionStateOptions = {

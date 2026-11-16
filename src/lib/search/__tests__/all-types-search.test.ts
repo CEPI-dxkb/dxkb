@@ -11,6 +11,11 @@ import {
 } from "../all-types-search";
 import { taxonGenomeCountQueries } from "../all-types-query";
 import { DataRepositoryError } from "@/lib/data-api/client";
+import { keywordClauses } from "@/lib/data-api/rql";
+import { genomeBaseRql, parseGenomeCollectionState } from "@/lib/genome-view";
+import { nonDeprecatedGenomeClause } from "@/lib/services/organisms/genome-scope";
+import { toSearchParamsRecord } from "@/lib/views/collection-state";
+import { rqlAnd } from "@/lib/views/rql";
 import { isUpstreamOutage } from "@/lib/api/query-retry";
 import { server } from "@/test-helpers/msw-server";
 
@@ -27,6 +32,35 @@ describe("typeSearchQuery", () => {
   ])("builds the %s query", (id, expected) => {
     expect(typeSearchQuery(id, "influenza", 5)).toBe(expected);
   });
+
+  it("leaves Deprecated genomes out of the Genomes count, as the list it links to does", () => {
+    expect(typeSearchQuery("genome", "Coronaviridae", 10)).toBe(
+      "keyword(Coronaviridae)&ne(genome_status,Deprecated)&limit(10)&sort(-score)",
+    );
+  });
+
+  it.each(["Coronaviridae", "coli Salmonella"])(
+    "counts the rows of the list the Genomes card links to (%s)",
+    (keyword) => {
+      const card = toAllTypesResults(undefined, keyword).types.find(
+        (type) => type.id === "genome",
+      );
+      const href = new URL(card?.listHref ?? "", "https://dxkb.test");
+      expect(href.pathname).toBe("/genome");
+      const listState = parseGenomeCollectionState(
+        toSearchParamsRecord(href.searchParams),
+      );
+      const listBase = genomeBaseRql(listState);
+      expect(listBase).toBe(nonDeprecatedGenomeClause);
+      const cardClauses = typeSearchQuery("genome", keyword, 10)
+        .split("&")
+        .filter((part) => !/^(limit|sort)\(/.test(part));
+      expect(cardClauses).toEqual([
+        rqlAnd(...keywordClauses(listState.keyword ?? "", "exact")),
+        listBase,
+      ]);
+    },
+  );
 });
 
 describe("taxonGenomeCountQueries", () => {

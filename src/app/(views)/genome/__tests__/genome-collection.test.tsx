@@ -531,7 +531,7 @@ describe("GenomeCollection", () => {
     expect(childProps.current?.rql).toBe("keyword(coli)");
   });
 
-  it("lists a refined list's genomes without the recent-genomes default", () => {
+  it("lists a refined list's genomes without the recent-genomes default, Deprecated left out", () => {
     searchParams.current = new URLSearchParams("refine=coli");
 
     render(
@@ -545,7 +545,7 @@ describe("GenomeCollection", () => {
       />,
     );
 
-    expect(genomeProps.current?.baseRql).toBeUndefined();
+    expect(genomeProps.current?.baseRql).toBe("ne(genome_status,Deprecated)");
   });
 
   it("keeps the recent-genomes default on the bare list's Genomes tab", () => {
@@ -578,7 +578,7 @@ describe("GenomeCollection", () => {
     // matched 137,836.
     expect(genomeProps.current).toEqual(
       expect.objectContaining({
-        baseRql: undefined,
+        baseRql: "ne(genome_status,Deprecated)",
         keywordMode: "refine",
         serverKeywordMode: "exact",
       }),

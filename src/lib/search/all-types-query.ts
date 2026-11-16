@@ -4,7 +4,10 @@ import { allTermSearchTypes } from "@/constants/search-info";
 import type { DataApiMultiQuery } from "@/lib/data-api/repository";
 import { keywordQuery } from "@/lib/data-api/keyword-terms";
 import { keywordClauses } from "@/lib/data-api/rql";
-import { genomeScopeRql } from "@/lib/services/organisms/genome-scope";
+import {
+  genomeScopeRql,
+  nonDeprecatedGenomeClause,
+} from "@/lib/services/organisms/genome-scope";
 import { rqlAnd } from "@/lib/views/rql";
 
 /** Rows each type shows at first and after "Show more"; all are fetched up front so columns size for every row. */
@@ -26,6 +29,8 @@ export function typeSearchQuery(
   let query = rqlAnd(...keywordClauses(keyword, "exact"));
   if (id === "genome_feature")
     query += "&ne(annotation,brc1)&ne(feature_type,source)";
+  // As the `/genome?keyword=` list it links to (`genomeBaseRql`), so the card counts its rows.
+  if (id === "genome") query += `&${nonDeprecatedGenomeClause}`;
   // The stored `genomes` field only filters and ranks Taxa; the count shown comes from `taxonGenomeCountQueries`.
   if (id === "taxonomy") query += "&gt(genomes,1)";
   // Taxa by genome count, not score: score ranks "Swine influenza virus" (166 genomes) above "Influenza A virus" (1.9M).

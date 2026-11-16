@@ -63,7 +63,7 @@ describe("Genome view contracts", () => {
     ).toBeUndefined();
   });
 
-  it("does not restrict a keyword search to recent genomes", () => {
+  it("does not restrict a keyword search to recent genomes, but leaves Deprecated ones out", () => {
     expect(
       genomeBaseRql({
         keyword: "Dnak",
@@ -71,7 +71,42 @@ describe("Genome view contracts", () => {
         page: 1,
         sort: "unsorted",
       }),
+    ).toBe("ne(genome_status,Deprecated)");
+  });
+
+  it("leaves Deprecated genomes out of a keyword or refined list", () => {
+    expect(
+      genomeBaseRql(parseGenomeCollectionState({ keyword: "Coronaviridae" })),
+    ).toBe("ne(genome_status,Deprecated)");
+    expect(genomeBaseRql(parseGenomeCollectionState({ refine: "Wuhan" }))).toBe(
+      "ne(genome_status,Deprecated)",
+    );
+  });
+
+  it("keeps the recent-genomes default for an unscoped list and no default for an explicit rql or public filter", () => {
+    expect(genomeBaseRql(parseGenomeCollectionState({}))).toBe(recentGenomeRql);
+    expect(
+      genomeBaseRql(parseGenomeCollectionState({ rql: "eq(genus,Escherichia)" })),
     ).toBeUndefined();
+    expect(
+      genomeBaseRql(parseGenomeCollectionState({ public: "true" })),
+    ).toBeUndefined();
+    expect(
+      genomeBaseRql(
+        parseGenomeCollectionState({ keyword: "Coronaviridae", public: "true" }),
+      ),
+    ).toBeUndefined();
+  });
+
+  it("keeps Deprecated genomes out of a keyword list even beside a genome_status filter", () => {
+    expect(
+      genomeBaseRql(
+        parseGenomeCollectionState({
+          keyword: "Coronaviridae",
+          genome_status: "Complete",
+        }),
+      ),
+    ).toBe("ne(genome_status,Deprecated)");
   });
 
   it("keeps a pick on every facet the filters panel offers", () => {
@@ -294,7 +329,7 @@ describe("genomeBaseRql with a refinement", () => {
   it("does not restrict a refined list to recent genomes", () => {
     expect(
       genomeBaseRql({ filters: {}, page: 1, sort: "unsorted", refine: "coli" }),
-    ).toBeUndefined();
+    ).toBe("ne(genome_status,Deprecated)");
     expect(
       genomeBaseRql({ filters: {}, page: 1, sort: "unsorted", refine: "  " }),
     ).toBe(recentGenomeRql);
@@ -364,7 +399,7 @@ describe("genomeRelatedScope", () => {
         keyword: "coli Salmonella",
       }),
     ).toEqual({
-      rql: "and(eq(taxon_lineage_ids,1763),keyword(coli),keyword(Salmonella))",
+      rql: "and(ne(genome_status,Deprecated),eq(taxon_lineage_ids,1763),keyword(coli),keyword(Salmonella))",
       join: true,
     });
   });
@@ -423,7 +458,7 @@ describe("genomeRelatedScope", () => {
         refine: "coli",
       }),
     ).toEqual({
-      rql: "and(eq(taxon_lineage_ids,1763),keyword(coli))",
+      rql: "and(ne(genome_status,Deprecated),eq(taxon_lineage_ids,1763),keyword(coli))",
       join: true,
     });
   });
@@ -497,6 +532,7 @@ describe("genomeOverviewScope", () => {
   it("summarizes the genomes the Genomes tab lists", () => {
     expect(genomeOverviewScope(bare)).toEqual({ fieldRql: recentGenomeRql });
     expect(genomeOverviewScope({ ...bare, keyword: "pseudomonas" })).toEqual({
+      fieldRql: "ne(genome_status,Deprecated)",
       keywordRql: "keyword(pseudomonas)",
     });
     expect(
@@ -513,7 +549,8 @@ describe("genomeOverviewScope", () => {
         filters: { genome_status: ["Complete"] },
       }),
     ).toEqual({
-      fieldRql: "eq(genome_status,Complete)",
+      fieldRql:
+        "and(ne(genome_status,Deprecated),eq(genome_status,Complete))",
       keywordRql: "and(keyword(pseudomonas),keyword(coli))",
     });
     expect(

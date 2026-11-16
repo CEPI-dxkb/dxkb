@@ -559,9 +559,12 @@ describe("genomeOverviewScope", () => {
       fieldRql: "ne(genome_status,Deprecated)",
       keywordRql: "keyword(pseudomonas)",
     });
+  });
+
+  it("leaves a Public pick out, because the overview's token-less reads are public already and a public clause turns the AMR chart's genome join into a whole-corpus one", () => {
     expect(
       genomeOverviewScope({ ...bare, filters: { public: ["true"] } }),
-    ).toEqual({ fieldRql: "eq(public,true)" });
+    ).toEqual({});
     expect(
       genomeOverviewScope({
         ...bare,
@@ -569,9 +572,15 @@ describe("genomeOverviewScope", () => {
         filters: { public: ["true"] },
       }),
     ).toEqual({
-      fieldRql: "and(ne(genome_status,Deprecated),eq(public,true))",
+      fieldRql: "ne(genome_status,Deprecated)",
       keywordRql: "keyword(pseudomonas)",
     });
+    expect(
+      genomeOverviewScope({
+        ...bare,
+        filters: { public: ["true"], genus: ["Escherichia"] },
+      }),
+    ).toEqual({ fieldRql: "eq(genus,Escherichia)" });
   });
 
   it("keeps keyword clauses apart from genome-field clauses", () => {

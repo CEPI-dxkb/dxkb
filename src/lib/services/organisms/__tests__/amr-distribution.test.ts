@@ -113,6 +113,31 @@ describe("fetchAmrPhenotypeDistribution", () => {
     expect(capturedBody).not.toContain("genome(");
   });
 
+  it.each([
+    ["a keyword list", { keyword: "coli" }],
+    ["My Genomes", {}],
+  ])(
+    "sends %s with Public picked without the whole-corpus genome join that times out",
+    async (_label, params) => {
+      let capturedBody = "";
+      server.use(
+        http.post(`${baseUrl}/genome_amr/`, async ({ request }) => {
+          capturedBody = await request.text();
+          return HttpResponse.json(pivotResponse([]));
+        }),
+      );
+      const scope = genomeOverviewScope(
+        parseGenomeCollectionState({ ...params, public: "true" }),
+      );
+      if (!scope) throw new Error("A public list has an overview scope");
+
+      await fetchAmrPhenotypeDistribution(scope);
+
+      expect(capturedBody).not.toContain("genome(");
+      expect(capturedBody).not.toContain("public");
+    },
+  );
+
   it("returns empty antibiotics when pivot is empty", async () => {
     server.use(
       http.post(`${baseUrl}/genome_amr/`, () =>

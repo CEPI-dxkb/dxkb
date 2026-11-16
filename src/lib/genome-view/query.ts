@@ -299,9 +299,16 @@ export function genomeOverviewScope(
     ...keywordClauses(state.refine ?? "", "exact"),
     ...explicit.keywords,
   ];
+  // The overview's reads carry no token, so the API already answers them with public genomes only, and a `public=true` pick adds nothing but a whole-corpus `genome(...)` join on the AMR chart, which times out. `genomeBaseRql` still sees the pick (My Genomes gets no recent default).
+  const withoutPublic: CollectionState = {
+    ...state,
+    filters: Object.fromEntries(
+      Object.entries(state.filters).filter(([name]) => name !== "public"),
+    ),
+  };
   const fields = [
     genomeBaseRql(state),
-    genomeStructuralRql(state),
+    genomeStructuralRql(withoutPublic),
     ...explicit.fields,
   ].filter((clause): clause is string => Boolean(clause));
   return {

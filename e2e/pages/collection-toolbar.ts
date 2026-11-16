@@ -33,6 +33,11 @@ export class CollectionToolbar {
     return this.page.getByRole("listbox", { name: "Filters" });
   }
 
+  /** Every filter row in the open Filters menu, favorites first. */
+  facetOptions(): Locator {
+    return this.facetList().getByRole("option");
+  }
+
   facetSearch(): Locator {
     return this.page.getByRole("combobox", { name: "Find a filter or value" });
   }

@@ -199,9 +199,7 @@ test.describe("resource collection facet counts", () => {
     expect(read.searchParams.has("sort")).toBe(false);
     expect(read.searchParams.get("keyword")).toBe("influenza");
     const requested = facetsOf(read);
-    await expect(
-      page.getByRole("listbox", { name: "Filters" }).getByRole("option"),
-    ).toHaveCount(requested.length);
+    await expect(toolbar.facetOptions()).toHaveCount(requested.length);
     expect(requested).toContain("genome_status");
     expect(requested).toContain("superkingdom");
     expect(requested).toContain("genus");
@@ -237,9 +235,9 @@ test.describe("resource collection facet counts", () => {
     await expect(toolbar.facetOption("Genus")).toHaveAccessibleName(
       "Genus, favorite",
     );
-    await expect(
-      page.getByRole("listbox", { name: "Filters" }).getByRole("option").first(),
-    ).toHaveAccessibleName("Genus, favorite");
+    await expect(toolbar.facetOptions().first()).toHaveAccessibleName(
+      "Genus, favorite",
+    );
     expect(reads).toHaveLength(1);
   });
 

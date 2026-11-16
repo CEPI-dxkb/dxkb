@@ -69,6 +69,9 @@ export function useFiltersMenuState(
         close();
         return;
       }
+      // Commit the field the menu opens on: `defaultField` follows the
+      // favorites, so a star changed while open would move the pane.
+      setField((current) => current ?? defaultField);
       setOpenState(true);
     },
     shownField,

@@ -316,6 +316,24 @@ describe("FiltersMenu favorites", () => {
     ).toEqual(["Isolation Country", "Species"]);
   });
 
+  it("keeps the shown values on the filter the menu opened on when its star is removed", async () => {
+    const user = userEvent.setup();
+    renderToolbar({ favorites: ["host_name"] });
+    await openFilters(user);
+    expect(valueList("Host Name")).toBeInTheDocument();
+    const row = screen.getByRole("option", { name: "Host Name, favorite" });
+
+    // A click with no pointer move leaves the row uncommitted as the shown one.
+    fireEvent.click(
+      within(row).getByTitle("Favorite: its counts load up front. Click to remove."),
+    );
+
+    expect(valueList("Host Name")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("listbox", { name: "Genome Status values" }),
+    ).not.toBeInTheDocument();
+  });
+
   it("keeps a facet in its group when a value is picked, so a pick never moves its row", async () => {
     const user = userEvent.setup();
     renderToolbar();

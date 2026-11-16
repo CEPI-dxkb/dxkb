@@ -53,7 +53,7 @@ describe("quickAccessDefinitions", () => {
       "Reference & Representative Genomes",
       "Experimental Structures",
       "Predicted Structures",
-      "Epitopes",
+      "Viral Epitopes",
     ]);
   });
 });

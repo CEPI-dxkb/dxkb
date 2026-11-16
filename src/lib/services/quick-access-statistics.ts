@@ -62,7 +62,7 @@ export const quickAccessDefinitions: readonly StatisticDefinition<QuickAccessKey
     },
     {
       key: "epitopes",
-      label: "Epitopes",
+      label: "Viral Epitopes",
       core: "epitope",
       filter: virusLineageScope,
     },

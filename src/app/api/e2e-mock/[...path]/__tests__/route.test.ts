@@ -124,6 +124,29 @@ describe("api/e2e-mock catch-all — enabled", () => {
     },
   );
 
+  it.each([
+    ["a longer lineage id", "eq(taxon_lineage_ids,102390)&"],
+    ["a negated lineage scope", "ne(taxon_lineage_ids,10239)&"],
+  ])(
+    "does not return the deterministic statistics total for %s",
+    async (_name, filter) => {
+      const resp = await GET(
+        mockNextRequest({
+          url: `http://localhost:3020/api/e2e-mock/data/protein_structure/?${filter}limit(1)`,
+          headers: { Accept: "application/solr+json" },
+        }),
+        ctx(["data", "protein_structure"]),
+      );
+
+      const body = (await resp.json()) as {
+        response: { numFound: number; docs: unknown[] };
+      };
+      expect(
+        body.response.numFound === 4567 && body.response.docs.length === 0,
+      ).toBe(false);
+    },
+  );
+
   it("returns protein structure fixtures for collections and exact members", async () => {
     const unfilteredResp = await GET(
       mockNextRequest({

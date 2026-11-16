@@ -75,7 +75,7 @@ describe("QuickViralLinks", () => {
       "Reference & Representative Genomes",
       "Experimental Structures",
       "Predicted Structures",
-      "Epitopes",
+      "Viral Epitopes",
     ]) {
       expect(await findByText(label)).toBeInTheDocument();
     }

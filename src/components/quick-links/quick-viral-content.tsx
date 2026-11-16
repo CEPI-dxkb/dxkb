@@ -36,8 +36,12 @@ interface CountRowProps {
   counts: StatisticCounts<QuickAccessKey> | null;
 }
 
+const formatCount = (counts: StatisticCounts<QuickAccessKey>, statKey: QuickAccessKey) => {
+  const count = counts[statKey];
+  return count === null ? "—" : numberFormatter.format(count);
+};
+
 const CountRow = ({ icon, statKey, counts }: CountRowProps) => {
-  const count = counts === null ? undefined : counts[statKey];
   return (
     <li className="flex justify-between">
       <div className="flex items-center gap-2">
@@ -47,9 +51,7 @@ const CountRow = ({ icon, statKey, counts }: CountRowProps) => {
       {counts === null ? (
         <Skeleton className="h-5 w-14" />
       ) : (
-        <Badge variant="accent">
-          {count === null || count === undefined ? "—" : numberFormatter.format(count)}
-        </Badge>
+        <Badge variant="accent">{formatCount(counts, statKey)}</Badge>
       )}
     </li>
   );

@@ -140,7 +140,7 @@ function maybeSolrCount(
         query.clauses.every(
           (clause) =>
             clause === "limit(1)" ||
-            clause.includes("taxon_lineage_ids,10239"),
+            clause.includes("eq(taxon_lineage_ids,10239)"),
         )));
   if (isStatisticsCount) {
     return buildLoopbackSolrEnvelope([], {

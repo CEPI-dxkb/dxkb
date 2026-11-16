@@ -169,6 +169,24 @@ describe("fetchCombinedOrganismSummary", () => {
     expect(combined.uniqueFamily).toBe(cellularPayload.unique_family);
   });
 
+  it("is null for count when one root lacks it, while another field present in only one root still sums", async () => {
+    answerSummaries(
+      omitFields(cellularPayload, ["count", "unique_family"]),
+      virusesPayload,
+    );
+
+    const combined = await fetchCombinedOrganismSummary([131567, 10239]);
+
+    // The other root's count alone would pass for the All count, which is the
+    // bug this change fixes.
+    expect(combined.count).toBeNull();
+    // Missing in the cellular root only: the Viruses value still stands.
+    expect(combined.uniqueFamily).toBe(virusesPayload.unique_family);
+    expect(combined.uniqueGenus).toBe(
+      cellularPayload.unique_genus + virusesPayload.unique_genus,
+    );
+  });
+
   it("returns exactly what fetchOrganismSummary returns for a single id", async () => {
     answerSummaries(cellularPayload, virusesPayload);
 
@@ -194,6 +212,17 @@ describe("fetchCombinedOrganismSummary", () => {
         "The BV-BRC data service is unavailable (HTTP 503 Service Unavailable: BV-BRC overloaded).",
       source: "summary_by_taxon",
     });
+  });
+
+  it("does not swallow abort errors", async () => {
+    const controller = new AbortController();
+    controller.abort();
+
+    await expect(
+      fetchCombinedOrganismSummary([131567, 10239], {
+        signal: controller.signal,
+      }),
+    ).rejects.toThrow();
   });
 
   it("throws on an empty id list", async () => {

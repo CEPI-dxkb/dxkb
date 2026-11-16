@@ -113,7 +113,7 @@ describe("All Organisms Overview", () => {
   });
 
   describe("Metadata distributions", () => {
-    it("counts the genomes of both roots, less Deprecated, in Host Group and Isolation Country", async () => {
+    it("counts the genomes of both roots, less Deprecated, in Host Group, Isolation Country and the taxonomic donut", async () => {
       const requested: string[] = [];
       server.use(
         http.get(`${baseUrl}/genome/`, ({ request }) => {
@@ -123,6 +123,8 @@ describe("All Organisms Overview", () => {
           const values: Record<string, (string | number)[]> = {
             host_group: ["Human", 120, "Bird", 30],
             isolation_country: ["USA", 90, "China", 40],
+            genus: ["Escherichia", 70, "Influenzavirus", 60],
+            species: ["Escherichia coli", 65, "Influenza A virus", 55],
           };
           return HttpResponse.json({
             response: { numFound: 150 },
@@ -140,13 +142,24 @@ describe("All Organisms Overview", () => {
       expect(
         screen.getByRole("group", { name: "Isolation Country distribution" }),
       ).toBeInTheDocument();
+      expect(
+        screen.getByRole("group", { name: "Taxonomic Distribution distribution" }),
+      ).toBeInTheDocument();
 
-      const metadataRequests = requested.filter(
-        (search) =>
-          search.includes("(field,host_group)") ||
-          search.includes("(field,isolation_country)"),
+      // The All config has no taxonomic sentinel, so the genus and species
+      // donut is added after the configured fields and takes the same scope:
+      // one facet request per field, four in all.
+      const metadataRequests = requested.filter((search) =>
+        /\(field,(host_group|isolation_country|genus|species)\)/.test(search),
       );
-      expect(metadataRequests).toHaveLength(2);
+      expect(metadataRequests).toHaveLength(4);
+      for (const field of ["genus", "species"]) {
+        expect(
+          metadataRequests.filter((search) =>
+            search.includes(`(field,${field})`),
+          ),
+        ).toHaveLength(1);
+      }
       for (const search of metadataRequests) {
         expect(search).toContain(
           "or(eq(taxon_lineage_ids,131567),eq(taxon_lineage_ids,10239))",

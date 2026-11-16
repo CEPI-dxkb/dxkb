@@ -11,7 +11,12 @@ import { taxonIdsGenomesClause } from "@/components/organisms/taxon-views/scope"
 
 import { allOrganismRootIds, allOrganismsLandingConfig as config } from "../_config";
 
-/** Both roots' genomes, less Deprecated: what the Genomes tab the charts link to lists. */
+/**
+ * Both roots' genomes, less Deprecated: what the Genomes tab the charts link to
+ * lists. It scopes Host Group, Isolation Country and the taxonomic (genus and
+ * species) donut, which the All config has no sentinel for, so
+ * `MetadataDistributions` adds it after the configured fields.
+ */
 const allOrganismGenomeQuery = {
   fieldRql: taxonIdsGenomesClause(allOrganismRootIds),
 };

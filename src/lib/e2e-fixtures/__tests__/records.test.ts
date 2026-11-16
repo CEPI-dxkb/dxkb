@@ -571,7 +571,9 @@ describe("BV-BRC website organism tables stay paired", () => {
     },
   );
 
-  // Cellular organisms contain Bacteria and every bacterial genus here, so a smaller count would be the All Organisms tile summing to less than its own children.
+  // Cellular organisms contain Bacteria and every bacterial genus here, so a
+  // smaller count would be the All Organisms tile summing to less than its own
+  // children.
   it.each(
     Object.entries(organismTaxonomyRecords).filter(
       ([taxonId, record]) =>

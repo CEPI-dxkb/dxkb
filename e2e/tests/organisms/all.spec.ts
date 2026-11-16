@@ -45,6 +45,7 @@ test.describe("all organisms landing page", () => {
       "href",
       "/taxonomy/10239",
     );
+    // These only prove the charts render: the e2e mock keys on the first eq(taxon_lineage_ids,...), so only overview.test.tsx guards their two-root scope.
     await landing.expectDonut("Host Group");
     await landing.expectDonut("Isolation Country");
 

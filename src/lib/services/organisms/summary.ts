@@ -36,9 +36,17 @@ export async function fetchOrganismSummary(
   };
 }
 
+/** The sum, or `null` when every value is `null` (an omitted field is 0 or 1). */
 function sumNullable(values: (number | null)[]): number | null {
   const numbers = values.filter((value) => value !== null);
   if (numbers.length === 0) return null;
+  return numbers.reduce((total, value) => total + value, 0);
+}
+
+/** The sum, or `null` when any value is `null`: a partial sum is not the total. */
+function sumStrict(values: (number | null)[]): number | null {
+  const numbers = values.filter((value) => value !== null);
+  if (numbers.length < values.length) return null;
   return numbers.reduce((total, value) => total + value, 0);
 }
 
@@ -51,9 +59,12 @@ function sumNullable(values: (number | null)[]): number | null {
  *
  * The roots' genome sets are disjoint, so the counts add. The unique-name
  * fields overcount by about 2: the placeholder names `""` and `"null"` appear
- * under both roots. A field is `null` only when every root's value is `null`
- * (the API leaves out a `unique_*` field when it is 1, and `CDS` or
- * `mat_peptide` when it is 0).
+ * under both roots. `count` is `null` when any root's count is `null`: a total
+ * from the other roots alone would pass for the real one. Every other field is
+ * `null` only when every root's value is `null`, because the API leaves out a
+ * `unique_*` field when it is 1, and `CDS` or `mat_peptide` when it is 0. A
+ * root that omits a `unique_*` field therefore makes that sum low by at most 1
+ * per omitting root, which is acceptable for the real roots.
  */
 export async function fetchCombinedOrganismSummary(
   taxonIds: readonly number[],
@@ -68,7 +79,7 @@ export async function fetchCombinedOrganismSummary(
   );
 
   return {
-    count: sumNullable(summaries.map((summary) => summary.count)),
+    count: sumStrict(summaries.map((summary) => summary.count)),
     uniqueFamily: sumNullable(summaries.map((summary) => summary.uniqueFamily)),
     uniqueGenus: sumNullable(summaries.map((summary) => summary.uniqueGenus)),
     uniqueSpecies: sumNullable(summaries.map((summary) => summary.uniqueSpecies)),

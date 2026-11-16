@@ -5,6 +5,7 @@ import NewsCarousel from "@/components/ui/news-carousel";
 import WelcomeSearch from "@/components/search/welcome-search";
 import Navbar from "@/components/navbars/navbar";
 import QuickViralLinks from "@/components/quick-links/quick-viral";
+import QuickViralSkeleton from "@/components/quick-links/quick-viral-skeleton";
 import ResearchUpdates from "@/components/research/research-updates";
 import DBStatistics from "@/components/statistics/db-statistics";
 import DBStatisticsSkeleton from "@/components/statistics/db-statistics-skeleton";
@@ -19,7 +20,9 @@ export default function Home() {
       <main className="grow bg-background">
         <WelcomeSearch />
         <NewsCarousel />
-        <QuickViralLinks />
+        <Suspense fallback={<QuickViralSkeleton />}>
+          <QuickViralLinks />
+        </Suspense>
         <Suspense fallback={<DBStatisticsSkeleton />}>
           <DBStatistics />
         </Suspense>

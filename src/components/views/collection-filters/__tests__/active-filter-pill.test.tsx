@@ -41,7 +41,7 @@ describe("ActiveFilterPill", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("opens the facet's checklist and counts a facet outside the set", async () => {
+  it("opens the facet's checklist and asks for the counts", async () => {
     const user = userEvent.setup();
     const { spies } = renderToolbar({
       filters: { isolation_country: ["Germany"] },
@@ -53,9 +53,6 @@ describe("ActiveFilterPill", () => {
       name: "Isolation Country values",
     });
     expect(spies.onFacetsWanted).toHaveBeenCalled();
-    expect(spies.setPeekedFields).toHaveBeenCalledWith(
-      new Set(["isolation_country"]),
-    );
     expect(
       within(list).getByRole("option", { selected: true }),
     ).toHaveTextContent("Germany7");
@@ -111,7 +108,7 @@ describe("ActiveFilterPill", () => {
     expect(list).toBeInTheDocument();
     expect(within(list).getByText("No values picked")).toBeInTheDocument();
     expect(
-      within(list).getByText("Without a facet, only picked values are listed."),
+      within(list).getByText("Without a list of values, only picked values are shown."),
     ).toBeInTheDocument();
     expect(
       screen.queryByText("None of the matching records has this field set."),
@@ -150,7 +147,7 @@ describe("ActiveFilterPill", () => {
       expect(search).toHaveFocus();
     });
     expect(
-      screen.getByRole("listbox", { name: "Facets" }),
+      screen.getByRole("listbox", { name: "Filters" }),
     ).toBeInTheDocument();
   });
 

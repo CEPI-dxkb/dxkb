@@ -685,7 +685,7 @@ export interface OrganismSummaryFixtureRecord {
 
 const bacteriaGenomeCount = 1_337_420;
 const virusesGenomeCount = 890_123;
-const allOrganismsGenomeCount = 9_800_000;
+const allOrganismsGenomeCount = 1_400_000;
 const brucellaGenomeCount = 1909;
 const mycobacteriumGenomeCount = 62_310;
 const influenzaAGenomeCount = 245_000;
@@ -990,7 +990,7 @@ export const taxonGenomeCounts: Record<string, number> = {
   "10239": 889_604,
   "11520": 244_617,
   "11974": 86_190,
-  "131567": 9_791_342,
+  "131567": 1_397_388,
   "2955291": 1_875_903,
 };
 

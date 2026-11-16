@@ -1,5 +1,5 @@
 import { Card } from "@/components/ui/card";
-import { fetchOrganismSummary } from "@/lib/services/organisms/summary";
+import { fetchCombinedOrganismSummary } from "@/lib/services/organisms/summary";
 import type { OrganismSummary } from "@/lib/services/organisms/types";
 import { numberFormatter } from "@/lib/services/organisms/utils";
 
@@ -41,8 +41,12 @@ function formatCount(value: number | null): string {
   return value === null ? "-" : numberFormatter.format(value);
 }
 
-export async function DataSummary({ taxonId }: { taxonId: number }) {
-  const summary = await fetchOrganismSummary(taxonId);
+export async function DataSummary({
+  taxonIds,
+}: {
+  taxonIds: readonly number[];
+}) {
+  const summary = await fetchCombinedOrganismSummary(taxonIds);
 
   return (
     <div className="grid grid-cols-[repeat(auto-fit,minmax(8rem,1fr))] gap-1.5">

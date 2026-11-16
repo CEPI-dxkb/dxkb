@@ -334,7 +334,7 @@ describe("api/e2e-mock catch-all — enabled", () => {
 
     expect(resp.status).toBe(200);
     expect((await resp.json()) as unknown).toMatchObject({
-      count: 9800000,
+      count: 1400000,
       unique_family: 1204,
     });
   });
@@ -442,6 +442,29 @@ describe("api/e2e-mock catch-all — enabled", () => {
         facet_fields: { host_group: expect.any(Array) as unknown },
       },
     });
+    expect(body.facet_counts?.facet_fields?.host_group).toEqual(
+      expect.arrayContaining(["Human", 512004]),
+    );
+  });
+
+  it("GET answers the All Organisms Overview's two-root facet query like the cellular root's", async () => {
+    // overview.tsx builds `and(or(eq(taxon_lineage_ids,131567),eq(taxon_lineage_ids,10239)),ne(...))`;
+    // the mock reads the first eq(taxon_lineage_ids,...) and ignores the rest of the scope.
+    const scope =
+      "and(or(eq(taxon_lineage_ids,131567),eq(taxon_lineage_ids,10239)),ne(genome_status,Deprecated))";
+    const resp = await GET(
+      mockNextRequest({
+        url: `http://localhost:3020/api/e2e-mock/bvbrc-website/genome/?${scope}&limit(1)&facet((field,host_group),(limit,12),(mincount,1))`,
+      }),
+      ctx(["bvbrc-website", "genome"]),
+    );
+
+    expect(resp.status).toBe(200);
+    const body = (await resp.json()) as {
+      response?: { numFound?: number };
+      facet_counts?: { facet_fields?: { host_group?: unknown[] } };
+    };
+    expect(body.response?.numFound).toBe(1400000);
     expect(body.facet_counts?.facet_fields?.host_group).toEqual(
       expect.arrayContaining(["Human", 512004]),
     );

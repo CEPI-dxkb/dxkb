@@ -9,6 +9,7 @@ import {
   toAllTypesResults,
   typeSearchQuery,
 } from "../all-types-search";
+import { taxonGenomeCountQueries } from "../all-types-query";
 import { DataRepositoryError } from "@/lib/data-api/client";
 import { isUpstreamOutage } from "@/lib/api/query-retry";
 import { server } from "@/test-helpers/msw-server";
@@ -25,6 +26,25 @@ describe("typeSearchQuery", () => {
     ["epitope", "keyword(influenza)&limit(5)&sort(-score)"],
   ])("builds the %s query", (id, expected) => {
     expect(typeSearchQuery(id, "influenza", 5)).toBe(expected);
+  });
+});
+
+describe("taxonGenomeCountQueries", () => {
+  it("builds one limit(1) count per taxon with the Taxonomy header's definition", () => {
+    expect(taxonGenomeCountQueries(["11118", "694009"])).toEqual({
+      "taxonGenomes:11118": {
+        dataType: "genome",
+        accept: "application/solr+json",
+        query:
+          "and(eq(taxon_lineage_ids,11118),ne(genome_status,Deprecated))&select(genome_id)&limit(1)",
+      },
+      "taxonGenomes:694009": {
+        dataType: "genome",
+        accept: "application/solr+json",
+        query:
+          "and(eq(taxon_lineage_ids,694009),ne(genome_status,Deprecated))&select(genome_id)&limit(1)",
+      },
+    });
   });
 });
 
@@ -302,6 +322,9 @@ describe("toAllTypesResults", () => {
             },
           },
         },
+        "taxonGenomes:2697049": {
+          result: { response: { numFound: 8_900_000, docs: [] } },
+        },
       },
       "SARS-CoV-2",
     );
@@ -309,13 +332,72 @@ describe("toAllTypesResults", () => {
       name: "SARS-CoV-2",
       taxonId: "2697049",
       href: "/taxonomy/2697049",
-      genomes: 9_000_000,
+      genomes: 8_900_000,
       rank: "No rank",
       parents: [
         "Betacoronavirus",
         "Severe acute respiratory syndrome-related coronavirus",
       ],
     });
+  });
+
+  it("uses the shared genome count for the best match and the Taxa rows, not the stored field", () => {
+    const results = toAllTypesResults(
+      {
+        taxonomy: {
+          result: {
+            response: {
+              numFound: 1,
+              docs: [
+                {
+                  taxon_id: 11118,
+                  taxon_name: "Coronaviridae",
+                  taxon_rank: "family",
+                  genomes: 9_500_742,
+                },
+              ],
+            },
+          },
+        },
+        "taxonGenomes:11118": {
+          result: { response: { numFound: 9_471_991, docs: [] } },
+        },
+      },
+      "Coronaviridae",
+    );
+    expect(results.bestMatch?.genomes).toBe(9_471_991);
+    const taxa = results.types.find((type) => type.id === "taxonomy");
+    expect(taxa?.rows[0].facts).toContainEqual({
+      label: "Genomes",
+      value: "9,471,991 genomes",
+    });
+  });
+
+  it("omits the genome figure when the count is missing instead of showing the stored one", () => {
+    const results = toAllTypesResults(
+      {
+        taxonomy: {
+          result: {
+            response: {
+              numFound: 1,
+              docs: [
+                {
+                  taxon_id: 11118,
+                  taxon_name: "Coronaviridae",
+                  genomes: 9_500_742,
+                },
+              ],
+            },
+          },
+        },
+      },
+      "Coronaviridae",
+    );
+    expect(results.bestMatch?.genomes).toBeNull();
+    const taxa = results.types.find((type) => type.id === "taxonomy");
+    expect(
+      taxa?.rows[0].facts.find((fact) => fact.label === "Genomes"),
+    ).toBeUndefined();
   });
 });
 

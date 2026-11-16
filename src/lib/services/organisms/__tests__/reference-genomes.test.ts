@@ -20,11 +20,13 @@ const doc = {
   reference_genome: "Reference",
   genome_name: "Escherichia coli K-12",
   genome_id: "511145.12",
+  genbank_accessions: "NC_000913",
 };
 const repDoc = {
   reference_genome: "Representative",
   genome_name: "Escherichia coli B",
   genome_id: "481805.6",
+  genbank_accessions: "CP000819",
 };
 
 function facet(...pairs: (string | number)[]) {
@@ -83,8 +85,8 @@ describe("fetchReferenceGenomes", () => {
         expect.arrayContaining([
           lineageScope,
           `eq(reference_genome,${type})`,
-          "select(reference_genome,genome_name,genome_id)",
-          "sort(+genome_name)",
+          "select(reference_genome,genome_name,genome_id,genbank_accessions)",
+          "sort(+genome_name,+genome_id)",
           "limit(1000)",
         ]),
       );
@@ -183,7 +185,7 @@ describe("fetchReferenceGenomes", () => {
 
     await expect(fetchReferenceGenomes(562)).resolves.toEqual({
       rows: [],
-      counts: {},
+      counts: { Reference: 0, Representative: 0 },
       total: 0,
     });
     expect(requested).toHaveLength(1);
@@ -266,5 +268,83 @@ describe("fetchReferenceGenomes", () => {
     await expect(fetchReferenceGenomes(562)).rejects.toThrow(
       /^Unexpected BV-BRC response shape: numFound is missing$/,
     );
+  });
+
+  it("reports a type no genome has as zero, without reading it", async () => {
+    const requested: string[] = [];
+    serveTypes(
+      { response: { numFound: 355, docs: [] }, ...facet("Reference", 355) },
+      { Reference: { response: { numFound: 355, docs: [doc] } } },
+      requested,
+    );
+
+    await expect(fetchReferenceGenomes(10508)).resolves.toEqual({
+      rows: [doc],
+      counts: { Reference: 355, Representative: 0 },
+      total: 355,
+    });
+    expect(requested).toHaveLength(2);
+    expect(requested.join("\n")).not.toContain(
+      "eq(reference_genome,Representative)",
+    );
+  });
+
+  it("reports Reference as zero when only Representative genomes exist", async () => {
+    serveTypes(
+      { response: { numFound: 743, docs: [] }, ...facet("Representative", 743) },
+      { Representative: { response: { numFound: 743, docs: [repDoc] } } },
+    );
+
+    await expect(fetchReferenceGenomes(2157)).resolves.toEqual({
+      rows: [repDoc],
+      counts: { Reference: 0, Representative: 743 },
+      total: 743,
+    });
+  });
+
+  it("keeps genomes that share a name but not an id", async () => {
+    const refseqCopy = {
+      ...doc,
+      genome_name: "Bat Hp-betacoronavirus/Zhejiang2013",
+      genome_id: "1541205.20",
+      genbank_accessions: "NC_025217",
+    };
+    const genbankCopy = {
+      ...refseqCopy,
+      genome_id: "1541205.21",
+      genbank_accessions: "KF636752",
+    };
+    serveTypes(
+      { response: { numFound: 2, docs: [] }, ...facet("Reference", 2) },
+      { Reference: { response: { numFound: 2, docs: [refseqCopy, genbankCopy] } } },
+    );
+
+    const { rows } = await fetchReferenceGenomes(11118);
+
+    expect(rows).toEqual([refseqCopy, genbankCopy]);
+  });
+
+  it("defaults a missing accession to an empty string", async () => {
+    serveTypes(
+      { response: { numFound: 1, docs: [] }, ...facet("Reference", 1) },
+      {
+        Reference: {
+          response: {
+            numFound: 1,
+            docs: [
+              {
+                reference_genome: "Reference",
+                genome_name: "No accession",
+                genome_id: "1.1",
+              },
+            ],
+          },
+        },
+      },
+    );
+
+    const { rows } = await fetchReferenceGenomes(11118);
+
+    expect(rows[0].genbank_accessions).toBe("");
   });
 });

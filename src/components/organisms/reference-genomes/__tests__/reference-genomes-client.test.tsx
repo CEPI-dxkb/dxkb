@@ -27,10 +27,10 @@ vi.mock("@tanstack/react-virtual", () => ({
 }));
 
 const genomes = [
-  { genome_id: "234.1", genome_name: "Charlie strain", reference_genome: "Reference" },
-  { genome_id: "234.2", genome_name: "Alpha strain", reference_genome: "Reference" },
-  { genome_id: "234.3", genome_name: "Bravo strain", reference_genome: "Representative" },
-  { genome_id: "234.4", genome_name: "Delta strain", reference_genome: "Representative" },
+  { genome_id: "234.1", genome_name: "Charlie strain", reference_genome: "Reference", genbank_accessions: "AC0001" },
+  { genome_id: "234.2", genome_name: "Alpha strain", reference_genome: "Reference", genbank_accessions: "AC0002" },
+  { genome_id: "234.3", genome_name: "Bravo strain", reference_genome: "Representative", genbank_accessions: "AC0003" },
+  { genome_id: "234.4", genome_name: "Delta strain", reference_genome: "Representative", genbank_accessions: "AC0004" },
 ];
 
 const empty = { rows: [], counts: {}, total: 0, hrefs: { byType: {} } };
@@ -306,11 +306,13 @@ describe("ReferenceGenomesClient", () => {
       genome_id: `1.${String(i)}`,
       genome_name: `Ref ${String(i)}`,
       reference_genome: "Reference",
+      genbank_accessions: "",
     }));
     const representatives = Array.from({ length: 2 }, (_, i) => ({
       genome_id: `2.${String(i)}`,
       genome_name: `Rep ${String(i)}`,
       reference_genome: "Representative",
+      genbank_accessions: "",
     }));
     render(
       <ReferenceGenomesClient

@@ -342,13 +342,9 @@ test.describe("output folder picker: layout", () => {
     await picker.resizeHandle("Home").dblclick();
     expect(await picker.width(picker.columnAt(0))).toBe(240);
 
-    const before = await picker.width(
-      picker.infoPaneHandle().locator("xpath=.."),
-    );
+    const before = await picker.width(picker.infoPane());
     await picker.dragHandle(picker.infoPaneHandle(), -60);
-    expect(
-      await picker.width(picker.infoPaneHandle().locator("xpath=..")),
-    ).toBe(before + 60);
+    expect(await picker.width(picker.infoPane())).toBe(before + 60);
   });
 
   test("keeps the newest column in view and the info pane pinned while going deeper", async ({
@@ -356,7 +352,7 @@ test.describe("output folder picker: layout", () => {
   }) => {
     const { picker } = await openBlast(page);
     await picker.open();
-    const pane = picker.infoPaneHandle().locator("xpath=..");
+    const pane = picker.infoPane();
     const paneBefore = await pane.boundingBox();
     expect(await picker.scrollLeft()).toBe(0);
 
@@ -614,19 +610,14 @@ test.describe("output folder picker: dialog size", () => {
     // `transition-none`, so the size is the target as soon as the input returns. With the
     // base `duration-100` over `transition-property: all` each of these read the width
     // the step before.
-    const box = await picker.dialogWidthHandle().boundingBox();
-    if (!box) throw new Error("Resize handle has no layout box");
-    const x = box.x + box.width / 2;
-    const y = box.y + box.height / 2;
-    await page.mouse.move(x, y);
-    await page.mouse.down();
+    const drag = await picker.beginDrag(picker.dialogWidthHandle());
     for (const dx of [10, 30, 60, 20]) {
-      await page.mouse.move(x + dx, y);
+      await drag.moveBy(dx);
       expect(await picker.dialogWidth(), `after dragging to +${String(dx)}px`).toBe(
         1280 + 2 * dx,
       );
     }
-    await page.mouse.up();
+    await drag.release();
 
     await picker.dialogWidthHandle().focus();
     await page.keyboard.press("ArrowRight");
@@ -793,7 +784,7 @@ test.describe("output folder picker: dialog size", () => {
     await expect(picker.option("Experiments", "Run 1")).toBeVisible();
 
     await picker.dragHandle(picker.resizeHandle("Home"), 100);
-    const pane = picker.infoPaneHandle().locator("xpath=..");
+    const pane = picker.infoPane();
     const paneBefore = await picker.width(pane);
     await picker.dragHandle(picker.infoPaneHandle(), -60);
     expect(await picker.width(pane)).toBe(paneBefore + 60);

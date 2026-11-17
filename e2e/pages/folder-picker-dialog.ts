@@ -30,6 +30,12 @@ export function selectorInputFor(page: Page, placeholder: string): Locator {
     .filter({ visible: true });
 }
 
+/** A pointer held down on a resize handle. */
+export interface DragInProgress {
+  moveBy(dx: number, dy?: number, steps?: number): Promise<void>;
+  release(): Promise<void>;
+}
+
 export class FolderPickerDialog {
   readonly page: Page;
   readonly browseButton: Locator;
@@ -133,9 +139,14 @@ export class FolderPickerDialog {
     return this.dialog.getByRole("separator", { name: "Resize info pane" });
   }
 
+  /** The info pane: the handle's parent, the box whose width the handle sets. */
+  infoPane(): Locator {
+    return this.infoPaneHandle().locator("xpath=..");
+  }
+
   /** The info pane's vertical scroller: the box that carries its scrollbar. */
   infoScroller(): Locator {
-    return this.infoPaneHandle().locator("xpath=..").locator(".scrollbar-themed");
+    return this.infoPane().locator(".scrollbar-themed");
   }
 
   /** The dialog's right edge: a drag moves it by twice the pointer travel, because the dialog is centred. */
@@ -184,15 +195,29 @@ export class FolderPickerDialog {
     return locator.evaluate((element) => (element as HTMLElement).offsetWidth);
   }
 
-  async dragHandle(handle: Locator, dx: number, dy = 0): Promise<void> {
+  /**
+   * Presses the pointer on the handle's centre and returns the drag in progress, so a spec
+   * can read the page between moves. `moveBy` is measured from the press point, not from
+   * the last move.
+   */
+  async beginDrag(handle: Locator): Promise<DragInProgress> {
     const box = await handle.boundingBox();
     if (!box) throw new Error("Resize handle has no layout box");
     const x = box.x + box.width / 2;
     const y = box.y + box.height / 2;
     await this.page.mouse.move(x, y);
     await this.page.mouse.down();
-    await this.page.mouse.move(x + dx, y + dy, { steps: 8 });
-    await this.page.mouse.up();
+    return {
+      moveBy: (dx, dy = 0, steps = 1) =>
+        this.page.mouse.move(x + dx, y + dy, { steps }),
+      release: () => this.page.mouse.up(),
+    };
+  }
+
+  async dragHandle(handle: Locator, dx: number, dy = 0): Promise<void> {
+    const drag = await this.beginDrag(handle);
+    await drag.moveBy(dx, dy, 8);
+    await drag.release();
   }
 
   async scrollLeft(): Promise<number> {

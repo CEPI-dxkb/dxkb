@@ -1006,9 +1006,13 @@ function maybeBvBrcWebsite(
     const unexpected = query.clauses.filter(
       (clause) => !expectedClauses.includes(clause),
     );
+    const missing = expectedClauses.filter(
+      (clause) => !query.clauses.includes(clause),
+    );
     if (
       query.clauses.length !== expectedClauses.length ||
-      unexpected.length > 0
+      unexpected.length > 0 ||
+      missing.length > 0
     ) {
       return {
         kind: "unhandled",

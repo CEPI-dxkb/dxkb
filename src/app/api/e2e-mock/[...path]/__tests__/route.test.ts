@@ -519,6 +519,11 @@ describe("api/e2e-mock catch-all — enabled", () => {
       "?and(eq(taxon_lineage_ids,2),ne(method,Predicted))",
       "expected exactly the clauses and(eq(taxon_lineage_ids,2),ne(method,Predicted)) and limit(1)",
     ],
+    [
+      "repeats the scope in place of limit(1)",
+      "?and(eq(taxon_lineage_ids,2),ne(method,Predicted))&and(eq(taxon_lineage_ids,2),ne(method,Predicted))",
+      "expected exactly the clauses and(eq(taxon_lineage_ids,2),ne(method,Predicted)) and limit(1)",
+    ],
   ])(
     "GET fails closed on a structure count that %s",
     async (_name, query, reason) => {

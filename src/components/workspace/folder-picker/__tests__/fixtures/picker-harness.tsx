@@ -16,6 +16,7 @@ import type {
   ListDirectoryInput,
   WorkspaceItem,
 } from "@/lib/services/workspace/domain";
+import { workshopWorkspacePath } from "@/lib/services/workspace/workshop";
 import type {
   UploadNodeRequest,
   UploadNodeResult,
@@ -180,6 +181,16 @@ export const defaultPickerDirectories: InMemoryFixtures["directories"] = {
       globalPermission: "r",
     },
   ],
+  [workshopWorkspacePath]: [
+    {
+      name: "Assembly",
+      type: "folder",
+      ownerId: "ARWattam@patricbrc.org",
+      userPermission: "r",
+      globalPermission: "r",
+    },
+  ],
+  [`${workshopWorkspacePath}/Assembly`]: [],
 };
 
 export function makePickerRepository(
@@ -204,6 +215,15 @@ export const filePickerDirectories: InMemoryFixtures["directories"] = {
     { name: "report.html", type: "html", size: 300 },
   ],
   "/carol@bvbrc/public-ws/data": [{ name: "lab.fasta", type: "contigs" }],
+  [`${workshopWorkspacePath}/Assembly`]: [
+    {
+      name: "phage.fasta",
+      type: "contigs",
+      ownerId: "ARWattam@patricbrc.org",
+      userPermission: "r",
+      globalPermission: "r",
+    },
+  ],
 };
 
 export function makeFilePickerRepository(): PickerTestRepository {

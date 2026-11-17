@@ -45,6 +45,8 @@ const placeHints: Record<PickerView, string> = {
   myWorkspaces: "Pick one of your workspaces to see its folders.",
   shared: "Workspaces other people shared with you, where you can write.",
   public: "Public workspaces are read-only: browse them, but save elsewhere.",
+  workshop:
+    "BV-BRC workshop data is read-only: browse it, but save elsewhere.",
   favorites: "Folders you starred in the workspace browser.",
   recent: "Folders you used recently, newest first.",
 };
@@ -53,6 +55,8 @@ const filePlaceHints: Record<PickerView, string> = {
   ...placeHints,
   shared: "Workspaces other people shared with you, including read-only ones.",
   public: "Public workspaces you can browse and pick files from.",
+  workshop:
+    "BV-BRC workshop data you can pick files from, handy as test input.",
 };
 
 function plural(count: number, noun: string): string {
@@ -114,7 +118,7 @@ export function FolderPickerInfo({
   const FolderIcon: LucideIcon = isHome
     ? House
     : isWorkspaceRoot
-      ? place === "shared" || place === "public"
+      ? place === "shared" || place === "public" || place === "workshop"
         ? placeIcons[place]
         : HardDrive
       : isJobFolder

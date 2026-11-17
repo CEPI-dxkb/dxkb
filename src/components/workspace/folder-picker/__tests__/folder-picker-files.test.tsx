@@ -1,4 +1,5 @@
 import { screen, waitFor, within } from "@testing-library/react";
+import { workshopWorkspacePath } from "@/lib/services/workspace/workshop";
 import {
   breadcrumbLabels,
   columnLabels,
@@ -221,6 +222,22 @@ describe("picking a file", () => {
     await user.dblClick(await findOption("data", /lab\.fasta/));
     expect(onSelect).toHaveBeenCalledWith(
       "/carol@bvbrc/public-ws/data/lab.fasta",
+      expect.anything(),
+    );
+  });
+
+  it("browses the workshop and commits a read-only file", async () => {
+    const { user, onSelect } = pickContigs();
+    await user.click(
+      within(screen.getByRole("navigation", { name: "Places" })).getByRole(
+        "button",
+        { name: "BV-BRC Workshop" },
+      ),
+    );
+    await user.click(await findOption("BV-BRC Workshop", "Assembly"));
+    await user.dblClick(await findOption("Assembly", /phage\.fasta/));
+    expect(onSelect).toHaveBeenCalledWith(
+      `${workshopWorkspacePath}/Assembly/phage.fasta`,
       expect.anything(),
     );
   });

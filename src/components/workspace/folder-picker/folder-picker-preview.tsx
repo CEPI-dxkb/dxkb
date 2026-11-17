@@ -66,6 +66,8 @@ interface FolderPickerInfoProps {
   contents: { items: WorkspaceItem[]; isLoading: boolean; error?: Error | null };
   listingError?: Error | null;
   commit: { canCommit: boolean; reason: string | null };
+  /** New folder, Upload and Show files: the last child of the pane's scrolling body, at its bottom. */
+  actions?: ReactNode;
 }
 
 export function FolderPickerInfo({
@@ -77,23 +79,31 @@ export function FolderPickerInfo({
   contents,
   listingError = null,
   commit,
+  actions,
 }: FolderPickerInfoProps) {
   if (!path) {
     const PlaceIcon = placeIcons[place];
     const hints = target.kind === "object" ? filePlaceHints : placeHints;
     return (
       <PaneFrame label="Info">
+        {/* Scrolls rather than spilling onto the footer in the shortest dialog. The hint block
+           takes the space above the actions and centres in it, so short content stays centred
+           and tall content grows the block and scrolls from the top. `md:mr-2` keeps the
+           scrollbar off the dialog width separator, the popup's last 8px. */}
         <div
           key={place}
-          className="flex flex-1 flex-col items-center justify-center gap-1.5 p-3 text-center duration-150 animate-in fade-in-0 md:gap-3 md:p-6"
+          className="scrollbar-themed flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-3 duration-150 animate-in fade-in-0 md:mr-2 md:p-6"
         >
-          <div className="hidden size-16 items-center justify-center rounded-2xl bg-muted md:flex">
-            <PlaceIcon aria-hidden className="size-8 text-muted-foreground" />
+          <div className="flex flex-1 flex-col items-center justify-center gap-1.5 text-center md:gap-3">
+            <div className="hidden size-16 items-center justify-center rounded-2xl bg-muted md:flex">
+              <PlaceIcon aria-hidden className="size-8 text-muted-foreground" />
+            </div>
+            <p className="text-sm font-medium">{viewLabel(place)}</p>
+            <p className="text-xs text-muted-foreground md:max-w-56">
+              {hints[place]}
+            </p>
           </div>
-          <p className="text-sm font-medium">{viewLabel(place)}</p>
-          <p className="text-xs text-muted-foreground md:max-w-56">
-            {hints[place]}
-          </p>
+          {actions}
         </div>
       </PaneFrame>
     );
@@ -181,6 +191,9 @@ export function FolderPickerInfo({
             okText="You can write here, so results can be saved in this folder."
           />
         )}
+
+        {/* Not `hidden` below md like the name block and the details, so phones get it too. */}
+        {actions}
       </div>
     </PaneFrame>
   );
@@ -190,9 +203,16 @@ interface FilePickerInfoProps {
   item: WorkspaceItem;
   place: PickerView;
   commit: { canCommit: boolean; reason: string | null };
+  /** Upload and Show files: the last child of the pane's scrolling body, at its bottom. */
+  actions?: ReactNode;
 }
 
-export function FilePickerInfo({ item, place, commit }: FilePickerInfoProps) {
+export function FilePickerInfo({
+  item,
+  place,
+  commit,
+  actions,
+}: FilePickerInfoProps) {
   const path = normalizePath(item.path);
   return (
     <PaneFrame label="Info">
@@ -226,6 +246,7 @@ export function FilePickerInfo({ item, place, commit }: FilePickerInfoProps) {
           ) : null}
         </dl>
         <CommitNote commit={commit} okText="You can use this file here." />
+        {actions}
       </div>
     </PaneFrame>
   );

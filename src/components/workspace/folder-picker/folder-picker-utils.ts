@@ -59,21 +59,19 @@ export function isInlineEditTarget(target: EventTarget | null): boolean {
 }
 
 /**
- * Why the picker toolbar's New folder and Upload are off, or null when both can be
- * used. The toolbar disables on, and explains with, this one value.
+ * Why the Info pane's New folder and Upload are off, or null when both can be used.
+ * Both buttons disable on, and explain with, this one value. An upload needs no reason:
+ * its form takes the Info pane's place, so the buttons are not shown while it runs.
  */
-export function toolbarUnavailableReason({
-  isUploading,
+export function actionsUnavailableReason({
   folderPath,
   hasListingError,
   canChange,
 }: {
-  isUploading: boolean;
   folderPath: string | null;
   hasListingError: boolean;
   canChange: boolean;
 }): string | null {
-  if (isUploading) return "An upload is running.";
   if (folderPath === null) return "Open a folder first.";
   if (hasListingError) return "Couldn't check this folder's write access.";
   if (!canChange) return "You don't have write access to this folder.";

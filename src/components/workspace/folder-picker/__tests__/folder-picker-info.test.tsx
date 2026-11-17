@@ -1,6 +1,9 @@
 import { render, screen } from "@testing-library/react";
 import type { ComponentProps } from "react";
-import { FolderPickerInfo } from "@/components/workspace/folder-picker/folder-picker-preview";
+import {
+  FilePickerInfo,
+  FolderPickerInfo,
+} from "@/components/workspace/folder-picker/folder-picker-preview";
 import type { WorkspaceItem } from "@/lib/services/workspace/domain";
 import type { PickerView } from "@/lib/services/workspace/picker-views";
 
@@ -210,9 +213,153 @@ describe("FolderPickerInfo with a folder selected", () => {
     ).toBeInTheDocument();
   });
 
-  it("has no New folder or Upload: those live in the picker toolbar", () => {
+  it("renders no buttons of its own: the actions come in through the slot", () => {
     renderInfo();
 
+    expect(screen.queryByRole("button")).not.toBeInTheDocument();
+  });
+});
+
+/** A stand-in for the dialog's `FolderPickerActions`, which has its own tests. */
+const actionsSlot = (
+  <div role="group" aria-label="Folder actions">
+    <button type="button">Act</button>
+  </div>
+);
+
+function slot() {
+  return screen.getByRole("group", { name: "Folder actions" });
+}
+
+describe("the Info pane's actions slot", () => {
+  const file: WorkspaceItem = {
+    id: "draft",
+    name: "draft.fasta",
+    path: `${home}/x/draft.fasta`,
+    type: "contigs",
+    size: 4,
+  };
+
+  function renderFileInfo(actions?: Props["actions"]) {
+    render(
+      <FilePickerInfo
+        item={file}
+        place="home"
+        commit={{ canCommit: true, reason: null }}
+        actions={actions}
+      />,
+    );
+  }
+
+  it("is the last child of the scrolling body, after the details and the commit note", () => {
+    renderInfo({ actions: actionsSlot });
+
+    const body = slot().parentElement;
+    expect(body).toHaveClass("overflow-y-auto");
+    expect(body?.lastElementChild).toBe(slot());
+    const details = screen
+      .getByText("Where", { selector: "dt" })
+      .closest("dl") as HTMLElement;
+    expect(details.compareDocumentPosition(slot())).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
+    expect(slot().previousElementSibling).toHaveTextContent(
+      "You can write here, so results can be saved in this folder.",
+    );
+  });
+
+  it("follows the failed-listing note too, whatever the note says", () => {
+    renderInfo({
+      actions: actionsSlot,
+      listingError: new Error("Internal server error"),
+    });
+
+    expect(slot().parentElement?.lastElementChild).toBe(slot());
+    expect(slot().previousElementSibling).toHaveTextContent(
+      "Couldn't check this folder's contents or write access: Internal server error",
+    );
+  });
+
+  it("is not hidden on phones, unlike the name block and the details", () => {
+    renderInfo({ actions: actionsSlot });
+
+    const nameBlock = screen.getByText(`${home}/x`, { selector: "p" })
+      .parentElement as HTMLElement;
+    const details = screen
+      .getByText("Where", { selector: "dt" })
+      .closest("dl") as HTMLElement;
+    expect(nameBlock).toHaveClass("hidden");
+    expect(details).toHaveClass("hidden");
+    expect(slot()).not.toHaveClass("hidden");
+    expect(slot().parentElement).not.toHaveClass("hidden");
+  });
+
+  it("follows the centred hint block while no folder is open", () => {
+    renderInfo({ place: "recent", path: null, actions: actionsSlot });
+
+    const hint = screen.getByText("Folders you used recently, newest first.");
+    const hintBlock = hint.parentElement as HTMLElement;
+    expect(hintBlock).toHaveTextContent("Recently Used");
+    expect(hintBlock).not.toContainElement(slot());
+    expect(hintBlock).toHaveClass("flex-1", "justify-center");
+    expect(slot().previousElementSibling).toBe(hintBlock);
+    expect(slot().parentElement?.lastElementChild).toBe(slot());
+    expect(slot().parentElement).toHaveClass("overflow-y-auto");
+    expect(slot()).not.toHaveClass("hidden");
+  });
+
+  it("is the last child of a selected file's body, after its details and commit note", () => {
+    renderFileInfo(actionsSlot);
+
+    const body = slot().parentElement;
+    expect(body).toHaveClass("overflow-y-auto");
+    expect(body?.lastElementChild).toBe(slot());
+    const details = screen
+      .getByText("Type", { selector: "dt" })
+      .closest("dl") as HTMLElement;
+    expect(details.compareDocumentPosition(slot())).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
+    expect(slot().previousElementSibling).toHaveTextContent(
+      "You can use this file here.",
+    );
+  });
+
+  it("is absent from every state when it is not passed", () => {
+    const { unmount } = render(
+      <FolderPickerInfo
+        place="home"
+        path={null}
+        homePath={home}
+        item={null}
+        contents={{ items: [], isLoading: false }}
+        commit={{ canCommit: true, reason: null }}
+      />,
+    );
+    expect(
+      screen.queryByRole("group", { name: "Folder actions" }),
+    ).not.toBeInTheDocument();
+    unmount();
+
+    const folder = render(
+      <FolderPickerInfo
+        place="home"
+        path={`${home}/x`}
+        homePath={home}
+        item={null}
+        contents={{ items: [], isLoading: false }}
+        commit={{ canCommit: true, reason: null }}
+      />,
+    );
+    expect(
+      screen.queryByRole("group", { name: "Folder actions" }),
+    ).not.toBeInTheDocument();
+    folder.unmount();
+
+    renderFileInfo();
+    expect(
+      screen.queryByRole("group", { name: "Folder actions" }),
+    ).not.toBeInTheDocument();
     expect(screen.queryByRole("button")).not.toBeInTheDocument();
   });
 });

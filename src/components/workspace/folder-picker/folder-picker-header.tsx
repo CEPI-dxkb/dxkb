@@ -1,4 +1,4 @@
-import { Eye, EyeOff, Maximize2, Minimize2, XIcon } from "lucide-react";
+import { Maximize2, Minimize2, XIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DialogClose,
@@ -12,8 +12,6 @@ import { FolderPickerAcceptedTypes } from "./folder-picker-accepted-types";
 interface FolderPickerHeaderProps {
   title: string;
   target: PickerTarget;
-  showFiles: boolean;
-  onShowFilesChange: (showFiles: boolean) => void;
   isUploading: boolean;
   /** The dialog fills the window; the button then restores the default size. */
   isExpanded: boolean;
@@ -25,14 +23,11 @@ interface FolderPickerHeaderProps {
 export function FolderPickerHeader({
   title,
   target,
-  showFiles,
-  onShowFilesChange,
   isUploading,
   isExpanded,
   canToggleExpanded,
   onToggleExpanded,
 }: FolderPickerHeaderProps) {
-  const isPickingFiles = target.kind === "object";
   const expandLabel = isExpanded ? "Restore dialog size" : "Expand dialog";
   return (
     <DialogHeader>
@@ -66,28 +61,6 @@ export function FolderPickerHeader({
               {isExpanded ? <Minimize2 /> : <Maximize2 />}
             </Button>
           ) : null}
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            aria-pressed={showFiles}
-            onClick={() => {
-              onShowFilesChange(!showFiles);
-            }}
-          >
-            {showFiles ? (
-              <EyeOff data-icon="inline-start" />
-            ) : (
-              <Eye data-icon="inline-start" />
-            )}
-            {isPickingFiles
-              ? showFiles
-                ? "Hide other files"
-                : "Show other files"
-              : showFiles
-                ? "Hide files"
-                : "Show files"}
-          </Button>
           {/* Disabled, not hidden, mid-upload so the row doesn't shift; the
              dialog's own corner button sits 8px higher than the rest of the row. */}
           <DialogClose

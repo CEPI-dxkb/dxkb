@@ -303,11 +303,13 @@ test.describe("output folder picker: choosing", () => {
 
     await expect(picker.closeButton).toBeDisabled();
     await expect(picker.cancelButton).toBeDisabled();
-    await expect(picker.newFolderButton).toBeDisabled();
-    await expect(picker.uploadButton).toBeDisabled();
     await expect(
       picker.dialog.getByText("Upload to “Experiments”"),
     ).toBeVisible();
+    // The upload form holds the Info pane, so its actions are not shown at all.
+    await expect(picker.newFolderButton).toBeHidden();
+    await expect(picker.uploadButton).toBeHidden();
+    await expect(picker.showFilesButton).toBeHidden();
     await page.keyboard.press("Escape");
     await expect(picker.dialog).toBeVisible();
 
@@ -316,6 +318,8 @@ test.describe("output folder picker: choosing", () => {
       picker.dialog.getByText("Upload to “Experiments”"),
     ).toBeHidden();
     await expect(picker.closeButton).toBeEnabled();
+    await expect(picker.newFolderButton).toBeVisible();
+    await expect(picker.uploadButton).toBeVisible();
     await picker.showFilesButton.click();
     await expect(picker.option("Experiments", /picked\.fq/)).toBeVisible();
   });
@@ -449,15 +453,21 @@ test.describe("output folder picker: layout", () => {
     const { picker } = await openBlast(page);
     await picker.open();
 
-    const close = await picker.closeButton.boundingBox();
-    const showFiles = await picker.showFilesButton.boundingBox();
-    const dialog = await picker.dialog.boundingBox();
-    expect(close && showFiles && dialog).toBeTruthy();
-    if (close && showFiles && dialog) {
+    // Expand is Close's neighbour in the header row: the default dialog is shorter than
+    // the window, so there is room to expand into.
+    const expand = picker.expandButton();
+    await expect(expand).toBeVisible();
+    const [close, neighbour, dialog] = await Promise.all([
+      picker.closeButton.boundingBox(),
+      expand.boundingBox(),
+      picker.dialog.boundingBox(),
+    ]);
+    expect(close && neighbour && dialog).toBeTruthy();
+    if (close && neighbour && dialog) {
       const middle = (box: { y: number; height: number }) =>
         box.y + box.height / 2;
-      expect(Math.abs(middle(close) - middle(showFiles))).toBeLessThanOrEqual(1);
-      expect(close.x).toBeGreaterThan(showFiles.x + showFiles.width);
+      expect(Math.abs(middle(close) - middle(neighbour))).toBeLessThanOrEqual(1);
+      expect(close.x).toBeGreaterThan(neighbour.x + neighbour.width);
       expect(close.x + close.width).toBeLessThanOrEqual(dialog.x + dialog.width);
     }
   });
@@ -483,8 +493,8 @@ test.describe("output folder picker: layout", () => {
       expect(strip.width).toBeGreaterThanOrEqual(dialog.width - 1);
       expect(strip.height).toBeGreaterThan(160);
       expect(places.y + places.height).toBeLessThanOrEqual(strip.y + 1);
-      expect(action.y).toBeGreaterThanOrEqual(dialog.y);
-      expect(action.y + action.height).toBeLessThanOrEqual(places.y + 1);
+      // The actions live in the Info pane, which stacks under the columns on a phone.
+      expect(action.y).toBeGreaterThanOrEqual(strip.y + strip.height);
       expect(action.x).toBeGreaterThanOrEqual(dialog.x);
       expect(action.x + action.width).toBeLessThanOrEqual(
         dialog.x + dialog.width,
@@ -502,7 +512,7 @@ test.describe("output folder picker: layout", () => {
     await picker.uploadButton.click();
     await expect(picker.dialog.getByText("Upload to “Experiments”")).toBeVisible();
     await expect(picker.strip).toBeHidden();
-    await expect(picker.toolbar).toBeVisible();
+    await expect(picker.actions).toBeHidden();
     await picker.dialog
       .getByRole("button", { name: "Back to folder info" })
       .click();

@@ -51,6 +51,7 @@ import {
 import { knownUploadTypes } from "@/lib/services/workspace/types";
 import { workspaceQueryKeys } from "@/lib/services/workspace/workspace-query-keys";
 import { cn } from "@/lib/utils";
+import { FolderPickerActions } from "./folder-picker-actions";
 import { FolderPickerBreadcrumb } from "./folder-picker-breadcrumb";
 import { FolderPickerColumn } from "./folder-picker-column";
 import { DialogCornerGrip } from "./folder-picker-dialog-resize";
@@ -77,15 +78,14 @@ import {
   FolderPickerUpload,
 } from "./folder-picker-preview";
 import { PaneResizeHandle } from "./folder-picker-resize-handle";
-import { FolderPickerToolbar } from "./folder-picker-toolbar";
 import {
+  actionsUnavailableReason,
   columnWidthLimitsFor,
   folderTarget,
   isInlineEditTarget,
   previewWidthLimits,
   rowSelector,
   tabStopSelector,
-  toolbarUnavailableReason,
   uploadPaneMinWidth,
 } from "./folder-picker-utils";
 import { useColumnStripMotion } from "./use-column-strip-motion";
@@ -470,8 +470,7 @@ function FolderColumnsBrowser({
       ? labelFor(selectedPath)
       : "";
   const isPickingFiles = target.kind === "object";
-  const unavailableReason = toolbarUnavailableReason({
-    isUploading,
+  const unavailableReason = actionsUnavailableReason({
     folderPath,
     hasListingError: listingError !== null,
     canChange,
@@ -487,24 +486,29 @@ function FolderColumnsBrowser({
     setIsUploadOpen(true);
   };
 
+  // One element, handed to whichever Info view shows; the upload form takes the pane's
+  // place, so nothing here is reachable while it is open.
+  const actions = (
+    <FolderPickerActions
+      showNewFolder={!isPickingFiles}
+      unavailableReason={unavailableReason}
+      onNewFolder={openNewFolder}
+      onUpload={openUpload}
+      showFiles={showFiles}
+      onShowFilesChange={onShowFilesChange}
+      isPickingFiles={isPickingFiles}
+    />
+  );
+
   return (
     <>
       <FolderPickerHeader
         title={title}
         target={target}
-        showFiles={showFiles}
-        onShowFilesChange={onShowFilesChange}
         isUploading={isUploading}
         isExpanded={isExpanded}
         canToggleExpanded={canToggleExpanded}
         onToggleExpanded={onToggleExpanded}
-      />
-
-      <FolderPickerToolbar
-        showNewFolder={!isPickingFiles}
-        unavailableReason={unavailableReason}
-        onNewFolder={openNewFolder}
-        onUpload={openUpload}
       />
 
       <div className="-mx-4 -mb-4 flex min-h-0 flex-1 flex-col border-t md:flex-row">
@@ -640,7 +644,12 @@ function FolderColumnsBrowser({
               onUploadingChange={onUploadingChange}
             />
           ) : file && selectedItem ? (
-            <FilePickerInfo item={selectedItem} place={place} commit={commit} />
+            <FilePickerInfo
+              item={selectedItem}
+              place={place}
+              commit={commit}
+              actions={actions}
+            />
           ) : (
             <FolderPickerInfo
               target={target}
@@ -651,6 +660,7 @@ function FolderColumnsBrowser({
               contents={contents}
               listingError={listingError}
               commit={commit}
+              actions={actions}
             />
           )}
         </div>

@@ -42,7 +42,8 @@ export class FolderPickerDialog {
   readonly dialog: Locator;
   readonly places: Locator;
   readonly strip: Locator;
-  readonly toolbar: Locator;
+  /** New folder here, Upload here and Show files, in the Info pane. */
+  readonly actions: Locator;
   readonly newFolderButton: Locator;
   readonly uploadButton: Locator;
   readonly breadcrumb: Locator;
@@ -64,11 +65,11 @@ export class FolderPickerDialog {
     this.dialog = page.getByRole("dialog", { name: title });
     this.places = this.dialog.getByRole("navigation", { name: "Places" });
     this.strip = this.dialog.getByRole("group", { name: "Folder columns" });
-    this.toolbar = this.dialog.getByRole("group", { name: "Folder actions" });
-    this.newFolderButton = this.toolbar.getByRole("button", {
+    this.actions = this.dialog.getByRole("group", { name: "Folder actions" });
+    this.newFolderButton = this.actions.getByRole("button", {
       name: "New folder here",
     });
-    this.uploadButton = this.toolbar.getByRole("button", {
+    this.uploadButton = this.actions.getByRole("button", {
       name: "Upload here",
     });
     this.breadcrumb = this.dialog.getByRole("navigation", {
@@ -79,7 +80,7 @@ export class FolderPickerDialog {
     });
     this.cancelButton = this.dialog.getByRole("button", { name: "Cancel" });
     this.closeButton = this.dialog.getByRole("button", { name: "Close" });
-    this.showFilesButton = this.dialog.getByRole("button", {
+    this.showFilesButton = this.actions.getByRole("button", {
       name: /^(Show|Hide) (other )?files$/,
     });
     this.exitCopies = this.strip.locator("xpath=following-sibling::*[1]/*");

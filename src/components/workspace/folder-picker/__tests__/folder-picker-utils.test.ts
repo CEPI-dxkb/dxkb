@@ -7,7 +7,7 @@ import {
   previewWidthLimits,
   rowSelector,
   tabStopSelector,
-  toolbarUnavailableReason,
+  actionsUnavailableReason,
   uploadPaneMinWidth,
 } from "@/components/workspace/folder-picker/folder-picker-utils";
 import { pickerViewOptions } from "@/lib/services/workspace/picker-views";
@@ -105,38 +105,31 @@ describe("isInlineEditTarget", () => {
   });
 });
 
-describe("toolbarUnavailableReason", () => {
+describe("actionsUnavailableReason", () => {
   const ready = {
-    isUploading: false,
     folderPath: "/alice@bvbrc/home/x",
     hasListingError: false,
     canChange: true,
   };
 
   it("is null when New folder and Upload can be used", () => {
-    expect(toolbarUnavailableReason(ready)).toBeNull();
-  });
-
-  it("names a running upload before anything else", () => {
-    expect(
-      toolbarUnavailableReason({
-        ...ready,
-        isUploading: true,
-        folderPath: null,
-        canChange: false,
-      }),
-    ).toBe("An upload is running.");
+    expect(actionsUnavailableReason(ready)).toBeNull();
   });
 
   it("asks for a folder when none is open", () => {
     expect(
-      toolbarUnavailableReason({ ...ready, folderPath: null, canChange: false }),
+      actionsUnavailableReason({
+        ...ready,
+        folderPath: null,
+        hasListingError: true,
+        canChange: false,
+      }),
     ).toBe("Open a folder first.");
   });
 
   it("reports a listing that could not be checked", () => {
     expect(
-      toolbarUnavailableReason({
+      actionsUnavailableReason({
         ...ready,
         hasListingError: true,
         canChange: false,
@@ -145,7 +138,7 @@ describe("toolbarUnavailableReason", () => {
   });
 
   it("reports a folder the user cannot write to", () => {
-    expect(toolbarUnavailableReason({ ...ready, canChange: false })).toBe(
+    expect(actionsUnavailableReason({ ...ready, canChange: false })).toBe(
       "You don't have write access to this folder.",
     );
   });

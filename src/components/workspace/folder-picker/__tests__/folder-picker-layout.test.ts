@@ -2,6 +2,7 @@ import {
   dialogGutter,
   effectiveDialogSize,
   isMaximized,
+  maxStoredColumns,
   maximizeDialogSize,
   parsePickerLayout,
   resizeDialogSize,
@@ -89,6 +90,31 @@ describe("parsePickerLayout / serializePickerLayout", () => {
     expect(
       parsePickerLayout(JSON.stringify({ preview: 9999, columns: { 0: 10, 99: 300, "-1": 300, x: 300 } })),
     ).toEqual({ columns: { 0: 144 }, preview: 560 });
+  });
+
+  it("round-trips a column deep in the strip", () => {
+    const layout = { columns: { 20: 300 } };
+    expect(parsePickerLayout(serializePickerLayout(layout))).toEqual(layout);
+  });
+
+  it("drops a column past the cap on write exactly as it does on read", () => {
+    const last = maxStoredColumns - 1;
+    expect(parsePickerLayout(serializePickerLayout({ columns: { [last]: 300 } }))).toEqual({
+      columns: { [last]: 300 },
+    });
+    expect(serializePickerLayout({ columns: { [maxStoredColumns]: 300 } })).toBeNull();
+    expect(
+      parsePickerLayout(JSON.stringify({ columns: { [maxStoredColumns]: 300 } })),
+    ).toEqual({ columns: {} });
+  });
+
+  it("clamps column widths on write exactly as it does on read", () => {
+    expect(serializePickerLayout({ columns: { 0: 10, 1: 9999 } })).toBe(
+      JSON.stringify({ columns: { 0: 144, 1: 480 } }),
+    );
+    expect(parsePickerLayout(serializePickerLayout({ columns: { 1: 9999 } }))).toEqual({
+      columns: { 1: 480 },
+    });
   });
 
   it("stores nothing when every value is a default", () => {

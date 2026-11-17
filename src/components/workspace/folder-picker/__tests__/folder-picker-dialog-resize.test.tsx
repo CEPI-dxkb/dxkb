@@ -2,7 +2,10 @@ import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { readStorageItem, writeStorageItem } from "@/lib/browser-storage";
 import { pickerLayoutKey } from "../folder-picker-layout";
 import {
+  defaultPickerDirectories,
   findOption,
+  makePickerRepository,
+  pickerHome,
   pickerUser,
   renderPicker,
   stubPickerBrowserApis,
@@ -223,5 +226,37 @@ describe("resizable picker dialog", () => {
     await user.keyboard("{ArrowLeft}");
 
     expect(storedLayout()).toEqual({ columns: { 0: 256 }, preview: 336 });
+  });
+
+  it("resizes a column nine folders deep and remembers it", async () => {
+    const directories = { ...defaultPickerDirectories };
+    let path = pickerHome;
+    for (let level = 1; level <= 9; level += 1) {
+      directories[path] = [
+        ...(directories[path] ?? []),
+        { name: `L${String(level)}`, type: "folder" },
+      ];
+      path = `${path}/L${String(level)}`;
+    }
+    directories[path] = [];
+    const { user } = renderPicker(
+      { initialPath: path },
+      makePickerRepository({ directories }),
+    );
+
+    // The picker moves focus to the open folder once it loads; a handle focused earlier
+    // would lose it.
+    const open = await findOption("L8", "L9");
+    await waitFor(() => {
+      expect(open).toHaveFocus();
+    });
+    const handle = screen.getByRole("separator", { name: "Resize L9 column" });
+    expect(handle).toHaveAttribute("aria-valuenow", "180");
+
+    handle.focus();
+    await user.keyboard("{ArrowRight}");
+
+    expect(handle).toHaveAttribute("aria-valuenow", "196");
+    expect(storedLayout()).toEqual({ columns: { 9: 196 } });
   });
 });

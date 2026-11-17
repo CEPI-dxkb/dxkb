@@ -6,11 +6,12 @@ export const dialogHeightLimits = { min: 480, max: 1400, initial: 672 };
 /** 2rem: the room the dialog's CSS max-width and max-height keep free around it. */
 export const dialogGutter = 32;
 /**
- * Columns at this index or deeper are not stored: `parseColumns` drops them on read, so
- * they return to their default width after the next write. That is deeper than any real
- * workspace nesting the picker shows.
+ * Columns at this index or deeper are neither stored nor read back, so they always show
+ * their default width. That is far deeper than any real workspace nesting the picker
+ * shows; `columnEntry` applies the cap to both directions so a column the picker lets the
+ * user resize is always one it remembers.
  */
-export const maxStoredColumns = 8;
+export const maxStoredColumns = 32;
 
 export interface DialogSize {
   width: number;
@@ -100,21 +101,27 @@ function parseDialog(value: unknown): DialogSize | undefined {
   return width === null || height === null ? undefined : { width, height };
 }
 
+/** One stored column as `[index, width]`, inside the cap and the column's limits; `null` if it cannot be stored. */
+function columnEntry(key: string, raw: unknown): [number, number] | null {
+  const index = Number(key);
+  const width = finiteNumber(raw);
+  if (
+    width === null ||
+    !Number.isInteger(index) ||
+    index < 0 ||
+    index >= maxStoredColumns
+  ) {
+    return null;
+  }
+  return [index, clampTo(width, columnWidthLimitsFor(index))];
+}
+
 function parseColumns(value: unknown): Record<number, number> {
   const columns: Record<number, number> = {};
   if (typeof value !== "object" || value === null) return columns;
   for (const [key, raw] of Object.entries(value)) {
-    const index = Number(key);
-    const width = finiteNumber(raw);
-    if (
-      width === null ||
-      !Number.isInteger(index) ||
-      index < 0 ||
-      index >= maxStoredColumns
-    ) {
-      continue;
-    }
-    columns[index] = clampTo(width, columnWidthLimitsFor(index));
+    const entry = columnEntry(key, raw);
+    if (entry) columns[entry[0]] = entry[1];
   }
   return columns;
 }
@@ -141,9 +148,11 @@ export function parsePickerLayout(raw: string | null): StoredPickerLayout {
 /** Only what differs from the defaults is stored, so a layout back at its defaults leaves nothing behind. */
 export function serializePickerLayout(layout: StoredPickerLayout): string | null {
   const columns: Record<number, number> = {};
-  for (const [key, width] of Object.entries(layout.columns)) {
-    const index = Number(key);
-    if (width !== columnWidthLimitsFor(index).initial) columns[index] = width;
+  for (const [key, raw] of Object.entries(layout.columns)) {
+    const entry = columnEntry(key, raw);
+    if (entry && entry[1] !== columnWidthLimitsFor(entry[0]).initial) {
+      columns[entry[0]] = entry[1];
+    }
   }
   const stored: Record<string, unknown> = {};
   if (layout.dialog) stored.dialog = layout.dialog;

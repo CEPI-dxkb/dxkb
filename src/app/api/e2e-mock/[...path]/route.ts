@@ -112,6 +112,44 @@ const e2eDeterministicCounts: Record<string, number> = {
   ppi: brucellaPpiTotal,
 };
 
+const viralLineageClause = "eq(taxon_lineage_ids,10239)";
+
+/**
+ * The direct viral-structure filters the home Quick Access counts send: the
+ * bare lineage clause, or an `and(` led by it. A clause that only contains the
+ * lineage clause inside a `genome(...)` join (the taxon protein-structures
+ * tab) is a collection request, not a count.
+ */
+function isViralStructureCountClause(clause: string): boolean {
+  return (
+    clause === viralLineageClause ||
+    (clause.startsWith(`and(${viralLineageClause},`) &&
+      !clause.includes("genome("))
+  );
+}
+
+/**
+ * The home "PDB Structures" statistic: predicted models left out, nothing
+ * else. The scope is spelled out, not imported, so a product regression (an
+ * unfiltered count) cannot drag the mock along and still read as 4567.
+ */
+function isHomeStructureCount(clauses: readonly string[]): boolean {
+  return clauses.length === 2 && clauses.includes("ne(method,Predicted)");
+}
+
+/**
+ * A Quick Access viral structure count: `limit(1)` plus at least one direct
+ * viral filter. A bare `limit(1)` (an unfiltered count) is not one.
+ */
+function isViralStructureCount(clauses: readonly string[]): boolean {
+  return (
+    clauses.some(isViralStructureCountClause) &&
+    clauses.every(
+      (clause) => clause === "limit(1)" || isViralStructureCountClause(clause),
+    )
+  );
+}
+
 function maybeSolrCount(
   path: string,
   request: NextRequest,
@@ -136,12 +174,9 @@ function maybeSolrCount(
         query.clauses.includes(
           "and(eq(taxon_rank,species),eq(lineage,*Viruses*))",
         ))) ||
-      // The home PDB statistic leaves out predicted models; the scope is
-      // spelled out, not imported, so a product regression (an unfiltered
-      // count) cannot drag the mock along and still read as 4567.
       (core === "protein_structure" &&
-        query.clauses.length === 2 &&
-        query.clauses.includes("ne(method,Predicted)")));
+        (isHomeStructureCount(query.clauses) ||
+          isViralStructureCount(query.clauses))));
   if (isStatisticsCount) {
     return buildLoopbackSolrEnvelope([], {
       numFound: e2eDeterministicCounts[core],

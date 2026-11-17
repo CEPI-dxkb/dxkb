@@ -60,6 +60,8 @@ const influenzaMatches = {
     ],
     2,
   ),
+  // The route's count for the top taxon, which the page shows instead of the stored `genomes`.
+  "taxonGenomes:11320": solr([], 1_870_000),
   genome: solr(
     [
       {
@@ -206,8 +208,8 @@ describe("SearchResults", () => {
     renderResults("influenza");
 
     await screen.findByRole("heading", { name: "Taxa" });
-    expect(header().getByText(/1,900,000 genomes/)).toHaveTextContent(
-      "1,900,000 genomes · Species · Taxon ID 11320",
+    expect(header().getByText(/1,870,000 genomes/)).toHaveTextContent(
+      "1,870,000 genomes · Species · Taxon ID 11320",
     );
     expect(header().getByText("Orthomyxoviridae")).toBeInTheDocument();
     expect(

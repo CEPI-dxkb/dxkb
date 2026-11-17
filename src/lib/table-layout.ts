@@ -101,15 +101,19 @@ export function diffBooleanOverrides(
   return Object.keys(diff).length > 0 ? diff : undefined;
 }
 
-/** Which facets show, by field; `defaults` is what a toggle is diffed against. */
-export function resolveFacetVisibility(
-  facets: readonly { field: string; initiallyVisible?: boolean }[],
+/**
+ * Which facets are favorites, by field. Nothing is a favorite until the user
+ * stars it, so `defaults` is all false and `saved` alone decides; `defaults` is
+ * what a toggle is diffed against, so only the stars are stored.
+ */
+export function resolveFavoriteFacets(
+  facets: readonly { field: string }[],
   saved: TableLayout["facets"],
-): { defaults: Record<string, boolean>; visibility: Record<string, boolean> } {
+): { defaults: Record<string, boolean>; favorites: Record<string, boolean> } {
   const defaults = Object.fromEntries(
-    facets.map((facet) => [facet.field, facet.initiallyVisible !== false]),
+    facets.map((facet) => [facet.field, false]),
   );
-  return { defaults, visibility: applyBooleanOverrides(defaults, saved) };
+  return { defaults, favorites: applyBooleanOverrides(defaults, saved) };
 }
 
 /** Saved order with stale ids dropped, repeated ids kept at their first place (duplicates would break drag controls), and new columns appended. */

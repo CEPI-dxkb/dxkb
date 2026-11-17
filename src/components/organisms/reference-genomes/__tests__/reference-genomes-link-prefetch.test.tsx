@@ -46,6 +46,7 @@ describe("ReferenceGenomesClient genome links", () => {
             genome_id: "234.1",
             genome_name: "Charlie strain",
             reference_genome: "Reference",
+            genbank_accessions: "",
           },
         ]}
         counts={{ Reference: 1 }}
@@ -68,6 +69,7 @@ describe("ReferenceGenomesClient genome links", () => {
             genome_id: "234.1",
             genome_name: "Charlie strain",
             reference_genome: "Reference",
+            genbank_accessions: "",
           },
         ]}
         counts={{ Reference: 5 }}

@@ -5,6 +5,10 @@ import {
   upstreamTimeoutMs,
 } from "@/lib/api/upstream-failure";
 import { getRequiredEnv } from "@/lib/env";
+import {
+  genomeScopeRql,
+  nonDeprecatedGenomeClause,
+} from "@/lib/services/organisms/genome-scope";
 import { createSharedCache } from "@/lib/shared-cache";
 import { formatUserFacingErrorMessage } from "@/lib/utils";
 
@@ -18,15 +22,18 @@ export type StatisticKey =
   | "proteinFeatures"
   | "genomes";
 
-export interface StatisticDefinition {
-  readonly key: StatisticKey;
+export interface StatisticDefinition<K extends string = StatisticKey> {
+  readonly key: K;
   readonly label: string;
   readonly core: string;
   readonly filter: string;
 }
 
+/** NCBI "Viruses": the taxon the Viruses landing tile and Taxonomy header count under. */
+const virusesTaxonId = 10239;
+
 export const dbStatisticsDefinitions: readonly StatisticDefinition[] = Object.freeze([
-  { key: "viralGenomes", label: "Viral Genomes", core: "genome", filter: "eq(superkingdom,Viruses)" },
+  { key: "viralGenomes", label: "Viral Genomes", core: "genome", filter: genomeScopeRql(virusesTaxonId) },
   { key: "proteinEntries", label: "Protein Entries", core: "genome_feature", filter: "eq(feature_type,CDS)" },
   { key: "virusSpecies", label: "Virus Species", core: "taxonomy", filter: "and(eq(taxon_rank,species),eq(lineage,*Viruses*))" },
   { key: "epitopes", label: "Epitopes", core: "epitope", filter: "" },
@@ -34,13 +41,13 @@ export const dbStatisticsDefinitions: readonly StatisticDefinition[] = Object.fr
   // protein_structure is ~99.7% AlphaFold models; only experimental entries are PDB structures.
   { key: "proteinStructures", label: "PDB Structures", core: "protein_structure", filter: "ne(method,Predicted)" },
   { key: "proteinFeatures", label: "Protein Features", core: "protein_feature", filter: "" },
-  { key: "genomes", label: "Genomes", core: "genome", filter: "" },
+  { key: "genomes", label: "Genomes", core: "genome", filter: nonDeprecatedGenomeClause },
 ] as const);
 
-export type StatisticCounts = Record<StatisticKey, number | null>;
+export type StatisticCounts<K extends string = StatisticKey> = Record<K, number | null>;
 
-export interface DbStatistics {
-  counts: StatisticCounts;
+export interface DbStatistics<K extends string = StatisticKey> {
+  counts: StatisticCounts<K>;
   /**
    * Why no count loaded: the first failure, condensed; `null` while any count
    * loaded.
@@ -58,14 +65,14 @@ interface SolrCountResponse {
 
 const oneHourSeconds = 3600;
 
-function buildCountUrl(baseUrl: string, definition: StatisticDefinition): string {
+function buildCountUrl(baseUrl: string, definition: StatisticDefinition<string>): string {
   const trimmedBase = baseUrl.replace(/\/+$/, "");
   const filter = definition.filter ? `${definition.filter}&` : "";
   return `${trimmedBase}/${definition.core}/?${filter}limit(1)`;
 }
 
 async function fetchCount(
-  definition: StatisticDefinition,
+  definition: StatisticDefinition<string>,
   baseUrl: string,
   signal: AbortSignal | undefined,
 ): Promise<number> {
@@ -95,20 +102,21 @@ async function fetchCount(
   return numFound;
 }
 
-export async function fetchDbStatistics(
+export async function fetchStatisticCounts<K extends string>(
+  definitions: readonly StatisticDefinition<K>[],
   options: FetchOptions = {},
-): Promise<DbStatistics> {
+): Promise<DbStatistics<K>> {
   const baseUrl = getRequiredEnv("NEXT_PUBLIC_DATA_API");
   const settled = await Promise.allSettled(
-    dbStatisticsDefinitions.map((definition) =>
+    definitions.map((definition) =>
       fetchCount(definition, baseUrl, options.signal),
     ),
   );
 
-  const counts = {} as StatisticCounts;
+  const counts = {} as StatisticCounts<K>;
   const failures: unknown[] = [];
   settled.forEach((result, index) => {
-    const definition = dbStatisticsDefinitions[index];
+    const definition = definitions[index];
     if (result.status === "fulfilled") {
       counts[definition.key] = result.value;
       return;
@@ -128,8 +136,14 @@ export async function fetchDbStatistics(
   };
 }
 
-interface CachedStatistics {
-  statistics: DbStatistics;
+export function fetchDbStatistics(
+  options: FetchOptions = {},
+): Promise<DbStatistics> {
+  return fetchStatisticCounts(dbStatisticsDefinitions, options);
+}
+
+interface CachedStatistics<K extends string> {
+  statistics: DbStatistics<K>;
   /** The latest fetch loaded every count. */
   complete: boolean;
 }
@@ -137,12 +151,13 @@ interface CachedStatistics {
 const completeFreshMs = 3_600_000;
 const incompleteFreshMs = 60_000;
 
-function mergeStatistics(
-  latest: DbStatistics,
-  previous: DbStatistics | undefined,
-): CachedStatistics {
-  const counts = {} as StatisticCounts;
-  for (const { key } of dbStatisticsDefinitions) {
+function mergeStatistics<K extends string>(
+  definitions: readonly StatisticDefinition<K>[],
+  latest: DbStatistics<K>,
+  previous: DbStatistics<K> | undefined,
+): CachedStatistics<K> {
+  const counts = {} as StatisticCounts<K>;
+  for (const { key } of definitions) {
     counts[key] = latest.counts[key] ?? previous?.counts[key] ?? null;
   }
   const known = Object.values(counts).some((count) => count !== null);
@@ -155,16 +170,31 @@ function mergeStatistics(
   };
 }
 
-// `fetchDbStatistics` settles every count, so it throws only for a missing
-// env var, which must not be cached.
-const dbStatisticsCache = createSharedCache<"all", CachedStatistics>({
-  name: "db-statistics",
-  load: async (_key, previous) =>
-    mergeStatistics(await fetchDbStatistics(), previous?.statistics),
-  freshMs: (value) => (value.complete ? completeFreshMs : incompleteFreshMs),
-  retryMs: incompleteFreshMs,
-});
-
-export async function getDbStatistics(): Promise<DbStatistics> {
-  return (await dbStatisticsCache.get("all")).statistics;
+/**
+ * One shared stale-while-revalidate cache entry for a list of counts. The
+ * loader settles every count, so it throws only for a missing env var, which
+ * must not be cached. `name` is unique per list: caches with the same name
+ * share state.
+ */
+export function createStatisticsCache<K extends string>(
+  name: string,
+  definitions: readonly StatisticDefinition<K>[],
+): () => Promise<DbStatistics<K>> {
+  const cache = createSharedCache<"all", CachedStatistics<K>>({
+    name,
+    load: async (_key, previous) =>
+      mergeStatistics(
+        definitions,
+        await fetchStatisticCounts(definitions),
+        previous?.statistics,
+      ),
+    freshMs: (value) => (value.complete ? completeFreshMs : incompleteFreshMs),
+    retryMs: incompleteFreshMs,
+  });
+  return async () => (await cache.get("all")).statistics;
 }
+
+export const getDbStatistics = createStatisticsCache(
+  "db-statistics",
+  dbStatisticsDefinitions,
+);

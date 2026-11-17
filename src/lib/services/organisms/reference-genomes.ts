@@ -16,7 +16,15 @@ export interface ReferenceGenome {
   reference_genome: string;
   genome_name: string;
   genome_id: string;
+  genbank_accessions: string;
 }
+
+/**
+ * The types the card always has a tab for. Leaving an empty one out made All
+ * and the only other tab show the same count with nothing saying why
+ * (Adenoviridae: no Representative genome, All 355 and Reference 355).
+ */
+const knownReferenceGenomeTypes = ["Reference", "Representative"];
 
 /**
  * How many genomes of each type the card inlines; the cap is per type so a huge
@@ -31,7 +39,8 @@ export interface ReferenceGenomeSummary {
   total: number;
 }
 
-const genomeFields = "select(reference_genome,genome_name,genome_id)";
+const genomeFields =
+  "select(reference_genome,genome_name,genome_id,genbank_accessions)";
 
 function responseBody(payload: Record<string, unknown>): Record<string, unknown> {
   const body = payload.response;
@@ -55,6 +64,8 @@ function parseGenomes(payload: Record<string, unknown>): ReferenceGenome[] {
       reference_genome: typeof d.reference_genome === "string" ? d.reference_genome : "",
       genome_name: typeof d.genome_name === "string" ? d.genome_name : "",
       genome_id: typeof d.genome_id === "string" ? d.genome_id : "",
+      genbank_accessions:
+        typeof d.genbank_accessions === "string" ? d.genbank_accessions : "",
     };
   });
 }
@@ -82,9 +93,18 @@ export async function fetchReferenceGenomes(
   ]);
   const total = requiredNumber(responseBody(summary).numFound, "numFound");
   const facet = parseSolrFacetList(summary, "reference_genome");
-  const counts = Object.fromEntries(facet.map(({ name, count }) => [name, count]));
+  const facetCounts = Object.fromEntries(
+    facet.map(({ name, count }) => [name, count]),
+  );
+  const counts: Record<string, number> = {
+    ...Object.fromEntries(knownReferenceGenomeTypes.map((type) => [type, 0])),
+    ...facetCounts,
+  };
 
-  const types = facet.map(({ name }) => name).sort();
+  // A zero count has no rows to read.
+  const types = Object.keys(counts)
+    .filter((type) => counts[type] > 0)
+    .sort();
   const perType = await Promise.all(
     types.map(async (type) =>
       parseGenomes(
@@ -93,7 +113,9 @@ export async function fetchReferenceGenomes(
           // encodeURIComponent leaves alone.
           rqlEq("reference_genome", encodeURIComponent(type)),
           genomeFields,
-          `sort(+genome_name)`,
+          // A name alone leaves its ties in an unspecified order, which decides
+          // which genomes make the cap on a partial list.
+          `sort(+genome_name,+genome_id)`,
           `limit(${String(inlineReferenceGenomeLimit)})`,
         ]),
       ),

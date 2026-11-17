@@ -95,6 +95,23 @@ describe("api/e2e-mock catch-all — enabled", () => {
       23456,
     ],
     ["protein_structure", "ne(method,Predicted)&", 4567],
+    ["protein_structure", "eq(taxon_lineage_ids,10239)&", 4567],
+    [
+      "protein_structure",
+      "and(eq(taxon_lineage_ids,10239),eq(method,Predicted))&",
+      4567,
+    ],
+    [
+      "protein_structure",
+      "and(eq(taxon_lineage_ids,10239),ne(method,Predicted))&",
+      4567,
+    ],
+    [
+      "genome",
+      "and(eq(superkingdom,Viruses),eq(genome_status,Complete))&",
+      12345,
+    ],
+    ["epitope", "eq(taxon_lineage_ids,10239)&", 7890],
   ])(
     "returns the deterministic %s total for a statistics count request",
     async (core, filter, expectedCount) => {
@@ -126,6 +143,37 @@ describe("api/e2e-mock catch-all — enabled", () => {
     const body = (await resp.json()) as { response: { numFound: number } };
     expect(body.response.numFound).not.toBe(4567);
   });
+
+  it.each([
+    ["a longer lineage id", "eq(taxon_lineage_ids,102390)&"],
+    ["a negated lineage scope", "ne(taxon_lineage_ids,10239)&"],
+    [
+      "the taxon protein-structures tab join",
+      "and(eq(genome_id,*),genome(and(eq(taxon_lineage_ids,10239),ne(genome_status,Deprecated))))&",
+    ],
+    [
+      "a lineage clause that wraps a genome join",
+      "and(eq(taxon_lineage_ids,10239),genome(eq(genome_status,Complete)))&",
+    ],
+  ])(
+    "does not return the deterministic statistics total for %s",
+    async (_name, filter) => {
+      const resp = await GET(
+        mockNextRequest({
+          url: `http://localhost:3020/api/e2e-mock/data/protein_structure/?${filter}limit(1)`,
+          headers: { Accept: "application/solr+json" },
+        }),
+        ctx(["data", "protein_structure"]),
+      );
+
+      const body = (await resp.json()) as {
+        response: { numFound: number; docs: unknown[] };
+      };
+      expect(
+        body.response.numFound === 4567 && body.response.docs.length === 0,
+      ).toBe(false);
+    },
+  );
 
   it("returns protein structure fixtures for collections and exact members", async () => {
     const unfilteredResp = await GET(

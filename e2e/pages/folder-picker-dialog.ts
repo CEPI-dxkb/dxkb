@@ -152,12 +152,12 @@ export class FolderPickerDialog {
   }
 
   /**
-   * The size the dialog has come to rest at. The popup carries `duration-100` over the
-   * default `transition-property: all`, so a resize glides for 100ms and a box read
-   * straight after one lands part-way (1365px on the way to 1380px).
+   * The size on screen right now, with no wait for animations. The popup sets its size
+   * with `transition-none`, so a resize shows in full the moment its input returns; a
+   * gliding size would read as the old one here, which is what the "follows the
+   * pointer" spec relies on.
    */
   async dialogSize(): Promise<{ width: number; height: number }> {
-    await this.settled();
     const box = await this.dialog.boundingBox();
     if (!box) throw new Error("Dialog has no layout box");
     return { width: Math.round(box.width), height: Math.round(box.height) };

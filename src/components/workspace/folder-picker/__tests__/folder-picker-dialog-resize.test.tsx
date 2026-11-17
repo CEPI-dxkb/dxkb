@@ -55,6 +55,25 @@ describe("resizable picker dialog", () => {
     expect(dialogWidthHandle()).toHaveAttribute("aria-valuemax", "1568");
   });
 
+  it("sets its size without a transition, so a drag does not glide behind the pointer", async () => {
+    renderPicker();
+    await findOption("Home", "Experiments");
+
+    // The width and height come from CSS variables, and the base popup's `duration-100`
+    // alone leaves `transition-property: all`, so without the `resize="live"` variant's
+    // `transition-none` every resize would glide for 100ms. Open and close are keyframe
+    // animations: they must stay.
+    const dialog = screen.getByRole("dialog");
+    expect(dialog).toHaveClass("transition-none");
+    expect(dialog).toHaveClass(
+      "data-open:animate-in",
+      "data-closed:animate-out",
+      "data-open:zoom-in-95",
+      "data-closed:fade-out-0",
+      "duration-100",
+    );
+  });
+
   it("widens with the arrow keys and remembers it for the next open", async () => {
     const { user, reopen } = renderPicker();
     await findOption("Home", "Experiments");

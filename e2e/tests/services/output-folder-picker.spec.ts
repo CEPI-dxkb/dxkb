@@ -604,6 +604,42 @@ test.describe("output folder picker: dialog size", () => {
     expect(await storedLayout(page)).toBeNull();
   });
 
+  test("follows the pointer and the keys at once, without gliding to the new size", async ({
+    page,
+  }) => {
+    const { picker } = await openBlast(page);
+    await picker.open();
+
+    // No wait for animations between an input and the read: the popup has
+    // `transition-none`, so the size is the target as soon as the input returns. With the
+    // base `duration-100` over `transition-property: all` each of these read the width
+    // the step before.
+    const box = await picker.dialogWidthHandle().boundingBox();
+    if (!box) throw new Error("Resize handle has no layout box");
+    const x = box.x + box.width / 2;
+    const y = box.y + box.height / 2;
+    await page.mouse.move(x, y);
+    await page.mouse.down();
+    for (const dx of [10, 30, 60, 20]) {
+      await page.mouse.move(x + dx, y);
+      expect(await picker.dialogWidth(), `after dragging to +${String(dx)}px`).toBe(
+        1280 + 2 * dx,
+      );
+    }
+    await page.mouse.up();
+
+    await picker.dialogWidthHandle().focus();
+    await page.keyboard.press("ArrowRight");
+    expect(await picker.dialogWidth()).toBe(1280 + 40 + 32);
+    await page.keyboard.press("ArrowLeft");
+    expect(await picker.dialogWidth()).toBe(1280 + 40);
+
+    await picker.expandButton().click();
+    expect(await picker.dialogSize()).toEqual({ width: 1568, height: 868 });
+    await picker.restoreButton().click();
+    expect(await picker.dialogSize()).toEqual({ width: 1280, height: 672 });
+  });
+
   test("resizes the width from the keyboard in steps of 32px", async ({
     page,
   }) => {

@@ -778,8 +778,10 @@ export function WorkspaceFolderPickerDialog({
         close();
       }}
     >
-      {/* The size applies from md up; below it the dialog keeps the phone layout. */}
+      {/* The size applies from md up; below it the dialog keeps the phone layout. `resize="live"`
+         stops the size gliding for 100ms behind a drag. */}
       <DialogContent
+        resize="live"
         className="flex h-[min(42rem,calc(100dvh-2rem))] flex-col overflow-clip sm:max-w-[calc(100%-2rem)] md:h-(--picker-height) md:max-h-[calc(100dvh-2rem)] md:w-(--picker-width)"
         style={
           {

@@ -81,6 +81,12 @@ export function maximizeDialogSize(viewport: Viewport): DialogSize {
   );
 }
 
+/** Whether Expand would change the size: the window leaves room to grow on at least one axis. */
+export function canMaximize(size: DialogSize, viewport: Viewport): boolean {
+  const maximum = maximizeDialogSize(viewport);
+  return maximum.width > size.width || maximum.height > size.height;
+}
+
 export function isMaximized(size: DialogSize, viewport: Viewport): boolean {
   const maximum = maximizeDialogSize(viewport);
   return size.width === maximum.width && size.height === maximum.height;

@@ -56,6 +56,7 @@ import { FolderPickerColumn } from "./folder-picker-column";
 import { DialogCornerGrip } from "./folder-picker-dialog-resize";
 import { FolderPickerHeader } from "./folder-picker-header";
 import {
+  canMaximize,
   dialogGutter,
   dialogHeightLimits,
   dialogWidthLimits,
@@ -114,6 +115,7 @@ interface PickerLayout {
 interface FolderColumnsBrowserProps {
   layout: PickerLayout;
   isExpanded: boolean;
+  canToggleExpanded: boolean;
   onToggleExpanded: () => void;
   target: PickerTarget;
   initialPath: string;
@@ -129,6 +131,7 @@ interface FolderColumnsBrowserProps {
 function FolderColumnsBrowser({
   layout,
   isExpanded,
+  canToggleExpanded,
   onToggleExpanded,
   target,
   initialPath,
@@ -474,6 +477,7 @@ function FolderColumnsBrowser({
         onShowFilesChange={onShowFilesChange}
         isUploading={isUploading}
         isExpanded={isExpanded}
+        canToggleExpanded={canToggleExpanded}
         onToggleExpanded={onToggleExpanded}
       />
 
@@ -712,6 +716,10 @@ export function WorkspaceFolderPickerDialog({
   // At the default size on a small window the dialog may already fill it, but it is not
   // expanded: Restore would change nothing, so the button offers Expand.
   const expanded = stored.dialog !== undefined && isMaximized(size, viewport);
+  // Expand on a window the dialog already fills would store a size that a later, larger
+  // window opens below the default, so it is offered only where it grows the dialog.
+  // Restore stays for a stored expanded size.
+  const canToggleExpanded = expanded || canMaximize(size, viewport);
   // A width change keeps the stored height, not the one the window clamps it to now, so
   // nudging the width on a short window does not shrink the height for later.
   const storedHeight = stored.dialog?.height ?? dialogHeightLimits.initial;
@@ -797,6 +805,7 @@ export function WorkspaceFolderPickerDialog({
         <FolderColumnsBrowser
           layout={layout}
           isExpanded={expanded}
+          canToggleExpanded={canToggleExpanded}
           onToggleExpanded={() => {
             setDialogSize(expanded ? undefined : maximizeDialogSize(viewport));
           }}

@@ -1,4 +1,5 @@
 import {
+  canMaximize,
   dialogGutter,
   effectiveDialogSize,
   isMaximized,
@@ -65,6 +66,22 @@ describe("maximizeDialogSize", () => {
 
   it("is capped by the limits on a huge screen", () => {
     expect(maximizeDialogSize({ width: 3840, height: 2160 })).toEqual({ width: 1920, height: 1400 });
+  });
+});
+
+describe("canMaximize", () => {
+  it("is true when the window leaves room to grow on either axis", () => {
+    expect(canMaximize(effectiveDialogSize(undefined, desktop), desktop)).toBe(true);
+    // 1248 x 672 against a 1248 x 688 maximum: only the height grows.
+    expect(canMaximize(effectiveDialogSize(undefined, laptop), laptop)).toBe(true);
+    expect(canMaximize({ width: 800, height: 500 }, { width: 1000, height: 700 })).toBe(true);
+  });
+
+  it("is false when the dialog already fills the window", () => {
+    const small = { width: 1000, height: 700 };
+    expect(effectiveDialogSize(undefined, small)).toEqual({ width: 968, height: 668 });
+    expect(canMaximize(effectiveDialogSize(undefined, small), small)).toBe(false);
+    expect(canMaximize(maximizeDialogSize(desktop), desktop)).toBe(false);
   });
 });
 

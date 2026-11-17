@@ -17,6 +17,8 @@ interface FolderPickerHeaderProps {
   isUploading: boolean;
   /** The dialog fills the window; the button then restores the default size. */
   isExpanded: boolean;
+  /** False where the window leaves nothing to expand into, so there is no button. */
+  canToggleExpanded: boolean;
   onToggleExpanded: () => void;
 }
 
@@ -27,6 +29,7 @@ export function FolderPickerHeader({
   onShowFilesChange,
   isUploading,
   isExpanded,
+  canToggleExpanded,
   onToggleExpanded,
 }: FolderPickerHeaderProps) {
   const isPickingFiles = target.kind === "object";
@@ -50,17 +53,19 @@ export function FolderPickerHeader({
         <div className="flex shrink-0 items-center gap-4">
           <KeyboardHints />
           {/* The dialog is sized only from md up, so below that there is nothing to expand. */}
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon-sm"
-            className="hidden md:inline-flex"
-            aria-label={expandLabel}
-            title={expandLabel}
-            onClick={onToggleExpanded}
-          >
-            {isExpanded ? <Minimize2 /> : <Maximize2 />}
-          </Button>
+          {canToggleExpanded ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              className="hidden md:inline-flex"
+              aria-label={expandLabel}
+              title={expandLabel}
+              onClick={onToggleExpanded}
+            >
+              {isExpanded ? <Minimize2 /> : <Maximize2 />}
+            </Button>
+          ) : null}
           <Button
             type="button"
             variant="outline"

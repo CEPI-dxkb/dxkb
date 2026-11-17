@@ -719,6 +719,21 @@ test.describe("output folder picker: dialog size", () => {
     expect(await picker.dialogHeight()).toBe(800);
   });
 
+  test("offers no Expand on a window the default size already fills", async ({
+    page,
+  }) => {
+    // Expand there would store 968 x 668, which a larger window later opens below the
+    // 1280 x 672 default.
+    await page.setViewportSize({ width: 1000, height: 700 });
+    const { picker } = await openBlast(page);
+    await picker.open();
+
+    expect(await picker.dialogSize()).toEqual({ width: 968, height: 668 });
+    await expect(picker.expandButton()).toHaveCount(0);
+    await expect(picker.restoreButton()).toHaveCount(0);
+    expect(await storedLayout(page)).toBeNull();
+  });
+
   test("keeps the dialog width separator off the info pane's scrollbar", async ({
     page,
   }) => {

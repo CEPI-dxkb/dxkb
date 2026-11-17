@@ -164,15 +164,45 @@ describe("resizable picker dialog", () => {
     expect(storedLayout()).toEqual({ dialog: { width: 1280, height: 900 } });
   });
 
-  it("offers Expand at the default size even when the window is too small for it to grow", async () => {
+  it("offers no Expand where the dialog already fills the window, and stores nothing", async () => {
     vi.stubGlobal("innerWidth", 1000);
     vi.stubGlobal("innerHeight", 700);
-    const { user } = renderPicker();
+    renderPicker();
     await findOption("Home", "Experiments");
     expect(sizeVars()).toEqual({ width: "968px", height: "668px" });
 
+    // Expand would store 968 x 668, which a later, larger window would open below the
+    // 1280 x 672 default.
+    expect(
+      screen.queryByRole("button", { name: "Expand dialog" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Restore dialog size" }),
+    ).not.toBeInTheDocument();
+    expect(readStorageItem(pickerLayoutKey)).toBeNull();
+  });
+
+  it("offers Expand on a window where only the height grows", async () => {
+    vi.stubGlobal("innerWidth", 1280);
+    vi.stubGlobal("innerHeight", 720);
+    const { user } = renderPicker();
+    await findOption("Home", "Experiments");
+    expect(sizeVars()).toEqual({ width: "1248px", height: "672px" });
+
     await user.click(screen.getByRole("button", { name: "Expand dialog" }));
-    expect(storedLayout()).toEqual({ dialog: { width: 968, height: 668 } });
+    expect(sizeVars()).toEqual({ width: "1248px", height: "688px" });
+  });
+
+  it("keeps Restore for a stored expanded size on a window that cannot grow it", async () => {
+    vi.stubGlobal("innerWidth", 1000);
+    vi.stubGlobal("innerHeight", 700);
+    writeStorageItem(
+      pickerLayoutKey,
+      JSON.stringify({ dialog: { width: 1568, height: 868 } }),
+    );
+    const { user } = renderPicker();
+    await findOption("Home", "Experiments");
+    expect(sizeVars()).toEqual({ width: "968px", height: "668px" });
 
     await user.click(
       screen.getByRole("button", { name: "Restore dialog size" }),

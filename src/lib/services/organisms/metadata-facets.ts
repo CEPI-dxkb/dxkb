@@ -1,3 +1,4 @@
+import { foldFacetBuckets } from "./fold-facet-buckets";
 import type { GenomeScope } from "./genome-scope";
 import { metadataFieldLabel } from "./metadata-field-labels";
 import type { OrganismFetchOptions, OrganismMetadataFacets } from "./types";
@@ -8,19 +9,26 @@ import {
   parseSolrFacetList,
 } from "./utils";
 
+// Buckets asked of Solr before folding, so a variant ranked outside the top
+// few still joins its group. The first `keep` folded buckets are returned.
+const metadataFacetFetchLimit = 200;
+
 async function fetchMetadataFacet(
   baseUrl: string,
   scope: GenomeScope,
   field: string,
-  limit: number | undefined,
+  keep: number | undefined,
   signal: AbortSignal | undefined,
 ) {
+  const fetchLimit =
+    keep === undefined ? undefined : Math.max(keep, metadataFacetFetchLimit);
   const payload = await fetchOrganismSolrJson(
-    buildGenomeFacetUrl(baseUrl, scope, field, limit),
+    buildGenomeFacetUrl(baseUrl, scope, field, fetchLimit),
     { source: `genome ${field} facet`, label: metadataFieldLabel(field) },
     signal,
   );
-  return parseSolrFacetList(payload, field);
+  const buckets = parseSolrFacetList(payload, field);
+  return keep === undefined ? buckets : foldFacetBuckets(buckets).slice(0, keep);
 }
 
 export async function fetchOrganismMetadataFacets(
@@ -29,7 +37,8 @@ export async function fetchOrganismMetadataFacets(
   options: OrganismFetchOptions & { limit?: number } = {},
 ): Promise<OrganismMetadataFacets> {
   const baseUrl = getBvBrcWebsiteApiBaseUrl();
-  const defaultLimit = options.limit ?? 12;
+  const defaultLimit =
+    options.limit !== undefined && options.limit > 0 ? options.limit : 12;
   const settled = await Promise.allSettled(
     fields.map((field) =>
       fetchMetadataFacet(

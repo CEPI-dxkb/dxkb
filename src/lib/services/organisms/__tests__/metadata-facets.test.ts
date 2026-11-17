@@ -48,6 +48,115 @@ describe("fetchOrganismMetadataFacets", () => {
     });
   });
 
+  it("folds case variants into one bucket and keeps the larger spelling", async () => {
+    server.use(
+      http.get(`${baseUrl}/genome/`, () =>
+        HttpResponse.json(
+          facet("host_group", [
+            "Human",
+            100,
+            "Nonhuman mammal",
+            50,
+            "Avian",
+            40,
+            "Nonhuman Mammal",
+            30,
+          ]),
+        ),
+      ),
+    );
+
+    await expect(
+      fetchOrganismMetadataFacets(2, ["host_group"]),
+    ).resolves.toEqual({
+      host_group: [
+        { name: "Human", count: 100 },
+        { name: "Nonhuman mammal", count: 80 },
+        { name: "Avian", count: 40 },
+      ],
+    });
+  });
+
+  it("over-fetches before folding and keeps only the requested number of buckets", async () => {
+    let requestedUrl = "";
+    server.use(
+      http.get(`${baseUrl}/genome/`, ({ request }) => {
+        requestedUrl = request.url;
+        return HttpResponse.json(
+          facet("host_group", ["A", 5, "B", 4, "C", 3, "a", 2]),
+        );
+      }),
+    );
+
+    const facets = await fetchOrganismMetadataFacets(2, ["host_group"], {
+      limit: 2,
+    });
+
+    expect(requestedUrl).toContain("(limit,200)");
+    expect(facets.host_group).toEqual([
+      { name: "A", count: 7 },
+      { name: "B", count: 4 },
+    ]);
+  });
+
+  it("asks for the caller's limit when it exceeds the over-fetch size", async () => {
+    let requestedUrl = "";
+    server.use(
+      http.get(`${baseUrl}/genome/`, ({ request }) => {
+        requestedUrl = request.url;
+        return HttpResponse.json(facet("host_group", ["A", 5]));
+      }),
+    );
+
+    await fetchOrganismMetadataFacets(2, ["host_group"], { limit: 250 });
+
+    expect(requestedUrl).toContain("(limit,250)");
+  });
+
+  it.each([0, -1, Number.NaN])(
+    "falls back to the default of 12 buckets when limit is %s",
+    async (limit) => {
+      let requestedUrl = "";
+      const values = Array.from({ length: 20 }, (_, index) => [
+        `Bucket ${String(index)}`,
+        20 - index,
+      ]).flat();
+      server.use(
+        http.get(`${baseUrl}/genome/`, ({ request }) => {
+          requestedUrl = request.url;
+          return HttpResponse.json(facet("host_group", values));
+        }),
+      );
+
+      const facets = await fetchOrganismMetadataFacets(2, ["host_group"], {
+        limit,
+      });
+
+      expect(requestedUrl).toContain("(limit,200)");
+      expect(facets.host_group).toHaveLength(12);
+    },
+  );
+
+  it("leaves collection_year unfolded and unlimited", async () => {
+    let requestedUrl = "";
+    server.use(
+      http.get(`${baseUrl}/genome/`, ({ request }) => {
+        requestedUrl = request.url;
+        return HttpResponse.json(
+          facet("collection_year", ["2021", 3, "2020", 5]),
+        );
+      }),
+    );
+
+    const facets = await fetchOrganismMetadataFacets(2, ["collection_year"]);
+
+    expect(requestedUrl).not.toContain("(limit,");
+    expect(facets.collection_year).toEqual([
+      { name: "2021", count: 3 },
+      { name: "2020", count: 5 },
+    ]);
+  });
+
   it("throws the original message when one field fails", async () => {
     server.use(
       http.get(`${baseUrl}/genome/`, ({ request }) => {

@@ -3,6 +3,7 @@
 import { useRef } from "react";
 import { cn } from "@/lib/utils";
 import {
+  rememberUntouchedAxes,
   resizeDialogSize,
   type DialogSize,
   type Viewport,
@@ -10,6 +11,8 @@ import {
 
 interface DialogCornerGripProps {
   size: DialogSize;
+  /** What is stored for each axis (the default when none), which a small window may clamp in `size`. */
+  remembered: DialogSize;
   viewport: Viewport;
   onResize: (size: DialogSize) => void;
   className?: string;
@@ -22,13 +25,17 @@ interface DialogCornerGripProps {
  */
 export function DialogCornerGrip({
   size,
+  remembered,
   viewport,
   onResize,
   className,
 }: DialogCornerGripProps) {
-  const dragRef = useRef<{ x: number; y: number; start: DialogSize } | null>(
-    null,
-  );
+  const dragRef = useRef<{
+    x: number;
+    y: number;
+    start: DialogSize;
+    remembered: DialogSize;
+  } | null>(null);
   return (
     <div
       aria-hidden
@@ -37,17 +44,28 @@ export function DialogCornerGrip({
         if (event.button !== 0) return;
         event.preventDefault();
         event.currentTarget.setPointerCapture(event.pointerId);
-        dragRef.current = { x: event.clientX, y: event.clientY, start: size };
+        dragRef.current = {
+          x: event.clientX,
+          y: event.clientY,
+          start: size,
+          remembered,
+        };
       }}
       onPointerMove={(event) => {
         const drag = dragRef.current;
         if (!drag) return;
+        // Against where the drag began, so an axis dragged away and back returns to its
+        // remembered value rather than the one the window clamps it to.
         onResize(
-          resizeDialogSize(
+          rememberUntouchedAxes(
+            resizeDialogSize(
+              drag.start,
+              event.clientX - drag.x,
+              event.clientY - drag.y,
+              viewport,
+            ),
             drag.start,
-            event.clientX - drag.x,
-            event.clientY - drag.y,
-            viewport,
+            drag.remembered,
           ),
         );
       }}

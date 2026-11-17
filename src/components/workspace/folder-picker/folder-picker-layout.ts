@@ -82,6 +82,23 @@ export function maximizeDialogSize(viewport: Viewport): DialogSize {
 }
 
 /**
+ * The size a resize stores. A resize reports the size the dialog renders, which a small
+ * window clamps, so an axis it did not visibly change (`next` equals `current`) keeps the
+ * value remembered for it instead of the clamped one, and a later, larger window still
+ * opens at that value.
+ */
+export function rememberUntouchedAxes(
+  next: DialogSize,
+  current: DialogSize,
+  remembered: DialogSize,
+): DialogSize {
+  return {
+    width: next.width === current.width ? remembered.width : next.width,
+    height: next.height === current.height ? remembered.height : next.height,
+  };
+}
+
+/**
  * What Expand stores: the window maximum, but never less than the remembered size (the
  * default when none) on either axis. The stored size is not the rendered one: where the
  * window is too small on one axis the maximum is clamped there, and storing that clamped

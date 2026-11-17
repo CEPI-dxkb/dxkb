@@ -65,6 +65,7 @@ import {
   isMaximized,
   parsePickerLayout,
   pickerLayoutKey,
+  rememberUntouchedAxes,
   serializePickerLayout,
   type DialogSize,
   type StoredPickerLayout,
@@ -720,9 +721,13 @@ export function WorkspaceFolderPickerDialog({
   // window opens below the default, so it is offered only where it grows the dialog.
   // Restore stays for a stored expanded size.
   const canToggleExpanded = expanded || canMaximize(size, viewport);
-  // A width change keeps the stored height, not the one the window clamps it to now, so
-  // nudging the width on a short window does not shrink the height for later.
-  const storedHeight = stored.dialog?.height ?? dialogHeightLimits.initial;
+  // What is remembered for each axis, which a window smaller than it only clamps for now.
+  // A resize leaves an axis it did not visibly change at this value, so nudging the width
+  // on a short window does not shrink the height for later.
+  const remembered: DialogSize = {
+    width: stored.dialog?.width ?? dialogWidthLimits.initial,
+    height: stored.dialog?.height ?? dialogHeightLimits.initial,
+  };
   const [showFiles, setShowFiles] = useState(false);
 
   const saveLayout = (patch: Partial<StoredPickerLayout>) => {
@@ -834,20 +839,31 @@ export function WorkspaceFolderPickerDialog({
           limits={widthLimits}
           pointerScale={2}
           keyboardStep={32}
+          // A press at the window's maximum width changes nothing visible, so it stores
+          // nothing new: the height is passed as the rendered one, so it is untouched.
           onResize={(width) => {
-            setDialogSize({ width, height: storedHeight });
+            setDialogSize(
+              rememberUntouchedAxes(
+                { width, height: size.height },
+                size,
+                remembered,
+              ),
+            );
           }}
-          // The true default width, not the one the window clamps it to.
+          // The true default width, not the one the window clamps it to; a reset that
+          // lands on the width already shown must still reset, so it skips
+          // `rememberUntouchedAxes`.
           onReset={() => {
             setDialogSize({
               width: dialogWidthLimits.initial,
-              height: storedHeight,
+              height: remembered.height,
             });
           }}
           className="right-0 hidden md:block"
         />
         <DialogCornerGrip
           size={size}
+          remembered={remembered}
           viewport={viewport}
           onResize={setDialogSize}
         />

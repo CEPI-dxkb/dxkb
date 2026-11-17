@@ -7,6 +7,7 @@ import {
   maxStoredColumns,
   maximizeDialogSize,
   parsePickerLayout,
+  rememberUntouchedAxes,
   resizeDialogSize,
   serializePickerLayout,
 } from "../folder-picker-layout";
@@ -67,6 +68,33 @@ describe("maximizeDialogSize", () => {
 
   it("is capped by the limits on a huge screen", () => {
     expect(maximizeDialogSize({ width: 3840, height: 2160 })).toEqual({ width: 1920, height: 1400 });
+  });
+});
+
+describe("rememberUntouchedAxes", () => {
+  const remembered = { width: 1500, height: 800 };
+  const current = { width: 968, height: 800 };
+
+  it("keeps the remembered size for an axis that did not change", () => {
+    expect(rememberUntouchedAxes(current, current, remembered)).toEqual(remembered);
+  });
+
+  it("writes only the axis that changed", () => {
+    expect(rememberUntouchedAxes({ width: 968, height: 840 }, current, remembered)).toEqual({
+      width: 1500,
+      height: 840,
+    });
+    expect(rememberUntouchedAxes({ width: 928, height: 800 }, current, remembered)).toEqual({
+      width: 928,
+      height: 800,
+    });
+  });
+
+  it("writes both axes when both changed", () => {
+    expect(rememberUntouchedAxes({ width: 928, height: 840 }, current, remembered)).toEqual({
+      width: 928,
+      height: 840,
+    });
   });
 });
 

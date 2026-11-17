@@ -287,6 +287,115 @@ describe("resizable picker dialog", () => {
     expect(sizeVars()).toEqual({ width: "1380px", height: "772px" });
   });
 
+  describe("on a window smaller than the remembered size", () => {
+    // The dialog renders clamped to the window, but a resize must not write that clamped
+    // value for an axis it did not visibly change, or a later, larger window loses it.
+    function dragCorner(
+      moves: readonly (readonly [x: number, y: number])[],
+      from: readonly [x: number, y: number] = [800, 500],
+    ) {
+      const grip = cornerGrip();
+      fireEvent.pointerDown(grip, {
+        button: 0,
+        clientX: from[0],
+        clientY: from[1],
+        pointerId: 3,
+      });
+      for (const [x, y] of moves) {
+        fireEvent.pointerMove(grip, { clientX: x, clientY: y, pointerId: 3 });
+      }
+      fireEvent.pointerUp(grip, { pointerId: 3 });
+    }
+
+    it("keeps the remembered width when the corner grip only moves the height", async () => {
+      vi.stubGlobal("innerWidth", 1000);
+      writeStorageItem(
+        pickerLayoutKey,
+        JSON.stringify({ dialog: { width: 1500, height: 800 } }),
+      );
+      renderPicker();
+      await findOption("Home", "Experiments");
+      expect(sizeVars()).toEqual({ width: "968px", height: "800px" });
+
+      dragCorner([[800, 520]]);
+
+      expect(sizeVars()).toEqual({ width: "968px", height: "840px" });
+      expect(storedLayout()).toEqual({ dialog: { width: 1500, height: 840 } });
+    });
+
+    it("keeps the remembered height when the corner grip only moves the width", async () => {
+      vi.stubGlobal("innerHeight", 700);
+      writeStorageItem(
+        pickerLayoutKey,
+        JSON.stringify({ dialog: { width: 1280, height: 900 } }),
+      );
+      renderPicker();
+      await findOption("Home", "Experiments");
+      expect(sizeVars()).toEqual({ width: "1280px", height: "668px" });
+
+      dragCorner([[820, 500]]);
+
+      expect(sizeVars()).toEqual({ width: "1320px", height: "668px" });
+      expect(storedLayout()).toEqual({ dialog: { width: 1320, height: 900 } });
+    });
+
+    it("still stores the new clamped value for an axis the corner grip changes", async () => {
+      vi.stubGlobal("innerWidth", 1000);
+      vi.stubGlobal("innerHeight", 900);
+      renderPicker();
+      await findOption("Home", "Experiments");
+
+      // 20px left narrows to 928; 500px down is clamped to the 868 the window allows.
+      dragCorner([[780, 1000]]);
+
+      expect(sizeVars()).toEqual({ width: "928px", height: "868px" });
+      expect(storedLayout()).toEqual({ dialog: { width: 928, height: 868 } });
+    });
+
+    it("restores the remembered value of an axis dragged away and back to where it began", async () => {
+      vi.stubGlobal("innerWidth", 1000);
+      writeStorageItem(
+        pickerLayoutKey,
+        JSON.stringify({ dialog: { width: 1500, height: 800 } }),
+      );
+      renderPicker();
+      await findOption("Home", "Experiments");
+
+      dragCorner([[780, 500], [800, 500]]);
+
+      expect(sizeVars()).toEqual({ width: "968px", height: "800px" });
+      expect(storedLayout()).toEqual({ dialog: { width: 1500, height: 800 } });
+    });
+
+    it("stores nothing when the width separator is pressed at the window's maximum", async () => {
+      vi.stubGlobal("innerWidth", 1000);
+      const { user } = renderPicker();
+      await findOption("Home", "Experiments");
+      expect(dialogWidthHandle()).toHaveAttribute("aria-valuenow", "968");
+
+      dialogWidthHandle().focus();
+      await user.keyboard("{ArrowRight}");
+
+      expect(readStorageItem(pickerLayoutKey)).toBeNull();
+    });
+
+    it("keeps the remembered size when the width separator is pressed at the window's maximum", async () => {
+      vi.stubGlobal("innerWidth", 1000);
+      vi.stubGlobal("innerHeight", 900);
+      writeStorageItem(
+        pickerLayoutKey,
+        JSON.stringify({ dialog: { width: 1500, height: 800 } }),
+      );
+      const { user } = renderPicker();
+      await findOption("Home", "Experiments");
+
+      dialogWidthHandle().focus();
+      await user.keyboard("{ArrowRight}");
+
+      expect(storedLayout()).toEqual({ dialog: { width: 1500, height: 800 } });
+    });
+  });
+
   it("remembers column and info-pane widths in storage", async () => {
     const { user } = renderPicker();
     await findOption("Home", "Experiments");

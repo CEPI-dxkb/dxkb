@@ -994,15 +994,31 @@ function maybeBvBrcWebsite(
       };
     }
     const structureScope = `and(eq(taxon_lineage_ids,${rawTaxonId}),ne(method,Predicted))`;
-    return hasClause(query, structureScope)
-      ? {
-          kind: "ok",
-          body: { response: { numFound: summary.PDB, docs: [] } },
-        }
-      : {
-          kind: "unhandled",
-          reason: `structure count for taxon ${rawTaxonId} does not leave out predicted models — expected the clause ${structureScope}`,
-        };
+    if (!hasClause(query, structureScope)) {
+      return {
+        kind: "unhandled",
+        reason: `structure count for taxon ${rawTaxonId} does not leave out predicted models — expected the clause ${structureScope}`,
+      };
+    }
+    // Only the exact count the product sends (scope and limit(1), in any
+    // order): an extra filter would otherwise still read as the fixture count.
+    const expectedClauses = [structureScope, "limit(1)"];
+    const unexpected = query.clauses.filter(
+      (clause) => !expectedClauses.includes(clause),
+    );
+    if (
+      query.clauses.length !== expectedClauses.length ||
+      unexpected.length > 0
+    ) {
+      return {
+        kind: "unhandled",
+        reason: `structure count for taxon ${rawTaxonId}: expected exactly the clauses ${structureScope} and limit(1), got ${query.clauses.join("&")}${unexpected.length > 0 ? ` (unexpected clauses: ${unexpected.join(", ")})` : ""}`,
+      };
+    }
+    return {
+      kind: "ok",
+      body: { response: { numFound: summary.PDB, docs: [] } },
+    };
   }
 
   return {

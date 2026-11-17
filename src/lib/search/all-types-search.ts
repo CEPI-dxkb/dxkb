@@ -2,7 +2,7 @@ import { queryOptions } from "@tanstack/react-query";
 
 import { allTermSearchTypes, searchHref } from "@/constants/search-info";
 import { DataRepositoryError } from "@/lib/data-api/client";
-import { isTaxonId } from "@/lib/taxonomy-view";
+import { isTaxonId, taxonViewHeader } from "@/lib/taxonomy-view";
 import {
   epitopeHref,
   epitopeIdFromRow,
@@ -195,12 +195,18 @@ function measured(value: unknown, unit: string): string {
   return raw ? `${formatCount(Number(raw))} ${unit}` : "";
 }
 
-function lineageNames(doc: SearchDoc): string[] {
-  return Array.isArray(doc.lineage_names)
-    ? doc.lineage_names
-        .map(String)
-        .filter((name) => name !== "cellular organisms")
-    : [];
+function stringList(value: unknown): string[] {
+  return Array.isArray(value) ? value.map(String) : [];
+}
+
+/** A taxon doc's ancestors, filtered the way the taxon-page breadcrumb filters them, so search and the breadcrumb never disagree. */
+function searchLineage(doc: SearchDoc): string[] {
+  return taxonViewHeader({
+    taxonId: text(doc.taxon_id),
+    lineageIds: stringList(doc.lineage_ids),
+    lineageNames: stringList(doc.lineage_names),
+    lineageRanks: stringList(doc.lineage_ranks),
+  }).ancestors.map((crumb) => crumb.name);
 }
 
 function describe(id: string, doc: SearchDoc, index: number): ResultRow {
@@ -212,7 +218,7 @@ function describe(id: string, doc: SearchDoc, index: number): ResultRow {
         ...base,
         key: taxonId || base.key,
         title: text(doc.taxon_name),
-        context: lineageNames(doc).slice(1, -1).slice(-3).join(" › "),
+        context: searchLineage(doc).join(" › "),
         facts: facts([
           ["Rank", text(doc.taxon_rank)],
           ["Genomes", counted(doc.genomes, "genome")],
@@ -439,7 +445,7 @@ function taxonMatchOf(doc: SearchDoc | undefined): TaxonMatch | null {
     href: isTaxonId(taxonId) ? taxonomyHref(taxonId) : null,
     genomes: Number(doc.genomes ?? 0),
     rank: rank.charAt(0).toUpperCase() + rank.slice(1),
-    parents: lineageNames(doc).slice(-3, -1),
+    parents: searchLineage(doc),
   };
 }
 

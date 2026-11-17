@@ -35,13 +35,13 @@ const digitsOnly = /^\d+$/;
 
 function taxonIdsOf(matches: Record<string, unknown>): string[] {
   const taxonomy = matches.taxonomy as
-    | { result?: { response?: { docs?: { taxon_id?: unknown }[] } } }
+    | { result?: { response?: { docs?: ({ taxon_id?: unknown } | null)[] } } }
     | undefined;
   const docs = taxonomy?.result?.response?.docs;
   if (!Array.isArray(docs)) return [];
   const ids = docs
     .map((doc) => {
-      const taxonId = doc.taxon_id;
+      const taxonId = doc?.taxon_id;
       return typeof taxonId === "number" || typeof taxonId === "string"
         ? String(taxonId)
         : "";

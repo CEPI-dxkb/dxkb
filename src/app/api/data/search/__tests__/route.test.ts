@@ -170,7 +170,7 @@ describe("POST /api/data/search", () => {
     });
   });
 
-  it("never puts a taxon ID that is not all digits into the count query", async () => {
+  it("never puts a taxon ID that is not all digits, or from a null doc, into the count query", async () => {
     let calls = 0;
     const seen = captureUpstream(() => {
       calls += 1;
@@ -182,6 +182,7 @@ describe("POST /api/data/search", () => {
                   numFound: 3,
                   docs: [
                     { taxon_id: "1),eq(genome_id,*" },
+                    null,
                     { taxon_name: "No ID" },
                     { taxon_id: 694009 },
                   ],

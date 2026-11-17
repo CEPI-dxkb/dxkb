@@ -286,7 +286,9 @@ test.describe("resource collection facet counts", () => {
     expect(reads).toHaveLength(2);
     // A keyword list leaves Deprecated genomes out, so every read carries that
     // base clause; the picked value never reaches the picked facet's own counts.
-    expect(rqlOf(reads[0])).toContain("ne(genome_status,Deprecated)");
+    for (const read of reads) {
+      expect(rqlOf(read)).toContain("ne(genome_status,Deprecated)");
+    }
     expect(
       reads.some((read) =>
         facetsOf(read).includes("genome_status") &&

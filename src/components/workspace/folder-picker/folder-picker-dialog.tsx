@@ -721,7 +721,7 @@ export function WorkspaceFolderPickerDialog({
       }}
     >
       <DialogContent
-        className="flex h-[min(42rem,calc(100dvh-2rem))] flex-col overflow-clip sm:max-w-5xl"
+        className="flex h-[min(42rem,calc(100dvh-2rem))] flex-col overflow-clip sm:max-w-[calc(100%-2rem)] md:w-[80rem]"
         showCloseButton={false}
         initialFocus={() =>
           stripRef.current?.querySelector<HTMLElement>(tabStopSelector) ?? true

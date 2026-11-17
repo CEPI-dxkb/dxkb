@@ -687,6 +687,18 @@ describe("WorkspaceFolderPickerDialog Show files and widths", () => {
     ).toEqual(["240", "180", "180"]);
   });
 
+  it("is wide enough for three default columns beside the places nav and info pane", async () => {
+    renderPicker();
+    await findOption("Home", "Experiments");
+
+    const dialog = screen.getByRole("dialog");
+    // Both classes are static strings, so jsdom can read them; layout itself is
+    // covered by the e2e spec.
+    expect(dialog).toHaveClass("md:w-[80rem]");
+    expect(dialog).toHaveClass("sm:max-w-[calc(100%-2rem)]");
+    expect(dialog).not.toHaveClass("sm:max-w-5xl");
+  });
+
   it("resizes a column from the keyboard and resets it on double click", async () => {
     const { user } = renderPicker();
     await findOption("Home", "Alpha");

@@ -719,6 +719,24 @@ test.describe("output folder picker: dialog size", () => {
     expect(await picker.dialogHeight()).toBe(800);
   });
 
+  test("keeps the dialog width separator off the info pane's scrollbar", async ({
+    page,
+  }) => {
+    const { picker } = await openBlast(page);
+    await picker.open();
+
+    // The separator is the popup's last 8px. A scroller running under it would hand a press
+    // on the scrollbar thumb to the dialog resize instead of scrolling the pane.
+    const scroller = await picker.infoScroller().boundingBox();
+    const separator = await picker.dialogWidthHandle().boundingBox();
+    expect(scroller && separator).toBeTruthy();
+    if (scroller && separator) {
+      expect(scroller.x + scroller.width).toBeLessThanOrEqual(
+        separator.x + 0.5,
+      );
+    }
+  });
+
   test("is not resizable on a phone", async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 812 });
     const { picker } = await openBlast(page);

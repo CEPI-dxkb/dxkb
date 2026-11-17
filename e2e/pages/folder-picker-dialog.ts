@@ -133,6 +133,11 @@ export class FolderPickerDialog {
     return this.dialog.getByRole("separator", { name: "Resize info pane" });
   }
 
+  /** The info pane's vertical scroller: the box that carries its scrollbar. */
+  infoScroller(): Locator {
+    return this.infoPaneHandle().locator("xpath=..").locator(".scrollbar-themed");
+  }
+
   /** The dialog's right edge: a drag moves it by twice the pointer travel, because the dialog is centred. */
   dialogWidthHandle(): Locator {
     return this.dialog.getByRole("separator", { name: "Resize dialog width" });

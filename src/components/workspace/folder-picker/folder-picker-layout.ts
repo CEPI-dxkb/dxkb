@@ -6,10 +6,10 @@ export const dialogHeightLimits = { min: 480, max: 1400, initial: 672 };
 /** 2rem: the room the dialog's CSS max-width and max-height keep free around it. */
 export const dialogGutter = 32;
 /**
- * Columns at this index or deeper are neither stored nor read back, so they always show
- * their default width. That is far deeper than any real workspace nesting the picker
- * shows; `columnEntry` applies the cap to both directions so a column the picker lets the
- * user resize is always one it remembers.
+ * A column at this index or deeper is neither stored nor read back: its handle still
+ * responds, but the change is dropped and the column keeps its default width. That is far
+ * deeper than any real workspace nesting the picker shows; `columnEntry` applies the cap
+ * to both directions, so every column below it is remembered.
  */
 export const maxStoredColumns = 32;
 

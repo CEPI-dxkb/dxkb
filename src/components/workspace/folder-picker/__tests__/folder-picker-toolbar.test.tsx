@@ -80,6 +80,32 @@ describe("FolderPickerToolbar", () => {
     ).toBeInTheDocument();
   });
 
+  it("opens each reason tooltip from the keyboard while the actions are unavailable", async () => {
+    const user = userEvent.setup();
+    renderToolbar({ unavailableReason: "Open a folder first." });
+
+    await user.tab();
+    expect(
+      await screen.findByText("New folder here: Open a folder first."),
+    ).toBeInTheDocument();
+
+    await user.tab();
+    expect(
+      await screen.findByText("Upload here: Open a folder first."),
+    ).toBeInTheDocument();
+  });
+
+  it("adds no extra tab stop when the actions are available", async () => {
+    const user = userEvent.setup();
+    renderToolbar({ unavailableReason: null });
+
+    await user.tab();
+
+    expect(
+      screen.getByRole("button", { name: "New folder here" }),
+    ).toHaveFocus();
+  });
+
   it("shows no tooltip when an action is available", async () => {
     const user = userEvent.setup();
     renderToolbar({ unavailableReason: null });

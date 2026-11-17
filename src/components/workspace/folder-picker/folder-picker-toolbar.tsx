@@ -70,7 +70,16 @@ function ToolbarAction({
   return (
     <TooltipProvider>
       <Tooltip disabled={unavailableReason === null}>
-        <TooltipTrigger render={<span className="inline-flex" />}>
+        {/* A disabled button takes no focus, so while a reason shows the wrapper is
+           the tab stop that opens it from the keyboard. */}
+        <TooltipTrigger
+          render={
+            <span
+              className="inline-flex"
+              tabIndex={unavailableReason === null ? undefined : 0}
+            />
+          }
+        >
           <Button
             type="button"
             variant="outline"

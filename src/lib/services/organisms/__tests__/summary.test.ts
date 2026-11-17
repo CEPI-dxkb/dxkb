@@ -16,6 +16,19 @@ afterEach(() => {
   delete process.env.BVBRC_WEBSITE_API_URL;
 });
 
+// `protein_structure` answers the experimental count the summary's `pdb` takes.
+function answerStructures(counts: Record<number, number>) {
+  server.use(
+    http.get(`${baseUrl}/protein_structure/`, ({ request }) => {
+      const search = decodeURIComponent(new URL(request.url).search);
+      const taxonId = Number(/eq\(taxon_lineage_ids,(\d+)\)/.exec(search)?.[1]);
+      return HttpResponse.json({
+        response: { numFound: counts[taxonId] ?? 0, docs: [] },
+      });
+    }),
+  );
+}
+
 describe("fetchOrganismSummary", () => {
   it("maps BV-BRC summary fields to camelCase", async () => {
     server.use(
@@ -31,6 +44,7 @@ describe("fetchOrganismSummary", () => {
         }),
       ),
     );
+    answerStructures({ 2: 70 });
 
     await expect(fetchOrganismSummary(2)).resolves.toEqual({
       count: 10,
@@ -39,11 +53,42 @@ describe("fetchOrganismSummary", () => {
       uniqueSpecies: 4,
       cds: 50,
       matPeptide: 6,
-      pdb: 7,
+      pdb: 70,
+    });
+  });
+
+  it("counts experimental structures, not summary_by_taxon's PDB", async () => {
+    server.use(
+      http.get(`${baseUrl}/data/summary_by_taxon/2`, () =>
+        HttpResponse.json({ count: 1, PDB: 31_134_082 }),
+      ),
+    );
+    answerStructures({ 2: 68_899 });
+
+    const summary = await fetchOrganismSummary(2);
+
+    expect(summary.pdb).toBe(68_899);
+  });
+
+  it("rejects with the structure count's own message when it fails", async () => {
+    server.use(
+      http.get(`${baseUrl}/data/summary_by_taxon/2`, () =>
+        HttpResponse.json({ count: 1, PDB: 5 }),
+      ),
+      http.get(`${baseUrl}/protein_structure/`, () =>
+        HttpResponse.text("BV-BRC overloaded", { status: 503 }),
+      ),
+    );
+
+    await expect(fetchOrganismSummary(2)).rejects.toMatchObject({
+      message:
+        "The BV-BRC data service is unavailable (HTTP 503 Service Unavailable: BV-BRC overloaded).",
+      source: "protein_structure count",
     });
   });
 
   it("throws the original upstream response text on non-2xx", async () => {
+    answerStructures({ 2: 1 });
     server.use(
       http.get(`${baseUrl}/data/summary_by_taxon/2`, () =>
         HttpResponse.text("BV-BRC overloaded", { status: 503 }),
@@ -58,6 +103,7 @@ describe("fetchOrganismSummary", () => {
   });
 
   it("throws on malformed numeric fields", async () => {
+    answerStructures({ 2: 1 });
     server.use(
       http.get(`${baseUrl}/data/summary_by_taxon/2`, () =>
         HttpResponse.json({
@@ -76,6 +122,7 @@ describe("fetchOrganismSummary", () => {
   });
 
   it("does not swallow abort errors", async () => {
+    answerStructures({ 2: 1 });
     const controller = new AbortController();
     controller.abort();
 
@@ -113,6 +160,9 @@ function omitFields(payload: Record<string, number>, fields: string[]) {
   );
 }
 
+// Experimental structures under cellular organisms and Viruses (live, 2026-11-13).
+const rootStructureCounts = { 131567: 79_938, 10239: 17_243 };
+
 function answerSummaries(cellular: object, viruses: object) {
   server.use(
     http.get(`${baseUrl}/data/summary_by_taxon/131567`, () =>
@@ -127,6 +177,7 @@ function answerSummaries(cellular: object, viruses: object) {
 describe("fetchCombinedOrganismSummary", () => {
   it("sums every field across the roots", async () => {
     answerSummaries(cellularPayload, virusesPayload);
+    answerStructures(rootStructureCounts);
 
     await expect(
       fetchCombinedOrganismSummary([131567, 10239]),
@@ -137,12 +188,13 @@ describe("fetchCombinedOrganismSummary", () => {
       uniqueSpecies: 158_487,
       cds: 7_836_769_744,
       matPeptide: 220_815_725,
-      pdb: 32_157_475,
+      pdb: 97_181,
     });
   });
 
   it("counts at least as many genomes as the Viruses root alone", async () => {
     answerSummaries(cellularPayload, virusesPayload);
+    answerStructures(rootStructureCounts);
 
     const viruses = await fetchOrganismSummary(10239);
     const combined = await fetchCombinedOrganismSummary([131567, 10239]);
@@ -158,6 +210,7 @@ describe("fetchCombinedOrganismSummary", () => {
       omitFields(cellularPayload, ["CDS", "mat_peptide"]),
       omitFields(virusesPayload, ["CDS", "unique_family"]),
     );
+    answerStructures(rootStructureCounts);
 
     const combined = await fetchCombinedOrganismSummary([131567, 10239]);
 
@@ -174,6 +227,7 @@ describe("fetchCombinedOrganismSummary", () => {
       omitFields(cellularPayload, ["count", "unique_family"]),
       virusesPayload,
     );
+    answerStructures(rootStructureCounts);
 
     const combined = await fetchCombinedOrganismSummary([131567, 10239]);
 
@@ -189,6 +243,7 @@ describe("fetchCombinedOrganismSummary", () => {
 
   it("returns exactly what fetchOrganismSummary returns for a single id", async () => {
     answerSummaries(cellularPayload, virusesPayload);
+    answerStructures(rootStructureCounts);
 
     await expect(fetchCombinedOrganismSummary([10239])).resolves.toEqual(
       await fetchOrganismSummary(10239),
@@ -196,6 +251,7 @@ describe("fetchCombinedOrganismSummary", () => {
   });
 
   it("rejects with the failing root's original message when one root is down", async () => {
+    answerStructures(rootStructureCounts);
     server.use(
       http.get(`${baseUrl}/data/summary_by_taxon/131567`, () =>
         HttpResponse.json(cellularPayload),
@@ -215,6 +271,7 @@ describe("fetchCombinedOrganismSummary", () => {
   });
 
   it("does not swallow abort errors", async () => {
+    answerStructures(rootStructureCounts);
     const controller = new AbortController();
     controller.abort();
 

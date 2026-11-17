@@ -78,6 +78,29 @@ describe("fetchDbStatistics", () => {
     expect(counts.proteinFeatures).toBe(600);
   });
 
+  it("counts PDB structures only: the protein_structure query leaves out predicted models", async () => {
+    const queries: string[] = [];
+    // The catch-all core handler goes first: MSW takes the latest handler first.
+    mockAllCores({
+      genome: 1,
+      genome_feature: 1,
+      taxonomy: 1,
+      epitope: 1,
+      protein_feature: 1,
+    });
+    server.use(
+      http.get(`${dataApi}/protein_structure/`, ({ request }) => {
+        queries.push(decodeURIComponent(new URL(request.url).search));
+        return solrCount(106_967);
+      }),
+    );
+
+    const { counts } = await fetchDbStatistics();
+
+    expect(queries).toEqual(["?ne(method,Predicted)&limit(1)"]);
+    expect(counts.proteinStructures).toBe(106_967);
+  });
+
   it("returns null for a single failed metric and numbers for the rest", async () => {
     server.use(
       http.get(`${dataApi}/protein_structure/`, () =>
@@ -180,7 +203,7 @@ describe("fetchDbStatistics", () => {
     expect(capturedAccepts.every((a) => a === "application/solr+json")).toBe(true);
   });
 
-  it("leaves Deprecated genomes out of the two genome counts and requests the other six as before", async () => {
+  it("leaves Deprecated genomes out of the two genome counts and requests the other six with their own filters", async () => {
     vi.spyOn(console, "error").mockImplementation(() => undefined);
     const requested: string[] = [];
     const countByUrl: Partial<Record<string, number>> = {
@@ -189,7 +212,7 @@ describe("fetchDbStatistics", () => {
       [`${dataApi}/taxonomy/?and(eq(taxon_rank,species),eq(lineage,*Viruses*))&limit(1)`]: 3,
       [`${dataApi}/epitope/?limit(1)`]: 4,
       [`${dataApi}/taxonomy/?limit(1)`]: 5,
-      [`${dataApi}/protein_structure/?limit(1)`]: 6,
+      [`${dataApi}/protein_structure/?ne(method,Predicted)&limit(1)`]: 6,
       [`${dataApi}/protein_feature/?limit(1)`]: 7,
       [`${dataApi}/genome/?ne(genome_status,Deprecated)&limit(1)`]: 8,
     };

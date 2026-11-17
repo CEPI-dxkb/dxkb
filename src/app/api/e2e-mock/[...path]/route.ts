@@ -128,6 +128,28 @@ function isViralStructureCountClause(clause: string): boolean {
   );
 }
 
+/**
+ * The home "PDB Structures" statistic: predicted models left out, nothing
+ * else. The scope is spelled out, not imported, so a product regression (an
+ * unfiltered count) cannot drag the mock along and still read as 4567.
+ */
+function isHomeStructureCount(clauses: readonly string[]): boolean {
+  return clauses.length === 2 && clauses.includes("ne(method,Predicted)");
+}
+
+/**
+ * A Quick Access viral structure count: `limit(1)` plus at least one direct
+ * viral filter. A bare `limit(1)` (an unfiltered count) is not one.
+ */
+function isViralStructureCount(clauses: readonly string[]): boolean {
+  return (
+    clauses.some(isViralStructureCountClause) &&
+    clauses.every(
+      (clause) => clause === "limit(1)" || isViralStructureCountClause(clause),
+    )
+  );
+}
+
 function maybeSolrCount(
   path: string,
   request: NextRequest,
@@ -153,10 +175,8 @@ function maybeSolrCount(
           "and(eq(taxon_rank,species),eq(lineage,*Viruses*))",
         ))) ||
       (core === "protein_structure" &&
-        query.clauses.every(
-          (clause) =>
-            clause === "limit(1)" || isViralStructureCountClause(clause),
-        )));
+        (isHomeStructureCount(query.clauses) ||
+          isViralStructureCount(query.clauses))));
   if (isStatisticsCount) {
     return buildLoopbackSolrEnvelope([], {
       numFound: e2eDeterministicCounts[core],
@@ -952,6 +972,57 @@ function maybeBvBrcWebsite(
       };
     }
     return { kind: "ok", body: solrFacet(field, count) };
+  }
+
+  if (endpoint === "protein_structure" || endpoint === "protein_structure/") {
+    const query = parseFixtureQuery(request);
+
+    // Organism PDB tile: a taxon's experimental structures, answered with the
+    // summary fixture's `PDB` so the tile value stays what it was. Answered
+    // only for a request that leaves out predicted (AlphaFold) models; the
+    // scope is spelled out, not imported, so a product regression cannot drag
+    // the mock along.
+    const rawTaxonId = equalsValue(query, "taxon_lineage_ids");
+    const summary =
+      rawTaxonId === undefined
+        ? undefined
+        : findOrganismSummaryRecord(rawTaxonId);
+    if (rawTaxonId === undefined || summary === undefined) {
+      return {
+        kind: "unhandled",
+        reason: `no structure count fixture for taxon ${rawTaxonId ?? "(none)"} — add a summary to organismSummaryRecords in src/lib/e2e-fixtures/records.ts`,
+      };
+    }
+    const structureScope = `and(eq(taxon_lineage_ids,${rawTaxonId}),ne(method,Predicted))`;
+    if (!hasClause(query, structureScope)) {
+      return {
+        kind: "unhandled",
+        reason: `structure count for taxon ${rawTaxonId} does not leave out predicted models — expected the clause ${structureScope}`,
+      };
+    }
+    // Only the exact count the product sends (scope and limit(1), in any
+    // order): an extra filter would otherwise still read as the fixture count.
+    const expectedClauses = [structureScope, "limit(1)"];
+    const unexpected = query.clauses.filter(
+      (clause) => !expectedClauses.includes(clause),
+    );
+    const missing = expectedClauses.filter(
+      (clause) => !query.clauses.includes(clause),
+    );
+    if (
+      query.clauses.length !== expectedClauses.length ||
+      unexpected.length > 0 ||
+      missing.length > 0
+    ) {
+      return {
+        kind: "unhandled",
+        reason: `structure count for taxon ${rawTaxonId}: expected exactly the clauses ${structureScope} and limit(1), got ${query.clauses.join("&")}${unexpected.length > 0 ? ` (unexpected clauses: ${unexpected.join(", ")})` : ""}`,
+      };
+    }
+    return {
+      kind: "ok",
+      body: { response: { numFound: summary.PDB, docs: [] } },
+    };
   }
 
   return {

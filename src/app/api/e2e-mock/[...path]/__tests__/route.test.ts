@@ -94,11 +94,16 @@ describe("api/e2e-mock catch-all — enabled", () => {
       "and(eq(taxon_rank,species),eq(lineage,*Viruses*))&",
       23456,
     ],
-    ["protein_structure", "", 4567],
+    ["protein_structure", "ne(method,Predicted)&", 4567],
     ["protein_structure", "eq(taxon_lineage_ids,10239)&", 4567],
     [
       "protein_structure",
       "and(eq(taxon_lineage_ids,10239),eq(method,Predicted))&",
+      4567,
+    ],
+    [
+      "protein_structure",
+      "and(eq(taxon_lineage_ids,10239),ne(method,Predicted))&",
       4567,
     ],
     [
@@ -123,6 +128,21 @@ describe("api/e2e-mock catch-all — enabled", () => {
       });
     },
   );
+
+  it("does not answer the home PDB count for an unfiltered protein_structure count", async () => {
+    // The statistic leaves out predicted models; an unfiltered count is a
+    // regression that must not read as the deterministic 4567.
+    const resp = await GET(
+      mockNextRequest({
+        url: "http://localhost:3020/api/e2e-mock/data/protein_structure/?limit(1)",
+        headers: { Accept: "application/solr+json" },
+      }),
+      ctx(["data", "protein_structure"]),
+    );
+
+    const body = (await resp.json()) as { response: { numFound: number } };
+    expect(body.response.numFound).not.toBe(4567);
+  });
 
   it.each([
     ["a longer lineage id", "eq(taxon_lineage_ids,102390)&"],
@@ -425,6 +445,102 @@ describe("api/e2e-mock catch-all — enabled", () => {
 
     expect(resp.status).toBe(400);
   });
+
+  it.each(["2", "234", "10239", "131567"])(
+    "GET answers the experimental structure count for taxon %s from its summary fixture",
+    async (taxonId) => {
+      const resp = await GET(
+        mockNextRequest({
+          url: `http://localhost:3020/api/e2e-mock/bvbrc-website/protein_structure/?and(eq(taxon_lineage_ids,${taxonId}),ne(method,Predicted))&limit(1)`,
+        }),
+        ctx(["bvbrc-website", "protein_structure"]),
+      );
+
+      expect(resp.status).toBe(200);
+      expect((await resp.json()) as unknown).toEqual({
+        response: {
+          numFound: findOrganismSummaryRecord(taxonId)?.PDB,
+          docs: [],
+        },
+      });
+    },
+  );
+
+  it("GET answers the structure count whatever the clause order", async () => {
+    const resp = await GET(
+      mockNextRequest({
+        url: "http://localhost:3020/api/e2e-mock/bvbrc-website/protein_structure/?limit(1)&and(eq(taxon_lineage_ids,2),ne(method,Predicted))",
+      }),
+      ctx(["bvbrc-website", "protein_structure"]),
+    );
+
+    expect(resp.status).toBe(200);
+    expect((await resp.json()) as unknown).toMatchObject({
+      response: { numFound: 9821 },
+    });
+  });
+
+  it("GET answers the bacteria structure count with the summary's PDB value", async () => {
+    const resp = await GET(
+      mockNextRequest({
+        url: "http://localhost:3020/api/e2e-mock/bvbrc-website/protein_structure/?and(eq(taxon_lineage_ids,2),ne(method,Predicted))&limit(1)",
+      }),
+      ctx(["bvbrc-website", "protein_structure"]),
+    );
+
+    expect((await resp.json()) as unknown).toMatchObject({
+      response: { numFound: 9821 },
+    });
+  });
+
+  it.each([
+    [
+      "does not leave out predicted models",
+      "?eq(taxon_lineage_ids,2)&limit(1)",
+      "does not leave out predicted models",
+    ],
+    [
+      "has no taxon",
+      "?ne(method,Predicted)&limit(1)",
+      "no structure count fixture for taxon (none)",
+    ],
+    [
+      "names a taxon without a fixture",
+      "?and(eq(taxon_lineage_ids,999999),ne(method,Predicted))&limit(1)",
+      "no structure count fixture for taxon 999999",
+    ],
+    [
+      "adds a filter beside the scope",
+      "?and(eq(taxon_lineage_ids,2),ne(method,Predicted))&eq(pdb_id,missing)&limit(1)",
+      "unexpected clauses: eq(pdb_id,missing)",
+    ],
+    [
+      "sends the scope without limit(1)",
+      "?and(eq(taxon_lineage_ids,2),ne(method,Predicted))",
+      "expected exactly the clauses and(eq(taxon_lineage_ids,2),ne(method,Predicted)) and limit(1)",
+    ],
+    [
+      "repeats the scope in place of limit(1)",
+      "?and(eq(taxon_lineage_ids,2),ne(method,Predicted))&and(eq(taxon_lineage_ids,2),ne(method,Predicted))",
+      "expected exactly the clauses and(eq(taxon_lineage_ids,2),ne(method,Predicted)) and limit(1)",
+    ],
+  ])(
+    "GET fails closed on a structure count that %s",
+    async (_name, query, reason) => {
+      const resp = await GET(
+        mockNextRequest({
+          url: `http://localhost:3020/api/e2e-mock/bvbrc-website/protein_structure/${query}`,
+        }),
+        ctx(["bvbrc-website", "protein_structure"]),
+      );
+
+      expect(resp.status).toBe(400);
+      expect((await resp.json()) as unknown).toMatchObject({
+        error: "e2e-mock: unhandled bvbrc-website request",
+        reason: expect.stringContaining(reason) as unknown,
+      });
+    },
+  );
 
   it("GET returns SOLR-shaped bacteria genome facet fixtures", async () => {
     const resp = await GET(

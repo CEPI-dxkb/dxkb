@@ -2,13 +2,13 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ComponentProps } from "react";
 import { FolderPickerToolbar } from "@/components/workspace/folder-picker/folder-picker-toolbar";
+import { settleBackgroundWork } from "@/test-helpers/settle";
 
 type Props = ComponentProps<typeof FolderPickerToolbar>;
 
 function renderToolbar(overrides: Partial<Props> = {}) {
   const props: Props = {
     showNewFolder: true,
-    isUploadOpen: false,
     unavailableReason: null,
     onNewFolder: vi.fn(),
     onUpload: vi.fn(),
@@ -80,15 +80,13 @@ describe("FolderPickerToolbar", () => {
     ).toBeInTheDocument();
   });
 
-  it("marks Upload pressed while its form is open and New folder never", () => {
-    renderToolbar({ isUploadOpen: true });
+  it("shows no tooltip when an action is available", async () => {
+    const user = userEvent.setup();
+    renderToolbar({ unavailableReason: null });
 
-    expect(screen.getByRole("button", { name: "Upload here" })).toHaveAttribute(
-      "aria-pressed",
-      "true",
-    );
-    expect(
-      screen.getByRole("button", { name: "New folder here" }),
-    ).not.toHaveAttribute("aria-pressed");
+    await user.hover(screen.getByRole("button", { name: "Upload here" }));
+    await settleBackgroundWork();
+
+    expect(screen.queryByText(/^Upload here:/)).not.toBeInTheDocument();
   });
 });

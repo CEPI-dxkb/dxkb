@@ -11,7 +11,6 @@ import {
 interface FolderPickerToolbarProps {
   /** A file picker can't create folders, so it shows Upload alone. */
   showNewFolder: boolean;
-  isUploadOpen: boolean;
   /** From `toolbarUnavailableReason`: null when both actions can be used. */
   unavailableReason: string | null;
   onNewFolder: () => void;
@@ -25,7 +24,6 @@ interface FolderPickerToolbarProps {
  */
 export function FolderPickerToolbar({
   showNewFolder,
-  isUploadOpen,
   unavailableReason,
   onNewFolder,
   onUpload,
@@ -47,7 +45,6 @@ export function FolderPickerToolbar({
       <ToolbarAction
         icon={<Upload data-icon="inline-start" />}
         label="Upload here"
-        pressed={isUploadOpen}
         unavailableReason={unavailableReason}
         onClick={onUpload}
       />
@@ -56,34 +53,29 @@ export function FolderPickerToolbar({
 }
 
 /**
- * The tooltip is always mounted and only switched off, so a button never remounts (and
- * never loses focus) when its reason appears or clears.
+ * The tooltip is always mounted and only switched off, so a button never remounts when
+ * its reason appears or clears.
  */
 function ToolbarAction({
   icon,
   label,
-  pressed,
   unavailableReason,
   onClick,
 }: {
   icon: ReactNode;
   label: string;
-  pressed?: boolean;
   unavailableReason: string | null;
   onClick: () => void;
 }) {
   return (
     <TooltipProvider>
       <Tooltip disabled={unavailableReason === null}>
-        <TooltipTrigger
-          render={<span className="inline-flex cursor-not-allowed" />}
-        >
+        <TooltipTrigger render={<span className="inline-flex" />}>
           <Button
             type="button"
             variant="outline"
             size="sm"
             disabled={unavailableReason !== null}
-            aria-pressed={pressed}
             onClick={onClick}
           >
             {icon}

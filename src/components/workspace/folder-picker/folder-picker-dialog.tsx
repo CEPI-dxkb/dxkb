@@ -474,7 +474,6 @@ function FolderColumnsBrowser({
 
       <FolderPickerToolbar
         showNewFolder={!isPickingFiles}
-        isUploadOpen={isUploadOpen}
         unavailableReason={unavailableReason}
         onNewFolder={openNewFolder}
         onUpload={openUpload}

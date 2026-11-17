@@ -64,6 +64,7 @@ describe("WorkspaceFolderPickerDialog upload pane", () => {
     expect(
       screen.queryByRole("button", { name: "Start Upload" }),
     ).not.toBeInTheDocument();
+    expect(screen.getByText("Where", { selector: "dt" })).toBeInTheDocument();
     await waitFor(async () => {
       expect(await findOption("Home", "Alpha")).toHaveFocus();
     });
@@ -77,6 +78,7 @@ describe("WorkspaceFolderPickerDialog upload pane", () => {
     expect(
       screen.queryByRole("button", { name: "Start Upload" }),
     ).not.toBeInTheDocument();
+    expect(screen.getByText("Where", { selector: "dt" })).toBeInTheDocument();
   });
 
   it("uploads into Home when Home is selected", async () => {
@@ -95,9 +97,7 @@ describe("WorkspaceFolderPickerDialog upload pane", () => {
     await user.click(await findOption("Home", "Experiments"));
 
     expect(screen.queryByText("Upload to “Alpha”")).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole("button", { name: "Start Upload" }),
-    ).not.toBeInTheDocument();
+    expect(screen.getByText("Where", { selector: "dt" })).toBeInTheDocument();
   });
 
   it("widens the info pane to fit the form while it is open", async () => {
@@ -193,13 +193,8 @@ describe("WorkspaceFolderPickerDialog upload pane", () => {
     expect(screen.getByRole("button", { name: "Upload here" })).toBeEnabled();
   });
 
-  it("marks Upload pressed while the form is open, and New folder closes the form", async () => {
+  it("New folder closes the upload form and opens the name row", async () => {
     const { user } = await openUpload();
-
-    expect(screen.getByRole("button", { name: "Upload here" })).toHaveAttribute(
-      "aria-pressed",
-      "true",
-    );
 
     await user.click(screen.getByRole("button", { name: "New folder here" }));
 
@@ -207,9 +202,5 @@ describe("WorkspaceFolderPickerDialog upload pane", () => {
     expect(
       screen.getByRole("textbox", { name: "New folder name" }),
     ).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Upload here" })).toHaveAttribute(
-      "aria-pressed",
-      "false",
-    );
   });
 });

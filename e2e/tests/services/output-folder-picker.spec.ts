@@ -305,6 +305,9 @@ test.describe("output folder picker: choosing", () => {
     await expect(picker.cancelButton).toBeDisabled();
     await expect(picker.newFolderButton).toBeDisabled();
     await expect(picker.uploadButton).toBeDisabled();
+    await expect(
+      picker.dialog.getByText("Upload to “Experiments”"),
+    ).toBeVisible();
     await page.keyboard.press("Escape");
     await expect(picker.dialog).toBeVisible();
 
@@ -484,6 +487,7 @@ test.describe("output folder picker: layout", () => {
       expect(strip.width).toBeGreaterThanOrEqual(dialog.width - 1);
       expect(strip.height).toBeGreaterThan(160);
       expect(places.y + places.height).toBeLessThanOrEqual(strip.y + 1);
+      expect(action.y).toBeGreaterThanOrEqual(dialog.y);
       expect(action.y + action.height).toBeLessThanOrEqual(places.y + 1);
       expect(action.x).toBeGreaterThanOrEqual(dialog.x);
       expect(action.x + action.width).toBeLessThanOrEqual(

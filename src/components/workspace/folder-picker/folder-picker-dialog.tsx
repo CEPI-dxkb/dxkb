@@ -54,7 +54,7 @@ import { cn } from "@/lib/utils";
 import { FolderPickerActions } from "./folder-picker-actions";
 import { FolderPickerBreadcrumb } from "./folder-picker-breadcrumb";
 import { FolderPickerColumn } from "./folder-picker-column";
-import { DialogCornerGrip } from "./folder-picker-dialog-resize";
+import { DialogResizeHandles } from "./folder-picker-dialog-resize";
 import { FolderPickerHeader } from "./folder-picker-header";
 import {
   canMaximize,
@@ -855,7 +855,8 @@ export function WorkspaceFolderPickerDialog({
         />
         {/* Last in the popup so they follow its content in the tab order, and inside it
            so Base UI does not take a drag for an outside press; `right-0` because the
-           popup clips anything past its edge. */}
+           popup clips anything past its edge. The separator is the east side; the
+           pointer handles below take every other side and corner. */}
         <PaneResizeHandle
           edge="end"
           label="Resize dialog width"
@@ -883,9 +884,10 @@ export function WorkspaceFolderPickerDialog({
               height: remembered.height,
             });
           }}
+          showPointerLine={false}
           className="right-0 hidden md:block"
         />
-        <DialogCornerGrip
+        <DialogResizeHandles
           size={size}
           remembered={remembered}
           viewport={viewport}

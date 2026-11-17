@@ -63,7 +63,7 @@ export function FolderPickerActions({
       />
       <Button
         type="button"
-        variant="outline"
+        variant="soft"
         className="col-span-full w-full"
         aria-pressed={showFiles}
         onClick={() => {

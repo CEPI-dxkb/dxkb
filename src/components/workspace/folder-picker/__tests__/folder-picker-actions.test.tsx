@@ -32,7 +32,7 @@ describe("FolderPickerActions", () => {
     expect(names).toEqual(["New folder here", "Upload here", "Show files"]);
   });
 
-  it("tints New folder and Upload so they stand out, and leaves the toggle outlined", () => {
+  it("tints all three buttons the same so they stand out", () => {
     renderActions();
 
     expect(
@@ -44,7 +44,7 @@ describe("FolderPickerActions", () => {
     );
     expect(screen.getByRole("button", { name: "Show files" })).toHaveAttribute(
       "data-variant",
-      "outline",
+      "soft",
     );
   });
 

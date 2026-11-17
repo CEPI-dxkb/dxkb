@@ -8,8 +8,10 @@ import {
   maximizeDialogSize,
   parsePickerLayout,
   rememberUntouchedAxes,
+  resizeDialogByEdge,
   resizeDialogSize,
   serializePickerLayout,
+  type ResizeEdge,
 } from "../folder-picker-layout";
 
 const desktop = { width: 1600, height: 900 };
@@ -56,6 +58,165 @@ describe("resizeDialogSize", () => {
       width: 720,
       height: 600,
     });
+  });
+});
+
+describe("resizeDialogByEdge", () => {
+  const start = { width: 1000, height: 600 };
+  // The pointer travelled 30px right and 20px down since the press.
+  const rightAndDown: readonly (readonly [
+    edge: ResizeEdge,
+    size: { width: number; height: number },
+  ])[] = [
+    // East and south follow the travel; west and north take it reversed, so dragging
+    // them toward the centre (right, down) shrinks the dialog.
+    ["e", { width: 1060, height: 600 }],
+    ["s", { width: 1000, height: 640 }],
+    ["w", { width: 940, height: 600 }],
+    ["n", { width: 1000, height: 560 }],
+    ["se", { width: 1060, height: 640 }],
+    ["ne", { width: 1060, height: 560 }],
+    ["sw", { width: 940, height: 640 }],
+    ["nw", { width: 940, height: 560 }],
+  ];
+
+  it.each(rightAndDown)(
+    "%s moves by twice the signed travel when the pointer goes right and down",
+    (edge, expected) => {
+      expect(resizeDialogByEdge(edge, start, 30, 20, desktop)).toEqual(expected);
+    },
+  );
+
+  it.each(rightAndDown)(
+    "%s does the opposite when the pointer goes left and up",
+    (edge, expected) => {
+      // Mirrored around `start`: what grew shrinks by the same amount, and the reverse.
+      const mirrored = {
+        width: 2 * start.width - expected.width,
+        height: 2 * start.height - expected.height,
+      };
+      expect(resizeDialogByEdge(edge, start, -30, -20, desktop)).toEqual(mirrored);
+    },
+  );
+
+  it("grows the west edge by twice its outward travel and leaves the height alone", () => {
+    expect(resizeDialogByEdge("w", start, -50, 0, desktop)).toEqual({
+      width: 1100,
+      height: 600,
+    });
+  });
+
+  it("grows the north edge by twice its outward travel and leaves the width alone", () => {
+    expect(resizeDialogByEdge("n", start, 0, -50, desktop)).toEqual({
+      width: 1000,
+      height: 700,
+    });
+  });
+
+  it("grows the north-west corner on both axes", () => {
+    expect(resizeDialogByEdge("nw", start, -50, -30, desktop)).toEqual({
+      width: 1100,
+      height: 660,
+    });
+  });
+
+  it.each(["w", "e"] as const)(
+    "ignores the vertical travel of the %s edge",
+    (edge) => {
+      expect(resizeDialogByEdge(edge, start, 10, 400, desktop).height).toBe(
+        start.height,
+      );
+      expect(resizeDialogByEdge(edge, start, 10, -400, desktop).height).toBe(
+        start.height,
+      );
+    },
+  );
+
+  it.each(["n", "s"] as const)(
+    "ignores the horizontal travel of the %s edge",
+    (edge) => {
+      expect(resizeDialogByEdge(edge, start, 400, 10, desktop).width).toBe(
+        start.width,
+      );
+      expect(resizeDialogByEdge(edge, start, -400, 10, desktop).width).toBe(
+        start.width,
+      );
+    },
+  );
+
+  it("is resizeDialogSize for the south-east corner, which the pointer drags the way it moves", () => {
+    expect(resizeDialogByEdge("se", start, 37, -12, desktop)).toEqual(
+      resizeDialogSize(start, 37, -12, desktop),
+    );
+  });
+
+  it("stops at the minimum size however far a side is dragged inward", () => {
+    expect(resizeDialogByEdge("w", start, 5000, 0, desktop)).toEqual({
+      width: 720,
+      height: 600,
+    });
+    expect(resizeDialogByEdge("n", start, 0, 5000, desktop)).toEqual({
+      width: 1000,
+      height: 480,
+    });
+    expect(resizeDialogByEdge("se", start, -5000, -5000, desktop)).toEqual({
+      width: 720,
+      height: 480,
+    });
+    expect(resizeDialogByEdge("nw", start, 5000, 5000, desktop)).toEqual({
+      width: 720,
+      height: 480,
+    });
+  });
+
+  it("stops at the window less the gutter however far a side is dragged outward", () => {
+    expect(resizeDialogByEdge("w", start, -5000, 0, desktop)).toEqual({
+      width: 1568,
+      height: 600,
+    });
+    expect(resizeDialogByEdge("n", start, 0, -5000, desktop)).toEqual({
+      width: 1000,
+      height: 868,
+    });
+    expect(resizeDialogByEdge("nw", start, -5000, -5000, desktop)).toEqual({
+      width: 1568,
+      height: 868,
+    });
+    expect(resizeDialogByEdge("ne", start, 5000, -5000, desktop)).toEqual({
+      width: 1568,
+      height: 868,
+    });
+    expect(resizeDialogByEdge("sw", start, -5000, 5000, desktop)).toEqual({
+      width: 1568,
+      height: 868,
+    });
+  });
+
+  it("stops at the size limits on a window bigger than they are", () => {
+    const huge = { width: 4000, height: 3000 };
+    expect(
+      resizeDialogByEdge("nw", { width: 1900, height: 1350 }, -100, -100, huge),
+    ).toEqual({ width: 1920, height: 1400 });
+    expect(
+      resizeDialogByEdge("se", { width: 1900, height: 1350 }, 100, 100, huge),
+    ).toEqual({ width: 1920, height: 1400 });
+  });
+
+  it("leaves a dialog the window already clamps at that size, so nothing visible changes", () => {
+    const small = { width: 1000, height: 700 };
+    const clamped = { width: 968, height: 668 };
+    expect(resizeDialogByEdge("w", clamped, -50, 0, small)).toEqual(clamped);
+    expect(resizeDialogByEdge("n", clamped, 0, -50, small)).toEqual(clamped);
+    expect(resizeDialogByEdge("nw", clamped, -50, -50, small)).toEqual(clamped);
+    // Which `rememberUntouchedAxes` then reads as untouched, so a wider remembered size
+    // is not overwritten by the clamped one.
+    expect(
+      rememberUntouchedAxes(
+        resizeDialogByEdge("w", clamped, -50, 0, small),
+        clamped,
+        { width: 1500, height: 800 },
+      ),
+    ).toEqual({ width: 1500, height: 800 });
   });
 });
 

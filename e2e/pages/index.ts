@@ -44,5 +44,7 @@ export {
   FolderPickerDialog,
   browseButtonFor,
   selectorInputFor,
+  pointerResizeDirections,
   type FolderPickerDialogOptions,
+  type PointerResizeDirection,
 } from "./folder-picker-dialog";

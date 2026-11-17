@@ -15,6 +15,8 @@ interface ResizeHandleProps {
   keyboardStep?: number;
   /** Double-click; by default the handle resizes to `limits.initial`. */
   onReset?: () => void;
+  /** Whether hovering or dragging draws the blue line; keyboard focus always does. */
+  showPointerLine?: boolean;
   className?: string;
 }
 
@@ -29,6 +31,7 @@ export function PaneResizeHandle({
   pointerScale = 1,
   keyboardStep = defaultKeyboardStep,
   onReset,
+  showPointerLine = true,
   className,
 }: ResizeHandleProps) {
   const dragRef = useRef<{ x: number; width: number } | null>(null);
@@ -85,7 +88,10 @@ export function PaneResizeHandle({
     >
       <span
         aria-hidden
-        className="absolute inset-y-0 left-1/2 w-0.5 -translate-x-1/2 transition-colors group-hover:bg-info/50 group-focus-visible:bg-info group-active:bg-info"
+        className={cn(
+          "absolute inset-y-0 left-1/2 w-0.5 -translate-x-1/2 transition-colors group-focus-visible:bg-info",
+          showPointerLine && "group-hover:bg-info/50 group-active:bg-info",
+        )}
       />
     </div>
   );

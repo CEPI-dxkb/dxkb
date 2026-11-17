@@ -47,36 +47,39 @@ export function FolderPickerHeader({
         </div>
         <div className="flex shrink-0 items-center gap-4">
           <KeyboardHints />
-          {/* The dialog is sized only from md up, so below that there is nothing to expand. */}
-          {canToggleExpanded ? (
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon-sm"
-              className="hidden md:inline-flex"
-              aria-label={expandLabel}
-              title={expandLabel}
-              onClick={onToggleExpanded}
-            >
-              {isExpanded ? <Minimize2 /> : <Maximize2 />}
-            </Button>
-          ) : null}
-          {/* Disabled, not hidden, mid-upload so the row doesn't shift; the
-             dialog's own corner button sits 8px higher than the rest of the row. */}
-          <DialogClose
-            disabled={isUploading}
-            render={
+          {/* The two buttons sit 8px apart, like the other buttons in the popup. */}
+          <div className="flex items-center gap-2">
+            {/* The dialog is sized only from md up, so below that there is nothing to expand. */}
+            {canToggleExpanded ? (
               <Button
                 type="button"
-                variant="ghost"
+                variant="outline"
                 size="icon-sm"
-                aria-label="Close"
-                title="Close"
+                className="hidden md:inline-flex"
+                aria-label={expandLabel}
+                title={expandLabel}
+                onClick={onToggleExpanded}
               >
-                <XIcon />
+                {isExpanded ? <Minimize2 /> : <Maximize2 />}
               </Button>
-            }
-          />
+            ) : null}
+            {/* Disabled, not hidden, mid-upload so the row doesn't shift; the
+               dialog's own corner button sits 8px higher than the rest of the row. */}
+            <DialogClose
+              disabled={isUploading}
+              render={
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon-sm"
+                  aria-label="Close"
+                  title="Close"
+                >
+                  <XIcon />
+                </Button>
+              }
+            />
+          </div>
         </div>
       </div>
     </DialogHeader>

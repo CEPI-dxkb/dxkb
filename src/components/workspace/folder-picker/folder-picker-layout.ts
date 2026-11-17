@@ -74,6 +74,42 @@ export function resizeDialogSize(
   );
 }
 
+/** A side of the dialog, or a corner, by compass point: the part a resize drags. */
+export type ResizeEdge = "n" | "s" | "e" | "w" | "nw" | "ne" | "sw" | "se";
+
+/**
+ * Which way the pointer's travel moves each axis. Dragging a side outward grows the dialog
+ * and dragging it inward shrinks it, so the east and south sides take the travel as it is
+ * and the west and north sides take it reversed; a side that does not touch an axis (an
+ * edge touches one, a corner two) takes none of it.
+ */
+const edgeSigns: Record<ResizeEdge, { x: -1 | 0 | 1; y: -1 | 0 | 1 }> = {
+  n: { x: 0, y: -1 },
+  s: { x: 0, y: 1 },
+  e: { x: 1, y: 0 },
+  w: { x: -1, y: 0 },
+  nw: { x: -1, y: -1 },
+  ne: { x: 1, y: -1 },
+  sw: { x: -1, y: 1 },
+  se: { x: 1, y: 1 },
+};
+
+/**
+ * `resizeDialogSize` for a drag of one side or corner, where `dx` and `dy` are the pointer's
+ * travel since the press. An axis the side does not touch comes back as `start` has it, so
+ * `rememberUntouchedAxes` leaves what is remembered for it alone.
+ */
+export function resizeDialogByEdge(
+  edge: ResizeEdge,
+  start: DialogSize,
+  dx: number,
+  dy: number,
+  viewport: Viewport,
+): DialogSize {
+  const signs = edgeSigns[edge];
+  return resizeDialogSize(start, signs.x * dx, signs.y * dy, viewport);
+}
+
 export function maximizeDialogSize(viewport: Viewport): DialogSize {
   return effectiveDialogSize(
     { width: Infinity, height: Infinity },

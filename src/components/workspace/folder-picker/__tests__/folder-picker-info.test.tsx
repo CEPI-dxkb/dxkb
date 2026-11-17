@@ -1,5 +1,4 @@
 import { render, screen } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
 import type { ComponentProps } from "react";
 import { FolderPickerInfo } from "@/components/workspace/folder-picker/folder-picker-preview";
 import type { WorkspaceItem } from "@/lib/services/workspace/domain";
@@ -27,9 +26,6 @@ function renderInfo(overrides: Partial<Props> = {}) {
     item: null,
     contents: { items: [], isLoading: false },
     commit: { canCommit: true, reason: null },
-    canChange: true,
-    onNewFolder: vi.fn(),
-    onUpload: vi.fn(),
     ...overrides,
   };
   render(<FolderPickerInfo {...props} />);
@@ -214,23 +210,9 @@ describe("FolderPickerInfo with a folder selected", () => {
     ).toBeInTheDocument();
   });
 
-  it("offers New folder and Upload where the user can write", async () => {
-    const user = userEvent.setup();
-    const { onNewFolder, onUpload } = renderInfo({ canChange: true });
+  it("has no New folder or Upload: those live in the picker toolbar", () => {
+    renderInfo();
 
-    await user.click(screen.getByRole("button", { name: "New folder here" }));
-    await user.click(screen.getByRole("button", { name: "Upload here" }));
-
-    expect(onNewFolder).toHaveBeenCalledTimes(1);
-    expect(onUpload).toHaveBeenCalledTimes(1);
-  });
-
-  it("disables New folder and Upload where the user cannot write", () => {
-    renderInfo({ canChange: false });
-
-    expect(
-      screen.getByRole("button", { name: "New folder here" }),
-    ).toBeDisabled();
-    expect(screen.getByRole("button", { name: "Upload here" })).toBeDisabled();
+    expect(screen.queryByRole("button")).not.toBeInTheDocument();
   });
 });

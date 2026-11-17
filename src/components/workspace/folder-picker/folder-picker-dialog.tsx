@@ -58,6 +58,7 @@ import {
   FolderPickerUpload,
 } from "./folder-picker-preview";
 import { PaneResizeHandle } from "./folder-picker-resize-handle";
+import { FolderPickerToolbar } from "./folder-picker-toolbar";
 import {
   columnWidthLimitsFor,
   folderTarget,
@@ -65,6 +66,7 @@ import {
   previewWidthLimits,
   rowSelector,
   tabStopSelector,
+  toolbarUnavailableReason,
   uploadPaneMinWidth,
 } from "./folder-picker-utils";
 import { useColumnStripMotion } from "./use-column-strip-motion";
@@ -443,6 +445,22 @@ function FolderColumnsBrowser({
       ? labelFor(selectedPath)
       : "";
   const isPickingFiles = target.kind === "object";
+  const unavailableReason = toolbarUnavailableReason({
+    isUploading,
+    folderPath,
+    hasListingError: listingError !== null,
+    canChange,
+  });
+  const openNewFolder = () => {
+    pendingFocusRef.current = null;
+    setIsUploadOpen(false);
+    setNaming(true);
+  };
+  const openUpload = () => {
+    pendingFocusRef.current = null;
+    setNaming(false);
+    setIsUploadOpen(true);
+  };
 
   return (
     <>
@@ -452,6 +470,14 @@ function FolderColumnsBrowser({
         showFiles={showFiles}
         onShowFilesChange={onShowFilesChange}
         isUploading={isUploading}
+      />
+
+      <FolderPickerToolbar
+        showNewFolder={!isPickingFiles}
+        isUploadOpen={isUploadOpen}
+        unavailableReason={unavailableReason}
+        onNewFolder={openNewFolder}
+        onUpload={openUpload}
       />
 
       <div className="-mx-4 -mb-4 flex min-h-0 flex-1 flex-col border-t md:flex-row">
@@ -598,17 +624,6 @@ function FolderColumnsBrowser({
               contents={contents}
               listingError={listingError}
               commit={commit}
-              canChange={canChange}
-              onNewFolder={() => {
-                pendingFocusRef.current = null;
-                setIsUploadOpen(false);
-                setNaming(true);
-              }}
-              onUpload={() => {
-                pendingFocusRef.current = null;
-                setNaming(false);
-                setIsUploadOpen(true);
-              }}
             />
           )}
         </div>

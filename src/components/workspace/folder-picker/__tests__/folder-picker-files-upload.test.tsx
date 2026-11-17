@@ -84,9 +84,7 @@ it("selects the file it just uploaded when it matches", async () => {
 it("leaves the selection on the folder when the upload doesn't match", async () => {
   await uploadInto("new.txt", "txt", "Finish text upload");
   await waitFor(() => {
-    expect(
-      screen.getByRole("button", { name: "Upload here" }),
-    ).toBeInTheDocument();
+    expect(screen.queryByText(/^Upload to /)).not.toBeInTheDocument();
   });
   expect(selectButton()).toHaveAccessibleName("Select “Alpha”");
 });

@@ -7,10 +7,8 @@ import {
   CircleAlert,
   CircleCheck,
   Folder,
-  FolderPlus,
   HardDrive,
   House,
-  Upload,
   type LucideIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -68,9 +66,6 @@ interface FolderPickerInfoProps {
   contents: { items: WorkspaceItem[]; isLoading: boolean; error?: Error | null };
   listingError?: Error | null;
   commit: { canCommit: boolean; reason: string | null };
-  canChange: boolean;
-  onNewFolder: () => void;
-  onUpload: () => void;
 }
 
 export function FolderPickerInfo({
@@ -82,9 +77,6 @@ export function FolderPickerInfo({
   contents,
   listingError = null,
   commit,
-  canChange,
-  onNewFolder,
-  onUpload,
 }: FolderPickerInfoProps) {
   if (!path) {
     const PlaceIcon = placeIcons[place];
@@ -188,38 +180,6 @@ export function FolderPickerInfo({
             okText="You can write here, so results can be saved in this folder."
           />
         )}
-
-        <div
-          className={cn(
-            "mt-auto grid gap-2 md:flex md:flex-col",
-            !isPickingFiles && "grid-cols-2",
-          )}
-        >
-          {isPickingFiles ? null : (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="w-full"
-              disabled={!canChange}
-              onClick={onNewFolder}
-            >
-              <FolderPlus data-icon="inline-start" />
-              New folder here
-            </Button>
-          )}
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="w-full"
-            disabled={!canChange}
-            onClick={onUpload}
-          >
-            <Upload data-icon="inline-start" />
-            Upload here
-          </Button>
-        </div>
       </div>
     </PaneFrame>
   );

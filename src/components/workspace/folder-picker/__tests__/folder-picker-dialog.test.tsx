@@ -634,8 +634,8 @@ describe("WorkspaceFolderPickerDialog info pane", () => {
       screen.getByText("Folders you used recently, newest first."),
     ).toBeInTheDocument();
     expect(
-      screen.queryByRole("button", { name: "New folder here" }),
-    ).not.toBeInTheDocument();
+      screen.getByRole("button", { name: "New folder here" }),
+    ).toBeDisabled();
   });
 });
 

@@ -62,8 +62,8 @@ describe("WorkspaceFolderPickerDialog upload pane", () => {
       screen.getByRole("button", { name: "Back to folder info" }),
     );
     expect(
-      screen.getByRole("button", { name: "Upload here" }),
-    ).toBeInTheDocument();
+      screen.queryByRole("button", { name: "Start Upload" }),
+    ).not.toBeInTheDocument();
     await waitFor(async () => {
       expect(await findOption("Home", "Alpha")).toHaveFocus();
     });
@@ -75,8 +75,8 @@ describe("WorkspaceFolderPickerDialog upload pane", () => {
     await user.click(screen.getByRole("button", { name: "Back" }));
 
     expect(
-      screen.getByRole("button", { name: "Upload here" }),
-    ).toBeInTheDocument();
+      screen.queryByRole("button", { name: "Start Upload" }),
+    ).not.toBeInTheDocument();
   });
 
   it("uploads into Home when Home is selected", async () => {
@@ -95,7 +95,9 @@ describe("WorkspaceFolderPickerDialog upload pane", () => {
     await user.click(await findOption("Home", "Experiments"));
 
     expect(screen.queryByText("Upload to “Alpha”")).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Upload here" })).toBeVisible();
+    expect(
+      screen.queryByRole("button", { name: "Start Upload" }),
+    ).not.toBeInTheDocument();
   });
 
   it("widens the info pane to fit the form while it is open", async () => {
@@ -153,6 +155,8 @@ describe("WorkspaceFolderPickerDialog upload pane", () => {
     expect(screen.getByRole("button", { name: "Close" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "Cancel" })).toBeDisabled();
     expect(selectButton()).toBeDisabled();
+    expect(screen.getByRole("button", { name: "New folder here" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Upload here" })).toBeDisabled();
     expect(
       screen.getByRole("button", { name: "Back to folder info" }),
     ).toBeDisabled();
@@ -185,5 +189,27 @@ describe("WorkspaceFolderPickerDialog upload pane", () => {
       "inert",
     );
     expect(selectButton()).toBeEnabled();
+    expect(screen.getByRole("button", { name: "New folder here" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Upload here" })).toBeEnabled();
+  });
+
+  it("marks Upload pressed while the form is open, and New folder closes the form", async () => {
+    const { user } = await openUpload();
+
+    expect(screen.getByRole("button", { name: "Upload here" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+
+    await user.click(screen.getByRole("button", { name: "New folder here" }));
+
+    expect(screen.queryByText("Upload to “Alpha”")).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("textbox", { name: "New folder name" }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Upload here" })).toHaveAttribute(
+      "aria-pressed",
+      "false",
+    );
   });
 });

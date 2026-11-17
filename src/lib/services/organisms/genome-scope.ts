@@ -38,10 +38,14 @@ export function genomeScopeRql(scope: GenomeScope): string {
  */
 export function genomeLinkedScopeClauses(scope: GenomeScope): string[] {
   if (typeof scope === "number") return [`genome(${genomeScopeRql(scope)})`];
-  return [
-    scope.fieldRql && `genome(${scope.fieldRql})`,
-    scope.keywordRql,
-  ].filter((clause): clause is string => Boolean(clause));
+  // A join over a purely negative query matches no genome, so a keyword list's bare Deprecated exclusion would empty the AMR chart; the chart stays unscoped by status there (a positive join over every genome times out).
+  const fieldJoin =
+    scope.fieldRql && scope.fieldRql !== nonDeprecatedGenomeClause
+      ? `genome(${scope.fieldRql})`
+      : undefined;
+  return [fieldJoin, scope.keywordRql].filter((clause): clause is string =>
+    Boolean(clause),
+  );
 }
 
 export function describeGenomeScope(scope: GenomeScope): string {

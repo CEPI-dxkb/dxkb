@@ -11,17 +11,22 @@ import {
 import { flushSync } from "react-dom";
 import {
   ChevronDown,
-  ChevronUp,
+  Info,
   ListFilter,
-  Pin,
   SearchX,
   SlidersHorizontal,
+  Star,
 } from "lucide-react";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import type { FacetView } from "./active-filter-pill";
 import {
@@ -32,40 +37,28 @@ import {
   RefreshHairline,
 } from "./facet-value-list";
 import { displayFacetValue, navigationTarget } from "./facet-values";
-import type { FacetActions } from "./use-facet-actions";
 
-export type FacetGroup = "active" | "pinned" | "more";
+export type FacetGroup = "favorite" | "other";
 
 type MenuFocus = "left" | "right";
 
-/**
- * `snapshotGroups` runs on every opening: while open each facet keeps the group
- * it opened in, so rows never jump.
- */
 export function useFiltersMenuState(
   menuFields: readonly string[],
   defaultField: string | null,
-  snapshotGroups: () => Map<string, FacetGroup>,
 ) {
   const [open, setOpenState] = useState(false);
   const [field, setField] = useState<string | null>(null);
   const [leftQuery, setLeftQuery] = useState("");
   const [rightQuery, setRightQuery] = useState("");
-  const [moreOpen, setMoreOpen] = useState(false);
-  const [groups, setGroups] = useState<Map<string, FacetGroup> | null>(null);
   const focusRef = useRef<MenuFocus>("left");
 
   const shownField =
     field !== null && menuFields.includes(field) ? field : defaultField;
 
   const close = () => {
-    setGroups(null);
-    // A peeked facet leaves the counted set on close; reopening on it would
-    // show a checklist with no counts coming.
     setField(null);
     setLeftQuery("");
     setRightQuery("");
-    setMoreOpen(false);
     setOpenState(false);
   };
 
@@ -76,29 +69,25 @@ export function useFiltersMenuState(
         close();
         return;
       }
-      setGroups(snapshotGroups());
+      // Commit the field the menu opens on: `defaultField` follows the
+      // favorites, so a star changed while open would move the pane.
+      setField((current) => current ?? defaultField);
       setOpenState(true);
     },
-    groupAtOpen: (target: string) => groups?.get(target),
     shownField,
     setField,
     leftQuery,
     setLeftQuery,
     rightQuery,
     setRightQuery,
-    moreOpen,
-    setMoreOpen,
     focusTarget: () => focusRef.current,
     setFocusTarget: (target: MenuFocus) => {
       focusRef.current = target;
     },
     openAt: (target: string) => {
-      const snapshot = snapshotGroups();
-      setGroups(snapshot);
       setField(target);
       setLeftQuery("");
       setRightQuery("");
-      setMoreOpen(snapshot.get(target) === "more");
       focusRef.current = "right";
       setOpenState(true);
     },
@@ -109,12 +98,13 @@ export type FiltersMenuState = ReturnType<typeof useFiltersMenuState>;
 
 type LeftRow =
   | { kind: "facet"; key: string; field: string; group: FacetGroup }
-  | { kind: "more"; key: string; count: number }
   | { kind: "value"; key: string; field: string; value: string; count?: number };
+
+const favoritesExplanation =
+  "Each data type (Genomes, Features, etc.) keeps its own set of favorites.";
 
 const maxValueRowsPerFacet = 5;
 const maxValueRows = 24;
-const moreRowKey = "more";
 
 interface FiltersMenuProps {
   menu: FiltersMenuState;
@@ -124,7 +114,8 @@ interface FiltersMenuProps {
   isDefined: (field: string) => boolean;
   labelFor: (field: string) => string;
   filters: Readonly<Partial<Record<string, readonly string[]>>>;
-  facetActions: FacetActions;
+  favoriteFields: ReadonlySet<string>;
+  onToggleFavorite: (field: string) => void;
   refreshing: boolean;
   activeCount: number;
   toggleValue: (field: string, value: string) => void;
@@ -142,7 +133,8 @@ export function FiltersMenu({
   isDefined,
   labelFor,
   filters,
-  facetActions,
+  favoriteFields,
+  onToggleFavorite,
   refreshing,
   activeCount,
   toggleValue,
@@ -180,7 +172,7 @@ export function FiltersMenu({
     };
   }, [openedOn]);
 
-  const buildRows = (query: string, moreOpen: boolean): LeftRow[] => {
+  const buildRows = (query: string): LeftRow[] => {
     const needle = query.trim().toLowerCase();
     const matched = menuFields.filter(
       (field) => !needle || labelFor(field).toLowerCase().includes(needle),
@@ -193,14 +185,9 @@ export function FiltersMenu({
     });
     const inGroup = (group: FacetGroup) =>
       matched.filter((field) => groupOf(field) === group).map(facetRow);
-    const more = inGroup("more");
     const facetRows: LeftRow[] = [
-      ...inGroup("active"),
-      ...inGroup("pinned"),
-      ...(more.length > 0 && !needle
-        ? [{ kind: "more" as const, key: moreRowKey, count: more.length }]
-        : []),
-      ...(needle || moreOpen ? more : []),
+      ...inGroup("favorite"),
+      ...inGroup("other"),
     ];
     if (needle.length < 2) return facetRows;
     const valueRows: LeftRow[] = [];
@@ -224,7 +211,7 @@ export function FiltersMenu({
     return [...facetRows, ...valueRows];
   };
 
-  const rows = buildRows(menu.leftQuery, menu.moreOpen);
+  const rows = buildRows(menu.leftQuery);
   const shownField = menu.shownField;
   const keyedIndex = rows.findIndex((row) => row.key === activeKey);
   const activeIndex = Math.max(
@@ -235,45 +222,26 @@ export function FiltersMenu({
   );
   const optionId = (index: number) => `${listId}-${String(index)}`;
 
-  const countMoreFacets = () => {
-    facetActions.peek(menuFields.filter((field) => groupOf(field) === "more"));
-  };
-
-  /**
-   * A More facet not yet counted is only highlighted: hovering or arrowing
-   * never starts a read.
-   */
   const preview = (row: LeftRow, queryArg?: string) => {
     const query = queryArg ?? menu.leftQuery;
     setActiveKey(row.key);
-    if (row.kind === "more" || !facetActions.isCounted(row.field)) return;
     menu.setField(row.field);
     menu.setRightQuery(row.kind === "value" ? query.trim() : "");
   };
 
   const openFacet = (row: Extract<LeftRow, { kind: "facet" }>) => {
     setActiveKey(row.key);
-    if (!facetActions.isCounted(row.field)) countMoreFacets();
     menu.setField(row.field);
     menu.setRightQuery("");
   };
 
-  const toggleMore = () => {
-    const opening = !menu.moreOpen;
-    flushSync(() => {
-      menu.setMoreOpen(opening);
-      setActiveKey(moreRowKey);
-    });
-    if (!opening) return;
-    countMoreFacets();
-    const list = leftListRef.current;
-    const header = list?.querySelector<HTMLElement>("[data-more-header]");
-    if (!list || !header) return;
-    list.scrollTo({
-      top: header.offsetTop,
-      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
-        ? "auto"
-        : "smooth",
+  // A star moves the row between groups at once; keep it in view.
+  const toggleFavorite = (field: string) => {
+    onToggleFavorite(field);
+    requestAnimationFrame(() => {
+      leftListRef.current
+        ?.querySelector<HTMLElement>(`[data-key="${CSS.escape(`f:${field}`)}"]`)
+        ?.scrollIntoView({ block: "nearest" });
     });
   };
 
@@ -312,17 +280,10 @@ export function FiltersMenu({
       leftListRef.current
         ?.querySelector<HTMLElement>(`[data-key="${CSS.escape(next.key)}"]`)
         ?.scrollIntoView({ block: "nearest" });
-    } else if (
-      row.kind === "more" &&
-      (event.key === "Enter" ||
-        (event.key === " " && event.currentTarget.value === ""))
-    ) {
-      event.preventDefault();
-      toggleMore();
     } else if (event.key === "Enter") {
       event.preventDefault();
       if (row.kind === "value") toggleRowValue(row);
-      else if (row.kind === "facet") openFacetAndFocus(row);
+      else openFacetAndFocus(row);
     } else if (
       event.key === "ArrowRight" &&
       row.kind === "facet" &&
@@ -347,10 +308,8 @@ export function FiltersMenu({
 
   const facetRowsIn = (group: FacetGroup) =>
     rows.filter((row) => row.kind === "facet" && row.group === group);
-  const activeRows = facetRowsIn("active");
-  const pinnedRows = facetRowsIn("pinned");
-  const moreRows = facetRowsIn("more");
-  const moreHeader = rows.find((row) => row.kind === "more");
+  const favoriteRows = facetRowsIn("favorite");
+  const otherRows = facetRowsIn("other");
   const valueRows = rows.filter((row) => row.kind === "value");
   const searching = menu.leftQuery.trim().length > 0;
   const shownView = shownField ? viewOf(shownField) : null;
@@ -371,42 +330,13 @@ export function FiltersMenu({
         const last = lastPointer.current;
         lastPointer.current = { x: event.clientX, y: event.clientY };
         if (last?.x === event.clientX && last.y === event.clientY) return;
-        if (
-          activeKey === row.key &&
-          (row.kind === "more" || row.field === shownField)
-        ) {
-          return;
-        }
+        if (activeKey === row.key && row.field === shownField) return;
         preview(row);
       },
     };
-    if (row.kind === "more") {
-      const Chevron = menu.moreOpen ? ChevronUp : ChevronDown;
-      return (
-        <div
-          key={row.key}
-          {...common}
-          role="option"
-          aria-selected={false}
-          aria-label={`${menu.moreOpen ? "Hide" : "Show"} ${String(row.count)} more ${row.count === 1 ? "facet" : "facets"}`}
-          onClick={toggleMore}
-          className="group/row mx-1.5 flex h-7 shrink-0 cursor-pointer items-center gap-1.5 rounded-md px-2.5 text-3xs font-medium tracking-wider text-muted-foreground uppercase data-active:bg-foreground/5 data-active:text-foreground"
-        >
-          <span>More</span>
-          <span className="tabular-nums opacity-70">{row.count}</span>
-          <span className="ml-auto flex items-center gap-0.5 text-2xs font-medium tracking-normal text-foreground normal-case">
-            {menu.moreOpen ? "Show less" : "Show all"}
-            <Chevron
-              aria-hidden="true"
-              className="size-3 shrink-0 text-muted-foreground"
-            />
-          </span>
-        </div>
-      );
-    }
     if (row.kind === "facet") {
       const applied = filters[row.field] ?? [];
-      const pinned = facetActions.isPinned(row.field);
+      const favorite = favoriteFields.has(row.field);
       const current = row.field === shownField;
       const appliedValues = applied.map(displayFacetValue);
       const rowLabel =
@@ -419,21 +349,23 @@ export function FiltersMenu({
           {...common}
           role="option"
           aria-selected={current}
-          aria-label={pinned ? `${rowLabel}, pinned` : rowLabel}
+          aria-label={favorite ? `${rowLabel}, favorite` : rowLabel}
           data-current={current || undefined}
           onClick={() => {
             openFacet(row);
           }}
-          className="group/row relative mx-1.5 flex h-7 shrink-0 cursor-pointer items-center gap-1.5 rounded-md pr-1 pl-2.5 text-xs text-muted-foreground data-active:bg-foreground/5 data-active:text-foreground data-current:font-medium data-current:text-foreground"
+          className="group/row relative mx-1.5 flex h-7 shrink-0 cursor-pointer items-center gap-1.5 rounded-md pr-1 pl-2.5 text-xs font-medium text-foreground/75 data-active:bg-foreground/5 data-active:text-foreground data-current:font-semibold data-current:text-foreground"
         >
           <span
-            aria-hidden="true"
-            className="absolute inset-y-1.5 left-0 w-0.5 rounded-full bg-primary opacity-0 group-data-current/row:opacity-100"
-          />
-          <span className="min-w-0 flex-1 truncate">
+            className={cn(
+              "min-w-0 flex-1 truncate",
+              applied.length > 0 && "text-secondary",
+            )}
+          >
             {labelFor(row.field)}
             {applied.length > 0 && (
-              <span className="ml-1.5 text-2xs font-normal text-primary dark:text-foreground">
+              <span className="font-light">
+                {" - "}
                 {appliedValues.join(", ")}
               </span>
             )}
@@ -442,22 +374,22 @@ export function FiltersMenu({
             <span
               aria-hidden="true"
               title={
-                pinned
-                  ? "Pinned: in your facet set. Click to unpin."
-                  : "Pin to keep this facet in your set"
+                favorite
+                  ? "Favorite: its counts load up front. Click to remove."
+                  : "Add to favorites"
               }
               onClick={(event) => {
                 event.stopPropagation();
-                facetActions.togglePin(row.field);
+                toggleFavorite(row.field);
               }}
               className={cn(
                 "flex size-5 shrink-0 items-center justify-center rounded-sm opacity-0 group-data-active/row:opacity-100 group-data-current/row:opacity-100 hover:bg-foreground/5",
-                pinned
-                  ? "text-primary dark:text-foreground"
+                favorite
+                  ? "text-highlight"
                   : "text-muted-foreground hover:text-foreground",
               )}
             >
-              <Pin className={cn("size-3", pinned && "fill-current")} />
+              <Star className={cn("size-3", favorite && "fill-current")} />
             </span>
           ) : (
             <span aria-hidden="true" className="size-5 shrink-0" />
@@ -494,7 +426,9 @@ export function FiltersMenu({
     );
   };
 
-  const shownPinned = shownView ? facetActions.isPinned(shownView.field) : false;
+  const shownFavorite = shownView
+    ? favoriteFields.has(shownView.field)
+    : false;
   const busy =
     refreshing ||
     (shownView !== null &&
@@ -545,20 +479,20 @@ export function FiltersMenu({
       >
         <div className="relative flex h-120 max-h-(--available-height) flex-col @lg:h-90 @lg:flex-row">
           <RefreshHairline active={busy} />
-          <div className="flex h-44 shrink-0 flex-col border-b border-border @lg:h-auto @lg:w-56 @lg:border-r @lg:border-b-0">
+          <div className="flex h-44 shrink-0 flex-col border-b border-border @lg:h-auto @lg:w-64 @lg:border-r @lg:border-b-0">
             <MenuSearch
               inputRef={leftInputRef}
-              label="Find a facet or value"
+              label="Find a filter or value"
               listId={listId}
               activeId={rows.length > 0 ? optionId(activeIndex) : undefined}
               value={menu.leftQuery}
-              placeholder="Facet or value…"
+              placeholder="Filter or value…"
               onFocus={() => {
                 menu.setFocusTarget("left");
               }}
               onChange={(query) => {
                 menu.setLeftQuery(query);
-                const first = buildRows(query, menu.moreOpen).at(0);
+                const first = buildRows(query).at(0);
                 if (first) preview(first, query);
                 else setActiveKey(null);
               }}
@@ -568,7 +502,7 @@ export function FiltersMenu({
               ref={leftListRef}
               id={listId}
               role="listbox"
-              aria-label="Facets"
+              aria-label="Filters"
               onMouseLeave={() => {
                 setActiveKey(null);
               }}
@@ -580,54 +514,35 @@ export function FiltersMenu({
                   title={
                     searching
                       ? `Nothing matches “${menu.leftQuery.trim()}”`
-                      : "No facets"
+                      : "No filters"
                   }
                   detail={
                     searching
-                      ? "Searched every facet's name and the values in loaded counts."
-                      : "This table offers no facets."
+                      ? "Searched every filter's name and the values in loaded counts."
+                      : "This table offers no filters."
                   }
                 />
               ) : (
                 <>
-                  <RowGroup label="Active" count={activeRows.length}>
-                    {activeRows.map(renderRow)}
+                  <RowGroup
+                    label="Favorites"
+                    count={favoriteRows.length}
+                    info={
+                      <InfoTip label="About favorites">
+                        {favoritesExplanation}
+                      </InfoTip>
+                    }
+                    bare={otherRows.length === 0 && valueRows.length === 0}
+                  >
+                    {favoriteRows.map(renderRow)}
                   </RowGroup>
                   <RowGroup
-                    label="Facets"
-                    count={pinnedRows.length}
-                    bare={
-                      activeRows.length === 0 &&
-                      moreRows.length === 0 &&
-                      moreHeader === undefined &&
-                      valueRows.length === 0
-                    }
+                    label="All filters"
+                    count={otherRows.length}
+                    bare={favoriteRows.length === 0 && valueRows.length === 0}
                   >
-                    {pinnedRows.map(renderRow)}
+                    {otherRows.map(renderRow)}
                   </RowGroup>
-                  {moreHeader ? (
-                    <>
-                      <div
-                        data-more-header
-                        className="sticky -top-1.75 z-10 mt-1.5 shrink-0 border-t border-border bg-popover py-1 first:mt-0 first:border-t-0"
-                      >
-                        {renderRow(moreHeader)}
-                      </div>
-                      {moreRows.length > 0 && (
-                        <div
-                          role="group"
-                          aria-label="More facets"
-                          className="flex shrink-0 flex-col"
-                        >
-                          {moreRows.map(renderRow)}
-                        </div>
-                      )}
-                    </>
-                  ) : (
-                    <RowGroup label="More" count={moreRows.length}>
-                      {moreRows.map(renderRow)}
-                    </RowGroup>
-                  )}
                   <RowGroup
                     label="Values in loaded counts"
                     count={valueRows.length}
@@ -669,28 +584,28 @@ export function FiltersMenu({
                   isDefined(shownView.field) ? (
                     <button
                       type="button"
-                      aria-pressed={shownPinned}
+                      aria-pressed={shownFavorite}
                       title={
-                        shownPinned
-                          ? "In your facet set: its counts load up front. Click to unpin."
-                          : "Keep this facet in your set"
+                        shownFavorite
+                          ? "In your favorites: its counts load up front. Click to remove."
+                          : "Add to favorites"
                       }
                       onClick={() => {
                         menu.setField(shownView.field);
-                        facetActions.togglePin(shownView.field);
+                        toggleFavorite(shownView.field);
                       }}
                       className={cn(
-                        "inline-flex h-6 w-18 items-center justify-center gap-1 rounded-md px-1.5 text-2xs font-medium outline-none hover:bg-foreground/5 focus-visible:ring-2 focus-visible:ring-ring",
-                        shownPinned
-                          ? "text-primary dark:text-foreground"
+                        "inline-flex h-6 w-22 items-center justify-center gap-1 rounded-md px-1.5 text-2xs font-medium outline-none hover:bg-foreground/5 focus-visible:ring-2 focus-visible:ring-ring",
+                        shownFavorite
+                          ? "text-highlight"
                           : "text-muted-foreground hover:text-foreground",
                       )}
                     >
-                      <Pin
+                      <Star
                         aria-hidden="true"
-                        className={cn("size-3", shownPinned && "fill-current")}
+                        className={cn("size-3", shownFavorite && "fill-current")}
                       />
-                      {shownPinned ? "Pinned" : "Pin"}
+                      {shownFavorite ? "Favorited" : "Favorite"}
                     </button>
                   ) : undefined
                 }
@@ -701,7 +616,7 @@ export function FiltersMenu({
                   aria-hidden="true"
                   className="size-5 opacity-50"
                 />
-                Pick a facet on the left to see its values.
+                Pick a filter on the left to see its values.
               </div>
             )}
           </div>
@@ -715,11 +630,13 @@ function RowGroup({
   label,
   count,
   bare = false,
+  info,
   children,
 }: {
   label: string;
   count: number;
   bare?: boolean;
+  info?: ReactNode;
   children: ReactNode;
 }) {
   const labelId = useId();
@@ -734,18 +651,56 @@ function RowGroup({
       <div className="flex h-6 shrink-0 items-center gap-1.5 px-4">
         <span
           id={labelId}
-          className="text-3xs font-medium tracking-wider text-muted-foreground uppercase"
+          className="text-2xs font-semibold tracking-wider text-foreground uppercase"
         >
           {label}
         </span>
+        {info}
         <span
           aria-hidden="true"
-          className="text-3xs text-muted-foreground/70 tabular-nums"
+          className="ml-auto text-2xs font-medium text-muted-foreground tabular-nums"
         >
           {count}
         </span>
       </div>
       {children}
     </div>
+  );
+}
+
+/**
+ * A small "i" beside a group heading. The button only carries the hover and
+ * focus tooltip, so a press keeps the search box focused; Base UI tooltips set
+ * no aria-describedby, so screen readers get the text once, through the
+ * hidden span.
+ */
+function InfoTip({ label, children }: { label: string; children: string }) {
+  const descriptionId = useId();
+  return (
+    <>
+      <Tooltip>
+        <TooltipTrigger
+          render={
+            <button
+              type="button"
+              aria-label={label}
+              aria-describedby={descriptionId}
+              onMouseDown={(event) => {
+                event.preventDefault();
+              }}
+              className="inline-flex size-4 shrink-0 items-center justify-center rounded-full text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+            />
+          }
+        >
+          <Info aria-hidden="true" className="size-3" />
+        </TooltipTrigger>
+        <TooltipContent side="bottom" aria-hidden="true">
+          {children}
+        </TooltipContent>
+      </Tooltip>
+      <span id={descriptionId} hidden>
+        {children}
+      </span>
+    </>
   );
 }

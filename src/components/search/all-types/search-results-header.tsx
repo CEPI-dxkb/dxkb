@@ -66,8 +66,15 @@ function BestMatch({ match }: { match: TaxonMatch }) {
           )}
         </p>
         <p className="text-xs text-muted-foreground tabular-nums">
-          {formatCount(match.genomes)} genomes
-          {match.rank ? ` · ${match.rank}` : ""} · Taxon ID {match.taxonId}
+          {[
+            match.genomes === null
+              ? null
+              : `${formatCount(match.genomes)} genomes`,
+            match.rank || null,
+            `Taxon ID ${match.taxonId}`,
+          ]
+            .filter((part): part is string => part !== null)
+            .join(" · ")}
         </p>
       </div>
       {match.href ? (

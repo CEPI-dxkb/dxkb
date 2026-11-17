@@ -76,3 +76,6 @@ export {
   selectPpiRows,
   type MockPpiRow,
 } from "./interactions";
+// The count the Taxonomy header, the organism landing tiles and the search
+// chip show, keyed by taxon id; specs read it here, never from src/lib.
+export { taxonGenomeCounts } from "@/lib/e2e-fixtures/records";

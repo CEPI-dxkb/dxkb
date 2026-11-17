@@ -331,7 +331,7 @@ export function FacetValueList({
       )}
       {notCounted && (
         <p className="shrink-0 border-b border-border px-3 py-1.5 text-2xs text-muted-foreground">
-          This filter has no facet, so its values are not counted.
+          This filter has no list of values, so its values are not counted.
         </p>
       )}
 
@@ -469,7 +469,7 @@ function emptyValuesMessage({
   if (notCounted) {
     return {
       title: "No values picked",
-      detail: "Without a facet, only picked values are listed.",
+      detail: "Without a list of values, only picked values are shown.",
     };
   }
   if (unavailable) {

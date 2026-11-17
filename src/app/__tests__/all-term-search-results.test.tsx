@@ -39,16 +39,35 @@ const influenzaA = {
   taxon_name: "Influenza A virus",
   taxon_rank: "species",
   genomes: 1_900_000,
+  lineage_ids: [
+    10239, 2559587, 2732396, 2497569, 2497571, 2497577, 2499411, 11308, 197911,
+    2955291, 11320,
+  ],
   lineage_names: [
     "Viruses",
     "Riboviria",
     "Orthornavirae",
     "Negarnaviricota",
+    "Polyploviricotina",
     "Insthoviricetes",
     "Articulavirales",
     "Orthomyxoviridae",
     "Alphainfluenzavirus",
+    "Alphainfluenzavirus influenzae",
     "Influenza A virus",
+  ],
+  lineage_ranks: [
+    "acellular root",
+    "realm",
+    "kingdom",
+    "phylum",
+    "subphylum",
+    "class",
+    "order",
+    "family",
+    "genus",
+    "species",
+    "no rank",
   ],
 };
 
@@ -60,6 +79,8 @@ const influenzaMatches = {
     ],
     2,
   ),
+  // The route's count for the top taxon, which the page shows instead of the stored `genomes`.
+  "taxonGenomes:11320": solr([], 1_870_000),
   genome: solr(
     [
       {
@@ -206,10 +227,18 @@ describe("SearchResults", () => {
     renderResults("influenza");
 
     await screen.findByRole("heading", { name: "Taxa" });
-    expect(header().getByText(/1,900,000 genomes/)).toHaveTextContent(
-      "1,900,000 genomes · Species · Taxon ID 11320",
+    expect(header().getByText(/1,870,000 genomes/)).toHaveTextContent(
+      "1,870,000 genomes · Species · Taxon ID 11320",
     );
     expect(header().getByText("Orthomyxoviridae")).toBeInTheDocument();
+    // The Taxa table's Lineage cell carries the taxon breadcrumb's trail: only
+    // the phylum-to-species ranks, so the root, realm, kingdom, subphylum and
+    // the unranked leaf are dropped.
+    expect(
+      screen.getByTitle(
+        "Negarnaviricota › Insthoviricetes › Articulavirales › Orthomyxoviridae › Alphainfluenzavirus › Alphainfluenzavirus influenzae",
+      ),
+    ).toBeInTheDocument();
     expect(
       header().getByRole("link", { name: /Open taxon view/ }),
     ).toHaveAttribute("href", "/taxonomy/11320");

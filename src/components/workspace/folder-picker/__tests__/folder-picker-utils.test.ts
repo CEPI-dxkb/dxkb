@@ -7,6 +7,7 @@ import {
   previewWidthLimits,
   rowSelector,
   tabStopSelector,
+  toolbarUnavailableReason,
   uploadPaneMinWidth,
 } from "@/components/workspace/folder-picker/folder-picker-utils";
 import { pickerViewOptions } from "@/lib/services/workspace/picker-views";
@@ -101,5 +102,51 @@ describe("isInlineEditTarget", () => {
     expect(isInlineEditTarget(window)).toBe(false);
     expect(isInlineEditTarget(document.createTextNode("x"))).toBe(false);
     expect(isInlineEditTarget(document.createElement("input"))).toBe(false);
+  });
+});
+
+describe("toolbarUnavailableReason", () => {
+  const ready = {
+    isUploading: false,
+    folderPath: "/alice@bvbrc/home/x",
+    hasListingError: false,
+    canChange: true,
+  };
+
+  it("is null when New folder and Upload can be used", () => {
+    expect(toolbarUnavailableReason(ready)).toBeNull();
+  });
+
+  it("names a running upload before anything else", () => {
+    expect(
+      toolbarUnavailableReason({
+        ...ready,
+        isUploading: true,
+        folderPath: null,
+        canChange: false,
+      }),
+    ).toBe("An upload is running.");
+  });
+
+  it("asks for a folder when none is open", () => {
+    expect(
+      toolbarUnavailableReason({ ...ready, folderPath: null, canChange: false }),
+    ).toBe("Open a folder first.");
+  });
+
+  it("reports a listing that could not be checked", () => {
+    expect(
+      toolbarUnavailableReason({
+        ...ready,
+        hasListingError: true,
+        canChange: false,
+      }),
+    ).toBe("Couldn't check this folder's write access.");
+  });
+
+  it("reports a folder the user cannot write to", () => {
+    expect(toolbarUnavailableReason({ ...ready, canChange: false })).toBe(
+      "You don't have write access to this folder.",
+    );
   });
 });

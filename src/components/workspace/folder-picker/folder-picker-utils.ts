@@ -57,3 +57,25 @@ export function isInlineEditTarget(target: EventTarget | null): boolean {
     target.closest(`[${inlineEditAttribute}]`) !== null
   );
 }
+
+/**
+ * Why the picker toolbar's New folder and Upload are off, or null when both can be
+ * used. The toolbar disables on, and explains with, this one value.
+ */
+export function toolbarUnavailableReason({
+  isUploading,
+  folderPath,
+  hasListingError,
+  canChange,
+}: {
+  isUploading: boolean;
+  folderPath: string | null;
+  hasListingError: boolean;
+  canChange: boolean;
+}): string | null {
+  if (isUploading) return "An upload is running.";
+  if (folderPath === null) return "Open a folder first.";
+  if (hasListingError) return "Couldn't check this folder's write access.";
+  if (!canChange) return "You don't have write access to this folder.";
+  return null;
+}

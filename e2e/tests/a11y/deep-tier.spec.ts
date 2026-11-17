@@ -203,7 +203,7 @@ test.describe("a11y deep tier: output folder picker", () => {
 
   test("blast: folder picker naming a new folder", async ({ page }) => {
     const picker = await openPicker(page);
-    await picker.dialog.getByRole("button", { name: "New folder here" }).click();
+    await picker.newFolderButton.click();
     await picker.dialog
       .getByRole("textbox", { name: "New folder name" })
       .fill("a/b");
@@ -218,7 +218,7 @@ test.describe("a11y deep tier: output folder picker", () => {
 
   test("blast: folder picker upload form", async ({ page }) => {
     const picker = await openPicker(page);
-    await picker.dialog.getByRole("button", { name: "Upload here" }).click();
+    await picker.uploadButton.click();
     await expect(
       picker.dialog.getByRole("button", { name: "Back to folder info" }),
     ).toBeFocused();

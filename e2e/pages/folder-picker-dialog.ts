@@ -36,6 +36,9 @@ export class FolderPickerDialog {
   readonly dialog: Locator;
   readonly places: Locator;
   readonly strip: Locator;
+  readonly toolbar: Locator;
+  readonly newFolderButton: Locator;
+  readonly uploadButton: Locator;
   readonly breadcrumb: Locator;
   readonly selectButton: Locator;
   readonly cancelButton: Locator;
@@ -55,6 +58,13 @@ export class FolderPickerDialog {
     this.dialog = page.getByRole("dialog", { name: title });
     this.places = this.dialog.getByRole("navigation", { name: "Places" });
     this.strip = this.dialog.getByRole("group", { name: "Folder columns" });
+    this.toolbar = this.dialog.getByRole("group", { name: "Folder actions" });
+    this.newFolderButton = this.toolbar.getByRole("button", {
+      name: "New folder here",
+    });
+    this.uploadButton = this.toolbar.getByRole("button", {
+      name: "Upload here",
+    });
     this.breadcrumb = this.dialog.getByRole("navigation", {
       name: /^Selected (folder|file)$/,
     });

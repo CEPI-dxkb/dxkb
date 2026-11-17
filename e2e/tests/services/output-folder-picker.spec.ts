@@ -251,7 +251,7 @@ test.describe("output folder picker: choosing", () => {
     const create = page.waitForRequest(
       (request) => workspaceRpcMethod(request) === "Workspace.create",
     );
-    await picker.dialog.getByRole("button", { name: "New folder here" }).click();
+    await picker.newFolderButton.click();
     await picker.dialog
       .getByRole("textbox", { name: "New folder name" })
       .fill("BLAST Results");
@@ -279,7 +279,7 @@ test.describe("output folder picker: choosing", () => {
     const { picker } = await openBlast(page, { reflectUploads: true });
     await picker.open();
     await picker.option("Home", "Experiments").click();
-    await picker.dialog.getByRole("button", { name: "Upload here" }).click();
+    await picker.uploadButton.click();
     await expect(picker.dialog.getByText("Upload to “Experiments”")).toBeVisible();
 
     // Routes registered later run first, so this one wins over the default mock.
@@ -303,13 +303,15 @@ test.describe("output folder picker: choosing", () => {
 
     await expect(picker.closeButton).toBeDisabled();
     await expect(picker.cancelButton).toBeDisabled();
+    await expect(picker.newFolderButton).toBeDisabled();
+    await expect(picker.uploadButton).toBeDisabled();
     await page.keyboard.press("Escape");
     await expect(picker.dialog).toBeVisible();
 
     uploadHeld.resolve(undefined);
     await expect(
-      picker.dialog.getByRole("button", { name: "Upload here" }),
-    ).toBeVisible();
+      picker.dialog.getByText("Upload to “Experiments”"),
+    ).toBeHidden();
     await expect(picker.closeButton).toBeEnabled();
     await picker.showFilesButton.click();
     await expect(picker.option("Experiments", /picked\.fq/)).toBeVisible();
@@ -471,21 +473,18 @@ test.describe("output folder picker: layout", () => {
     await expect(picker.option("Experiments", "Run 1")).toBeVisible();
     await picker.settled();
 
-    const newFolder = picker.dialog.getByRole("button", {
-      name: "New folder here",
-    });
     const [dialog, places, strip, action] = await Promise.all([
       picker.dialog.boundingBox(),
       picker.places.boundingBox(),
       picker.strip.boundingBox(),
-      newFolder.boundingBox(),
+      picker.newFolderButton.boundingBox(),
     ]);
     expect(dialog && places && strip && action).toBeTruthy();
     if (dialog && places && strip && action) {
       expect(strip.width).toBeGreaterThanOrEqual(dialog.width - 1);
       expect(strip.height).toBeGreaterThan(160);
       expect(places.y + places.height).toBeLessThanOrEqual(strip.y + 1);
-      expect(action.y).toBeGreaterThanOrEqual(strip.y + strip.height);
+      expect(action.y + action.height).toBeLessThanOrEqual(places.y + 1);
       expect(action.x).toBeGreaterThanOrEqual(dialog.x);
       expect(action.x + action.width).toBeLessThanOrEqual(
         dialog.x + dialog.width,
@@ -500,9 +499,10 @@ test.describe("output folder picker: layout", () => {
 
     await picker.places.getByRole("button", { name: "Home" }).click();
     await picker.option("Home", "Experiments").click();
-    await picker.dialog.getByRole("button", { name: "Upload here" }).click();
+    await picker.uploadButton.click();
     await expect(picker.dialog.getByText("Upload to “Experiments”")).toBeVisible();
     await expect(picker.strip).toBeHidden();
+    await expect(picker.toolbar).toBeVisible();
     await picker.dialog
       .getByRole("button", { name: "Back to folder info" })
       .click();

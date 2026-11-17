@@ -4,6 +4,7 @@ import type { ComponentProps } from "react";
 import { FolderPickerInfo } from "@/components/workspace/folder-picker/folder-picker-preview";
 import type { WorkspaceItem } from "@/lib/services/workspace/domain";
 import type { PickerView } from "@/lib/services/workspace/picker-views";
+import { workshopWorkspacePath } from "@/lib/services/workspace/workshop";
 
 const home = "/alice@bvbrc/home";
 
@@ -59,6 +60,11 @@ describe("FolderPickerInfo with no folder selected", () => {
       "Public Workspaces",
       "Public workspaces are read-only: browse them, but save elsewhere.",
     ],
+    [
+      "workshop",
+      "BV-BRC Workshop",
+      "BV-BRC workshop data is read-only: browse it, but save elsewhere.",
+    ],
     ["favorites", "Favorites", "Folders you starred in the workspace browser."],
     ["recent", "Recently Used", "Folders you used recently, newest first."],
   ])("describes %s", (place, label, hint) => {
@@ -93,6 +99,17 @@ describe("FolderPickerInfo with no folder selected, picking files", () => {
     expect(screen.queryByText(/save elsewhere/)).not.toBeInTheDocument();
   });
 
+  it("says files can be picked from the Workshop, handy as test input", () => {
+    renderInfo({ target: fileTarget, place: "workshop", path: null });
+
+    expect(
+      screen.getByText(
+        "BV-BRC workshop data you can pick files from, handy as test input.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/save elsewhere/)).not.toBeInTheDocument();
+  });
+
   it.each<[PickerView, string]>([
     ["home", "Your home folder."],
     ["favorites", "Folders you starred in the workspace browser."],
@@ -110,6 +127,13 @@ describe("FolderPickerInfo with a folder selected", () => {
 
     expect(screen.getByText("Run 1")).toBeInTheDocument();
     expect(screen.getByText(`${home}/Experiments/Run 1`)).toBeInTheDocument();
+  });
+
+  it("draws the workshop folder with the workshop's icon, not a plain drive", () => {
+    renderInfo({ place: "workshop", path: workshopWorkspacePath });
+
+    expect(document.querySelector("svg.lucide-graduation-cap")).not.toBeNull();
+    expect(document.querySelector("svg.lucide-hard-drive")).toBeNull();
   });
 
   it("calls the home folder Home", () => {

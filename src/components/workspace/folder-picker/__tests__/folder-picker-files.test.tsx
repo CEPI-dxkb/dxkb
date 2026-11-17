@@ -1,4 +1,5 @@
 import { screen, waitFor, within } from "@testing-library/react";
+import { workshopWorkspacePath } from "@/lib/services/workspace/workshop";
 import {
   breadcrumbLabels,
   columnLabels,
@@ -223,6 +224,41 @@ describe("picking a file", () => {
       "/carol@bvbrc/public-ws/data/lab.fasta",
       expect.anything(),
     );
+  });
+
+  it("browses the workshop and commits a read-only file", async () => {
+    const { user, onSelect } = pickContigs();
+    await user.click(
+      within(screen.getByRole("navigation", { name: "Places" })).getByRole(
+        "button",
+        { name: "BV-BRC Workshop" },
+      ),
+    );
+    await user.click(await findOption("BV-BRC Workshop", "Assembly"));
+    await user.dblClick(await findOption("Assembly", /phage\.fasta/));
+    expect(onSelect).toHaveBeenCalledWith(
+      `${workshopWorkspacePath}/Assembly/phage.fasta`,
+      expect.anything(),
+    );
+  });
+
+  it("opens at the current file inside the workshop", async () => {
+    pickContigs({ initialPath: `${workshopWorkspacePath}/Assembly/phage.fasta` });
+    expect(await findOption("Assembly", /phage\.fasta/)).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    expect(
+      within(screen.getByRole("navigation", { name: "Places" })).getByRole(
+        "button",
+        { name: "BV-BRC Workshop" },
+      ),
+    ).toHaveAttribute("aria-current", "true");
+    expect(breadcrumbLabels()).toEqual([
+      "BV-BRC Workshop",
+      "Assembly",
+      "phage.fasta",
+    ]);
   });
 
   it("shows a file's details in the info pane", async () => {

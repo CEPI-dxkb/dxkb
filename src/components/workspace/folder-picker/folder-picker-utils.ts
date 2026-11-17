@@ -1,6 +1,7 @@
 import {
   Clock,
   Globe,
+  GraduationCap,
   HardDrive,
   House,
   Star,
@@ -19,6 +20,7 @@ export const placeIcons: Record<PickerView, LucideIcon> = {
   myWorkspaces: HardDrive,
   shared: Users,
   public: Globe,
+  workshop: GraduationCap,
   favorites: Star,
   recent: Clock,
 };
@@ -28,7 +30,7 @@ export const placeGroups: readonly {
   views: readonly PickerView[];
 }[] = [
   { label: "Workspaces", views: ["home", "myWorkspaces"] },
-  { label: "Shared with me", views: ["shared", "public"] },
+  { label: "Shared with me", views: ["shared", "public", "workshop"] },
   { label: "Quick access", views: ["favorites", "recent"] },
 ];
 

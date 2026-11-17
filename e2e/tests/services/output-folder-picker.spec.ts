@@ -347,13 +347,9 @@ test.describe("output folder picker: layout", () => {
     await picker.resizeHandle("Home").dblclick();
     expect(await picker.width(picker.columnAt(0))).toBe(240);
 
-    const before = await picker.width(
-      picker.infoPaneHandle().locator("xpath=.."),
-    );
+    const before = await picker.width(picker.infoPane());
     await picker.dragHandle(picker.infoPaneHandle(), -60);
-    expect(
-      await picker.width(picker.infoPaneHandle().locator("xpath=..")),
-    ).toBe(before + 60);
+    expect(await picker.width(picker.infoPane())).toBe(before + 60);
   });
 
   test("keeps the newest column in view and the info pane pinned while going deeper", async ({
@@ -361,7 +357,7 @@ test.describe("output folder picker: layout", () => {
   }) => {
     const { picker } = await openBlast(page);
     await picker.open();
-    const pane = picker.infoPaneHandle().locator("xpath=..");
+    const pane = picker.infoPane();
     const paneBefore = await pane.boundingBox();
     expect(await picker.scrollLeft()).toBe(0);
 
@@ -519,6 +515,294 @@ test.describe("output folder picker: layout", () => {
   });
 });
 
+/** The key the picker keeps its remembered layout under (`pickerLayoutKey`; specs do not import `src`). */
+const pickerLayoutStorageKey = "dxkb-folder-picker-layout:v1";
+
+/** What the picker has stored, or null while it is back at its defaults. */
+async function storedLayout(page: Page): Promise<unknown> {
+  const raw = await page.evaluate(
+    (key) => localStorage.getItem(key),
+    pickerLayoutStorageKey,
+  );
+  return raw === null ? null : (JSON.parse(raw) as unknown);
+}
+
+/** Reloads the page and opens the picker again, so what it shows came from storage. */
+async function reloadAndOpen(
+  page: Page,
+  form: ServiceFormPage,
+  picker: FolderPickerDialog,
+) {
+  await page.reload();
+  await expect(form.heading).toBeVisible();
+  await picker.open();
+}
+
+test.describe("output folder picker: dialog size", () => {
+  // A window wider than the dialog's 1280px default, so nothing is clamped.
+  test.beforeEach(async ({ page }) => {
+    await page.setViewportSize({ width: 1600, height: 900 });
+  });
+
+  test("fits three default columns beside the info pane without scrolling", async ({
+    page,
+  }) => {
+    const { picker } = await openBlast(page);
+    await picker.open();
+    await picker.option("Home", "Experiments").click();
+    await expect(picker.option("Experiments", "Run 1")).toBeVisible();
+    await picker.option("Experiments", "Run 1").click();
+    await expect(picker.option("Run 1", "Lane A")).toBeVisible();
+    await picker.settled();
+
+    expect(await picker.dialogSize()).toEqual({ width: 1280, height: 672 });
+    // Home 240 + Experiments 180 + Run 1 180 leave the strip with nothing to scroll.
+    expect(
+      await picker.strip.evaluate((strip) => strip.scrollWidth <= strip.clientWidth),
+    ).toBe(true);
+    expect(await picker.scrollLeft()).toBe(0);
+    await expect(picker.dialogWidthHandle()).toHaveAttribute(
+      "aria-valuenow",
+      "1280",
+    );
+  });
+
+  test("resizes by dragging the right edge and remembers the width across close, reopen and reload", async ({
+    page,
+  }) => {
+    const { form, picker } = await openBlast(page);
+    await picker.open();
+    expect(await storedLayout(page)).toBeNull();
+
+    // The dialog is centred, so its edge follows the pointer only if the width moves by
+    // twice the travel: 60px of drag is 120px of width.
+    await picker.dragHandle(picker.dialogWidthHandle(), 60);
+    expect(await picker.dialogWidth()).toBe(1400);
+    await expect(picker.dialogWidthHandle()).toHaveAttribute(
+      "aria-valuenow",
+      "1400",
+    );
+    expect(await picker.dialogHeight()).toBe(672);
+    expect(await storedLayout(page)).toEqual({
+      dialog: { width: 1400, height: 672 },
+    });
+
+    await picker.close();
+    await picker.open();
+    expect(await picker.dialogWidth()).toBe(1400);
+
+    await reloadAndOpen(page, form, picker);
+    expect(await picker.dialogWidth()).toBe(1400);
+    await expect(picker.dialogWidthHandle()).toHaveAttribute(
+      "aria-valuenow",
+      "1400",
+    );
+
+    // Double-click puts back the true default, and stores nothing for it.
+    await picker.dialogWidthHandle().dblclick();
+    expect(await picker.dialogWidth()).toBe(1280);
+    expect(await storedLayout(page)).toBeNull();
+  });
+
+  test("follows the pointer and the keys at once, without gliding to the new size", async ({
+    page,
+  }) => {
+    const { picker } = await openBlast(page);
+    await picker.open();
+
+    // No wait for animations between an input and the read: the popup has
+    // `transition-none`, so the size is the target as soon as the input returns. With the
+    // base `duration-100` over `transition-property: all` each of these read the width
+    // the step before.
+    const drag = await picker.beginDrag(picker.dialogWidthHandle());
+    for (const dx of [10, 30, 60, 20]) {
+      await drag.moveBy(dx);
+      expect(await picker.dialogWidth(), `after dragging to +${String(dx)}px`).toBe(
+        1280 + 2 * dx,
+      );
+    }
+    await drag.release();
+
+    await picker.dialogWidthHandle().focus();
+    await page.keyboard.press("ArrowRight");
+    expect(await picker.dialogWidth()).toBe(1280 + 40 + 32);
+    await page.keyboard.press("ArrowLeft");
+    expect(await picker.dialogWidth()).toBe(1280 + 40);
+
+    await picker.expandButton().click();
+    expect(await picker.dialogSize()).toEqual({ width: 1568, height: 868 });
+    await picker.restoreButton().click();
+    expect(await picker.dialogSize()).toEqual({ width: 1280, height: 672 });
+  });
+
+  test("resizes the width from the keyboard in steps of 32px", async ({
+    page,
+  }) => {
+    const { picker } = await openBlast(page);
+    await picker.open();
+
+    await picker.dialogWidthHandle().focus();
+    await page.keyboard.press("ArrowRight");
+    expect(await picker.dialogWidth()).toBe(1312);
+    await page.keyboard.press("ArrowLeft");
+    await page.keyboard.press("ArrowLeft");
+    expect(await picker.dialogWidth()).toBe(1248);
+    // The key press is the separator's own; the dialog stays open.
+    await expect(picker.dialog).toBeVisible();
+    await expect(picker.dialogWidthHandle()).toBeFocused();
+  });
+
+  test("resizes both axes from the corner grip, which only a pointer can reach", async ({
+    page,
+  }) => {
+    const { form, picker } = await openBlast(page);
+    await picker.open();
+    await expect(picker.dialogGrip()).toHaveAttribute("aria-hidden", "true");
+
+    await picker.dragHandle(picker.dialogGrip(), 50, 40);
+    expect(await picker.dialogSize()).toEqual({ width: 1380, height: 752 });
+    expect(await storedLayout(page)).toEqual({
+      dialog: { width: 1380, height: 752 },
+    });
+
+    await reloadAndOpen(page, form, picker);
+    expect(await picker.dialogSize()).toEqual({ width: 1380, height: 752 });
+  });
+
+  test("expands to the window less a 2rem margin, restores, and remembers the expanded size", async ({
+    page,
+  }) => {
+    const { form, picker } = await openBlast(page);
+    await picker.open();
+    await expect(picker.restoreButton()).toHaveCount(0);
+
+    await picker.expandButton().click();
+    expect(await picker.dialogSize()).toEqual({ width: 1568, height: 868 });
+    await expect(picker.restoreButton()).toBeVisible();
+    await expect(picker.expandButton()).toHaveCount(0);
+
+    await reloadAndOpen(page, form, picker);
+    expect(await picker.dialogSize()).toEqual({ width: 1568, height: 868 });
+
+    await picker.restoreButton().click();
+    expect(await picker.dialogSize()).toEqual({ width: 1280, height: 672 });
+    await expect(picker.expandButton()).toBeVisible();
+    expect(await storedLayout(page)).toBeNull();
+  });
+
+  test("expands a window that is too small on one axis without narrowing the dialog for a larger window", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1280, height: 720 });
+    const { picker } = await openBlast(page);
+    await picker.open();
+    expect(await picker.dialogSize()).toEqual({ width: 1248, height: 672 });
+
+    // Only the height can grow here. The width is stored as the 1280 default, not as the
+    // 1248 this window clamps it to.
+    await picker.expandButton().click();
+    expect(await picker.dialogSize()).toEqual({ width: 1248, height: 688 });
+    expect(await storedLayout(page)).toEqual({
+      dialog: { width: 1280, height: 688 },
+    });
+
+    await page.setViewportSize({ width: 1600, height: 900 });
+    await expect.poll(async () => picker.dialogWidth()).toBe(1280);
+    expect(await picker.dialogHeight()).toBe(688);
+    await expect(picker.expandButton()).toBeVisible();
+  });
+
+  test("never outgrows a smaller window, and keeps the stored size for a larger one", async ({
+    page,
+  }) => {
+    await page.addInitScript(
+      ({ key, value }) => {
+        localStorage.setItem(key, value);
+      },
+      {
+        key: pickerLayoutStorageKey,
+        value: JSON.stringify({ dialog: { width: 1500, height: 800 } }),
+      },
+    );
+    await page.setViewportSize({ width: 1280, height: 720 });
+    const { picker } = await openBlast(page);
+    await picker.open();
+
+    // The window less 2rem on each axis, not the 1500x800 that was stored.
+    expect(await picker.dialogSize()).toEqual({ width: 1248, height: 688 });
+
+    await page.setViewportSize({ width: 1600, height: 900 });
+    await expect.poll(async () => picker.dialogWidth()).toBe(1500);
+    expect(await picker.dialogHeight()).toBe(800);
+  });
+
+  test("offers no Expand on a window the default size already fills", async ({
+    page,
+  }) => {
+    // Expand there would store 968 x 668, which a larger window later opens below the
+    // 1280 x 672 default.
+    await page.setViewportSize({ width: 1000, height: 700 });
+    const { picker } = await openBlast(page);
+    await picker.open();
+
+    expect(await picker.dialogSize()).toEqual({ width: 968, height: 668 });
+    await expect(picker.expandButton()).toHaveCount(0);
+    await expect(picker.restoreButton()).toHaveCount(0);
+    expect(await storedLayout(page)).toBeNull();
+  });
+
+  test("keeps the dialog width separator off the info pane's scrollbar", async ({
+    page,
+  }) => {
+    const { picker } = await openBlast(page);
+    await picker.open();
+
+    // The separator is the popup's last 8px. A scroller running under it would hand a press
+    // on the scrollbar thumb to the dialog resize instead of scrolling the pane.
+    const scroller = await picker.infoScroller().boundingBox();
+    const separator = await picker.dialogWidthHandle().boundingBox();
+    expect(scroller && separator).toBeTruthy();
+    if (scroller && separator) {
+      expect(scroller.x + scroller.width).toBeLessThanOrEqual(
+        separator.x + 0.5,
+      );
+    }
+  });
+
+  test("is not resizable on a phone", async ({ page }) => {
+    await page.setViewportSize({ width: 375, height: 812 });
+    const { picker } = await openBlast(page);
+    await picker.open();
+
+    await expect(picker.dialogWidthHandle()).toBeHidden();
+    await expect(picker.dialogGrip()).toBeHidden();
+    await expect(picker.expandButton()).toBeHidden();
+  });
+
+  test("remembers column and info pane widths across a page reload", async ({
+    page,
+  }) => {
+    const { form, picker } = await openBlast(page);
+    await picker.open();
+    await picker.option("Home", "Experiments").click();
+    await expect(picker.option("Experiments", "Run 1")).toBeVisible();
+
+    await picker.dragHandle(picker.resizeHandle("Home"), 100);
+    const pane = picker.infoPane();
+    const paneBefore = await picker.width(pane);
+    await picker.dragHandle(picker.infoPaneHandle(), -60);
+    expect(await picker.width(pane)).toBe(paneBefore + 60);
+
+    await reloadAndOpen(page, form, picker);
+    await picker.option("Home", "Experiments").click();
+    await expect(picker.option("Experiments", "Run 1")).toBeVisible();
+    expect(await picker.width(picker.columnAt(0))).toBe(340);
+    expect(await picker.width(pane)).toBe(paneBefore + 60);
+    // None of it touched the dialog's own size.
+    expect(await picker.dialogSize()).toEqual({ width: 1280, height: 672 });
+  });
+});
+
 test.describe("output folder picker: motion", () => {
   test("glides the scroll position and the scroll bar going in and out", async ({
     page,
@@ -576,8 +860,12 @@ test.describe("output folder picker: motion", () => {
     await page.emulateMedia({ reducedMotion: "reduce" });
     const { picker } = await openBlast(page);
     await openAtLaneA(picker);
-    await picker.option("Experiments", "Run 1").click();
+    // Four columns overflow the strip, three (Home 240, Experiments 180, Run 1 180) fit
+    // in it at the 1248px default dialog, so the scroll is checked at four and the
+    // click back to Run 1 is awaited by its glide ending, not by a non-zero scroll.
     await expect.poll(async () => picker.scrollLeft()).toBeGreaterThan(0);
+    await picker.option("Experiments", "Run 1").click();
+    await picker.settled();
     await picker.option("Experiments", "Run 1").focus();
 
     const trace = await picker.pressAndTrace("ArrowRight");

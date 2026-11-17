@@ -129,9 +129,10 @@ export function FolderPickerInfo({
 
   return (
     <PaneFrame label="Info">
+      {/* `md:mr-2` keeps the scrollbar off the dialog width separator, the popup's last 8px. */}
       <div
         key={path}
-        className="scrollbar-themed flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-3 duration-150 animate-in fade-in-0 md:gap-4 md:p-4"
+        className="scrollbar-themed flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-3 duration-150 animate-in fade-in-0 md:mr-2 md:gap-4 md:p-4"
       >
         <div className="hidden flex-col items-center gap-2 pt-2 text-center md:flex">
           <div className="flex size-20 items-center justify-center rounded-2xl bg-highlight/10">
@@ -195,9 +196,10 @@ export function FilePickerInfo({ item, place, commit }: FilePickerInfoProps) {
   const path = normalizePath(item.path);
   return (
     <PaneFrame label="Info">
+      {/* `md:mr-2` keeps the scrollbar off the dialog width separator, the popup's last 8px. */}
       <div
         key={path}
-        className="scrollbar-themed flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4 duration-150 animate-in fade-in-0"
+        className="scrollbar-themed flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4 duration-150 animate-in fade-in-0 md:mr-2"
       >
         <div className="flex flex-col items-center gap-2 pt-2 text-center">
           <div className="flex size-20 items-center justify-center rounded-2xl bg-muted">

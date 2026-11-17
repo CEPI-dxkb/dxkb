@@ -30,7 +30,7 @@ export class ProteinStructurePage {
     await expect(
       this.page.getByRole("heading", { name: "Protein Structures" }),
     ).toBeVisible();
-    await expect(this.page.getByText(title, { exact: true })).toBeVisible();
+    await expect(this.main().getByText(title, { exact: true })).toBeVisible();
     await expect(this.memberLink(accession)).toHaveAttribute(
       "href",
       `/protein-structure?accession=${accession}`,
@@ -48,12 +48,21 @@ export class ProteinStructurePage {
       this.page.getByRole("heading", { level: 1, name: accession }),
     ).toBeVisible();
     if (title)
-      await expect(this.page.getByText(title, { exact: true })).toBeVisible();
+      await expect(this.main().getByText(title, { exact: true })).toBeVisible();
     await expect(this.page.getByTestId("molstar-container")).toBeVisible();
   }
 
+  /**
+   * Content locators go through `<main>`: React's streamed-Suspense staging
+   * copy of a section sits outside it, so an unscoped text or label locator can
+   * match both copies and fail strict mode.
+   */
+  main(): Locator {
+    return this.page.getByRole("main");
+  }
+
   accessionSelector(): Locator {
-    return this.page.locator('[aria-label="Structure accession selector"]');
+    return this.main().getByLabel("Structure accession selector");
   }
 
   async expectInvalid(message: string): Promise<void> {

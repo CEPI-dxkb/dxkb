@@ -30,6 +30,12 @@ export function selectorInputFor(page: Page, placeholder: string): Locator {
     .filter({ visible: true });
 }
 
+/** A pointer held down on a resize handle. */
+export interface DragInProgress {
+  moveBy(dx: number, dy?: number, steps?: number): Promise<void>;
+  release(): Promise<void>;
+}
+
 export class FolderPickerDialog {
   readonly page: Page;
   readonly browseButton: Locator;
@@ -143,6 +149,54 @@ export class FolderPickerDialog {
     return this.dialog.getByRole("separator", { name: "Resize info pane" });
   }
 
+  /** The info pane: the handle's parent, the box whose width the handle sets. */
+  infoPane(): Locator {
+    return this.infoPaneHandle().locator("xpath=..");
+  }
+
+  /** The info pane's vertical scroller: the box that carries its scrollbar. */
+  infoScroller(): Locator {
+    return this.infoPane().locator(".scrollbar-themed");
+  }
+
+  /** The dialog's right edge: a drag moves it by twice the pointer travel, because the dialog is centred. */
+  dialogWidthHandle(): Locator {
+    return this.dialog.getByRole("separator", { name: "Resize dialog width" });
+  }
+
+  /** The pointer-only bottom-right corner grip, which resizes both axes (hidden from assistive technology). */
+  dialogGrip(): Locator {
+    return this.dialog.locator('[data-slot="picker-resize-grip"]');
+  }
+
+  expandButton(): Locator {
+    return this.dialog.getByRole("button", { name: "Expand dialog" });
+  }
+
+  restoreButton(): Locator {
+    return this.dialog.getByRole("button", { name: "Restore dialog size" });
+  }
+
+  /**
+   * The size on screen right now, with no wait for animations. The popup sets its size
+   * with `transition-none`, so a resize shows in full the moment its input returns; a
+   * gliding size would read as the old one here, which is what the "follows the
+   * pointer" spec relies on.
+   */
+  async dialogSize(): Promise<{ width: number; height: number }> {
+    const box = await this.dialog.boundingBox();
+    if (!box) throw new Error("Dialog has no layout box");
+    return { width: Math.round(box.width), height: Math.round(box.height) };
+  }
+
+  async dialogWidth(): Promise<number> {
+    return (await this.dialogSize()).width;
+  }
+
+  async dialogHeight(): Promise<number> {
+    return (await this.dialogSize()).height;
+  }
+
   async breadcrumbLabels(): Promise<string[]> {
     return this.breadcrumb.getByRole("button").allTextContents();
   }
@@ -151,15 +205,29 @@ export class FolderPickerDialog {
     return locator.evaluate((element) => (element as HTMLElement).offsetWidth);
   }
 
-  async dragHandle(handle: Locator, dx: number): Promise<void> {
+  /**
+   * Presses the pointer on the handle's centre and returns the drag in progress, so a spec
+   * can read the page between moves. `moveBy` is measured from the press point, not from
+   * the last move.
+   */
+  async beginDrag(handle: Locator): Promise<DragInProgress> {
     const box = await handle.boundingBox();
     if (!box) throw new Error("Resize handle has no layout box");
     const x = box.x + box.width / 2;
     const y = box.y + box.height / 2;
     await this.page.mouse.move(x, y);
     await this.page.mouse.down();
-    await this.page.mouse.move(x + dx, y, { steps: 8 });
-    await this.page.mouse.up();
+    return {
+      moveBy: (dx, dy = 0, steps = 1) =>
+        this.page.mouse.move(x + dx, y + dy, { steps }),
+      release: () => this.page.mouse.up(),
+    };
+  }
+
+  async dragHandle(handle: Locator, dx: number, dy = 0): Promise<void> {
+    const drag = await this.beginDrag(handle);
+    await drag.moveBy(dx, dy, 8);
+    await drag.release();
   }
 
   async scrollLeft(): Promise<number> {

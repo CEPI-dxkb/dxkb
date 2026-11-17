@@ -284,10 +284,15 @@ test.describe("resource collection facet counts", () => {
       toolbar.facetValueOption("Genome Status", "Complete", 5),
     ).toHaveAttribute("aria-selected", "false");
     expect(reads).toHaveLength(2);
+    // A keyword list leaves Deprecated genomes out, so every read carries that
+    // base clause; the picked value never reaches the picked facet's own counts.
+    for (const read of reads) {
+      expect(rqlOf(read)).toContain("ne(genome_status,Deprecated)");
+    }
     expect(
       reads.some((read) =>
         facetsOf(read).includes("genome_status") &&
-        read.searchParams.get("rql")?.includes("genome_status"),
+        read.searchParams.get("rql")?.includes("eq(genome_status,Complete)"),
       ),
     ).toBe(false);
   });

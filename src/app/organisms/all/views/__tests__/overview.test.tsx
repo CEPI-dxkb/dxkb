@@ -62,6 +62,25 @@ async function renderServer(node: Promise<React.ReactElement>) {
   return render(<Suspense fallback={null}>{resolved}</Suspense>);
 }
 
+// Live lineage counts less Deprecated genomes (2026-11-16): the tile reads these, not the summaries' `count`, which is a day-cached aggregate that counts Deprecated genomes.
+const genomeCounts: Record<string, number> = {
+  "131567": 1_400_000,
+  "10239": 14_960_000,
+};
+
+function serveGenomeCounts() {
+  server.use(
+    http.get(`${baseUrl}/genome/`, ({ request }) => {
+      const taxonId = /taxon_lineage_ids,(\d+)/.exec(
+        decodeURIComponent(request.url),
+      )?.[1];
+      return HttpResponse.json({
+        response: { numFound: genomeCounts[taxonId ?? ""] },
+      });
+    }),
+  );
+}
+
 function serveSummaries() {
   server.use(
     http.get(`${baseUrl}/data/summary_by_taxon/131567`, () =>
@@ -77,19 +96,22 @@ describe("All Organisms Overview", () => {
   describe("Data summary", () => {
     it("shows the cellular organisms plus the viruses, never fewer than Viruses alone", async () => {
       serveSummaries();
+      serveGenomeCounts();
 
       await renderServer(DataSummaryBoundary());
 
       const genomes = screen.getByTestId("organism-kpi-count");
-      expect(genomes).toHaveTextContent("17,815,990");
+      expect(genomes).toHaveTextContent("16,360,000");
       expect(genomes).not.toHaveTextContent("1,427,115");
+      expect(genomes).not.toHaveTextContent("17,815,990");
       // The tile's text is its "Genomes" label plus the formatted count.
       const shown = Number(genomes.textContent.replaceAll(/\D/g, ""));
-      expect(shown).toBeGreaterThanOrEqual(virusesSummary.count);
+      expect(shown).toBeGreaterThanOrEqual(genomeCounts["10239"]);
     });
 
     it("fails the whole section, with the original message and no partial total, when one root is down", async () => {
       vi.spyOn(console, "error").mockImplementation(() => undefined);
+      serveGenomeCounts();
       server.use(
         http.get(`${baseUrl}/data/summary_by_taxon/131567`, () =>
           HttpResponse.json(cellularSummary),
@@ -109,6 +131,29 @@ describe("All Organisms Overview", () => {
       );
       expect(screen.queryByTestId("organism-kpi-count")).not.toBeInTheDocument();
       expect(screen.queryByText("1,427,115")).not.toBeInTheDocument();
+    });
+
+    it("fails the whole section, with no partial total, when one root's genome count is down", async () => {
+      vi.spyOn(console, "error").mockImplementation(() => undefined);
+      serveSummaries();
+      server.use(
+        http.get(`${baseUrl}/genome/`, ({ request }) =>
+          decodeURIComponent(request.url).includes("taxon_lineage_ids,10239")
+            ? HttpResponse.text("BV-BRC overloaded", { status: 503 })
+            : HttpResponse.json({ response: { numFound: 1_400_000 } }),
+        ),
+      );
+
+      await renderServer(DataSummaryBoundary());
+
+      expect(screen.getByRole("alert")).toHaveTextContent(
+        "Data summary could not be loaded",
+      );
+      expect(screen.getByTestId("section-error-message")).toHaveTextContent(
+        "BV-BRC overloaded",
+      );
+      expect(screen.queryByTestId("organism-kpi-count")).not.toBeInTheDocument();
+      expect(screen.queryByText("1,400,000")).not.toBeInTheDocument();
     });
   });
 

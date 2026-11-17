@@ -21,7 +21,10 @@ import {
   surveillanceIdFromRow,
   taxonomyHref,
 } from "@/lib/views/hrefs";
-import { isSearchableKeyword } from "./all-types-query";
+import {
+  isSearchableKeyword,
+  taxonGenomeCountKeyPrefix,
+} from "./all-types-query";
 
 export {
   expandedRowCount,
@@ -116,7 +119,8 @@ export interface TaxonMatch {
   name: string;
   taxonId: string;
   href: string | null;
-  genomes: number;
+  /** The Taxonomy header's count; `null` when it could not be counted. */
+  genomes: number | null;
   rank: string;
   parents: string[];
 }
@@ -203,11 +207,33 @@ function lineageNames(doc: SearchDoc): string[] {
     : [];
 }
 
-function describe(id: string, doc: SearchDoc, index: number): ResultRow {
+/** Genome counts by taxon ID, from the route's `taxonGenomes:<id>` entries. */
+type TaxonGenomeCounts = Readonly<Partial<Record<string, number>>>;
+
+function readTaxonGenomeCounts(
+  matches: TypeMatches | undefined,
+): TaxonGenomeCounts {
+  const counts: Record<string, number> = {};
+  for (const [key, match] of Object.entries(matches ?? {})) {
+    if (!key.startsWith(taxonGenomeCountKeyPrefix)) continue;
+    const numFound = match?.result?.response?.numFound;
+    if (typeof numFound === "number")
+      counts[key.slice(taxonGenomeCountKeyPrefix.length)] = numFound;
+  }
+  return counts;
+}
+
+function describe(
+  id: string,
+  doc: SearchDoc,
+  index: number,
+  taxonGenomeCounts: TaxonGenomeCounts,
+): ResultRow {
   const base = { key: `${id}-${String(index)}`, monoTitle: false };
   switch (id) {
     case "taxonomy": {
       const taxonId = text(doc.taxon_id);
+      const genomes = taxonGenomeCounts[taxonId];
       return {
         ...base,
         key: taxonId || base.key,
@@ -215,7 +241,10 @@ function describe(id: string, doc: SearchDoc, index: number): ResultRow {
         context: lineageNames(doc).slice(1, -1).slice(-3).join(" › "),
         facts: facts([
           ["Rank", text(doc.taxon_rank)],
-          ["Genomes", counted(doc.genomes, "genome")],
+          [
+            "Genomes",
+            genomes === undefined ? "" : counted(genomes, "genome"),
+          ],
         ]),
         id: taxonId,
         href: isTaxonId(taxonId) ? taxonomyHref(taxonId) : null,
@@ -421,14 +450,21 @@ function describe(id: string, doc: SearchDoc, index: number): ResultRow {
   }
 }
 
-export function describeRows(id: string, docs: SearchDoc[]): ResultRow[] {
+export function describeRows(
+  id: string,
+  docs: SearchDoc[],
+  taxonGenomeCounts: TaxonGenomeCounts = {},
+): ResultRow[] {
   return docs.map((doc, index) => {
-    const row = describe(id, doc, index);
+    const row = describe(id, doc, index, taxonGenomeCounts);
     return row.title ? row : { ...row, title: row.id || "Untitled" };
   });
 }
 
-function taxonMatchOf(doc: SearchDoc | undefined): TaxonMatch | null {
+function taxonMatchOf(
+  doc: SearchDoc | undefined,
+  taxonGenomeCounts: TaxonGenomeCounts,
+): TaxonMatch | null {
   const name = text(doc?.taxon_name);
   if (!doc || !name) return null;
   const taxonId = text(doc.taxon_id);
@@ -437,7 +473,7 @@ function taxonMatchOf(doc: SearchDoc | undefined): TaxonMatch | null {
     name,
     taxonId,
     href: isTaxonId(taxonId) ? taxonomyHref(taxonId) : null,
-    genomes: Number(doc.genomes ?? 0),
+    genomes: taxonGenomeCounts[taxonId] ?? null,
     rank: rank.charAt(0).toUpperCase() + rank.slice(1),
     parents: lineageNames(doc).slice(-3, -1),
   };
@@ -447,6 +483,7 @@ export function toAllTypesResults(
   matches: TypeMatches | undefined,
   keyword: string,
 ): AllTypesResults {
+  const taxonGenomeCounts = readTaxonGenomeCounts(matches);
   const types = allTermSearchTypes.map((type): TypeResults => {
     const response = matches?.[type.id]?.result?.response;
     return {
@@ -455,7 +492,7 @@ export function toAllTypesResults(
       count: response?.numFound ?? 0,
       listHref: searchHref(type, keyword),
       contextLabel: contextLabelByType[type.id] ?? "Context",
-      rows: describeRows(type.id, response?.docs ?? []),
+      rows: describeRows(type.id, response?.docs ?? [], taxonGenomeCounts),
     };
   });
   return {
@@ -463,6 +500,7 @@ export function toAllTypesResults(
     total: types.reduce((sum, type) => sum + type.count, 0),
     bestMatch: taxonMatchOf(
       matches?.taxonomy?.result?.response?.docs?.at(0),
+      taxonGenomeCounts,
     ),
   };
 }

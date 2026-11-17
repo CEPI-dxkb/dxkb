@@ -2,6 +2,7 @@ import { test, expect, applyBackendMocks } from "../../mocks/backends";
 import {
   emptyBackendFallbackOverrides,
   genomeScenarioOverrides,
+  taxonGenomeCounts,
   workspaceOverrides,
 } from "../../fixtures/overrides";
 import { OrganismLandingPage } from "../../pages/organism-landing-page";
@@ -79,7 +80,9 @@ test.describe("bacteria organism landing page", () => {
 
     await expect(page.getByRole("heading", { level: 1, name: "Bacteria" })).toBeVisible();
     await expect(page.getByRole("contentinfo")).toHaveCount(0);
-    await expect(landing.getKpi("Genomes")).toContainText("1,337,420");
+    await expect(landing.getKpi("Genomes")).toContainText(
+      taxonGenomeCounts["2"].toLocaleString("en-US"),
+    );
     await expect(landing.getGenusCard("Escherichia")).toContainText("128,450 genomes");
     await landing.expectDonut("Genus");
     await landing.expectDonut("Host Name");

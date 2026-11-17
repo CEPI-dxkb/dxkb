@@ -1,6 +1,17 @@
 import { render, screen } from "@testing-library/react";
 import { http, HttpResponse } from "msw";
 
+// A spy over the real function, so the requests below still reach MSW. React's
+// `cache` is a passthrough in Vitest, so the header and tile sharing one count
+// request cannot be observed here; going through `getTaxonGenomeCount` is what
+// shares it on the server.
+vi.mock("@/lib/services/organisms/genome-count", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("@/lib/services/organisms/genome-count")>();
+  return { ...actual, getTaxonGenomeCount: vi.fn(actual.getTaxonGenomeCount) };
+});
+
+import { getTaxonGenomeCount } from "@/lib/services/organisms/genome-count";
 import { setTestSession } from "@/test-helpers/api-route-helpers";
 import { server } from "@/test-helpers/msw-server";
 import { maintenancePage } from "@/test-helpers/upstream-failures";
@@ -42,6 +53,7 @@ describe("TaxonGenomeCount", () => {
 
     render(await TaxonGenomeCount({ taxonId: 234 }));
 
+    expect(getTaxonGenomeCount).toHaveBeenCalledWith(234, "user-token");
     expect(authorizations).toEqual(["user-token"]);
     expect(screen.getByText("(1,906 Genomes)")).toBeInTheDocument();
   });
@@ -57,6 +69,7 @@ describe("TaxonGenomeCount", () => {
 
     render(await TaxonGenomeCount({ taxonId: 234 }));
 
+    expect(getTaxonGenomeCount).toHaveBeenCalledWith(234, undefined);
     expect(authorizations).toEqual([null]);
     expect(screen.getByText("(1,896 Genomes)")).toBeInTheDocument();
   });

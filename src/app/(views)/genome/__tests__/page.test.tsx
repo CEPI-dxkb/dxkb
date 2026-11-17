@@ -61,7 +61,10 @@ describe("Genome collection route", () => {
       }),
     );
     expect(screen.getByTestId("overview")).toHaveTextContent(
-      JSON.stringify({ keywordRql: "keyword(pseudomonas)" }),
+      JSON.stringify({
+        fieldRql: "ne(genome_status,Deprecated)",
+        keywordRql: "keyword(pseudomonas)",
+      }),
     );
   });
 

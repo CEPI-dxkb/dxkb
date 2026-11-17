@@ -133,6 +133,44 @@ export class FolderPickerDialog {
     return this.dialog.getByRole("separator", { name: "Resize info pane" });
   }
 
+  /** The dialog's right edge: a drag moves it by twice the pointer travel, because the dialog is centred. */
+  dialogWidthHandle(): Locator {
+    return this.dialog.getByRole("separator", { name: "Resize dialog width" });
+  }
+
+  /** The pointer-only bottom-right corner grip, which resizes both axes (hidden from assistive technology). */
+  dialogGrip(): Locator {
+    return this.dialog.locator('[data-slot="picker-resize-grip"]');
+  }
+
+  expandButton(): Locator {
+    return this.dialog.getByRole("button", { name: "Expand dialog" });
+  }
+
+  restoreButton(): Locator {
+    return this.dialog.getByRole("button", { name: "Restore dialog size" });
+  }
+
+  /**
+   * The size the dialog has come to rest at. The popup carries `duration-100` over the
+   * default `transition-property: all`, so a resize glides for 100ms and a box read
+   * straight after one lands part-way (1365px on the way to 1380px).
+   */
+  async dialogSize(): Promise<{ width: number; height: number }> {
+    await this.settled();
+    const box = await this.dialog.boundingBox();
+    if (!box) throw new Error("Dialog has no layout box");
+    return { width: Math.round(box.width), height: Math.round(box.height) };
+  }
+
+  async dialogWidth(): Promise<number> {
+    return (await this.dialogSize()).width;
+  }
+
+  async dialogHeight(): Promise<number> {
+    return (await this.dialogSize()).height;
+  }
+
   async breadcrumbLabels(): Promise<string[]> {
     return this.breadcrumb.getByRole("button").allTextContents();
   }
@@ -141,14 +179,14 @@ export class FolderPickerDialog {
     return locator.evaluate((element) => (element as HTMLElement).offsetWidth);
   }
 
-  async dragHandle(handle: Locator, dx: number): Promise<void> {
+  async dragHandle(handle: Locator, dx: number, dy = 0): Promise<void> {
     const box = await handle.boundingBox();
     if (!box) throw new Error("Resize handle has no layout box");
     const x = box.x + box.width / 2;
     const y = box.y + box.height / 2;
     await this.page.mouse.move(x, y);
     await this.page.mouse.down();
-    await this.page.mouse.move(x + dx, y, { steps: 8 });
+    await this.page.mouse.move(x + dx, y + dy, { steps: 8 });
     await this.page.mouse.up();
   }
 

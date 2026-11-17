@@ -7,10 +7,18 @@ vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh }) }));
 vi.mock("@/lib/services/organisms/summary", () => ({
   fetchOrganismSummary: vi.fn(),
 }));
+// React's `cache` is a passthrough in Vitest, so the tile and the header sharing
+// one count request cannot be observed here; going through `getTaxonGenomeCount`
+// is what shares it on the server.
+vi.mock("@/lib/services/organisms/genome-count", () => ({
+  getTaxonGenomeCount: vi.fn(),
+}));
 
 import { TaxonomySummary } from "../taxonomy-summary";
 import { UpstreamError } from "@/lib/api/upstream-failure";
+import { getTaxonGenomeCount } from "@/lib/services/organisms/genome-count";
 import { fetchOrganismSummary } from "@/lib/services/organisms/summary";
+import { setTestSession } from "@/test-helpers/api-route-helpers";
 
 const brucellaTaxon = {
   taxonId: 234,
@@ -36,6 +44,7 @@ describe("TaxonomySummary", () => {
       matPeptide: null,
       pdb: 50,
     });
+    vi.mocked(getTaxonGenomeCount).mockResolvedValueOnce(1909);
 
     await renderServer(TaxonomySummary({ taxonId: 234, taxon: brucellaTaxon }));
 
@@ -56,6 +65,7 @@ describe("TaxonomySummary", () => {
         source: "summary_by_taxon",
       }),
     );
+    vi.mocked(getTaxonGenomeCount).mockResolvedValueOnce(1909);
 
     await renderServer(TaxonomySummary({ taxonId: 234, taxon: brucellaTaxon }));
 
@@ -75,32 +85,84 @@ describe("TaxonomySummary", () => {
     });
   });
 
-  it("says the genome count is unavailable when neither source has it", async () => {
+  it("says every count is unavailable when the summary and the genome count both fail", async () => {
     vi.mocked(fetchOrganismSummary).mockRejectedValueOnce(new Error("summary down"));
+    vi.mocked(getTaxonGenomeCount).mockRejectedValueOnce(new Error("count down"));
 
-    await renderServer(
-      TaxonomySummary({ taxonId: 234, taxon: { ...brucellaTaxon, genomes: null } }),
-    );
+    await renderServer(TaxonomySummary({ taxonId: 234, taxon: brucellaTaxon }));
 
     expect(screen.getAllByText("Unavailable")).toHaveLength(4);
+    const genomes = screen.getByTitle("Assembled genome records");
+    expect(within(genomes).getByText("Unavailable")).toBeInTheDocument();
+    expect(screen.getByRole("alert")).toHaveTextContent("summary down");
   });
 
-  it("falls back to the taxonomy record's genome count when the summary has none", async () => {
+  it("shows the lineage-less-Deprecated count, not the summary's count or the taxon record's", async () => {
     vi.mocked(fetchOrganismSummary).mockResolvedValueOnce({
-      count: null,
+      count: 9_571_230,
+      uniqueFamily: 1,
+      uniqueGenus: 6,
+      uniqueSpecies: 1_449,
+      cds: 1,
+      matPeptide: null,
+      pdb: 1,
+    });
+    vi.mocked(getTaxonGenomeCount).mockResolvedValueOnce(9_471_991);
+
+    await renderServer(
+      TaxonomySummary({
+        taxonId: 11118,
+        taxon: { ...brucellaTaxon, taxonId: 11118, genomes: 9_500_742 },
+      }),
+    );
+
+    const genomes = screen.getByTitle("Assembled genome records");
+    expect(within(genomes).getByText("9,471,991")).toBeInTheDocument();
+    expect(screen.queryByText("9,571,230")).toBeNull();
+    expect(screen.queryByText("9,500,742")).toBeNull();
+    expect(getTaxonGenomeCount).toHaveBeenCalledWith(11118, undefined);
+  });
+
+  it("sends the signed-in user's token so the tile counts what the header counts", async () => {
+    setTestSession({ token: "user-token", userId: "chrescobar" });
+    vi.mocked(fetchOrganismSummary).mockResolvedValueOnce({
+      count: 1,
       uniqueFamily: null,
       uniqueGenus: null,
-      uniqueSpecies: 5,
+      uniqueSpecies: 1,
       cds: null,
       matPeptide: null,
       pdb: null,
     });
+    vi.mocked(getTaxonGenomeCount).mockResolvedValueOnce(1906);
+
+    await renderServer(TaxonomySummary({ taxonId: 234, taxon: brucellaTaxon }));
+
+    expect(getTaxonGenomeCount).toHaveBeenCalledWith(234, "user-token");
+  });
+
+  it("marks only the genome tile unavailable, with the reason, when just the count fails", async () => {
+    vi.mocked(fetchOrganismSummary).mockResolvedValueOnce({
+      count: 5,
+      uniqueFamily: null,
+      uniqueGenus: null,
+      uniqueSpecies: 5,
+      cds: 7,
+      matPeptide: null,
+      pdb: 9,
+    });
+    vi.mocked(getTaxonGenomeCount).mockRejectedValueOnce(
+      new Error("count service did not respond"),
+    );
 
     await renderServer(TaxonomySummary({ taxonId: 234, taxon: brucellaTaxon }));
 
     const genomes = screen.getByTitle("Assembled genome records");
-    expect(within(genomes).getByText("1,909")).toBeInTheDocument();
-    expect(screen.queryByRole("alert")).toBeNull();
+    expect(within(genomes).getByText("Unavailable")).toBeInTheDocument();
+    expect(screen.getByText("7")).toBeInTheDocument();
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "count service did not respond",
+    );
   });
 
   it("renders summary metrics and '-' for taxon fields when taxon prop is null", async () => {
@@ -113,6 +175,7 @@ describe("TaxonomySummary", () => {
       matPeptide: null,
       pdb: null,
     });
+    vi.mocked(getTaxonGenomeCount).mockResolvedValueOnce(1909);
 
     await renderServer(TaxonomySummary({ taxonId: 234, taxon: null }));
 
@@ -123,6 +186,7 @@ describe("TaxonomySummary", () => {
 
   it("throws when summary fetch fails and taxon prop is null", async () => {
     vi.mocked(fetchOrganismSummary).mockRejectedValueOnce(new Error("summary boom"));
+    vi.mocked(getTaxonGenomeCount).mockResolvedValueOnce(1909);
 
     await expect(TaxonomySummary({ taxonId: 234, taxon: null })).rejects.toThrow("summary boom");
   });

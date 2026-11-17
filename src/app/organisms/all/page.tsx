@@ -5,12 +5,10 @@ import { buildTaxonViews } from "@/components/organisms/taxon-views";
 import { fetchLandingRootTaxonomy } from "@/lib/services/organisms/taxonomy";
 import { resolveLandingTab } from "@/lib/taxon-view/landing-request";
 
-import { allOrganismsLandingConfig } from "./_config";
+import { allOrganismRootIds, allOrganismsLandingConfig } from "./_config";
 import { OverviewView } from "./views/overview";
 
 export const dynamic = "force-dynamic";
-
-const allOrganismRootIds = [131567, 10239] as const;
 
 interface AllOrganismsPageProps {
   searchParams?: Promise<{

@@ -1,6 +1,12 @@
 import type { OrganismTaxonomy } from "@/lib/services/organisms/types";
 
-import { scopeRoots, taxonGenomesClause, taxonLineageClause } from "../scope";
+import {
+  scopeRoots,
+  taxonGenomesClause,
+  taxonIdsGenomesClause,
+  taxonIdsLineageClause,
+  taxonLineageClause,
+} from "../scope";
 
 function taxon(taxonId: number): OrganismTaxonomy {
   return {
@@ -70,6 +76,56 @@ describe("taxonGenomesClause", () => {
       }),
     ).toBe(
       "and(or(eq(taxon_lineage_ids,131567),eq(taxon_lineage_ids,10239)),ne(genome_status,Deprecated))",
+    );
+  });
+});
+
+describe("taxonIdsLineageClause", () => {
+  it("is a bare eq for one id", () => {
+    expect(taxonIdsLineageClause([2])).toBe("eq(taxon_lineage_ids,2)");
+  });
+
+  it("joins several ids with or, in order", () => {
+    expect(taxonIdsLineageClause([131567, 10239])).toBe(
+      "or(eq(taxon_lineage_ids,131567),eq(taxon_lineage_ids,10239))",
+    );
+  });
+
+  it("rejects an empty list before producing invalid RQL", () => {
+    expect(() => taxonIdsLineageClause([])).toThrow(/at least one taxon id/i);
+  });
+
+  it("matches taxonLineageClause for the same roots", () => {
+    const roots = [taxon(131567), taxon(10239)];
+    expect(
+      taxonIdsLineageClause(roots.map((root) => root.taxonId)),
+    ).toBe(
+      taxonLineageClause({ kind: "composite", displayName: "All", roots }),
+    );
+    expect(taxonIdsLineageClause([2])).toBe(
+      taxonLineageClause({ kind: "lineage", taxon: taxon(2) }),
+    );
+  });
+});
+
+describe("taxonIdsGenomesClause", () => {
+  it("leaves Deprecated genomes out of one id", () => {
+    expect(taxonIdsGenomesClause([11320])).toBe(
+      "and(eq(taxon_lineage_ids,11320),ne(genome_status,Deprecated))",
+    );
+  });
+
+  it("applies the filter to every id, as the All Organisms Genomes tab does", () => {
+    const ids = [131567, 10239];
+    expect(taxonIdsGenomesClause(ids)).toBe(
+      "and(or(eq(taxon_lineage_ids,131567),eq(taxon_lineage_ids,10239)),ne(genome_status,Deprecated))",
+    );
+    expect(taxonIdsGenomesClause(ids)).toBe(
+      taxonGenomesClause({
+        kind: "composite",
+        displayName: "All Organisms",
+        roots: ids.map(taxon),
+      }),
     );
   });
 });

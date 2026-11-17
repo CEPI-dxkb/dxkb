@@ -14,7 +14,7 @@ import { bacteriaLandingConfig as config } from "../_config";
 
 async function DataSummaryBoundary() {
   return withSectionError("Data summary", () =>
-    DataSummary({ taxonId: config.taxonId }),
+    DataSummary({ taxonIds: [config.taxonId] }),
   );
 }
 

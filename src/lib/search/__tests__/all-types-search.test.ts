@@ -9,8 +9,15 @@ import {
   toAllTypesResults,
   typeSearchQuery,
 } from "../all-types-search";
+import { taxonGenomeCountQueries } from "../all-types-query";
 import { DataRepositoryError } from "@/lib/data-api/client";
+import { keywordClauses } from "@/lib/data-api/rql";
+import { genomeBaseRql, parseGenomeCollectionState } from "@/lib/genome-view";
+import { nonDeprecatedGenomeClause } from "@/lib/services/organisms/genome-scope";
+import { toSearchParamsRecord } from "@/lib/views/collection-state";
+import { rqlAnd } from "@/lib/views/rql";
 import { isUpstreamOutage } from "@/lib/api/query-retry";
+import { taxonViewHeader } from "@/lib/taxonomy-view";
 import { server } from "@/test-helpers/msw-server";
 
 const searchRoute = `*${allTypesSearchPath}`;
@@ -25,6 +32,54 @@ describe("typeSearchQuery", () => {
     ["epitope", "keyword(influenza)&limit(5)&sort(-score)"],
   ])("builds the %s query", (id, expected) => {
     expect(typeSearchQuery(id, "influenza", 5)).toBe(expected);
+  });
+
+  it("leaves Deprecated genomes out of the Genomes count, as the list it links to does", () => {
+    expect(typeSearchQuery("genome", "Coronaviridae", 10)).toBe(
+      "keyword(Coronaviridae)&ne(genome_status,Deprecated)&limit(10)&sort(-score)",
+    );
+  });
+
+  it.each(["Coronaviridae", "coli Salmonella"])(
+    "counts the rows of the list the Genomes card links to (%s)",
+    (keyword) => {
+      const card = toAllTypesResults(undefined, keyword).types.find(
+        (type) => type.id === "genome",
+      );
+      const href = new URL(card?.listHref ?? "", "https://dxkb.test");
+      expect(href.pathname).toBe("/genome");
+      const listState = parseGenomeCollectionState(
+        toSearchParamsRecord(href.searchParams),
+      );
+      const listBase = genomeBaseRql(listState);
+      expect(listBase).toBe(nonDeprecatedGenomeClause);
+      const cardClauses = typeSearchQuery("genome", keyword, 10)
+        .split("&")
+        .filter((part) => !/^(limit|sort)\(/.test(part));
+      expect(cardClauses).toEqual([
+        rqlAnd(...keywordClauses(listState.keyword ?? "", "exact")),
+        listBase,
+      ]);
+    },
+  );
+});
+
+describe("taxonGenomeCountQueries", () => {
+  it("builds one limit(1) count per taxon with the Taxonomy header's definition", () => {
+    expect(taxonGenomeCountQueries(["11118", "694009"])).toEqual({
+      "taxonGenomes:11118": {
+        dataType: "genome",
+        accept: "application/solr+json",
+        query:
+          "and(eq(taxon_lineage_ids,11118),ne(genome_status,Deprecated))&select(genome_id)&limit(1)",
+      },
+      "taxonGenomes:694009": {
+        dataType: "genome",
+        accept: "application/solr+json",
+        query:
+          "and(eq(taxon_lineage_ids,694009),ne(genome_status,Deprecated))&select(genome_id)&limit(1)",
+      },
+    });
   });
 });
 
@@ -287,35 +342,245 @@ describe("toAllTypesResults", () => {
               docs: [
                 {
                   taxon_id: 2697049,
-                  taxon_name: "SARS-CoV-2",
+                  taxon_name: "Severe acute respiratory syndrome coronavirus 2",
                   taxon_rank: "no rank",
                   genomes: 9_000_000,
+                  lineage_ids: [
+                    10239, 2559587, 2732396, 2732408, 2732506, 76804, 2499399,
+                    11118, 2501931, 694002, 2509511, 3418604, 2697049,
+                  ],
                   lineage_names: [
                     "Viruses",
+                    "Riboviria",
+                    "Orthornavirae",
+                    "Pisuviricota",
+                    "Pisoniviricetes",
+                    "Nidovirales",
+                    "Cornidovirineae",
                     "Coronaviridae",
+                    "Orthocoronavirinae",
                     "Betacoronavirus",
-                    "Severe acute respiratory syndrome-related coronavirus",
-                    "SARS-CoV-2",
+                    "Sarbecovirus",
+                    "Betacoronavirus pandemicum",
+                    "Severe acute respiratory syndrome coronavirus 2",
+                  ],
+                  lineage_ranks: [
+                    "acellular root",
+                    "realm",
+                    "kingdom",
+                    "phylum",
+                    "class",
+                    "order",
+                    "suborder",
+                    "family",
+                    "subfamily",
+                    "genus",
+                    "subgenus",
+                    "species",
+                    "no rank",
                   ],
                 },
               ],
             },
           },
         },
+        "taxonGenomes:2697049": {
+          result: { response: { numFound: 8_900_000, docs: [] } },
+        },
       },
       "SARS-CoV-2",
     );
     expect(bestMatch).toEqual({
-      name: "SARS-CoV-2",
+      name: "Severe acute respiratory syndrome coronavirus 2",
       taxonId: "2697049",
       href: "/taxonomy/2697049",
-      genomes: 9_000_000,
+      genomes: 8_900_000,
       rank: "No rank",
       parents: [
+        "Pisuviricota",
+        "Pisoniviricetes",
+        "Nidovirales",
+        "Coronaviridae",
         "Betacoronavirus",
-        "Severe acute respiratory syndrome-related coronavirus",
+        "Betacoronavirus pandemicum",
       ],
     });
+  });
+
+  it("uses the shared genome count for the best match and the Taxa rows, not the stored field", () => {
+    const results = toAllTypesResults(
+      {
+        taxonomy: {
+          result: {
+            response: {
+              numFound: 1,
+              docs: [
+                {
+                  taxon_id: 11118,
+                  taxon_name: "Coronaviridae",
+                  taxon_rank: "family",
+                  genomes: 9_500_742,
+                },
+              ],
+            },
+          },
+        },
+        "taxonGenomes:11118": {
+          result: { response: { numFound: 9_471_991, docs: [] } },
+        },
+      },
+      "Coronaviridae",
+    );
+    expect(results.bestMatch?.genomes).toBe(9_471_991);
+    const taxa = results.types.find((type) => type.id === "taxonomy");
+    expect(taxa?.rows[0].facts).toContainEqual({
+      label: "Genomes",
+      value: "9,471,991 genomes",
+    });
+  });
+
+  it("shows a count of zero as 0 genomes, not as missing", () => {
+    const results = toAllTypesResults(
+      {
+        taxonomy: {
+          result: {
+            response: {
+              numFound: 1,
+              docs: [
+                { taxon_id: 11118, taxon_name: "Coronaviridae", genomes: 4 },
+              ],
+            },
+          },
+        },
+        "taxonGenomes:11118": { result: { response: { numFound: 0, docs: [] } } },
+      },
+      "Coronaviridae",
+    );
+    expect(results.bestMatch?.genomes).toBe(0);
+    const taxa = results.types.find((type) => type.id === "taxonomy");
+    expect(taxa?.rows[0].facts).toContainEqual({
+      label: "Genomes",
+      value: "0 genomes",
+    });
+  });
+
+  it("omits the genome figure when the count is missing instead of showing the stored one", () => {
+    const results = toAllTypesResults(
+      {
+        taxonomy: {
+          result: {
+            response: {
+              numFound: 1,
+              docs: [
+                {
+                  taxon_id: 11118,
+                  taxon_name: "Coronaviridae",
+                  genomes: 9_500_742,
+                },
+              ],
+            },
+          },
+        },
+      },
+      "Coronaviridae",
+    );
+    expect(results.bestMatch?.genomes).toBeNull();
+    const taxa = results.types.find((type) => type.id === "taxonomy");
+    expect(
+      taxa?.rows[0].facts.find((fact) => fact.label === "Genomes"),
+    ).toBeUndefined();
+  });
+});
+
+const coronaviridae = {
+  taxon_id: "11118",
+  taxon_name: "Coronaviridae",
+  taxon_rank: "family",
+  genomes: 9_500_841,
+  lineage_ids: [10239, 2559587, 2732396, 2732408, 2732506, 76804, 2499399, 11118],
+  lineage_names: [
+    "Viruses",
+    "Riboviria",
+    "Orthornavirae",
+    "Pisuviricota",
+    "Pisoniviricetes",
+    "Nidovirales",
+    "Cornidovirineae",
+    "Coronaviridae",
+  ],
+  lineage_ranks: [
+    "acellular root",
+    "realm",
+    "kingdom",
+    "phylum",
+    "class",
+    "order",
+    "suborder",
+    "family",
+  ],
+};
+
+function taxonomyMatches(doc: Record<string, unknown>) {
+  return {
+    taxonomy: { result: { response: { numFound: 1, docs: [doc] } } },
+  };
+}
+
+describe("search lineage matches the taxon breadcrumb (DXKBCORE-406)", () => {
+  const breadcrumbNames = taxonViewHeader({
+    taxonId: coronaviridae.taxon_id,
+    lineageIds: coronaviridae.lineage_ids,
+    lineageNames: coronaviridae.lineage_names,
+    lineageRanks: coronaviridae.lineage_ranks,
+  }).ancestors.map((crumb) => crumb.name);
+
+  it("the breadcrumb ancestors for Coronaviridae are the rank-filtered ones", () => {
+    expect(breadcrumbNames).toEqual([
+      "Pisuviricota",
+      "Pisoniviricetes",
+      "Nidovirales",
+    ]);
+  });
+
+  it("the best match parents equal the breadcrumb ancestors", () => {
+    const { bestMatch } = toAllTypesResults(
+      taxonomyMatches(coronaviridae),
+      "Coronaviridae",
+    );
+    expect(bestMatch?.parents).toEqual(breadcrumbNames);
+  });
+
+  it("the Taxa row context equals the breadcrumb ancestors joined with ›", () => {
+    const { types } = toAllTypesResults(
+      taxonomyMatches(coronaviridae),
+      "Coronaviridae",
+    );
+    const row = types.find((type) => type.id === "taxonomy")?.rows[0];
+    expect(row?.context).toBe(breadcrumbNames.join(" › "));
+  });
+
+  it("shows no lineage when the arrays are not aligned, as the breadcrumb does", () => {
+    const misaligned = {
+      ...coronaviridae,
+      lineage_ranks: coronaviridae.lineage_ranks.slice(0, -1),
+    };
+    const { bestMatch, types } = toAllTypesResults(
+      taxonomyMatches(misaligned),
+      "Coronaviridae",
+    );
+    expect(bestMatch?.parents).toEqual([]);
+    expect(types.find((type) => type.id === "taxonomy")?.rows[0]?.context).toBe(
+      "",
+    );
+  });
+
+  it("shows no lineage when a doc has no ranks", () => {
+    const withoutRanks = { ...coronaviridae, lineage_ranks: undefined };
+    const { bestMatch } = toAllTypesResults(
+      taxonomyMatches(withoutRanks),
+      "Coronaviridae",
+    );
+    expect(bestMatch?.parents).toEqual([]);
   });
 });
 

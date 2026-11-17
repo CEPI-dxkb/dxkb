@@ -61,8 +61,8 @@ import {
   dialogHeightLimits,
   dialogWidthLimits,
   effectiveDialogSize,
+  expandedDialogSize,
   isMaximized,
-  maximizeDialogSize,
   parsePickerLayout,
   pickerLayoutKey,
   serializePickerLayout,
@@ -807,7 +807,9 @@ export function WorkspaceFolderPickerDialog({
           isExpanded={expanded}
           canToggleExpanded={canToggleExpanded}
           onToggleExpanded={() => {
-            setDialogSize(expanded ? undefined : maximizeDialogSize(viewport));
+            setDialogSize(
+              expanded ? undefined : expandedDialogSize(stored.dialog, viewport),
+            );
           }}
           target={target}
           initialPath={initialPath}

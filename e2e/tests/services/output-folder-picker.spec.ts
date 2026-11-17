@@ -695,6 +695,28 @@ test.describe("output folder picker: dialog size", () => {
     expect(await storedLayout(page)).toBeNull();
   });
 
+  test("expands a window that is too small on one axis without narrowing the dialog for a larger window", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1280, height: 720 });
+    const { picker } = await openBlast(page);
+    await picker.open();
+    expect(await picker.dialogSize()).toEqual({ width: 1248, height: 672 });
+
+    // Only the height can grow here. The width is stored as the 1280 default, not as the
+    // 1248 this window clamps it to.
+    await picker.expandButton().click();
+    expect(await picker.dialogSize()).toEqual({ width: 1248, height: 688 });
+    expect(await storedLayout(page)).toEqual({
+      dialog: { width: 1280, height: 688 },
+    });
+
+    await page.setViewportSize({ width: 1600, height: 900 });
+    await expect.poll(async () => picker.dialogWidth()).toBe(1280);
+    expect(await picker.dialogHeight()).toBe(688);
+    await expect(picker.expandButton()).toBeVisible();
+  });
+
   test("never outgrows a smaller window, and keeps the stored size for a larger one", async ({
     page,
   }) => {

@@ -2,6 +2,7 @@ import {
   canMaximize,
   dialogGutter,
   effectiveDialogSize,
+  expandedDialogSize,
   isMaximized,
   maxStoredColumns,
   maximizeDialogSize,
@@ -66,6 +67,43 @@ describe("maximizeDialogSize", () => {
 
   it("is capped by the limits on a huge screen", () => {
     expect(maximizeDialogSize({ width: 3840, height: 2160 })).toEqual({ width: 1920, height: 1400 });
+  });
+});
+
+describe("expandedDialogSize", () => {
+  it("keeps the default width when only the height can grow", () => {
+    // The maximum on 1280 x 720 is 1248 x 688; the 1280 default is wider than that.
+    expect(expandedDialogSize(undefined, laptop)).toEqual({ width: 1280, height: 688 });
+  });
+
+  it("keeps a remembered width the window cannot show", () => {
+    expect(expandedDialogSize({ width: 1500, height: 500 }, { width: 1000, height: 700 })).toEqual({
+      width: 1500,
+      height: 668,
+    });
+  });
+
+  it("is the window maximum where that is larger than the remembered or default size", () => {
+    expect(expandedDialogSize(undefined, desktop)).toEqual({ width: 1568, height: 868 });
+    expect(expandedDialogSize(undefined, desktop)).toEqual(maximizeDialogSize(desktop));
+  });
+
+  it("never stores less than a larger remembered size", () => {
+    expect(expandedDialogSize({ width: 1700, height: 800 }, desktop)).toEqual({
+      width: 1700,
+      height: 868,
+    });
+  });
+
+  it("still renders as the window maximum", () => {
+    for (const [stored, viewport] of [
+      [undefined, laptop],
+      [{ width: 1500, height: 500 }, { width: 1000, height: 700 }],
+      [{ width: 1700, height: 800 }, desktop],
+    ] as const) {
+      const size = effectiveDialogSize(expandedDialogSize(stored, viewport), viewport);
+      expect(isMaximized(size, viewport)).toBe(true);
+    }
   });
 });
 

@@ -1,4 +1,4 @@
-import { fireEvent, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, screen, waitFor } from "@testing-library/react";
 import { readStorageItem, writeStorageItem } from "@/lib/browser-storage";
 import { pickerLayoutKey } from "../folder-picker-layout";
 import {
@@ -191,6 +191,47 @@ describe("resizable picker dialog", () => {
 
     await user.click(screen.getByRole("button", { name: "Expand dialog" }));
     expect(sizeVars()).toEqual({ width: "1248px", height: "688px" });
+    // The window shows the width clamped, but the stored one stays the 1280 default.
+    expect(storedLayout()).toEqual({ dialog: { width: 1280, height: 688 } });
+    expect(
+      screen.getByRole("button", { name: "Restore dialog size" }),
+    ).toBeInTheDocument();
+  });
+
+  it("does not leave a window-clamped width behind when Expand grows only the height", async () => {
+    vi.stubGlobal("innerWidth", 1280);
+    vi.stubGlobal("innerHeight", 720);
+    const { user } = renderPicker();
+    await findOption("Home", "Experiments");
+    await user.click(screen.getByRole("button", { name: "Expand dialog" }));
+
+    vi.stubGlobal("innerWidth", 1600);
+    vi.stubGlobal("innerHeight", 900);
+    act(() => {
+      window.dispatchEvent(new Event("resize"));
+    });
+
+    expect(sizeVars()).toEqual({ width: "1280px", height: "688px" });
+    expect(
+      screen.getByRole("button", { name: "Expand dialog" }),
+    ).toBeInTheDocument();
+  });
+
+  it("keeps a remembered width the window cannot show when Expand grows the height", async () => {
+    vi.stubGlobal("innerWidth", 1000);
+    vi.stubGlobal("innerHeight", 700);
+    writeStorageItem(
+      pickerLayoutKey,
+      JSON.stringify({ dialog: { width: 1500, height: 500 } }),
+    );
+    const { user } = renderPicker();
+    await findOption("Home", "Experiments");
+    expect(sizeVars()).toEqual({ width: "968px", height: "500px" });
+
+    await user.click(screen.getByRole("button", { name: "Expand dialog" }));
+
+    expect(sizeVars()).toEqual({ width: "968px", height: "668px" });
+    expect(storedLayout()).toEqual({ dialog: { width: 1500, height: 668 } });
   });
 
   it("keeps Restore for a stored expanded size on a window that cannot grow it", async () => {

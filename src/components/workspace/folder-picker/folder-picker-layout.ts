@@ -81,6 +81,24 @@ export function maximizeDialogSize(viewport: Viewport): DialogSize {
   );
 }
 
+/**
+ * What Expand stores: the window maximum, but never less than the remembered size (the
+ * default when none) on either axis. The stored size is not the rendered one: where the
+ * window is too small on one axis the maximum is clamped there, and storing that clamped
+ * value would shrink the width or height the next, larger window opens with. The size
+ * still renders as the maximum, since `effectiveDialogSize` clamps it to the window.
+ */
+export function expandedDialogSize(
+  stored: DialogSize | undefined,
+  viewport: Viewport,
+): DialogSize {
+  const maximum = maximizeDialogSize(viewport);
+  return {
+    width: Math.max(maximum.width, stored?.width ?? dialogWidthLimits.initial),
+    height: Math.max(maximum.height, stored?.height ?? dialogHeightLimits.initial),
+  };
+}
+
 /** Whether Expand would change the size: the window leaves room to grow on at least one axis. */
 export function canMaximize(size: DialogSize, viewport: Viewport): boolean {
   const maximum = maximizeDialogSize(viewport);

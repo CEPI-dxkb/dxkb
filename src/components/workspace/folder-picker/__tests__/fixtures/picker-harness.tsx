@@ -7,6 +7,7 @@ import { useState, type ComponentProps, type ReactNode } from "react";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { WorkspaceFolderPickerDialog } from "@/components/workspace/folder-picker/folder-picker-dialog";
+import { pickerLayoutKey } from "@/components/workspace/folder-picker/folder-picker-layout";
 import { WorkspaceRepositoryProvider } from "@/contexts/workspace-repository-context";
 import {
   InMemoryWorkspaceRepository,
@@ -16,6 +17,7 @@ import type {
   ListDirectoryInput,
   WorkspaceItem,
 } from "@/lib/services/workspace/domain";
+import { writeStorageItem } from "@/lib/browser-storage";
 import type {
   UploadNodeRequest,
   UploadNodeResult,
@@ -28,6 +30,8 @@ export const pickerHome = "/alice@bvbrc/home";
 /**
  * jsdom has no Element.scrollTo, pointer capture, matchMedia or Web Animations API;
  * reporting reduced motion keeps column animations out of the component tests.
+ * Called at the top of a test file, so it also clears the stored picker layout before
+ * each test: jsdom's localStorage is shared by every test in a file.
  */
 export function stubPickerBrowserApis() {
   Element.prototype.scrollTo = vi.fn();
@@ -36,6 +40,9 @@ export function stubPickerBrowserApis() {
   Object.defineProperty(window, "matchMedia", {
     configurable: true,
     value: () => ({ matches: true }),
+  });
+  beforeEach(() => {
+    writeStorageItem(pickerLayoutKey, null);
   });
 }
 

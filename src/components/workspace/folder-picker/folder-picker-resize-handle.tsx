@@ -9,10 +9,14 @@ interface ResizeHandleProps {
   width: number;
   limits: { min: number; max: number; initial: number };
   onResize: (width: number) => void;
+  /** Width change per pixel of pointer travel: 2 for a centred dialog, whose two edges both move. */
+  pointerScale?: number;
+  /** Width change per arrow-key press. */
+  keyboardStep?: number;
   className?: string;
 }
 
-const keyboardStep = 16;
+const defaultKeyboardStep = 16;
 
 export function PaneResizeHandle({
   edge,
@@ -20,6 +24,8 @@ export function PaneResizeHandle({
   width,
   limits,
   onResize,
+  pointerScale = 1,
+  keyboardStep = defaultKeyboardStep,
   className,
 }: ResizeHandleProps) {
   const dragRef = useRef<{ x: number; width: number } | null>(null);
@@ -46,7 +52,9 @@ export function PaneResizeHandle({
       }}
       onPointerMove={(event) => {
         const drag = dragRef.current;
-        if (drag) resize(drag.width + sign * (event.clientX - drag.x));
+        if (drag) {
+          resize(drag.width + sign * pointerScale * (event.clientX - drag.x));
+        }
       }}
       onPointerUp={(event) => {
         dragRef.current = null;

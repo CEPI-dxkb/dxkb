@@ -15,11 +15,15 @@ function Harness({
   startWidth = 200,
   onResize,
   onParentKeyDown,
+  pointerScale,
+  keyboardStep,
 }: {
   edge: "start" | "end";
   startWidth?: number;
   onResize?: (width: number) => void;
   onParentKeyDown?: () => void;
+  pointerScale?: number;
+  keyboardStep?: number;
 }) {
   const [width, setWidth] = useState(startWidth);
   return (
@@ -29,6 +33,8 @@ function Harness({
         label="Resize Home column"
         width={width}
         limits={limits}
+        pointerScale={pointerScale}
+        keyboardStep={keyboardStep}
         onResize={(next) => {
           onResize?.(next);
           setWidth(next);
@@ -169,5 +175,24 @@ describe("PaneResizeHandle", () => {
     fireEvent.pointerMove(handle(), { clientX: 600, pointerId: 1 });
 
     expect(handle()).toHaveAttribute("aria-valuenow", "200");
+  });
+
+  it("scales pointer travel by pointerScale", () => {
+    render(<Harness edge="end" pointerScale={2} />);
+
+    fireEvent.pointerDown(handle(), { button: 0, clientX: 500, pointerId: 3 });
+    fireEvent.pointerMove(handle(), { clientX: 510, pointerId: 3 });
+
+    expect(handle()).toHaveAttribute("aria-valuenow", "220");
+  });
+
+  it("steps by keyboardStep", async () => {
+    const user = userEvent.setup();
+    render(<Harness edge="end" keyboardStep={32} />);
+    handle().focus();
+
+    await user.keyboard("{ArrowRight}");
+
+    expect(handle()).toHaveAttribute("aria-valuenow", "232");
   });
 });

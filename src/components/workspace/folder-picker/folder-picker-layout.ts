@@ -5,6 +5,11 @@ export const dialogWidthLimits = { min: 720, max: 1920, initial: 1280 };
 export const dialogHeightLimits = { min: 480, max: 1400, initial: 672 };
 /** 2rem: the room the dialog's CSS max-width and max-height keep free around it. */
 export const dialogGutter = 32;
+/**
+ * Columns at this index or deeper are not stored: `parseColumns` drops them on read, so
+ * they return to their default width after the next write. That is deeper than any real
+ * workspace nesting the picker shows.
+ */
 export const maxStoredColumns = 8;
 
 export interface DialogSize {

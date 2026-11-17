@@ -688,15 +688,23 @@ describe("WorkspaceFolderPickerDialog Show files and widths", () => {
   });
 
   it("is wide enough for three default columns beside the places nav and info pane", async () => {
-    renderPicker();
-    await findOption("Home", "Experiments");
+    vi.stubGlobal("innerWidth", 1600);
+    try {
+      renderPicker();
+      await findOption("Home", "Experiments");
 
-    const dialog = screen.getByRole("dialog");
-    // Both classes are static strings, so jsdom can read them; layout itself is
-    // covered by the e2e spec.
-    expect(dialog).toHaveClass("md:w-[80rem]");
-    expect(dialog).toHaveClass("sm:max-w-[calc(100%-2rem)]");
-    expect(dialog).not.toHaveClass("sm:max-w-5xl");
+      const dialog = screen.getByRole("dialog");
+      // jsdom reads the classes and the custom property but lays nothing out; layout
+      // itself is covered by the e2e spec.
+      expect(dialog).toHaveClass("md:w-(--picker-width)");
+      expect(dialog.style.getPropertyValue("--picker-width")).toBe("1280px");
+      expect(dialog).toHaveClass("sm:max-w-[calc(100%-2rem)]");
+      expect(dialog).not.toHaveClass("sm:max-w-5xl");
+      // Below md the phone layout keeps its own height and full width.
+      expect(dialog).toHaveClass("h-[min(42rem,calc(100dvh-2rem))]", "w-full");
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 
   it("resizes a column from the keyboard and resets it on double click", async () => {

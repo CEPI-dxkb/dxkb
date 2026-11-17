@@ -1,4 +1,4 @@
-import { Eye, EyeOff, XIcon } from "lucide-react";
+import { Eye, EyeOff, Maximize2, Minimize2, XIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DialogClose,
@@ -15,6 +15,11 @@ interface FolderPickerHeaderProps {
   showFiles: boolean;
   onShowFilesChange: (showFiles: boolean) => void;
   isUploading: boolean;
+  /** The dialog fills the window; the button then restores the default size. */
+  isExpanded: boolean;
+  /** False where the window leaves nothing to expand into, so there is no button. */
+  canToggleExpanded: boolean;
+  onToggleExpanded: () => void;
 }
 
 export function FolderPickerHeader({
@@ -23,8 +28,12 @@ export function FolderPickerHeader({
   showFiles,
   onShowFilesChange,
   isUploading,
+  isExpanded,
+  canToggleExpanded,
+  onToggleExpanded,
 }: FolderPickerHeaderProps) {
   const isPickingFiles = target.kind === "object";
+  const expandLabel = isExpanded ? "Restore dialog size" : "Expand dialog";
   return (
     <DialogHeader>
       <div className="flex items-start justify-between gap-4">
@@ -43,6 +52,20 @@ export function FolderPickerHeader({
         </div>
         <div className="flex shrink-0 items-center gap-4">
           <KeyboardHints />
+          {/* The dialog is sized only from md up, so below that there is nothing to expand. */}
+          {canToggleExpanded ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              className="hidden md:inline-flex"
+              aria-label={expandLabel}
+              title={expandLabel}
+              onClick={onToggleExpanded}
+            >
+              {isExpanded ? <Minimize2 /> : <Maximize2 />}
+            </Button>
+          ) : null}
           <Button
             type="button"
             variant="outline"

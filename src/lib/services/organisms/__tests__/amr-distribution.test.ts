@@ -1,6 +1,11 @@
 import { http, HttpResponse } from "msw";
 
+import {
+  genomeOverviewScope,
+  parseGenomeCollectionState,
+} from "@/lib/genome-view/query";
 import { fetchAmrPhenotypeDistribution } from "@/lib/services/organisms/amr-distribution";
+import { nonDeprecatedGenomeClause } from "@/lib/services/organisms/genome-scope";
 import { server } from "@/test-helpers/msw-server";
 
 const baseUrl = "https://bvbrc.test/api-for-website";
@@ -83,6 +88,55 @@ describe("fetchAmrPhenotypeDistribution", () => {
     // The website API rejects a keyword inside genome() on genome_amr.
     expect(capturedBody.startsWith(prefix)).toBe(true);
   });
+
+  it("sends a keyword Overview's AMR request without a genome join, which a bare Deprecated exclusion would empty", async () => {
+    let capturedBody = "";
+    server.use(
+      http.post(`${baseUrl}/genome_amr/`, async ({ request }) => {
+        capturedBody = await request.text();
+        return HttpResponse.json(pivotResponse([]));
+      }),
+    );
+    const scope = genomeOverviewScope(
+      parseGenomeCollectionState({ keyword: "coli" }),
+    );
+    // The scope carries the exclusion, which is what the join must not use.
+    expect(scope).toEqual({
+      fieldRql: nonDeprecatedGenomeClause,
+      keywordRql: "keyword(coli)",
+    });
+    if (!scope) throw new Error("A keyword-only list has an overview scope");
+
+    await fetchAmrPhenotypeDistribution(scope);
+
+    expect(capturedBody).toContain("&keyword(coli)&");
+    expect(capturedBody).not.toContain("genome(");
+  });
+
+  it.each([
+    ["a keyword list", { keyword: "coli" }],
+    ["My Genomes", {}],
+  ])(
+    "sends %s with Public picked without the whole-corpus genome join that times out",
+    async (_label, params) => {
+      let capturedBody = "";
+      server.use(
+        http.post(`${baseUrl}/genome_amr/`, async ({ request }) => {
+          capturedBody = await request.text();
+          return HttpResponse.json(pivotResponse([]));
+        }),
+      );
+      const scope = genomeOverviewScope(
+        parseGenomeCollectionState({ ...params, public: "true" }),
+      );
+      if (!scope) throw new Error("A public list has an overview scope");
+
+      await fetchAmrPhenotypeDistribution(scope);
+
+      expect(capturedBody).not.toContain("genome(");
+      expect(capturedBody).not.toContain("public");
+    },
+  );
 
   it("returns empty antibiotics when pivot is empty", async () => {
     server.use(

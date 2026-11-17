@@ -9,7 +9,13 @@ import {
   toAllTypesResults,
   typeSearchQuery,
 } from "../all-types-search";
+import { taxonGenomeCountQueries } from "../all-types-query";
 import { DataRepositoryError } from "@/lib/data-api/client";
+import { keywordClauses } from "@/lib/data-api/rql";
+import { genomeBaseRql, parseGenomeCollectionState } from "@/lib/genome-view";
+import { nonDeprecatedGenomeClause } from "@/lib/services/organisms/genome-scope";
+import { toSearchParamsRecord } from "@/lib/views/collection-state";
+import { rqlAnd } from "@/lib/views/rql";
 import { isUpstreamOutage } from "@/lib/api/query-retry";
 import { taxonViewHeader } from "@/lib/taxonomy-view";
 import { server } from "@/test-helpers/msw-server";
@@ -26,6 +32,54 @@ describe("typeSearchQuery", () => {
     ["epitope", "keyword(influenza)&limit(5)&sort(-score)"],
   ])("builds the %s query", (id, expected) => {
     expect(typeSearchQuery(id, "influenza", 5)).toBe(expected);
+  });
+
+  it("leaves Deprecated genomes out of the Genomes count, as the list it links to does", () => {
+    expect(typeSearchQuery("genome", "Coronaviridae", 10)).toBe(
+      "keyword(Coronaviridae)&ne(genome_status,Deprecated)&limit(10)&sort(-score)",
+    );
+  });
+
+  it.each(["Coronaviridae", "coli Salmonella"])(
+    "counts the rows of the list the Genomes card links to (%s)",
+    (keyword) => {
+      const card = toAllTypesResults(undefined, keyword).types.find(
+        (type) => type.id === "genome",
+      );
+      const href = new URL(card?.listHref ?? "", "https://dxkb.test");
+      expect(href.pathname).toBe("/genome");
+      const listState = parseGenomeCollectionState(
+        toSearchParamsRecord(href.searchParams),
+      );
+      const listBase = genomeBaseRql(listState);
+      expect(listBase).toBe(nonDeprecatedGenomeClause);
+      const cardClauses = typeSearchQuery("genome", keyword, 10)
+        .split("&")
+        .filter((part) => !/^(limit|sort)\(/.test(part));
+      expect(cardClauses).toEqual([
+        rqlAnd(...keywordClauses(listState.keyword ?? "", "exact")),
+        listBase,
+      ]);
+    },
+  );
+});
+
+describe("taxonGenomeCountQueries", () => {
+  it("builds one limit(1) count per taxon with the Taxonomy header's definition", () => {
+    expect(taxonGenomeCountQueries(["11118", "694009"])).toEqual({
+      "taxonGenomes:11118": {
+        dataType: "genome",
+        accept: "application/solr+json",
+        query:
+          "and(eq(taxon_lineage_ids,11118),ne(genome_status,Deprecated))&select(genome_id)&limit(1)",
+      },
+      "taxonGenomes:694009": {
+        dataType: "genome",
+        accept: "application/solr+json",
+        query:
+          "and(eq(taxon_lineage_ids,694009),ne(genome_status,Deprecated))&select(genome_id)&limit(1)",
+      },
+    });
   });
 });
 
@@ -330,6 +384,9 @@ describe("toAllTypesResults", () => {
             },
           },
         },
+        "taxonGenomes:2697049": {
+          result: { response: { numFound: 8_900_000, docs: [] } },
+        },
       },
       "SARS-CoV-2",
     );
@@ -337,7 +394,7 @@ describe("toAllTypesResults", () => {
       name: "Severe acute respiratory syndrome coronavirus 2",
       taxonId: "2697049",
       href: "/taxonomy/2697049",
-      genomes: 9_000_000,
+      genomes: 8_900_000,
       rank: "No rank",
       parents: [
         "Pisuviricota",
@@ -348,6 +405,90 @@ describe("toAllTypesResults", () => {
         "Betacoronavirus pandemicum",
       ],
     });
+  });
+
+  it("uses the shared genome count for the best match and the Taxa rows, not the stored field", () => {
+    const results = toAllTypesResults(
+      {
+        taxonomy: {
+          result: {
+            response: {
+              numFound: 1,
+              docs: [
+                {
+                  taxon_id: 11118,
+                  taxon_name: "Coronaviridae",
+                  taxon_rank: "family",
+                  genomes: 9_500_742,
+                },
+              ],
+            },
+          },
+        },
+        "taxonGenomes:11118": {
+          result: { response: { numFound: 9_471_991, docs: [] } },
+        },
+      },
+      "Coronaviridae",
+    );
+    expect(results.bestMatch?.genomes).toBe(9_471_991);
+    const taxa = results.types.find((type) => type.id === "taxonomy");
+    expect(taxa?.rows[0].facts).toContainEqual({
+      label: "Genomes",
+      value: "9,471,991 genomes",
+    });
+  });
+
+  it("shows a count of zero as 0 genomes, not as missing", () => {
+    const results = toAllTypesResults(
+      {
+        taxonomy: {
+          result: {
+            response: {
+              numFound: 1,
+              docs: [
+                { taxon_id: 11118, taxon_name: "Coronaviridae", genomes: 4 },
+              ],
+            },
+          },
+        },
+        "taxonGenomes:11118": { result: { response: { numFound: 0, docs: [] } } },
+      },
+      "Coronaviridae",
+    );
+    expect(results.bestMatch?.genomes).toBe(0);
+    const taxa = results.types.find((type) => type.id === "taxonomy");
+    expect(taxa?.rows[0].facts).toContainEqual({
+      label: "Genomes",
+      value: "0 genomes",
+    });
+  });
+
+  it("omits the genome figure when the count is missing instead of showing the stored one", () => {
+    const results = toAllTypesResults(
+      {
+        taxonomy: {
+          result: {
+            response: {
+              numFound: 1,
+              docs: [
+                {
+                  taxon_id: 11118,
+                  taxon_name: "Coronaviridae",
+                  genomes: 9_500_742,
+                },
+              ],
+            },
+          },
+        },
+      },
+      "Coronaviridae",
+    );
+    expect(results.bestMatch?.genomes).toBeNull();
+    const taxa = results.types.find((type) => type.id === "taxonomy");
+    expect(
+      taxa?.rows[0].facts.find((fact) => fact.label === "Genomes"),
+    ).toBeUndefined();
   });
 });
 

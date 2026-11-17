@@ -52,6 +52,8 @@ export const upstreamTimeoutMs = {
   dataApiGenomeAmr: 60_000,
   /** Override for `genome_feature`: Solr's uncached cross-collection join took 109–125 s for Influenza A; kept under undici's 300 s headers timeout. */
   dataApiGenomeFeature: 150_000,
+  /** The search's optional per-taxon genome counts: past this the results answer without them. */
+  dataApiSearchGenomeCounts: 5_000,
   workspace: 30_000,
   jobService: 30_000,
   fileStorage: 30_000,

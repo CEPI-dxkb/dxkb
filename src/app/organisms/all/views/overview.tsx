@@ -7,19 +7,30 @@ import { FeaturedOrganismCategoriesGrid } from "@/components/organisms/genera-gr
 import { MetadataDistributions } from "@/components/organisms/metadata-distributions/metadata-distributions";
 import { MetadataDistributionsSkeleton } from "@/components/organisms/metadata-distributions/metadata-distributions-skeleton";
 import { withSectionError } from "@/components/organisms/shared/with-section-error";
+import { taxonIdsGenomesClause } from "@/components/organisms/taxon-views/scope";
 
-import { allOrganismsLandingConfig as config } from "../_config";
+import { allOrganismRootIds, allOrganismsLandingConfig as config } from "../_config";
 
-async function DataSummaryBoundary() {
+/**
+ * Both roots' genomes, less Deprecated: what the Genomes tab the charts link to
+ * lists. It scopes Host Group, Isolation Country and the taxonomic (genus and
+ * species) donut, which the All config has no sentinel for, so
+ * `MetadataDistributions` adds it after the configured fields.
+ */
+const allOrganismGenomeQuery = {
+  fieldRql: taxonIdsGenomesClause(allOrganismRootIds),
+};
+
+export async function DataSummaryBoundary() {
   return withSectionError("Data summary", () =>
-    DataSummary({ taxonId: config.taxonId }),
+    DataSummary({ taxonIds: allOrganismRootIds }),
   );
 }
 
-async function MetadataDistributionsBoundary() {
+export async function MetadataDistributionsBoundary() {
   return withSectionError("Metadata distributions", () =>
     MetadataDistributions({
-      taxonId: config.taxonId,
+      genomeQuery: allOrganismGenomeQuery,
       fields: config.metadataFields,
       genomeList: {
         pathname: "/organisms/all",

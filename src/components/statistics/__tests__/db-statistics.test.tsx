@@ -56,7 +56,7 @@ describe("DBStatistics", () => {
     expect(await findByText("98,765")).toBeInTheDocument();
 
     expect(await findByText("Viral Genomes")).toBeInTheDocument();
-    expect(await findByText("Protein Structures")).toBeInTheDocument();
+    expect(await findByText("PDB Structures")).toBeInTheDocument();
     expect(await findByText("Genomes")).toBeInTheDocument();
   });
 

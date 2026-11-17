@@ -106,6 +106,12 @@ describe("POST /api/data/search", () => {
       accept: "application/solr+json",
       query: "keyword(influenza)&gt(genomes,1)&limit(10)&sort(-genomes)",
     });
+    expect(seen[0].body.genome).toEqual({
+      dataType: "genome",
+      accept: "application/solr+json",
+      query:
+        "keyword(influenza)&ne(genome_status,Deprecated)&limit(10)&sort(-score)",
+    });
     expect(seen[0].authorization).toBeNull();
   });
 
@@ -117,6 +123,196 @@ describe("POST /api/data/search", () => {
 
     expect(response.status).toBe(200);
     expect(seen[0].authorization).toBe("secret");
+  });
+
+  it("adds the Taxonomy header's genome count for each taxon hit, in a second query", async () => {
+    const taxonomy = {
+      result: {
+        response: {
+          numFound: 2,
+          docs: [
+            { taxon_id: 11118, taxon_name: "Coronaviridae", genomes: 9_500_742 },
+            { taxon_id: "11118" },
+          ],
+        },
+      },
+    };
+    let calls = 0;
+    const seen = captureUpstream(() => {
+      calls += 1;
+      return calls === 1
+        ? HttpResponse.json({ taxonomy })
+        : HttpResponse.json({
+            "taxonGenomes:11118": {
+              result: { response: { numFound: 9_471_991, docs: [] } },
+            },
+          });
+    });
+
+    const response = await search({ keyword: "Coronaviridae" });
+    const body = await json<Record<string, unknown>>(response);
+
+    expect(response.status).toBe(200);
+    expect(seen).toHaveLength(2);
+    expect(seen[1].body).toEqual({
+      "taxonGenomes:11118": {
+        dataType: "genome",
+        accept: "application/solr+json",
+        query:
+          "and(eq(taxon_lineage_ids,11118),ne(genome_status,Deprecated))&select(genome_id)&limit(1)",
+      },
+    });
+    expect(body).toEqual({
+      taxonomy,
+      "taxonGenomes:11118": {
+        result: { response: { numFound: 9_471_991, docs: [] } },
+      },
+    });
+  });
+
+  it("never puts a taxon ID that is not all digits, or from a null doc, into the count query", async () => {
+    let calls = 0;
+    const seen = captureUpstream(() => {
+      calls += 1;
+      return calls === 1
+        ? HttpResponse.json({
+            taxonomy: {
+              result: {
+                response: {
+                  numFound: 3,
+                  docs: [
+                    { taxon_id: "1),eq(genome_id,*" },
+                    null,
+                    { taxon_name: "No ID" },
+                    { taxon_id: 694009 },
+                  ],
+                },
+              },
+            },
+          })
+        : HttpResponse.json({});
+    });
+
+    await search({ keyword: "corona" });
+
+    expect(seen).toHaveLength(2);
+    expect(Object.keys(seen[1].body)).toEqual(["taxonGenomes:694009"]);
+  });
+
+  it("still answers the type matches when the count query fails, leaving the counts out", async () => {
+    const consoleError = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
+    let calls = 0;
+    captureUpstream(() => {
+      calls += 1;
+      return calls === 1
+        ? HttpResponse.json({
+            taxonomy: {
+              result: { response: { numFound: 1, docs: [{ taxon_id: 11118 }] } },
+            },
+          })
+        : new HttpResponse("boom", { status: 500 });
+    });
+
+    const response = await search({ keyword: "Coronaviridae" });
+
+    expect(response.status).toBe(200);
+    expect(Object.keys(await json<object>(response))).toEqual(["taxonomy"]);
+    expect(consoleError).toHaveBeenCalledWith(
+      "search: taxon genome counts failed",
+      expect.objectContaining({ status: 502 }),
+    );
+  });
+
+  it("answers without the counts when the count query outlasts its short budget", async () => {
+    shortenTimeouts();
+    const consoleError = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
+    let calls = 0;
+    const seen = captureUpstream(() => {
+      calls += 1;
+      return calls === 1
+        ? HttpResponse.json({
+            taxonomy: {
+              result: { response: { numFound: 1, docs: [{ taxon_id: 11118 }] } },
+            },
+          })
+        : neverRespond();
+    });
+
+    const response = await search({ keyword: "Coronaviridae" });
+
+    expect(response.status).toBe(200);
+    expect(seen).toHaveLength(2);
+    expect(Object.keys(await json<object>(response))).toEqual(["taxonomy"]);
+    expect(consoleError).toHaveBeenCalledWith(
+      "search: taxon genome counts failed",
+      expect.objectContaining({
+        message: expect.stringContaining("timed out after 5 s") as unknown,
+      }),
+    );
+  });
+
+  it("keeps only count entries from the count answer, never replacing a type match", async () => {
+    const taxonomy = {
+      result: { response: { numFound: 1, docs: [{ taxon_id: 11118 }] } },
+    };
+    let calls = 0;
+    captureUpstream(() => {
+      calls += 1;
+      return calls === 1
+        ? HttpResponse.json({ taxonomy })
+        : HttpResponse.json({
+            taxonomy: { result: { response: { numFound: 0, docs: [] } } },
+            "taxonGenomes:11118": {
+              result: { response: { numFound: 7, docs: [] } },
+            },
+          });
+    });
+
+    const response = await search({ keyword: "Coronaviridae" });
+
+    await expect(json(response)).resolves.toEqual({
+      taxonomy,
+      "taxonGenomes:11118": { result: { response: { numFound: 7, docs: [] } } },
+    });
+  });
+
+  it("answers an aborted search as aborted even when only the count query is cut off", async () => {
+    const controller = new AbortController();
+    let calls = 0;
+    captureUpstream(() => {
+      calls += 1;
+      if (calls === 2) controller.abort();
+      return calls === 1
+        ? HttpResponse.json({
+            taxonomy: {
+              result: { response: { numFound: 1, docs: [{ taxon_id: 11118 }] } },
+            },
+          })
+        : neverRespond();
+    });
+
+    const response = await POST(
+      mockNextRequest({
+        method: "POST",
+        url: "http://localhost:3019/api/data/search",
+        headers: {
+          "Content-Type": "application/json",
+          "x-forwarded-for": freshIp(),
+        },
+        body: { keyword: "Coronaviridae" },
+        signal: controller.signal,
+      }),
+    );
+
+    expect(response.status).toBe(499);
+    await expect(json(response)).resolves.toEqual({
+      error: "Data request was aborted.",
+      code: "aborted",
+    });
   });
 
   it.each([

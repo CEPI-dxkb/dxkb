@@ -8,7 +8,10 @@ import {
 import { keywordQuery } from "@/lib/data-api/keyword-terms";
 import { DataApiValidationError } from "@/lib/data-api/resources";
 import type { RqlExpression } from "@/lib/data-api/rql";
-import type { GenomeQueryScope } from "@/lib/services/organisms/genome-scope";
+import {
+  nonDeprecatedGenomeClause,
+  type GenomeQueryScope,
+} from "@/lib/services/organisms/genome-scope";
 import {
   parseCollectionState,
   type CollectionState,
@@ -27,14 +30,16 @@ export const genomeSorts = genomeMetadata.sorts;
 export const recentGenomeRql =
   "and(gt(completion_date,NOW-1YEARS),ne(genome_status,Deprecated))";
 
-/** The recent-genomes default applies only to an otherwise unscoped list: an explicit RQL, `public` filter, keyword search or refinement replaces it. */
+/** An unscoped list defaults to recent genomes; a keyword or refinement search replaces that default but still leaves Deprecated genomes out, as the all-types search's Genomes count does so a card equals its list, a Public pick included. An explicit `rql`, or a `public` filter without a keyword or refinement (My Genomes), is the user's own scope and gets no default. */
 export function genomeBaseRql(state: CollectionState): string | undefined {
-  return state.rql ||
+  if (state.rql) return undefined;
+  if (
     keywordQuery(state.keyword ?? "").length > 0 ||
-    keywordQuery(state.refine ?? "").length > 0 ||
-    Object.hasOwn(state.filters, "public")
-    ? undefined
-    : recentGenomeRql;
+    keywordQuery(state.refine ?? "").length > 0
+  )
+    return nonDeprecatedGenomeClause;
+  if (Object.hasOwn(state.filters, "public")) return undefined;
+  return recentGenomeRql;
 }
 
 export const genomeCollectionOptions: CollectionStateOptions = {
@@ -294,9 +299,16 @@ export function genomeOverviewScope(
     ...keywordClauses(state.refine ?? "", "exact"),
     ...explicit.keywords,
   ];
+  // The overview's reads carry no token, so the API already answers them with public genomes only, and a `public=true` pick adds nothing but a whole-corpus `genome(...)` join on the AMR chart, which times out. `genomeBaseRql` still sees the pick (My Genomes gets no recent default).
+  const withoutPublic: CollectionState = {
+    ...state,
+    filters: Object.fromEntries(
+      Object.entries(state.filters).filter(([name]) => name !== "public"),
+    ),
+  };
   const fields = [
     genomeBaseRql(state),
-    genomeStructuralRql(state),
+    genomeStructuralRql(withoutPublic),
     ...explicit.fields,
   ].filter((clause): clause is string => Boolean(clause));
   return {

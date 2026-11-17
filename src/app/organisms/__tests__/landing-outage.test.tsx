@@ -75,7 +75,7 @@ describe("organism landings during a taxonomy outage", () => {
           lineage_names: ["cellular organisms"],
           lineage_ids: [131567],
           taxon_rank: "no rank",
-          genomes: 9_800_000,
+          genomes: 1_400_000,
         }),
       ),
       http.get(`${baseUrl}/taxonomy/10239`, () => {
@@ -90,7 +90,7 @@ describe("organism landings during a taxonomy outage", () => {
     ).toBeInTheDocument();
     const roots = builtFrom().scope.roots ?? [];
     expect(roots.map((root) => root.taxonId)).toEqual([131567, 10239]);
-    expect(roots[0]?.genomes).toBe(9_800_000);
+    expect(roots[0]?.genomes).toBe(1_400_000);
     expect(roots[1]).toMatchObject({ taxonName: "Viruses", lineageIds: [10239], genomes: null });
   });
 });

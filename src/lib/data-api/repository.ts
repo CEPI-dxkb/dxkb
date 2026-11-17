@@ -793,13 +793,11 @@ export class ServerDataRepository {
   async multiQuery(
     queries: Readonly<Record<string, DataApiMultiQuery>>,
     signal?: AbortSignal,
+    timeoutMs: number = upstreamTimeoutMs.dataApi,
   ): Promise<Record<string, unknown>> {
     const base = this.options.baseUrl.replace(/\/$/, "");
     const response = await this.send(
-      {
-        url: new URL(`${base}/query/`),
-        timeoutMs: upstreamTimeoutMs.dataApi,
-      },
+      { url: new URL(`${base}/query/`), timeoutMs },
       0,
       0,
       signal,
@@ -810,7 +808,7 @@ export class ServerDataRepository {
       "application/json",
     );
     const payload: unknown = await response.json().catch((error: unknown) => {
-      const failure = dataApiFailure(error);
+      const failure = dataApiFailure(error, timeoutMs);
       if (failure instanceof DataApiError) throw failure;
       if (error instanceof Error && error.name === "AbortError") throw error;
       return null;

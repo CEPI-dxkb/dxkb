@@ -4,6 +4,10 @@ import { allTermSearchTypes } from "@/constants/search-info";
 import type { DataApiMultiQuery } from "@/lib/data-api/repository";
 import { keywordQuery } from "@/lib/data-api/keyword-terms";
 import { keywordClauses } from "@/lib/data-api/rql";
+import {
+  genomeScopeRql,
+  nonDeprecatedGenomeClause,
+} from "@/lib/services/organisms/genome-scope";
 import { rqlAnd } from "@/lib/views/rql";
 
 /** Rows each type shows at first and after "Show more"; all are fetched up front so columns size for every row. */
@@ -25,6 +29,9 @@ export function typeSearchQuery(
   let query = rqlAnd(...keywordClauses(keyword, "exact"));
   if (id === "genome_feature")
     query += "&ne(annotation,brc1)&ne(feature_type,source)";
+  // As the `/genome?keyword=` list it links to (`genomeBaseRql`), so the card counts its rows.
+  if (id === "genome") query += `&${nonDeprecatedGenomeClause}`;
+  // The stored `genomes` field only filters and ranks Taxa; the count shown comes from `taxonGenomeCountQueries`.
   if (id === "taxonomy") query += "&gt(genomes,1)";
   // Taxa by genome count, not score: score ranks "Swine influenza virus" (166 genomes) above "Influenza A virus" (1.9M).
   const sort =
@@ -47,6 +54,24 @@ export function allTypesSearchQueries(
         dataType: type.id,
         accept: "application/solr+json",
         query: typeSearchQuery(type.id, keyword, limit),
+      },
+    ]),
+  );
+}
+
+export const taxonGenomeCountKeyPrefix = "taxonGenomes:";
+
+/** The per-taxon genome count the Taxonomy header shows (lineage less Deprecated), as a `limit(1)` count query per taxon. `taxonIds` must be digit strings: the route filters them before calling. */
+export function taxonGenomeCountQueries(
+  taxonIds: readonly string[],
+): Record<string, DataApiMultiQuery> {
+  return Object.fromEntries(
+    taxonIds.map((taxonId) => [
+      `${taxonGenomeCountKeyPrefix}${taxonId}`,
+      {
+        dataType: "genome",
+        accept: "application/solr+json",
+        query: `${genomeScopeRql(Number(taxonId))}&select(genome_id)&limit(1)`,
       },
     ]),
   );

@@ -206,7 +206,8 @@ Notes:
   - **Folder picker.** `folder-picker/folder-picker-dialog.tsx` (`WorkspaceFolderPickerDialog`) picks a folder, or, with `target: { kind: "object", types }`, a file. It has:
     - a places sidebar: Home, My / Shared / Public Workspaces, Favorites, Recently Used;
     - horizontally scrolling, resizable columns (click a folder to open it in the next column);
-    - an info pane pinned on the right, with inline New folder and an Upload form that takes its place;
+    - a toolbar row under the title with New folder here (folders only; not offered when picking files) and Upload here. Both are disabled, with the reason in a tooltip, while an upload runs, when no folder is open, when the folder's write access can't be checked, and when the user can't write there (`toolbarUnavailableReason` in `folder-picker-utils.ts`). New folder opens an inline name row at the top of the last column;
+    - an info pane pinned on the right, with an Upload form that takes its place;
     - a full-path breadcrumb and Select in the footer.
   - **What it remembers.** Column widths, the info-pane width and Show files last between opens.
   - **Motion.** Going into and out of folders animates the same way in both directions (`folder-picker-motion.ts` holds the tween; `use-column-strip-motion.ts` is the hook that snapshots the strip before each navigation and plays the transition in a layout effect). The scroll position and the content width tween together, so the scroll bar doesn't snap.

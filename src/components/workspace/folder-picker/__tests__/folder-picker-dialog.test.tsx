@@ -348,8 +348,27 @@ describe("WorkspaceFolderPickerDialog places", () => {
 
     await user.click(place("BV-BRC Workshop"));
 
-    expect(await findOption("BV-BRC Workshop", /Assembly/)).toBeInTheDocument();
+    expect(
+      await findOption("BV-BRC Workshop", /^Assembly\s*\(read-only\)$/),
+    ).toBeInTheDocument();
     expect(place("BV-BRC Workshop")).toHaveAttribute("aria-current", "true");
+  });
+
+  it("browses the workshop but cannot commit its folders", async () => {
+    const { user } = renderPicker();
+    await findOption("Home", "Alpha");
+
+    await user.click(place("BV-BRC Workshop"));
+    await user.click(await findOption("BV-BRC Workshop", /Assembly/));
+
+    expect(
+      await screen.findByText("You don't have write access to this folder."),
+    ).toBeInTheDocument();
+    expect(selectButton()).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: "New folder here" }),
+    ).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Upload here" })).toBeDisabled();
   });
 
   it("opens on BV-BRC Workshop for a value inside it", async () => {

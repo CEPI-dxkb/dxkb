@@ -242,6 +242,25 @@ describe("picking a file", () => {
     );
   });
 
+  it("opens at the current file inside the workshop", async () => {
+    pickContigs({ initialPath: `${workshopWorkspacePath}/Assembly/phage.fasta` });
+    expect(await findOption("Assembly", /phage\.fasta/)).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    expect(
+      within(screen.getByRole("navigation", { name: "Places" })).getByRole(
+        "button",
+        { name: "BV-BRC Workshop" },
+      ),
+    ).toHaveAttribute("aria-current", "true");
+    expect(breadcrumbLabels()).toEqual([
+      "BV-BRC Workshop",
+      "Assembly",
+      "phage.fasta",
+    ]);
+  });
+
   it("shows a file's details in the info pane", async () => {
     const { user } = pickContigs();
     await user.click(await findOption("Home", /draft\.fasta/));

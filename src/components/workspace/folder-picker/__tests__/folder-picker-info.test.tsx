@@ -133,6 +133,7 @@ describe("FolderPickerInfo with a folder selected", () => {
     renderInfo({ place: "workshop", path: workshopWorkspacePath });
 
     expect(document.querySelector("svg.lucide-graduation-cap")).not.toBeNull();
+    expect(document.querySelector("svg.lucide-hard-drive")).toBeNull();
   });
 
   it("calls the home folder Home", () => {

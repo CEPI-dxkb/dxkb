@@ -959,6 +959,14 @@ describe("canWriteTo", () => {
     expect(
       canWriteTo({ path: folder.path, username, item: folder, siblings: [] }),
     ).toBe(false);
+    expect(
+      canWriteTo({
+        path: folder.path,
+        username: "ARWattam@patricbrc.org",
+        item: folder,
+        siblings: [],
+      }),
+    ).toBe(true);
   });
 });
 

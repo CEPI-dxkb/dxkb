@@ -1,5 +1,5 @@
 import { fireEvent, screen, waitFor } from "@testing-library/react";
-import { readStorageItem } from "@/lib/browser-storage";
+import { readStorageItem, writeStorageItem } from "@/lib/browser-storage";
 import { pickerLayoutKey } from "../folder-picker-layout";
 import {
   findOption,
@@ -108,6 +108,54 @@ describe("resizable picker dialog", () => {
     expect(sizeVars().width).toBe("968px");
     expect(dialogWidthHandle()).toHaveAttribute("aria-valuenow", "968");
     expect(dialogWidthHandle()).toHaveAttribute("aria-valuemax", "968");
+  });
+
+  it("resets to the true default on a narrow window instead of storing the clamped width", async () => {
+    vi.stubGlobal("innerWidth", 1000);
+    const { user } = renderPicker();
+    await findOption("Home", "Experiments");
+    dialogWidthHandle().focus();
+    await user.keyboard("{ArrowLeft}");
+    expect(storedLayout()).toEqual({ dialog: { width: 936, height: 672 } });
+
+    await user.dblClick(dialogWidthHandle());
+
+    expect(sizeVars().width).toBe("968px");
+    expect(readStorageItem(pickerLayoutKey)).toBeNull();
+  });
+
+  it("keeps a taller stored height when the width changes on a short window", async () => {
+    vi.stubGlobal("innerHeight", 700);
+    writeStorageItem(
+      pickerLayoutKey,
+      JSON.stringify({ dialog: { width: 1280, height: 900 } }),
+    );
+    const { user } = renderPicker();
+    await findOption("Home", "Experiments");
+    expect(sizeVars().height).toBe("668px");
+
+    dialogWidthHandle().focus();
+    await user.keyboard("{ArrowRight}");
+    expect(storedLayout()).toEqual({ dialog: { width: 1312, height: 900 } });
+
+    await user.dblClick(dialogWidthHandle());
+    expect(storedLayout()).toEqual({ dialog: { width: 1280, height: 900 } });
+  });
+
+  it("offers Expand at the default size even when the window is too small for it to grow", async () => {
+    vi.stubGlobal("innerWidth", 1000);
+    vi.stubGlobal("innerHeight", 700);
+    const { user } = renderPicker();
+    await findOption("Home", "Experiments");
+    expect(sizeVars()).toEqual({ width: "968px", height: "668px" });
+
+    await user.click(screen.getByRole("button", { name: "Expand dialog" }));
+    expect(storedLayout()).toEqual({ dialog: { width: 968, height: 668 } });
+
+    await user.click(
+      screen.getByRole("button", { name: "Restore dialog size" }),
+    );
+    expect(readStorageItem(pickerLayoutKey)).toBeNull();
   });
 
   it("expands to the window and restores", async () => {

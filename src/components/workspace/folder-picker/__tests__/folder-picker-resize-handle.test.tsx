@@ -17,6 +17,7 @@ function Harness({
   onParentKeyDown,
   pointerScale,
   keyboardStep,
+  onReset,
 }: {
   edge: "start" | "end";
   startWidth?: number;
@@ -24,6 +25,7 @@ function Harness({
   onParentKeyDown?: () => void;
   pointerScale?: number;
   keyboardStep?: number;
+  onReset?: () => void;
 }) {
   const [width, setWidth] = useState(startWidth);
   return (
@@ -35,6 +37,7 @@ function Harness({
         limits={limits}
         pointerScale={pointerScale}
         keyboardStep={keyboardStep}
+        onReset={onReset}
         onResize={(next) => {
           onResize?.(next);
           setWidth(next);
@@ -194,5 +197,25 @@ describe("PaneResizeHandle", () => {
     await user.keyboard("{ArrowRight}");
 
     expect(handle()).toHaveAttribute("aria-valuenow", "232");
+  });
+
+  it("hands a double click to onReset instead of resizing", async () => {
+    const user = userEvent.setup();
+    const onResize = vi.fn();
+    const onReset = vi.fn();
+    render(
+      <Harness
+        edge="end"
+        startWidth={300}
+        onResize={onResize}
+        onReset={onReset}
+      />,
+    );
+
+    await user.dblClick(handle());
+
+    expect(onReset).toHaveBeenCalledTimes(1);
+    expect(onResize).not.toHaveBeenCalled();
+    expect(handle()).toHaveAttribute("aria-valuenow", "300");
   });
 });

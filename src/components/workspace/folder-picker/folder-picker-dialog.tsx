@@ -709,7 +709,12 @@ export function WorkspaceFolderPickerDialog({
   const stored = parsePickerLayout(useStorageItem(pickerLayoutKey));
   const viewport = useViewportSize();
   const size = effectiveDialogSize(stored.dialog, viewport);
-  const expanded = isMaximized(size, viewport);
+  // At the default size on a small window the dialog may already fill it, but it is not
+  // expanded: Restore would change nothing, so the button offers Expand.
+  const expanded = stored.dialog !== undefined && isMaximized(size, viewport);
+  // A width change keeps the stored height, not the one the window clamps it to now, so
+  // nudging the width on a short window does not shrink the height for later.
+  const storedHeight = stored.dialog?.height ?? dialogHeightLimits.initial;
   const [showFiles, setShowFiles] = useState(false);
 
   const saveLayout = (patch: Partial<StoredPickerLayout>) => {
@@ -817,7 +822,14 @@ export function WorkspaceFolderPickerDialog({
           pointerScale={2}
           keyboardStep={32}
           onResize={(width) => {
-            setDialogSize({ width, height: size.height });
+            setDialogSize({ width, height: storedHeight });
+          }}
+          // The true default width, not the one the window clamps it to.
+          onReset={() => {
+            setDialogSize({
+              width: dialogWidthLimits.initial,
+              height: storedHeight,
+            });
           }}
           className="right-0 hidden md:block"
         />

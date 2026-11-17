@@ -13,6 +13,8 @@ interface ResizeHandleProps {
   pointerScale?: number;
   /** Width change per arrow-key press. */
   keyboardStep?: number;
+  /** Double-click; by default the handle resizes to `limits.initial`. */
+  onReset?: () => void;
   className?: string;
 }
 
@@ -26,6 +28,7 @@ export function PaneResizeHandle({
   onResize,
   pointerScale = 1,
   keyboardStep = defaultKeyboardStep,
+  onReset,
   className,
 }: ResizeHandleProps) {
   const dragRef = useRef<{ x: number; width: number } | null>(null);
@@ -64,7 +67,8 @@ export function PaneResizeHandle({
         dragRef.current = null;
       }}
       onDoubleClick={() => {
-        resize(limits.initial);
+        if (onReset) onReset();
+        else resize(limits.initial);
       }}
       onKeyDown={(event) => {
         if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;

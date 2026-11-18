@@ -1,5 +1,7 @@
 import type { RefObject } from "react";
 
+import type { IncidenceIndex } from "./selection-focus";
+
 export type { PpiRecord } from "./schema";
 
 export interface GNode {
@@ -48,6 +50,9 @@ export interface GraphCanvasHandle {
 export interface GraphCanvasProps {
   nodes: GNode[];
   edges: GEdge[];
+  // The graph's incidence index, built once by the owner so the canvas's focus and the details pane
+  // share it.
+  incidence: IncidenceIndex;
   positions: Float64Array | null;
   // Controlled selection: the highlight reducer reads this so keyboard selection highlights what a
   // canvas click would.

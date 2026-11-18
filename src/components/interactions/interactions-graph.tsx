@@ -239,6 +239,7 @@ export function InteractionsGraph({
               <SigmaCanvas
                 nodes={nodes}
                 edges={edges}
+                incidence={incidenceIndex}
                 positions={layoutQuery.data ?? null}
                 selection={selection}
                 onSelect={(nextSelection) => {

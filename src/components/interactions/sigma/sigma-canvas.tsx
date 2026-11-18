@@ -4,7 +4,6 @@ import {
   useEffect,
   useEffectEvent,
   useImperativeHandle,
-  useMemo,
   useRef,
   useState,
   type CSSProperties,
@@ -37,7 +36,6 @@ import {
 } from "@/lib/interactions/graph-theme";
 import {
   applySelectionClick,
-  buildIncidenceIndex,
   computeSelectionFocus,
   isAdditiveClick,
   type SelectionFocus,
@@ -300,6 +298,7 @@ function HandleBridge({
 export function SigmaCanvas({
   nodes,
   edges,
+  incidence,
   positions,
   selection,
   onSelect,
@@ -309,9 +308,6 @@ export function SigmaCanvas({
   const [tooltip, setTooltip] = useState<TooltipState | null>(null);
   const selectedNodeIds = new Set(selection.nodes.map((node) => node.id));
   const selectedEdgeIds = new Set(selection.edges.map((edge) => edge.id));
-  // Its own `[edges]` slot: the compiler fuses two plain consecutive calls into one scope keyed on
-  // `[edges, selection]`, which would rebuild the index on every selection change.
-  const incidence = useMemo(() => buildIncidenceIndex(edges), [edges]);
   const focus = computeSelectionFocus(incidence, selection);
 
   return (

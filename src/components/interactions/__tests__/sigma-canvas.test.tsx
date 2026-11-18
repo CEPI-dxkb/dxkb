@@ -10,6 +10,7 @@ import {
   renderEdgeFocus,
   renderNodeDim,
 } from "@/lib/interactions/graph-theme";
+import { buildIncidenceIndex } from "@/lib/interactions/selection-focus";
 
 // Sigma needs WebGL; its React bindings are stubbed over a real graphology graph so GraphLoader's
 // load-vs-move choice is observable.
@@ -64,10 +65,12 @@ const edges: GEdge[] = [
 ];
 
 function canvas(props: Partial<GraphCanvasProps>) {
+  const canvasEdges = props.edges ?? edges;
   return (
     <SigmaCanvas
       nodes={nodes}
       edges={edges}
+      incidence={buildIncidenceIndex(canvasEdges)}
       positions={null}
       selection={{ nodes: [], edges: [] }}
       onSelect={vi.fn()}

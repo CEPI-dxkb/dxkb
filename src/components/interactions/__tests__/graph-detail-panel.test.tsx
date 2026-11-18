@@ -69,9 +69,35 @@ describe("GraphDetailPanel", () => {
       expect(items).toHaveLength(3);
       expect(within(items[0]).getByText("Ecaj_0270")).toBeInTheDocument();
       expect(within(items[0]).getByText("Interactions: 1")).toBeInTheDocument();
-      // The card heading and the Gene row both show the gene.
-      expect(within(items[1]).getAllByText("ftsA")).toHaveLength(2);
+      // The card heading shows the gene, so its field list leaves the Gene row out.
+      expect(within(items[1]).getByText("ftsA")).toBeInTheDocument();
       expect(within(items[2]).getByText("Detection method")).toBeInTheDocument();
+    });
+
+    it("leaves the Gene row out of a card whose heading already shows the gene", () => {
+      renderPanel({ selection: { nodes: [nodeA, nodeB], edges: [] } });
+
+      for (const card of screen.getAllByRole("listitem")) {
+        expect(within(card).queryByText("Gene")).toBeNull();
+        expect(within(card).getByText("BRC ID")).toBeInTheDocument();
+        expect(within(card).getByText("Genome")).toBeInTheDocument();
+      }
+    });
+
+    it("leaves the BRC ID row out of a card whose heading shows the id because the gene is missing", () => {
+      const bare: GNode = { id: "fig|3.3", kind: "microbial" };
+      renderPanel({ selection: { nodes: [nodeA, bare], edges: [] } });
+
+      const card = screen.getAllByRole("listitem")[1];
+      // The heading is the only place the id appears.
+      expect(within(card).getByText("fig|3.3")).toBeInTheDocument();
+      expect(within(card).queryByText("BRC ID")).toBeNull();
+      // The remaining rows stay, with a placeholder for the missing gene.
+      expect(within(card).getByText("Gene")).toBeInTheDocument();
+      for (const label of ["Genome", "Locus tag", "Product"]) {
+        expect(within(card).getByText(label)).toBeInTheDocument();
+      }
+      expect(within(card).getAllByText("—")).toHaveLength(4);
     });
 
     it("singularizes the summary", () => {

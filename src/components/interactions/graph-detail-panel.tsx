@@ -16,17 +16,26 @@ function endpointLabel(nodesById: Map<string, GNode>, id: string): string {
   return n?.gene || id;
 }
 
-function NodeFields({ node }: { node: GNode }) {
+// `omit` drops the row a card heading already shows (the gene, or the id when there is no gene).
+function NodeFields({ node, omit }: { node: GNode; omit?: "gene" | "id" }) {
   return (
     <dl className="grid grid-cols-[auto_1fr] gap-x-2 gap-y-1">
-      <dt className="font-medium text-foreground">BRC ID</dt>
-      <dd className="break-all text-muted-foreground">{node.id}</dd>
+      {omit !== "id" && (
+        <>
+          <dt className="font-medium text-foreground">BRC ID</dt>
+          <dd className="break-all text-muted-foreground">{node.id}</dd>
+        </>
+      )}
       <dt className="font-medium text-foreground">Genome</dt>
       <dd className="break-all text-muted-foreground">{node.genome || "—"}</dd>
       <dt className="font-medium text-foreground">Locus tag</dt>
       <dd className="break-all text-muted-foreground">{node.refseqLocusTag || "—"}</dd>
-      <dt className="font-medium text-foreground">Gene</dt>
-      <dd className="break-all text-muted-foreground">{node.gene || "—"}</dd>
+      {omit !== "gene" && (
+        <>
+          <dt className="font-medium text-foreground">Gene</dt>
+          <dd className="break-all text-muted-foreground">{node.gene || "—"}</dd>
+        </>
+      )}
       <dt className="font-medium text-foreground">Product</dt>
       <dd className="break-all text-muted-foreground">{node.interactorDesc || "—"}</dd>
     </dl>
@@ -89,7 +98,7 @@ export function GraphDetailPanel({ selection, incidentEdgesByNode, nodesById, on
             {shownNodes.map((node) => (
               <li key={`node:${node.id}`} className="flex flex-col gap-2 border-t pt-3">
                 <p className="font-medium break-all text-foreground">{node.gene || node.id}</p>
-                <NodeFields node={node} />
+                <NodeFields node={node} omit={node.gene ? "gene" : "id"} />
                 <p className="text-muted-foreground">
                   Interactions: {incidentEdgesByNode.get(node.id)?.length ?? 0}
                 </p>

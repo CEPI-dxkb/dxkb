@@ -38,10 +38,11 @@ export const renderEdgeExperimental = premultiply(
 export const renderEdgeHover = premultiply(colors.edgeSelected, 0x99);
 
 // Selection focus: while something is selected every other node/edge is recoloured to a faint
-// translucent grey (still hit-testable, unlike `hidden`), and the selected nodes' edges get a
-// stronger version of their own hue. A mid-grey sits between the light and dark `--graph-surface`
-// themes, so the same translucent value reads as "dim" on both. Everything stays premultiplied:
-// sigma blends premultiplied but its shaders emit straight alpha.
+// translucent grey (still hit-testable, unlike `hidden`), and the selected nodes' edges are drawn
+// at high alpha in a lighter grey (`colors.dim`; Indigo 300 for experimental edges), both lighter
+// than the mesh colours so they stay visible on dark surfaces. A mid-grey sits between the light
+// and dark `--graph-surface` themes, so the same translucent value reads as "dim" on both.
+// Everything stays premultiplied: sigma blends premultiplied but its shaders emit straight alpha.
 export const renderNodeDim = premultiply(colors.dim, 0x66);
 export const renderEdgeDim = premultiply(colors.dim, 0x14);
 export const renderEdgeFocus = premultiply(colors.dim, 0xe6);

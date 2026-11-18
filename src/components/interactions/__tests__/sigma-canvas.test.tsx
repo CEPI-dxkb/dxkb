@@ -1,4 +1,4 @@
-import { render } from "@testing-library/react";
+import { act, render } from "@testing-library/react";
 import Graph from "graphology";
 import type { ReactNode } from "react";
 
@@ -14,11 +14,36 @@ const sigmaStub = vi.hoisted(() => ({
   loadGraph: vi.fn(),
 }));
 
+// Sigma's camera: `setState` emits "updated" synchronously, as the real one does.
+const cameraStub = vi.hoisted(() => {
+  const listeners = new Set<() => void>();
+  const camera = {
+    state: { x: 0.5, y: 0.5, ratio: 1, angle: 0 },
+    listeners,
+    getState: () => ({ ...camera.state }),
+    setState: vi.fn((next: Partial<typeof camera.state>) => {
+      camera.state = { ...camera.state, ...next };
+      listeners.forEach((listener) => {
+        listener();
+      });
+    }),
+    getBoundedRatio: vi.fn((ratio: number) => ratio),
+    on: (_event: string, listener: () => void) => {
+      listeners.add(listener);
+    },
+    off: (_event: string, listener: () => void) => {
+      listeners.delete(listener);
+    },
+  };
+  return camera;
+});
+
 vi.mock("@react-sigma/core", () => {
   const sigma = {
     getGraph: () => sigmaStub.graph,
     refresh: sigmaStub.refresh,
-    getCamera: () => ({ animatedReset: sigmaStub.animatedReset }),
+    getCamera: () =>
+      Object.assign(cameraStub, { animatedReset: sigmaStub.animatedReset }),
   };
   return {
     SigmaContainer: ({ children }: { children: ReactNode }) => <>{children}</>,
@@ -77,6 +102,9 @@ function position(graph: Graph, id: string): number[] {
 }
 
 beforeEach(() => {
+  cameraStub.state = { x: 0.5, y: 0.5, ratio: 1, angle: 0 };
+  cameraStub.listeners.clear();
+  cameraStub.getBoundedRatio.mockImplementation((ratio: number) => ratio);
   sigmaStub.graph = new Graph({ multi: true });
   sigmaStub.loadGraph.mockImplementation((graph: Graph) => {
     loadedGraph().clear();
@@ -182,5 +210,205 @@ describe("SigmaCanvas graph loading", () => {
 
     expect(loadedGraph().order).toBe(2);
     expect(position(loadedGraph(), "a")).toEqual([1, 2]);
+  });
+});
+
+describe("SigmaCanvas camera from the URL", () => {
+  const restored = { ratio: 0.25, x: 0.3, y: 0.7 };
+
+  afterEach(() => {
+    vi.useRealTimers();
+    history.replaceState(null, "", "/");
+  });
+
+  it("applies the URL camera once the first positions load, and the load does not re-fit over it", () => {
+    const { rerender } = render(canvas({ camera: restored, positions: null }));
+    expect(cameraStub.setState).not.toHaveBeenCalled();
+
+    rerender(
+      canvas({ camera: restored, positions: new Float64Array([1, 2, 3, 4]) }),
+    );
+
+    expect(cameraStub.getBoundedRatio).toHaveBeenCalledWith(0.25);
+    expect(cameraStub.state).toMatchObject(restored);
+    expect(sigmaStub.animatedReset).not.toHaveBeenCalled();
+  });
+
+  it("clamps the restored ratio to Sigma's bounds", () => {
+    cameraStub.getBoundedRatio.mockReturnValue(0.5);
+    render(
+      canvas({ camera: restored, positions: new Float64Array([1, 2, 3, 4]) }),
+    );
+    expect(cameraStub.state).toMatchObject({ ratio: 0.5, x: 0.3, y: 0.7 });
+  });
+
+  it("applies the camera only on that first load", () => {
+    const positions = new Float64Array([1, 2, 3, 4]);
+    const { rerender } = render(canvas({ camera: restored, positions }));
+    cameraStub.setState({ ratio: 0.1 });
+    cameraStub.setState.mockClear();
+
+    rerender(canvas({ camera: { ratio: 2, x: 0, y: 0 }, positions }));
+
+    expect(cameraStub.setState).not.toHaveBeenCalled();
+    expect(cameraStub.state.ratio).toBe(0.1);
+  });
+
+  it("re-fits the camera when new rows load after the first graph", () => {
+    const { rerender } = render(
+      canvas({ camera: restored, positions: new Float64Array([1, 2, 3, 4]) }),
+    );
+    rerender(
+      canvas({
+        camera: restored,
+        nodes: [{ id: "c", kind: "microbial" }],
+        edges: [],
+        positions: new Float64Array([5, 6]),
+      }),
+    );
+
+    expect(cameraStub.state).toMatchObject({ ratio: 1, x: 0.5, y: 0.5 });
+  });
+
+  it("reports camera moves once, debounced and rounded, never per frame", () => {
+    vi.useFakeTimers();
+    const onCameraChange = vi.fn();
+    render(
+      canvas({ onCameraChange, positions: new Float64Array([1, 2, 3, 4]) }),
+    );
+    act(() => {
+      vi.runAllTimers();
+    });
+    onCameraChange.mockClear();
+
+    for (const ratio of [0.9, 0.7, 0.5, 0.3123456]) {
+      act(() => {
+        cameraStub.setState({ ratio, x: 0.412345678, y: 0.6 });
+        vi.advanceTimersByTime(100);
+      });
+    }
+    expect(onCameraChange).not.toHaveBeenCalled();
+
+    act(() => {
+      vi.advanceTimersByTime(250);
+    });
+    expect(onCameraChange).toHaveBeenCalledTimes(1);
+    expect(onCameraChange).toHaveBeenCalledWith({
+      ratio: 0.312346,
+      x: 0.4123,
+      y: 0.6,
+    });
+  });
+
+  it("reports the default framing as no camera", () => {
+    vi.useFakeTimers();
+    const onCameraChange = vi.fn();
+    render(
+      canvas({
+        camera: restored,
+        onCameraChange,
+        positions: new Float64Array([1, 2, 3, 4]),
+      }),
+    );
+    act(() => {
+      cameraStub.setState({ ratio: 1, x: 0.5, y: 0.5 });
+      vi.advanceTimersByTime(250);
+    });
+    expect(onCameraChange).toHaveBeenLastCalledWith(null);
+  });
+
+  it("writes nothing once unmounted, so a move just before leaving cannot land on the next page", () => {
+    vi.useFakeTimers();
+    const onCameraChange = vi.fn();
+    const { unmount } = render(
+      canvas({ onCameraChange, positions: new Float64Array([1, 2, 3, 4]) }),
+    );
+    act(() => {
+      vi.runAllTimers();
+    });
+    onCameraChange.mockClear();
+
+    act(() => {
+      cameraStub.setState({ ratio: 0.4 });
+    });
+    unmount();
+    vi.advanceTimersByTime(1_000);
+
+    expect(onCameraChange).not.toHaveBeenCalled();
+  });
+
+  it("skips a report that falls due after the URL has moved to another page", () => {
+    vi.useFakeTimers();
+    history.replaceState(null, "", "/taxonomy/584?tab=interactions");
+    const onCameraChange = vi.fn();
+    render(
+      canvas({ onCameraChange, positions: new Float64Array([1, 2, 3, 4]) }),
+    );
+    act(() => {
+      vi.runAllTimers();
+    });
+    onCameraChange.mockClear();
+
+    act(() => {
+      cameraStub.setState({ ratio: 0.4 });
+    });
+    // Next pushes the destination during commit, before the old page's effect cleanup clears the
+    // timer, so the debounce can fire against the new URL.
+    history.pushState(null, "", "/feature/x");
+    act(() => {
+      vi.advanceTimersByTime(250);
+    });
+
+    expect(onCameraChange).not.toHaveBeenCalled();
+  });
+
+  it("skips a report that falls due after the tab changed on the same page", () => {
+    vi.useFakeTimers();
+    history.replaceState(null, "", "/taxonomy/584?tab=interactions");
+    const onCameraChange = vi.fn();
+    render(
+      canvas({ onCameraChange, positions: new Float64Array([1, 2, 3, 4]) }),
+    );
+    act(() => {
+      vi.runAllTimers();
+    });
+    onCameraChange.mockClear();
+
+    act(() => {
+      cameraStub.setState({ ratio: 0.4 });
+    });
+    history.pushState(null, "", "/taxonomy/584?tab=overview");
+    act(() => {
+      vi.advanceTimersByTime(250);
+    });
+
+    expect(onCameraChange).not.toHaveBeenCalled();
+  });
+
+  it("still reports when only the Interactions params of the same page changed", () => {
+    vi.useFakeTimers();
+    history.replaceState(null, "", "/taxonomy/584?tab=interactions");
+    const onCameraChange = vi.fn();
+    render(
+      canvas({ onCameraChange, positions: new Float64Array([1, 2, 3, 4]) }),
+    );
+    act(() => {
+      vi.runAllTimers();
+    });
+    onCameraChange.mockClear();
+
+    act(() => {
+      cameraStub.setState({ ratio: 0.4 });
+    });
+    history.replaceState(
+      null,
+      "",
+      "/taxonomy/584?tab=interactions&interactionsGraph.node=a",
+    );
+    act(() => {
+      vi.advanceTimersByTime(250);
+    });
+
+    expect(onCameraChange).toHaveBeenCalledTimes(1);
   });
 });

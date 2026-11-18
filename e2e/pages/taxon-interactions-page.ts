@@ -115,6 +115,55 @@ export class TaxonInteractionsPage {
     await expect(this.detailPanel().getByText(text, { exact: false }).first()).toBeVisible();
   }
 
+  /** A link in the Graph sub-tab's "Selection details" pane, named `name`, that points at `href`. */
+  async expectDetailLink(name: string | RegExp, href: string): Promise<void> {
+    await expect(this.detailPanel().getByRole("link", { name, exact: true })).toHaveAttribute("href", href);
+  }
+
+  private zoomPercentInput() {
+    return this.page.getByRole("tabpanel", { name: "Graph" }).getByRole("spinbutton", { name: "Zoom percentage" });
+  }
+
+  /** Zooms in with the canvas's zoom control and waits for the camera to land in the URL. */
+  async zoomIn(): Promise<string> {
+    const input = this.zoomPercentInput();
+    const before = await input.inputValue();
+    await this.page.getByRole("tabpanel", { name: "Graph" }).getByRole("button", { name: "Zoom in" }).click();
+    await expect(input).not.toHaveValue(before);
+    // The camera is written once it rests (debounced).
+    await expect(this.page).toHaveURL(/interactionsGraph\.cam=/);
+    return input.inputValue();
+  }
+
+  async expectZoomPercent(value: string): Promise<void> {
+    await expect(this.zoomPercentInput()).toHaveValue(value);
+  }
+
+  /** Follows a details-pane link in this tab and waits for the destination's URL. */
+  async followDetailLink(name: string, href: string): Promise<void> {
+    await this.detailPanel().getByRole("link", { name, exact: true }).click();
+    await expect(this.page).toHaveURL((url) => url.pathname === href);
+  }
+
+  /** Browser Back to the Interactions tab. */
+  async goBack(): Promise<void> {
+    await this.page.goBack();
+    await expect(this.page).toHaveURL(/tab=interactions/);
+  }
+
+  async expectGraphActive(): Promise<void> {
+    await expect(this.page.getByRole("tab", { name: "Graph" })).toHaveAttribute("aria-selected", "true");
+  }
+
+  /** The node is highlighted in the node list and its BRC ID fills the details pane. */
+  async expectNodeSelected(label: string): Promise<void> {
+    await expect(
+      this.page.getByRole("tabpanel", { name: "Graph" }).getByRole("option", { name: label }),
+    ).toHaveAttribute("data-app-selected", "true");
+    await expect(this.detailPanel().getByText("BRC ID")).toBeVisible();
+    await expect(this.detailPanel().getByRole("link", { name: label, exact: true })).toBeVisible();
+  }
+
   async selectFirstIncidentEdge(): Promise<void> {
     await this.detailPanel().getByRole("button").first().click();
   }

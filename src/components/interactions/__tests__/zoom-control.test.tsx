@@ -1,5 +1,6 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { useEffect } from "react";
 
 import { ZoomControl } from "../sigma/zoom-control";
 import { ratioToZoomPercent } from "../sigma/zoom-utils";
@@ -44,6 +45,24 @@ describe("ZoomControl", () => {
       onUpdated?.();
     });
     expect(input).toHaveValue(125);
+  });
+
+  it("shows a zoom set before it subscribed (a camera restored by a sibling's effect)", () => {
+    function RestoreFirst() {
+      useEffect(() => {
+        camera.ratio = 0.5;
+      }, []);
+      return null;
+    }
+    render(
+      <>
+        <RestoreFirst />
+        <ZoomControl />
+      </>,
+    );
+    expect(
+      screen.getByRole("spinbutton", { name: "Zoom percentage" }),
+    ).toHaveValue(200);
   });
 
   it("uses Sigma camera zoom for the minus and plus buttons", async () => {

@@ -13,6 +13,7 @@ export const ppiFields = {
     field: "genome_id_a",
     hidden: true,
     group: "Interactor A",
+    link: "/genome/{value}",
     search: true,
   },
   genome_name_a: {
@@ -20,6 +21,7 @@ export const ppiFields = {
     field: "genome_name_a",
     hidden: true,
     group: "Interactor A",
+    link: "/genome/{genome_id_a}",
     search: true,
   },
   interactor_a: {
@@ -27,6 +29,7 @@ export const ppiFields = {
     field: "interactor_a",
     hidden: false,
     group: "Interactor A",
+    link: "/feature/{feature_id_a}",
     search: true,
   },
   interactor_type_a: {
@@ -41,6 +44,7 @@ export const ppiFields = {
     field: "feature_id_a",
     hidden: true,
     group: "Interactor A",
+    link: "/feature/{value}",
     search: true,
   },
   refseq_locus_tag_a: {
@@ -55,6 +59,7 @@ export const ppiFields = {
     field: "gene_a",
     hidden: false,
     group: "Interactor A",
+    link: "/feature/{feature_id_a}",
     search: true,
   },
   interactor_desc_a: {
@@ -76,6 +81,7 @@ export const ppiFields = {
     field: "genome_id_b",
     hidden: true,
     group: "Interactor B",
+    link: "/genome/{value}",
     search: true,
   },
   genome_name_b: {
@@ -83,6 +89,7 @@ export const ppiFields = {
     field: "genome_name_b",
     hidden: true,
     group: "Interactor B",
+    link: "/genome/{genome_id_b}",
     search: true,
   },
   interactor_b: {
@@ -90,6 +97,7 @@ export const ppiFields = {
     field: "interactor_b",
     hidden: false,
     group: "Interactor B",
+    link: "/feature/{feature_id_b}",
     search: true,
   },
   interactor_type_b: {
@@ -104,6 +112,7 @@ export const ppiFields = {
     field: "feature_id_b",
     hidden: true,
     group: "Interactor B",
+    link: "/feature/{value}",
     search: true,
   },
   refseq_locus_tag_b: {
@@ -118,6 +127,7 @@ export const ppiFields = {
     field: "gene_b",
     hidden: false,
     group: "Interactor B",
+    link: "/feature/{feature_id_b}",
     search: true,
   },
   interactor_desc_b: {

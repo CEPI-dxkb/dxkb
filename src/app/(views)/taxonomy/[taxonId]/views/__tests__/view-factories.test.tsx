@@ -71,6 +71,19 @@ vi.mock("@/components/organisms/taxon-views/lazy-tab-roots", async () => ({
     await import("@/components/interactions/interactions-subview-shell")
   ).InteractionsSubviewShell,
   LazyResourceChildCollection: ResourceChildCollection,
+  LazyExperimentBiosetCollection: ({
+    baseRql,
+    maxExperiments,
+  }: {
+    baseRql?: string;
+    maxExperiments?: number;
+  }) => (
+    <div
+      data-testid="experiment-bioset-collection"
+      data-q={baseRql}
+      data-max-experiments={maxExperiments}
+    />
+  ),
   LazyExperimentResourceCollection: ({
     baseRql,
     enableRowLinks,
@@ -386,18 +399,17 @@ describe("makeExperimentsView", () => {
     expect(panel).toHaveAttribute("data-keyword-mode", "loaded");
   });
 
-  it("preserves the Biosets tab with taxon scope", () => {
+  it("scopes the Biosets tab through the taxon's experiments, never a genome join", () => {
     const ExperimentsView = makeExperimentsView({ scope });
     render(<ExperimentsView />);
 
     fireEvent.click(screen.getByRole("tab", { name: "Biosets" }));
 
-    const panel = screen.getByTestId("resource-child-collection");
-    expect(panel).toHaveAttribute("data-resource", "bioset");
-    expect(panel).toHaveAttribute(
-      "data-q",
-      "and(eq(genome_id,*),genome(eq(taxon_lineage_ids,1234)))",
-    );
+    // Bioset records have no genome_id or taxon fields; the lineage clause
+    // selects experiments, whose exp_ids select the Biosets.
+    const panel = screen.getByTestId("experiment-bioset-collection");
+    expect(panel).toHaveAttribute("data-q", "eq(taxon_lineage_ids,1234)");
+    expect(panel).toHaveAttribute("data-max-experiments", "5000");
   });
 });
 

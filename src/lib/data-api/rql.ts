@@ -34,7 +34,6 @@ const genomeRelationshipTargets = new Map<
   ["genome_sequence", undefined],
   ["protein_feature", undefined],
   ["protein_structure", undefined],
-  ["bioset", undefined],
   ["ppi", "genome_id_a"],
   ["strain", "genome_ids"],
 ]);

@@ -13,13 +13,87 @@ vi.mock("@/lib/data-api", async (importOriginal) => ({
   },
 }));
 
-vi.mock("@/components/views", () => ({
+vi.mock("@/components/views/resource-child-collection", () => ({
   ResourceChildCollection: ({ rql }: { rql: string }) => (
     <div data-testid="bioset-collection" data-rql={rql} />
   ),
 }));
 
 describe("ExperimentBiosetCollection", () => {
+  beforeEach(() => {
+    mocks.exportRecords.mockReset();
+  });
+
+  it("scopes a taxon's Biosets through its experiments, since biosets carry no taxon or genome fields", async () => {
+    mocks.exportRecords.mockResolvedValue({
+      rows: [{ exp_id: "170" }, { exp_id: "171" }],
+    });
+    render(
+      <ExperimentBiosetCollection
+        baseRql="eq(taxon_lineage_ids,10239)"
+        maxExperiments={5000}
+      />,
+      { wrapper: createQueryClientWrapper() },
+    );
+
+    expect(await screen.findByTestId("bioset-collection")).toHaveAttribute(
+      "data-rql",
+      "in(exp_id,(170,171))",
+    );
+    expect(mocks.exportRecords).toHaveBeenCalledWith(
+      "experiment",
+      expect.objectContaining({
+        rql: "eq(taxon_lineage_ids,10239)",
+        fields: ["exp_id"],
+        limit: 5001,
+      }),
+      expect.anything(),
+    );
+  });
+
+  it("ands the taxon scope with the Experiment search", async () => {
+    mocks.exportRecords.mockResolvedValue({ rows: [{ exp_id: "170" }] });
+    render(
+      <ExperimentBiosetCollection
+        baseRql="eq(taxon_lineage_ids,2)"
+        experimentState={{
+          filters: {},
+          page: 1,
+          sort: "exp_id:asc",
+          rql: "eq(exp_type,Proteomics)",
+        }}
+      />,
+      { wrapper: createQueryClientWrapper() },
+    );
+
+    await screen.findByTestId("bioset-collection");
+    expect(mocks.exportRecords).toHaveBeenCalledWith(
+      "experiment",
+      expect.objectContaining({
+        rql: "and(eq(taxon_lineage_ids,2),eq(exp_type,Proteomics))",
+      }),
+      expect.anything(),
+    );
+  });
+
+  it("asks to refine when more experiments match than the cap", async () => {
+    mocks.exportRecords.mockResolvedValue({
+      rows: [{ exp_id: "1" }, { exp_id: "2" }, { exp_id: "3" }],
+    });
+    render(
+      <ExperimentBiosetCollection
+        baseRql="eq(taxon_lineage_ids,2)"
+        maxExperiments={2}
+      />,
+      { wrapper: createQueryClientWrapper() },
+    );
+
+    expect(
+      await screen.findByText("Refine the Experiment search"),
+    ).toBeInTheDocument();
+    expect(screen.queryByTestId("bioset-collection")).toBeNull();
+  });
+
   it.each(["   ", '""', '"', "OR", "/"])("treats the keyword %j, which has no terms, as unscoped without exporting experiment IDs", (keyword) => {
     render(
       <ExperimentBiosetCollection

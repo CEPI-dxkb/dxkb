@@ -1,4 +1,5 @@
 import { eq, serializeRql, validateRql } from "@/lib/data-api";
+import { maxRqlInValues } from "@/lib/data-api/rql";
 import {
   parseCollectionState,
   type CollectionState,
@@ -59,12 +60,23 @@ export function experimentCollectionScopeRql(
     : `and(${predicates.join(",")})`;
 }
 
+/**
+ * The Biosets of these experiments. One `in` takes at most `maxRqlInValues`
+ * values and a taxon can have more experiments (Bacteria has 791), so a longer
+ * list is `or`-ed `in` chunks.
+ */
 export function experimentBiosetCollectionRql(experimentIds: string[]): string {
-  return serializeRql("bioset", {
-    operator: "in",
-    field: "exp_id",
-    values: experimentIds,
-  });
+  const chunks: string[] = [];
+  for (let start = 0; start < experimentIds.length; start += maxRqlInValues) {
+    chunks.push(
+      serializeRql("bioset", {
+        operator: "in",
+        field: "exp_id",
+        values: experimentIds.slice(start, start + maxRqlInValues),
+      }),
+    );
+  }
+  return chunks.length === 1 ? chunks[0] : `or(${chunks.join(",")})`;
 }
 
 export function genomeExperimentRql(genomeId: string): string {

@@ -3,7 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ResourceChildCollection } from "@/components/views";
+import { ResourceChildCollection } from "@/components/views/resource-child-collection";
 import { QueryRetryButton } from "@/components/views/query-retry-button";
 import { useRetryKeepingError } from "@/components/views/use-retry-keeping-error";
 import { DataRepository } from "@/lib/data-api";
@@ -16,18 +16,36 @@ import { formatUserFacingErrorMessage } from "@/lib/utils";
 import type { CollectionState } from "@/lib/views/collection-state";
 
 const repository = new DataRepository();
-const maxScopedExperiments = 500;
+const defaultMaxScopedExperiments = 500;
+const unscopedExperimentState: CollectionState = {
+  filters: {},
+  page: 1,
+  sort: "exp_id:asc",
+};
 const genericScopeErrorMessage =
   "The matching experiments could not be loaded. Please try again.";
 
 interface ExperimentBiosetCollectionProps {
-  experimentState: CollectionState;
+  /** The Experiment search (filters, keyword, rql) whose experiments scope the Biosets. */
+  experimentState?: CollectionState;
+  /**
+   * An experiment predicate always applied, such as a taxon lineage clause. Bioset
+   * records carry no taxon or genome fields (their `organism` is the host), so a
+   * taxon reaches its Biosets only through its experiments' `exp_id`s.
+   */
+  baseRql?: string;
+  /** The most matching experiments whose Biosets are listed before asking to refine. */
+  maxExperiments?: number;
 }
 
 export function ExperimentBiosetCollection({
-  experimentState,
+  experimentState = unscopedExperimentState,
+  baseRql,
+  maxExperiments = defaultMaxScopedExperiments,
 }: ExperimentBiosetCollectionProps) {
-  const experimentRql = experimentCollectionScopeRql(experimentState);
+  const searchRql = experimentCollectionScopeRql(experimentState);
+  const experimentRql =
+    baseRql && searchRql ? `and(${baseRql},${searchRql})` : baseRql ?? searchRql;
   const keyword =
     keywordQuery(experimentState.keyword ?? "").length > 0
       ? experimentState.keyword?.trim()
@@ -43,7 +61,7 @@ export function ExperimentBiosetCollection({
           keyword,
           keywordMode: "exact",
           fields: ["exp_id"],
-          limit: maxScopedExperiments + 1,
+          limit: maxExperiments + 1,
         },
         signal,
       ),
@@ -88,13 +106,13 @@ export function ExperimentBiosetCollection({
   }
 
   const ids = experimentIds.data?.rows.map((row) => String(row.exp_id)) ?? [];
-  if (ids.length > maxScopedExperiments) {
+  if (ids.length > maxExperiments) {
     return (
       <div className="p-4">
         <Alert>
           <AlertTitle>Refine the Experiment search</AlertTitle>
           <AlertDescription>
-            Biosets can be shown for up to {maxScopedExperiments} matching
+            Biosets can be shown for up to {maxExperiments} matching
             Experiments. Add a keyword or filter to narrow the results.
           </AlertDescription>
         </Alert>

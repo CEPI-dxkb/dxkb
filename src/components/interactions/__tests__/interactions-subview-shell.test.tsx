@@ -1,6 +1,8 @@
 import { useEffect, type ComponentProps } from "react";
 import { act, render, screen, fireEvent } from "@testing-library/react";
 
+import type { GNode } from "@/lib/interactions/types";
+
 import type { InteractionsGraph } from "../interactions-graph";
 import { InteractionsSubviewShell } from "../interactions-subview-shell";
 
@@ -9,7 +11,14 @@ type GraphProps = ComponentProps<typeof InteractionsGraph>;
 let tableMountCount = 0;
 // The stubs below record their latest props here; read only after a render.
 let lastGraphProps: GraphProps | undefined;
-let lastTableProfile: { resource: string; guideUrl?: string } | undefined;
+let lastTableProfile:
+  | {
+      resource: string;
+      guideUrl?: string;
+      extraFilters?: readonly string[];
+      filterLabels?: Readonly<Record<string, string>>;
+    }
+  | undefined;
 
 vi.mock("next/navigation", async () =>
   (await import("@/test-helpers/history-navigation")).historyNavigationMock({
@@ -32,7 +41,7 @@ vi.mock("@/components/views/resource-child-collection", () => ({
     resource: string;
     rql: string;
     guideUrl?: string;
-    profile?: { resource: string; guideUrl?: string };
+    profile?: NonNullable<typeof lastTableProfile>;
     keywordMode?: string;
     keywordValue?: string;
     onKeywordChange?: (value: string) => void;
@@ -322,5 +331,153 @@ describe("InteractionsSubviewShell filters", () => {
       "groEL",
     );
     expect(window.location.search).toBe("");
+  });
+});
+
+describe("InteractionsSubviewShell protein focus", () => {
+  const scope = "eq(evidence,experimental)";
+  const protein: GNode = { id: "fig|224914.16.peg.635", kind: "microbial" };
+  const encodedProtein = "fig%7C224914.16.peg.635";
+  const focusClause = `or(eq(interactor_a,${encodedProtein}),eq(interactor_b,${encodedProtein}))`;
+  const typeClause = "eq(interaction_type,association)";
+
+  function focusNode(node: GNode) {
+    act(() => {
+      const { onFocusNode } = graphProps();
+      if (!onFocusNode) throw new Error("The Graph was given no onFocusNode.");
+      onFocusNode(node);
+    });
+  }
+
+  it("writes the focus to the URL, drops the Table's page, and leaves the Table alone", () => {
+    window.history.replaceState(
+      null,
+      "",
+      "/genome/1.1?tab=interactions&interactions.page=3",
+    );
+    render(<InteractionsSubviewShell rql={scope} />);
+    fireEvent.click(screen.getByRole("tab", { name: "Graph" }));
+    expect(tableMountCount).toBe(1);
+
+    focusNode(protein);
+
+    expect(window.location.search).toBe(
+      `?tab=interactions&interactions.interactor=${encodedProtein}`,
+    );
+    expect(screen.getByTestId("table-panel")).toHaveAttribute("data-rql", scope);
+    expect(tableMountCount).toBe(1);
+  });
+
+  it("narrows the Graph to the protein and hands its id back as focusId", () => {
+    render(<InteractionsSubviewShell rql={scope} />);
+    fireEvent.click(screen.getByRole("tab", { name: "Graph" }));
+    expect(graphProps().focusId).toBeUndefined();
+
+    focusNode(protein);
+
+    expect(graphProps().focusId).toBe("fig|224914.16.peg.635");
+    expect(graphProps().filters).toEqual({ interactor: [protein.id] });
+    expect(screen.getByTestId("graph-panel")).toHaveAttribute(
+      "data-rql",
+      `and(${scope},${focusClause})`,
+    );
+  });
+
+  it("keeps the facet picks beside the focus, and the focus beside a pick's counts", () => {
+    window.history.replaceState(
+      null,
+      "",
+      "/genome/1.1?interactions.interaction_type=association",
+    );
+    render(<InteractionsSubviewShell rql={scope} />);
+    fireEvent.click(screen.getByRole("tab", { name: "Graph" }));
+
+    focusNode(protein);
+
+    expect(window.location.search).toContain("interactions.interaction_type=association");
+    expect(window.location.search).toContain(
+      `interactions.interactor=${encodedProtein}`,
+    );
+    expect(screen.getByTestId("graph-panel")).toHaveAttribute(
+      "data-rql",
+      `and(${scope},and(${focusClause},${typeClause}))`,
+    );
+    // A facet's counts leave out its own pick only, so they stay inside the focus.
+    expect(graphProps().facetRql("interaction_type")).toBe(
+      `and(${scope},${focusClause})`,
+    );
+  });
+
+  it("adds a history entry, so Back undoes the focus", () => {
+    render(<InteractionsSubviewShell rql={scope} />);
+    fireEvent.click(screen.getByRole("tab", { name: "Graph" }));
+    const pushState = vi.spyOn(window.history, "pushState");
+    try {
+      focusNode(protein);
+      expect(pushState).toHaveBeenCalledTimes(1);
+    } finally {
+      pushState.mockRestore();
+    }
+  });
+
+  it("keeps the shared keyword when focusing", () => {
+    render(<InteractionsSubviewShell rql={scope} />);
+    fireEvent.click(screen.getByText("set-from-table"));
+    fireEvent.click(screen.getByRole("tab", { name: "Graph" }));
+
+    focusNode(protein);
+
+    expect(screen.getByTestId("graph-panel")).toHaveAttribute(
+      "data-keyword",
+      "fromTable",
+    );
+    expect(window.location.search).not.toContain("keyword");
+  });
+
+  it("removes the focus when the filter bar clears it", () => {
+    window.history.replaceState(
+      null,
+      "",
+      `/genome/1.1?interactions.interactor=${encodedProtein}&interactions.page=2`,
+    );
+    render(<InteractionsSubviewShell rql={scope} />);
+    fireEvent.click(screen.getByRole("tab", { name: "Graph" }));
+    expect(graphProps().focusId).toBe(protein.id);
+
+    act(() => {
+      graphProps().onFilterChange({ filters: {} });
+    });
+
+    expect(window.location.search).toBe("");
+    expect(graphProps().focusId).toBeUndefined();
+    expect(screen.getByTestId("graph-panel")).toHaveAttribute("data-rql", scope);
+  });
+
+  it("reads a focus already in the URL on load", () => {
+    window.history.replaceState(
+      null,
+      "",
+      `/genome/1.1?interactions.interactor=${encodedProtein}`,
+    );
+    render(<InteractionsSubviewShell rql={scope} />);
+    fireEvent.click(screen.getByRole("tab", { name: "Graph" }));
+
+    expect(graphProps().focusId).toBe(protein.id);
+    expect(screen.getByTestId("graph-panel")).toHaveAttribute(
+      "data-rql",
+      `and(${scope},${focusClause})`,
+    );
+    expect(screen.getByTestId("table-panel")).toHaveAttribute("data-rql", scope);
+  });
+
+  it("gives the Table the profile whose options name the focus filter", () => {
+    render(<InteractionsSubviewShell rql={scope} />);
+
+    expect(lastTableProfile).toEqual(
+      expect.objectContaining({
+        extraFilters: ["interactor"],
+        filterLabels: { interactor: "Protein" },
+      }),
+    );
   });
 });

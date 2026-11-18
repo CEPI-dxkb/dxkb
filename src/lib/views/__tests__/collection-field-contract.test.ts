@@ -37,6 +37,7 @@ import { isChildCollectionParam } from "../child-collection-state";
 import type { DerivedFieldMetadata } from "../field-metadata";
 import {
   genomeSequenceColumns,
+  interactionCollectionOptions,
   interactionColumns,
   sequenceFeatureColumns,
 } from "../child-resources";
@@ -534,6 +535,8 @@ describe("URL parameter names", () => {
     experimentCollectionOptions,
     featureCollectionOptions,
     genomeCollectionOptions,
+    // Carries the `interactor` focus filter beside its facets.
+    interactionCollectionOptions,
     proteinFeatureCollectionOptions,
     proteinStructureCollectionOptions,
     serologyCollectionOptions,

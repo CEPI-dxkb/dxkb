@@ -124,6 +124,65 @@ describe("GraphDetailPanel", () => {
     });
   });
 
+  describe("focus on a protein", () => {
+    const focusButton = () =>
+      screen.queryByRole("button", { name: "Focus on this protein" });
+
+    it("offers the button for a single selected node when a handler is given", async () => {
+      const user = userEvent.setup();
+      const onFocusNode = vi.fn();
+      renderPanel({ selection: { nodes: [nodeA], edges: [] }, onFocusNode });
+
+      await user.click(screen.getByRole("button", { name: "Focus on this protein" }));
+
+      expect(onFocusNode).toHaveBeenCalledTimes(1);
+      expect(onFocusNode).toHaveBeenCalledWith(nodeA);
+      expect(onFocusNode.mock.calls[0][0]).toHaveProperty("id", "fig|1.1");
+    });
+
+    it("explains what it does and how to undo it", () => {
+      renderPanel({
+        selection: { nodes: [nodeA], edges: [] },
+        onFocusNode: vi.fn(),
+      });
+
+      expect(
+        screen.getByText(
+          "Shows only this protein's interactions; remove the Protein filter above to undo.",
+        ),
+      ).toBeInTheDocument();
+    });
+
+    it("is absent without a handler, so the panel renders as before", () => {
+      renderPanel({ selection: { nodes: [nodeA], edges: [] } });
+
+      expect(focusButton()).not.toBeInTheDocument();
+      expect(screen.queryByText(/remove the Protein filter/)).not.toBeInTheDocument();
+    });
+
+    it("is absent for a bulk selection and for an edge", () => {
+      const { unmount } = renderPanel({
+        selection: { nodes: [nodeA, nodeB], edges: [] },
+        onFocusNode: vi.fn(),
+      });
+      expect(focusButton()).not.toBeInTheDocument();
+      unmount();
+
+      renderPanel({ selection: { nodes: [], edges: [edge] }, onFocusNode: vi.fn() });
+      expect(focusButton()).not.toBeInTheDocument();
+    });
+
+    it("keeps the em-dash count for a bare node", () => {
+      const bare: GNode = { id: "fig|3.3", kind: "microbial" };
+      renderPanel({
+        selection: { nodes: [bare], edges: [] },
+        onFocusNode: vi.fn(),
+      });
+
+      expect(screen.getAllByText("—")).toHaveLength(4);
+    });
+  });
+
   describe("edge selected", () => {
     it("renders the Interaction header and every edge field", () => {
       renderPanel({ selection: { nodes: [], edges: [edge] } });

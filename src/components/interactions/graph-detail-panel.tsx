@@ -1,3 +1,4 @@
+import { Button } from "@/components/ui/button";
 import type { GEdge, GNode, GraphSelection } from "@/lib/interactions/types";
 
 interface GraphDetailPanelProps {
@@ -5,6 +6,8 @@ interface GraphDetailPanelProps {
   incidentEdges: GEdge[];
   nodesById: Map<string, GNode>;
   onSelectEdge: (edge: GEdge) => void;
+  /** Offers "Focus on this protein" for a single selected node; omitted, no button is drawn. */
+  onFocusNode?: (node: GNode) => void;
 }
 
 function endpointLabel(nodesById: Map<string, GNode>, id: string): string {
@@ -12,7 +15,7 @@ function endpointLabel(nodesById: Map<string, GNode>, id: string): string {
   return n?.gene || id;
 }
 
-export function GraphDetailPanel({ selection, incidentEdges, nodesById, onSelectEdge }: GraphDetailPanelProps) {
+export function GraphDetailPanel({ selection, incidentEdges, nodesById, onSelectEdge, onFocusNode }: GraphDetailPanelProps) {
   if (selection.nodes.length === 0 && selection.edges.length === 0) {
     return (
       <p className="p-3 text-sm text-muted-foreground">
@@ -49,6 +52,22 @@ export function GraphDetailPanel({ selection, incidentEdges, nodesById, onSelect
             <dt className="font-medium text-foreground">Product</dt>
             <dd className="break-all text-muted-foreground">{node.interactorDesc || "—"}</dd>
           </dl>
+          {onFocusNode && (
+            <div className="flex flex-col items-start gap-1">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  onFocusNode(node);
+                }}
+              >
+                Focus on this protein
+              </Button>
+              <p className="text-xs text-muted-foreground">
+                Shows only this protein&apos;s interactions; remove the Protein filter above to undo.
+              </p>
+            </div>
+          )}
           {incidentEdges.length > 0 && (
             <div className="flex flex-col gap-1">
               <p className="font-medium text-foreground">

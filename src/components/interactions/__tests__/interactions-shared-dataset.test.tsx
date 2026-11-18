@@ -117,6 +117,29 @@ const allRows = Array.from(
 );
 const beyondFirstPageInteractor = allRows[beyondFirstPageIndex].interactor_a;
 
+// A handful of rows with real-shaped ids (a pipe, a dot): role queries over the full node list are
+// slow in jsdom, and the focus tests need an id that must be escaped on the way to the RQL.
+const focusRows = [
+  {
+    id: "ppi-f1",
+    interactor_a: "fig|1.1.peg.1",
+    interactor_b: "fig|1.1.peg.2",
+    gene_a: "geneA",
+    gene_b: "geneB",
+    evidence: "experimental",
+  },
+  {
+    id: "ppi-f2",
+    interactor_a: "fig|1.1.peg.1",
+    interactor_b: "fig|1.1.peg.3",
+    gene_a: "geneA",
+    gene_b: "geneC",
+    evidence: "experimental",
+  },
+];
+/** What the handlers below serve; a test swaps in `focusRows`, `beforeEach` restores it. */
+let datasetRows: Record<string, string>[] = allRows;
+
 interface Predicate {
   rql?: string;
   keyword?: string;
@@ -133,8 +156,8 @@ const tablePages: number[] = [];
 
 function matching(keyword: string | undefined) {
   const terms = (keyword ?? "").trim().split(/\s+/).filter(Boolean);
-  if (terms.length === 0) return allRows;
-  return allRows.filter((row) =>
+  if (terms.length === 0) return datasetRows;
+  return datasetRows.filter((row) =>
     terms.every((term) => JSON.stringify(row).includes(term)),
   );
 }
@@ -144,6 +167,7 @@ beforeEach(() => {
     Promise.resolve(new Float64Array(2 * request.nodeCount)),
   );
   window.history.replaceState(null, "", "/genome/1.1");
+  datasetRows = allRows;
   tablePredicates.length = 0;
   graphPredicates.length = 0;
   facetPredicates.length = 0;
@@ -422,6 +446,200 @@ describe("Interactions Table and Graph share one set of filters", () => {
       ],
     ).toBe(1);
     expect(window.location.search).not.toContain("interactions.page");
+  });
+});
+
+const focusedProteinId = "fig|1.1.peg.1";
+const focusClause =
+  "or(eq(interactor_a,fig%7C1.1.peg.1),eq(interactor_b,fig%7C1.1.peg.1))";
+const focusedRql = `and(${scopeRql},${focusClause})`;
+const focusUrlParam = "interactions.interactor=fig%7C1.1.peg.1";
+
+/** Picks the node in the Graph's list, then its detail panel's focus button. */
+async function focusFromGraph(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(await graphPanel().findByText("geneA"));
+  await user.click(
+    graphPanel().getByRole("button", { name: "Focus on this protein" }),
+  );
+}
+
+describe("Interactions Table and Graph share a protein focus", () => {
+  beforeEach(() => {
+    datasetRows = focusRows;
+  });
+
+  it("narrows both views to the protein from the Graph's detail panel", async () => {
+    const user = userEvent.setup();
+    render(<InteractionsSubviewShell rql={scopeRql} />, {
+      wrapper: createQueryClientWrapper(),
+    });
+    await waitFor(() => {
+      expect(tablePredicates).toHaveLength(1);
+    });
+    await user.click(screen.getByRole("tab", { name: "Graph" }));
+    await waitFor(() => {
+      expect(graphPredicates).toHaveLength(1);
+    });
+
+    await focusFromGraph(user);
+
+    await waitFor(() => {
+      expect(graphPredicates.at(-1)?.rql).toBe(focusedRql);
+    });
+    await waitFor(() => {
+      expect(tablePredicates.at(-1)?.rql).toBe(focusedRql);
+    });
+    expect(tablePredicates.at(-1)).toEqual(graphPredicates.at(-1));
+    expect(window.location.search).toBe(`?${focusUrlParam}`);
+    // The focus is a filter like the rest: the bar names it, and the counts stay inside it.
+    expect(
+      graphPanel().getByRole("button", {
+        name: `Protein: ${focusedProteinId}. Edit filter`,
+      }),
+    ).toBeInTheDocument();
+    // The rows come back with the protein in them, so the Graph selects it again.
+    await waitFor(() => {
+      expect(
+        graphPanel().getByRole("button", { name: "Focus on this protein" }),
+      ).toBeInTheDocument();
+    });
+    expect(
+      within(graphPanel().getByLabelText("Selection details")).getByText(
+        focusedProteinId,
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("keeps the focus when the Table picks a facet afterwards", async () => {
+    const user = userEvent.setup();
+    render(<InteractionsSubviewShell rql={scopeRql} />, {
+      wrapper: createQueryClientWrapper(),
+    });
+    await waitFor(() => {
+      expect(tablePredicates).toHaveLength(1);
+    });
+    await user.click(screen.getByRole("tab", { name: "Graph" }));
+    await waitFor(() => {
+      expect(graphPredicates).toHaveLength(1);
+    });
+    await focusFromGraph(user);
+    await waitFor(() => {
+      expect(tablePredicates.at(-1)?.rql).toBe(focusedRql);
+    });
+
+    await user.click(screen.getByRole("tab", { name: "Table" }));
+    // The Table's own bar names the focus too: its profile carries the label.
+    expect(
+      tablePanel().getByRole("button", {
+        name: `Protein: ${focusedProteinId}. Edit filter`,
+      }),
+    ).toBeInTheDocument();
+    await pickAssociation(user, tablePanel());
+
+    const bothRql = `and(${scopeRql},and(${focusClause},eq(interaction_type,association)))`;
+    await waitFor(() => {
+      expect(tablePredicates.at(-1)?.rql).toBe(bothRql);
+    });
+    expect(window.location.search).toContain(focusUrlParam);
+    expect(window.location.search).toContain(
+      "interactions.interaction_type=association",
+    );
+
+    await user.click(screen.getByRole("tab", { name: "Graph" }));
+    await waitFor(() => {
+      expect(graphPredicates.at(-1)?.rql).toBe(bothRql);
+    });
+    expect(tablePredicates.at(-1)).toEqual(graphPredicates.at(-1));
+  });
+
+  it("keeps a facet the Table picked when the Graph focuses afterwards", async () => {
+    const user = userEvent.setup();
+    render(<InteractionsSubviewShell rql={scopeRql} />, {
+      wrapper: createQueryClientWrapper(),
+    });
+    await waitFor(() => {
+      expect(tablePredicates).toHaveLength(1);
+    });
+    await pickAssociation(user, tablePanel());
+    await waitFor(() => {
+      expect(tablePredicates.at(-1)?.rql).toBe(associationRql);
+    });
+
+    await user.click(screen.getByRole("tab", { name: "Graph" }));
+    await waitFor(() => {
+      expect(graphPredicates.at(-1)?.rql).toBe(associationRql);
+    });
+    await focusFromGraph(user);
+
+    const bothRql = `and(${scopeRql},and(${focusClause},eq(interaction_type,association)))`;
+    await waitFor(() => {
+      expect(graphPredicates.at(-1)?.rql).toBe(bothRql);
+    });
+    await waitFor(() => {
+      expect(tablePredicates.at(-1)?.rql).toBe(bothRql);
+    });
+    expect(tablePredicates.at(-1)).toEqual(graphPredicates.at(-1));
+    expect(window.location.search).toContain(focusUrlParam);
+    expect(window.location.search).toContain(
+      "interactions.interaction_type=association",
+    );
+  });
+
+  it("drops the Table's page when the Graph focuses", async () => {
+    const user = userEvent.setup();
+    render(<InteractionsSubviewShell rql={scopeRql} />, {
+      wrapper: createQueryClientWrapper(),
+    });
+    await waitFor(() => {
+      expect(tablePredicates).toHaveLength(1);
+    });
+    await user.click(tablePanel().getByRole("button", { name: "Next page" }));
+    await waitFor(() => {
+      expect(tablePages.at(-1)).toBe(2);
+    });
+    await user.click(screen.getByRole("tab", { name: "Graph" }));
+    await waitFor(() => {
+      expect(graphPredicates).toHaveLength(1);
+    });
+
+    await focusFromGraph(user);
+
+    await waitFor(() => {
+      expect(tablePredicates.at(-1)?.rql).toBe(focusedRql);
+    });
+    expect(
+      tablePages[
+        tablePredicates.findIndex((request) => request.rql === focusedRql)
+      ],
+    ).toBe(1);
+    expect(window.location.search).not.toContain("interactions.page");
+  });
+
+  it("widens both views again when the Protein pill is removed", async () => {
+    const user = userEvent.setup();
+    window.history.replaceState(null, "", `/genome/1.1?${focusUrlParam}`);
+    render(<InteractionsSubviewShell rql={scopeRql} />, {
+      wrapper: createQueryClientWrapper(),
+    });
+    await waitFor(() => {
+      expect(tablePredicates.at(-1)?.rql).toBe(focusedRql);
+    });
+    await user.click(screen.getByRole("tab", { name: "Graph" }));
+    await waitFor(() => {
+      expect(graphPredicates.at(-1)?.rql).toBe(focusedRql);
+    });
+
+    await user.click(
+      graphPanel().getByRole("button", { name: "Clear Protein filter" }),
+    );
+
+    await waitFor(() => {
+      expect(graphPredicates.at(-1)?.rql).toBe(scopeRql);
+    });
+    await waitFor(() => {
+      expect(tablePredicates.at(-1)?.rql).toBe(scopeRql);
+    });
+    expect(window.location.search).toBe("");
   });
 });
 

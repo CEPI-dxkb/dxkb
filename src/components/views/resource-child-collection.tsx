@@ -89,8 +89,10 @@ interface ResourceChildCollectionProps {
   defaultFilters?: CollectionStateOptions["defaultFilters"];
   /**
    * Opt-in profile for a child table that needs facets without a canonical
-   * entry (the taxon Interactions tab). The supplied profile's `columns` and
-   * `guideUrl` win over the props, so a caller sets them on the profile.
+   * entry (the taxon Interactions tab). The supplied profile's `columns`,
+   * `guideUrl` and `idField` win over the props, so a caller sets them on the
+   * profile. Its `extraFilters` are URL filters beside the facets: they join the
+   * table's collection options, so a write by the table keeps them.
    */
   profile?: ResourceCollectionProfile<ChildRow>;
   download?: CollectionDownloadSpec;
@@ -171,6 +173,7 @@ function ScopedResourceChildCollection({
     profile.facets,
     defaultSort,
     defaultFilters,
+    profile.extraFilters,
   );
   const [state, setState] = useChildCollectionUrlState(
     urlKey,

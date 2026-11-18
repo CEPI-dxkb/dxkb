@@ -5,7 +5,10 @@ import type { DataRepository, DataResource } from "@/lib/data-api";
 import type { DownloadRequest } from "@/lib/data-api/downloads";
 import type { FeatureViewRecord } from "@/lib/feature-view";
 import type { GenomeViewRecord } from "@/lib/genome-view";
-import { genomeInteractionsRql } from "@/lib/views/child-resources";
+import {
+  genomeInteractionsRql,
+  interactionCollectionProfile,
+} from "@/lib/views/child-resources";
 import type { useResourceCollection as useResourceCollectionHook } from "@/hooks/views/use-resource-collection";
 import { resetChildCollectionPage } from "@/hooks/views/use-child-collection-url-state";
 import { FeatureMember } from "@/app/(views)/feature/[featureId]/feature-member";
@@ -520,6 +523,71 @@ describe("ResourceChildCollection scope changes", () => {
     expect(profile?.buildStructuralRql?.(changedState)).toBe(
       'and(eq(parent_id,parent-1),eq(status,"active"))',
     );
+  });
+
+  it("reads a supplied profile's extra filters from the URL and keeps them on a write", () => {
+    window.history.replaceState(
+      null,
+      "",
+      "/genome/1.1?interactions.interactor=fig%7C1.1&interactions.page=3",
+    );
+    render(
+      <ResourceChildCollection
+        urlKey="interactions"
+        resource="ppi"
+        label="Interactions"
+        idField="id"
+        rql="eq(evidence,experimental)"
+        defaultSort="id:asc"
+        profile={interactionCollectionProfile}
+      />,
+    );
+
+    // Parsed with the profile's own options, so the focus reaches the table's state ...
+    expect(shownCollectionState()).toMatchObject({
+      filters: { interactor: ["fig|1.1"] },
+      page: 3,
+    });
+    const profile = resourceCollectionProfile.mock.lastCall?.[0] as
+      | ResourceCollectionProfile<Record<string, unknown>>
+      | undefined;
+    expect(
+      profile?.buildStructuralRql?.({
+        filters: { interactor: ["fig|1.1"] },
+        page: 1,
+        sort: "id:asc",
+      }),
+    ).toBe(
+      "and(eq(evidence,experimental),or(eq(interactor_a,fig%7C1.1),eq(interactor_b,fig%7C1.1)))",
+    );
+
+    // ... and a table write that carries it back leaves it in the URL.
+    act(() => {
+      lastResourceCollectionProps().onStateChange({
+        filters: {
+          interactor: ["fig|1.1"],
+          interaction_type: ["association"],
+        },
+        page: 1,
+        sort: "id:asc",
+      });
+    });
+    expect(window.location.search).toContain("interactions.interactor=fig%7C1.1");
+    expect(window.location.search).toContain(
+      "interactions.interaction_type=association",
+    );
+    expect(window.location.search).not.toContain("interactions.page");
+  });
+
+  it("drops a URL filter the plain interactions table does not name", () => {
+    window.history.replaceState(
+      null,
+      "",
+      "/genome/1.1?interactions.interactor=fig%7C1.1",
+    );
+    render(<ResourceChildCollection {...interactionsChildProps} />);
+
+    expect(shownCollectionState()).toMatchObject({ filters: {} });
   });
 
   it("does not open partial Bioset results for an all-pages selection", async () => {

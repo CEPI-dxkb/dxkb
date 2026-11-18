@@ -33,6 +33,7 @@ export function CollectionToolbar(props: CollectionToolbarProps) {
     onKeywordChange,
     keywordPlaceholder,
     definitions,
+    filterLabels,
     favoriteFields,
     setFieldFavorite,
     facets,
@@ -59,6 +60,7 @@ export function CollectionToolbar(props: CollectionToolbarProps) {
   const isDefined = (field: string) => definedFields.includes(field);
   const labelFor = (field: string) =>
     definitions.find((definition) => definition.field === field)?.label ??
+    filterLabels?.[field] ??
     field;
   const hasFilter = (field: string) => (filters[field]?.length ?? 0) > 0;
   const [heldField, setHeldField] = useState<string | null>(null);

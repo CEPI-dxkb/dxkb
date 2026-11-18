@@ -170,4 +170,36 @@ describe("GraphFilterBar", () => {
       ),
     ).toStrictEqual({ facets: { detection_method: true } });
   });
+
+  it("shows the focused protein as a Protein pill and drops it from the pill's ×", async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn<GraphFilterBarProps["onChange"]>();
+    render(
+      <GraphFilterBar
+        {...barProps({
+          filters: {
+            interactor: ["fig|224914.16.peg.635"],
+            interaction_type: ["association"],
+          },
+          onChange,
+        })}
+      />,
+    );
+
+    expect(
+      screen.getByRole("button", {
+        name: "Protein: fig|224914.16.peg.635. Edit filter",
+      }),
+    ).toBeInTheDocument();
+
+    await user.click(
+      screen.getByRole("button", { name: "Clear Protein filter" }),
+    );
+
+    expect(onChange).toHaveBeenCalledWith(
+      expect.objectContaining({
+        filters: { interaction_type: ["association"] },
+      }),
+    );
+  });
 });

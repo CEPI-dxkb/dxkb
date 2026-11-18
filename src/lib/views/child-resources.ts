@@ -4,8 +4,10 @@ import { sequenceFeatureFields } from "@/constants/datafields/sequence_feature";
 import type { ResourceCollectionProfile } from "@/components/views/resource-collection";
 import { eq } from "@/lib/data-api";
 import type { CollectionDownloadSpec } from "@/lib/data-api/downloads";
+import { childCollectionOptions } from "./child-collection-state";
 import type { CollectionState } from "./collection-state";
 import { deriveFieldMetadata } from "./field-metadata";
+import { rqlAnd, rqlAnyOf } from "./rql";
 import { structuralFilterRql } from "./structural-rql";
 
 /**
@@ -54,6 +56,35 @@ export const interactionFacets = interactionMetadata.facets.filter(
 );
 
 /**
+ * The Interactions "focus on this protein" filter: a URL filter, not a facet
+ * (no counts, no menu entry of its own), so it is named here and in
+ * `filterLabels`, never in `interactionFacets`.
+ */
+export const interactionExtraFilters = ["interactor"] as const;
+
+/**
+ * `interactor` is not a PPI field, so it never reaches `structuralFilterRql`
+ * (which would send it as `eq(interactor,…)`). It matches the protein on either
+ * side of the interaction, as a row files it A- or B-side.
+ */
+export function interactionStructuralRql(
+  state: CollectionState,
+): string | undefined {
+  const { interactor = [], ...facetFilters } = state.filters;
+  const focus = interactor
+    .filter((id) => id !== "")
+    .map(
+      (id) =>
+        `or(${eq("ppi", "interactor_a", id)},${eq("ppi", "interactor_b", id)})`,
+    );
+  const clauses = [
+    focus.length > 0 ? rqlAnyOf(focus) : undefined,
+    structuralFilterRql("ppi", { ...state, filters: facetFilters }),
+  ].filter((clause): clause is string => clause !== undefined);
+  return clauses.length === 0 ? undefined : rqlAnd(...clauses);
+}
+
+/**
  * Opt-in (pass as `ResourceChildCollection`'s `profile`) for the taxon
  * Interactions Table + Graph. Genome and Feature Interactions tabs keep the
  * plain columns-only table. No `detailFields`: the detail fetch stays what the
@@ -67,10 +98,25 @@ export const interactionCollectionProfile: ResourceCollectionProfile<
   idField: "id",
   columns: interactionColumns,
   basePredicate: "eq(id,*)",
-  buildStructuralRql: (state: CollectionState) =>
-    structuralFilterRql("ppi", state),
+  buildStructuralRql: interactionStructuralRql,
   facets: interactionFacets,
+  extraFilters: interactionExtraFilters,
+  filterLabels: { interactor: "Protein" },
 };
+
+/**
+ * One expression for both writers of the `interactions.*` params: the shell
+ * (which reads the filters for the Graph) and `ResourceChildCollection` (which
+ * builds the same from the profile). Built apart, one could drop the other's
+ * param on a write.
+ */
+export const interactionCollectionOptions = childCollectionOptions(
+  interactionCollectionProfile.columns,
+  interactionCollectionProfile.facets,
+  "id:asc",
+  undefined,
+  interactionCollectionProfile.extraFilters,
+);
 
 export const sequenceFeatureColumns = deriveFieldMetadata(
   sequenceFeatureFields,

@@ -9,23 +9,17 @@ import {
   useChildCollectionUrlState,
 } from "@/hooks/views/use-child-collection-url-state";
 import { defaultLayout } from "@/lib/interactions/renderer-capabilities";
-import type { LayoutName } from "@/lib/interactions/types";
-import { childCollectionOptions } from "@/lib/views/child-collection-state";
-import { interactionCollectionProfile } from "@/lib/views/child-resources";
+import type { GNode, LayoutName } from "@/lib/interactions/types";
+import {
+  interactionCollectionOptions,
+  interactionCollectionProfile,
+} from "@/lib/views/child-resources";
 import type { CollectionState } from "@/lib/views/collection-state";
 import { scopedStructuralRql } from "@/lib/views/scoped-structural-rql";
 
 import { InteractionsGraph } from "./interactions-graph";
 
 const tableUrlKey = "interactions";
-const tableDefaultSort = "id:asc";
-// The expression `ResourceChildCollection` builds from the profile, so the shell
-// and the Table parse the same `interactions.*` params into the same state.
-const interactionOptions = childCollectionOptions(
-  interactionCollectionProfile.columns,
-  interactionCollectionProfile.facets,
-  tableDefaultSort,
-);
 const buildGraphStructuralRql = interactionCollectionProfile.buildStructuralRql;
 
 function sameFilters(
@@ -50,10 +44,13 @@ export function InteractionsSubviewShell({
   const [keywordText, setKeywordText] = useState("");
   const [graphLayout, setGraphLayout] = useState<LayoutName>(defaultLayout);
   // The filters live in the Table's `interactions.*` URL params; either view's
-  // Filters menu writes them, and both read them back from there.
+  // Filters menu writes them, and both read them back from there. The options
+  // are the profile's own, so the shell and the Table parse the same params into
+  // the same state, and neither one's write drops the other's (the focus among
+  // them).
   const [tableState, setTableState] = useChildCollectionUrlState(
     tableUrlKey,
-    interactionOptions,
+    interactionCollectionOptions,
   );
   // The fragment is stripped once here so the Table's and Graph's requests carry byte-equal RQL.
   const scopedRql = rql.split("#")[0];
@@ -96,6 +93,20 @@ export function InteractionsSubviewShell({
     }
   };
 
+  // The Graph's "Focus on this protein": the node becomes an `interactor` filter,
+  // which narrows the Table too. A pushed entry, so Back undoes it.
+  const handleFocusNode = (node: GNode) => {
+    setTableState({
+      ...tableState,
+      filters: { ...tableState.filters, interactor: [node.id] },
+      page: 1,
+      keyword: undefined,
+    });
+  };
+  // A blank value (a hand-edited URL) is no focus; the rql builder skips it too.
+  const { interactor: focusIds = [] } = tableState.filters;
+  const focusId = focusIds.find((id) => id !== "");
+
   return (
     <Tabs
       value={subTab}
@@ -119,7 +130,7 @@ export function InteractionsSubviewShell({
           idField="id"
           rql={scopedRql}
           profile={{ ...interactionCollectionProfile, guideUrl }}
-          defaultSort={tableDefaultSort}
+          defaultSort={interactionCollectionOptions.defaultSort}
           keywordValue={keywordText}
           onKeywordChange={handleKeywordChange}
           keywordPlaceholder="Search interaction results..."
@@ -133,6 +144,8 @@ export function InteractionsSubviewShell({
           filters={tableState.filters}
           facetRql={facetRql}
           onFilterChange={handleFilterChange}
+          focusId={focusId}
+          onFocusNode={handleFocusNode}
           layout={graphLayout}
           onLayoutChange={setGraphLayout}
         />

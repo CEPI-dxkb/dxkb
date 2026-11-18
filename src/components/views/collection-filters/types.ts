@@ -37,6 +37,8 @@ export interface CollectionToolbarProps extends CollectionColumnControls {
   keywordPlaceholder?: string;
 
   definitions: readonly ResourceCollectionFacet[];
+  /** Labels for a filter in `filters` that `definitions` does not define; falls back to the field name. */
+  filterLabels?: Readonly<Record<string, string>>;
   favoriteFields: ReadonlySet<string>;
   setFieldFavorite: (field: string, favorite: boolean) => void;
 

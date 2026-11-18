@@ -32,6 +32,8 @@ export interface ResourceFilterBarProps extends CollectionColumnControls {
   onFacetsWanted: () => void;
   onPrefetchFacets: () => void;
   definitions: readonly ResourceCollectionFacet[];
+  /** Labels for a filter `definitions` does not define (a pill reads "Protein", not `interactor`). */
+  filterLabels?: Readonly<Record<string, string>>;
   explicitRql?: ExplicitRqlView;
   filtersBesideRql?: readonly string[];
   keywordPlaceholder?: string;
@@ -58,6 +60,7 @@ export function ResourceFilterBar({
   onFacetsWanted,
   onPrefetchFacets,
   definitions,
+  filterLabels,
   explicitRql,
   filtersBesideRql = [],
   keywordPlaceholder,
@@ -129,6 +132,7 @@ export function ResourceFilterBar({
       onKeywordChange={setKeywordDraft}
       keywordPlaceholder={keywordPlaceholder}
       definitions={definitions}
+      filterLabels={filterLabels}
       favoriteFields={favoriteFields}
       setFieldFavorite={(field, favorite) => {
         updateLayout({

@@ -55,6 +55,12 @@ const SigmaCanvas = dynamic<GraphCanvasProps>(
 
 const emptySelection: GraphSelection = { nodes: [], edges: [] };
 const emptyRows: PpiRecord[] = [];
+
+/** The focused protein, when the rows hold it: a focus is the one thing a new result set selects. */
+function focusSelection(nodes: GNode[], focusId: string | undefined): GraphSelection {
+  const focus = focusId ? nodes.find((node) => node.id === focusId) : undefined;
+  return focus ? { nodes: [focus], edges: [] } : emptySelection;
+}
 const repository = new DataRepository();
 const facetFieldList = interactionFacets.map((facet) => facet.field);
 const noFacetFields: readonly string[] = [];
@@ -80,6 +86,10 @@ interface InteractionsGraphProps {
     keyword?: string;
     filters: CollectionState["filters"];
   }) => void;
+  /** The protein the view is narrowed to; each new result set selects it when its rows hold it. */
+  focusId?: string;
+  /** Offers "Focus on this protein" in the detail panel; omitted, the panel has no button. */
+  onFocusNode?: (node: GNode) => void;
 }
 
 export function InteractionsGraph({
@@ -91,6 +101,8 @@ export function InteractionsGraph({
   filters,
   facetRql,
   onFilterChange,
+  focusId,
+  onFocusNode,
 }: InteractionsGraphProps) {
   // Above every early return: the Graph stays mounted through loading, error and loaded, so the
   // counts keep loading once the user has reached for the filters.
@@ -118,7 +130,11 @@ export function InteractionsGraph({
     interactions,
     JSON.stringify([rql, keywordValue]),
   );
-  const [selection, setSelection] = useState<GraphSelection>(emptySelection);
+  const graph = toGraph(data?.rows ?? emptyRows);
+  // The focused protein starts selected, also when the rows are already cached on mount.
+  const [selection, setSelection] = useState<GraphSelection>(() =>
+    focusSelection(graph.nodes, focusId),
+  );
   const [activeSubgraph, setActiveSubgraph] =
     useState<SubgraphSelection | null>(null);
   const [activeHub, setActiveHub] = useState<HubSelection | null>(null);
@@ -131,12 +147,11 @@ export function InteractionsGraph({
     graphSource.data !== data
   ) {
     setGraphSource({ rql, keywordValue, data });
-    setSelection(emptySelection);
+    setSelection(focusSelection(graph.nodes, focusId));
     setActiveSubgraph(null);
     setActiveHub(null);
   }
 
-  const graph = toGraph(data?.rows ?? emptyRows);
   const selectionIndex = buildGraphSelectionIndex(graph.nodes, graph.edges);
   const layoutQuery = useGraphLayout({
     rql,
@@ -370,6 +385,7 @@ export function InteractionsGraph({
             incidentEdges={incidentEdges}
             nodesById={nodesById}
             onSelectEdge={selectEdge}
+            onFocusNode={onFocusNode}
           />
         </div>
       </div>

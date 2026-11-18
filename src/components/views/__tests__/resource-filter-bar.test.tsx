@@ -889,3 +889,32 @@ describe("ResourceFilterBar favorite facets", () => {
     });
   });
 });
+
+describe("ResourceFilterBar filter labels", () => {
+  it("names the pill of a filter with no definition from filterLabels", () => {
+    render(
+      <ResourceFilterBar
+        {...filterBarProps({
+          filters: { interactor: ["fig|1.1"] },
+          filterLabels: { interactor: "Protein" },
+        })}
+      />,
+    );
+
+    expect(
+      screen.getByRole("button", { name: "Protein: fig|1.1. Edit filter" }),
+    ).toBeInTheDocument();
+  });
+
+  it("names it after the field when no label is given", () => {
+    render(
+      <ResourceFilterBar
+        {...filterBarProps({ filters: { interactor: ["fig|1.1"] } })}
+      />,
+    );
+
+    expect(
+      screen.getByRole("button", { name: "interactor: fig|1.1. Edit filter" }),
+    ).toBeInTheDocument();
+  });
+});

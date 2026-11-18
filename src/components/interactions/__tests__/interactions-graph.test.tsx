@@ -663,6 +663,164 @@ describe("InteractionsGraph narrowed scope", () => {
   });
 });
 
+describe("InteractionsGraph protein focus", () => {
+  const twoNodeRows: PpiRecord[] = [
+    ...graphRows,
+    {
+      id: "edge-2",
+      interactor_a: "node-a",
+      interactor_b: "node-c",
+      gene_a: "geneA",
+      gene_b: "geneC",
+    },
+  ];
+  const focusedData = { rows: twoNodeRows, isTruncated: false };
+
+  it("selects the focused protein when its data arrives", () => {
+    const { rerender } = renderGraph(
+      <GraphHarness
+        rql="focused"
+        keywordValue=""
+        onKeywordChange={vi.fn()}
+        focusId="node-a"
+      />,
+    );
+    expect(
+      screen.queryByRole("button", { name: "Focus on this protein" }),
+    ).not.toBeInTheDocument();
+
+    resolved(focusedData);
+    rerender(
+      <GraphHarness
+        rql="focused"
+        keywordValue=""
+        onKeywordChange={vi.fn()}
+        focusId="node-a"
+      />,
+    );
+
+    // The detail panel lists the node's BRC ID, which only a selection shows.
+    expect(screen.getByText("node-a")).toBeInTheDocument();
+    expect(
+      screen.queryByText("Select a node or edge to see details."),
+    ).not.toBeInTheDocument();
+  });
+
+  it("selects it too when the data is already there on mount", () => {
+    resolved(focusedData);
+    renderGraph(
+      <GraphHarness
+        rql="focused"
+        keywordValue=""
+        onKeywordChange={vi.fn()}
+        focusId="node-a"
+      />,
+    );
+
+    expect(screen.getByText("node-a")).toBeInTheDocument();
+  });
+
+  it("selects it over a node the user had picked, once new data arrives", async () => {
+    const user = userEvent.setup();
+    resolved(focusedData);
+    const { rerender } = renderGraph(
+      <GraphHarness
+        rql="focused"
+        keywordValue=""
+        onKeywordChange={vi.fn()}
+        focusId="node-a"
+      />,
+    );
+    await user.click(screen.getByRole("option", { name: "geneC" }));
+    expect(screen.getByText("node-c")).toBeInTheDocument();
+    expect(screen.queryByText("node-a")).not.toBeInTheDocument();
+
+    resolved({ rows: [...twoNodeRows], isTruncated: false });
+    rerender(
+      <GraphHarness
+        rql="focused"
+        keywordValue=""
+        onKeywordChange={vi.fn()}
+        focusId="node-a"
+      />,
+    );
+
+    expect(screen.getByText("node-a")).toBeInTheDocument();
+    expect(screen.queryByText("node-c")).not.toBeInTheDocument();
+  });
+
+  it("selects nothing when the focused protein is not among the rows", () => {
+    resolved(focusedData);
+    renderGraph(
+      <GraphHarness
+        rql="focused"
+        keywordValue=""
+        onKeywordChange={vi.fn()}
+        focusId="node-z"
+      />,
+    );
+
+    expect(
+      screen.getByText("Select a node or edge to see details."),
+    ).toBeInTheDocument();
+  });
+
+  it("still clears the selection on new data without a focus", async () => {
+    const user = userEvent.setup();
+    resolved(focusedData);
+    const { rerender } = renderGraph(
+      <GraphHarness rql="" keywordValue="" onKeywordChange={vi.fn()} />,
+    );
+    await user.click(screen.getByText("geneC"));
+    expect(screen.getByText("node-c")).toBeInTheDocument();
+
+    resolved({ rows: [...twoNodeRows], isTruncated: false });
+    rerender(<GraphHarness rql="" keywordValue="" onKeywordChange={vi.fn()} />);
+
+    expect(
+      screen.getByText("Select a node or edge to see details."),
+    ).toBeInTheDocument();
+  });
+
+  it("passes the selected node to onFocusNode from the detail panel", async () => {
+    const user = userEvent.setup();
+    const onFocusNode = vi.fn();
+    resolved(focusedData);
+    renderGraph(
+      <GraphHarness
+        rql=""
+        keywordValue=""
+        onKeywordChange={vi.fn()}
+        onFocusNode={onFocusNode}
+      />,
+    );
+
+    await user.click(screen.getByText("geneC"));
+    await user.click(
+      screen.getByRole("button", { name: "Focus on this protein" }),
+    );
+
+    expect(onFocusNode).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "node-c" }),
+    );
+  });
+
+  it("offers no focus button without onFocusNode", async () => {
+    const user = userEvent.setup();
+    resolved(focusedData);
+    renderGraph(
+      <GraphHarness rql="" keywordValue="" onKeywordChange={vi.fn()} />,
+    );
+
+    await user.click(screen.getByText("geneC"));
+
+    expect(screen.getByText("node-c")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Focus on this protein" }),
+    ).not.toBeInTheDocument();
+  });
+});
+
 describe("InteractionsGraph layout", () => {
   it("covers the canvas with a status while the layout runs, and holds Export", async () => {
     resolved({ rows: graphRows, isTruncated: false });

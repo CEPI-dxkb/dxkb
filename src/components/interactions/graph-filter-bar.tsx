@@ -5,7 +5,10 @@ import {
   type ResourceFilterBarProps,
 } from "@/components/views/resource-filter-bar";
 import { noop } from "@/lib/utils";
-import { interactionFacets } from "@/lib/views/child-resources";
+import {
+  interactionCollectionProfile,
+  interactionFacets,
+} from "@/lib/views/child-resources";
 
 export type GraphFilterBarProps = Omit<
   ResourceFilterBarProps,
@@ -34,6 +37,7 @@ export function GraphFilterBar(props: GraphFilterBarProps) {
       {...props}
       layoutKey="collection:ppi"
       definitions={interactionFacets}
+      filterLabels={interactionCollectionProfile.filterLabels}
       keywordPlaceholder="Search interaction results..."
       flushKeywordOnUnmount
       columns={noColumns}

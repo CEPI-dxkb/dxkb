@@ -97,16 +97,19 @@ vi.mock("@/components/auth/su-login-dialog", () => ({
 }));
 
 vi.mock("lucide-react", () => {
-  const icon = () => <svg />;
+  const icon = (name: string) =>
+    function Icon() {
+      return <svg data-icon={name} />;
+    };
   return {
-    NotebookPen: icon,
-    BriefcaseBusiness: icon,
-    Settings: icon,
-    Contrast: icon,
-    Mail: icon,
-    ShieldUser: icon,
-    LogIn: icon,
-    LogOut: icon,
+    NotebookPen: icon("notebook-pen"),
+    BriefcaseBusiness: icon("briefcase-business"),
+    Settings: icon("settings"),
+    Contrast: icon("contrast"),
+    Mail: icon("mail"),
+    ShieldUser: icon("shield-user"),
+    LogIn: icon("log-in"),
+    ShieldX: icon("shield-x"),
   };
 });
 
@@ -121,6 +124,19 @@ function setUser(user: Partial<AuthUser> | null) {
 describe("UserAvatarDropdown", () => {
   beforeEach(() => {
     setUser(null);
+  });
+
+  it("gives Exit SU the shield-x icon, distinct from Sign Out's log-out", () => {
+    setUser({
+      id: "alice",
+      username: "alice",
+      email: "alice@example.com",
+      isImpersonating: true,
+    });
+    render(<UserAvatarDropdown />);
+
+    const exitSu = screen.getByText("Exit SU");
+    expect(exitSu.querySelector("svg")).toHaveAttribute("data-icon", "shield-x");
   });
 
   describe("greeting label", () => {

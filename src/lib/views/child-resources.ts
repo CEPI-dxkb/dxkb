@@ -43,6 +43,7 @@ export const genomeSequenceCollectionProfile: ResourceCollectionProfile<
 };
 export const interactionColumns = deriveFieldMetadata(ppiFields, {
   resource: "ppi",
+  adaptColumn: (column, field) => ({ ...column, valueHref: field.link }),
 }).columns;
 export const sequenceFeatureColumns = deriveFieldMetadata(
   sequenceFeatureFields,

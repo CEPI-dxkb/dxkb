@@ -8,7 +8,6 @@ import type { FeatureViewRecord } from "@/lib/feature-view";
 import type { GenomeViewRecord } from "@/lib/genome-view";
 import { genomeInteractionsRql } from "@/lib/views/child-resources";
 import type { useResourceCollection as useResourceCollectionHook } from "@/hooks/views/use-resource-collection";
-import { resetChildCollectionPage } from "@/hooks/views/use-child-collection-url-state";
 import { FeatureMember } from "@/app/(views)/feature/[featureId]/feature-member";
 import { GenomeMember } from "@/app/(views)/genome/[genomeId]/genome-member";
 import { ResourceChildCollection } from "../resource-child-collection";
@@ -241,7 +240,7 @@ describe("ResourceChildCollection controlled server keyword", () => {
     );
   });
 
-  it("restarts at page 1 when the owner's keyword changes", () => {
+  it("takes its page from the URL, not from a change of the owner's keyword", () => {
     const { rerender } = render(
       <ResourceChildCollection
         {...interactionsChildProps}
@@ -260,10 +259,10 @@ describe("ResourceChildCollection controlled server keyword", () => {
       />,
     );
 
-    // A keyword arriving as a prop never passes through `onStateChange`, so
-    // nothing else could notice the page is now past the end.
+    // Restarting the table is the owner's job (it drops the page in the same
+    // write as the keyword); a guess here would hide the page of a Back entry.
     const collectionState = screen.getByTestId("collection-state");
-    expect(collectionState).toHaveTextContent('"page":1');
+    expect(collectionState).toHaveTextContent('"page":4');
     expect(collectionState).toHaveTextContent('"keyword":"groEL"');
   });
 
@@ -386,30 +385,36 @@ describe("ResourceChildCollection URL state", () => {
   describe("with a keyword box shared with a sibling view", () => {
     const sharedKeywordProps = { ...assaysChildProps, keywordValue: "" };
 
-    it("shows page 1 for a new keyword until the URL drops the stale page", () => {
-      window.history.replaceState(null, "", "/genome/1.1?assays.page=4");
-      const { rerender } = render(
-        <ResourceChildCollection {...sharedKeywordProps} />,
+    /** An owner whose keyword is URL state, as the Interactions shell's `interactionsGraph.q` is. */
+    function UrlKeywordOwner() {
+      const keyword = useSearchParams().get("q") ?? "";
+      return (
+        <ResourceChildCollection
+          {...assaysChildProps}
+          keywordValue={keyword}
+          onKeywordChange={vi.fn()}
+        />
       );
-      expect(lastResourceCollectionProps().state).toMatchObject({ page: 4 });
+    }
 
-      rerender(
-        <ResourceChildCollection {...sharedKeywordProps} keywordValue="ha" />,
-      );
+    it("shows page 1 for a new keyword whose owner drops the page in the same write", () => {
+      window.history.replaceState(null, "", "/genome/1.1?q=bar&assays.page=4");
+      render(<UrlKeywordOwner />);
+      expect(lastResourceCollectionProps().state).toMatchObject({
+        keyword: "bar",
+        page: 4,
+      });
+
+      act(() => {
+        window.history.replaceState(null, "", "/genome/1.1?q=ha");
+      });
       expect(lastResourceCollectionProps().state).toMatchObject({
         keyword: "ha",
         page: 1,
       });
-      expect(window.location.search).toBe("?assays.page=4");
-
-      act(() => {
-        resetChildCollectionPage("assays");
-      });
-      expect(window.location.search).toBe("");
-      expect(lastResourceCollectionProps().state).toMatchObject({ page: 1 });
     });
 
-    it("lets the user page onward once the bridge has done its job", () => {
+    it("lets the user page with the owner's keyword", () => {
       window.history.replaceState(null, "", "/genome/1.1?assays.page=4");
       const { rerender } = render(
         <ResourceChildCollection {...sharedKeywordProps} />,
@@ -429,18 +434,6 @@ describe("ResourceChildCollection URL state", () => {
       expect(window.location.search).toBe("?assays.page=2");
     });
 
-    /** An owner whose keyword is URL state, as the Interactions shell's `interactionsGraph.q` is. */
-    function UrlKeywordOwner() {
-      const keyword = useSearchParams().get("q") ?? "";
-      return (
-        <ResourceChildCollection
-          {...assaysChildProps}
-          keywordValue={keyword}
-          onKeywordChange={vi.fn()}
-        />
-      );
-    }
-
     it("shows the restored page when Back changes the keyword and the page together", () => {
       window.history.replaceState(null, "", "/genome/1.1?q=bar");
       render(<UrlKeywordOwner />);
@@ -459,21 +452,21 @@ describe("ResourceChildCollection URL state", () => {
       });
     });
 
-    it("drops a pending page-1 hold when Back restores a page", () => {
-      window.history.replaceState(null, "", "/genome/1.1?q=foo&assays.page=3");
+    it("shows the restored page when Back changes only the keyword", () => {
+      window.history.replaceState(null, "", "/genome/1.1?q=bar&assays.page=3");
       render(<UrlKeywordOwner />);
-      // The keyword lands before the owner's page drop: hold page 1.
-      act(() => {
-        window.history.replaceState(null, "", "/genome/1.1?q=bar&assays.page=3");
+      expect(lastResourceCollectionProps().state).toMatchObject({
+        keyword: "bar",
+        page: 3,
       });
-      expect(lastResourceCollectionProps().state).toMatchObject({ page: 1 });
 
+      // Both entries are on page 3, so the page does not move with the keyword.
       act(() => {
-        window.history.replaceState(null, "", "/genome/1.1?q=foo&assays.page=2");
+        window.history.replaceState(null, "", "/genome/1.1?q=foo&assays.page=3");
       });
       expect(lastResourceCollectionProps().state).toMatchObject({
         keyword: "foo",
-        page: 2,
+        page: 3,
       });
     });
 

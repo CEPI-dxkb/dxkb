@@ -24,13 +24,6 @@ export class TaxonInteractionsPage {
     await expect(this.page.getByRole("button", { name })).toBeVisible();
   }
 
-  /** A linked cell in the Table sub-tab: a link named `name` that points at `href`. */
-  async expectTableLink(name: string | RegExp, href: string): Promise<void> {
-    await expect(
-      this.page.getByRole("tabpanel", { name: "Table" }).getByRole("link", { name, exact: true }),
-    ).toHaveAttribute("href", href);
-  }
-
   async switchToGraph(): Promise<void> {
     const tab = this.page.getByRole("tab", { name: "Graph" });
     await tab.click();

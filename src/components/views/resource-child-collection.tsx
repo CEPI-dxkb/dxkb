@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { useChildCollectionUrlState } from "@/hooks/views/use-child-collection-url-state";
 import type { DataTableRow } from "@/components/shared/data-table";
 import {
@@ -110,6 +109,13 @@ interface ResourceChildCollectionProps {
   guideUrl?: string;
   keywordMode?: "server" | "loaded";
   serverKeywordMode?: "exact" | "prefix";
+  /**
+   * A controlled keyword, owned by the caller (the Interactions shell keeps it
+   * in the URL). With the server keyword mode the table takes its page from
+   * the URL as is, so an owner that changes the keyword must drop
+   * `<urlKey>.page` in the same History API write; otherwise the table
+   * requests the stale page with the new keyword.
+   */
   keywordValue?: string;
   onKeywordChange?: (value: string) => void;
   keywordPlaceholder?: string;
@@ -191,33 +197,15 @@ function ScopedResourceChildCollection({
   );
   const isControlledServerKeyword =
     keywordMode === "server" && keywordValue !== undefined;
-  /**
-   * A keyword arriving as a prop never passes through `handleStateChange`, so
-   * this is the only place that sees it; request page 1 until the owner drops
-   * `<urlKey>.page`. A page that moved in the same render is the URL's own
-   * answer (Back to an entry with another keyword and its page), so it wins
-   * and ends any hold.
-   */
-  const [previousInputs, setPreviousInputs] = useState({
-    keywordValue,
-    page: state.page,
-  });
-  const [awaitingPageReset, setAwaitingPageReset] = useState(false);
-  if (
-    previousInputs.keywordValue !== keywordValue ||
-    previousInputs.page !== state.page
-  ) {
-    setPreviousInputs({ keywordValue, page: state.page });
-    if (previousInputs.page !== state.page) setAwaitingPageReset(false);
-    else if (isControlledServerKeyword) setAwaitingPageReset(true);
-  }
-  if (awaitingPageReset && state.page === 1) setAwaitingPageReset(false);
-  const pagedState = awaitingPageReset ? { ...state, page: 1 } : state;
+  // The page is always the URL's. A keyword arriving as a prop never passes
+  // through `handleStateChange`, so the owner restarts the table: it drops
+  // `<urlKey>.page` in the same URL write as the new keyword. Then no render
+  // pairs a new keyword with a stale page, and Back/Forward restores each
+  // entry's own (keyword, page) pair.
   const effectiveState = isControlledServerKeyword
-    ? { ...pagedState, keyword: keywordValue || undefined }
-    : pagedState;
+    ? { ...state, keyword: keywordValue || undefined }
+    : state;
   const handleStateChange = (next: CollectionState) => {
-    setAwaitingPageReset(false);
     if (!isControlledServerKeyword) {
       setState(next);
       return;

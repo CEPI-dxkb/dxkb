@@ -199,6 +199,13 @@ function graphPanel() {
   return within(screen.getByRole("tabpanel", { name: "Graph" }));
 }
 
+/** The Table pages requested with `keyword`, in order (the two arrays are pushed together). */
+function pagesRequestedFor(keyword: string): number[] {
+  return tablePredicates.flatMap((predicate, index) =>
+    predicate.keyword === keyword ? [tablePages[index]] : [],
+  );
+}
+
 async function searchInTable(user: ReturnType<typeof userEvent.setup>, text: string) {
   await user.type(
     tablePanel().getByPlaceholderText("Search interaction results..."),
@@ -320,8 +327,9 @@ describe("Interactions Table paging follows the shared keyword", () => {
       expect(tablePredicates.at(-1)?.keyword).toBe("peg.601");
     });
     // A new keyword is a new result set (one row, so page 2 is past its end); the stale page must
-    // not be refetched.
+    // not be refetched, not even once.
     expect(tablePages.at(-1)).toBe(1);
+    expect(pagesRequestedFor("peg.601")).toEqual([1]);
     expect(window.location.search).not.toContain("interactions.page");
   });
 
@@ -345,9 +353,10 @@ describe("Interactions Table paging follows the shared keyword", () => {
         expect(tablePages.at(-1)).toBe(1);
       });
 
-      // The commit drops the stale page (a replace) then writes the table's state; a keyword pause
-      // is not a Back step.
+      // The commit drops the stale page with the keyword (a replace), so the table's own write
+      // finds nothing left to change; a keyword pause is not a Back step.
       expect(pushState).not.toHaveBeenCalled();
+      expect(pagesRequestedFor("peg.601")).toEqual([1]);
       expect(window.location.search).not.toContain("interactions.page");
     } finally {
       pushState.mockRestore();
@@ -383,11 +392,40 @@ describe("Interactions Table after Back to an entry with another keyword", () =>
       expect(tablePredicates.at(-1)?.keyword).toBe("experimental");
     });
     expect(tablePages.at(-1)).toBe(2);
-    // The two arrays are pushed together, one entry per Table request.
-    const restoredPages = tablePredicates.flatMap((predicate, index) =>
-      predicate.keyword === "experimental" ? [tablePages[index]] : [],
+    expect(pagesRequestedFor("experimental")).toEqual([2]);
+    await waitFor(() => {
+      expect(tablePanel().getByText("Showing page 2")).toBeInTheDocument();
+    });
+    expect(window.location.search).toContain("interactions.page=2");
+  });
+
+  it("requests and shows the restored page when only the keyword differs", async () => {
+    // Both entries match every row and have the Table on page 2, so the popstate moves the keyword
+    // and leaves the page where it was.
+    window.history.replaceState(
+      null,
+      "",
+      "/genome/1.1?tab=interactions&interactionsGraph.q=experimental&interactions.page=2",
     );
-    expect(restoredPages).toEqual([2]);
+    render(<InteractionsSubviewShell rql={scopeRql} />, {
+      wrapper: createQueryClientWrapper(),
+    });
+    await waitFor(() => {
+      expect(tablePanel().getByText("Showing page 2")).toBeInTheDocument();
+    });
+
+    act(() => {
+      window.history.replaceState(
+        null,
+        "",
+        "/genome/1.1?tab=interactions&interactionsGraph.q=ppi-&interactions.page=2",
+      );
+    });
+
+    await waitFor(() => {
+      expect(tablePredicates.at(-1)?.keyword).toBe("ppi-");
+    });
+    expect(pagesRequestedFor("ppi-")).toEqual([2]);
     await waitFor(() => {
       expect(tablePanel().getByText("Showing page 2")).toBeInTheDocument();
     });

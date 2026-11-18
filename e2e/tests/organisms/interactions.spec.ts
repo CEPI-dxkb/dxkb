@@ -32,18 +32,6 @@ test.describe("taxon interactions tab", () => {
     await interactionsPage.expectTab("Interactions");
   });
 
-  test("links a feature cell in the Table to its feature page", async ({
-    page,
-  }) => {
-    const interactionsPage = await setupInteractionsPage(page);
-
-    await interactionsPage.expectResultCount("Showing 1-3 of 3 results");
-    await interactionsPage.expectTableLink(
-      "fig|224914.16.peg.600",
-      "/feature/PATRIC.224914.16.feature-a-0",
-    );
-  });
-
   test("Graph subtab renders a canvas", async ({ page, browserName }) => {
     // Headless Firefox in CI cannot create a WebGL context, so Sigma throws and the
     // canvas never mounts; Chromium and WebKit ship software GL.

@@ -59,6 +59,18 @@ export function deleteChildCollectionParams(params: URLSearchParams): void {
   }
 }
 
+/**
+ * Drops a nested table's page, for an owner whose change starts a new result
+ * set (a shared keyword). Applied inside the owner's own URL write, so no
+ * render pairs the new state with the stale page.
+ */
+export function deleteChildCollectionPage(
+  params: URLSearchParams,
+  urlKey: ChildCollectionUrlKey,
+): void {
+  params.delete(`${urlKey}.page`);
+}
+
 // An unvalidated `rql` from the URL would reach the data API, and nothing in
 // the UI gives a child table structural RQL, so neither is accepted.
 const urlOnlyParamNames = new Set(["rql", "refine"]);

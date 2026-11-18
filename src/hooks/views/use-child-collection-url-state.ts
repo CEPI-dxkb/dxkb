@@ -70,17 +70,3 @@ export function useChildCollectionUrlState(
   };
   return [state, setState] as const;
 }
-
-/** Drops a nested table's page param without a history entry. */
-export function resetChildCollectionPage(urlKey: ChildCollectionUrlKey): void {
-  const { pathname, search, hash } = window.location;
-  const params = new URLSearchParams(search);
-  if (!params.has(`${urlKey}.page`)) return;
-  params.delete(`${urlKey}.page`);
-  const query = toQueryString(params);
-  window.history.replaceState(
-    null,
-    "",
-    `${pathname}${query ? `?${query}` : ""}${hash}`,
-  );
-}

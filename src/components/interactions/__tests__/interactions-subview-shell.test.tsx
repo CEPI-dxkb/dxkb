@@ -127,6 +127,11 @@ beforeEach(() => {
   window.history.replaceState(null, "", "/");
 });
 
+// A failing assertion must not leave a history spy installed for the next test.
+afterEach(() => {
+  vi.restoreAllMocks();
+});
+
 describe("InteractionsSubviewShell", () => {
   it("forwards the table and graph data contracts and mounts the graph lazily", () => {
     render(
@@ -220,6 +225,28 @@ describe("InteractionsSubviewShell", () => {
     );
   });
 
+  it("writes a new keyword and drops the Table's page in one History API write", () => {
+    window.history.replaceState(
+      null,
+      "",
+      "/genome/1.1?tab=interactions&interactions.page=3&interactionsGraph.node=peg.1&interactionsGraph.cam=0.25,0.3,0.7#legacy",
+    );
+    render(<InteractionsSubviewShell rql="eq(evidence,experimental)" />);
+    const replaceState = vi.spyOn(window.history, "replaceState");
+    const pushState = vi.spyOn(window.history, "pushState");
+
+    // A later write would leave one render pairing the new keyword with the stale page.
+    fireEvent.click(screen.getByText("set-from-table"));
+
+    expect(replaceState).toHaveBeenCalledOnce();
+    expect(replaceState).toHaveBeenCalledWith(
+      null,
+      "",
+      "/genome/1.1?tab=interactions&interactionsGraph.q=fromTable#legacy",
+    );
+    expect(pushState).not.toHaveBeenCalled();
+  });
+
   it("keeps the chosen graph layout across a switch to Table and back", () => {
     render(<InteractionsSubviewShell rql="eq(evidence,experimental)" />);
     fireEvent.click(screen.getByRole("tab", { name: "Graph" }));
@@ -289,7 +316,6 @@ describe("InteractionsSubviewShell URL state (Back from a linked page)", () => {
     expect(window.location.search).toBe("?tab=interactions");
     expect(window.history.length).toBe(lengthBefore);
     expect(pushState).not.toHaveBeenCalled();
-    pushState.mockRestore();
   });
 
   it("keeps the shared keyword in the URL and reads it back on both views", () => {

@@ -679,7 +679,13 @@ describe("InteractionsGraph camera", () => {
     const user = userEvent.setup();
     resolved({ rows: graphRows, isTruncated: false });
     const props = { rql: "", keywordValue: "", onKeywordChange: vi.fn() };
+    canvasInputs.nodes.length = 0;
     const { rerender } = renderGraph(<GraphHarness {...props} />);
+    await screen.findByTestId("sigma-canvas");
+    // The baseline is the array from before the selection, so a selection that swaps the array (and a
+    // camera write that reuses the swapped one) still fails.
+    const initialNodes = canvasInputs.nodes.at(-1);
+    expect(initialNodes).toBeDefined();
     canvasInputs.nodes.length = 0;
 
     await user.click(screen.getByText("geneA"));
@@ -688,7 +694,7 @@ describe("InteractionsGraph camera", () => {
     );
 
     expect(canvasInputs.nodes.length).toBeGreaterThan(0);
-    expect(new Set(canvasInputs.nodes).size).toBe(1);
+    for (const nodes of canvasInputs.nodes) expect(nodes).toBe(initialNodes);
   });
 
   it("hands the owner's camera to the canvas and reports the canvas's moves", () => {

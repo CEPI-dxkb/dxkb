@@ -1,6 +1,7 @@
 import {
   childCollectionOptions,
   childCollectionUrlKeys,
+  deleteChildCollectionPage,
   deleteChildCollectionParams,
   isChildCollectionParam,
   parseChildCollectionState,
@@ -156,6 +157,16 @@ describe("child collection URL state", () => {
     );
     deleteChildCollectionParams(params);
     expect(params.toString()).toBe("tab=interactions");
+  });
+
+  it("drops only the named table's page, keeping its sort and a sibling's page", () => {
+    const params = new URLSearchParams(
+      "tab=interactions&interactions.page=3&interactions.sort=id:desc&domains.page=5&interactionsGraph.q=x",
+    );
+    deleteChildCollectionPage(params, "interactions");
+    expect(params.toString()).toBe(
+      "tab=interactions&interactions.sort=id%3Adesc&domains.page=5&interactionsGraph.q=x",
+    );
   });
 
   it("leaves a dotted param that no nested table owns", () => {

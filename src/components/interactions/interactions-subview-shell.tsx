@@ -3,18 +3,20 @@
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ResourceChildCollection } from "@/components/views/resource-child-collection";
 import { useTabContentSearchParams } from "@/components/views/tab-content-search-params";
-import { resetChildCollectionPage } from "@/hooks/views/use-child-collection-url-state";
 import type {
   GraphCameraView,
   GraphSelectionRef,
   LayoutName,
 } from "@/lib/interactions/types";
 import {
+  applyInteractionsGraphUrlState,
   parseInteractionsGraphUrlState,
   readLiveInteractionsGraphUrlState,
   writeInteractionsGraphUrlState,
 } from "@/lib/interactions/url-state";
+import { deleteChildCollectionPage } from "@/lib/views/child-collection-state";
 import { interactionColumns } from "@/lib/views/child-resources";
+import { replaceQuery } from "@/lib/url";
 
 import { InteractionsGraph } from "./interactions-graph";
 
@@ -37,17 +39,21 @@ export function InteractionsSubviewShell({
     parseInteractionsGraphUrlState(useTabContentSearchParams());
   // The fragment is stripped once here so the Table's and Graph's requests carry byte-equal RQL.
   const scopedRql = rql.split("#")[0];
-  // A new keyword is a new result set, so drop the stale page, selection and camera in the same
-  // event; the same text keeps them. Compared with the live URL: Next renders a History API write in a
-  // transition, so the rendered keyword can lag a commit.
+  // A new keyword is a new result set, so the stale Table page, selection and camera go in the same
+  // `replaceState` as the keyword: a separate page write would leave a render pairing the new keyword
+  // with the old page, which the Table would request. The same text keeps them. Compared with the
+  // live URL: Next renders a History API write in a transition, so the rendered keyword can lag a
+  // commit.
   const handleKeywordChange = (value: string) => {
     if (value === readLiveInteractionsGraphUrlState().keyword) return;
-    writeInteractionsGraphUrlState({
-      keyword: value,
-      selected: null,
-      camera: null,
+    replaceQuery((params) => {
+      applyInteractionsGraphUrlState(params, {
+        keyword: value,
+        selected: null,
+        camera: null,
+      });
+      deleteChildCollectionPage(params, tableUrlKey);
     });
-    resetChildCollectionPage(tableUrlKey);
   };
   const handleSelectedChange = (next: GraphSelectionRef | null) => {
     writeInteractionsGraphUrlState({ selected: next });

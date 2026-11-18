@@ -75,7 +75,7 @@ interface InteractionsGraphProps {
   onLayoutChange: (layout: LayoutName) => void;
   /** The one selected node or edge, kept by the owner (the URL) and resolved here against the loaded graph. */
   selected: GraphSelectionRef | null;
-  /** `null` for no selection or a bulk one, which stays local. */
+  /** `null` for no selection or a multi-item one, which stays local. */
   onSelectedChange: (next: GraphSelectionRef | null) => void;
   /** The owner's (URL) camera, applied by the canvas on its first load. */
   camera: GraphCameraView | null;
@@ -106,7 +106,10 @@ export function InteractionsGraph({
   // The owner renders a write to `selected` in a transition (Next applies History API writes in
   // one), so the single pick just made is held here until the prop catches up: the pane and canvas
   // show it at once, and a quick Cmd/Ctrl-click after a plain one adds to it rather than to the old
-  // selection.
+  // selection. The hold ends when `selected` moves off `basis`, the value the pick replaced. That is
+  // safe only because Next applies every History API write to one router-state hook and React
+  // renders pending transitions on one hook together, so `selected` jumps from `basis` straight to
+  // the last write and never rests on an in-between one.
   const [pendingSelected, setPendingSelected] = useState<{
     ref: GraphSelectionRef | null;
     basis: GraphSelectionRef | null;
@@ -261,12 +264,14 @@ export function InteractionsGraph({
     setActiveSubgraph(threshold);
     setActiveHub(null);
     setBulkSelection(selectSubgraphs(selectionIndex, threshold));
+    setPendingSelected(null);
     onSelectedChange(null);
   }
   function handleSelectHubs(threshold: HubSelection) {
     setActiveSubgraph(null);
     setActiveHub(threshold);
     setBulkSelection(selectHubs(selectionIndex, threshold));
+    setPendingSelected(null);
     onSelectedChange(null);
   }
 

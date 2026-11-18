@@ -150,6 +150,7 @@ test.describe("taxon interactions tab", () => {
     await interactionsPage.expectDetailText(
       "2 proteins and 0 interactions selected.",
     );
+    await expect(page).not.toHaveURL(/interactionsGraph\.node=/);
   });
 });
 

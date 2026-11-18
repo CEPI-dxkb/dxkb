@@ -885,6 +885,48 @@ describe("InteractionsGraph multi-selection", () => {
     ).toBeInTheDocument();
   });
 
+  // The held pick must not outlive the owner catching up, or a later change to `selected` from
+  // outside (Back, a shared link) would keep showing the old pick.
+  it("stops holding a pick once the owner renders it, so a later outside change shows", () => {
+    resolved({ rows: graphRows, isTruncated: false });
+    const props = {
+      rql: "",
+      keywordValue: "",
+      onKeywordChange: vi.fn(),
+      layout: defaultLayout,
+      onLayoutChange: vi.fn(),
+      onSelectedChange: vi.fn(),
+      camera: null,
+      onCameraChange: vi.fn(),
+    };
+    const { rerender } = renderGraph(
+      <InteractionsGraph {...props} selected={null} />,
+    );
+
+    fireEvent.click(screen.getByRole("option", { name: "geneA" }));
+    rerender(
+      <InteractionsGraph {...props} selected={{ kind: "node", id: "node-a" }} />,
+    );
+    expect(detailsPane().getByText("node-a")).toBeInTheDocument();
+
+    // The owner has not rendered this pick yet, so the pane shows it from the held copy.
+    fireEvent.click(screen.getByRole("option", { name: "geneB" }));
+    expect(detailsPane().getByText("node-b")).toBeInTheDocument();
+    expect(detailsPane().queryByText("node-a")).toBeNull();
+
+    rerender(
+      <InteractionsGraph {...props} selected={{ kind: "node", id: "node-b" }} />,
+    );
+    expect(detailsPane().getByText("node-b")).toBeInTheDocument();
+
+    // A change nobody here made: with the held copy gone, the pane follows the prop again.
+    rerender(
+      <InteractionsGraph {...props} selected={{ kind: "node", id: "node-a" }} />,
+    );
+    expect(detailsPane().getByText("node-a")).toBeInTheDocument();
+    expect(detailsPane().queryByText("node-b")).toBeNull();
+  });
+
   it("writes a multi-item pick as no id and a toggle back to one item as its id", () => {
     resolved({ rows: graphRows, isTruncated: false });
     const onSelectedChange = vi.fn();

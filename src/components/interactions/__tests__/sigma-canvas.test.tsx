@@ -414,6 +414,42 @@ describe("SigmaCanvas selection clicks", () => {
     expect(onSelect).not.toHaveBeenCalled();
   });
 
+  it("ignores a Cmd press-drag-release that sigma reports as a double-click", () => {
+    const onSelect = vi.fn();
+    renderQuad({ onSelect });
+    const at = (x: number, y: number) => ({
+      node: "a",
+      event: { x, y, original: { metaKey: true, ctrlKey: false } },
+      preventSigmaDefault: vi.fn(),
+    });
+
+    handlers().downNode(at(100, 100));
+    const released = at(160, 100);
+    handlers().doubleClickNode(released);
+
+    // No toggle, and sigma's zoom stays suppressed so the drag does not also zoom.
+    expect(released.preventSigmaDefault).toHaveBeenCalled();
+    expect(onSelect).not.toHaveBeenCalled();
+  });
+
+  it("still toggles on a Cmd double-click whose pointer barely moved", () => {
+    const onSelect = vi.fn();
+    renderQuad({ onSelect });
+    const at = (x: number, y: number) => ({
+      node: "a",
+      event: { x, y, original: { metaKey: true, ctrlKey: false } },
+      preventSigmaDefault: vi.fn(),
+    });
+
+    handlers().downNode(at(100, 100));
+    handlers().doubleClickNode(at(102, 101));
+
+    expect(onSelect).toHaveBeenCalledWith({
+      nodes: [expect.objectContaining({ id: "a" })],
+      edges: [],
+    });
+  });
+
   it("toggles an edge on a Cmd double-click", () => {
     const onSelect = vi.fn();
     renderQuad({ onSelect });

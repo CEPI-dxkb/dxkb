@@ -1,7 +1,7 @@
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
-import { detailCardLimit, GraphDetailPanel } from "../graph-detail-panel";
+import { GraphDetailPanel } from "../graph-detail-panel";
 import type { GEdge, GNode, GraphSelection } from "@/lib/interactions/types";
 
 const nodeA: GNode = {
@@ -147,26 +147,28 @@ describe("GraphDetailPanel", () => {
     });
 
     it("caps the cards per kind and says how many are not shown", () => {
-      const many: GNode[] = Array.from({ length: detailCardLimit + 5 }, (_, i) => ({
+      // The cap is a product contract (25 cards per kind), so it is spelled out here rather than
+      // read from the component's constant, which a regression could change in step with the test.
+      const many: GNode[] = Array.from({ length: 30 }, (_, i) => ({
         id: `fig|${String(i)}`,
         gene: `g${String(i)}`,
         kind: "microbial",
       }));
       renderPanel({ selection: { nodes: many, edges: [] } });
 
-      expect(screen.getAllByRole("listitem")).toHaveLength(detailCardLimit);
+      expect(screen.getAllByRole("listitem")).toHaveLength(25);
       expect(
         screen.getByText("…and 5 more proteins not shown."),
       ).toBeInTheDocument();
     });
 
     it("closes each kind's list with its own note when both kinds are capped", () => {
-      const manyNodes: GNode[] = Array.from({ length: detailCardLimit + 1 }, (_, i) => ({
+      const manyNodes: GNode[] = Array.from({ length: 26 }, (_, i) => ({
         id: `fig|${String(i)}`,
         gene: `g${String(i)}`,
         kind: "microbial",
       }));
-      const manyEdges: GEdge[] = Array.from({ length: detailCardLimit + 1 }, (_, i) => ({
+      const manyEdges: GEdge[] = Array.from({ length: 26 }, (_, i) => ({
         ...edge,
         id: `edge-${String(i)}`,
       }));
@@ -174,7 +176,7 @@ describe("GraphDetailPanel", () => {
 
       const proteinNote = screen.getByText("…and 1 more protein not shown.");
       const interactionNote = screen.getByText("…and 1 more interaction not shown.");
-      expect(screen.getAllByRole("listitem")).toHaveLength(detailCardLimit * 2);
+      expect(screen.getAllByRole("listitem")).toHaveLength(50);
 
       // The proteins note closes the protein cards, so it comes before the first interaction card.
       const firstEdgeCard = screen.getAllByText("Interaction", { selector: "p" })[0];

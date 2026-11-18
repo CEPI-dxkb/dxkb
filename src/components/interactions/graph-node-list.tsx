@@ -52,7 +52,11 @@ export function GraphNodeList({
       }}
     >
       <CommandInput placeholder="Search proteins…" />
-      <CommandList ref={listRef} className="max-h-none flex-1">
+      <CommandList
+        ref={listRef}
+        className="max-h-none flex-1"
+        aria-multiselectable
+      >
         <CommandEmpty>No proteins match.</CommandEmpty>
         {nodes.map((node) => {
           const isSelected = selectedIds.has(node.id);
@@ -64,6 +68,9 @@ export function GraphNodeList({
                 onSelectNode(node, additiveRef.current);
               }}
               data-app-selected={isSelected}
+              // cmdk owns `aria-selected` for its own cursor row, so the app selection (which can
+              // hold several rows) is exposed as `aria-checked`, which `option` supports.
+              aria-checked={isSelected}
               // Neutralise cmdk's own data-selected cursor so the app selection is the single
               // highlight, forced to win when both apply.
               variant="app-selection"

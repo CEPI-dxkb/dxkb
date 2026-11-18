@@ -229,15 +229,32 @@ interface TooltipState {
 
 // Sigma turns a second click inside its double-click window into `doubleClick*` (never `click*`)
 // and zooms. A quick Cmd/Ctrl pair must still toggle twice, so an additive double-click is handled
-// as a click with sigma's zoom suppressed; a plain double-click keeps zooming. Sigma's drag check
-// (`draggedEvents`) applies only to `click`, so a Cmd press-drag-release within 300 ms of a
-// Cmd-click arrives as `doubleClick*` and toggles; accepted.
+// as a click with sigma's zoom suppressed; a plain double-click keeps zooming. Sigma applies its
+// drag check (`draggedEvents`) only to `click`, so a Cmd press-drag-release within 300 ms of a
+// Cmd-click also arrives as `doubleClick*`: it is told apart by how far the pointer moved from
+// where it was pressed, and a drag neither toggles nor zooms.
+const dragTolerancePx = 4;
+
+interface PressPoint {
+  x: number;
+  y: number;
+}
+
 function additiveDoubleClick<P extends SigmaEventPayload>(
   handler: (payload: P) => void,
+  pressedAt: () => PressPoint | null,
 ) {
   return (payload: P) => {
     if (!isAdditiveClick(payload.event.original)) return;
     payload.preventSigmaDefault();
+    const pressed = pressedAt();
+    if (
+      pressed &&
+      Math.hypot(payload.event.x - pressed.x, payload.event.y - pressed.y) >
+        dragTolerancePx
+    ) {
+      return;
+    }
     handler(payload);
   };
 }
@@ -290,13 +307,21 @@ function GraphEvents({
     const clickStage = ({ event }: SigmaStageEventPayload) => {
       click(null, event.original);
     };
+    let pressed: PressPoint | null = null;
+    const press = ({ event }: SigmaEventPayload) => {
+      pressed = { x: event.x, y: event.y };
+    };
+    const pressedAt = () => pressed;
     registerEvents({
       clickNode,
       clickEdge,
       clickStage,
-      doubleClickNode: additiveDoubleClick(clickNode),
-      doubleClickEdge: additiveDoubleClick(clickEdge),
-      doubleClickStage: additiveDoubleClick(clickStage),
+      downNode: press,
+      downEdge: press,
+      downStage: press,
+      doubleClickNode: additiveDoubleClick(clickNode, pressedAt),
+      doubleClickEdge: additiveDoubleClick(clickEdge, pressedAt),
+      doubleClickStage: additiveDoubleClick(clickStage, pressedAt),
       enterNode: ({ node, event }) => {
         const data = sigma.getGraph().getNodeAttributes(node) as GNode;
         hover({ x: event.x, y: event.y, node: data });

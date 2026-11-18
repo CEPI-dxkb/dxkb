@@ -99,6 +99,43 @@ describe("GraphNodeList", () => {
     expect(other).not.toHaveAttribute("aria-current");
   });
 
+  it("exposes the app selection to assistive technology apart from cmdk's cursor", () => {
+    render(
+      <GraphNodeList
+        nodes={nodes}
+        selectedIds={new Set(nodes.map((node) => node.id))}
+        onSelectNode={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole("listbox")).toHaveAttribute(
+      "aria-multiselectable",
+      "true",
+    );
+    // cmdk's cursor is on one row, but every app-selected row is reported checked.
+    for (const option of screen.getAllByRole("option")) {
+      expect(option).toHaveAttribute("aria-checked", "true");
+    }
+  });
+
+  it("reports an unselected row as not checked", () => {
+    render(
+      <GraphNodeList
+        nodes={nodes}
+        selectedIds={new Set(["fig|2.2"])}
+        onSelectNode={vi.fn()}
+      />,
+    );
+
+    const checked = screen
+      .getAllByRole("option")
+      .map((option) => option.getAttribute("aria-checked"));
+    expect(checked.filter((value) => value === "true")).toHaveLength(1);
+    expect(checked.filter((value) => value === "false")).toHaveLength(
+      nodes.length - 1,
+    );
+  });
+
   it("recolors the selected row's dot amber and leaves unselected dots on their kind color", () => {
     render(
       <GraphNodeList

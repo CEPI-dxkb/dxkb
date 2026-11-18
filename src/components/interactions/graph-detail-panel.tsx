@@ -7,7 +7,7 @@ import { featureHref, genomeHref } from "@/lib/views/hrefs";
 
 // Hub and sub-graph presets can select thousands of nodes; render a bounded number of cards per
 // kind and say how many are left out.
-export const detailCardLimit = 25;
+const detailCardLimit = 25;
 
 interface GraphDetailPanelProps {
   selection: GraphSelection;

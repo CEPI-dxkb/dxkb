@@ -8,6 +8,7 @@ export interface GNode {
   interactorDesc?: string;
   featureId?: string;
   gene?: string;
+  genomeId?: string;
   genome?: string;
   refseqLocusTag?: string;
   kind: "microbial" | "host";

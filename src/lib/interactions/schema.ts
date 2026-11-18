@@ -19,6 +19,8 @@ export const ppiGraphRecordSchema = ppiRecordSchema.extend({
   feature_id_b: optionalText,
   gene_a: optionalText,
   gene_b: optionalText,
+  genome_id_a: optionalText,
+  genome_id_b: optionalText,
   genome_name_a: optionalText,
   genome_name_b: optionalText,
   refseq_locus_tag_a: optionalText,

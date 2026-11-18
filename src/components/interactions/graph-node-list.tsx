@@ -15,7 +15,7 @@ import type { GNode } from "@/lib/interactions/types";
 interface GraphNodeListProps {
   nodes: GNode[];
   selectedIds: ReadonlySet<string>;
-  onSelectNode: (node: GNode) => void;
+  onSelectNode: (node: GNode, additive: boolean) => void;
 }
 
 // Sigma wires only pointer events, so this list is the keyboard path to a node (and, via the detail
@@ -26,6 +26,9 @@ export function GraphNodeList({
   onSelectNode,
 }: GraphNodeListProps) {
   const listRef = useRef<HTMLDivElement | null>(null);
+  // cmdk's onSelect carries no event, so Cmd/Ctrl state is captured on the root (capture phase, so
+  // it is set before cmdk's own click/Enter handlers run) and read when a row is chosen.
+  const additiveRef = useRef(false);
 
   // cmdk's own data-selected cursor follows the pointer and competes with the app selection, so
   // pointer selection is disabled; selection changes scroll the row into view.
@@ -41,6 +44,12 @@ export function GraphNodeList({
       label="Interaction network nodes"
       className="h-full"
       disablePointerSelection
+      onClickCapture={(event) => {
+        additiveRef.current = event.metaKey || event.ctrlKey;
+      }}
+      onKeyDownCapture={(event) => {
+        additiveRef.current = event.metaKey || event.ctrlKey;
+      }}
     >
       <CommandInput placeholder="Search proteins…" />
       <CommandList ref={listRef} className="max-h-none flex-1">
@@ -52,7 +61,7 @@ export function GraphNodeList({
               key={node.id}
               value={`${node.gene ?? ""} ${node.id}`}
               onSelect={() => {
-                onSelectNode(node);
+                onSelectNode(node, additiveRef.current);
               }}
               data-app-selected={isSelected}
               // Neutralise cmdk's own data-selected cursor so the app selection is the single

@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { GraphNodeList } from "../graph-node-list";
@@ -61,7 +61,7 @@ describe("GraphNodeList", () => {
     await user.keyboard("recA");
     await user.keyboard("{Enter}");
 
-    expect(onSelectNode).toHaveBeenCalledWith(nodes[1]);
+    expect(onSelectNode).toHaveBeenCalledWith(nodes[1], false);
   });
 
   it("selects a node via pointer click even with cmdk pointer-selection disabled", async () => {
@@ -78,7 +78,7 @@ describe("GraphNodeList", () => {
 
     await user.click(screen.getByText("dnaA"));
 
-    expect(onSelectNode).toHaveBeenCalledWith(nodes[0]);
+    expect(onSelectNode).toHaveBeenCalledWith(nodes[0], false);
   });
 
   it("marks the app-selected row without overriding cmdk's listbox semantics", () => {
@@ -205,5 +205,47 @@ describe("GraphNodeList", () => {
     );
 
     expect(scrollSpy).toHaveBeenCalledWith({ block: "nearest" });
+  });
+
+  it("reports a plain row click as non-additive and a Cmd/Ctrl-click as additive", () => {
+    const onSelectNode = vi.fn();
+    render(
+      <GraphNodeList
+        nodes={nodes}
+        selectedIds={new Set()}
+        onSelectNode={onSelectNode}
+      />,
+    );
+
+    fireEvent.click(screen.getByText("dnaA"));
+    expect(onSelectNode).toHaveBeenLastCalledWith(nodes[0], false);
+
+    fireEvent.click(screen.getByText("recA"), { metaKey: true });
+    expect(onSelectNode).toHaveBeenLastCalledWith(nodes[1], true);
+
+    fireEvent.click(screen.getByText("dnaA"), { ctrlKey: true });
+    expect(onSelectNode).toHaveBeenLastCalledWith(nodes[0], true);
+
+    fireEvent.click(screen.getByText("recA"));
+    expect(onSelectNode).toHaveBeenLastCalledWith(nodes[1], false);
+  });
+
+  it("reports Cmd/Ctrl+Enter on the highlighted row as additive", async () => {
+    const user = userEvent.setup();
+    const onSelectNode = vi.fn();
+    render(
+      <GraphNodeList
+        nodes={nodes}
+        selectedIds={new Set()}
+        onSelectNode={onSelectNode}
+      />,
+    );
+
+    const input = screen.getByPlaceholderText("Search proteins…");
+    await user.click(input);
+    await user.type(input, "dna");
+    fireEvent.keyDown(input, { key: "Enter", metaKey: true });
+
+    expect(onSelectNode).toHaveBeenCalledWith(nodes[0], true);
   });
 });

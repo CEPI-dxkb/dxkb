@@ -52,4 +52,13 @@ describe("GraphLegend", () => {
       "[&_text]:fill-foreground",
     );
   });
+
+  it("tells the user how to highlight neighbours and extend the selection", () => {
+    render(<GraphLegend />);
+    expect(
+      screen.getByText(
+        "Click a node to highlight its neighbours. ⌘/Ctrl-click adds to the selection.",
+      ),
+    ).toBeInTheDocument();
+  });
 });

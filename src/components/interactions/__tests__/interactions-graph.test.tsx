@@ -469,3 +469,28 @@ describe("InteractionsGraph layout", () => {
     expect(screen.getByRole("button", { name: "Export" })).toBeEnabled();
   });
 });
+
+describe("InteractionsGraph multi-selection", () => {
+  it("adds a node on a Cmd-click in the node list and replaces on a plain click", () => {
+    resolved({ rows: graphRows, isTruncated: false });
+    renderGraph(
+      <GraphHarness rql="" keywordValue="" onKeywordChange={vi.fn()} />,
+    );
+    const details = screen.getByLabelText("Selection details");
+
+    fireEvent.click(screen.getByRole("option", { name: "geneA" }));
+    expect(within(details).getByText("Interactions (1)")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("option", { name: "geneB" }), {
+      metaKey: true,
+    });
+    expect(within(details).getByText("Multiple selection")).toBeInTheDocument();
+    expect(
+      within(details).getByText("2 proteins and 0 interactions selected."),
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("option", { name: "geneB" }));
+    expect(within(details).queryByText("Multiple selection")).toBeNull();
+    expect(within(details).getByText("Interactions (1)")).toBeInTheDocument();
+  });
+});

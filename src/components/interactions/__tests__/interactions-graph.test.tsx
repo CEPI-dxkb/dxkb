@@ -44,12 +44,16 @@ vi.mock("@/lib/interactions/layout-client", () => ({
   requestGraphLayout: vi.fn(),
 }));
 
-const canvasInputs = vi.hoisted(() => ({ nodes: [] as unknown[] }));
+const canvasInputs = vi.hoisted(() => ({
+  nodes: [] as unknown[],
+  incidence: [] as unknown[],
+}));
 
 vi.mock("../sigma/sigma-canvas", () => ({
   SigmaCanvas: ({
     onReady,
     nodes,
+    incidence,
     positions,
     selection,
     camera,
@@ -57,12 +61,14 @@ vi.mock("../sigma/sigma-canvas", () => ({
   }: {
     onReady: () => void;
     nodes: unknown;
+    incidence: unknown;
     positions: Float64Array | null;
     selection: GraphSelection;
     camera?: GraphCameraView | null;
     onCameraChange?: (camera: GraphCameraView | null) => void;
   }) => {
     canvasInputs.nodes.push(nodes);
+    canvasInputs.incidence.push(incidence);
     return (
     <button
       type="button"
@@ -695,6 +701,27 @@ describe("InteractionsGraph camera", () => {
 
     expect(canvasInputs.nodes.length).toBeGreaterThan(0);
     for (const nodes of canvasInputs.nodes) expect(nodes).toBe(initialNodes);
+  });
+
+  it("hands the canvas the same incidence index across a selection and a camera write", async () => {
+    const user = userEvent.setup();
+    resolved({ rows: graphRows, isTruncated: false });
+    const props = { rql: "", keywordValue: "", onKeywordChange: vi.fn() };
+    canvasInputs.incidence.length = 0;
+    const { rerender } = renderGraph(<GraphHarness {...props} />);
+    await screen.findByTestId("sigma-canvas");
+    const initialIndex = canvasInputs.incidence.at(-1);
+    expect(initialIndex).toBeDefined();
+    canvasInputs.incidence.length = 0;
+
+    await user.click(screen.getByText("geneA"));
+    rerender(
+      <GraphHarness {...props} camera={{ ratio: 0.5, x: 0.1, y: 0.2 }} />,
+    );
+
+    // A new index would give the canvas a new focus set and reinstall its reducers each time.
+    expect(canvasInputs.incidence.length).toBeGreaterThan(0);
+    for (const index of canvasInputs.incidence) expect(index).toBe(initialIndex);
   });
 
   it("hands the owner's camera to the canvas and reports the canvas's moves", () => {

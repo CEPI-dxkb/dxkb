@@ -150,6 +150,12 @@ export function InteractionsGraph({
     () => buildGraphSelectionIndex(graph.nodes, graph.edges),
     [graph],
   );
+  // Memoized on the graph, not left to the compiler: a new index each render gives the canvas a new
+  // focus set and re-installs its reducers on every selection or camera write.
+  const incidenceIndex = useMemo(
+    () => buildIncidenceIndex(graph.edges),
+    [graph],
+  );
   const selection =
     bulkSelection ??
     resolveGraphSelection(
@@ -234,7 +240,6 @@ export function InteractionsGraph({
 
   const nodesById = new Map(nodes.map((n) => [n.id, n]));
   const selectedNodeIds = new Set(selection.nodes.map((node) => node.id));
-  const incidenceIndex = buildIncidenceIndex(edges);
 
   function clearActivePreset() {
     setActiveSubgraph(null);

@@ -46,14 +46,17 @@ export const genomeSequenceCollectionProfile: ResourceCollectionProfile<
 const interactionMetadata = deriveFieldMetadata(ppiFields, { resource: "ppi" });
 export const interactionColumns = interactionMetadata.columns;
 
+export const interactionFacets = interactionMetadata.facets;
+
 /**
- * Evidence is not offered: every PPI scope pins `eq(evidence,experimental)`
- * (see the `*InteractionsRql` builders), so a computational pick would only
- * match rows carrying both values.
+ * The taxon Interactions tab shows experimental interactions until the user
+ * says otherwise (legacy's default filter): a removable facet value, like the
+ * Feature list's `annotation`. The scope (`taxonomyInteractionsRql`) pins no
+ * evidence, so removing or changing the pick in the Filters menu really does
+ * widen both the Table and the Graph. The Genome and Feature tabs have no
+ * evidence facet and keep their pinned `eq(evidence,experimental)`.
  */
-export const interactionFacets = interactionMetadata.facets.filter(
-  (facet) => facet.field !== "evidence",
-);
+export const interactionDefaultFilters = { evidence: ["experimental"] } as const;
 
 /**
  * The Interactions "focus on this protein" filter: a URL filter, not a facet
@@ -107,14 +110,16 @@ export const interactionCollectionProfile: ResourceCollectionProfile<
 /**
  * One expression for both writers of the `interactions.*` params: the shell
  * (which reads the filters for the Graph) and `ResourceChildCollection` (which
- * builds the same from the profile). Built apart, one could drop the other's
- * param on a write.
+ * builds the same from the profile and the shell's `defaultSort` and
+ * `defaultFilters` props, both taken from here). Built apart, one could drop
+ * the other's param on a write, or parse the evidence default into a state the
+ * other does not share.
  */
 export const interactionCollectionOptions = childCollectionOptions(
   interactionCollectionProfile.columns,
   interactionCollectionProfile.facets,
   "id:asc",
-  undefined,
+  interactionDefaultFilters,
   interactionCollectionProfile.extraFilters,
 );
 
@@ -204,7 +209,10 @@ export function genomeInteractionsRql(genomeId: string): string {
 /**
  * Stays A-side only: the Data API RQL contract accepts only `to(genome_id_a)`
  * for `ppi` (locked by `rql.test.ts`), so there is no B-side join to `or` with.
+ * Pins no evidence: the Interactions tab adds it as a removable default filter
+ * (`interactionDefaultFilters`), so a clause here would hold computational
+ * interactions out whatever the user picks.
  */
 export function taxonomyInteractionsRql(lineageClause: string): string {
-  return `and(eq(genome_id_a,*),genome(to(genome_id_a),and(${lineageClause},ne(genome_status,Deprecated))),eq(evidence,experimental))`;
+  return `and(eq(genome_id_a,*),genome(to(genome_id_a),and(${lineageClause},ne(genome_status,Deprecated))))`;
 }

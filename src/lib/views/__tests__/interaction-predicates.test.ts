@@ -99,4 +99,25 @@ describe("interaction scoping predicates", () => {
       validateRql("ppi", rql.replace("genome_id_a)", "genome_id_b)")),
     ).toThrow(/genome_id_a/);
   });
+
+  it("leaves evidence to the Interactions tab's removable default", () => {
+    // Evidence is a default filter there (`interactionDefaultFilters`), so the scope must not pin it
+    // or a user could never add computational interactions.
+    const rql = taxonomyInteractionsRql("eq(taxon_lineage_ids,561)");
+
+    expect(rql).toBe(
+      "and(eq(genome_id_a,*),genome(to(genome_id_a),and(eq(taxon_lineage_ids,561),ne(genome_status,Deprecated))))",
+    );
+    expect(rql).not.toContain("evidence");
+  });
+
+  it("keeps the Genome and Feature scopes pinned to experimental evidence", () => {
+    // Those tabs do not opt in to the evidence filter.
+    expect(genomeInteractionsRql("83332.12")).toContain(
+      "eq(evidence,experimental)",
+    );
+    expect(featureInteractionsRql("PATRIC.1")).toContain(
+      "eq(evidence,experimental)",
+    );
+  });
 });

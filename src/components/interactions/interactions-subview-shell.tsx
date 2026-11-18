@@ -14,8 +14,12 @@ import type { InteractionsSelection } from "@/lib/interactions/use-interactions"
 import {
   interactionCollectionOptions,
   interactionCollectionProfile,
+  interactionDefaultFilters,
 } from "@/lib/views/child-resources";
-import type { CollectionState } from "@/lib/views/collection-state";
+import {
+  facetCountState,
+  type CollectionState,
+} from "@/lib/views/collection-state";
 import { scopedStructuralRql } from "@/lib/views/scoped-structural-rql";
 
 import { InteractionsGraph } from "./interactions-graph";
@@ -90,10 +94,17 @@ export function InteractionsSubviewShell({
       filters,
     });
   const graphRql = graphRqlFor(tableState.filters);
+  // The counts follow the Table's rule (`facetCountState`, which leaves out defaults the user has
+  // not touched), so the two Filters menus show the same numbers for the same filters; on top of
+  // that each field leaves out its own filter.
+  const countFilters = facetCountState(
+    tableState,
+    interactionCollectionOptions,
+  ).filters;
   const facetRql = (field: string) =>
     graphRqlFor(
       Object.fromEntries(
-        Object.entries(tableState.filters).filter(([name]) => name !== field),
+        Object.entries(countFilters).filter(([name]) => name !== field),
       ),
     );
   // A new keyword is a new result set, so drop the stale page in the same event; the same text
@@ -158,6 +169,7 @@ export function InteractionsSubviewShell({
           rql={scopedRql}
           profile={{ ...interactionCollectionProfile, guideUrl }}
           defaultSort={interactionCollectionOptions.defaultSort}
+          defaultFilters={interactionDefaultFilters}
           keywordValue={keywordText}
           onKeywordChange={handleKeywordChange}
           keywordPlaceholder="Search interaction results..."

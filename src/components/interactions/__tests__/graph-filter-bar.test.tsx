@@ -97,7 +97,7 @@ describe("GraphFilterBar", () => {
       within(menu)
         .getAllByRole("option")
         .map((option) => option.textContent),
-    ).toEqual(["Category", "Interaction Type", "Detection Method"]);
+    ).toEqual(["Category", "Interaction Type", "Detection Method", "Evidence"]);
   });
 
   it("reports a pick with the filters it makes", async () => {

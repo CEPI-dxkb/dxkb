@@ -345,6 +345,7 @@ describe("InteractionsGraph filters", () => {
       expect(requests.flatMap((request) => request.facets).sort()).toEqual([
         "category",
         "detection_method",
+        "evidence",
         "interaction_type",
       ]);
     });

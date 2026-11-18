@@ -1,4 +1,5 @@
 import { eq, serializeRql, validateRql } from "@/lib/data-api";
+import { maxRqlInValues, maxRqlLength } from "@/lib/data-api/rql";
 import {
   parseCollectionState,
   type CollectionState,
@@ -59,12 +60,49 @@ export function experimentCollectionScopeRql(
     : `and(${predicates.join(",")})`;
 }
 
+/**
+ * The longest experiment-ID scope a Biosets table takes: the Data API rejects RQL
+ * over `maxRqlLength`, and the table ands its filters and keyword onto the scope,
+ * so this leaves them room.
+ */
+export const maxBiosetScopeRqlLength = maxRqlLength - 1_500;
+
+/**
+ * The most experiment IDs that could fit `maxBiosetScopeRqlLength` (each takes at
+ * least one character and a comma); an export of more is over the limit unread.
+ */
+export const maxBiosetScopeExperiments = Math.floor(maxBiosetScopeRqlLength / 2);
+
+/**
+ * The Biosets of these experiments, or `null` when the ID list is too long for
+ * one Data API query; the caller asks for a narrower Experiment search instead of
+ * sending a request that cannot succeed.
+ */
+export function experimentBiosetScopeRql(
+  experimentIds: string[],
+): string | null {
+  if (experimentIds.length > maxBiosetScopeExperiments) return null;
+  const rql = experimentBiosetCollectionRql(experimentIds);
+  return rql.length > maxBiosetScopeRqlLength ? null : rql;
+}
+
+/**
+ * The Biosets of these experiments. One `in` takes at most `maxRqlInValues`
+ * values and a taxon can have more experiments (Bacteria has 791), so a longer
+ * list is `or`-ed `in` chunks.
+ */
 export function experimentBiosetCollectionRql(experimentIds: string[]): string {
-  return serializeRql("bioset", {
-    operator: "in",
-    field: "exp_id",
-    values: experimentIds,
-  });
+  const chunks: string[] = [];
+  for (let start = 0; start < experimentIds.length; start += maxRqlInValues) {
+    chunks.push(
+      serializeRql("bioset", {
+        operator: "in",
+        field: "exp_id",
+        values: experimentIds.slice(start, start + maxRqlInValues),
+      }),
+    );
+  }
+  return chunks.length === 1 ? chunks[0] : `or(${chunks.join(",")})`;
 }
 
 export function genomeExperimentRql(genomeId: string): string {

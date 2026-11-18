@@ -46,6 +46,40 @@ beforeEach(() => {
   localStorage.clear();
 });
 
+describe("WorkspaceFolderPickerDialog full names on hover", () => {
+  const longFolder = "Metagenomic-assembly-comparison-of-wastewater-samples-2026";
+  const longChild = "Run-07-trimmed-and-deduplicated-paired-end-reads-batch-two";
+
+  it("titles each row with its full path and each column header with its label", async () => {
+    const repository = makePickerRepository({
+      directories: {
+        [home]: [{ name: longFolder, type: "folder" }],
+        [`${home}/${longFolder}`]: [{ name: longChild, type: "folder" }],
+      },
+    });
+    const { user } = renderPicker({}, repository);
+
+    const rootRow = await findOption("Home", longFolder);
+    expect(rootRow).toHaveAttribute("title", `${home}/${longFolder}`);
+    expect(within(column("Home")).getByText("Home")).toHaveAttribute(
+      "title",
+      "Home",
+    );
+
+    await user.click(rootRow);
+
+    const nestedRow = await findOption(longFolder, longChild);
+    expect(nestedRow).toHaveAttribute(
+      "title",
+      `${home}/${longFolder}/${longChild}`,
+    );
+    expect(within(column(longFolder)).getByText(longFolder)).toHaveAttribute(
+      "title",
+      longFolder,
+    );
+  });
+});
+
 describe("WorkspaceFolderPickerDialog column states", () => {
   it("shows a loading state until the folder is listed", async () => {
     const repository = makePickerRepository();

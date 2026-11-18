@@ -39,6 +39,8 @@ export function ZoomControl() {
       setInputValue(String(next));
     };
     camera.on("updated", update);
+    // A sibling's effect (the URL camera restore) can move the camera before this subscribes.
+    update();
     return () => {
       camera.off("updated", update);
     };

@@ -307,7 +307,7 @@ describe("WorkspaceFolderPickerDialog new folder", () => {
     ).toBeDisabled();
   });
 
-  it("is not offered in a listing with nothing selected", async () => {
+  it("is disabled in a listing with nothing selected", async () => {
     const { user } = renderPicker();
     await findOption("Home", "Alpha");
 
@@ -315,7 +315,7 @@ describe("WorkspaceFolderPickerDialog new folder", () => {
     await findOption("My Workspaces", "projects");
 
     expect(
-      screen.queryByRole("button", { name: "New folder here" }),
-    ).not.toBeInTheDocument();
+      screen.getByRole("button", { name: "New folder here" }),
+    ).toBeDisabled();
   });
 });

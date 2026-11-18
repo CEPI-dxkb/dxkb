@@ -85,6 +85,14 @@ export const LazyExperimentResourceCollection = dynamic(
   { loading: TabLoading },
 );
 
+export const LazyExperimentBiosetCollection = dynamic(
+  () =>
+    import("@/components/views/experiment-bioset-collection").then(
+      (module) => module.ExperimentBiosetCollection,
+    ),
+  { loading: TabLoading },
+);
+
 export const LazySerologyResourceCollection = dynamic(
   () =>
     import("@/components/views/serology-resource-collection").then(

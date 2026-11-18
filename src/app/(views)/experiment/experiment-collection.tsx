@@ -5,9 +5,9 @@ import {
   EntityViewShell,
   ExperimentResourceCollection,
 } from "@/components/views";
+import { ExperimentBiosetCollection } from "@/components/views/experiment-bioset-collection";
 import type { ExperimentCollectionTab } from "@/lib/experiment-view";
 import type { CollectionState } from "@/lib/views/collection-state";
-import { ExperimentBiosetCollection } from "./experiment-bioset-collection";
 
 interface ExperimentCollectionProps {
   initialState: CollectionState;

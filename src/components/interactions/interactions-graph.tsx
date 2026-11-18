@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -13,8 +13,10 @@ import {
 import { toGraph } from "@/lib/interactions/to-graph";
 import {
   buildGraphSelectionIndex,
+  resolveGraphSelection,
   selectHubs,
   selectSubgraphs,
+  singleSelectionRef,
 } from "@/lib/interactions/graph-selections";
 import {
   applySelectionClick,
@@ -25,9 +27,11 @@ import { formatUserFacingErrorMessage } from "@/lib/utils";
 import type {
   GEdge,
   GNode,
+  GraphCameraView,
   GraphCanvasHandle,
   GraphCanvasProps,
   GraphSelection,
+  GraphSelectionRef,
   HubSelection,
   LayoutName,
   PpiRecord,
@@ -53,8 +57,14 @@ const SigmaCanvas = dynamic<GraphCanvasProps>(
   },
 );
 
-const emptySelection: GraphSelection = { nodes: [], edges: [] };
 const emptyRows: PpiRecord[] = [];
+
+function sameSelectionRef(
+  a: GraphSelectionRef | null,
+  b: GraphSelectionRef | null,
+): boolean {
+  return a?.kind === b?.kind && a?.id === b?.id;
+}
 
 interface InteractionsGraphProps {
   /** The shared keyword is not folded in here; it travels as the request's own `keyword`, as for the Table. */
@@ -63,6 +73,13 @@ interface InteractionsGraphProps {
   onKeywordChange: (value: string) => void;
   layout: LayoutName;
   onLayoutChange: (layout: LayoutName) => void;
+  /** The one selected node or edge, kept by the owner (the URL) and resolved here against the loaded graph. */
+  selected: GraphSelectionRef | null;
+  /** `null` for no selection or a bulk one, which stays local. */
+  onSelectedChange: (next: GraphSelectionRef | null) => void;
+  /** The owner's (URL) camera, applied by the canvas on its first load. */
+  camera: GraphCameraView | null;
+  onCameraChange: (next: GraphCameraView | null) => void;
 }
 
 export function InteractionsGraph({
@@ -71,6 +88,10 @@ export function InteractionsGraph({
   onKeywordChange,
   layout,
   onLayoutChange,
+  selected,
+  onSelectedChange,
+  camera,
+  onCameraChange,
 }: InteractionsGraphProps) {
   const interactions = useInteractions(rql, keywordValue);
   const { data } = interactions;
@@ -78,7 +99,18 @@ export function InteractionsGraph({
     interactions,
     JSON.stringify([rql, keywordValue]),
   );
-  const [selection, setSelection] = useState<GraphSelection>(emptySelection);
+  // A Sub-Graph or Hub pick (or any multi-item one) overrides the owner's single selection.
+  const [bulkSelection, setBulkSelection] = useState<GraphSelection | null>(
+    null,
+  );
+  // The owner renders a write to `selected` in a transition (Next applies History API writes in
+  // one), so the single pick just made is held here until the prop catches up: the pane and canvas
+  // show it at once, and a quick Cmd/Ctrl-click after a plain one adds to it rather than to the old
+  // selection.
+  const [pendingSelected, setPendingSelected] = useState<{
+    ref: GraphSelectionRef | null;
+    basis: GraphSelectionRef | null;
+  } | null>(null);
   const [activeSubgraph, setActiveSubgraph] =
     useState<SubgraphSelection | null>(null);
   const [activeHub, setActiveHub] = useState<HubSelection | null>(null);
@@ -90,14 +122,57 @@ export function InteractionsGraph({
     graphSource.keywordValue !== keywordValue ||
     graphSource.data !== data
   ) {
+    // The single selection is the owner's, so the first data arrival (a restore from the URL) keeps
+    // it; the owner drops it on a new keyword, and the scope effect below on a new rql.
     setGraphSource({ rql, keywordValue, data });
-    setSelection(emptySelection);
+    setBulkSelection(null);
+    setPendingSelected(null);
     setActiveSubgraph(null);
     setActiveHub(null);
   }
+  // The pick just written stands until the owner's `selected` moves off the value it replaced.
+  if (
+    pendingSelected !== null &&
+    !sameSelectionRef(pendingSelected.basis, selected)
+  ) {
+    setPendingSelected(null);
+  }
 
-  const graph = toGraph(data?.rows ?? emptyRows);
-  const selectionIndex = buildGraphSelectionIndex(graph.nodes, graph.edges);
+  // Memoized on the rows by hand: `SigmaCanvas` reloads its graph and re-fits the camera when the
+  // node arrays change identity, and the compiler re-ran these on every URL write (a selection or
+  // camera move), which threw away a restored or chosen zoom.
+  const rows = data?.rows ?? emptyRows;
+  const graph = useMemo(() => toGraph(rows), [rows]);
+  const selectionIndex = useMemo(
+    () => buildGraphSelectionIndex(graph.nodes, graph.edges),
+    [graph],
+  );
+  const selection =
+    bulkSelection ??
+    resolveGraphSelection(
+      selectionIndex,
+      pendingSelected ? pendingSelected.ref : selected,
+    );
+  // Loaded data that lacks the id (a stale or hand-edited URL): select nothing and drop the param.
+  const selectedIsStale =
+    data !== undefined &&
+    selected !== null &&
+    bulkSelection === null &&
+    pendingSelected === null &&
+    selection.nodes.length === 0 &&
+    selection.edges.length === 0;
+  const dropSelected = useEffectEvent(() => {
+    onSelectedChange(null);
+  });
+  useEffect(() => {
+    if (selectedIsStale) dropSelected();
+  }, [selectedIsStale]);
+  const scopeRqlRef = useRef(rql);
+  useEffect(() => {
+    if (scopeRqlRef.current === rql) return;
+    scopeRqlRef.current = rql;
+    dropSelected();
+  }, [rql]);
   const layoutQuery = useGraphLayout({
     rql,
     keywordValue,
@@ -162,25 +237,37 @@ export function InteractionsGraph({
     setActiveSubgraph(null);
     setActiveHub(null);
   }
-  function selectNode(node: GNode, additive = false) {
+  /** One node or edge goes to the owner; anything larger stays local. */
+  function applySelection(next: GraphSelection) {
     clearActivePreset();
-    setSelection((prev) =>
-      applySelectionClick(prev, { kind: "node", node }, additive),
+    const single = singleSelectionRef(next);
+    const isEmpty = next.nodes.length === 0 && next.edges.length === 0;
+    setBulkSelection(single !== null || isEmpty ? null : next);
+    setPendingSelected({ ref: single, basis: selected });
+    onSelectedChange(single);
+  }
+  // A plain click replaces the selection; a Cmd/Ctrl one toggles the node in or out of it.
+  function selectNode(node: GNode, additive = false) {
+    applySelection(
+      applySelectionClick(selection, { kind: "node", node }, additive),
     );
   }
   function selectEdge(edge: GEdge) {
-    clearActivePreset();
-    setSelection({ nodes: [], edges: [edge] });
+    applySelection({ nodes: [], edges: [edge] });
   }
+  // A preset stays a bulk pick even when it matches one node, so it keeps its menu label and is
+  // not written to the URL.
   function handleSelectSubgraphs(threshold: SubgraphSelection) {
     setActiveSubgraph(threshold);
     setActiveHub(null);
-    setSelection(selectSubgraphs(selectionIndex, threshold));
+    setBulkSelection(selectSubgraphs(selectionIndex, threshold));
+    onSelectedChange(null);
   }
   function handleSelectHubs(threshold: HubSelection) {
     setActiveSubgraph(null);
     setActiveHub(threshold);
-    setSelection(selectHubs(selectionIndex, threshold));
+    setBulkSelection(selectHubs(selectionIndex, threshold));
+    onSelectedChange(null);
   }
 
   return (
@@ -242,14 +329,13 @@ export function InteractionsGraph({
                 incidence={incidenceIndex}
                 positions={layoutQuery.data ?? null}
                 selection={selection}
-                onSelect={(nextSelection) => {
-                  clearActivePreset();
-                  setSelection(nextSelection);
-                }}
+                onSelect={applySelection}
                 handleRef={canvasHandleRef}
                 onReady={() => {
                   setCanvasReady(true);
                 }}
+                camera={camera}
+                onCameraChange={onCameraChange}
               />
             )}
             {layoutQuery.isFetching && (

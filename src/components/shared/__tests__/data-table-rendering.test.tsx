@@ -288,6 +288,53 @@ describe("DataTable shared view seams", () => {
     expect(screen.getByText("shown")).not.toHaveRole("link");
   });
 
+  it("renders no link for an empty cell whose cross-field template resolves", () => {
+    render(
+      <DataTable
+        id="empty-cross-field-link"
+        data={[{ id: "row-1", gene_a: "", feature_id_a: "PATRIC.1.1.CDS.1" }]}
+        columns={[
+          {
+            id: "gene_a",
+            label: "Gene A",
+            valueHref: "/feature/{feature_id_a}",
+          },
+        ]}
+        totalItems={1}
+        resource="ppi"
+        idField="id"
+      />,
+    );
+
+    expect(screen.queryByRole("link")).toBeNull();
+  });
+
+  it("links a non-empty cell through a cross-field template", () => {
+    render(
+      <DataTable
+        id="filled-cross-field-link"
+        data={[
+          { id: "row-1", gene_a: "hisD", feature_id_a: "PATRIC.1.1.CDS.1" },
+        ]}
+        columns={[
+          {
+            id: "gene_a",
+            label: "Gene A",
+            valueHref: "/feature/{feature_id_a}",
+          },
+        ]}
+        totalItems={1}
+        resource="ppi"
+        idField="id"
+      />,
+    );
+
+    expect(screen.getByRole("link", { name: "hisD" })).toHaveAttribute(
+      "href",
+      "/feature/PATRIC.1.1.CDS.1",
+    );
+  });
+
   it("renders repeated multivalue links without duplicate React keys", () => {
     const consoleError = vi
       .spyOn(console, "error")

@@ -10,6 +10,7 @@ export interface GNode {
   interactorDesc?: string;
   featureId?: string;
   gene?: string;
+  genomeId?: string;
   genome?: string;
   refseqLocusTag?: string;
   kind: "microbial" | "host";
@@ -43,6 +44,19 @@ export interface GraphSelection {
   edges: GEdge[];
 }
 
+/** One selected node or edge by id (`GNode.id` / `GEdge.id`), the form the URL keeps. */
+export interface GraphSelectionRef {
+  kind: "node" | "edge";
+  id: string;
+}
+
+/** A Sigma camera position (normalized graph space); the URL keeps it rounded. */
+export interface GraphCameraView {
+  ratio: number;
+  x: number;
+  y: number;
+}
+
 export interface GraphCanvasHandle {
   exportPng: () => void;
 }
@@ -60,4 +74,8 @@ export interface GraphCanvasProps {
   onSelect: (sel: GraphSelection) => void;
   handleRef: RefObject<GraphCanvasHandle | null>;
   onReady?: () => void;
+  /** Applied once, on the first graph load after mount; later loads (new rows) re-fit instead. */
+  camera?: GraphCameraView | null;
+  /** Debounced; `null` for the default framing. */
+  onCameraChange?: (camera: GraphCameraView | null) => void;
 }

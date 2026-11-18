@@ -1,3 +1,4 @@
+import { resolveLink } from "@/components/detail-panel/metadata-link-policy";
 import { epitopeAssayMetadata, epitopeMetadata } from "@/lib/epitope-view/fields";
 import { biosetMetadata, experimentMetadata } from "@/lib/experiment-view/fields";
 import { featureMetadata } from "@/lib/feature-view/fields";
@@ -492,6 +493,83 @@ describe("profile column adapters", () => {
     );
 
     expect(pdbId?.valueHref).toBeUndefined();
+  });
+});
+
+describe("interactions table links", () => {
+  const columns = new Map(interactionColumns.map((column) => [column.id, column]));
+
+  it.each([
+    ["interactor_a", "/feature/{feature_id_a}"],
+    ["gene_a", "/feature/{feature_id_a}"],
+    ["feature_id_a", "/feature/{value}"],
+    ["genome_name_a", "/genome/{genome_id_a}"],
+    ["genome_id_a", "/genome/{value}"],
+    ["interactor_b", "/feature/{feature_id_b}"],
+    ["gene_b", "/feature/{feature_id_b}"],
+    ["feature_id_b", "/feature/{value}"],
+    ["genome_name_b", "/genome/{genome_id_b}"],
+    ["genome_id_b", "/genome/{value}"],
+  ])("links %s to %s", (id, href) => {
+    expect(columns.get(id)?.valueHref).toBe(href);
+  });
+
+  it("leaves non-entity columns unlinked", () => {
+    for (const id of [
+      "interactor_desc_a",
+      "interactor_desc_b",
+      "interaction_type",
+      "detection_method",
+      "evidence",
+    ]) {
+      expect(columns.get(id)?.valueHref).toBeUndefined();
+    }
+  });
+
+  it("resolves a feature link from feature_id and drops it when feature_id is empty", () => {
+    const template = columns.get("interactor_a")?.valueHref ?? "";
+    expect(
+      resolveLink(
+        template,
+        { interactor_a: "fig|1.1.peg.1", feature_id_a: "PATRIC.1.1.CDS.1" },
+        "interactor_a",
+      ),
+    ).toBe("/feature/PATRIC.1.1.CDS.1");
+    expect(
+      resolveLink(
+        template,
+        { interactor_a: "P12345", feature_id_a: "" },
+        "interactor_a",
+      ),
+    ).toBeUndefined();
+  });
+
+  it("drops the feature link when feature_id_a is missing", () => {
+    const template = columns.get("interactor_a")?.valueHref ?? "";
+    expect(
+      resolveLink(template, { interactor_a: "P12345" }, "interactor_a"),
+    ).toBeUndefined();
+  });
+
+  it("resolves a genome link from genome_id and drops it when genome_id is empty or missing", () => {
+    const template = columns.get("genome_name_a")?.valueHref ?? "";
+    expect(
+      resolveLink(
+        template,
+        { genome_name_a: "Brucella melitensis", genome_id_a: "224914.16" },
+        "genome_name_a",
+      ),
+    ).toBe("/genome/224914.16");
+    expect(
+      resolveLink(
+        template,
+        { genome_name_a: "Homo sapiens", genome_id_a: "" },
+        "genome_name_a",
+      ),
+    ).toBeUndefined();
+    expect(
+      resolveLink(template, { genome_name_a: "Homo sapiens" }, "genome_name_a"),
+    ).toBeUndefined();
   });
 });
 

@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 
@@ -199,6 +199,13 @@ function graphPanel() {
   return within(screen.getByRole("tabpanel", { name: "Graph" }));
 }
 
+/** The Table pages requested with `keyword`, in order (the two arrays are pushed together). */
+function pagesRequestedFor(keyword: string): number[] {
+  return tablePredicates.flatMap((predicate, index) =>
+    predicate.keyword === keyword ? [tablePages[index]] : [],
+  );
+}
+
 async function searchInTable(user: ReturnType<typeof userEvent.setup>, text: string) {
   await user.type(
     tablePanel().getByPlaceholderText("Search interaction results..."),
@@ -320,8 +327,9 @@ describe("Interactions Table paging follows the shared keyword", () => {
       expect(tablePredicates.at(-1)?.keyword).toBe("peg.601");
     });
     // A new keyword is a new result set (one row, so page 2 is past its end); the stale page must
-    // not be refetched.
+    // not be refetched, not even once.
     expect(tablePages.at(-1)).toBe(1);
+    expect(pagesRequestedFor("peg.601")).toEqual([1]);
     expect(window.location.search).not.toContain("interactions.page");
   });
 
@@ -345,13 +353,83 @@ describe("Interactions Table paging follows the shared keyword", () => {
         expect(tablePages.at(-1)).toBe(1);
       });
 
-      // The commit drops the stale page (a replace) then writes the table's state; a keyword pause
-      // is not a Back step.
+      // The commit drops the stale page with the keyword (a replace), so the table's own write
+      // finds nothing left to change; a keyword pause is not a Back step.
       expect(pushState).not.toHaveBeenCalled();
+      expect(pagesRequestedFor("peg.601")).toEqual([1]);
       expect(window.location.search).not.toContain("interactions.page");
     } finally {
       pushState.mockRestore();
     }
+  });
+});
+
+describe("Interactions Table after Back to an entry with another keyword", () => {
+  it("requests and shows the restored entry's page, not page 1", async () => {
+    // Entry D (typed keyword, page dropped) is showing; Back restores entry C, whose keyword
+    // matches every row and whose Table is on page 2. A popstate moves both params in one render.
+    window.history.replaceState(
+      null,
+      "",
+      "/genome/1.1?tab=interactions&interactionsGraph.q=peg.601",
+    );
+    render(<InteractionsSubviewShell rql={scopeRql} />, {
+      wrapper: createQueryClientWrapper(),
+    });
+    await waitFor(() => {
+      expect(tablePredicates.at(-1)?.keyword).toBe("peg.601");
+    });
+
+    act(() => {
+      window.history.replaceState(
+        null,
+        "",
+        "/genome/1.1?tab=interactions&interactionsGraph.q=experimental&interactions.page=2",
+      );
+    });
+
+    await waitFor(() => {
+      expect(tablePredicates.at(-1)?.keyword).toBe("experimental");
+    });
+    expect(tablePages.at(-1)).toBe(2);
+    expect(pagesRequestedFor("experimental")).toEqual([2]);
+    await waitFor(() => {
+      expect(tablePanel().getByText("Showing page 2")).toBeInTheDocument();
+    });
+    expect(window.location.search).toContain("interactions.page=2");
+  });
+
+  it("requests and shows the restored page when only the keyword differs", async () => {
+    // Both entries match every row and have the Table on page 2, so the popstate moves the keyword
+    // and leaves the page where it was.
+    window.history.replaceState(
+      null,
+      "",
+      "/genome/1.1?tab=interactions&interactionsGraph.q=experimental&interactions.page=2",
+    );
+    render(<InteractionsSubviewShell rql={scopeRql} />, {
+      wrapper: createQueryClientWrapper(),
+    });
+    await waitFor(() => {
+      expect(tablePanel().getByText("Showing page 2")).toBeInTheDocument();
+    });
+
+    act(() => {
+      window.history.replaceState(
+        null,
+        "",
+        "/genome/1.1?tab=interactions&interactionsGraph.q=ppi-&interactions.page=2",
+      );
+    });
+
+    await waitFor(() => {
+      expect(tablePredicates.at(-1)?.keyword).toBe("ppi-");
+    });
+    expect(pagesRequestedFor("ppi-")).toEqual([2]);
+    await waitFor(() => {
+      expect(tablePanel().getByText("Showing page 2")).toBeInTheDocument();
+    });
+    expect(window.location.search).toContain("interactions.page=2");
   });
 });
 
@@ -424,5 +502,147 @@ describe("Interactions Graph layout across tab switches", () => {
     );
     expect(graphPanel().queryByRole("status")).not.toBeInTheDocument();
     expect(requestGraphLayout).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("Interactions subview and Graph selection survive leaving the page (Back)", () => {
+  // A handful of rows: role queries over the full node list are slow in jsdom.
+  const fewRows = allRows.slice(0, 3);
+
+  function serveFewRows() {
+    server.use(
+      http.get("/api/data/ppi", ({ request }) => {
+        const keyword = new URL(request.url).searchParams.get("keyword");
+        const rows = keyword
+          ? fewRows.filter((row) => JSON.stringify(row).includes(keyword))
+          : fewRows;
+        return HttpResponse.json({
+          rows,
+          total: rows.length,
+          facets: {},
+          page: 1,
+          pageSize: resourceCollectionPageSize,
+        });
+      }),
+      http.post("/api/data/ppi", async ({ request }) => {
+        const { keyword } = (await request.json()) as { keyword?: string };
+        return HttpResponse.json({
+          rows: keyword
+            ? fewRows.filter((row) => JSON.stringify(row).includes(keyword))
+            : fewRows,
+        });
+      }),
+    );
+  }
+
+  /** The pane mounts with the graph workspace, once the data has loaded. */
+  async function detailsPane() {
+    return within(await graphPanel().findByLabelText("Selection details"));
+  }
+
+  function renderShell() {
+    // A fresh client each time, so a remount waits for the data as a reload does.
+    return render(<InteractionsSubviewShell rql={scopeRql} />, {
+      wrapper: createQueryClientWrapper(),
+    });
+  }
+
+  it("keeps the Graph subview and a picked node in the URL without a history entry, and restores both on a remount", async () => {
+    const user = userEvent.setup();
+    serveFewRows();
+    window.history.replaceState(null, "", "/genome/1.1?tab=interactions");
+    const lengthBefore = window.history.length;
+    const pushState = vi.spyOn(window.history, "pushState");
+
+    const { unmount } = renderShell();
+    await user.click(screen.getByRole("tab", { name: "Graph" }));
+    await user.click(await graphPanel().findByRole("option", { name: "peg.601" }));
+
+    expect((await detailsPane()).getByText("peg.601")).toBeInTheDocument();
+    expect(window.location.search).toBe(
+      "?tab=interactions&interactionsGraph.view=graph&interactionsGraph.node=peg.601",
+    );
+    expect(window.history.length).toBe(lengthBefore);
+    expect(pushState).not.toHaveBeenCalled();
+    pushState.mockRestore();
+
+    // Leaving for the feature page unmounts the tab; Back mounts it again on the same URL.
+    unmount();
+    renderShell();
+
+    expect(screen.getByRole("tab", { name: "Graph" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    expect(await (await detailsPane()).findByText("peg.601")).toBeInTheDocument();
+    expect((await detailsPane()).getByText("BRC ID")).toBeInTheDocument();
+    expect(
+      graphPanel().getByRole("option", { name: "peg.601" }),
+    ).toHaveAttribute("data-app-selected", "true");
+    expect(window.location.search).toContain("interactionsGraph.node=peg.601");
+  });
+
+  it("restores the shared keyword with the selection", async () => {
+    serveFewRows();
+    window.history.replaceState(
+      null,
+      "",
+      "/genome/1.1?tab=interactions&interactionsGraph.view=graph&interactionsGraph.q=peg.601&interactionsGraph.node=peg.601",
+    );
+    renderShell();
+
+    expect(await (await detailsPane()).findByText("peg.601")).toBeInTheDocument();
+    expect(
+      graphPanel().getByPlaceholderText("Search interaction results..."),
+    ).toHaveValue("peg.601");
+    expect(graphPanel().queryByRole("option", { name: "peg.600" })).toBeNull();
+  });
+
+  it("selects nothing for a node the loaded data lacks and drops it from the URL", async () => {
+    serveFewRows();
+    window.history.replaceState(
+      null,
+      "",
+      "/genome/1.1?tab=interactions&interactionsGraph.view=graph&interactionsGraph.node=peg.999",
+    );
+    renderShell();
+
+    expect(
+      await graphPanel().findByRole("option", { name: "peg.600" }),
+    ).toBeInTheDocument();
+    await waitFor(() => {
+      expect(window.location.search).toBe(
+        "?tab=interactions&interactionsGraph.view=graph",
+      );
+    });
+    expect(
+      (await detailsPane()).getByText("Select a node or edge to see details."),
+    ).toBeInTheDocument();
+  });
+
+  it("clears the selection when the Graph's keyword changes", async () => {
+    const user = userEvent.setup();
+    serveFewRows();
+    window.history.replaceState(
+      null,
+      "",
+      "/genome/1.1?tab=interactions&interactionsGraph.view=graph&interactionsGraph.node=peg.600",
+    );
+    renderShell();
+    expect(await (await detailsPane()).findByText("peg.600")).toBeInTheDocument();
+
+    await user.type(
+      graphPanel().getByPlaceholderText("Search interaction results..."),
+      "peg.600",
+    );
+
+    await waitFor(() => {
+      expect(window.location.search).toBe(
+        "?tab=interactions&interactionsGraph.view=graph&interactionsGraph.q=peg.600",
+      );
+    });
+    expect(
+      await (await detailsPane()).findByText("Select a node or edge to see details."),
+    ).toBeInTheDocument();
   });
 });

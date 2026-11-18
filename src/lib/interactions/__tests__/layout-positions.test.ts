@@ -105,6 +105,15 @@ describe("computeLayoutPositions", () => {
     },
   );
 
+  // A camera restored from the URL after a reload points at the same nodes only if the same rows
+  // lay out the same way again.
+  it.each(allLayouts)("lays out the same rows identically on every run for %s", (layout) => {
+    const first = computeLayoutPositions(buildLayoutRequest(nodes, edges, layout));
+    const second = computeLayoutPositions(buildLayoutRequest(nodes, edges, layout));
+
+    expect(Array.from(second)).toEqual(Array.from(first));
+  });
+
   it("keeps the node list's order, which grid placement follows", () => {
     const forward = computeLayoutPositions(
       buildLayoutRequest(nodes, [], "grid"),

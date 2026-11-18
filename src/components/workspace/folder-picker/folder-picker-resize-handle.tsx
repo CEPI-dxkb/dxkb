@@ -9,10 +9,18 @@ interface ResizeHandleProps {
   width: number;
   limits: { min: number; max: number; initial: number };
   onResize: (width: number) => void;
+  /** Width change per pixel of pointer travel: 2 for a centred dialog, whose two edges both move. */
+  pointerScale?: number;
+  /** Width change per arrow-key press. */
+  keyboardStep?: number;
+  /** Double-click; by default the handle resizes to `limits.initial`. */
+  onReset?: () => void;
+  /** Whether hovering or dragging draws the blue line; keyboard focus always does. */
+  showPointerLine?: boolean;
   className?: string;
 }
 
-const keyboardStep = 16;
+const defaultKeyboardStep = 16;
 
 export function PaneResizeHandle({
   edge,
@@ -20,6 +28,10 @@ export function PaneResizeHandle({
   width,
   limits,
   onResize,
+  pointerScale = 1,
+  keyboardStep = defaultKeyboardStep,
+  onReset,
+  showPointerLine = true,
   className,
 }: ResizeHandleProps) {
   const dragRef = useRef<{ x: number; width: number } | null>(null);
@@ -46,7 +58,9 @@ export function PaneResizeHandle({
       }}
       onPointerMove={(event) => {
         const drag = dragRef.current;
-        if (drag) resize(drag.width + sign * (event.clientX - drag.x));
+        if (drag) {
+          resize(drag.width + sign * pointerScale * (event.clientX - drag.x));
+        }
       }}
       onPointerUp={(event) => {
         dragRef.current = null;
@@ -56,7 +70,8 @@ export function PaneResizeHandle({
         dragRef.current = null;
       }}
       onDoubleClick={() => {
-        resize(limits.initial);
+        if (onReset) onReset();
+        else resize(limits.initial);
       }}
       onKeyDown={(event) => {
         if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
@@ -73,7 +88,10 @@ export function PaneResizeHandle({
     >
       <span
         aria-hidden
-        className="absolute inset-y-0 left-1/2 w-0.5 -translate-x-1/2 transition-colors group-hover:bg-info/50 group-focus-visible:bg-info group-active:bg-info"
+        className={cn(
+          "absolute inset-y-0 left-1/2 w-0.5 -translate-x-1/2 transition-colors group-focus-visible:bg-info",
+          showPointerLine && "group-hover:bg-info/50 group-active:bg-info",
+        )}
       />
     </div>
   );

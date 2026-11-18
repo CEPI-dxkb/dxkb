@@ -1,9 +1,12 @@
 import { render, screen } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
 import type { ComponentProps } from "react";
-import { FolderPickerInfo } from "@/components/workspace/folder-picker/folder-picker-preview";
+import {
+  FilePickerInfo,
+  FolderPickerInfo,
+} from "@/components/workspace/folder-picker/folder-picker-preview";
 import type { WorkspaceItem } from "@/lib/services/workspace/domain";
 import type { PickerView } from "@/lib/services/workspace/picker-views";
+import { workshopWorkspacePath } from "@/lib/services/workspace/workshop";
 
 const home = "/alice@bvbrc/home";
 
@@ -27,9 +30,6 @@ function renderInfo(overrides: Partial<Props> = {}) {
     item: null,
     contents: { items: [], isLoading: false },
     commit: { canCommit: true, reason: null },
-    canChange: true,
-    onNewFolder: vi.fn(),
-    onUpload: vi.fn(),
     ...overrides,
   };
   render(<FolderPickerInfo {...props} />);
@@ -58,6 +58,11 @@ describe("FolderPickerInfo with no folder selected", () => {
       "public",
       "Public Workspaces",
       "Public workspaces are read-only: browse them, but save elsewhere.",
+    ],
+    [
+      "workshop",
+      "BV-BRC Workshop",
+      "BV-BRC workshop data is read-only: browse it, but save elsewhere.",
     ],
     ["favorites", "Favorites", "Folders you starred in the workspace browser."],
     ["recent", "Recently Used", "Folders you used recently, newest first."],
@@ -93,6 +98,17 @@ describe("FolderPickerInfo with no folder selected, picking files", () => {
     expect(screen.queryByText(/save elsewhere/)).not.toBeInTheDocument();
   });
 
+  it("says files can be picked from the Workshop, handy as test input", () => {
+    renderInfo({ target: fileTarget, place: "workshop", path: null });
+
+    expect(
+      screen.getByText(
+        "BV-BRC workshop data you can pick files from, handy as test input.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/save elsewhere/)).not.toBeInTheDocument();
+  });
+
   it.each<[PickerView, string]>([
     ["home", "Your home folder."],
     ["favorites", "Folders you starred in the workspace browser."],
@@ -110,6 +126,13 @@ describe("FolderPickerInfo with a folder selected", () => {
 
     expect(screen.getByText("Run 1")).toBeInTheDocument();
     expect(screen.getByText(`${home}/Experiments/Run 1`)).toBeInTheDocument();
+  });
+
+  it("draws the workshop folder with the workshop's icon, not a plain drive", () => {
+    renderInfo({ place: "workshop", path: workshopWorkspacePath });
+
+    expect(document.querySelector("svg.lucide-graduation-cap")).not.toBeNull();
+    expect(document.querySelector("svg.lucide-hard-drive")).toBeNull();
   });
 
   it("calls the home folder Home", () => {
@@ -214,23 +237,153 @@ describe("FolderPickerInfo with a folder selected", () => {
     ).toBeInTheDocument();
   });
 
-  it("offers New folder and Upload where the user can write", async () => {
-    const user = userEvent.setup();
-    const { onNewFolder, onUpload } = renderInfo({ canChange: true });
+  it("renders no buttons of its own: the actions come in through the slot", () => {
+    renderInfo();
 
-    await user.click(screen.getByRole("button", { name: "New folder here" }));
-    await user.click(screen.getByRole("button", { name: "Upload here" }));
+    expect(screen.queryByRole("button")).not.toBeInTheDocument();
+  });
+});
 
-    expect(onNewFolder).toHaveBeenCalledTimes(1);
-    expect(onUpload).toHaveBeenCalledTimes(1);
+/** A stand-in for the dialog's `FolderPickerActions`, which has its own tests. */
+const actionsSlot = (
+  <div role="group" aria-label="Folder actions">
+    <button type="button">Act</button>
+  </div>
+);
+
+function slot() {
+  return screen.getByRole("group", { name: "Folder actions" });
+}
+
+describe("the Info pane's actions slot", () => {
+  const file: WorkspaceItem = {
+    id: "draft",
+    name: "draft.fasta",
+    path: `${home}/x/draft.fasta`,
+    type: "contigs",
+    size: 4,
+  };
+
+  function renderFileInfo(actions?: Props["actions"]) {
+    render(
+      <FilePickerInfo
+        item={file}
+        place="home"
+        commit={{ canCommit: true, reason: null }}
+        actions={actions}
+      />,
+    );
+  }
+
+  it("is the last child of the scrolling body, after the details and the commit note", () => {
+    renderInfo({ actions: actionsSlot });
+
+    const body = slot().parentElement;
+    expect(body).toHaveClass("overflow-y-auto");
+    expect(body?.lastElementChild).toBe(slot());
+    const details = screen
+      .getByText("Where", { selector: "dt" })
+      .closest("dl") as HTMLElement;
+    expect(details.compareDocumentPosition(slot())).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
+    expect(slot().previousElementSibling).toHaveTextContent(
+      "You can write here, so results can be saved in this folder.",
+    );
   });
 
-  it("disables New folder and Upload where the user cannot write", () => {
-    renderInfo({ canChange: false });
+  it("follows the failed-listing note too, whatever the note says", () => {
+    renderInfo({
+      actions: actionsSlot,
+      listingError: new Error("Internal server error"),
+    });
 
+    expect(slot().parentElement?.lastElementChild).toBe(slot());
+    expect(slot().previousElementSibling).toHaveTextContent(
+      "Couldn't check this folder's contents or write access: Internal server error",
+    );
+  });
+
+  it("is not hidden on phones, unlike the name block and the details", () => {
+    renderInfo({ actions: actionsSlot });
+
+    const nameBlock = screen.getByText(`${home}/x`, { selector: "p" })
+      .parentElement as HTMLElement;
+    const details = screen
+      .getByText("Where", { selector: "dt" })
+      .closest("dl") as HTMLElement;
+    expect(nameBlock).toHaveClass("hidden");
+    expect(details).toHaveClass("hidden");
+    expect(slot()).not.toHaveClass("hidden");
+    expect(slot().parentElement).not.toHaveClass("hidden");
+  });
+
+  it("follows the centred hint block while no folder is open", () => {
+    renderInfo({ place: "recent", path: null, actions: actionsSlot });
+
+    const hint = screen.getByText("Folders you used recently, newest first.");
+    const hintBlock = hint.parentElement as HTMLElement;
+    expect(hintBlock).toHaveTextContent("Recently Used");
+    expect(hintBlock).not.toContainElement(slot());
+    expect(hintBlock).toHaveClass("flex-1", "justify-center");
+    expect(slot().previousElementSibling).toBe(hintBlock);
+    expect(slot().parentElement?.lastElementChild).toBe(slot());
+    expect(slot().parentElement).toHaveClass("overflow-y-auto");
+    expect(slot()).not.toHaveClass("hidden");
+  });
+
+  it("is the last child of a selected file's body, after its details and commit note", () => {
+    renderFileInfo(actionsSlot);
+
+    const body = slot().parentElement;
+    expect(body).toHaveClass("overflow-y-auto");
+    expect(body?.lastElementChild).toBe(slot());
+    const details = screen
+      .getByText("Type", { selector: "dt" })
+      .closest("dl") as HTMLElement;
+    expect(details.compareDocumentPosition(slot())).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
+    expect(slot().previousElementSibling).toHaveTextContent(
+      "You can use this file here.",
+    );
+  });
+
+  it("is absent from every state when it is not passed", () => {
+    const { unmount } = render(
+      <FolderPickerInfo
+        place="home"
+        path={null}
+        homePath={home}
+        item={null}
+        contents={{ items: [], isLoading: false }}
+        commit={{ canCommit: true, reason: null }}
+      />,
+    );
     expect(
-      screen.getByRole("button", { name: "New folder here" }),
-    ).toBeDisabled();
-    expect(screen.getByRole("button", { name: "Upload here" })).toBeDisabled();
+      screen.queryByRole("group", { name: "Folder actions" }),
+    ).not.toBeInTheDocument();
+    unmount();
+
+    const folder = render(
+      <FolderPickerInfo
+        place="home"
+        path={`${home}/x`}
+        homePath={home}
+        item={null}
+        contents={{ items: [], isLoading: false }}
+        commit={{ canCommit: true, reason: null }}
+      />,
+    );
+    expect(
+      screen.queryByRole("group", { name: "Folder actions" }),
+    ).not.toBeInTheDocument();
+    folder.unmount();
+
+    renderFileInfo();
+    expect(
+      screen.queryByRole("group", { name: "Folder actions" }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByRole("button")).not.toBeInTheDocument();
   });
 });

@@ -16,9 +16,7 @@ vi.mock("@/lib/auth/provider", () => ({
 }));
 vi.mock("sonner", () => ({ toast: { error: vi.fn(), success: vi.fn() } }));
 
-beforeEach(() => {
-  stubPickerBrowserApis();
-});
+stubPickerBrowserApis();
 
 function place(name: string) {
   return within(screen.getByRole("navigation", { name: "Places" })).getByRole(

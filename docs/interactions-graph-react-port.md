@@ -322,6 +322,13 @@ which renderer is mounted:
 const [selection, setSelection] = useState<{nodes: GNode[]; edges: GEdge[]}>({nodes: [], edges: []});
 ```
 
+The Next port departs from this sketch so Back from a linked feature page restores
+the view: a single selected node or edge lives in the URL
+(`interactionsGraph.node` / `interactionsGraph.edge`, beside the subview, the
+shared keyword, the layout and the camera), and only multi-item picks (Sub-Graph,
+Hub, or a Cmd/Ctrl-built set) are local state. See
+"Interactions" in `docs/architecture.md`.
+
 ### Legend (static, shared)
 
 ```tsx
@@ -347,11 +354,21 @@ legacy Topic.publish('/navigate') to a Next router push:
 
 | Action | Target |
 |---|---|
-| View Feature | `/view/Feature/{feature_id}#view_tab=overview` |
+| View Feature | `/view/Feature/{feature_id}#view_tab=overview` (shipped as links, see below) |
 | View FeatureList | `/view/FeatureList/?in(feature_id,(…))#view_tab=features` |
 | View FASTA (DNA/Protein) | `/view/FASTA/{dna|protein}/?in(feature_id,(…))` |
 | MSA (2–200 features) | `/view/MSA/?in(feature_id,(…))` |
 | Add to Group | opens group dialog (auth required) |
+
+The Next port does not expose "View Feature" as an action-bar action. It ships as
+links instead. In the details pane, a selected node's BRC ID and Gene link to
+`/feature/{feature_id}` and its Genome links to `/genome/{genome_id}`, and the
+From/To endpoints of a selected edge link to their feature pages. The pane never
+links a host node, and links a genome only when its id passes `isGenomeId`. The
+Interactions table links the same features and genomes in its cells, but applies
+neither check: it links a non-empty cell whenever the row has the feature or genome
+id its template needs. The links go straight to the current `/feature/…` and
+`/genome/…` routes, not the legacy `/view/Feature/…` path.
 
 ```tsx
 // selection → unique feature_ids (nodes are proteins; skip molecules)

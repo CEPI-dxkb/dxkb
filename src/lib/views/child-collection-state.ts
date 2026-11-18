@@ -11,8 +11,8 @@ import type { SearchParamsRecord } from "./rql";
  * Each child's params carry a `<urlKey>.` prefix so they cannot collide with
  * the page's own. Only listed keys are recognized, so an unrelated dotted param
  * (`source.id=123`) survives a tab switch.
- * `browser` and `compare` are not tables but tab-owned state the same cleanup
- * must drop.
+ * `browser`, `compare` and `interactionsGraph` are not tables but tab-owned
+ * state the same cleanup must drop.
  */
 export const childCollectionUrlKeys = [
   "amr",
@@ -24,6 +24,7 @@ export const childCollectionUrlKeys = [
   "epitopes",
   "features",
   "interactions",
+  "interactionsGraph",
   "proteins",
   "sequences",
   "serology",
@@ -56,6 +57,18 @@ export function deleteChildCollectionParams(params: URLSearchParams): void {
   for (const name of [...params.keys()]) {
     if (isChildCollectionParam(name)) params.delete(name);
   }
+}
+
+/**
+ * Drops a nested table's page, for an owner whose change starts a new result
+ * set (a shared keyword). Applied inside the owner's own URL write, so no
+ * render pairs the new state with the stale page.
+ */
+export function deleteChildCollectionPage(
+  params: URLSearchParams,
+  urlKey: ChildCollectionUrlKey,
+): void {
+  params.delete(`${urlKey}.page`);
 }
 
 // An unvalidated `rql` from the URL would reach the data API, and nothing in

@@ -1,5 +1,7 @@
 # Porting the BV-BRC "Interactions" Graph to React / Next.js
 
+> Historical build guide. For the current design (filters shared by the Table and the Graph, Focus on this protein, Show in Graph, the truncation banner) see the Interactions bullets in `docs/architecture.md`; the `GraphToolbar` below is gone, replaced by `GraphFilterBar` over `ResourceFilterBar`.
+
 A build guide for recreating the Taxon-View **Interactions** page (protein-protein
 interaction network) in a fresh React + Next.js app. Two parallel implementations
 are given so you can build both and pick:

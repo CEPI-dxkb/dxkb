@@ -492,5 +492,8 @@ describe("InteractionsGraph multi-selection", () => {
     fireEvent.click(screen.getByRole("option", { name: "geneB" }));
     expect(within(details).queryByText("Multiple selection")).toBeNull();
     expect(within(details).getByText("Interactions (1)")).toBeInTheDocument();
+    // Both genes show "Interactions (1)", so the BRC ID is what says the click kept geneB only.
+    expect(within(details).getByText("node-b")).toBeInTheDocument();
+    expect(within(details).queryByText("node-a")).toBeNull();
   });
 });

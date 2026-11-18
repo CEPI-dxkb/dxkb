@@ -4,6 +4,7 @@ import {
   useEffect,
   useEffectEvent,
   useImperativeHandle,
+  useMemo,
   useRef,
   useState,
   type CSSProperties,
@@ -150,7 +151,9 @@ interface TooltipState {
 
 // Sigma turns a second click inside its double-click window into `doubleClick*` (never `click*`)
 // and zooms. A quick Cmd/Ctrl pair must still toggle twice, so an additive double-click is handled
-// as a click with sigma's zoom suppressed; a plain double-click keeps zooming.
+// as a click with sigma's zoom suppressed; a plain double-click keeps zooming. Sigma's drag check
+// (`draggedEvents`) applies only to `click`, so a Cmd press-drag-release within 300 ms of a
+// Cmd-click arrives as `doubleClick*` and toggles; accepted.
 function additiveDoubleClick<P extends SigmaEventPayload>(
   handler: (payload: P) => void,
 ) {
@@ -306,7 +309,10 @@ export function SigmaCanvas({
   const [tooltip, setTooltip] = useState<TooltipState | null>(null);
   const selectedNodeIds = new Set(selection.nodes.map((node) => node.id));
   const selectedEdgeIds = new Set(selection.edges.map((edge) => edge.id));
-  const focus = computeSelectionFocus(buildIncidenceIndex(edges), selection);
+  // Its own `[edges]` slot: the compiler fuses two plain consecutive calls into one scope keyed on
+  // `[edges, selection]`, which would rebuild the index on every selection change.
+  const incidence = useMemo(() => buildIncidenceIndex(edges), [edges]);
+  const focus = computeSelectionFocus(incidence, selection);
 
   return (
     <div className="relative size-full">

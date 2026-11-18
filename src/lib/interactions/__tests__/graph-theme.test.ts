@@ -202,6 +202,36 @@ describe("highlight reducers", () => {
       });
     });
 
+    it("does not flag a node highlighted when several are selected", () => {
+      const reduce = nodeHighlightReducer(new Set(["n1", "n2"]), focus);
+      expect(reduce("n1", baseNode)).toEqual({
+        ...baseNode,
+        color: colors.selected,
+        zIndex: 2,
+        highlighted: false,
+      });
+    });
+
+    it("lets a hovered edge inside the focus keep the hover colour", () => {
+      const reduce = edgeHighlightReducer(new Set(), "e1", focus);
+      expect(reduce("e1", baseEdge)).toEqual({
+        ...baseEdge,
+        color: renderEdgeHover,
+        size: 2,
+        zIndex: 2,
+      });
+    });
+
+    it("lets a selected edge inside the focus keep the selected colour", () => {
+      const reduce = edgeHighlightReducer(new Set(["e1"]), null, focus);
+      expect(reduce("e1", baseEdge)).toEqual({
+        ...baseEdge,
+        color: colors.edgeSelected,
+        size: 2,
+        zIndex: 2,
+      });
+    });
+
     it("leaves everything untouched when the focus is null", () => {
       expect(nodeHighlightReducer(new Set(), null)("n9", baseNode)).toBe(
         baseNode,
@@ -212,10 +242,15 @@ describe("highlight reducers", () => {
     });
   });
 
-  it("gives the dim colours alpha well below the mesh so the focus reads clearly", () => {
-    expect(renderNodeDim.slice(7)).toBe("40");
-    expect(renderEdgeDim.slice(7)).toBe("0c");
-    expect(renderEdgeFocus.slice(7)).toBe("b3");
-    expect(renderEdgeFocusExperimental.slice(7)).toBe("b3");
+  it("pins the dim and focus alpha", () => {
+    expect(renderNodeDim.slice(7)).toBe("66");
+    expect(renderEdgeDim.slice(7)).toBe("14");
+    expect(renderEdgeFocus.slice(7)).toBe("e6");
+    expect(renderEdgeFocusExperimental.slice(7)).toBe("e6");
+  });
+
+  it("premultiplies the dim colour's RGB by its alpha", () => {
+    const want = channels(colors.dim).map((v) => Math.round((v * 0x66) / 255));
+    expect(channels(renderNodeDim)).toEqual(want);
   });
 });

@@ -102,6 +102,32 @@ describe("GraphDetailPanel", () => {
         screen.getByText("…and 5 more proteins not shown."),
       ).toBeInTheDocument();
     });
+
+    it("closes each kind's list with its own note when both kinds are capped", () => {
+      const manyNodes: GNode[] = Array.from({ length: detailCardLimit + 1 }, (_, i) => ({
+        id: `fig|${String(i)}`,
+        gene: `g${String(i)}`,
+        kind: "microbial",
+      }));
+      const manyEdges: GEdge[] = Array.from({ length: detailCardLimit + 1 }, (_, i) => ({
+        ...edge,
+        id: `edge-${String(i)}`,
+      }));
+      renderPanel({ selection: { nodes: manyNodes, edges: manyEdges } });
+
+      const proteinNote = screen.getByText("…and 1 more protein not shown.");
+      const interactionNote = screen.getByText("…and 1 more interaction not shown.");
+      expect(screen.getAllByRole("listitem")).toHaveLength(detailCardLimit * 2);
+
+      // The proteins note closes the protein cards, so it comes before the first interaction card.
+      const firstEdgeCard = screen.getAllByText("Interaction", { selector: "p" })[0];
+      expect(
+        proteinNote.compareDocumentPosition(firstEdgeCard) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
+      expect(
+        firstEdgeCard.compareDocumentPosition(interactionNote) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
+    });
   });
 
   describe("node selected", () => {

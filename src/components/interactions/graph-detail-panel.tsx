@@ -84,27 +84,33 @@ export function GraphDetailPanel({ selection, incidentEdgesByNode, nodesById, on
             {plural(selection.edges.length, "interaction", "interactions")} selected.
           </p>
         </div>
-        <ul className="flex flex-col gap-3">
-          {shownNodes.map((node) => (
-            <li key={node.id} className="flex flex-col gap-2 border-t pt-3">
-              <p className="font-medium break-all text-foreground">{node.gene || node.id}</p>
-              <NodeFields node={node} />
-              <p className="text-muted-foreground">
-                Interactions: {incidentEdgesByNode.get(node.id)?.length ?? 0}
-              </p>
-            </li>
-          ))}
-          {shownEdges.map((edge) => (
-            <li key={edge.id} className="flex flex-col gap-2 border-t pt-3">
-              <p className="font-medium text-foreground">Interaction</p>
-              <EdgeFields edge={edge} nodesById={nodesById} />
-            </li>
-          ))}
-        </ul>
+        {shownNodes.length > 0 && (
+          <ul className="flex flex-col gap-3">
+            {shownNodes.map((node) => (
+              <li key={`node:${node.id}`} className="flex flex-col gap-2 border-t pt-3">
+                <p className="font-medium break-all text-foreground">{node.gene || node.id}</p>
+                <NodeFields node={node} />
+                <p className="text-muted-foreground">
+                  Interactions: {incidentEdgesByNode.get(node.id)?.length ?? 0}
+                </p>
+              </li>
+            ))}
+          </ul>
+        )}
         {hiddenNodes > 0 && (
           <p className="text-muted-foreground">
             …and {hiddenNodes} more {hiddenNodes === 1 ? "protein" : "proteins"} not shown.
           </p>
+        )}
+        {shownEdges.length > 0 && (
+          <ul className="flex flex-col gap-3">
+            {shownEdges.map((edge) => (
+              <li key={`edge:${edge.id}`} className="flex flex-col gap-2 border-t pt-3">
+                <p className="font-medium text-foreground">Interaction</p>
+                <EdgeFields edge={edge} nodesById={nodesById} />
+              </li>
+            ))}
+          </ul>
         )}
         {hiddenEdges > 0 && (
           <p className="text-muted-foreground">

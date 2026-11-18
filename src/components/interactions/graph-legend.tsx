@@ -52,8 +52,8 @@ export function GraphLegend() {
         </text>
       </svg>
       <p className="mt-2 text-xs text-muted-foreground">
-        Click a node to highlight its neighbours. ⌘/Ctrl-click adds to the
-        selection.
+        Click a node to highlight its neighbors. ⌘/Ctrl-click adds or removes
+        it.
       </p>
     </>
   );

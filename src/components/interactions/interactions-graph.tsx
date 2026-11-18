@@ -164,7 +164,9 @@ export function InteractionsGraph({
   }
   function selectNode(node: GNode, additive = false) {
     clearActivePreset();
-    setSelection(applySelectionClick(selection, { kind: "node", node }, additive));
+    setSelection((prev) =>
+      applySelectionClick(prev, { kind: "node", node }, additive),
+    );
   }
   function selectEdge(edge: GEdge) {
     clearActivePreset();

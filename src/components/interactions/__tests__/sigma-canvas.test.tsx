@@ -340,6 +340,65 @@ describe("SigmaCanvas selection clicks", () => {
     });
   });
 
+  it("suppresses sigma's zoom on a Cmd double-click of empty stage without clearing", () => {
+    const onSelect = vi.fn();
+    renderQuad({ onSelect, selection: { nodes: [quad[0]], edges: [] } });
+    const payload = stageClick({ metaKey: true });
+
+    handlers().doubleClickStage(payload);
+
+    expect(payload.preventSigmaDefault).toHaveBeenCalled();
+    expect(onSelect).not.toHaveBeenCalled();
+  });
+
+  it("toggles an edge on a Cmd double-click", () => {
+    const onSelect = vi.fn();
+    renderQuad({ onSelect });
+    const payload = {
+      edge: "c-d",
+      event: { original: { metaKey: true, ctrlKey: false } },
+      preventSigmaDefault: vi.fn(),
+    };
+
+    handlers().doubleClickEdge(payload);
+
+    expect(payload.preventSigmaDefault).toHaveBeenCalled();
+    expect(onSelect).toHaveBeenCalledWith({
+      nodes: [],
+      edges: [expect.objectContaining({ id: "c-d" })],
+    });
+  });
+
+  it("toggles against the latest selection through handlers registered earlier", () => {
+    const onSelect = vi.fn();
+    const { rerender } = renderQuad({
+      onSelect,
+      selection: { nodes: [quad[2]], edges: [] },
+    });
+    // Sigma keeps the first handlers it was given; they must not close over the first selection.
+    const firstHandlers = sigmaStub.registerEvents.mock.calls[0][0] as Record<
+      string,
+      Handler
+    >;
+
+    rerender(
+      canvas({
+        nodes: quad,
+        edges: quadEdges,
+        positions: quadPositions,
+        onSelect,
+        selection: { nodes: [quad[2], quad[0]], edges: [] },
+      }),
+    );
+    firstHandlers.clickNode(nodeClick("a", { ctrlKey: true }));
+
+    expect(onSelect).toHaveBeenCalledTimes(1);
+    expect(onSelect).toHaveBeenCalledWith({
+      nodes: [expect.objectContaining({ id: "c" })],
+      edges: [],
+    });
+  });
+
   it("leaves a plain double-click to sigma's zoom", () => {
     const onSelect = vi.fn();
     renderQuad({ onSelect });

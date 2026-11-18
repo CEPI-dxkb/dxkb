@@ -4,11 +4,22 @@ export type SelectionTarget =
   | { kind: "node"; node: GNode }
   | { kind: "edge"; edge: GEdge };
 
-/** What stays lit while something is selected; everything else is dimmed. */
+/**
+ * What stays lit while something is selected; everything else is dimmed. The sets cover the
+ * lit surroundings, not the selection itself: the reducers test `selectedIds` before `focus`, so
+ * callers must not rely on these sets to contain a selected item.
+ */
 export interface SelectionFocus {
-  /** Neighbours of selected nodes, plus the endpoints of selected edges. */
+  /**
+   * Both endpoints of every edge touching a selected node, plus the endpoints of selected edges.
+   * A selected node enters this set only through its incident edges, so an isolated selected node
+   * is absent.
+   */
   nodes: ReadonlySet<string>;
-  /** Every edge touching a selected node. */
+  /**
+   * Every edge touching a selected node. Selecting an edge does not add it here (it keeps its own
+   * selected colour); only its endpoints land in `nodes`.
+   */
   edges: ReadonlySet<string>;
 }
 

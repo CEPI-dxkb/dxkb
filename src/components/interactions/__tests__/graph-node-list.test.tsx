@@ -248,4 +248,23 @@ describe("GraphNodeList", () => {
 
     expect(onSelectNode).toHaveBeenCalledWith(nodes[0], true);
   });
+
+  it("reports Ctrl+Enter on the highlighted row as additive", async () => {
+    const user = userEvent.setup();
+    const onSelectNode = vi.fn();
+    render(
+      <GraphNodeList
+        nodes={nodes}
+        selectedIds={new Set()}
+        onSelectNode={onSelectNode}
+      />,
+    );
+
+    const input = screen.getByPlaceholderText("Search proteins…");
+    await user.click(input);
+    await user.type(input, "dna");
+    fireEvent.keyDown(input, { key: "Enter", ctrlKey: true });
+
+    expect(onSelectNode).toHaveBeenCalledWith(nodes[0], true);
+  });
 });

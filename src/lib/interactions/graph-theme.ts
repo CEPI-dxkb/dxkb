@@ -7,6 +7,8 @@ export const colors = {
   edge: "#555555",
   edgeExperimental: "#3F51B5",
   edgeSelected: "#FF1493",
+  dim: "#8C8C8C",
+  edgeExperimentalFocus: "#7986CB",
 } as const;
 
 // Low alpha keeps thousands of overlapping edges from becoming a solid fill (0x28 = 40/255, ~16%).
@@ -37,14 +39,15 @@ export const renderEdgeHover = premultiply(colors.edgeSelected, 0x99);
 
 // Selection focus: while something is selected every other node/edge is recoloured to a faint
 // translucent grey (still hit-testable, unlike `hidden`), and the selected nodes' edges get a
-// stronger version of their own hue. All premultiplied, for the reason above, and translucent
-// rather than light so they read as "dim" on both light and dark `--graph-surface` themes.
-export const renderNodeDim = premultiply(colors.edge, 0x40);
-export const renderEdgeDim = premultiply(colors.edge, 0x0c);
-export const renderEdgeFocus = premultiply(colors.edge, 0xb3);
+// stronger version of their own hue. A mid-grey sits between the light and dark `--graph-surface`
+// themes, so the same translucent value reads as "dim" on both. Everything stays premultiplied:
+// sigma blends premultiplied but its shaders emit straight alpha.
+export const renderNodeDim = premultiply(colors.dim, 0x66);
+export const renderEdgeDim = premultiply(colors.dim, 0x14);
+export const renderEdgeFocus = premultiply(colors.dim, 0xe6);
 export const renderEdgeFocusExperimental = premultiply(
-  colors.edgeExperimental,
-  0xb3,
+  colors.edgeExperimentalFocus,
+  0xe6,
 );
 
 // Reducers recolor selected nodes/edges and, while anything is selected, dim everything outside the

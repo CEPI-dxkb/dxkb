@@ -72,10 +72,16 @@ describe("computeSelectionFocus", () => {
     expect(focus?.edges.size).toBe(0);
   });
 
-  it("unions several selected nodes and an isolated node focuses only itself", () => {
+  it("unions several selected nodes; an isolated selected node adds nothing", () => {
     const focus = computeSelectionFocus(index, { nodes: [b, d], edges: [] });
     expect([...(focus?.nodes ?? [])].sort()).toEqual(["a", "b"]);
     expect([...(focus?.edges ?? [])].sort()).toEqual(["ab", "ab2"]);
+  });
+
+  it("unions a selected node's surroundings with a selected edge's endpoints", () => {
+    const focus = computeSelectionFocus(index, { nodes: [c], edges: [ab] });
+    expect([...(focus?.nodes ?? [])].sort()).toEqual(["a", "b", "c"]);
+    expect([...(focus?.edges ?? [])].sort()).toEqual(["ac", "cc"]);
   });
 
   it("treats a self-loop as its own neighbour", () => {
@@ -135,6 +141,20 @@ describe("applySelectionClick", () => {
       true,
     );
     expect(removed).toEqual({ nodes: [a], edges: [] });
+  });
+
+  it("selects the node on an additive click from an empty selection", () => {
+    const next = applySelectionClick(empty, { kind: "node", node: a }, true);
+    expect(next).toEqual({ nodes: [a], edges: [] });
+  });
+
+  it("keeps the sole selected node selected on a plain click of it", () => {
+    const next = applySelectionClick(
+      { nodes: [a], edges: [] },
+      { kind: "node", node: a },
+      false,
+    );
+    expect(next).toEqual({ nodes: [a], edges: [] });
   });
 
   it("matches by id, so a node carrying extra canvas attributes still toggles off", () => {

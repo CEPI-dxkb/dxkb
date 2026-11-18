@@ -372,13 +372,19 @@ function createColumnDefs(columns: DataTableColumn[]) {
             </span>
           );
         }
-        const scalarValueHref = valueHref
-          ? resolveLink(
-              valueHref,
-              { ...info.row.original, [column.id]: displayValue },
-              column.id,
-            )
-          : undefined;
+        // A cross-field template (`/feature/{feature_id_a}`) resolves without
+        // the cell's own value, so an empty cell would render an invisible,
+        // nameless anchor; keep it plain text.
+        const isEmptyValue =
+          value === undefined || value === null || value === "";
+        const scalarValueHref =
+          valueHref && !isEmptyValue
+            ? resolveLink(
+                valueHref,
+                { ...info.row.original, [column.id]: displayValue },
+                column.id,
+              )
+            : undefined;
         const cellHref = scalarValueHref ?? href;
         return cellHref && classifyHref(cellHref) !== "unsafe" ? (
           <TableValueLink

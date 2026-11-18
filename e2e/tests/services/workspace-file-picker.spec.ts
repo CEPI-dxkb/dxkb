@@ -38,8 +38,16 @@ const dir = (parentPath: string, name: string, type = "folder"): TupleItem => ({
   parentPath,
 });
 
+// The BV-BRC Workshop place lists this foreign, read-only public folder.
+const workshopPath = "/ARWattam@patricbrc.org/BV-BRC Workshop";
+
 /** One file of every type the services ask for, plus a job result holding contigs. */
 function fileTree(): Record<string, TupleItem[]> {
+  const readOnly = {
+    ownerId: "ARWattam@patricbrc.org",
+    userPermission: "r",
+    globalPermission: "r",
+  };
   return {
     [home]: [
       dir(home, "Assembly1", "job_result"),
@@ -59,6 +67,13 @@ function fileTree(): Record<string, TupleItem[]> {
       file(`${home}/Inputs`, "groups.tsv", "tsv"),
       file(`${home}/Inputs`, "Flu genomes", "genome_group"),
       file(`${home}/Inputs`, "HA features", "feature_group"),
+    ],
+    [workshopPath]: [{ ...dir(workshopPath, "Assembly"), ...readOnly }],
+    [`${workshopPath}/Assembly`]: [
+      {
+        ...file(`${workshopPath}/Assembly`, "workshop-contigs.fasta", "contigs"),
+        ...readOnly,
+      },
     ],
   };
 }
@@ -439,6 +454,58 @@ test.describe("file picker: the chosen file reaches the job", () => {
     );
   });
 
+  test("Genome Annotation: contigs picked from the BV-BRC Workshop place are submitted", async ({
+    page,
+  }) => {
+    await prefillRerun(page, "e2e-annotation-rerun", {
+      output_path: home,
+      output_file: "Escherichia coli e2e",
+      recipe: "default",
+      scientific_name: "Escherichia coli",
+      taxonomy_id: "562",
+      my_label: "e2e",
+    });
+    await openService(
+      page,
+      "/services/genome-annotation?rerun_key=e2e-annotation-rerun",
+      {
+        submits: "GenomeAnnotation",
+        extra: [
+          taxonomyOverride([{ taxon_id: 562, taxon_name: "Escherichia coli" }]),
+        ],
+      },
+    );
+    const form = new ServiceFormPage(page, /genome annotation/i);
+    await expect(form.heading).toBeVisible();
+
+    const placeholder =
+      "Select or Upload Contigs to your workspace for Annotation";
+    const picker = new FolderPickerDialog(page, "Select a File", {
+      browseButton: browseButtonFor(page, placeholder),
+    });
+    await picker.open();
+    await picker.places
+      .getByRole("button", { name: "BV-BRC Workshop" })
+      .click();
+    await picker.option("BV-BRC Workshop", "Assembly").click();
+    await expect(picker.column("Assembly")).toBeVisible();
+    await picker.fileOption("Assembly", "workshop-contigs.fasta").dblclick();
+    await expect(picker.dialog).toBeHidden();
+    await expect(selectorInputFor(page, placeholder)).toHaveValue(
+      "workshop-contigs.fasta",
+    );
+
+    const submission = nextSubmission(page);
+    await expect(page.getByRole("button", { name: "Annotate" })).toBeEnabled();
+    await form.submit("Annotate");
+    const payload = (await submission).postDataJSON() as {
+      app_params?: Record<string, unknown>;
+    };
+    expect(payload.app_params?.contigs).toBe(
+      `${workshopPath}/Assembly/workshop-contigs.fasta`,
+    );
+  });
+
   test("Proteome Comparison: a protein FASTA picked with Browse is added to the list", async ({
     page,
   }) => {
@@ -467,7 +534,7 @@ test.describe("file picker: upload, then pick", () => {
     });
     await picker.open();
     await picker.option("Home", "Inputs").click();
-    await picker.dialog.getByRole("button", { name: "Upload here" }).click();
+    await picker.uploadButton.click();
     // The trigger's text also holds its arrow, so read the value.
     await expect(
       picker.dialog

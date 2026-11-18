@@ -1,6 +1,13 @@
 import Graph from "graphology";
 
-import type { GEdge, GNode, GraphSelection, HubSelection, SubgraphSelection } from "./types";
+import type {
+  GEdge,
+  GNode,
+  GraphSelection,
+  GraphSelectionRef,
+  HubSelection,
+  SubgraphSelection,
+} from "./types";
 
 interface GraphSelectionIndex {
   components: string[][];
@@ -77,4 +84,41 @@ export function selectHubs(index: GraphSelectionIndex, threshold: HubSelection):
     if (threshold === "max" ? neighbors.size === maxDegree : neighbors.size >= threshold) nodeIds.add(id);
   }
   return selectionFromNodeIds(index, nodeIds, false);
+}
+
+/** An id the loaded graph does not hold (a stale or hand-edited URL) resolves to no selection. */
+export function resolveGraphSelection(
+  index: GraphSelectionIndex,
+  ref: GraphSelectionRef | null,
+): GraphSelection {
+  if (ref?.kind === "node") {
+    const node = index.nodesById.get(ref.id);
+    return { nodes: node ? [node] : [], edges: [] };
+  }
+  if (ref?.kind === "edge") {
+    const edge = index.edges.find((candidate) => candidate.id === ref.id);
+    return { nodes: [], edges: edge ? [edge] : [] };
+  }
+  return { nodes: [], edges: [] };
+}
+
+/** Exactly one node or one edge; any other selection has no single id. */
+export function singleSelectionRef(
+  selection: GraphSelection,
+): GraphSelectionRef | null {
+  const { nodes, edges } = selection;
+  if (nodes.length === 1 && edges.length === 0) {
+    return { kind: "node", id: nodes[0].id };
+  }
+  if (nodes.length === 0 && edges.length === 1) {
+    return { kind: "edge", id: edges[0].id };
+  }
+  return null;
+}
+
+/** The focused protein as the single selection: a focus is the one thing a new result set selects. */
+export function focusSelectionRef(
+  focusId: string | undefined,
+): GraphSelectionRef | null {
+  return focusId ? { kind: "node", id: focusId } : null;
 }

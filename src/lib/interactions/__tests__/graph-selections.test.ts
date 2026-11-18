@@ -1,4 +1,10 @@
-import { buildGraphSelectionIndex, selectHubs, selectSubgraphs } from "../graph-selections";
+import {
+  buildGraphSelectionIndex,
+  resolveGraphSelection,
+  selectHubs,
+  selectSubgraphs,
+  singleSelectionRef,
+} from "../graph-selections";
 import type { GEdge, GNode } from "../types";
 
 const nodes = ["a", "b", "c", "d", "e", "f", "x", "y"].map((id): GNode => ({
@@ -52,5 +58,40 @@ describe("graph selections", () => {
 
     const selected = selectHubs(index, "max");
     expect(selected.nodes.map((node) => node.id)).toEqual(["a"]);
+  });
+});
+
+describe("single selection refs", () => {
+  it("resolves a node or edge id against the loaded graph", () => {
+    expect(resolveGraphSelection(index, { kind: "node", id: "b" })).toEqual({
+      nodes: [nodes[1]],
+      edges: [],
+    });
+    expect(resolveGraphSelection(index, { kind: "edge", id: "e6" })).toEqual({
+      nodes: [],
+      edges: [edges[6]],
+    });
+  });
+
+  it("resolves nothing for no ref or an id the loaded graph does not hold", () => {
+    const empty = { nodes: [], edges: [] };
+    expect(resolveGraphSelection(index, null)).toEqual(empty);
+    expect(resolveGraphSelection(index, { kind: "node", id: "gone" })).toEqual(empty);
+    expect(resolveGraphSelection(index, { kind: "edge", id: "a" })).toEqual(empty);
+    expect(resolveGraphSelection(index, { kind: "node", id: "e0" })).toEqual(empty);
+  });
+
+  it("names a selection of exactly one node or one edge, and nothing else", () => {
+    expect(singleSelectionRef({ nodes: [nodes[0]], edges: [] })).toEqual({
+      kind: "node",
+      id: "a",
+    });
+    expect(singleSelectionRef({ nodes: [], edges: [edges[2]] })).toEqual({
+      kind: "edge",
+      id: "e2",
+    });
+    expect(singleSelectionRef({ nodes: [], edges: [] })).toBeNull();
+    expect(singleSelectionRef({ nodes: [nodes[0]], edges: [edges[0]] })).toBeNull();
+    expect(singleSelectionRef({ nodes: nodes.slice(0, 2), edges: [] })).toBeNull();
   });
 });

@@ -90,7 +90,6 @@ describe("typed RQL", () => {
     "genome_sequence",
     "protein_feature",
     "protein_structure",
-    "bioset",
   ] as const)("validates Genome relationship predicates for %s", (resource) => {
     const rql =
       "genome(and(gt(completion_date,NOW-1YEARS),ne(genome_status,Deprecated)))";

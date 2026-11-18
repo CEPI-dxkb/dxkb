@@ -1,9 +1,6 @@
 import { renderHook } from "@testing-library/react";
 import { childCollectionOptions } from "@/lib/views/child-collection-state";
-import {
-  resetChildCollectionPage,
-  useChildCollectionUrlState,
-} from "../use-child-collection-url-state";
+import { useChildCollectionUrlState } from "../use-child-collection-url-state";
 
 vi.mock("next/navigation", () => ({
   usePathname: () => "/genome/1.1",
@@ -198,25 +195,5 @@ describe("useChildCollectionUrlState history entries", () => {
 
     expect(replaceState).toHaveBeenCalledOnce();
     expect(pushState).toHaveBeenCalledOnce();
-  });
-});
-
-describe("resetChildCollectionPage", () => {
-  it("drops the page param without adding a history entry", () => {
-    const pushState = vi.spyOn(window.history, "pushState");
-    const replaceState = vi.spyOn(window.history, "replaceState");
-    resetChildCollectionPage("features");
-    expect(pushState).not.toHaveBeenCalled();
-    expect(replaceState).toHaveBeenCalledWith(
-      null,
-      "",
-      "/genome/1.1?tab=features&domains.page=5#legacy",
-    );
-  });
-
-  it("leaves the URL alone when there is no page to drop", () => {
-    const replaceState = vi.spyOn(window.history, "replaceState");
-    resetChildCollectionPage("sequences");
-    expect(replaceState).not.toHaveBeenCalled();
   });
 });

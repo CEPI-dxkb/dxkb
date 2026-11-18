@@ -31,9 +31,11 @@ import {
 import type {
   GEdge,
   GNode,
+  GraphCameraView,
   GraphCanvasProps,
   GraphSelection,
 } from "@/lib/interactions/types";
+import { cameraUrlView } from "@/lib/interactions/url-state";
 
 import { ZoomControl } from "./zoom-control";
 
@@ -82,19 +84,52 @@ interface GraphLoaderProps {
   nodes: GNode[];
   edges: GEdge[];
   positions: Float64Array | null;
+  camera: GraphCameraView | null;
 }
 
-interface LoadedGraph extends GraphLoaderProps {
-  sigma: ReturnType<typeof useSigma>;
+type Sigma = ReturnType<typeof useSigma>;
+
+interface LoadedGraph extends Omit<GraphLoaderProps, "camera"> {
+  sigma: Sigma;
+}
+
+const defaultCameraState = { x: 0.5, y: 0.5, ratio: 1, angle: 0 };
+
+/**
+ * A Sigma instance's first load takes the URL's camera (Back or a reload); a later load into the
+ * same instance is new rows, for which an old camera means nothing, so it re-fits. Keyed by
+ * instance because `SigmaContainer` copies the previous instance's camera onto a recreated one
+ * (Strict Mode, a settings change); the URL's camera is applied over that copy, and a first load
+ * with none resets it to the default.
+ */
+function frameLoadedGraph(
+  sigma: Sigma,
+  restore: GraphCameraView | null,
+): void {
+  const camera = sigma.getCamera();
+  if (restore === null) {
+    camera.setState(defaultCameraState);
+    return;
+  }
+  camera.setState({
+    ratio: camera.getBoundedRatio(restore.ratio),
+    x: restore.x,
+    y: restore.y,
+  });
 }
 
 // Positions arrive after nodes; new nodes clear the previous graph until their positions exist (so
 // a failed layout never leaves a stale clickable graph), and new positions for the same nodes move
 // them in place.
-function GraphLoader({ nodes, edges, positions }: GraphLoaderProps) {
+function GraphLoader({ nodes, edges, positions, camera }: GraphLoaderProps) {
   const sigma = useSigma();
   const loadGraph = useLoadGraph();
   const loaded = useRef<LoadedGraph | null>(null);
+  const framedSigmaRef = useRef<Sigma | null>(null);
+  // Read at load time, not a dependency: the URL's camera changes as the user moves.
+  const restoreCamera = useEffectEvent(() =>
+    framedSigmaRef.current === sigma ? null : camera,
+  );
   useEffect(() => {
     const previous = loaded.current;
     const sameGraph =
@@ -111,6 +146,8 @@ function GraphLoader({ nodes, edges, positions }: GraphLoaderProps) {
     loaded.current = { nodes, edges, positions, sigma };
     if (!sameGraph) {
       loadGraph(buildGraph(nodes, edges, positions));
+      frameLoadedGraph(sigma, restoreCamera());
+      framedSigmaRef.current = sigma;
       return;
     }
     if (previous.positions === positions) return;
@@ -124,6 +161,49 @@ function GraphLoader({ nodes, edges, positions }: GraphLoaderProps) {
     // extent.
     void sigma.getCamera().animatedReset();
   }, [nodes, edges, positions, loadGraph, sigma]);
+  return null;
+}
+
+const cameraWriteDelayMs = 250;
+
+/** The page and tab a camera report belongs to; the report is dropped if either has changed. */
+function cameraReportScope(): string {
+  const { pathname, search } = window.location;
+  return `${pathname}?tab=${new URLSearchParams(search).get("tab") ?? ""}`;
+}
+
+/**
+ * Sigma emits "updated" every frame of a pan or zoom, so this reports only once the camera rests.
+ * Unmounting cancels a pending report rather than flushing it: after a link click it would land on
+ * the next page's URL. Next pushes that URL during commit, before this effect's cleanup runs, so a
+ * timer that falls due in between is dropped by comparing the page and tab it was scheduled on.
+ */
+function CameraReporter({
+  onCameraChange,
+}: {
+  onCameraChange?: (camera: GraphCameraView | null) => void;
+}) {
+  const sigma = useSigma();
+  const report = useEffectEvent((camera: GraphCameraView | null) => {
+    onCameraChange?.(camera);
+  });
+  useEffect(() => {
+    const camera = sigma.getCamera();
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const update = () => {
+      clearTimeout(timer);
+      const scope = cameraReportScope();
+      timer = setTimeout(() => {
+        if (cameraReportScope() !== scope) return;
+        report(cameraUrlView(camera.getState()));
+      }, cameraWriteDelayMs);
+    };
+    camera.on("updated", update);
+    return () => {
+      camera.off("updated", update);
+      clearTimeout(timer);
+    };
+  }, [sigma]);
   return null;
 }
 
@@ -253,6 +333,8 @@ export function SigmaCanvas({
   onSelect,
   handleRef,
   onReady,
+  camera = null,
+  onCameraChange,
 }: GraphCanvasProps) {
   const [tooltip, setTooltip] = useState<TooltipState | null>(null);
   const selectedNodeIds = new Set(selection.nodes.map((node) => node.id));
@@ -282,7 +364,13 @@ export function SigmaCanvas({
           defaultDrawNodeHover: drawNodeHover,
         }}
       >
-        <GraphLoader nodes={nodes} edges={edges} positions={positions} />
+        <CameraReporter onCameraChange={onCameraChange} />
+        <GraphLoader
+          nodes={nodes}
+          edges={edges}
+          positions={positions}
+          camera={camera}
+        />
         <GraphEvents
           onSelect={onSelect}
           onHover={setTooltip}

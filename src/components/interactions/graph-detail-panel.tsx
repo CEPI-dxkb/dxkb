@@ -1,5 +1,7 @@
+import type { ReactNode } from "react";
 import { Info } from "lucide-react";
 
+import { MetadataLink } from "@/components/detail-panel/metadata-link";
 import { Button } from "@/components/ui/button";
 import {
   Popover,
@@ -9,7 +11,9 @@ import {
   PopoverTitle,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { isGenomeId } from "@/lib/genome-view/schema";
 import type { GEdge, GNode, GraphSelection } from "@/lib/interactions/types";
+import { featureHref, genomeHref } from "@/lib/views/hrefs";
 
 interface GraphDetailPanelProps {
   selection: GraphSelection;
@@ -23,6 +27,22 @@ interface GraphDetailPanelProps {
 function endpointLabel(nodesById: Map<string, GNode>, id: string): string {
   const n = nodesById.get(id);
   return n?.gene || id;
+}
+
+function featureLinkHref(node: GNode | undefined): string | null {
+  if (!node?.featureId || node.kind === "host") return null;
+  return featureHref(node.featureId);
+}
+
+function genomeLinkHref(node: GNode | undefined): string | null {
+  if (!node?.genomeId || node.kind === "host" || !isGenomeId(node.genomeId)) {
+    return null;
+  }
+  return genomeHref(node.genomeId);
+}
+
+function MaybeLink({ href, children }: { href: string | null; children: ReactNode }) {
+  return href ? <MetadataLink href={href}>{children}</MetadataLink> : children;
 }
 
 export function GraphDetailPanel({ selection, incidentEdges, nodesById, onSelectEdge, onFocusNode }: GraphDetailPanelProps) {
@@ -52,13 +72,29 @@ export function GraphDetailPanel({ selection, incidentEdges, nodesById, onSelect
         <div key={node.id} className="flex flex-col gap-2">
           <dl className="grid grid-cols-[auto_1fr] gap-x-2 gap-y-1">
             <dt className="font-medium text-foreground">BRC ID</dt>
-            <dd className="break-all text-muted-foreground">{node.id}</dd>
+            <dd className="break-all text-muted-foreground">
+              <MaybeLink href={featureLinkHref(node)}>{node.id}</MaybeLink>
+            </dd>
             <dt className="font-medium text-foreground">Genome</dt>
-            <dd className="break-all text-muted-foreground">{node.genome || "—"}</dd>
+            <dd className="break-all text-muted-foreground">
+              {node.genome || node.genomeId ? (
+                <MaybeLink href={genomeLinkHref(node)}>
+                  {node.genome || node.genomeId}
+                </MaybeLink>
+              ) : (
+                "—"
+              )}
+            </dd>
             <dt className="font-medium text-foreground">Locus tag</dt>
             <dd className="break-all text-muted-foreground">{node.refseqLocusTag || "—"}</dd>
             <dt className="font-medium text-foreground">Gene</dt>
-            <dd className="break-all text-muted-foreground">{node.gene || "—"}</dd>
+            <dd className="break-all text-muted-foreground">
+              {node.gene ? (
+                <MaybeLink href={featureLinkHref(node)}>{node.gene}</MaybeLink>
+              ) : (
+                "—"
+              )}
+            </dd>
             <dt className="font-medium text-foreground">Product</dt>
             <dd className="break-all text-muted-foreground">{node.interactorDesc || "—"}</dd>
           </dl>
@@ -128,9 +164,17 @@ export function GraphDetailPanel({ selection, incidentEdges, nodesById, onSelect
           <p className="font-medium text-foreground">Interaction</p>
           <dl className="grid grid-cols-[auto_1fr] gap-x-2 gap-y-1">
             <dt className="font-medium text-foreground">From</dt>
-            <dd className="break-all text-muted-foreground">{endpointLabel(nodesById, edge.source)}</dd>
+            <dd className="break-all text-muted-foreground">
+              <MaybeLink href={featureLinkHref(nodesById.get(edge.source))}>
+                {endpointLabel(nodesById, edge.source)}
+              </MaybeLink>
+            </dd>
             <dt className="font-medium text-foreground">To</dt>
-            <dd className="break-all text-muted-foreground">{endpointLabel(nodesById, edge.target)}</dd>
+            <dd className="break-all text-muted-foreground">
+              <MaybeLink href={featureLinkHref(nodesById.get(edge.target))}>
+                {endpointLabel(nodesById, edge.target)}
+              </MaybeLink>
+            </dd>
             <dt className="font-medium text-foreground">Interaction type</dt>
             <dd className="break-all text-muted-foreground">{edge.interactionType || "—"}</dd>
             <dt className="font-medium text-foreground">Detection method</dt>

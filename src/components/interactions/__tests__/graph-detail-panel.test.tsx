@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { GraphDetailPanel } from "../graph-detail-panel";
@@ -13,6 +13,30 @@ const nodeA: GNode = {
   kind: "microbial",
 };
 const nodeB: GNode = { id: "fig|2.2", gene: "ftsA", kind: "host" };
+const linkedA: GNode = {
+  id: "fig|224914.16.peg.1",
+  featureId: "PATRIC.224914.16.CDS.1",
+  genomeId: "224914.16",
+  genome: "Brucella melitensis",
+  gene: "hisD",
+  kind: "microbial",
+};
+const linkedB: GNode = {
+  id: "fig|224914.16.peg.2",
+  featureId: "PATRIC.224914.16.CDS.2",
+  genomeId: "224914.16",
+  genome: "Brucella melitensis",
+  gene: "metH",
+  kind: "microbial",
+};
+const hostNode: GNode = {
+  id: "P12345",
+  featureId: "stray-feature",
+  genomeId: "9606.1",
+  genome: "Homo sapiens",
+  gene: "TP53",
+  kind: "host",
+};
 
 const edge: GEdge = {
   id: "e1",
@@ -24,9 +48,16 @@ const edge: GEdge = {
   experimental: false,
 };
 
+const linkedEdge: GEdge = { ...edge, id: "e2", source: linkedA.id, target: linkedB.id };
+
 const nodesById = new Map<string, GNode>([
   [nodeA.id, nodeA],
   [nodeB.id, nodeB],
+]);
+const linkedNodesById = new Map<string, GNode>([
+  [linkedA.id, linkedA],
+  [linkedB.id, linkedB],
+  [hostNode.id, hostNode],
 ]);
 
 const empty: GraphSelection = { nodes: [], edges: [] };
@@ -313,6 +344,102 @@ describe("GraphDetailPanel", () => {
       expect(screen.getByText("Interaction")).toHaveClass("text-foreground");
       expect(screen.getByText("From")).toHaveClass("text-foreground");
       expect(screen.getByText("predicted interaction")).toHaveClass("text-muted-foreground");
+    });
+  });
+
+  describe("links", () => {
+    it("links a selected node's BRC ID and gene to its feature and its genome to the genome page", () => {
+      renderPanel({
+        selection: { nodes: [linkedA], edges: [] },
+        nodesById: linkedNodesById,
+      });
+
+      expect(screen.getByRole("link", { name: linkedA.id })).toHaveAttribute(
+        "href",
+        "/feature/PATRIC.224914.16.CDS.1",
+      );
+      expect(screen.getByRole("link", { name: "hisD" })).toHaveAttribute(
+        "href",
+        "/feature/PATRIC.224914.16.CDS.1",
+      );
+      expect(
+        screen.getByRole("link", { name: "Brucella melitensis" }),
+      ).toHaveAttribute("href", "/genome/224914.16");
+    });
+
+    it("renders plain text when the node has no feature or genome id", () => {
+      renderPanel({ selection: { nodes: [nodeA], edges: [] } });
+      expect(screen.queryByRole("link")).not.toBeInTheDocument();
+    });
+
+    it("never links a host node, even when ids are present", () => {
+      renderPanel({
+        selection: { nodes: [hostNode], edges: [] },
+        nodesById: linkedNodesById,
+      });
+
+      expect(screen.getByText("Homo sapiens")).toBeInTheDocument();
+      expect(screen.queryByRole("link")).not.toBeInTheDocument();
+    });
+
+    it("does not link a genome whose id is not a genome id", () => {
+      const odd: GNode = { ...linkedA, genomeId: "not-a-genome-id" };
+      renderPanel({ selection: { nodes: [odd], edges: [] } });
+
+      expect(screen.getByText("Brucella melitensis")).toBeInTheDocument();
+      expect(
+        screen.queryByRole("link", { name: "Brucella melitensis" }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("shows the genome id as the linked label when the name is missing", () => {
+      const unnamed: GNode = { ...linkedA, genome: undefined };
+      renderPanel({ selection: { nodes: [unnamed], edges: [] } });
+
+      expect(screen.getByRole("link", { name: "224914.16" })).toHaveAttribute(
+        "href",
+        "/genome/224914.16",
+      );
+    });
+
+    it("links both endpoints of a selected edge to their feature pages", () => {
+      renderPanel({
+        selection: { nodes: [], edges: [linkedEdge] },
+        nodesById: linkedNodesById,
+      });
+
+      expect(screen.getByRole("link", { name: "hisD" })).toHaveAttribute(
+        "href",
+        "/feature/PATRIC.224914.16.CDS.1",
+      );
+      expect(screen.getByRole("link", { name: "metH" })).toHaveAttribute(
+        "href",
+        "/feature/PATRIC.224914.16.CDS.2",
+      );
+    });
+
+    it("leaves an edge endpoint missing from nodesById as plain text", () => {
+      const orphan: GEdge = { ...linkedEdge, target: "fig|9.9" };
+      renderPanel({
+        selection: { nodes: [], edges: [orphan] },
+        nodesById: linkedNodesById,
+      });
+
+      expect(screen.getByText("fig|9.9")).toBeInTheDocument();
+      expect(screen.queryByRole("link", { name: "fig|9.9" })).not.toBeInTheDocument();
+    });
+
+    it("keeps incident-edge rows as buttons, not links", () => {
+      renderPanel({
+        selection: { nodes: [linkedA], edges: [] },
+        nodesById: linkedNodesById,
+        incidentEdges: [linkedEdge],
+      });
+
+      const incidentButton = screen.getByRole("button", { name: /metH/ });
+      expect(incidentButton).toBeInTheDocument();
+      expect(within(incidentButton).queryByRole("link")).toBeNull();
+      expect(screen.queryByRole("link", { name: /predicted interaction/ })).not.toBeInTheDocument();
     });
   });
 });

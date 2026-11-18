@@ -44,6 +44,29 @@ describe("toGraph", () => {
     );
   });
 
+  it("carries genome ids for linking, separate from the genome name", () => {
+    const { nodes } = toGraph([
+      makeRow({
+        interactor_a: "interactor-a",
+        genome_id_a: "224914.16",
+        genome_name_a: "Brucella melitensis",
+        interactor_b: "interactor-b",
+        genome_id_b: "9606.1",
+        genome_name_b: "Homo sapiens",
+      }),
+    ]);
+
+    expect(nodes.find((n) => n.id === "interactor-a")).toEqual(
+      expect.objectContaining({
+        genomeId: "224914.16",
+        genome: "Brucella melitensis",
+      }),
+    );
+    expect(nodes.find((n) => n.id === "interactor-b")).toEqual(
+      expect.objectContaining({ genomeId: "9606.1", genome: "Homo sapiens" }),
+    );
+  });
+
   it("classifies Bacteria domain as microbial", () => {
     const { nodes } = toGraph([makeRow({ domain_a: "Bacteria" })]);
     expect(nodes.find((n) => n.id === "A")).toEqual(

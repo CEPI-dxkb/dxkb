@@ -53,6 +53,13 @@ export function genomeListHref(opts?: {
   return params.length ? `/genome?${params.join("&")}` : "/genome";
 }
 
+/** The Experiment search, optionally scoped by `rql` (a taxon lineage clause). */
+export function experimentListHref(opts?: { rql?: string }): string {
+  return opts?.rql
+    ? `/experiment?rql=${encodeQueryComponent(opts.rql)}`
+    : "/experiment";
+}
+
 export function featureIdFromRow(
   row: Record<string, unknown> | null,
 ): string | null {

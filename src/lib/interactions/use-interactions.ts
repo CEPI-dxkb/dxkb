@@ -33,6 +33,8 @@ export const interactionsGraphFields = [
   "feature_id_b",
   "gene_a",
   "gene_b",
+  "genome_id_a",
+  "genome_id_b",
   "genome_name_a",
   "genome_name_b",
   "refseq_locus_tag_a",

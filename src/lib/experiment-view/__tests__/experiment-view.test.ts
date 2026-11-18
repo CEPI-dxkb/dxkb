@@ -4,6 +4,8 @@ import {
   biosetViewRecordSchema,
   experimentBiosetCollectionRql,
   experimentBiosetRql,
+  experimentBiosetScopeRql,
+  maxBiosetScopeExperiments,
   experimentCollectionProfile,
   experimentCollectionScopeRql,
   experimentSorts,
@@ -15,6 +17,7 @@ import {
   parseExperimentCollectionTab,
   parseExperimentTab,
 } from "@/lib/experiment-view";
+import { validateRql } from "@/lib/data-api";
 
 describe("Experiment view", () => {
   it("validates positive digit strings without coercion", () => {
@@ -108,6 +111,27 @@ describe("Experiment view", () => {
       "in(exp_id,(00042,51))",
     );
     expect(genomeExperimentRql("83332.12")).toBe("eq(genome_id,83332.12)");
+  });
+
+  it("splits more experiment IDs than one in() takes into or-ed chunks the validator accepts", () => {
+    const ids = Array.from({ length: 791 }, (_, i) => String(i + 1));
+    const rql = experimentBiosetCollectionRql(ids);
+
+    expect(rql).toMatch(/^or\(in\(exp_id,\(1,2,/);
+    expect(rql.match(/in\(exp_id,/g)).toHaveLength(2);
+    expect(rql).toContain(",500)),in(exp_id,(501,");
+    expect(validateRql("bioset", rql)).toBe(rql);
+  });
+
+  it("gives no Bioset scope for an ID list too long for one query", () => {
+    expect(experimentBiosetScopeRql(["1", "2"])).toBe("in(exp_id,(1,2))");
+    const longIds = Array.from({ length: 1000 }, (_, i) => String(100000 + i));
+    expect(experimentBiosetScopeRql(longIds)).toBeNull();
+    const tooMany = Array.from(
+      { length: maxBiosetScopeExperiments + 1 },
+      (_, i) => String(i),
+    );
+    expect(experimentBiosetScopeRql(tooMany)).toBeNull();
   });
 
   it("preserves Experiment search scope for the collection Biosets tab", () => {

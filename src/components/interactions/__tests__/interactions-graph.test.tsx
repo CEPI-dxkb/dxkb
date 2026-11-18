@@ -18,7 +18,13 @@ import {
 } from "@/lib/interactions/use-interactions";
 import { requestGraphLayout } from "@/lib/interactions/layout-client";
 import { defaultLayout } from "@/lib/interactions/renderer-capabilities";
-import type { LayoutName, PpiRecord } from "@/lib/interactions/types";
+import type {
+  GraphCameraView,
+  GraphSelection,
+  GraphSelectionRef,
+  LayoutName,
+  PpiRecord,
+} from "@/lib/interactions/types";
 import { server } from "@/test-helpers/msw-server";
 import { stubMenuLayout } from "@/test-helpers/menu-layout";
 import { createQueryClientWrapper } from "@/test-helpers/react";
@@ -44,23 +50,43 @@ vi.mock("@/lib/interactions/layout-client", () => ({
   requestGraphLayout: vi.fn(),
 }));
 
+const canvasInputs = vi.hoisted(() => ({ nodes: [] as unknown[] }));
+
 vi.mock("../sigma/sigma-canvas", () => ({
   SigmaCanvas: ({
     onReady,
+    nodes,
     positions,
+    selection,
+    camera,
+    onCameraChange,
   }: {
     onReady: () => void;
+    nodes: unknown;
     positions: Float64Array | null;
-  }) => (
+    selection: GraphSelection;
+    camera?: GraphCameraView | null;
+    onCameraChange?: (camera: GraphCameraView | null) => void;
+  }) => {
+    canvasInputs.nodes.push(nodes);
+    return (
     <button
       type="button"
       data-testid="sigma-canvas"
       data-positions={positions ? String(positions.length) : "none"}
+      data-selection={[...selection.nodes, ...selection.edges]
+        .map((item) => item.id)
+        .join(",")}
+      data-camera={camera ? String(camera.ratio) : "none"}
       onClick={onReady}
+      onDoubleClick={() => {
+        onCameraChange?.({ ratio: 0.5, x: 0.1, y: 0.2 });
+      }}
     >
       Mark canvas ready
     </button>
-  ),
+    );
+  },
 }));
 
 beforeEach(() => {
@@ -86,20 +112,39 @@ function deferredLayout() {
 type GraphProps = ComponentProps<typeof InteractionsGraph>;
 type GraphHarnessProps = Omit<
   GraphProps,
-  "layout" | "onLayoutChange" | "filters" | "facetRql" | "onFilterChange"
+  | "layout"
+  | "onLayoutChange"
+  | "filters"
+  | "facetRql"
+  | "onFilterChange"
+  | "selected"
+  | "onSelectedChange"
+  | "camera"
+  | "onCameraChange"
 > &
-  Partial<Pick<GraphProps, "filters" | "facetRql" | "onFilterChange">>;
+  Partial<Pick<GraphProps, "filters" | "facetRql" | "onFilterChange">> & {
+    initialSelected?: GraphSelectionRef | null;
+    onSelectedChange?: (next: GraphSelectionRef | null) => void;
+    camera?: GraphCameraView | null;
+    onCameraChange?: (next: GraphCameraView | null) => void;
+  };
 
 const noFilters: GraphProps["filters"] = {};
 const noFacetRql = () => undefined;
 
+/** Stands in for the shell, which keeps the single selection in the URL. */
 function GraphHarness({
   filters = noFilters,
   facetRql = noFacetRql,
   onFilterChange = vi.fn(),
+  initialSelected = null,
+  onSelectedChange,
+  camera = null,
+  onCameraChange = vi.fn(),
   ...props
 }: GraphHarnessProps) {
   const [layout, setLayout] = useState<LayoutName>(defaultLayout);
+  const [selected, setSelected] = useState(initialSelected);
   return (
     <InteractionsGraph
       {...props}
@@ -108,6 +153,13 @@ function GraphHarness({
       onFilterChange={onFilterChange}
       layout={layout}
       onLayoutChange={setLayout}
+      selected={selected}
+      onSelectedChange={(next) => {
+        onSelectedChange?.(next);
+        setSelected(next);
+      }}
+      camera={camera}
+      onCameraChange={onCameraChange}
     />
   );
 }
@@ -968,6 +1020,286 @@ describe("InteractionsGraph protein focus", () => {
     expect(
       screen.queryByRole("button", { name: "Focus on this protein" }),
     ).not.toBeInTheDocument();
+  });
+});
+
+function detailsPane() {
+  return within(screen.getByLabelText("Selection details"));
+}
+
+describe("InteractionsGraph selection from the URL", () => {
+  it("selects the URL's node once the data has loaded, filling the pane and the canvas", async () => {
+    pending();
+    const onSelectedChange = vi.fn();
+    const { rerender } = renderGraph(
+      <GraphHarness
+        rql=""
+        keywordValue=""
+        onKeywordChange={vi.fn()}
+        initialSelected={{ kind: "node", id: "node-b" }}
+        onSelectedChange={onSelectedChange}
+      />,
+    );
+    expect(screen.queryByLabelText("Selection details")).toBeNull();
+
+    // The first data arrival resets presets and bulk picks; it must not wipe the restored id.
+    resolved({ rows: graphRows, isTruncated: false });
+    rerender(
+      <GraphHarness
+        rql=""
+        keywordValue=""
+        onKeywordChange={vi.fn()}
+        initialSelected={{ kind: "node", id: "node-b" }}
+        onSelectedChange={onSelectedChange}
+      />,
+    );
+
+    expect(detailsPane().getByText("BRC ID")).toBeInTheDocument();
+    expect(detailsPane().getByText("node-b")).toBeInTheDocument();
+    expect(screen.getByTestId("sigma-canvas")).toHaveAttribute(
+      "data-selection",
+      "node-b",
+    );
+    expect(
+      screen.getByRole("option", { name: "geneB" }),
+    ).toHaveAttribute("data-app-selected", "true");
+    await settleBackgroundWork();
+    expect(onSelectedChange).not.toHaveBeenCalled();
+  });
+
+  it("selects the URL's edge", () => {
+    resolved({ rows: graphRows, isTruncated: false });
+    renderGraph(
+      <GraphHarness
+        rql=""
+        keywordValue=""
+        onKeywordChange={vi.fn()}
+        initialSelected={{ kind: "edge", id: "edge-1" }}
+      />,
+    );
+
+    expect(detailsPane().getByText("Interaction")).toBeInTheDocument();
+    expect(detailsPane().getByText("geneA")).toBeInTheDocument();
+    expect(screen.getByTestId("sigma-canvas")).toHaveAttribute(
+      "data-selection",
+      "edge-1",
+    );
+  });
+
+  it("ignores an id the loaded data does not hold and drops it once", async () => {
+    resolved({ rows: graphRows, isTruncated: false });
+    const onSelectedChange = vi.fn();
+    renderGraph(
+      <GraphHarness
+        rql=""
+        keywordValue=""
+        onKeywordChange={vi.fn()}
+        initialSelected={{ kind: "node", id: "not-in-this-dataset" }}
+        onSelectedChange={onSelectedChange}
+      />,
+    );
+
+    expect(
+      detailsPane().getByText("Select a node or edge to see details."),
+    ).toBeInTheDocument();
+    await waitFor(() => {
+      expect(onSelectedChange).toHaveBeenCalledWith(null);
+    });
+    await settleBackgroundWork();
+    expect(onSelectedChange).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not drop the id while the data is still loading or failed", async () => {
+    pending();
+    const onSelectedChange = vi.fn();
+    const { rerender } = renderGraph(
+      <GraphHarness
+        rql=""
+        keywordValue=""
+        onKeywordChange={vi.fn()}
+        initialSelected={{ kind: "node", id: "node-a" }}
+        onSelectedChange={onSelectedChange}
+      />,
+    );
+    failed(new Error("Bad gateway"));
+    rerender(
+      <GraphHarness
+        rql=""
+        keywordValue=""
+        onKeywordChange={vi.fn()}
+        initialSelected={{ kind: "node", id: "node-a" }}
+        onSelectedChange={onSelectedChange}
+      />,
+    );
+    await settleBackgroundWork();
+    expect(onSelectedChange).not.toHaveBeenCalled();
+  });
+
+  it("reports a single pick from the node list or the pane as the selected id", async () => {
+    const user = userEvent.setup();
+    resolved({ rows: graphRows, isTruncated: false });
+    const onSelectedChange = vi.fn();
+    renderGraph(
+      <GraphHarness
+        rql=""
+        keywordValue=""
+        onKeywordChange={vi.fn()}
+        onSelectedChange={onSelectedChange}
+      />,
+    );
+
+    await user.click(screen.getByText("geneA"));
+    expect(onSelectedChange).toHaveBeenLastCalledWith({
+      kind: "node",
+      id: "node-a",
+    });
+    expect(detailsPane().getByText("node-a")).toBeInTheDocument();
+
+    await user.click(detailsPane().getByRole("button", { name: /geneB/ }));
+    expect(onSelectedChange).toHaveBeenLastCalledWith({
+      kind: "edge",
+      id: "edge-1",
+    });
+    expect(detailsPane().getByText("Interaction")).toBeInTheDocument();
+  });
+
+  it("keeps a bulk pick local and drops the single id", async () => {
+    const user = userEvent.setup();
+    resolved({ rows: graphRows, isTruncated: false });
+    const onSelectedChange = vi.fn();
+    renderGraph(
+      <GraphHarness
+        rql=""
+        keywordValue=""
+        onKeywordChange={vi.fn()}
+        initialSelected={{ kind: "node", id: "node-a" }}
+        onSelectedChange={onSelectedChange}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Sub-Graph" }));
+    await user.click(screen.getByRole("button", { name: "Largest Subgraph" }));
+
+    expect(onSelectedChange).toHaveBeenLastCalledWith(null);
+    expect(detailsPane().getByText("Bulk selection")).toBeInTheDocument();
+    expect(screen.getByTestId("sigma-canvas")).toHaveAttribute(
+      "data-selection",
+      "node-a,node-b,edge-1",
+    );
+  });
+
+  it("keeps the single selection through a background refetch that still holds it", async () => {
+    resolved({ rows: graphRows, isTruncated: false });
+    const onSelectedChange = vi.fn();
+    const props = {
+      rql: "",
+      keywordValue: "",
+      onKeywordChange: vi.fn(),
+      initialSelected: { kind: "node", id: "node-a" } as const,
+      onSelectedChange,
+    };
+    const { rerender } = renderGraph(<GraphHarness {...props} />);
+    expect(detailsPane().getByText("node-a")).toBeInTheDocument();
+
+    // Same rql and keyword, a new `data` object with new row objects: the reset block runs.
+    resolved({
+      rows: [...graphRows.map((row) => ({ ...row })), {
+        id: "edge-2",
+        interactor_a: "node-a",
+        interactor_b: "node-c",
+        gene_a: "geneA",
+        gene_b: "geneC",
+      }],
+      isTruncated: false,
+    });
+    rerender(<GraphHarness {...props} />);
+
+    expect(detailsPane().getByText("node-a")).toBeInTheDocument();
+    expect(detailsPane().getByText("Interactions (2)")).toBeInTheDocument();
+    expect(screen.getByTestId("sigma-canvas")).toHaveAttribute(
+      "data-selection",
+      "node-a",
+    );
+    await settleBackgroundWork();
+    expect(onSelectedChange).not.toHaveBeenCalled();
+  });
+
+  it("drops the selected id when the scope changes", async () => {
+    resolved({ rows: graphRows, isTruncated: false });
+    const onSelectedChange = vi.fn();
+    const { rerender } = renderGraph(
+      <GraphHarness
+        rql="eq(a,1)"
+        keywordValue=""
+        onKeywordChange={vi.fn()}
+        initialSelected={{ kind: "node", id: "node-a" }}
+        onSelectedChange={onSelectedChange}
+      />,
+    );
+    await settleBackgroundWork();
+    expect(onSelectedChange).not.toHaveBeenCalled();
+
+    rerender(
+      <GraphHarness
+        rql="eq(a,2)"
+        keywordValue=""
+        onKeywordChange={vi.fn()}
+        initialSelected={{ kind: "node", id: "node-a" }}
+        onSelectedChange={onSelectedChange}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(onSelectedChange).toHaveBeenCalledWith(null);
+    });
+    expect(
+      detailsPane().getByText("Select a node or edge to see details."),
+    ).toBeInTheDocument();
+  });
+});
+
+describe("InteractionsGraph camera", () => {
+  // The canvas reloads its graph, and re-fits the camera, whenever it gets new node arrays; a
+  // selection or camera write must not hand it new ones for the same rows.
+  it("hands the canvas the same nodes across a selection and a camera write", async () => {
+    const user = userEvent.setup();
+    resolved({ rows: graphRows, isTruncated: false });
+    const props = { rql: "", keywordValue: "", onKeywordChange: vi.fn() };
+    canvasInputs.nodes.length = 0;
+    const { rerender } = renderGraph(<GraphHarness {...props} />);
+    await screen.findByTestId("sigma-canvas");
+    // The baseline is the array from before the selection, so a selection that swaps the array (and a
+    // camera write that reuses the swapped one) still fails.
+    const initialNodes = canvasInputs.nodes.at(-1);
+    expect(initialNodes).toBeDefined();
+    canvasInputs.nodes.length = 0;
+
+    await user.click(screen.getByText("geneA"));
+    rerender(
+      <GraphHarness {...props} camera={{ ratio: 0.5, x: 0.1, y: 0.2 }} />,
+    );
+
+    expect(canvasInputs.nodes.length).toBeGreaterThan(0);
+    for (const nodes of canvasInputs.nodes) expect(nodes).toBe(initialNodes);
+  });
+
+  it("hands the owner's camera to the canvas and reports the canvas's moves", () => {
+    resolved({ rows: graphRows, isTruncated: false });
+    const onCameraChange = vi.fn();
+    renderGraph(
+      <GraphHarness
+        rql=""
+        keywordValue=""
+        onKeywordChange={vi.fn()}
+        camera={{ ratio: 0.25, x: 0.3, y: 0.7 }}
+        onCameraChange={onCameraChange}
+      />,
+    );
+
+    const canvas = screen.getByTestId("sigma-canvas");
+    expect(canvas).toHaveAttribute("data-camera", "0.25");
+    fireEvent.doubleClick(canvas);
+    expect(onCameraChange).toHaveBeenCalledWith({ ratio: 0.5, x: 0.1, y: 0.2 });
   });
 });
 

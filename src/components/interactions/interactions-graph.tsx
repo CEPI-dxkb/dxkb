@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -19,8 +19,11 @@ import {
 import { toGraph } from "@/lib/interactions/to-graph";
 import {
   buildGraphSelectionIndex,
+  focusSelectionRef,
+  resolveGraphSelection,
   selectHubs,
   selectSubgraphs,
+  singleSelectionRef,
 } from "@/lib/interactions/graph-selections";
 import { useGraphLayout } from "@/lib/interactions/use-graph-layout";
 import { formatUserFacingErrorMessage } from "@/lib/utils";
@@ -29,9 +32,11 @@ import type { CollectionState } from "@/lib/views/collection-state";
 import type {
   GEdge,
   GNode,
+  GraphCameraView,
   GraphCanvasHandle,
   GraphCanvasProps,
   GraphSelection,
+  GraphSelectionRef,
   HubSelection,
   LayoutName,
   PpiRecord,
@@ -57,13 +62,13 @@ const SigmaCanvas = dynamic<GraphCanvasProps>(
   },
 );
 
-const emptySelection: GraphSelection = { nodes: [], edges: [] };
 const emptyRows: PpiRecord[] = [];
 
-/** The focused protein, when the rows hold it: a focus is the one thing a new result set selects. */
-function focusSelection(nodes: GNode[], focusId: string | undefined): GraphSelection {
-  const focus = focusId ? nodes.find((node) => node.id === focusId) : undefined;
-  return focus ? { nodes: [focus], edges: [] } : emptySelection;
+function sameSelectionRef(
+  left: GraphSelectionRef | null,
+  right: GraphSelectionRef | null,
+): boolean {
+  return left?.kind === right?.kind && left?.id === right?.id;
 }
 const repository = new DataRepository();
 const facetFieldList = interactionFacets.map((facet) => facet.field);
@@ -113,7 +118,10 @@ interface InteractionsGraphProps {
     keyword?: string;
     filters: CollectionState["filters"];
   }) => void;
-  /** The protein the view is narrowed to; each new result set selects it when its rows hold it. */
+  /**
+   * The protein the view is narrowed to; a new scope selects it (the shell writes it with every
+   * other new result set), and loaded rows that lack it drop it like any stale id.
+   */
   focusId?: string;
   /** Offers "Focus on this protein" in the detail panel; omitted, the panel has no button. */
   onFocusNode?: (node: GNode) => void;
@@ -122,6 +130,13 @@ interface InteractionsGraphProps {
    * the filters do not apply while it is set. `onClear` goes back to the scope.
    */
   selection?: InteractionsSelection & { onClear: () => void };
+  /** The one selected node or edge, kept by the owner (the URL) and resolved here against the loaded graph. */
+  selected: GraphSelectionRef | null;
+  /** `null` for no selection or a bulk one, which stays local. */
+  onSelectedChange: (next: GraphSelectionRef | null) => void;
+  /** The owner's (URL) camera, applied by the canvas on its first load. */
+  camera: GraphCameraView | null;
+  onCameraChange: (next: GraphCameraView | null) => void;
 }
 
 export function InteractionsGraph({
@@ -136,6 +151,10 @@ export function InteractionsGraph({
   focusId,
   onFocusNode,
   selection: rowSelection,
+  selected,
+  onSelectedChange,
+  camera,
+  onCameraChange,
 }: InteractionsGraphProps) {
   // Above every early return: the Graph stays mounted through loading, error and loaded, so the
   // counts keep loading once the user has reached for the filters.
@@ -173,10 +192,9 @@ export function InteractionsGraph({
     interactions,
     JSON.stringify([rql, keywordValue, selectionVersion]),
   );
-  const graph = toGraph(data?.rows ?? emptyRows);
-  // The focused protein starts selected, also when the rows are already cached on mount.
-  const [selection, setSelection] = useState<GraphSelection>(() =>
-    focusSelection(graph.nodes, focusId),
+  // A Sub-Graph or Hub pick (or any multi-item one) overrides the owner's single selection.
+  const [bulkSelection, setBulkSelection] = useState<GraphSelection | null>(
+    null,
   );
   const [activeSubgraph, setActiveSubgraph] =
     useState<SubgraphSelection | null>(null);
@@ -195,13 +213,52 @@ export function InteractionsGraph({
     graphSource.selectionVersion !== selectionVersion ||
     graphSource.data !== data
   ) {
+    // The single selection is the owner's, so the first data arrival (a restore from the URL) keeps
+    // it; the owner replaces it on a new keyword, filter, focus or Show in Graph, and the scope
+    // effect below on any other new rql.
     setGraphSource({ rql, keywordValue, selectionVersion, data });
-    setSelection(focusSelection(graph.nodes, focusId));
+    setBulkSelection(null);
     setActiveSubgraph(null);
     setActiveHub(null);
   }
 
-  const selectionIndex = buildGraphSelectionIndex(graph.nodes, graph.edges);
+  // Memoized on the rows by hand: `SigmaCanvas` reloads its graph and re-fits the camera when the
+  // node arrays change identity, and the compiler re-ran these on every URL write (a selection or
+  // camera move), which threw away a restored or chosen zoom.
+  const rows = data?.rows ?? emptyRows;
+  const graph = useMemo(() => toGraph(rows), [rows]);
+  const selectionIndex = useMemo(
+    () => buildGraphSelectionIndex(graph.nodes, graph.edges),
+    [graph],
+  );
+  const selection =
+    bulkSelection ?? resolveGraphSelection(selectionIndex, selected);
+  // Loaded data that lacks the id (a stale or hand-edited URL): select nothing and drop the param.
+  const selectedIsStale =
+    data !== undefined &&
+    selected !== null &&
+    bulkSelection === null &&
+    selection.nodes.length === 0 &&
+    selection.edges.length === 0;
+  const dropSelected = useEffectEvent(() => {
+    onSelectedChange(null);
+  });
+  useEffect(() => {
+    if (selectedIsStale) dropSelected();
+  }, [selectedIsStale]);
+  const resetSelected = useEffectEvent(() => {
+    onSelectedChange(focusSelectionRef(focusId));
+  });
+  // A selection that moved with the rql came from the same URL write (a Back step, or the shell
+  // choosing it with new filters), so it stands; an rql that moved alone is a new scope.
+  const scopeRef = useRef({ rql, selected });
+  useEffect(() => {
+    const previous = scopeRef.current;
+    scopeRef.current = { rql, selected };
+    if (previous.rql === rql) return;
+    if (!sameSelectionRef(previous.selected, selected)) return;
+    resetSelected();
+  }, [rql, selected]);
   const layoutQuery = useGraphLayout({
     rql,
     keywordValue,
@@ -310,23 +367,33 @@ export function InteractionsGraph({
     setActiveSubgraph(null);
     setActiveHub(null);
   }
-  function selectNode(node: GNode) {
+  /** One node or edge goes to the owner; anything larger stays local. */
+  function applySelection(next: GraphSelection) {
     clearActivePreset();
-    setSelection({ nodes: [node], edges: [] });
+    const single = singleSelectionRef(next);
+    const isEmpty = next.nodes.length === 0 && next.edges.length === 0;
+    setBulkSelection(single !== null || isEmpty ? null : next);
+    onSelectedChange(single);
+  }
+  function selectNode(node: GNode) {
+    applySelection({ nodes: [node], edges: [] });
   }
   function selectEdge(edge: GEdge) {
-    clearActivePreset();
-    setSelection({ nodes: [], edges: [edge] });
+    applySelection({ nodes: [], edges: [edge] });
   }
+  // A preset stays a bulk pick even when it matches one node, so it keeps its menu label and is
+  // not written to the URL.
   function handleSelectSubgraphs(threshold: SubgraphSelection) {
     setActiveSubgraph(threshold);
     setActiveHub(null);
-    setSelection(selectSubgraphs(selectionIndex, threshold));
+    setBulkSelection(selectSubgraphs(selectionIndex, threshold));
+    onSelectedChange(null);
   }
   function handleSelectHubs(threshold: HubSelection) {
     setActiveSubgraph(null);
     setActiveHub(threshold);
-    setSelection(selectHubs(selectionIndex, threshold));
+    setBulkSelection(selectHubs(selectionIndex, threshold));
+    onSelectedChange(null);
   }
 
   // The count and the export are separate reads, so a count that is not past the row limit cannot
@@ -400,14 +467,13 @@ export function InteractionsGraph({
                 edges={edges}
                 positions={layoutQuery.data ?? null}
                 selection={selection}
-                onSelect={(nextSelection) => {
-                  clearActivePreset();
-                  setSelection(nextSelection);
-                }}
+                onSelect={applySelection}
                 handleRef={canvasHandleRef}
                 onReady={() => {
                   setCanvasReady(true);
                 }}
+                camera={camera}
+                onCameraChange={onCameraChange}
               />
             )}
             {layoutQuery.isFetching && (

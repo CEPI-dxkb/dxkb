@@ -43,7 +43,15 @@ export const genomeSequenceCollectionProfile: ResourceCollectionProfile<
   guideUrl:
     "https://www.bv-brc.org/docs/quick_references/organisms_taxon/sequences.html",
 };
-const interactionMetadata = deriveFieldMetadata(ppiFields, { resource: "ppi" });
+/**
+ * The ppi fields' `link` templates become `valueHref`, so the Interactor, Gene,
+ * Feature ID, Genome Name and Genome ID cells link to their feature or genome
+ * page (an empty id leaves the cell as plain text).
+ */
+const interactionMetadata = deriveFieldMetadata(ppiFields, {
+  resource: "ppi",
+  adaptColumn: (column, field) => ({ ...column, valueHref: field.link }),
+});
 export const interactionColumns = interactionMetadata.columns;
 
 export const interactionFacets = interactionMetadata.facets;

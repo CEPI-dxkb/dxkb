@@ -183,3 +183,12 @@ export function readLiveInteractionsGraphUrlState(): InteractionsGraphUrlState {
     new URLSearchParams(window.location.search),
   );
 }
+
+/**
+ * The page and tab the live address is on. A write from a cleanup compares it with the one its
+ * component rendered on: Next pushes a link's URL before the old page's cleanups run.
+ */
+export function liveTabScope(): string {
+  const { pathname, search } = window.location;
+  return `${pathname}?tab=${new URLSearchParams(search).get("tab") ?? ""}`;
+}

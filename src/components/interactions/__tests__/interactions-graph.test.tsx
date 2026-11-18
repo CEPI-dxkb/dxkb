@@ -117,12 +117,15 @@ type GraphHarnessProps = Omit<
   | "filters"
   | "facetRql"
   | "onFilterChange"
+  | "scopeRql"
   | "selected"
   | "onSelectedChange"
   | "camera"
   | "onCameraChange"
 > &
   Partial<Pick<GraphProps, "filters" | "facetRql" | "onFilterChange">> & {
+    /** The unfiltered scope; defaults to `rql`, so a new `rql` is a new scope unless a test says otherwise. */
+    scopeRql?: string;
     initialSelected?: GraphSelectionRef | null;
     onSelectedChange?: (next: GraphSelectionRef | null) => void;
     camera?: GraphCameraView | null;
@@ -137,6 +140,7 @@ function GraphHarness({
   filters = noFilters,
   facetRql = noFacetRql,
   onFilterChange = vi.fn(),
+  scopeRql,
   initialSelected = null,
   onSelectedChange,
   camera = null,
@@ -148,6 +152,7 @@ function GraphHarness({
   return (
     <InteractionsGraph
       {...props}
+      scopeRql={scopeRql ?? props.rql}
       filters={filters}
       facetRql={facetRql}
       onFilterChange={onFilterChange}
@@ -830,42 +835,43 @@ describe("InteractionsGraph data changes", () => {
 });
 
 describe("InteractionsGraph narrowed scope", () => {
-  it("clears stale selection and active presets when a filter narrows the rql", async () => {
+  it("clears active presets when a filter narrows the rql, and leaves the selection to its owner", async () => {
     const user = userEvent.setup();
     resolved({ rows: graphRows, isTruncated: false });
     const scope = "eq(evidence,experimental)";
+    const narrowed = `and(${scope},eq(interaction_type,association))`;
 
     const { rerender } = renderGraph(
       <GraphHarness rql={scope} keywordValue="" onKeywordChange={vi.fn()} />,
     );
-
-    await user.click(screen.getByText("geneA"));
-    expect(screen.getByText("node-a")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Hub Protein" }));
     await user.click(
       screen.getByRole("button", { name: "Most Connected Hub" }),
     );
+    expect(detailsPane().getByText("Bulk selection")).toBeInTheDocument();
 
+    const onSelectedChange = vi.fn();
     rerender(
       <GraphHarness
-        rql={`and(${scope},eq(interaction_type,association))`}
+        rql={narrowed}
+        scopeRql={scope}
         keywordValue=""
         onKeywordChange={vi.fn()}
         filters={{ interaction_type: ["association"] }}
+        onSelectedChange={onSelectedChange}
       />,
     );
 
     await waitFor(() => {
-      expect(
-        screen.getByText("Select a node or edge to see details."),
-      ).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Hub Protein" })).toBeInTheDocument();
     });
-    expect(screen.getByRole("button", { name: "Hub Protein" })).toBeInTheDocument();
-    expect(useInteractions).toHaveBeenLastCalledWith(
-      `and(${scope},eq(interaction_type,association))`,
-      "",
-      undefined,
-    );
+    expect(
+      detailsPane().getByText("Select a node or edge to see details."),
+    ).toBeInTheDocument();
+    // The shell writes the selection with the pick; the Graph writes none of its own.
+    await settleBackgroundWork();
+    expect(onSelectedChange).not.toHaveBeenCalled();
+    expect(useInteractions).toHaveBeenLastCalledWith(narrowed, "", undefined);
   });
 });
 
@@ -908,7 +914,7 @@ describe("InteractionsGraph protein focus", () => {
     expect(detailsPane().getByText("node-a")).toBeInTheDocument();
   });
 
-  it("keeps a selection that changes together with the rql (a Back step)", async () => {
+  it("leaves the selection to its owner when the filters change the rql inside one scope", async () => {
     resolved(focusedData);
     const onSelectedChange = vi.fn();
     const props = {
@@ -923,19 +929,21 @@ describe("InteractionsGraph protein focus", () => {
       onSelectedChange,
       camera: null,
       onCameraChange: vi.fn(),
+      scopeRql: "eq(a,*)",
     };
+    // A Back step over a focus or a pick: the entry's own selection, the same node on both sides.
     const { rerender } = renderGraph(
       <InteractionsGraph
         {...props}
-        rql="eq(a,2)"
-        selected={{ kind: "node", id: "node-a" }}
+        rql="and(eq(a,*),eq(interactor,node-a))"
+        selected={{ kind: "node", id: "node-c" }}
       />,
     );
 
     rerender(
       <InteractionsGraph
         {...props}
-        rql="eq(a,1)"
+        rql="eq(a,*)"
         selected={{ kind: "node", id: "node-c" }}
       />,
     );

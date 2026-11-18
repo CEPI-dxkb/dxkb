@@ -1115,6 +1115,36 @@ describe("InteractionsSubviewShell Show in Graph", () => {
     expect(graphProps().selected).toEqual({ kind: "node", id: "peg.5" });
   });
 
+  it("keeps a selection picture's camera out of the URL, and writes it again after Show all", () => {
+    render(<InteractionsSubviewShell rql={scope} />);
+    showInGraph(["ppi-1"]);
+
+    fireEvent.click(screen.getByText("move-camera"));
+    // Back would apply that zoom to the full scope's picture.
+    expect(window.location.search).toBe("?interactionsGraph.view=graph");
+
+    act(() => {
+      graphProps().selection?.onClear();
+    });
+    fireEvent.click(screen.getByText("move-camera"));
+    expect(window.location.search).toBe(
+      "?interactionsGraph.view=graph&interactionsGraph.cam=0.5,0.1,0.2",
+    );
+  });
+
+  it("hands the Graph the unfiltered scope beside the narrowed rql", () => {
+    window.history.replaceState(
+      null,
+      "",
+      "/genome/1.1?interactions.interaction_type=association",
+    );
+    render(<InteractionsSubviewShell rql={`${scope}#view_tab=interactions`} />);
+    fireEvent.click(screen.getByRole("tab", { name: "Graph" }));
+
+    expect(graphProps().scopeRql).toBe(scope);
+    expect(graphProps().rql).not.toBe(scope);
+  });
+
   it("returns to the plain Graph when the selection is cleared", () => {
     render(<InteractionsSubviewShell rql={scope} />);
     showInGraph(["ppi-1"]);

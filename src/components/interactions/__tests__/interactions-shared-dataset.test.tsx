@@ -5,6 +5,7 @@ import { http, HttpResponse } from "msw";
 import { server } from "@/test-helpers/msw-server";
 import { stubMenuLayout } from "@/test-helpers/menu-layout";
 import { createQueryClientWrapper } from "@/test-helpers/react";
+import { settleBackgroundWork } from "@/test-helpers/settle";
 import { resourceCollectionPageSize } from "@/hooks/views/collection-state";
 import { requestGraphLayout } from "@/lib/interactions/layout-client";
 import { interactionsGraphFields } from "@/lib/interactions/use-interactions";
@@ -1000,6 +1001,108 @@ describe("Interactions Table and Graph share a protein focus", () => {
       expect(tablePredicates.at(-1)?.rql).toBe(scopeRql);
     });
     expect(window.location.search).toBe("?interactionsGraph.view=graph");
+  });
+});
+
+/** Back, as the browser does it: the entry changes, then `popstate` fires. */
+async function goBack() {
+  await act(async () => {
+    const popped = new Promise((resolve) => {
+      window.addEventListener("popstate", resolve, { once: true });
+    });
+    window.history.back();
+    await popped;
+  });
+}
+
+describe("Interactions Back and leaving the page keep each URL its own", () => {
+  beforeEach(() => {
+    datasetRows = focusRows;
+  });
+
+  it("keeps the node selected before a focus after Back undoes the focus", async () => {
+    const user = userEvent.setup();
+    window.history.replaceState(null, "", "/genome/1.1?tab=interactions");
+    render(<InteractionsSubviewShell rql={scopeRql} />, {
+      wrapper: createQueryClientWrapper(),
+    });
+    await waitFor(() => {
+      expect(tablePredicates).toHaveLength(1);
+    });
+    await user.click(screen.getByRole("tab", { name: "Graph" }));
+    await waitFor(() => {
+      expect(graphPredicates).toHaveLength(1);
+    });
+    await focusFromGraph(user);
+    await waitFor(() => {
+      expect(graphPredicates.at(-1)?.rql).toBe(focusedRql);
+    });
+    expect(window.location.search).toContain(focusUrlParam);
+
+    await goBack();
+
+    const beforeFocus =
+      "?tab=interactions&interactionsGraph.view=graph&interactionsGraph.node=fig%7C1.1.peg.1";
+    await waitFor(() => {
+      expect(
+        graphPanel().queryByRole("button", { name: /^Protein:/ }),
+      ).not.toBeInTheDocument();
+    });
+    await settleBackgroundWork();
+    expect(window.location.search).toBe(beforeFocus);
+    expect(
+      within(graphPanel().getByLabelText("Selection details")).getByText(
+        focusedProteinId,
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("does not write a keyword still in its debounce onto the next page's URL", async () => {
+    const user = userEvent.setup({ delay: null });
+    window.history.replaceState(null, "", "/genome/1.1?tab=interactions");
+    const { unmount } = render(<InteractionsSubviewShell rql={scopeRql} />, {
+      wrapper: createQueryClientWrapper(),
+    });
+    await user.click(screen.getByRole("tab", { name: "Graph" }));
+    await waitFor(() => {
+      expect(graphPredicates).toHaveLength(1);
+    });
+    await user.type(
+      graphPanel().getByPlaceholderText("Search interaction results..."),
+      "geneA",
+    );
+
+    // A details-pane link: Next pushes the feature page's URL before the tab's cleanups run.
+    window.history.pushState(null, "", "/feature/fig%7C1.1.peg.1");
+    unmount();
+
+    expect(window.location.pathname).toBe("/feature/fig%7C1.1.peg.1");
+    expect(window.location.search).toBe("");
+  });
+
+  it("still commits a keyword in its debounce on a switch to the Table subview", async () => {
+    const user = userEvent.setup({ delay: null });
+    window.history.replaceState(null, "", "/genome/1.1?tab=interactions");
+    render(<InteractionsSubviewShell rql={scopeRql} />, {
+      wrapper: createQueryClientWrapper(),
+    });
+    await user.click(screen.getByRole("tab", { name: "Graph" }));
+    await waitFor(() => {
+      expect(graphPredicates).toHaveLength(1);
+    });
+    await user.type(
+      graphPanel().getByPlaceholderText("Search interaction results..."),
+      "geneA",
+    );
+
+    await user.click(screen.getByRole("tab", { name: "Table" }));
+
+    expect(window.location.search).toBe(
+      "?tab=interactions&interactionsGraph.q=geneA",
+    );
+    await waitFor(() => {
+      expect(tablePredicates.at(-1)?.keyword).toBe("geneA");
+    });
   });
 });
 

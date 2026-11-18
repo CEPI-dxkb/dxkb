@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { usePathname } from "next/navigation";
 
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ResourceChildCollection } from "@/components/views/resource-child-collection";
@@ -16,6 +17,7 @@ import type {
 import type { InteractionsSelection } from "@/lib/interactions/use-interactions";
 import {
   applyInteractionsGraphUrlState,
+  liveTabScope,
   parseInteractionsGraphUrlState,
   readLiveInteractionsGraphUrlState,
   writeInteractionsGraphUrlState,
@@ -76,8 +78,18 @@ export function InteractionsSubviewShell({
   // so Back from a linked feature page reopens them. The Table stays mounted; the Graph is
   // lazy-mounted and unmounts when hidden (a hidden Sigma has no size and would hold a WebGL
   // context).
+  const searchParams = useTabContentSearchParams();
   const { view, keyword, selected, layout, camera } =
-    parseInteractionsGraphUrlState(useTabContentSearchParams());
+    parseInteractionsGraphUrlState(searchParams);
+  // The page and tab this shell is on, for a keyword the Graph's filter bar flushes on unmount:
+  // after a details-pane link or a tab switch the live URL is already the next one's (as for the
+  // canvas's camera reports), and the draft must not land there. A Table/Graph switch keeps both.
+  const pathname = usePathname();
+  const tab = searchParams.get("tab") ?? "";
+  const renderedScopeRef = useRef<string | null>(null);
+  useEffect(() => {
+    renderedScopeRef.current = liveTabScope();
+  }, [pathname, tab]);
   // The filters live in the Table's `interactions.*` URL params; either view's
   // Filters menu writes them, and both read them back from there. The options
   // are the profile's own, so the shell and the Table parse the same params into
@@ -145,6 +157,8 @@ export function InteractionsSubviewShell({
   // live URL: Next renders a History API write in a transition, so the rendered keyword can lag a
   // commit.
   const handleKeywordChange = (value: string) => {
+    const renderedScope = renderedScopeRef.current;
+    if (renderedScope !== null && liveTabScope() !== renderedScope) return;
     if (value === readLiveInteractionsGraphUrlState().keyword) return;
     replaceQuery((params) => {
       applyInteractionsGraphUrlState(params, {
@@ -162,7 +176,10 @@ export function InteractionsSubviewShell({
   const handleLayoutChange = (next: LayoutName) => {
     writeInteractionsGraphUrlState({ layout: next, camera: null });
   };
+  // A Show in Graph picture's camera is not kept: the ids are not in the URL, so Back draws the full
+  // scope, which that zoom does not frame (Show in Graph already wrote `cam` away).
   const handleCameraChange = (next: GraphCameraView | null) => {
+    if (graphSelection) return;
     writeInteractionsGraphUrlState({ camera: next });
   };
   // New filters are a new result set too: a pushed `interactions.*` entry (page 1; the table state
@@ -245,6 +262,7 @@ export function InteractionsSubviewShell({
       <TabsContent value="graph" className="flex min-h-0 flex-1 flex-col">
         <InteractionsGraph
           rql={graphRql}
+          scopeRql={scopedRql}
           keywordValue={keyword}
           onKeywordChange={handleKeywordChange}
           filters={tableState.filters}

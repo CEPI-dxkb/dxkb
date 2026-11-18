@@ -64,12 +64,6 @@ const SigmaCanvas = dynamic<GraphCanvasProps>(
 
 const emptyRows: PpiRecord[] = [];
 
-function sameSelectionRef(
-  left: GraphSelectionRef | null,
-  right: GraphSelectionRef | null,
-): boolean {
-  return left?.kind === right?.kind && left?.id === right?.id;
-}
 const repository = new DataRepository();
 const facetFieldList = interactionFacets.map((facet) => facet.field);
 const noFacetFields: readonly string[] = [];
@@ -105,6 +99,11 @@ interface InteractionsGraphProps {
    * in here; it travels as the request's own `keyword`, as for the Table.
    */
   rql: string;
+  /**
+   * The unfiltered scope `rql` narrows. Only a new scope resets the selection here: every narrowing
+   * the shell starts writes its own selection, and a Back step restores the entry's.
+   */
+  scopeRql: string;
   keywordValue: string;
   /** A keyword-only commit from the filter bar. */
   onKeywordChange: (value: string) => void;
@@ -141,6 +140,7 @@ interface InteractionsGraphProps {
 
 export function InteractionsGraph({
   rql,
+  scopeRql,
   keywordValue,
   onKeywordChange,
   layout,
@@ -215,7 +215,7 @@ export function InteractionsGraph({
   ) {
     // The single selection is the owner's, so the first data arrival (a restore from the URL) keeps
     // it; the owner replaces it on a new keyword, filter, focus or Show in Graph, and the scope
-    // effect below on any other new rql.
+    // effect below on a new scope.
     setGraphSource({ rql, keywordValue, selectionVersion, data });
     setBulkSelection(null);
     setActiveSubgraph(null);
@@ -249,16 +249,14 @@ export function InteractionsGraph({
   const resetSelected = useEffectEvent(() => {
     onSelectedChange(focusSelectionRef(focusId));
   });
-  // A selection that moved with the rql came from the same URL write (a Back step, or the shell
-  // choosing it with new filters), so it stands; an rql that moved alone is a new scope.
-  const scopeRef = useRef({ rql, selected });
+  // Keyed on the scope, not the narrowed rql: the shell writes the selection with every keyword,
+  // pick, focus and Show in Graph, and a Back step over one of those must keep its entry's.
+  const scopeRqlRef = useRef(scopeRql);
   useEffect(() => {
-    const previous = scopeRef.current;
-    scopeRef.current = { rql, selected };
-    if (previous.rql === rql) return;
-    if (!sameSelectionRef(previous.selected, selected)) return;
+    if (scopeRqlRef.current === scopeRql) return;
+    scopeRqlRef.current = scopeRql;
     resetSelected();
-  }, [rql, selected]);
+  }, [scopeRql]);
   const layoutQuery = useGraphLayout({
     rql,
     keywordValue,

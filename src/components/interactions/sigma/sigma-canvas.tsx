@@ -35,7 +35,7 @@ import type {
   GraphCanvasProps,
   GraphSelection,
 } from "@/lib/interactions/types";
-import { cameraUrlView } from "@/lib/interactions/url-state";
+import { cameraUrlView, liveTabScope } from "@/lib/interactions/url-state";
 
 import { ZoomControl } from "./zoom-control";
 
@@ -167,10 +167,6 @@ function GraphLoader({ nodes, edges, positions, camera }: GraphLoaderProps) {
 const cameraWriteDelayMs = 250;
 
 /** The page and tab a camera report belongs to; the report is dropped if either has changed. */
-function cameraReportScope(): string {
-  const { pathname, search } = window.location;
-  return `${pathname}?tab=${new URLSearchParams(search).get("tab") ?? ""}`;
-}
 
 /**
  * Sigma emits "updated" every frame of a pan or zoom, so this reports only once the camera rests.
@@ -192,9 +188,9 @@ function CameraReporter({
     let timer: ReturnType<typeof setTimeout> | undefined;
     const update = () => {
       clearTimeout(timer);
-      const scope = cameraReportScope();
+      const scope = liveTabScope();
       timer = setTimeout(() => {
-        if (cameraReportScope() !== scope) return;
+        if (liveTabScope() !== scope) return;
         report(cameraUrlView(camera.getState()));
       }, cameraWriteDelayMs);
     };

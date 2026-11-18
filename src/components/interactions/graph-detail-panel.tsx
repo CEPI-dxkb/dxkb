@@ -1,4 +1,14 @@
+import { Info } from "lucide-react";
+
 import { Button } from "@/components/ui/button";
+import {
+  Popover,
+  PopoverContent,
+  PopoverDescription,
+  PopoverHeader,
+  PopoverTitle,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import type { GEdge, GNode, GraphSelection } from "@/lib/interactions/types";
 
 interface GraphDetailPanelProps {
@@ -53,9 +63,9 @@ export function GraphDetailPanel({ selection, incidentEdges, nodesById, onSelect
             <dd className="break-all text-muted-foreground">{node.interactorDesc || "—"}</dd>
           </dl>
           {onFocusNode && (
-            <div className="flex flex-col items-start gap-1">
+            <div className="flex items-center gap-2">
               <Button
-                variant="outline"
+                variant="default"
                 size="sm"
                 onClick={() => {
                   onFocusNode(node);
@@ -63,9 +73,28 @@ export function GraphDetailPanel({ selection, incidentEdges, nodesById, onSelect
               >
                 Focus on this protein
               </Button>
-              <p className="text-xs text-muted-foreground">
-                Shows only this protein&apos;s interactions; remove the Protein filter in the Filters menu to undo.
-              </p>
+              <Popover>
+                <PopoverTrigger
+                  render={
+                    <Button
+                      type="button"
+                      variant="ghost-accent"
+                      size="icon-sm"
+                      aria-label="About focusing"
+                    />
+                  }
+                >
+                  <Info />
+                </PopoverTrigger>
+                <PopoverContent side="bottom" align="start">
+                  <PopoverHeader>
+                    <PopoverTitle>Focusing on a protein</PopoverTitle>
+                    <PopoverDescription>
+                      Shows only this protein&apos;s interactions; remove the Protein filter in the Filters menu to undo.
+                    </PopoverDescription>
+                  </PopoverHeader>
+                </PopoverContent>
+              </Popover>
             </div>
           )}
           {incidentEdges.length > 0 && (

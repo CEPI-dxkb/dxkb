@@ -16,6 +16,10 @@ import {
   selectHubs,
   selectSubgraphs,
 } from "@/lib/interactions/graph-selections";
+import {
+  applySelectionClick,
+  buildIncidenceIndex,
+} from "@/lib/interactions/selection-focus";
 import { useGraphLayout } from "@/lib/interactions/use-graph-layout";
 import { formatUserFacingErrorMessage } from "@/lib/utils";
 import type {
@@ -152,21 +156,15 @@ export function InteractionsGraph({
 
   const nodesById = new Map(nodes.map((n) => [n.id, n]));
   const selectedNodeIds = new Set(selection.nodes.map((node) => node.id));
-  const selectedNode =
-    selection.nodes.length === 1 ? selection.nodes[0] : undefined;
-  const incidentEdges = selectedNode
-    ? edges.filter(
-        (e) => e.source === selectedNode.id || e.target === selectedNode.id,
-      )
-    : [];
+  const incidenceIndex = buildIncidenceIndex(edges);
 
   function clearActivePreset() {
     setActiveSubgraph(null);
     setActiveHub(null);
   }
-  function selectNode(node: GNode) {
+  function selectNode(node: GNode, additive = false) {
     clearActivePreset();
-    setSelection({ nodes: [node], edges: [] });
+    setSelection(applySelectionClick(selection, { kind: "node", node }, additive));
   }
   function selectEdge(edge: GEdge) {
     clearActivePreset();
@@ -290,7 +288,7 @@ export function InteractionsGraph({
         >
           <GraphDetailPanel
             selection={selection}
-            incidentEdges={incidentEdges}
+            incidentEdgesByNode={incidenceIndex}
             nodesById={nodesById}
             onSelectEdge={selectEdge}
           />

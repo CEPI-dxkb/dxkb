@@ -1,7 +1,7 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
-import { GraphDetailPanel } from "../graph-detail-panel";
+import { detailCardLimit, GraphDetailPanel } from "../graph-detail-panel";
 import type { GEdge, GNode, GraphSelection } from "@/lib/interactions/types";
 
 const nodeA: GNode = {
@@ -30,12 +30,13 @@ const nodesById = new Map<string, GNode>([
 ]);
 
 const empty: GraphSelection = { nodes: [], edges: [] };
+const incident = (edges: GEdge[]) => new Map([[nodeA.id, edges]]);
 
 function renderPanel(overrides: Partial<Parameters<typeof GraphDetailPanel>[0]> = {}) {
   return render(
     <GraphDetailPanel
       selection={empty}
-      incidentEdges={[]}
+      incidentEdgesByNode={new Map()}
       nodesById={nodesById}
       onSelectEdge={vi.fn()}
       {...overrides}
@@ -49,10 +50,58 @@ describe("GraphDetailPanel", () => {
     expect(screen.getByText("Select a node or edge to see details.")).toBeInTheDocument();
   });
 
-  it("summarizes bulk selections instead of rendering thousands of detail records", () => {
-    renderPanel({ selection: { nodes: [nodeA, nodeB], edges: [edge] } });
-    expect(screen.getByText("Bulk selection")).toBeInTheDocument();
-    expect(screen.getByText("2 proteins and 1 interactions selected.")).toBeInTheDocument();
+  describe("several items selected", () => {
+    it("summarizes the selection and lists each item", () => {
+      renderPanel({
+        selection: { nodes: [nodeA, nodeB], edges: [edge] },
+        incidentEdgesByNode: new Map([
+          [nodeA.id, [edge]],
+          [nodeB.id, [edge]],
+        ]),
+      });
+
+      expect(screen.getByText("Multiple selection")).toBeInTheDocument();
+      expect(
+        screen.getByText("2 proteins and 1 interaction selected."),
+      ).toBeInTheDocument();
+
+      const items = screen.getAllByRole("listitem");
+      expect(items).toHaveLength(3);
+      expect(within(items[0]).getByText("Ecaj_0270")).toBeInTheDocument();
+      expect(within(items[0]).getByText("Interactions: 1")).toBeInTheDocument();
+      // The card heading and the Gene row both show the gene.
+      expect(within(items[1]).getAllByText("ftsA")).toHaveLength(2);
+      expect(within(items[2]).getByText("Detection method")).toBeInTheDocument();
+    });
+
+    it("singularizes the summary", () => {
+      renderPanel({ selection: { nodes: [nodeA], edges: [edge] } });
+      expect(
+        screen.getByText("1 protein and 1 interaction selected."),
+      ).toBeInTheDocument();
+    });
+
+    it("does not offer incident-edge buttons for several nodes", () => {
+      renderPanel({
+        selection: { nodes: [nodeA, nodeB], edges: [] },
+        incidentEdgesByNode: incident([edge]),
+      });
+      expect(screen.queryByRole("button")).toBeNull();
+    });
+
+    it("caps the cards per kind and says how many are not shown", () => {
+      const many: GNode[] = Array.from({ length: detailCardLimit + 5 }, (_, i) => ({
+        id: `fig|${String(i)}`,
+        gene: `g${String(i)}`,
+        kind: "microbial",
+      }));
+      renderPanel({ selection: { nodes: many, edges: [] } });
+
+      expect(screen.getAllByRole("listitem")).toHaveLength(detailCardLimit);
+      expect(
+        screen.getByText("…and 5 more proteins not shown."),
+      ).toBeInTheDocument();
+    });
   });
 
   describe("node selected", () => {
@@ -85,7 +134,7 @@ describe("GraphDetailPanel", () => {
     });
 
     it("lists incident edges under an Interactions (N) header and resolves endpoint labels", () => {
-      renderPanel({ selection: { nodes: [nodeA], edges: [] }, incidentEdges: [edge] });
+      renderPanel({ selection: { nodes: [nodeA], edges: [] }, incidentEdgesByNode: incident([edge]) });
 
       expect(screen.getByText("Interactions (1)")).toBeInTheDocument();
       expect(
@@ -96,7 +145,7 @@ describe("GraphDetailPanel", () => {
     it("invokes onSelectEdge with the clicked incident edge", async () => {
       const user = userEvent.setup();
       const onSelectEdge = vi.fn();
-      renderPanel({ selection: { nodes: [nodeA], edges: [] }, incidentEdges: [edge], onSelectEdge });
+      renderPanel({ selection: { nodes: [nodeA], edges: [] }, incidentEdgesByNode: incident([edge]), onSelectEdge });
 
       await user.click(screen.getByRole("button", { name: /ftsA/ }));
       expect(onSelectEdge).toHaveBeenCalledWith(edge);
@@ -104,14 +153,14 @@ describe("GraphDetailPanel", () => {
 
     it("omits the interactionType suffix when the edge has none", () => {
       const bare: GEdge = { ...edge, interactionType: "" };
-      renderPanel({ selection: { nodes: [nodeA], edges: [] }, incidentEdges: [bare] });
+      renderPanel({ selection: { nodes: [nodeA], edges: [] }, incidentEdgesByNode: incident([bare]) });
 
       expect(screen.getByRole("button", { name: "ftsA" })).toBeInTheDocument();
     });
 
     it("falls back to the raw id when the endpoint node is not in nodesById", () => {
       const orphan: GEdge = { ...edge, target: "fig|9.9" };
-      renderPanel({ selection: { nodes: [nodeA], edges: [] }, incidentEdges: [orphan] });
+      renderPanel({ selection: { nodes: [nodeA], edges: [] }, incidentEdgesByNode: incident([orphan]) });
 
       expect(
         screen.getByRole("button", { name: "fig|9.9 · predicted interaction" }),
@@ -119,7 +168,7 @@ describe("GraphDetailPanel", () => {
     });
 
     it("hides the Interactions section when a node has no incident edges", () => {
-      renderPanel({ selection: { nodes: [nodeA], edges: [] }, incidentEdges: [] });
+      renderPanel({ selection: { nodes: [nodeA], edges: [] }, incidentEdgesByNode: incident([]) });
       expect(screen.queryByText(/^Interactions \(/)).not.toBeInTheDocument();
     });
   });

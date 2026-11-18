@@ -356,10 +356,12 @@ legacy Topic.publish('/navigate') to a Next router push:
 The Next port does not expose "View Feature" as an action-bar action. It ships as
 links instead. In the details pane, a selected node's BRC ID and Gene link to
 `/feature/{feature_id}` and its Genome links to `/genome/{genome_id}`, and the
-From/To endpoints of a selected edge link to their feature pages. The Interactions
-table links the same features and genomes in its cells. Host nodes are never
-linked. The links go straight to the current `/feature/…` and `/genome/…` routes,
-not the legacy `/view/Feature/…` path.
+From/To endpoints of a selected edge link to their feature pages. The pane never
+links a host node, and links a genome only when its id passes `isGenomeId`. The
+Interactions table links the same features and genomes in its cells, but applies
+neither check: it links a non-empty cell whenever the row has the feature or genome
+id its template needs. The links go straight to the current `/feature/…` and
+`/genome/…` routes, not the legacy `/view/Feature/…` path.
 
 ```tsx
 // selection → unique feature_ids (nodes are proteins; skip molecules)

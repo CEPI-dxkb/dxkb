@@ -1,8 +1,9 @@
 import {
+  LazyExperimentBiosetCollection,
   LazyExperimentResourceCollection,
-  LazyResourceChildCollection,
 } from "./lazy-tab-roots";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { experimentListHref } from "@/lib/views/hrefs";
 import { taxonLineageClause, type TaxonViewScope } from "./scope";
 
 export function makeExperimentsView({ scope }: { scope: TaxonViewScope }) {
@@ -23,13 +24,12 @@ export function makeExperimentsView({ scope }: { scope: TaxonViewScope }) {
           />
         </TabsContent>
         <TabsContent value="biosets" className="mt-2 flex min-h-0 flex-1 flex-col">
-          <LazyResourceChildCollection
-            urlKey="biosets"
-            resource="bioset"
-            label="Biosets"
-            idField="bioset_id"
-            rql={`and(eq(genome_id,*),genome(${lineageClause}))`}
-            defaultSort="bioset_id:asc"
+          {/* Bioset records carry no taxon or genome fields, so the tab lists
+              the Biosets of the taxon's experiments by `exp_id`; this tab has
+              no search, so an over-long scope links to one. */}
+          <LazyExperimentBiosetCollection
+            baseRql={lineageClause}
+            refineHref={experimentListHref({ rql: lineageClause })}
           />
         </TabsContent>
       </Tabs>

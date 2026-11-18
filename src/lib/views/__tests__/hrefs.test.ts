@@ -3,6 +3,7 @@ import {
   epitopeIdFromRow,
   biosetResultsHref,
   experimentHref,
+  experimentListHref,
   experimentIdFromRow,
   featureHref,
   featureIdFromRow,
@@ -203,6 +204,15 @@ describe("genomesHrefFromIds", () => {
       index === 500 ? "1.0" : `1.${String(index)}`,
     );
     expect(genomesHrefFromIds(ids)).not.toBeNull();
+  });
+});
+
+describe("experimentListHref", () => {
+  it("returns the bare search, or one scoped by a readable rql", () => {
+    expect(experimentListHref()).toBe("/experiment");
+    expect(experimentListHref({ rql: "eq(taxon_lineage_ids,2)" })).toBe(
+      "/experiment?rql=eq(taxon_lineage_ids,2)",
+    );
   });
 });
 

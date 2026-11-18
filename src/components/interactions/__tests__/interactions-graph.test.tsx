@@ -6,6 +6,7 @@ import {
   within,
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { http, HttpResponse } from "msw";
 import { useState, type ComponentProps } from "react";
 
 import { InteractionsGraph } from "../interactions-graph";
@@ -17,6 +18,8 @@ import {
 import { requestGraphLayout } from "@/lib/interactions/layout-client";
 import { defaultLayout } from "@/lib/interactions/renderer-capabilities";
 import type { LayoutName, PpiRecord } from "@/lib/interactions/types";
+import { server } from "@/test-helpers/msw-server";
+import { stubMenuLayout } from "@/test-helpers/menu-layout";
 import { createQueryClientWrapper } from "@/test-helpers/react";
 
 // Mocked pending: SigmaCanvas (WebGL) is untestable in jsdom, and this keeps the component on its
@@ -60,6 +63,8 @@ beforeEach(() => {
   vi.mocked(requestGraphLayout).mockImplementation((request) =>
     Promise.resolve(new Float64Array(2 * request.nodeCount)),
   );
+  // `clearMocks` keeps a return value, so each test starts from the pending query again.
+  pending();
 });
 
 function deferredLayout() {
@@ -71,15 +76,32 @@ function deferredLayout() {
   return resolve;
 }
 
+type GraphProps = ComponentProps<typeof InteractionsGraph>;
 type GraphHarnessProps = Omit<
-  ComponentProps<typeof InteractionsGraph>,
-  "layout" | "onLayoutChange"
->;
+  GraphProps,
+  "layout" | "onLayoutChange" | "filters" | "facetRql" | "onFilterChange"
+> &
+  Partial<Pick<GraphProps, "filters" | "facetRql" | "onFilterChange">>;
 
-function GraphHarness(props: GraphHarnessProps) {
+const noFilters: GraphProps["filters"] = {};
+const noFacetRql = () => undefined;
+
+function GraphHarness({
+  filters = noFilters,
+  facetRql = noFacetRql,
+  onFilterChange = vi.fn(),
+  ...props
+}: GraphHarnessProps) {
   const [layout, setLayout] = useState<LayoutName>(defaultLayout);
   return (
-    <InteractionsGraph {...props} layout={layout} onLayoutChange={setLayout} />
+    <InteractionsGraph
+      {...props}
+      filters={filters}
+      facetRql={facetRql}
+      onFilterChange={onFilterChange}
+      layout={layout}
+      onLayoutChange={setLayout}
+    />
   );
 }
 
@@ -106,6 +128,15 @@ function resolved(data: InteractionsGraphData) {
   } as unknown as ReturnType<typeof useInteractions>);
 }
 
+function pending() {
+  vi.mocked(useInteractions).mockReturnValue({
+    data: undefined,
+    isPending: true,
+    isError: false,
+    error: null,
+  } as unknown as ReturnType<typeof useInteractions>);
+}
+
 function failed(error: Error) {
   const refetch = vi.fn();
   vi.mocked(useInteractions).mockReturnValue({
@@ -118,15 +149,52 @@ function failed(error: Error) {
   return refetch;
 }
 
-class ResizeObserverStub {
-  observe = vi.fn();
-  unobserve = vi.fn();
-  disconnect = vi.fn();
+stubMenuLayout();
+vi.stubGlobal("scrollTo", vi.fn());
+
+interface FacetRequest {
+  rql: string | null;
+  keyword: string | null;
+  facets: string[];
 }
 
-vi.stubGlobal("ResizeObserver", ResizeObserverStub);
-vi.stubGlobal("scrollTo", vi.fn());
-Element.prototype.scrollIntoView = vi.fn();
+/** Answers the Filters menu's count reads (GET) and records what each asked for. */
+function serveFacetCounts(
+  respond: () => Response = () =>
+    HttpResponse.json({
+      rows: [],
+      total: 15,
+      facets: {
+        interaction_type: [
+          { value: "association", count: 12 },
+          { value: "physical association", count: 3 },
+        ],
+        category: [],
+        detection_method: [],
+      },
+      page: 1,
+      pageSize: 1,
+    }),
+) {
+  const requests: FacetRequest[] = [];
+  server.use(
+    http.get("/api/data/ppi", ({ request }) => {
+      const params = new URL(request.url).searchParams;
+      requests.push({
+        rql: params.get("rql"),
+        keyword: params.get("keyword"),
+        facets: params.getAll("facet"),
+      });
+      return respond();
+    }),
+  );
+  return requests;
+}
+
+async function openFilters(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(screen.getByRole("button", { name: /^Filters/ }));
+  return screen.findByRole("listbox", { name: "Filters" });
+}
 
 describe("InteractionsGraph query inputs", () => {
   it("passes the scope predicate and the shared keyword through untouched", () => {
@@ -170,6 +238,190 @@ describe("InteractionsGraph query inputs", () => {
       "eq(evidence,experimental)",
       "groEL",
     );
+  });
+});
+
+describe("InteractionsGraph filters", () => {
+  it("offers the Filters menu while loading, after a failure and once loaded", () => {
+    pending();
+    const { unmount } = renderGraph(
+      <GraphHarness rql="" keywordValue="" onKeywordChange={vi.fn()} />,
+    );
+    expect(screen.getByRole("button", { name: /^Filters/ })).toBeInTheDocument();
+    unmount();
+
+    failed(new Error("Bad gateway"));
+    const failedRender = renderGraph(
+      <GraphHarness rql="" keywordValue="" onKeywordChange={vi.fn()} />,
+    );
+    expect(screen.getByText("Could not load interactions")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^Filters/ })).toBeInTheDocument();
+    failedRender.unmount();
+
+    resolved({ rows: graphRows, isTruncated: false });
+    renderGraph(
+      <GraphHarness rql="" keywordValue="" onKeywordChange={vi.fn()} />,
+    );
+    expect(screen.getByText("geneA")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^Filters/ })).toBeInTheDocument();
+  });
+
+  it("keeps the Filters menu open, and drops the stale selection, while a pick's rows load", async () => {
+    const user = userEvent.setup();
+    serveFacetCounts();
+    const scope = "eq(evidence,experimental)";
+    const narrowed = `and(${scope},eq(interaction_type,association))`;
+    resolved({ rows: graphRows, isTruncated: false });
+    const { rerender } = renderGraph(
+      <GraphHarness rql={scope} keywordValue="" onKeywordChange={vi.fn()} />,
+    );
+    await user.click(screen.getByText("geneA"));
+    expect(screen.getByText("node-a")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Hub Protein" }));
+    await user.click(
+      screen.getByRole("button", { name: "Most Connected Hub" }),
+    );
+    await openFilters(user);
+
+    // A pick: the shell hands down the narrowed rql, whose rows are a new query.
+    pending();
+    rerender(
+      <GraphHarness
+        rql={narrowed}
+        keywordValue=""
+        onKeywordChange={vi.fn()}
+        filters={{ interaction_type: ["association"] }}
+      />,
+    );
+    expect(screen.getByRole("status")).toBeInTheDocument();
+    expect(screen.getByRole("listbox", { name: "Filters" })).toBeInTheDocument();
+
+    resolved({ rows: graphRows, isTruncated: false });
+    rerender(
+      <GraphHarness
+        rql={narrowed}
+        keywordValue=""
+        onKeywordChange={vi.fn()}
+        filters={{ interaction_type: ["association"] }}
+      />,
+    );
+
+    expect(useInteractions).toHaveBeenLastCalledWith(narrowed, "");
+    expect(screen.getByText("geneA")).toBeInTheDocument();
+    expect(screen.getByRole("listbox", { name: "Filters" })).toBeInTheDocument();
+    expect(
+      screen.getByText("Select a node or edge to see details."),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Hub Protein" })).toBeInTheDocument();
+  });
+
+  it("counts each facet over its own scope and the shared keyword, once the menu opens", async () => {
+    const user = userEvent.setup();
+    const requests = serveFacetCounts();
+    resolved({ rows: graphRows, isTruncated: false });
+    renderGraph(
+      <GraphHarness
+        rql="and(eq(evidence,experimental),eq(interaction_type,association))"
+        keywordValue="groEL"
+        onKeywordChange={vi.fn()}
+        filters={{ interaction_type: ["association"] }}
+        facetRql={(field) =>
+          field === "interaction_type"
+            ? "eq(evidence,experimental)"
+            : "and(eq(evidence,experimental),eq(interaction_type,association))"
+        }
+      />,
+    );
+    expect(requests).toEqual([]);
+
+    await openFilters(user);
+
+    await waitFor(() => {
+      expect(requests.flatMap((request) => request.facets).sort()).toEqual([
+        "category",
+        "detection_method",
+        "interaction_type",
+      ]);
+    });
+    expect(requests).toContainEqual({
+      rql: "eq(evidence,experimental)",
+      keyword: "groEL",
+      facets: ["interaction_type"],
+    });
+    expect(requests).toContainEqual({
+      rql: "and(eq(evidence,experimental),eq(interaction_type,association))",
+      keyword: "groEL",
+      facets: expect.arrayContaining(["category", "detection_method"]) as string[],
+    });
+  });
+
+  it("reports a pick to the filter owner with the shared keyword", async () => {
+    const user = userEvent.setup();
+    serveFacetCounts();
+    const onFilterChange = vi.fn();
+    const onKeywordChange = vi.fn();
+    resolved({ rows: graphRows, isTruncated: false });
+    renderGraph(
+      <GraphHarness
+        rql=""
+        keywordValue="groEL"
+        onKeywordChange={onKeywordChange}
+        onFilterChange={onFilterChange}
+      />,
+    );
+
+    const menu = await openFilters(user);
+    await user.click(
+      within(menu).getByRole("option", { name: /^Interaction Type/ }),
+    );
+    await user.click(
+      await within(
+        screen.getByRole("listbox", { name: "Interaction Type values" }),
+      ).findByRole("option", { name: /^association/ }),
+    );
+
+    expect(onFilterChange).toHaveBeenCalledWith({
+      keyword: "groEL",
+      filters: { interaction_type: ["association"] },
+    });
+    expect(onKeywordChange).not.toHaveBeenCalled();
+  });
+
+  it("shows why the filter values failed, and retries them", async () => {
+    const user = userEvent.setup();
+    let failing = true;
+    const requests = serveFacetCounts(() =>
+      failing
+        ? HttpResponse.json({ error: "Solr is down" }, { status: 502 })
+        : HttpResponse.json({
+            rows: [],
+            total: 0,
+            facets: {},
+            page: 1,
+            pageSize: 1,
+          }),
+    );
+    resolved({ rows: graphRows, isTruncated: false });
+    renderGraph(
+      <GraphHarness rql="" keywordValue="" onKeywordChange={vi.fn()} />,
+    );
+
+    await openFilters(user);
+    // The menu and the toolbar's alert both say it.
+    expect(
+      await screen.findAllByText(/Could not load filter values: .*Solr is down/),
+    ).not.toHaveLength(0);
+    const requestsBeforeRetry = requests.length;
+
+    failing = false;
+    await user.click(screen.getAllByRole("button", { name: "Retry" })[0]);
+
+    await waitFor(() => {
+      expect(
+        screen.queryByText(/Could not load filter values/),
+      ).not.toBeInTheDocument();
+    });
+    expect(requests.length).toBeGreaterThan(requestsBeforeRetry);
   });
 });
 
@@ -369,6 +621,45 @@ describe("InteractionsGraph data changes", () => {
       ).toBeInTheDocument();
     });
     expect(screen.queryByText("node-a")).not.toBeInTheDocument();
+  });
+});
+
+describe("InteractionsGraph narrowed scope", () => {
+  it("clears stale selection and active presets when a filter narrows the rql", async () => {
+    const user = userEvent.setup();
+    resolved({ rows: graphRows, isTruncated: false });
+    const scope = "eq(evidence,experimental)";
+
+    const { rerender } = renderGraph(
+      <GraphHarness rql={scope} keywordValue="" onKeywordChange={vi.fn()} />,
+    );
+
+    await user.click(screen.getByText("geneA"));
+    expect(screen.getByText("node-a")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Hub Protein" }));
+    await user.click(
+      screen.getByRole("button", { name: "Most Connected Hub" }),
+    );
+
+    rerender(
+      <GraphHarness
+        rql={`and(${scope},eq(interaction_type,association))`}
+        keywordValue=""
+        onKeywordChange={vi.fn()}
+        filters={{ interaction_type: ["association"] }}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByText("Select a node or edge to see details."),
+      ).toBeInTheDocument();
+    });
+    expect(screen.getByRole("button", { name: "Hub Protein" })).toBeInTheDocument();
+    expect(useInteractions).toHaveBeenLastCalledWith(
+      `and(${scope},eq(interaction_type,association))`,
+      "",
+    );
   });
 });
 

@@ -1,15 +1,29 @@
-import { useEffect } from "react";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { useEffect, type ComponentProps } from "react";
+import { act, render, screen, fireEvent } from "@testing-library/react";
 
+import type { InteractionsGraph } from "../interactions-graph";
 import { InteractionsSubviewShell } from "../interactions-subview-shell";
 
+type GraphProps = ComponentProps<typeof InteractionsGraph>;
+
 let tableMountCount = 0;
+// The stubs below record their latest props here; read only after a render.
+let lastGraphProps: GraphProps | undefined;
+let lastTableProfile: { resource: string; guideUrl?: string } | undefined;
+
+vi.mock("next/navigation", async () =>
+  (await import("@/test-helpers/history-navigation")).historyNavigationMock({
+    pathname: "/genome/1.1",
+  }),
+);
+
 vi.mock("@/components/views/resource-child-collection", () => ({
   ResourceChildCollection: ({
     urlKey,
     resource,
     rql,
     guideUrl,
+    profile,
     keywordMode,
     keywordValue,
     onKeywordChange,
@@ -18,6 +32,7 @@ vi.mock("@/components/views/resource-child-collection", () => ({
     resource: string;
     rql: string;
     guideUrl?: string;
+    profile?: { resource: string; guideUrl?: string };
     keywordMode?: string;
     keywordValue?: string;
     onKeywordChange?: (value: string) => void;
@@ -25,13 +40,14 @@ vi.mock("@/components/views/resource-child-collection", () => ({
     useEffect(() => {
       tableMountCount++;
     }, []);
+    lastTableProfile = profile;
     return (
       <div
         data-testid="table-panel"
         data-url-key={urlKey}
         data-resource={resource}
         data-rql={rql}
-        data-guide={guideUrl}
+        data-guide={profile?.guideUrl ?? guideUrl}
         data-keyword-mode={keywordMode}
         data-keyword={keywordValue}
       >
@@ -44,37 +60,44 @@ vi.mock("@/components/views/resource-child-collection", () => ({
 }));
 
 vi.mock("../interactions-graph", () => ({
-  InteractionsGraph: ({
-    rql,
-    keywordValue,
-    onKeywordChange,
-    layout,
-    onLayoutChange,
-  }: {
-    rql: string;
-    keywordValue?: string;
-    onKeywordChange?: (value: string) => void;
-    layout: string;
-    onLayoutChange: (layout: string) => void;
-  }) => (
-    <div data-testid="graph-panel" data-rql={rql} data-keyword={keywordValue}>
-      <button onClick={() => { onKeywordChange?.("fromGraph"); }}>set-from-graph</button>
-      <select
-        aria-label="Layout"
-        value={layout}
-        onChange={(event) => {
-          onLayoutChange(event.target.value);
-        }}
-      >
-        <option value="forceatlas2">Force Atlas 2</option>
-        <option value="circular">Circular</option>
-      </select>
-    </div>
-  ),
+  InteractionsGraph: (props: GraphProps) => {
+    lastGraphProps = props;
+    const { rql, keywordValue, onKeywordChange, layout, onLayoutChange } =
+      props;
+    return (
+      <div data-testid="graph-panel" data-rql={rql} data-keyword={keywordValue}>
+        <button onClick={() => { onKeywordChange("fromGraph"); }}>set-from-graph</button>
+        <select
+          aria-label="Layout"
+          value={layout}
+          onChange={(event) => {
+            onLayoutChange(event.target.value as GraphProps["layout"]);
+          }}
+        >
+          <option value="forceatlas2">Force Atlas 2</option>
+          <option value="circular">Circular</option>
+        </select>
+      </div>
+    );
+  },
 }));
+
+function graphProps(): GraphProps {
+  if (!lastGraphProps) throw new Error("The Graph has not rendered.");
+  return lastGraphProps;
+}
+
+/** A History API write re-renders the shell (it reads URL state), so it runs in `act`. */
+function replaceUrl(url: string) {
+  act(() => {
+    window.history.replaceState(null, "", url);
+  });
+}
 
 beforeEach(() => {
   tableMountCount = 0;
+  lastGraphProps = undefined;
+  lastTableProfile = undefined;
   window.history.replaceState(null, "", "/");
 });
 
@@ -159,11 +182,7 @@ describe("InteractionsSubviewShell", () => {
       "?tab=interactions&interactions.sort=id:desc",
     );
 
-    window.history.replaceState(
-      null,
-      "",
-      "/genome/1.1?tab=interactions&interactions.page=3",
-    );
+    replaceUrl("/genome/1.1?tab=interactions&interactions.page=3");
     fireEvent.click(screen.getByRole("tab", { name: "Graph" }));
     fireEvent.click(screen.getByText("set-from-graph"));
     expect(window.location.search).toBe("?tab=interactions");
@@ -192,9 +211,116 @@ describe("InteractionsSubviewShell", () => {
     render(<InteractionsSubviewShell rql="eq(evidence,experimental)" />);
     fireEvent.click(screen.getByText("set-from-table"));
 
-    window.history.replaceState(null, "", "/genome/1.1?interactions.page=3");
+    replaceUrl("/genome/1.1?interactions.page=3");
     fireEvent.click(screen.getByText("set-from-table"));
 
     expect(window.location.search).toBe("?interactions.page=3");
+  });
+});
+
+describe("InteractionsSubviewShell filters", () => {
+  const scope = "eq(evidence,experimental)";
+  const typeClause = "eq(interaction_type,association)";
+
+  it("gives the Table the interaction profile, with the guide, over the unfiltered scope", () => {
+    render(
+      <InteractionsSubviewShell rql={scope} guideUrl="https://example.test/guide" />,
+    );
+
+    expect(lastTableProfile).toEqual(
+      expect.objectContaining({
+        resource: "ppi",
+        guideUrl: "https://example.test/guide",
+      }),
+    );
+    expect(screen.getByTestId("table-panel")).toHaveAttribute("data-rql", scope);
+  });
+
+  it("narrows only the Graph's rql by the filters in the URL", () => {
+    window.history.replaceState(
+      null,
+      "",
+      "/genome/1.1?interactions.interaction_type=association",
+    );
+    render(<InteractionsSubviewShell rql={`${scope}#view_tab=interactions`} />);
+    fireEvent.click(screen.getByRole("tab", { name: "Graph" }));
+
+    expect(screen.getByTestId("graph-panel")).toHaveAttribute(
+      "data-rql",
+      `and(${scope},${typeClause})`,
+    );
+    expect(screen.getByTestId("table-panel")).toHaveAttribute("data-rql", scope);
+    expect(graphProps().filters).toEqual({ interaction_type: ["association"] });
+  });
+
+  it("scopes each facet's counts with every filter but its own", () => {
+    window.history.replaceState(
+      null,
+      "",
+      "/genome/1.1?interactions.interaction_type=association",
+    );
+    render(<InteractionsSubviewShell rql={scope} />);
+    fireEvent.click(screen.getByRole("tab", { name: "Graph" }));
+
+    expect(graphProps().facetRql("interaction_type")).toBe(scope);
+    expect(graphProps().facetRql("detection_method")).toBe(
+      `and(${scope},${typeClause})`,
+    );
+  });
+
+  it("writes a filter change to the URL and drops the Table's page", () => {
+    window.history.replaceState(
+      null,
+      "",
+      "/genome/1.1?tab=interactions&interactions.interaction_type=association&interactions.page=3",
+    );
+    render(<InteractionsSubviewShell rql={scope} />);
+    fireEvent.click(screen.getByRole("tab", { name: "Graph" }));
+
+    act(() => {
+      graphProps().onFilterChange({ filters: { interaction_type: [] } });
+    });
+
+    expect(window.location.search).toBe("?tab=interactions");
+    expect(screen.getByTestId("graph-panel")).toHaveAttribute("data-rql", scope);
+  });
+
+  it("adds a pick to the URL and narrows the Graph with it", () => {
+    render(<InteractionsSubviewShell rql={scope} />);
+    fireEvent.click(screen.getByRole("tab", { name: "Graph" }));
+
+    act(() => {
+      graphProps().onFilterChange({
+        filters: { interaction_type: ["association"] },
+      });
+    });
+
+    expect(window.location.search).toBe(
+      "?interactions.interaction_type=association",
+    );
+    expect(screen.getByTestId("graph-panel")).toHaveAttribute(
+      "data-rql",
+      `and(${scope},${typeClause})`,
+    );
+  });
+
+  it("sends a keyword in the update down the shared keyword path", () => {
+    window.history.replaceState(null, "", "/genome/1.1?interactions.page=3");
+    render(<InteractionsSubviewShell rql={scope} />);
+    fireEvent.click(screen.getByRole("tab", { name: "Graph" }));
+
+    act(() => {
+      graphProps().onFilterChange({ keyword: "groEL", filters: {} });
+    });
+
+    expect(screen.getByTestId("graph-panel")).toHaveAttribute(
+      "data-keyword",
+      "groEL",
+    );
+    expect(screen.getByTestId("table-panel")).toHaveAttribute(
+      "data-keyword",
+      "groEL",
+    );
+    expect(window.location.search).toBe("");
   });
 });

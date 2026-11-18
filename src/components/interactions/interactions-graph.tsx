@@ -6,6 +6,8 @@ import dynamic from "next/dynamic";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { QueryRetryButton } from "@/components/views/query-retry-button";
 import { useRetryKeepingError } from "@/components/views/use-retry-keeping-error";
+import { useFacetCounts } from "@/hooks/views/use-facet-counts";
+import { DataRepository } from "@/lib/data-api";
 import {
   interactionsGraphRowLimit,
   useInteractions,
@@ -18,6 +20,8 @@ import {
 } from "@/lib/interactions/graph-selections";
 import { useGraphLayout } from "@/lib/interactions/use-graph-layout";
 import { formatUserFacingErrorMessage } from "@/lib/utils";
+import { interactionFacets } from "@/lib/views/child-resources";
+import type { CollectionState } from "@/lib/views/collection-state";
 import type {
   GEdge,
   GNode,
@@ -30,7 +34,7 @@ import type {
   SubgraphSelection,
 } from "@/lib/interactions/types";
 
-import { GraphToolbar } from "./graph-toolbar";
+import { GraphFilterBar } from "./graph-filter-bar";
 import { GraphActionBar } from "./graph-action-bar";
 import { GraphLegend } from "./graph-legend";
 import { GraphDetailPanel } from "./graph-detail-panel";
@@ -51,14 +55,31 @@ const SigmaCanvas = dynamic<GraphCanvasProps>(
 
 const emptySelection: GraphSelection = { nodes: [], edges: [] };
 const emptyRows: PpiRecord[] = [];
+const repository = new DataRepository();
+const facetFieldList = interactionFacets.map((facet) => facet.field);
+const noFacetFields: readonly string[] = [];
+const genericFacetErrorMessage =
+  "The filter values could not be loaded. Please try again.";
 
 interface InteractionsGraphProps {
-  /** The shared keyword is not folded in here; it travels as the request's own `keyword`, as for the Table. */
+  /**
+   * The scope with the filters already composed in by the shell. The shared keyword is not folded
+   * in here; it travels as the request's own `keyword`, as for the Table.
+   */
   rql: string;
   keywordValue: string;
+  /** A keyword-only commit from the filter bar. */
   onKeywordChange: (value: string) => void;
   layout: LayoutName;
   onLayoutChange: (layout: LayoutName) => void;
+  filters: CollectionState["filters"];
+  /** Scope for one facet field's counts: the scope rql with every filter except that field's. */
+  facetRql: (field: string) => string | undefined;
+  /** A filter change from the filter bar, with the keyword it was made under. */
+  onFilterChange: (update: {
+    keyword?: string;
+    filters: CollectionState["filters"];
+  }) => void;
 }
 
 export function InteractionsGraph({
@@ -67,7 +88,30 @@ export function InteractionsGraph({
   onKeywordChange,
   layout,
   onLayoutChange,
+  filters,
+  facetRql,
+  onFilterChange,
 }: InteractionsGraphProps) {
+  // Above every early return: the Graph stays mounted through loading, error and loaded, so the
+  // counts keep loading once the user has reached for the filters.
+  const [facetsWanted, setFacetsWanted] = useState(false);
+  const facetFields = facetsWanted ? facetFieldList : noFacetFields;
+  const facetCounts = useFacetCounts({
+    repository,
+    resource: "ppi",
+    idField: "id",
+    facetFields,
+    rqlFor: facetRql,
+    keyword: keywordValue || undefined,
+  });
+  const facetsRetry = useRetryKeepingError(
+    {
+      error: facetCounts.facetsError,
+      isFetching: facetCounts.isFacetsLoading || facetCounts.isFacetsRefreshing,
+      refetch: facetCounts.refetchFacets,
+    },
+    JSON.stringify([rql, filters, keywordValue, facetFields]),
+  );
   const interactions = useInteractions(rql, keywordValue);
   const { data } = interactions;
   const loadRetry = useRetryKeepingError(
@@ -107,12 +151,45 @@ export function InteractionsGraph({
     onLayoutChange(name);
   }
 
+  // A counts failure beside a rows failure is a quiet note in the menu, as in the Table: the rows'
+  // alert already says why.
   const toolbar = (
-    <GraphToolbar filterValue={keywordValue} onFilterChange={onKeywordChange} />
+    <GraphFilterBar
+      keyword={keywordValue || undefined}
+      filters={filters}
+      facets={facetCounts.facets}
+      facetStatuses={facetCounts.facetStatuses}
+      facetsError={
+        facetsRetry.error && !loadRetry.error
+          ? formatUserFacingErrorMessage(
+              facetsRetry.error,
+              genericFacetErrorMessage,
+            )
+          : undefined
+      }
+      facetsUnavailable={Boolean(facetsRetry.error && loadRetry.error)}
+      facetsRetrying={facetsRetry.retrying}
+      onRetryFacets={facetsRetry.retry}
+      onFacetsWanted={() => {
+        setFacetsWanted(true);
+      }}
+      onPrefetchFacets={() => {
+        facetCounts.prefetchFacets(facetFieldList);
+      }}
+      onChange={(update) => {
+        // The bar hands back `filters` itself when only the keyword moved (nothing pending).
+        if (update.filters === filters) {
+          onKeywordChange(update.keyword ?? "");
+          return;
+        }
+        onFilterChange({ keyword: update.keyword, filters: update.filters });
+      }}
+    />
   );
 
-  // The toolbar renders in every state so a keyword matching nothing cannot strand the user without
-  // a way to clear it.
+  // The toolbar renders in every state, first in the same wrapper, so a keyword or filter matching
+  // nothing cannot strand the user without a way to clear it, and an open Filters menu survives the
+  // pick's reload.
   if (loadRetry.error) {
     return (
       <div className="flex h-full min-h-0 flex-col">

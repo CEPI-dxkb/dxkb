@@ -180,4 +180,124 @@ describe("useDebouncedDraft", () => {
     });
     expect(commit).toHaveBeenCalledTimes(1);
   });
+
+  describe("flushOnUnmount", () => {
+    it("commits an uncommitted draft once when unmounted before the debounce", () => {
+      const commit = vi.fn();
+      const { result, unmount } = renderHook(() =>
+        useDebouncedDraft("", commit, { flushOnUnmount: true }),
+      );
+
+      act(() => {
+        result.current[1]("half-typed");
+      });
+      unmount();
+
+      expect(commit).toHaveBeenCalledExactlyOnceWith("half-typed");
+      act(() => {
+        vi.advanceTimersByTime(keywordDebounceMs * 3);
+      });
+      expect(commit).toHaveBeenCalledOnce();
+    });
+
+    it("commits the normalized draft on unmount, and nothing when it normalizes to the committed value", () => {
+      const commit = vi.fn();
+      const normalize = (value: string) => value.trim();
+      const first = renderHook(() =>
+        useDebouncedDraft("", commit, { normalize, flushOnUnmount: true }),
+      );
+      act(() => {
+        first.result.current[1]("  eco ");
+      });
+      first.unmount();
+      expect(commit).toHaveBeenCalledExactlyOnceWith("eco");
+
+      commit.mockClear();
+      const second = renderHook(() =>
+        useDebouncedDraft("eco", commit, { normalize, flushOnUnmount: true }),
+      );
+      act(() => {
+        second.result.current[1]("eco ");
+      });
+      second.unmount();
+      expect(commit).not.toHaveBeenCalled();
+    });
+
+    it("does not commit again on unmount once the debounce has committed the draft", () => {
+      const commit = vi.fn();
+      const { result, unmount } = renderHook(() =>
+        useDebouncedDraft("", commit, { flushOnUnmount: true }),
+      );
+
+      act(() => {
+        result.current[1]("eco");
+      });
+      act(() => {
+        vi.advanceTimersByTime(keywordDebounceMs);
+      });
+      expect(commit).toHaveBeenCalledExactlyOnceWith("eco");
+
+      // The owner has not handed the commit back yet.
+      unmount();
+      expect(commit).toHaveBeenCalledOnce();
+    });
+
+    it("commits typing that followed its own commit when that commit lands late", () => {
+      const commit = vi.fn();
+      const { result, rerender, unmount } = renderHook(
+        ({ committed }) =>
+          useDebouncedDraft(committed, commit, { flushOnUnmount: true }),
+        { initialProps: { committed: "" } },
+      );
+
+      act(() => {
+        result.current[1]("eco");
+      });
+      act(() => {
+        vi.advanceTimersByTime(keywordDebounceMs);
+      });
+      act(() => {
+        result.current[1]("eco k");
+      });
+      rerender({ committed: "eco" });
+      unmount();
+
+      expect(commit).toHaveBeenCalledTimes(2);
+      expect(commit).toHaveBeenLastCalledWith("eco k");
+    });
+
+    it("does not commit a draft an outside change replaced", () => {
+      const commit = vi.fn();
+      const { result, rerender, unmount } = renderHook(
+        ({ committed }) =>
+          useDebouncedDraft(committed, commit, { flushOnUnmount: true }),
+        { initialProps: { committed: "" } },
+      );
+
+      act(() => {
+        result.current[1]("half-typ");
+      });
+      rerender({ committed: "fromTable" });
+      unmount();
+
+      expect(commit).not.toHaveBeenCalled();
+    });
+
+    it("drops an uncommitted draft on unmount when not opted in", () => {
+      const commit = vi.fn();
+      const { result, unmount } = renderHook(() =>
+        useDebouncedDraft("", commit),
+      );
+
+      act(() => {
+        result.current[1]("half-typed");
+      });
+      unmount();
+      act(() => {
+        vi.advanceTimersByTime(keywordDebounceMs * 3);
+      });
+
+      expect(commit).not.toHaveBeenCalled();
+    });
+  });
 });

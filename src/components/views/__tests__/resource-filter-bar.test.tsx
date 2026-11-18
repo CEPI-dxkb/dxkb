@@ -209,6 +209,33 @@ describe("ResourceFilterBar keyword", () => {
     });
   });
 
+  it("drops an uncommitted keyword draft on unmount unless asked to flush it", () => {
+    const onChange = vi.fn();
+    const plain = render(<ResourceFilterBar {...filterBarProps({ onChange })} />);
+    fireEvent.change(screen.getByRole("searchbox"), {
+      target: { value: "half-typed" },
+    });
+    plain.unmount();
+    act(() => {
+      vi.advanceTimersByTime(900);
+    });
+    expect(onChange).not.toHaveBeenCalled();
+
+    const flushing = render(
+      <ResourceFilterBar
+        {...filterBarProps({ onChange, flushKeywordOnUnmount: true })}
+      />,
+    );
+    fireEvent.change(screen.getByRole("searchbox"), {
+      target: { value: "half-typed " },
+    });
+    flushing.unmount();
+    expect(onChange).toHaveBeenCalledExactlyOnceWith({
+      keyword: "half-typed",
+      filters: {},
+    });
+  });
+
   it("keeps a trailing space once the trimmed keyword lands", () => {
     const onChange = vi.fn();
     const props = filterBarProps({ onChange });

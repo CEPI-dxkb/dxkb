@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useEffectEvent, useState } from "react";
+import { useEffect, useEffectEvent, useRef, useState } from "react";
 import { keywordDebounceMs } from "@/components/filterbar/keyword-search";
 
 /**
  * A draft over a committed value that lives elsewhere (usually the URL), committed after `delayMs` of no typing.
  * A `committed` change from outside replaces the draft; this hook's own write landing does not, so text typed since survives.
+ * `flushOnUnmount` commits a pending draft when the owner unmounts before the timer fires (a box in a tab that unmounts when hidden).
  */
 export function useDebouncedDraft(
   committed: string,
@@ -13,9 +14,11 @@ export function useDebouncedDraft(
   {
     normalize = identity,
     delayMs = keywordDebounceMs,
+    flushOnUnmount = false,
   }: {
     normalize?: (value: string) => string;
     delayMs?: number;
+    flushOnUnmount?: boolean;
   } = {},
 ): readonly [string, (value: string) => void] {
   const [draft, setDraft] = useState(committed);
@@ -27,13 +30,31 @@ export function useDebouncedDraft(
     if (committed !== ownCommit) setDraft(committed);
   }
 
+  // The last value this hook committed, until `committed` next changes: a ref, so an unmount
+  // straight after the timer fires (before `ownCommit` renders) still sees it.
+  const sentRef = useRef<string | null>(null);
   const commitDraft = useEffectEvent((value: string) => {
+    sentRef.current = value;
     setOwnCommit(value);
     commit(value);
   });
 
   // A string, so an inline `normalize` does not restart the timer every render.
   const nextCommit = normalize(draft);
+  useEffect(() => {
+    sentRef.current = null;
+  }, [committed]);
+  const flushPendingDraft = useEffectEvent(() => {
+    if (!flushOnUnmount) return;
+    if (nextCommit === committed || nextCommit === sentRef.current) return;
+    commit(nextCommit);
+  });
+  useEffect(
+    () => () => {
+      flushPendingDraft();
+    },
+    [],
+  );
   useEffect(() => {
     if (nextCommit === committed) return;
     const timeout = setTimeout(() => {

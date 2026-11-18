@@ -42,11 +42,14 @@ function ResourceChildCollection({
   resource,
   rql,
   guideUrl,
+  profile,
   keywordMode,
 }: {
   resource: string;
   rql: string;
   guideUrl?: string;
+  /** A supplied profile's `guideUrl` wins over the prop (the Interactions Table sets it there). */
+  profile?: { guideUrl?: string };
   keywordMode?: "server" | "loaded";
 }) {
   return (
@@ -54,7 +57,7 @@ function ResourceChildCollection({
       data-testid={resource === "bioset" ? "resource-child-collection" : "taxon-data-panel"}
       data-resource={resource}
       data-q={rql}
-      data-guide={guideUrl}
+      data-guide={profile?.guideUrl ?? guideUrl}
       data-keyword-mode={keywordMode}
     />
   );

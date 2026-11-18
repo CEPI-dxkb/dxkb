@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 
 import { server } from "@/test-helpers/msw-server";
+import { stubMenuLayout } from "@/test-helpers/menu-layout";
 import { createQueryClientWrapper } from "@/test-helpers/react";
 import { resourceCollectionPageSize } from "@/hooks/views/collection-state";
 import { requestGraphLayout } from "@/lib/interactions/layout-client";
@@ -94,15 +95,8 @@ vi.mock("@/components/views/collection-selection-actions", async (
   CollectionSelectionActions: () => null,
 }));
 
-class ResizeObserverStub {
-  observe = vi.fn();
-  unobserve = vi.fn();
-  disconnect = vi.fn();
-}
-
-vi.stubGlobal("ResizeObserver", ResizeObserverStub);
+stubMenuLayout();
 vi.stubGlobal("scrollTo", vi.fn());
-Element.prototype.scrollIntoView = vi.fn();
 
 // The first Graph render loads graphology on demand; paid here outside any test, with a wider
 // per-test budget.
@@ -132,6 +126,8 @@ interface Predicate {
 
 const tablePredicates: Predicate[] = [];
 const graphPredicates: Predicate[] = [];
+/** Facet-count reads (a GET with `facet` params), kept apart from the Table's row reads. */
+const facetPredicates: (Predicate & { facets: string[] })[] = [];
 /** Kept out of `Predicate` because the Graph fetches its whole dataset and has no page. */
 const tablePages: number[] = [];
 
@@ -150,11 +146,38 @@ beforeEach(() => {
   window.history.replaceState(null, "", "/genome/1.1");
   tablePredicates.length = 0;
   graphPredicates.length = 0;
+  facetPredicates.length = 0;
   tablePages.length = 0;
   server.use(
     http.get("/api/data/ppi", ({ request }) => {
       const params = new URL(request.url).searchParams;
       const keyword = params.get("keyword") ?? undefined;
+      const facets = params.getAll("facet");
+      if (facets.length > 0) {
+        facetPredicates.push({
+          rql: params.get("rql") ?? undefined,
+          keyword,
+          keywordMode: params.get("keywordMode") ?? undefined,
+          facets,
+        });
+        return HttpResponse.json({
+          rows: [],
+          total: allRows.length,
+          facets: Object.fromEntries(
+            facets.map((field) => [
+              field,
+              field === "interaction_type"
+                ? [
+                    { value: "association", count: 100 },
+                    { value: "physical association", count: 50 },
+                  ]
+                : [],
+            ]),
+          ),
+          page: 1,
+          pageSize: 1,
+        });
+      }
       tablePredicates.push({
         rql: params.get("rql") ?? undefined,
         keyword,
@@ -286,6 +309,119 @@ describe("Interactions Table and Graph share one dataset", () => {
       ).toBeInTheDocument();
     });
     expect(graphPredicates.at(-1)?.keyword).toBe(beyondFirstPageInteractor);
+  });
+});
+
+async function pickAssociation(
+  user: ReturnType<typeof userEvent.setup>,
+  panel: ReturnType<typeof tablePanel>,
+) {
+  await user.click(panel.getByRole("button", { name: /^Filters/ }));
+  await user.click(
+    within(await screen.findByRole("listbox", { name: "Filters" })).getByRole(
+      "option",
+      { name: /^Interaction Type/ },
+    ),
+  );
+  await user.click(
+    await within(
+      screen.getByRole("listbox", { name: "Interaction Type values" }),
+    ).findByRole("option", { name: /^association/ }),
+  );
+  await user.keyboard("{Escape}");
+}
+
+const associationRql = `and(${scopeRql},eq(interaction_type,association))`;
+
+describe("Interactions Table and Graph share one set of filters", () => {
+  it("narrows both views alike from a pick in the Graph's Filters menu", async () => {
+    const user = userEvent.setup();
+    render(<InteractionsSubviewShell rql={scopeRql} />, {
+      wrapper: createQueryClientWrapper(),
+    });
+    await waitFor(() => {
+      expect(tablePredicates).toHaveLength(1);
+    });
+    await user.click(screen.getByRole("tab", { name: "Graph" }));
+    await waitFor(() => {
+      expect(graphPredicates).toHaveLength(1);
+    });
+
+    await pickAssociation(user, graphPanel());
+
+    await waitFor(() => {
+      expect(graphPredicates.at(-1)?.rql).toBe(associationRql);
+    });
+    await waitFor(() => {
+      expect(tablePredicates.at(-1)?.rql).toBe(associationRql);
+    });
+    expect(tablePredicates.at(-1)).toEqual(graphPredicates.at(-1));
+    expect(window.location.search).toBe(
+      "?interactions.interaction_type=association",
+    );
+    // The other facets count within the pick; Interaction Type is counted without its own filter
+    // (the scope's cached counts), so a second value stays pickable.
+    await waitFor(() => {
+      expect(facetPredicates).toContainEqual(
+        expect.objectContaining({ rql: associationRql }),
+      );
+    });
+    expect(
+      facetPredicates.filter(
+        (request) =>
+          request.rql === associationRql &&
+          request.facets.includes("interaction_type"),
+      ),
+    ).toEqual([]);
+  });
+
+  it("narrows the Graph from a pick in the Table's Filters menu", async () => {
+    const user = userEvent.setup();
+    render(<InteractionsSubviewShell rql={scopeRql} />, {
+      wrapper: createQueryClientWrapper(),
+    });
+    await waitFor(() => {
+      expect(tablePredicates).toHaveLength(1);
+    });
+
+    await pickAssociation(user, tablePanel());
+    await waitFor(() => {
+      expect(tablePredicates.at(-1)?.rql).toBe(associationRql);
+    });
+
+    await user.click(screen.getByRole("tab", { name: "Graph" }));
+    await waitFor(() => {
+      expect(graphPredicates).toHaveLength(1);
+    });
+    expect(graphPredicates.at(-1)).toEqual(tablePredicates.at(-1));
+  });
+
+  it("drops the Table's page when the Graph picks a filter", async () => {
+    const user = userEvent.setup();
+    render(<InteractionsSubviewShell rql={scopeRql} />, {
+      wrapper: createQueryClientWrapper(),
+    });
+    await waitFor(() => {
+      expect(tablePredicates).toHaveLength(1);
+    });
+    await user.click(tablePanel().getByRole("button", { name: "Next page" }));
+    await waitFor(() => {
+      expect(tablePages.at(-1)).toBe(2);
+    });
+
+    await user.click(screen.getByRole("tab", { name: "Graph" }));
+    await pickAssociation(user, graphPanel());
+
+    await waitFor(() => {
+      expect(tablePredicates.at(-1)?.rql).toBe(associationRql);
+    });
+    // The narrowed read starts at page 1; a later page-2 read of it is the next-page prefetch.
+    expect(
+      tablePages[
+        tablePredicates.findIndex((request) => request.rql === associationRql)
+      ],
+    ).toBe(1);
+    expect(window.location.search).not.toContain("interactions.page");
   });
 });
 

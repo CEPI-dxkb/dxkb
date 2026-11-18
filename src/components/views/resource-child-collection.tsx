@@ -88,8 +88,9 @@ interface ResourceChildCollectionProps {
   unsortedOrder?: DataSort;
   defaultFilters?: CollectionStateOptions["defaultFilters"];
   /**
-   * Retained for the export-contract tests, which pin exact bytes against a
-   * two-column profile; no production caller sets it.
+   * Opt-in profile for a child table that needs facets without a canonical
+   * entry (the taxon Interactions tab). The supplied profile's `columns` and
+   * `guideUrl` win over the props, so a caller sets them on the profile.
    */
   profile?: ResourceCollectionProfile<ChildRow>;
   download?: CollectionDownloadSpec;

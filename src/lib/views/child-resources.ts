@@ -41,9 +41,37 @@ export const genomeSequenceCollectionProfile: ResourceCollectionProfile<
   guideUrl:
     "https://www.bv-brc.org/docs/quick_references/organisms_taxon/sequences.html",
 };
-export const interactionColumns = deriveFieldMetadata(ppiFields, {
+const interactionMetadata = deriveFieldMetadata(ppiFields, { resource: "ppi" });
+export const interactionColumns = interactionMetadata.columns;
+
+/**
+ * Evidence is not offered: every PPI scope pins `eq(evidence,experimental)`
+ * (see the `*InteractionsRql` builders), so a computational pick would only
+ * match rows carrying both values.
+ */
+export const interactionFacets = interactionMetadata.facets.filter(
+  (facet) => facet.field !== "evidence",
+);
+
+/**
+ * Opt-in (pass as `ResourceChildCollection`'s `profile`) for the taxon
+ * Interactions Table + Graph. Genome and Feature Interactions tabs keep the
+ * plain columns-only table. No `detailFields`: the detail fetch stays what the
+ * generic child branch uses (the columns).
+ */
+export const interactionCollectionProfile: ResourceCollectionProfile<
+  Record<string, unknown>
+> = {
   resource: "ppi",
-}).columns;
+  label: "Interactions",
+  idField: "id",
+  columns: interactionColumns,
+  basePredicate: "eq(id,*)",
+  buildStructuralRql: (state: CollectionState) =>
+    structuralFilterRql("ppi", state),
+  facets: interactionFacets,
+};
+
 export const sequenceFeatureColumns = deriveFieldMetadata(
   sequenceFeatureFields,
   { resource: "sequence_feature" },

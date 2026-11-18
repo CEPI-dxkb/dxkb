@@ -548,15 +548,35 @@ describe("InteractionsGraph row ceiling", () => {
         `Showing the first ${interactionsGraphRowLimit.toLocaleString()} interactions`,
       ),
     ).toBeInTheDocument();
-    expect(screen.getByRole("alert")).toHaveTextContent(
-      "use the Table subview to see them all",
-    );
+    const alert = screen.getByRole("alert");
+    expect(alert).toHaveTextContent("use the Table subview to see them all");
+    // Each control the banner sends the user to, named as it is labelled.
+    expect(alert).toHaveTextContent(/Filters menu/);
+    expect(alert).toHaveTextContent(/interaction type/i);
+    expect(alert).toHaveTextContent(/detection method/i);
+    expect(alert).toHaveTextContent(/evidence/i);
+    expect(alert).toHaveTextContent(/Focus on this protein/);
+    expect(alert).toHaveTextContent(/Show in Graph/);
+    expect(
+      screen.getByRole("button", { name: /^Filters/ }),
+    ).toBeInTheDocument();
   });
 
   it("stays quiet when every matching interaction is drawn", () => {
     resolved({ rows: graphRows, isTruncated: false });
 
     renderGraph(<GraphHarness rql="" keywordValue="" onKeywordChange={vi.fn()} />);
+
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("draws no alert for the open Filters menu either", async () => {
+    const user = userEvent.setup();
+    serveFacetCounts();
+    resolved({ rows: graphRows, isTruncated: false });
+
+    renderGraph(<GraphHarness rql="" keywordValue="" onKeywordChange={vi.fn()} />);
+    await openFilters(user);
 
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
@@ -594,7 +614,44 @@ describe("InteractionsGraph row ceiling", () => {
           `Showing the first ${interactionsGraphRowLimit.toLocaleString()} interactions`,
         ),
       ).toBeInTheDocument();
-      expect(screen.queryByText(/ of /)).not.toBeInTheDocument();
+      const alert = screen.getByRole("alert");
+      expect(
+        within(alert).queryByText(/^Showing the first [\d,]+ of /),
+      ).not.toBeInTheDocument();
+    });
+
+    it.each([
+      // The count and the export are separate reads, so a count can lag a changed result set.
+      ["below the row limit", interactionsGraphRowLimit - 10],
+      ["exactly the row limit", interactionsGraphRowLimit],
+    ])("keeps the plain title for a count %s", (_name, count) => {
+      resolved({ rows: graphRows, isTruncated: true });
+      total(count);
+
+      renderGraph(<GraphHarness rql="" keywordValue="" onKeywordChange={vi.fn()} />);
+
+      const alert = screen.getByRole("alert");
+      expect(
+        within(alert).getByText(
+          `Showing the first ${interactionsGraphRowLimit.toLocaleString()} interactions`,
+        ),
+      ).toBeInTheDocument();
+      expect(
+        within(alert).queryByText(/^Showing the first [\d,]+ of /),
+      ).not.toBeInTheDocument();
+    });
+
+    it("names the total once it exceeds the row limit by one", () => {
+      resolved({ rows: graphRows, isTruncated: true });
+      total(interactionsGraphRowLimit + 1);
+
+      renderGraph(<GraphHarness rql="" keywordValue="" onKeywordChange={vi.fn()} />);
+
+      expect(
+        screen.getByText(
+          `Showing the first ${interactionsGraphRowLimit.toLocaleString()} of ${(interactionsGraphRowLimit + 1).toLocaleString()} interactions`,
+        ),
+      ).toBeInTheDocument();
     });
 
     it("asks for the count of the graph's own scope and keyword once the graph is truncated", () => {
@@ -1171,6 +1228,8 @@ describe("InteractionsGraph row selection", () => {
     expect(
       screen.queryByText(/Showing the first/),
     ).not.toBeInTheDocument();
+    // The selection chip is a plain badge, not an alert.
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
   it("clears the stale node selection and presets when a new selection arrives", async () => {

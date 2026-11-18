@@ -158,10 +158,16 @@ export function useInteractionsTotal(
   keyword: string,
   enabled: boolean,
 ) {
+  // The graph's own normalization of an empty scope or keyword, so the count asks about the same
+  // predicate as the rows it describes.
+  const { rql: scopeRql, keyword: scopeKeyword } = interactionsGraphRequest(
+    rql,
+    keyword,
+  );
   return useQuery({
     ...collectionQueryOptions(repository, "ppi", {
-      rql: rql || undefined,
-      keyword: keyword || undefined,
+      rql: scopeRql,
+      keyword: scopeKeyword,
       page: 1,
       pageSize: 1,
       fields: ["id"],

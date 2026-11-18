@@ -345,6 +345,17 @@ describe("useInteractionsTotal", () => {
     ]);
   });
 
+  it("omits an empty predicate and keyword, as the graph's own request does", async () => {
+    const requests = serveTotal(() => totalResponse(124_566));
+
+    const { result } = renderTotal(true, "", "");
+
+    await waitFor(() => { expect(result.current.isSuccess).toBe(true); });
+    expect(requests).toStrictEqual([
+      expect.objectContaining({ rql: null, keyword: null }),
+    ]);
+  });
+
   it("sends nothing while disabled", async () => {
     const requests = serveTotal(() => totalResponse(10));
 

@@ -329,19 +329,31 @@ export function InteractionsGraph({
     setSelection(selectHubs(selectionIndex, threshold));
   }
 
+  // The count and the export are separate reads, so a count that is not past the row limit cannot
+  // describe a truncated result (a stale one would read "first 5,000 of 4,990"): the title goes
+  // without it.
+  const totalShown =
+    interactionsTotal.data !== undefined &&
+    interactionsTotal.data > interactionsGraphRowLimit
+      ? interactionsTotal.data
+      : undefined;
+
   return (
     <div className="flex h-full min-h-0 flex-col">
       {toolbar}
       {data.isTruncated && (
         <Alert className="mb-2">
           <AlertTitle>
-            {interactionsTotal.data === undefined
+            {totalShown === undefined
               ? `Showing the first ${interactionsGraphRowLimit.toLocaleString()} interactions`
-              : `Showing the first ${interactionsGraphRowLimit.toLocaleString()} of ${interactionsTotal.data.toLocaleString()} interactions`}
+              : `Showing the first ${interactionsGraphRowLimit.toLocaleString()} of ${totalShown.toLocaleString()} interactions`}
           </AlertTitle>
           <AlertDescription>
             This search matches more interactions than the graph can draw.
-            Narrow it, or use the Table subview to see them all.
+            Narrow it with the search box or the Filters menu (interaction
+            type, detection method, evidence, category), choose Focus on this
+            protein for a selected node, or select rows in the Table subview
+            and choose Show in Graph. Or use the Table subview to see them all.
           </AlertDescription>
         </Alert>
       )}

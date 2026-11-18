@@ -221,3 +221,67 @@ test.describe("taxon interactions tab: filter sync between Table and Graph", () 
     await interactionsPage.expectResultCount("Showing 1-1 of 1 results");
   });
 });
+
+test.describe("taxon interactions tab: narrowing a graph", () => {
+  const sigmaSkip = "Headless Firefox has no WebGL for Sigma.js to render into";
+
+  test("a truncated graph says how to narrow it, and its filter and focus picks reach the Table", async ({
+    page,
+    browserName,
+  }) => {
+    test.skip(browserName === "firefox", sigmaSkip);
+
+    // One row past the Graph's 5,000: the mock serves every row to the export, so the Graph
+    // slices and flags it, and answers the one-row count read with the full total.
+    const interactionsPage = await setupInteractionsPage(
+      page,
+      buildPpiRows(5001),
+    );
+    await interactionsPage.switchToGraph();
+    await interactionsPage.expectTruncatedBanner(5001);
+
+    // The mock ignores `rql`, so the picks are asserted as shared state (URL, pills), not as
+    // fewer rows.
+    await interactionsPage.pickFilter("Interaction Type", "predicted interaction");
+    await interactionsPage.expectUrlFilter(
+      "interaction_type",
+      "predicted interaction",
+    );
+    await interactionsPage.expectFilterActive("Interaction Type");
+
+    const focusId = "fig|224914.16.peg.600";
+    await interactionsPage.selectNodeInList(focusId, true);
+    await interactionsPage.focusSelectedNode();
+    await interactionsPage.expectUrlFilter("interactor", focusId);
+    await interactionsPage.expectFilterActive("Protein");
+
+    // The Table reads the same URL state, so both picks are active there too.
+    await interactionsPage.switchToTable();
+    await interactionsPage.expectFilterActive("Interaction Type");
+    await interactionsPage.expectFilterActive("Protein");
+  });
+
+  test("Show in Graph draws the selected Table rows alone, until Show all", async ({
+    page,
+    browserName,
+  }) => {
+    test.skip(browserName === "firefox", sigmaSkip);
+
+    const interactionsPage = await setupInteractionsPage(page, buildPpiRows(3));
+    await interactionsPage.expectResultCount("Showing 1-3 of 3 results");
+
+    await interactionsPage.selectTableRows("ppi-0000", "ppi-0001");
+    await interactionsPage.showSelectedRowsInGraph();
+
+    // The mock serves the `selected` read by id, so this one can show the narrowing.
+    await interactionsPage.expectSelectionChip(2);
+    await interactionsPage.expectGraphFilterBar(false);
+    await interactionsPage.expectGraphNode("fig|224914.16.peg.601", true);
+    await interactionsPage.expectGraphNode("fig|224914.16.peg.602", false);
+
+    await interactionsPage.showAll();
+
+    await interactionsPage.expectGraphFilterBar(true);
+    await interactionsPage.expectGraphNode("fig|224914.16.peg.602", true);
+  });
+});

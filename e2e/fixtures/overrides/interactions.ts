@@ -6,6 +6,8 @@ import {
   buildGatewayCollectionEnvelope,
   buildGatewayRowsEnvelope,
   buildLoopbackSolrEnvelope,
+  type FacetCount,
+  type GatewayCollectionEnvelope,
 } from "@/lib/e2e-fixtures/envelopes";
 import type {
   JsonOverride,
@@ -64,6 +66,54 @@ export function selectPpiRows(
     : rows;
 }
 
+/**
+ * The values `rows` hold for `field`, most common first; a list field (`interaction_type`,
+ * `evidence`) counts each of its values.
+ */
+function facetBuckets(rows: MockPpiRow[], field: string): FacetCount[] {
+  const counts = new Map<string, number>();
+  for (const row of rows) {
+    const value: unknown = (row as unknown as Record<string, unknown>)[field];
+    const values = Array.isArray(value) ? value : [value];
+    for (const item of values) {
+      if (typeof item !== "string" || item === "") continue;
+      counts.set(item, (counts.get(item) ?? 0) + 1);
+    }
+  }
+  return [...counts]
+    .map(([value, count]) => ({ value, count }))
+    .sort((a, b) => b.count - a.count || a.value.localeCompare(b.value));
+}
+
+/**
+ * The gateway's collection read (`GET /api/data/ppi`): one page of the rows matching the keyword,
+ * the count of all of them (the truncation banner's count and every Filters menu count read
+ * `pageSize=1` for it) and a bucket list per `facet=` param. Like the rest of this mock it ignores
+ * `rql`, so a filter pick narrows nothing and the counts are the keyword's.
+ */
+export function buildPpiCollectionEnvelope(
+  rows: MockPpiRow[],
+  context: JsonOverrideBodyContext,
+): GatewayCollectionEnvelope<MockPpiRow> {
+  const matching = selectPpiRows(rows, context);
+  const params = new URL(context.requestUrl).searchParams;
+  const pageSize = Number(params.get("pageSize")) || undefined;
+  const page = Number(params.get("page")) || 1;
+  return buildGatewayCollectionEnvelope(
+    pageSize
+      ? matching.slice((page - 1) * pageSize, page * pageSize)
+      : matching,
+    {
+      total: matching.length,
+      page,
+      pageSize,
+      facets: Object.fromEntries(
+        params.getAll("facet").map((field) => [field, facetBuckets(matching, field)]),
+      ),
+    },
+  );
+}
+
 export function buildPpiOverrides(rows: MockPpiRow[]): JsonOverride[] {
   return [
     // Narrowest first (first match wins): the count URL also satisfies both
@@ -79,8 +129,7 @@ export function buildPpiOverrides(rows: MockPpiRow[]): JsonOverride[] {
     {
       url: /api\/data\/ppi/,
       method: "GET",
-      body: (context) =>
-        buildGatewayCollectionEnvelope(selectPpiRows(rows, context)),
+      body: (context) => buildPpiCollectionEnvelope(rows, context),
     },
     // The Graph reads through the gateway's bulk-row POST, whose envelope is
     // rows-only.

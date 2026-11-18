@@ -6,7 +6,7 @@ import type {
   RqlFieldOperator,
 } from "./types";
 
-const maxRqlLength = 8_000;
+export const maxRqlLength = 8_000;
 const maxDepth = 12;
 export const maxRqlInValues = 500;
 const operators = new Set([
@@ -273,7 +273,7 @@ function parseExpression(
 export function parseRql(resource: DataResource, rql: string): RqlExpression {
   if (!rql || rql.length > maxRqlLength)
     throw new DataApiValidationError(
-      "RQL must be between 1 and 8000 characters.",
+      `RQL must be between 1 and ${String(maxRqlLength)} characters.`,
     );
   return parseExpression(resource, rql, 0);
 }

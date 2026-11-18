@@ -4,6 +4,8 @@ import {
   biosetViewRecordSchema,
   experimentBiosetCollectionRql,
   experimentBiosetRql,
+  experimentBiosetScopeRql,
+  maxBiosetScopeExperiments,
   experimentCollectionProfile,
   experimentCollectionScopeRql,
   experimentSorts,
@@ -119,6 +121,17 @@ describe("Experiment view", () => {
     expect(rql.match(/in\(exp_id,/g)).toHaveLength(2);
     expect(rql).toContain(",500)),in(exp_id,(501,");
     expect(validateRql("bioset", rql)).toBe(rql);
+  });
+
+  it("gives no Bioset scope for an ID list too long for one query", () => {
+    expect(experimentBiosetScopeRql(["1", "2"])).toBe("in(exp_id,(1,2))");
+    const longIds = Array.from({ length: 1000 }, (_, i) => String(100000 + i));
+    expect(experimentBiosetScopeRql(longIds)).toBeNull();
+    const tooMany = Array.from(
+      { length: maxBiosetScopeExperiments + 1 },
+      (_, i) => String(i),
+    );
+    expect(experimentBiosetScopeRql(tooMany)).toBeNull();
   });
 
   it("preserves Experiment search scope for the collection Biosets tab", () => {

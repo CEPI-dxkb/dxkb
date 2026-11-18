@@ -73,15 +73,15 @@ vi.mock("@/components/organisms/taxon-views/lazy-tab-roots", async () => ({
   LazyResourceChildCollection: ResourceChildCollection,
   LazyExperimentBiosetCollection: ({
     baseRql,
-    maxExperiments,
+    refineHref,
   }: {
     baseRql?: string;
-    maxExperiments?: number;
+    refineHref?: string;
   }) => (
     <div
       data-testid="experiment-bioset-collection"
       data-q={baseRql}
-      data-max-experiments={maxExperiments}
+      data-refine-href={refineHref}
     />
   ),
   LazyExperimentResourceCollection: ({
@@ -409,7 +409,10 @@ describe("makeExperimentsView", () => {
     // selects experiments, whose exp_ids select the Biosets.
     const panel = screen.getByTestId("experiment-bioset-collection");
     expect(panel).toHaveAttribute("data-q", "eq(taxon_lineage_ids,1234)");
-    expect(panel).toHaveAttribute("data-max-experiments", "5000");
+    expect(panel).toHaveAttribute(
+      "data-refine-href",
+      "/experiment?rql=eq(taxon_lineage_ids,1234)",
+    );
   });
 });
 

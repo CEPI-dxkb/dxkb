@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+import Link from "next/link";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ResourceChildCollection } from "@/components/views/resource-child-collection";
@@ -9,14 +10,14 @@ import { useRetryKeepingError } from "@/components/views/use-retry-keeping-error
 import { DataRepository } from "@/lib/data-api";
 import { keywordQuery } from "@/lib/data-api/keyword-terms";
 import {
-  experimentBiosetCollectionRql,
+  experimentBiosetScopeRql,
   experimentCollectionScopeRql,
+  maxBiosetScopeExperiments,
 } from "@/lib/experiment-view";
 import { formatUserFacingErrorMessage } from "@/lib/utils";
 import type { CollectionState } from "@/lib/views/collection-state";
 
 const repository = new DataRepository();
-const defaultMaxScopedExperiments = 500;
 const unscopedExperimentState: CollectionState = {
   filters: {},
   page: 1,
@@ -34,18 +35,28 @@ interface ExperimentBiosetCollectionProps {
    * taxon reaches its Biosets only through its experiments' `exp_id`s.
    */
   baseRql?: string;
-  /** The most matching experiments whose Biosets are listed before asking to refine. */
-  maxExperiments?: number;
+  /**
+   * Where to narrow the experiments when too many match to list their Biosets.
+   * Pass it when this view has no search of its own (a taxon tab); without it the
+   * view asks for a keyword or filter on the Experiment search it was given.
+   */
+  refineHref?: string;
+}
+
+/** A blank predicate is no predicate. */
+function presentRql(rql: string | undefined): string | undefined {
+  return rql?.trim() ? rql : undefined;
 }
 
 export function ExperimentBiosetCollection({
   experimentState = unscopedExperimentState,
   baseRql,
-  maxExperiments = defaultMaxScopedExperiments,
+  refineHref,
 }: ExperimentBiosetCollectionProps) {
+  const scopeRql = presentRql(baseRql);
   const searchRql = experimentCollectionScopeRql(experimentState);
   const experimentRql =
-    baseRql && searchRql ? `and(${baseRql},${searchRql})` : baseRql ?? searchRql;
+    scopeRql && searchRql ? `and(${scopeRql},${searchRql})` : scopeRql ?? searchRql;
   const keyword =
     keywordQuery(experimentState.keyword ?? "").length > 0
       ? experimentState.keyword?.trim()
@@ -61,7 +72,7 @@ export function ExperimentBiosetCollection({
           keyword,
           keywordMode: "exact",
           fields: ["exp_id"],
-          limit: maxExperiments + 1,
+          limit: maxBiosetScopeExperiments + 1,
         },
         signal,
       ),
@@ -106,14 +117,34 @@ export function ExperimentBiosetCollection({
   }
 
   const ids = experimentIds.data?.rows.map((row) => String(row.exp_id)) ?? [];
-  if (ids.length > maxExperiments) {
+  const biosetRql = hasExperimentScope
+    ? experimentBiosetScopeRql(ids)
+    : "eq(bioset_id,*)";
+  if (biosetRql === null) {
     return (
       <div className="p-4">
         <Alert>
-          <AlertTitle>Refine the Experiment search</AlertTitle>
+          <AlertTitle>Too many Experiments to list their Biosets</AlertTitle>
           <AlertDescription>
-            Biosets can be shown for up to {maxExperiments} matching
-            Experiments. Add a keyword or filter to narrow the results.
+            {refineHref ? (
+              <p>
+                {ids.length.toLocaleString()} Experiments match, more than one
+                Biosets query can name.{" "}
+                <Link
+                  href={refineHref}
+                  className="text-primary underline underline-offset-2 dark:text-link"
+                >
+                  Narrow them in the Experiment search
+                </Link>
+                , then open its Biosets tab.
+              </p>
+            ) : (
+              <p>
+                {ids.length.toLocaleString()} Experiments match, more than one
+                Biosets query can name. Add a keyword or filter to narrow the
+                results.
+              </p>
+            )}
           </AlertDescription>
         </Alert>
       </div>
@@ -138,11 +169,7 @@ export function ExperimentBiosetCollection({
       resource="bioset"
       label="Biosets"
       idField="bioset_id"
-      rql={
-        hasExperimentScope
-          ? experimentBiosetCollectionRql(ids)
-          : "eq(bioset_id,*)"
-      }
+      rql={biosetRql}
       defaultSort="bioset_id:asc"
     />
   );

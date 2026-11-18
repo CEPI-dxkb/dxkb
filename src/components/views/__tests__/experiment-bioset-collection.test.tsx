@@ -1,6 +1,10 @@
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { ExperimentBiosetCollection } from "../experiment-bioset-collection";
 import { createQueryClientWrapper } from "@/test-helpers/react";
+import {
+  maxBiosetScopeExperiments,
+  maxBiosetScopeRqlLength,
+} from "@/lib/experiment-view";
 
 const mocks = vi.hoisted(() => ({
   exportRecords: vi.fn(),
@@ -29,10 +33,7 @@ describe("ExperimentBiosetCollection", () => {
       rows: [{ exp_id: "170" }, { exp_id: "171" }],
     });
     render(
-      <ExperimentBiosetCollection
-        baseRql="eq(taxon_lineage_ids,10239)"
-        maxExperiments={5000}
-      />,
+      <ExperimentBiosetCollection baseRql="eq(taxon_lineage_ids,10239)" />,
       { wrapper: createQueryClientWrapper() },
     );
 
@@ -45,7 +46,7 @@ describe("ExperimentBiosetCollection", () => {
       expect.objectContaining({
         rql: "eq(taxon_lineage_ids,10239)",
         fields: ["exp_id"],
-        limit: 5001,
+        limit: maxBiosetScopeExperiments + 1,
       }),
       expect.anything(),
     );
@@ -76,22 +77,92 @@ describe("ExperimentBiosetCollection", () => {
     );
   });
 
-  it("asks to refine when more experiments match than the cap", async () => {
-    mocks.exportRecords.mockResolvedValue({
-      rows: [{ exp_id: "1" }, { exp_id: "2" }, { exp_id: "3" }],
-    });
+  it("treats a blank baseRql as no scope, keeping the Experiment search", async () => {
+    mocks.exportRecords.mockResolvedValue({ rows: [{ exp_id: "170" }] });
+    render(
+      <ExperimentBiosetCollection
+        baseRql="  "
+        experimentState={{
+          filters: {},
+          page: 1,
+          sort: "exp_id:asc",
+          rql: "eq(exp_type,Proteomics)",
+        }}
+      />,
+      { wrapper: createQueryClientWrapper() },
+    );
+
+    expect(await screen.findByTestId("bioset-collection")).toHaveAttribute(
+      "data-rql",
+      "in(exp_id,(170))",
+    );
+    expect(mocks.exportRecords).toHaveBeenCalledWith(
+      "experiment",
+      expect.objectContaining({ rql: "eq(exp_type,Proteomics)" }),
+      expect.anything(),
+    );
+  });
+
+  // 1,000 six-digit IDs serialize to ~7,000 characters, past the scope budget.
+  const tooManyIds = Array.from({ length: 1000 }, (_, i) => ({
+    exp_id: String(100000 + i),
+  }));
+
+  it("links a taxon tab to the Experiment search when its scope is too long for one query", async () => {
+    mocks.exportRecords.mockResolvedValue({ rows: tooManyIds });
     render(
       <ExperimentBiosetCollection
         baseRql="eq(taxon_lineage_ids,2)"
-        maxExperiments={2}
+        refineHref="/experiment?rql=eq(taxon_lineage_ids,2)"
       />,
       { wrapper: createQueryClientWrapper() },
     );
 
     expect(
-      await screen.findByText("Refine the Experiment search"),
+      await screen.findByText("Too many Experiments to list their Biosets"),
     ).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "Narrow them in the Experiment search" }),
+    ).toHaveAttribute("href", "/experiment?rql=eq(taxon_lineage_ids,2)");
     expect(screen.queryByTestId("bioset-collection")).toBeNull();
+  });
+
+  it("asks for a keyword or filter when the Experiment search is too broad and there is no refine link", async () => {
+    mocks.exportRecords.mockResolvedValue({ rows: tooManyIds });
+    render(
+      <ExperimentBiosetCollection
+        experimentState={{
+          keyword: "coli",
+          filters: {},
+          page: 1,
+          sort: "exp_id:asc",
+        }}
+      />,
+      { wrapper: createQueryClientWrapper() },
+    );
+
+    expect(
+      await screen.findByText(/Add a keyword or filter to narrow the results/),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("link")).toBeNull();
+    expect(screen.queryByTestId("bioset-collection")).toBeNull();
+  });
+
+  it("lists the Biosets of a scope that fits, in or-ed chunks", async () => {
+    // 791 IDs, as Bacteria has: past one in() but within the length budget.
+    mocks.exportRecords.mockResolvedValue({
+      rows: Array.from({ length: 791 }, (_, i) => ({ exp_id: String(i + 1) })),
+    });
+    render(<ExperimentBiosetCollection baseRql="eq(taxon_lineage_ids,2)" />, {
+      wrapper: createQueryClientWrapper(),
+    });
+
+    const rql =
+      (await screen.findByTestId("bioset-collection")).getAttribute(
+        "data-rql",
+      ) ?? "";
+    expect(rql).toMatch(/^or\(in\(exp_id,/);
+    expect(rql.length).toBeLessThanOrEqual(maxBiosetScopeRqlLength);
   });
 
   it.each(["   ", '""', '"', "OR", "/"])("treats the keyword %j, which has no terms, as unscoped without exporting experiment IDs", (keyword) => {

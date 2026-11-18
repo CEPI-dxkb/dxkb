@@ -4,6 +4,8 @@ import { useRef, useState } from "react";
 import dynamic from "next/dynamic";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { QueryRetryButton } from "@/components/views/query-retry-button";
 import { useRetryKeepingError } from "@/components/views/use-retry-keeping-error";
 import { useFacetCounts } from "@/hooks/views/use-facet-counts";
@@ -11,6 +13,7 @@ import { DataRepository } from "@/lib/data-api";
 import {
   interactionsGraphRowLimit,
   useInteractions,
+  type InteractionsSelection,
 } from "@/lib/interactions/use-interactions";
 import { toGraph } from "@/lib/interactions/to-graph";
 import {
@@ -67,6 +70,29 @@ const noFacetFields: readonly string[] = [];
 const genericFacetErrorMessage =
   "The filter values could not be loaded. Please try again.";
 
+/**
+ * Stands in for the keyword box and Filters menu while the Graph shows a Table selection: the
+ * selection is read by id, so neither would change what is drawn.
+ */
+function GraphSelectionBar({
+  count,
+  onClear,
+}: {
+  count: number;
+  onClear: () => void;
+}) {
+  return (
+    <div className="mb-1 flex h-10 shrink-0 items-center gap-2 p-1">
+      <Badge variant="secondary">
+        {`Showing ${count.toLocaleString()} selected ${count === 1 ? "interaction" : "interactions"}`}
+      </Badge>
+      <Button variant="outline" size="xs" onClick={onClear}>
+        Show all
+      </Button>
+    </div>
+  );
+}
+
 interface InteractionsGraphProps {
   /**
    * The scope with the filters already composed in by the shell. The shared keyword is not folded
@@ -90,6 +116,11 @@ interface InteractionsGraphProps {
   focusId?: string;
   /** Offers "Focus on this protein" in the detail panel; omitted, the panel has no button. */
   onFocusNode?: (node: GNode) => void;
+  /**
+   * Table rows to draw instead of the scope (Show in Graph), read by id; `rql`, the keyword and
+   * the filters do not apply while it is set. `onClear` goes back to the scope.
+   */
+  selection?: InteractionsSelection & { onClear: () => void };
 }
 
 export function InteractionsGraph({
@@ -103,11 +134,14 @@ export function InteractionsGraph({
   onFilterChange,
   focusId,
   onFocusNode,
+  selection: rowSelection,
 }: InteractionsGraphProps) {
   // Above every early return: the Graph stays mounted through loading, error and loaded, so the
   // counts keep loading once the user has reached for the filters.
   const [facetsWanted, setFacetsWanted] = useState(false);
-  const facetFields = facetsWanted ? facetFieldList : noFacetFields;
+  // A selection has no Filters menu, so it asks for no counts.
+  const facetFields =
+    facetsWanted && !rowSelection ? facetFieldList : noFacetFields;
   const facetCounts = useFacetCounts({
     repository,
     resource: "ppi",
@@ -124,11 +158,12 @@ export function InteractionsGraph({
     },
     JSON.stringify([rql, filters, keywordValue, facetFields]),
   );
-  const interactions = useInteractions(rql, keywordValue);
+  const interactions = useInteractions(rql, keywordValue, rowSelection);
   const { data } = interactions;
+  const selectionVersion = rowSelection?.version;
   const loadRetry = useRetryKeepingError(
     interactions,
-    JSON.stringify([rql, keywordValue]),
+    JSON.stringify([rql, keywordValue, selectionVersion]),
   );
   const graph = toGraph(data?.rows ?? emptyRows);
   // The focused protein starts selected, also when the rows are already cached on mount.
@@ -140,13 +175,19 @@ export function InteractionsGraph({
   const [activeHub, setActiveHub] = useState<HubSelection | null>(null);
   const [canvasReady, setCanvasReady] = useState(false);
   const canvasHandleRef = useRef<GraphCanvasHandle | null>(null);
-  const [graphSource, setGraphSource] = useState({ rql, keywordValue, data });
+  const [graphSource, setGraphSource] = useState({
+    rql,
+    keywordValue,
+    selectionVersion,
+    data,
+  });
   if (
     graphSource.rql !== rql ||
     graphSource.keywordValue !== keywordValue ||
+    graphSource.selectionVersion !== selectionVersion ||
     graphSource.data !== data
   ) {
-    setGraphSource({ rql, keywordValue, data });
+    setGraphSource({ rql, keywordValue, selectionVersion, data });
     setSelection(focusSelection(graph.nodes, focusId));
     setActiveSubgraph(null);
     setActiveHub(null);
@@ -168,7 +209,12 @@ export function InteractionsGraph({
 
   // A counts failure beside a rows failure is a quiet note in the menu, as in the Table: the rows'
   // alert already says why.
-  const toolbar = (
+  const toolbar = rowSelection ? (
+    <GraphSelectionBar
+      count={rowSelection.ids.length}
+      onClear={rowSelection.onClear}
+    />
+  ) : (
     <GraphFilterBar
       keyword={keywordValue || undefined}
       filters={filters}

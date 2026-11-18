@@ -10,6 +10,7 @@ import {
 } from "@/hooks/views/use-child-collection-url-state";
 import { defaultLayout } from "@/lib/interactions/renderer-capabilities";
 import type { GNode, LayoutName } from "@/lib/interactions/types";
+import type { InteractionsSelection } from "@/lib/interactions/use-interactions";
 import {
   interactionCollectionOptions,
   interactionCollectionProfile,
@@ -21,6 +22,19 @@ import { InteractionsGraph } from "./interactions-graph";
 
 const tableUrlKey = "interactions";
 const buildGraphStructuralRql = interactionCollectionProfile.buildStructuralRql;
+
+/**
+ * The Graph keys a selection's read on its version, so every Show in Graph takes a new one: a
+ * reused version would serve an earlier selection's cached rows. Module-level, so a remounted
+ * shell cannot start over at a version the cache still holds.
+ */
+let selectionVersion = 0;
+
+/** Called from the Show in Graph event only, never during render. */
+function nextSelectionVersion(): number {
+  selectionVersion += 1;
+  return selectionVersion;
+}
 
 function sameFilters(
   left: CollectionState["filters"],
@@ -54,6 +68,19 @@ export function InteractionsSubviewShell({
   );
   // The fragment is stripped once here so the Table's and Graph's requests carry byte-equal RQL.
   const scopedRql = rql.split("#")[0];
+  // Table rows shown in the Graph by id (Show in Graph). The Table keeps its own selection and
+  // scope; a new scope drops this one, whose rows belong to the old scope.
+  const [graphSelection, setGraphSelection] =
+    useState<InteractionsSelection | null>(null);
+  const [selectionScope, setSelectionScope] = useState(scopedRql);
+  if (selectionScope !== scopedRql) {
+    setSelectionScope(scopedRql);
+    setGraphSelection(null);
+  }
+  const handleShowInGraph = (ids: string[]) => {
+    setGraphSelection({ ids, version: nextSelectionVersion() });
+    setSubTab("graph");
+  };
   // The Table folds the filters into its own request from the same URL state, so
   // its `rql` stays the bare scope (a new one would remount it); only the Graph,
   // which has no collection state, gets them composed in, by the same function.
@@ -134,6 +161,7 @@ export function InteractionsSubviewShell({
           keywordValue={keywordText}
           onKeywordChange={handleKeywordChange}
           keywordPlaceholder="Search interaction results..."
+          onShowInGraph={handleShowInGraph}
         />
       </TabsContent>
       <TabsContent value="graph" className="flex min-h-0 flex-1 flex-col">
@@ -146,6 +174,16 @@ export function InteractionsSubviewShell({
           onFilterChange={handleFilterChange}
           focusId={focusId}
           onFocusNode={handleFocusNode}
+          selection={
+            graphSelection
+              ? {
+                  ...graphSelection,
+                  onClear: () => {
+                    setGraphSelection(null);
+                  },
+                }
+              : undefined
+          }
           layout={graphLayout}
           onLayoutChange={setGraphLayout}
         />

@@ -9,6 +9,7 @@ import {
   dataQueryKeys,
   type ExportRequest,
 } from "@/lib/data-api";
+import { fetchSelectedRows } from "@/lib/data-api/selected-rows";
 
 import { ppiGraphRecordSchema, type PpiRecord } from "./schema";
 
@@ -71,33 +72,73 @@ export function interactionsGraphRequest(
 }
 
 /**
+ * A Table selection shown in the Graph. `version` is new for every Show in Graph, so the query key
+ * stays small (up to 5,000 ids would be hashed on every render) and a repeated pick of the same
+ * rows still reads afresh.
+ */
+export interface InteractionsSelection {
+  ids: readonly string[];
+  version: number;
+}
+
+function parseGraphRows(rows: unknown): PpiRecord[] {
+  const parsed = graphRowsSchema.safeParse(rows);
+  if (!parsed.success) {
+    // Same shape and code as the gateway's row-validation failure, so a malformed row reads
+    // like any standard data error.
+    const issue = parsed.error.issues[0];
+    const path = issue.path.join(".");
+    throw new DataRepositoryError(
+      `Malformed ppi response: ${path ? `${path}: ` : ""}${issue.message}`,
+      502,
+      "malformed_response",
+    );
+  }
+  return parsed.data;
+}
+
+/**
  * Missing configuration and every request failure arrive as a rejected query rather than a throw,
  * so consumers render their error state instead of unmounting the tree.
+ *
+ * With a `selection` the rows are read by id through the `selected` operation, which carries no
+ * scope, keyword or filters, so `rql` and `keyword` do not apply; a selection is at most
+ * `interactionsGraphRowLimit` rows, so it is never truncated.
  */
-export function useInteractions(rql: string, keyword: string) {
+export function useInteractions(
+  rql: string,
+  keyword: string,
+  selection?: InteractionsSelection | null,
+) {
   const request = interactionsGraphRequest(rql, keyword);
 
-  return useQuery<InteractionsGraphData>({
-    queryKey: dataQueryKeys.export("ppi", request),
-    queryFn: async ({ signal }) => {
-      const result = await repository.export("ppi", request, signal);
-      const parsed = graphRowsSchema.safeParse(result.rows);
-      if (!parsed.success) {
-        // Same shape and code as the gateway's row-validation failure, so a malformed row reads
-        // like any standard data error.
-        const issue = parsed.error.issues[0];
-        const path = issue.path.join(".");
-        throw new DataRepositoryError(
-          `Malformed ppi response: ${path ? `${path}: ` : ""}${issue.message}`,
-          502,
-          "malformed_response",
-        );
-      }
-      return {
-        rows: parsed.data.slice(0, interactionsGraphRowLimit),
-        isTruncated: parsed.data.length > interactionsGraphRowLimit,
-      };
-    },
-    staleTime: graphStaleTimeMs,
-  });
+  return useQuery<InteractionsGraphData>(
+    selection
+      ? {
+          queryKey: ["interactions-graph-selected", selection.version],
+          queryFn: async () => {
+            const rows = await fetchSelectedRows(
+              repository,
+              "ppi",
+              "id",
+              selection.ids,
+              interactionsGraphFields,
+            );
+            return { rows: parseGraphRows(rows), isTruncated: false };
+          },
+          staleTime: graphStaleTimeMs,
+        }
+      : {
+          queryKey: dataQueryKeys.export("ppi", request),
+          queryFn: async ({ signal }) => {
+            const result = await repository.export("ppi", request, signal);
+            const rows = parseGraphRows(result.rows);
+            return {
+              rows: rows.slice(0, interactionsGraphRowLimit),
+              isTruncated: rows.length > interactionsGraphRowLimit,
+            };
+          },
+          staleTime: graphStaleTimeMs,
+        },
+  );
 }

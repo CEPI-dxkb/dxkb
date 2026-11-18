@@ -7,6 +7,7 @@ import { stubMenuLayout } from "@/test-helpers/menu-layout";
 import { createQueryClientWrapper } from "@/test-helpers/react";
 import { resourceCollectionPageSize } from "@/hooks/views/collection-state";
 import { requestGraphLayout } from "@/lib/interactions/layout-client";
+import { interactionsGraphFields } from "@/lib/interactions/use-interactions";
 
 import { InteractionsSubviewShell } from "../interactions-subview-shell";
 
@@ -37,11 +38,13 @@ vi.mock("@/components/shared/data-table", () => ({
     columns,
     pageIndex,
     onPageChange,
+    onRowSelectionChange,
   }: {
     data: Record<string, unknown>[];
     columns: { id: string }[];
     pageIndex: number;
     onPageChange: (next: number) => void;
+    onRowSelectionChange: (selection: Record<string, boolean>) => void;
   }) => (
     <div>
       <p>{`Showing page ${String(pageIndex + 1)}`}</p>
@@ -52,6 +55,19 @@ vi.mock("@/components/shared/data-table", () => ({
         }}
       >
         Next page
+      </button>
+      {/* One button rather than a checkbox a row: the full dataset is a page of 200 rows. */}
+      <button
+        type="button"
+        onClick={() => {
+          onRowSelectionChange(
+            Object.fromEntries(
+              data.slice(0, 2).map((row) => [String(row.id), true]),
+            ),
+          );
+        }}
+      >
+        Select the first two rows
       </button>
       <table>
         <tbody>
@@ -75,25 +91,54 @@ vi.mock("@/components/shared/data-table", () => ({
 vi.mock("@/components/views/resource-workspace", () => ({
   ResourceWorkspace: ({
     toolbar,
+    actionBar,
     children,
   }: {
     toolbar?: React.ReactNode;
+    actionBar?: React.ReactNode;
     children: React.ReactNode;
   }) => (
     <>
       {toolbar}
+      {actionBar}
       {children}
     </>
   ),
 }));
+// The selection actions' own dialogs need auth and the workspace, so the bar is the real
+// `SearchActionBar` (its visibility policy included) and hands back only the actions the shell
+// supplies (Show in Graph).
 vi.mock("@/components/views/collection-selection-actions", async (
   importOriginal,
-) => ({
-  ...(await importOriginal<
+) => {
+  const actual = await importOriginal<
     typeof import("@/components/views/collection-selection-actions")
-  >()),
-  CollectionSelectionActions: () => null,
-}));
+  >();
+  const { SearchActionBar } = await import(
+    "@/components/search/search-action-bar"
+  );
+  return {
+    ...actual,
+    CollectionSelectionActions: ({
+      searchType,
+      selectedCount,
+      actionIds,
+      extraEnabledActionIds = [],
+      disabledActions,
+      onOtherAction,
+    }: Parameters<typeof actual.CollectionSelectionActions>[0]) => (
+      <SearchActionBar
+        searchType={searchType}
+        selectedCount={selectedCount}
+        enabledActions={[...actionIds, ...extraEnabledActionIds]}
+        disabledActions={disabledActions}
+        onAction={(actionId) => {
+          if (!actionIds.includes(actionId)) onOtherAction?.(actionId);
+        }}
+      />
+    ),
+  };
+});
 
 stubMenuLayout();
 vi.stubGlobal("scrollTo", vi.fn());
@@ -153,6 +198,8 @@ const graphPredicates: Predicate[] = [];
 const facetPredicates: (Predicate & { facets: string[] })[] = [];
 /** Kept out of `Predicate` because the Graph fetches its whole dataset and has no page. */
 const tablePages: number[] = [];
+/** The Graph's reads by id (Show in Graph), kept apart from its predicate reads. */
+const selectedReads: Record<string, unknown>[] = [];
 
 function matching(keyword: string | undefined) {
   const terms = (keyword ?? "").trim().split(/\s+/).filter(Boolean);
@@ -172,6 +219,7 @@ beforeEach(() => {
   graphPredicates.length = 0;
   facetPredicates.length = 0;
   tablePages.length = 0;
+  selectedReads.length = 0;
   server.use(
     http.get("/api/data/ppi", ({ request }) => {
       const params = new URL(request.url).searchParams;
@@ -221,11 +269,21 @@ beforeEach(() => {
     }),
     http.post("/api/data/ppi", async ({ request }) => {
       const body = (await request.json()) as {
+        operation: string;
+        ids?: string[];
+        fields?: string[];
         rql?: string;
         keyword?: string;
         keywordMode?: string;
         limit: number;
       };
+      if (body.operation === "selected") {
+        selectedReads.push(body);
+        const ids = new Set(body.ids);
+        return HttpResponse.json({
+          rows: datasetRows.filter((row) => ids.has(row.id)),
+        });
+      }
       graphPredicates.push({
         rql: body.rql,
         keyword: body.keyword,
@@ -778,5 +836,73 @@ describe("Interactions Graph layout across tab switches", () => {
     );
     expect(graphPanel().queryByRole("status")).not.toBeInTheDocument();
     expect(requestGraphLayout).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("Interactions Show in Graph from the Table's selection", () => {
+  const selectionRows = [
+    ...focusRows,
+    {
+      id: "ppi-f3",
+      interactor_a: "fig|1.1.peg.4",
+      interactor_b: "fig|1.1.peg.5",
+      gene_a: "geneD",
+      gene_b: "geneE",
+      evidence: "experimental",
+    },
+  ];
+
+  beforeEach(() => {
+    datasetRows = selectionRows;
+  });
+
+  it("draws exactly the selected rows, read by id, and leaves the Table's request alone", async () => {
+    const user = userEvent.setup();
+    render(<InteractionsSubviewShell rql={scopeRql} />, {
+      wrapper: createQueryClientWrapper(),
+    });
+    await waitFor(() => {
+      expect(tablePanel().getByText("geneD")).toBeInTheDocument();
+    });
+    const tableRequests = [...tablePredicates];
+
+    await user.click(
+      tablePanel().getByRole("button", { name: "Select the first two rows" }),
+    );
+    await user.click(
+      await tablePanel().findByRole("button", { name: /^show in\s*graph$/i }),
+    );
+
+    expect(screen.getByRole("tab", { name: "Graph" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    await waitFor(() => {
+      expect(graphPanel().getByText("geneA")).toBeInTheDocument();
+    });
+    expect(selectedReads).toStrictEqual([
+      {
+        operation: "selected",
+        ids: ["ppi-f1", "ppi-f2"],
+        fields: [...interactionsGraphFields],
+      },
+    ]);
+    expect(graphPredicates).toStrictEqual([]);
+    expect(graphPanel().getByText("geneB")).toBeInTheDocument();
+    expect(graphPanel().getByText("geneC")).toBeInTheDocument();
+    expect(graphPanel().queryByText("geneD")).not.toBeInTheDocument();
+    expect(
+      graphPanel().getByText("Showing 2 selected interactions"),
+    ).toBeInTheDocument();
+    expect(tablePredicates).toStrictEqual(tableRequests);
+
+    // Show all goes back to the Graph's own predicate read.
+    await user.click(graphPanel().getByRole("button", { name: "Show all" }));
+    await waitFor(() => {
+      expect(graphPanel().getByText("geneD")).toBeInTheDocument();
+    });
+    expect(graphPredicates).toStrictEqual([
+      { rql: scopeRql, keyword: undefined, keywordMode: undefined },
+    ]);
   });
 });

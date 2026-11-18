@@ -24,6 +24,7 @@ import { useCollectionDownload } from "@/hooks/views/use-collection-download";
 import { navigateReservedTab } from "@/lib/reserved-tab-navigation";
 import { formatUserFacingErrorMessage } from "@/lib/utils";
 import { genomeIdsFromStrains } from "@/lib/strain-view";
+import { selectionGraphMaxRows } from "@/lib/views/collection-selection";
 import {
   maxTaxonomyActionIds,
   normalizeTaxonIds,
@@ -307,6 +308,25 @@ const genericActionErrorMessage =
 const incompleteBiosetSelectionReason =
   "Some selected Biosets are not associated with experiments";
 
+/**
+ * Show in Graph reads the rows by id, so it needs them listed, and the Graph
+ * draws at most `selectionGraphMaxRows`.
+ */
+function showInGraphDisabledReason(
+  selection: Pick<
+    ResourceCollectionActionsSelection<DataTableRow>,
+    "count" | "isAllPagesSelected"
+  >,
+): string | undefined {
+  if (selection.isAllPagesSelected) {
+    return "Select specific rows (not all pages) to show them in the graph.";
+  }
+  if (selection.count > selectionGraphMaxRows) {
+    return `Show in Graph supports at most ${selectionGraphMaxRows.toLocaleString()} interactions. Narrow the selection.`;
+  }
+  return undefined;
+}
+
 export interface ResourceCollectionActionsProfile<Row extends DataTableRow> {
   resource: DataResource;
   label: string;
@@ -447,6 +467,11 @@ export interface ResourceCollectionActionsOptions<Row extends DataTableRow> {
   ) => Promise<MatchingRowsRead>;
   download?: ResourceCollectionDownloadOptions;
   onError: (message: string | null) => void;
+  /**
+   * Offers SHOW IN GRAPH on an Interactions table that has a Graph beside it;
+   * called with the selected row ids.
+   */
+  onShowInGraph?: (ids: string[]) => void;
 }
 
 /**
@@ -465,6 +490,7 @@ export function useResourceCollectionActions<Row extends DataTableRow>({
   resolveAllMatchingRows,
   download,
   onError,
+  onShowInGraph,
 }: ResourceCollectionActionsOptions<Row>): {
   actionBar: ReactNode;
   actionDialogs: ReactNode;
@@ -491,6 +517,20 @@ export function useResourceCollectionActions<Row extends DataTableRow>({
           profile.resource as keyof typeof selectionActionsConfigByResource
         ]
       : undefined;
+
+  const offersShowInGraph =
+    profile.resource === "ppi" && onShowInGraph !== undefined;
+  const showInGraphReason = offersShowInGraph
+    ? showInGraphDisabledReason(selection)
+    : undefined;
+  const resourceDisabledActions = resolveDisabledActions(
+    profile.resource,
+    targets,
+  );
+  // Only a real reason is added: consumers assert a reason-less key is absent.
+  const disabledActions = showInGraphReason
+    ? { ...resourceDisabledActions, showInGraph: showInGraphReason }
+    : resourceDisabledActions;
 
   const matchingTotal = async () =>
     selection.isPlaceholderData ? selection.currentTotal() : selection.total;
@@ -621,6 +661,13 @@ export function useResourceCollectionActions<Row extends DataTableRow>({
       taxonomyActionIds.includes(actionId as (typeof taxonomyActionIds)[number])
     ) {
       void runTaxonomyAction(actionId);
+    } else if (
+      actionId === "showInGraph" &&
+      offersShowInGraph &&
+      !showInGraphReason
+    ) {
+      onError(null);
+      onShowInGraph([...selection.displayedIds]);
     } else if (actionId === "biosets" && targets.hasBiosetSelection) {
       void openBiosetResults();
     } else if (actionId === "genome" && targets.selectedGenomeId) {
@@ -703,13 +750,17 @@ export function useResourceCollectionActions<Row extends DataTableRow>({
       label={profile.label}
       singularLabel={selectionActionsConfig.singularLabel}
       actionIds={selectionActionsConfig.actionIds}
-      extraEnabledActionIds={selectionActionsConfig.extraEnabledActionIds}
+      extraEnabledActionIds={
+        offersShowInGraph
+          ? [...selectionActionsConfig.extraEnabledActionIds, "showInGraph"]
+          : selectionActionsConfig.extraEnabledActionIds
+      }
       idField={selectionActionsConfig.idField}
       idKind={selectionActionsConfig.idKind}
       selectedCount={selection.count}
       guideUrl={profile.guideUrl}
       hasNoAssociatedGenomes={targets.knownSingleStrainHasNoGenomes}
-      disabledActions={resolveDisabledActions(profile.resource, targets)}
+      disabledActions={disabledActions}
       externalLoadingActionIds={loadingActionIds}
       hasSelectableServices={selectionActionsConfig.hasSelectableServices}
       columns={profile.columns}

@@ -21,6 +21,7 @@ import type { LayoutName, PpiRecord } from "@/lib/interactions/types";
 import { server } from "@/test-helpers/msw-server";
 import { stubMenuLayout } from "@/test-helpers/menu-layout";
 import { createQueryClientWrapper } from "@/test-helpers/react";
+import { settleBackgroundWork } from "@/test-helpers/settle";
 
 // Mocked pending: SigmaCanvas (WebGL) is untestable in jsdom, and this keeps the component on its
 // loading branch, enough to observe the query it asked for.
@@ -206,9 +207,11 @@ describe("InteractionsGraph query inputs", () => {
       />,
     );
 
+    // No selection: the third argument is empty.
     expect(useInteractions).toHaveBeenCalledWith(
       "eq(evidence,experimental)",
       "  groEL   dnaK ",
+      undefined,
     );
   });
 
@@ -230,6 +233,7 @@ describe("InteractionsGraph query inputs", () => {
     expect(useInteractions).toHaveBeenLastCalledWith(
       "eq(evidence,experimental)",
       "groEL",
+      undefined,
     );
     await waitFor(() => {
       expect(onKeywordChange).toHaveBeenLastCalledWith("dnaK");
@@ -237,6 +241,7 @@ describe("InteractionsGraph query inputs", () => {
     expect(useInteractions).toHaveBeenLastCalledWith(
       "eq(evidence,experimental)",
       "groEL",
+      undefined,
     );
   });
 });
@@ -306,7 +311,7 @@ describe("InteractionsGraph filters", () => {
       />,
     );
 
-    expect(useInteractions).toHaveBeenLastCalledWith(narrowed, "");
+    expect(useInteractions).toHaveBeenLastCalledWith(narrowed, "", undefined);
     expect(screen.getByText("geneA")).toBeInTheDocument();
     expect(screen.getByRole("listbox", { name: "Filters" })).toBeInTheDocument();
     expect(
@@ -659,6 +664,7 @@ describe("InteractionsGraph narrowed scope", () => {
     expect(useInteractions).toHaveBeenLastCalledWith(
       `and(${scope},eq(interaction_type,association))`,
       "",
+      undefined,
     );
   });
 });
@@ -916,5 +922,219 @@ describe("InteractionsGraph layout", () => {
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     expect(requestGraphLayout).toHaveBeenCalledTimes(2);
     expect(screen.getByRole("button", { name: "Export" })).toBeEnabled();
+  });
+});
+
+describe("InteractionsGraph row selection", () => {
+  const scope = "eq(evidence,experimental)";
+
+  function rowSelection(
+    ids: readonly string[] = ["edge-1", "edge-2", "edge-3"],
+    version = 1,
+    onClear = vi.fn(),
+  ) {
+    return { ids, version, onClear };
+  }
+
+  it("asks for the selected rows, beside the unchanged rql and keyword", () => {
+    const selection = rowSelection();
+    renderGraph(
+      <GraphHarness
+        rql={scope}
+        keywordValue="groEL"
+        onKeywordChange={vi.fn()}
+        selection={selection}
+      />,
+    );
+
+    expect(useInteractions).toHaveBeenLastCalledWith(scope, "groEL", selection);
+  });
+
+  it("replaces the keyword box and Filters menu with the selection chip in every state", () => {
+    const expectChip = () => {
+      expect(
+        screen.getByText("Showing 3 selected interactions"),
+      ).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Show all" })).toBeInTheDocument();
+      expect(
+        screen.queryByPlaceholderText("Search interaction results..."),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: /^Filters/ }),
+      ).not.toBeInTheDocument();
+    };
+
+    pending();
+    const loading = renderGraph(
+      <GraphHarness
+        rql={scope}
+        keywordValue=""
+        onKeywordChange={vi.fn()}
+        selection={rowSelection()}
+      />,
+    );
+    expectChip();
+    loading.unmount();
+
+    failed(new Error("Bad gateway"));
+    const failure = renderGraph(
+      <GraphHarness
+        rql={scope}
+        keywordValue=""
+        onKeywordChange={vi.fn()}
+        selection={rowSelection()}
+      />,
+    );
+    expect(screen.getByText("Could not load interactions")).toBeInTheDocument();
+    expectChip();
+    failure.unmount();
+
+    resolved({ rows: graphRows, isTruncated: false });
+    renderGraph(
+      <GraphHarness
+        rql={scope}
+        keywordValue=""
+        onKeywordChange={vi.fn()}
+        selection={rowSelection()}
+      />,
+    );
+    expect(screen.getByText("geneA")).toBeInTheDocument();
+    expectChip();
+  });
+
+  it("counts a single selected interaction in the singular", () => {
+    resolved({ rows: graphRows, isTruncated: false });
+    renderGraph(
+      <GraphHarness
+        rql={scope}
+        keywordValue=""
+        onKeywordChange={vi.fn()}
+        selection={rowSelection(["edge-1"])}
+      />,
+    );
+
+    expect(
+      screen.getByText("Showing 1 selected interaction"),
+    ).toBeInTheDocument();
+  });
+
+  it("goes back to every interaction from Show all", async () => {
+    const user = userEvent.setup();
+    const onClear = vi.fn();
+    resolved({ rows: graphRows, isTruncated: false });
+    renderGraph(
+      <GraphHarness
+        rql={scope}
+        keywordValue=""
+        onKeywordChange={vi.fn()}
+        selection={rowSelection(undefined, 1, onClear)}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Show all" }));
+
+    expect(onClear).toHaveBeenCalledTimes(1);
+  });
+
+  it("asks for no filter counts while a selection is shown", async () => {
+    const user = userEvent.setup();
+    const requests = serveFacetCounts();
+    resolved({ rows: graphRows, isTruncated: false });
+    const { rerender } = renderGraph(
+      <GraphHarness
+        rql={scope}
+        keywordValue=""
+        onKeywordChange={vi.fn()}
+        facetRql={() => scope}
+      />,
+    );
+    await openFilters(user);
+    await waitFor(() => {
+      expect(requests.length).toBeGreaterThan(0);
+    });
+    const requestsBeforeSelection = requests.length;
+
+    // The menu had asked for the counts; a selection (and a keyword the Table changes under it)
+    // must not ask again.
+    rerender(
+      <GraphHarness
+        rql={scope}
+        keywordValue="groEL"
+        onKeywordChange={vi.fn()}
+        facetRql={() => scope}
+        selection={rowSelection()}
+      />,
+    );
+    await settleBackgroundWork();
+
+    expect(requests).toHaveLength(requestsBeforeSelection);
+  });
+
+  it("draws no truncation banner for a selection", () => {
+    resolved({ rows: graphRows, isTruncated: false });
+    renderGraph(
+      <GraphHarness
+        rql={scope}
+        keywordValue=""
+        onKeywordChange={vi.fn()}
+        selection={rowSelection()}
+      />,
+    );
+
+    expect(
+      screen.queryByText(/Showing the first/),
+    ).not.toBeInTheDocument();
+  });
+
+  it("clears the stale node selection and presets when a new selection arrives", async () => {
+    const user = userEvent.setup();
+    const data = { rows: graphRows, isTruncated: false };
+    resolved(data);
+    const { rerender } = renderGraph(
+      <GraphHarness
+        rql={scope}
+        keywordValue=""
+        onKeywordChange={vi.fn()}
+        selection={rowSelection(["edge-1"], 1)}
+      />,
+    );
+    await user.click(screen.getByText("geneA"));
+    expect(screen.getByText("node-a")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Hub Protein" }));
+    await user.click(
+      screen.getByRole("button", { name: "Most Connected Hub" }),
+    );
+
+    // The same rows object (a cached read): only the version says it is a new selection.
+    rerender(
+      <GraphHarness
+        rql={scope}
+        keywordValue=""
+        onKeywordChange={vi.fn()}
+        selection={rowSelection(["edge-1"], 2)}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByText("Select a node or edge to see details."),
+      ).toBeInTheDocument();
+    });
+    expect(screen.getByRole("button", { name: "Hub Protein" })).toBeInTheDocument();
+  });
+
+  it("still selects the focused protein in a selection's rows", () => {
+    resolved({ rows: graphRows, isTruncated: false });
+    renderGraph(
+      <GraphHarness
+        rql={scope}
+        keywordValue=""
+        onKeywordChange={vi.fn()}
+        focusId="node-a"
+        selection={rowSelection(["edge-1"])}
+      />,
+    );
+
+    expect(screen.getByText("node-a")).toBeInTheDocument();
   });
 });

@@ -8,6 +8,12 @@ export const selectionServicesMaxRows = 100;
 export const selectionGenomesMaxRows = 10_000;
 export const selectionFeaturesMaxRows = 5_000;
 export const selectionGroupMaxRows = 10_000;
+/**
+ * The Interactions Graph's row bound (`interactionsGraphRowLimit`, asserted
+ * equal in a test): Show in Graph draws every selected row, so a larger
+ * selection would be cut off.
+ */
+export const selectionGraphMaxRows = 5_000;
 /** List URLs carry every ID inline; browsers truncate beyond this. */
 export const selectionListMaxUrlLength = 8_000;
 

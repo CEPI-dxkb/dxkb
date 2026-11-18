@@ -124,6 +124,11 @@ export interface ResourceCollectionProps<Row extends DataTableRow> {
   onLoadedKeywordChange?: (value: string) => void;
   keywordPlaceholder?: string;
   prefetchNextPage?: boolean;
+  /**
+   * Offers SHOW IN GRAPH on an Interactions table with a Graph beside it (the
+   * taxon Interactions tab); called with the selected row ids.
+   */
+  onShowInGraph?: (ids: string[]) => void;
 }
 
 export function ResourceCollection<Row extends DataTableRow>({
@@ -140,6 +145,7 @@ export function ResourceCollection<Row extends DataTableRow>({
   onLoadedKeywordChange,
   keywordPlaceholder,
   prefetchNextPage = true,
+  onShowInGraph,
 }: ResourceCollectionProps<Row>) {
   const [actionError, setActionError] = useState<string | null>(null);
   const [internalLoadedKeyword, setInternalLoadedKeyword] = useState("");
@@ -387,6 +393,7 @@ export function ResourceCollection<Row extends DataTableRow>({
       queryLabel: downloadQueryLabel,
     },
     onError: setActionError,
+    onShowInGraph,
   });
 
   const detailContent = (

@@ -590,6 +590,21 @@ describe("ResourceChildCollection scope changes", () => {
     expect(shownCollectionState()).toMatchObject({ filters: {} });
   });
 
+  it("forwards onShowInGraph to the collection, and omits it when not given", () => {
+    const onShowInGraph = vi.fn();
+    const { unmount } = render(
+      <ResourceChildCollection
+        {...interactionsChildProps}
+        onShowInGraph={onShowInGraph}
+      />,
+    );
+    expect(lastResourceCollectionProps().onShowInGraph).toBe(onShowInGraph);
+    unmount();
+
+    render(<ResourceChildCollection {...interactionsChildProps} />);
+    expect(lastResourceCollectionProps().onShowInGraph).toBeUndefined();
+  });
+
   it("does not open partial Bioset results for an all-pages selection", async () => {
     const user = userEvent.setup();
     const close = vi.fn();

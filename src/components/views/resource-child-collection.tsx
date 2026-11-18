@@ -102,6 +102,8 @@ interface ResourceChildCollectionProps {
   keywordValue?: string;
   onKeywordChange?: (value: string) => void;
   keywordPlaceholder?: string;
+  /** Passed to the collection's action bar: offers SHOW IN GRAPH (Interactions only). */
+  onShowInGraph?: (ids: string[]) => void;
 }
 
 export function ResourceChildCollection(props: ResourceChildCollectionProps) {
@@ -131,6 +133,7 @@ function ScopedResourceChildCollection({
   keywordValue,
   onKeywordChange,
   keywordPlaceholder,
+  onShowInGraph,
 }: ResourceChildCollectionProps) {
   const exportFileName = label.toLowerCase();
   const canonicalProfile = canonicalProfiles[resource];
@@ -223,6 +226,7 @@ function ScopedResourceChildCollection({
         keywordMode === "loaded" ? onKeywordChange : undefined
       }
       keywordPlaceholder={keywordPlaceholder}
+      onShowInGraph={onShowInGraph}
     />
   );
 }

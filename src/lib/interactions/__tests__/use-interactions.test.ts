@@ -1,5 +1,9 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { renderHook, waitFor } from "@testing-library/react";
 import { http, HttpResponse } from "msw";
+import { createElement } from "react";
+
+import { DataRepositoryError } from "@/lib/data-api";
 
 import { server } from "@/test-helpers/msw-server";
 import { createQueryClientWrapper } from "@/test-helpers/react";
@@ -162,6 +166,104 @@ describe("useInteractions", () => {
     await waitFor(() => { expect(result.current.isError).toBe(true); });
     expect(result.current.error?.message).toBe(
       "DATA_API_URL is not configured.",
+    );
+  });
+});
+
+describe("useInteractions with a row selection", () => {
+  beforeEach(() => {
+    delete process.env.NEXT_PUBLIC_DATA_API;
+  });
+
+  interface SelectedBody {
+    operation: string;
+    ids: string[];
+    fields?: string[];
+    rql?: string;
+    keyword?: string;
+  }
+
+  function serveSelected(respond?: (ids: string[]) => unknown[]) {
+    const bodies: SelectedBody[] = [];
+    server.use(
+      http.post("/api/data/ppi", async ({ request }) => {
+        const body = (await request.json()) as SelectedBody;
+        bodies.push(body);
+        return HttpResponse.json({
+          rows: respond
+            ? respond(body.ids)
+            : body.ids.map((id) => row(Number(id.replace("ppi-", "")))),
+        });
+      }),
+    );
+    return bodies;
+  }
+
+  function renderSelection(
+    selection: { ids: readonly string[]; version: number },
+    queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    }),
+  ) {
+    const hook = renderHook(
+      () => useInteractions(scopeRql, "groEL", selection),
+      {
+        wrapper: ({ children }) =>
+          createElement(QueryClientProvider, { client: queryClient }, children),
+      },
+    );
+    return { ...hook, queryClient };
+  }
+
+  it("reads exactly the selected rows by id, without the scope or keyword", async () => {
+    const ids = Array.from({ length: 600 }, (_, index) => `ppi-${String(index)}`);
+    const bodies = serveSelected();
+
+    const { result } = renderSelection({ ids, version: 1 });
+
+    await waitFor(() => { expect(result.current.isSuccess).toBe(true); });
+    expect(bodies).toHaveLength(2);
+    for (const body of bodies) {
+      expect(body.operation).toBe("selected");
+      expect(body.fields).toStrictEqual([...interactionsGraphFields]);
+      expect(body).not.toHaveProperty("rql");
+      expect(body).not.toHaveProperty("keyword");
+    }
+    expect(bodies.flatMap((body) => body.ids)).toStrictEqual(ids);
+    expect(result.current.data?.rows.map((entry) => entry.id)).toStrictEqual(ids);
+    expect(result.current.data?.isTruncated).toBe(false);
+  });
+
+  it("keys the read on the selection's version, never on its ids", async () => {
+    serveSelected();
+
+    const { result, queryClient } = renderSelection({
+      ids: ["ppi-1", "ppi-2"],
+      version: 7,
+    });
+
+    await waitFor(() => { expect(result.current.isSuccess).toBe(true); });
+    expect(
+      queryClient.getQueryCache().getAll().map((query) => query.queryKey),
+    ).toStrictEqual([["interactions-graph-selected", 7]]);
+  });
+
+  it("rejects a selected row that cannot be an edge as a malformed response", async () => {
+    serveSelected(() => [row(1), { id: "ppi-2", interactor_a: "node-a-2" }]);
+    const exported = render();
+    await waitFor(() => { expect(exported.result.current.isError).toBe(true); });
+
+    const { result } = renderSelection({ ids: ["ppi-1", "ppi-2"], version: 1 });
+
+    await waitFor(() => { expect(result.current.isError).toBe(true); });
+    expect(result.current.error).toBeInstanceOf(DataRepositoryError);
+    expect(result.current.error).toMatchObject({
+      status: 502,
+      code: "malformed_response",
+    });
+    expect(result.current.error?.message).toContain("interactor_b");
+    expect(result.current.error?.message).toBe(
+      exported.result.current.error?.message,
     );
   });
 });

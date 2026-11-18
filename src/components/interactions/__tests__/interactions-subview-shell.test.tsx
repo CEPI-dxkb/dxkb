@@ -9,6 +9,8 @@ import { InteractionsSubviewShell } from "../interactions-subview-shell";
 type GraphProps = ComponentProps<typeof InteractionsGraph>;
 
 let tableMountCount = 0;
+/** The rows the Table stub's "show-in-graph" button hands to `onShowInGraph`. */
+let tableSelectedIds: string[] = [];
 // The stubs below record their latest props here; read only after a render.
 let lastGraphProps: GraphProps | undefined;
 let lastTableProfile:
@@ -36,6 +38,7 @@ vi.mock("@/components/views/resource-child-collection", () => ({
     keywordMode,
     keywordValue,
     onKeywordChange,
+    onShowInGraph,
   }: {
     urlKey: string;
     resource: string;
@@ -45,6 +48,7 @@ vi.mock("@/components/views/resource-child-collection", () => ({
     keywordMode?: string;
     keywordValue?: string;
     onKeywordChange?: (value: string) => void;
+    onShowInGraph?: (ids: string[]) => void;
   }) => {
     useEffect(() => {
       tableMountCount++;
@@ -63,6 +67,11 @@ vi.mock("@/components/views/resource-child-collection", () => ({
         <button onClick={() => onKeywordChange?.("fromTable")}>
           set-from-table
         </button>
+        {onShowInGraph && (
+          <button onClick={() => { onShowInGraph([...tableSelectedIds]); }}>
+            show-in-graph
+          </button>
+        )}
       </div>
     );
   },
@@ -105,6 +114,7 @@ function replaceUrl(url: string) {
 
 beforeEach(() => {
   tableMountCount = 0;
+  tableSelectedIds = ["ppi-1", "ppi-2", "ppi-3"];
   lastGraphProps = undefined;
   lastTableProfile = undefined;
   window.history.replaceState(null, "", "/");
@@ -478,6 +488,99 @@ describe("InteractionsSubviewShell protein focus", () => {
         extraFilters: ["interactor"],
         filterLabels: { interactor: "Protein" },
       }),
+    );
+  });
+});
+
+describe("InteractionsSubviewShell Show in Graph", () => {
+  const scope = "eq(evidence,experimental)";
+
+  function showInGraph(ids: string[]) {
+    tableSelectedIds = ids;
+    fireEvent.click(screen.getByRole("button", { name: "show-in-graph" }));
+  }
+
+  it("switches to the Graph with the selection, and leaves the Table and the rql alone", () => {
+    render(<InteractionsSubviewShell rql={scope} />);
+    expect(lastGraphProps).toBeUndefined();
+
+    showInGraph(["ppi-1", "ppi-2", "ppi-3"]);
+
+    expect(screen.getByRole("tab", { name: "Graph" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    expect(graphProps().selection).toEqual(
+      expect.objectContaining({
+        ids: ["ppi-1", "ppi-2", "ppi-3"],
+        version: expect.any(Number) as number,
+      }),
+    );
+    expect(graphProps().rql).toBe(scope);
+    expect(screen.getByTestId("table-panel")).toHaveAttribute("data-rql", scope);
+    expect(tableMountCount).toBe(1);
+  });
+
+  it("returns to the plain Graph when the selection is cleared", () => {
+    render(<InteractionsSubviewShell rql={scope} />);
+    showInGraph(["ppi-1"]);
+
+    act(() => {
+      graphProps().selection?.onClear();
+    });
+
+    expect(graphProps().selection).toBeUndefined();
+    expect(graphProps().rql).toBe(scope);
+    expect(screen.getByRole("tab", { name: "Graph" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+  });
+
+  it("gives every Show in Graph its own version", () => {
+    render(<InteractionsSubviewShell rql={scope} />);
+    showInGraph(["ppi-1"]);
+    const first = graphProps().selection?.version;
+
+    fireEvent.click(screen.getByRole("tab", { name: "Table" }));
+    showInGraph(["ppi-2", "ppi-3"]);
+
+    expect(graphProps().selection).toEqual(
+      expect.objectContaining({ ids: ["ppi-2", "ppi-3"] }),
+    );
+    expect(graphProps().selection?.version).not.toBe(first);
+  });
+
+  it("gives the same rows picked again a new version too", () => {
+    render(<InteractionsSubviewShell rql={scope} />);
+    showInGraph(["ppi-1"]);
+    const first = graphProps().selection?.version;
+
+    fireEvent.click(screen.getByRole("tab", { name: "Table" }));
+    showInGraph(["ppi-1"]);
+
+    expect(graphProps().selection?.version).not.toBe(first);
+  });
+
+  it("drops the selection when the scope changes", () => {
+    const { rerender } = render(<InteractionsSubviewShell rql={scope} />);
+    showInGraph(["ppi-1"]);
+    expect(graphProps().selection).toBeDefined();
+
+    rerender(<InteractionsSubviewShell rql="eq(evidence,predicted)" />);
+
+    expect(graphProps().selection).toBeUndefined();
+    expect(graphProps().rql).toBe("eq(evidence,predicted)");
+  });
+
+  it("keeps the selection across a fragment-only change of the scope", () => {
+    const { rerender } = render(<InteractionsSubviewShell rql={scope} />);
+    showInGraph(["ppi-1"]);
+
+    rerender(<InteractionsSubviewShell rql={`${scope}#view_tab=interactions`} />);
+
+    expect(graphProps().selection).toEqual(
+      expect.objectContaining({ ids: ["ppi-1"] }),
     );
   });
 });

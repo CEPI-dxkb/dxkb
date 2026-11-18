@@ -7,12 +7,14 @@ import { DataRepositoryError } from "@/lib/data-api";
 
 import { server } from "@/test-helpers/msw-server";
 import { createQueryClientWrapper } from "@/test-helpers/react";
+import { settleBackgroundWork } from "@/test-helpers/settle";
 
 import {
   interactionsGraphFields,
   interactionsGraphRequest,
   interactionsGraphRowLimit,
   useInteractions,
+  useInteractionsTotal,
 } from "../use-interactions";
 
 const scopeRql = "eq(evidence,experimental)";
@@ -265,5 +267,152 @@ describe("useInteractions with a row selection", () => {
     expect(result.current.error?.message).toBe(
       exported.result.current.error?.message,
     );
+  });
+});
+
+describe("useInteractionsTotal", () => {
+  beforeEach(() => {
+    delete process.env.NEXT_PUBLIC_DATA_API;
+  });
+
+  interface TotalRequest {
+    operation: string | null;
+    rql: string | null;
+    keyword: string | null;
+    keywordMode: string | null;
+    page: string | null;
+    pageSize: string | null;
+    fields: string[];
+  }
+
+  function serveTotal(respond: (rql: string | null) => Response) {
+    const requests: TotalRequest[] = [];
+    server.use(
+      http.get("/api/data/ppi", ({ request }) => {
+        const params = new URL(request.url).searchParams;
+        requests.push({
+          operation: params.get("operation"),
+          rql: params.get("rql"),
+          keyword: params.get("keyword"),
+          keywordMode: params.get("keywordMode"),
+          page: params.get("page"),
+          pageSize: params.get("pageSize"),
+          fields: params.getAll("field"),
+        });
+        return respond(params.get("rql"));
+      }),
+    );
+    return requests;
+  }
+
+  const totalResponse = (total: number) =>
+    HttpResponse.json({
+      rows: [{ id: "ppi-1" }],
+      total,
+      facets: {},
+      page: 1,
+      pageSize: 1,
+    });
+
+  function renderTotal(enabled: boolean, rql = scopeRql, keyword = "") {
+    return renderHook(
+      ({ currentRql }) => useInteractionsTotal(currentRql, keyword, enabled),
+      {
+        initialProps: { currentRql: rql },
+        wrapper: createQueryClientWrapper(),
+      },
+    );
+  }
+
+  it("reads the matching row count through a one-row page under the graph's predicate", async () => {
+    const requests = serveTotal(() => totalResponse(124_566));
+
+    const { result } = renderTotal(true, scopeRql, "groEL dnaK");
+
+    await waitFor(() => { expect(result.current.isSuccess).toBe(true); });
+    expect(result.current.data).toBe(124_566);
+    expect(requests).toStrictEqual([
+      {
+        operation: "collection",
+        rql: scopeRql,
+        keyword: "groEL dnaK",
+        // The graph's export sends no keyword mode, so neither does its count.
+        keywordMode: null,
+        page: "1",
+        pageSize: "1",
+        fields: ["id"],
+      },
+    ]);
+  });
+
+  it("sends nothing while disabled", async () => {
+    const requests = serveTotal(() => totalResponse(10));
+
+    const { result } = renderTotal(false);
+    await settleBackgroundWork();
+
+    expect(requests).toHaveLength(0);
+    expect(result.current.fetchStatus).toBe("idle");
+    expect(result.current.data).toBeUndefined();
+  });
+
+  it("starts reading once it is enabled", async () => {
+    const requests = serveTotal(() => totalResponse(7));
+
+    const { result, rerender } = renderHook(
+      ({ enabled }) => useInteractionsTotal(scopeRql, "", enabled),
+      {
+        initialProps: { enabled: false },
+        wrapper: createQueryClientWrapper(),
+      },
+    );
+    await settleBackgroundWork();
+    expect(requests).toHaveLength(0);
+
+    rerender({ enabled: true });
+
+    await waitFor(() => { expect(result.current.data).toBe(7); });
+    expect(requests).toHaveLength(1);
+  });
+
+  it("offers no count for a predicate whose own count has not landed, never the previous one's", async () => {
+    let release: () => void = () => undefined;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    server.use(
+      http.get("/api/data/ppi", async ({ request }) => {
+        const rql = new URL(request.url).searchParams.get("rql");
+        if (rql === "eq(evidence,narrowed)") {
+          await gate;
+          return totalResponse(42);
+        }
+        return totalResponse(124_566);
+      }),
+    );
+
+    const { result, rerender } = renderTotal(true);
+    await waitFor(() => { expect(result.current.data).toBe(124_566); });
+
+    rerender({ currentRql: "eq(evidence,narrowed)" });
+
+    expect(result.current.data).toBeUndefined();
+    release();
+    await waitFor(() => { expect(result.current.data).toBe(42); });
+  });
+
+  it("reports a failed read as an error with no count", async () => {
+    serveTotal(() =>
+      HttpResponse.json(
+        { error: "Data service is unavailable.", code: "upstream_unavailable" },
+        { status: 503 },
+      ),
+    );
+
+    const { result } = renderTotal(true);
+
+    await waitFor(() => { expect(result.current.isError).toBe(true); });
+    expect(result.current.data).toBeUndefined();
+    expect(result.current.error?.message).toBe("Data service is unavailable.");
   });
 });

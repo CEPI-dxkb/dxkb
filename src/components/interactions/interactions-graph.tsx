@@ -13,6 +13,7 @@ import { DataRepository } from "@/lib/data-api";
 import {
   interactionsGraphRowLimit,
   useInteractions,
+  useInteractionsTotal,
   type InteractionsSelection,
 } from "@/lib/interactions/use-interactions";
 import { toGraph } from "@/lib/interactions/to-graph";
@@ -160,6 +161,13 @@ export function InteractionsGraph({
   );
   const interactions = useInteractions(rql, keywordValue, rowSelection);
   const { data } = interactions;
+  // Only a truncated scope result has a count worth a second read; a selection is never truncated.
+  // A count that is loading or failed leaves the banner title without it: the graph itself loaded.
+  const interactionsTotal = useInteractionsTotal(
+    rql,
+    keywordValue,
+    Boolean(data?.isTruncated) && !rowSelection,
+  );
   const selectionVersion = rowSelection?.version;
   const loadRetry = useRetryKeepingError(
     interactions,
@@ -327,8 +335,9 @@ export function InteractionsGraph({
       {data.isTruncated && (
         <Alert className="mb-2">
           <AlertTitle>
-            Showing the first{" "}
-            {interactionsGraphRowLimit.toLocaleString()} interactions
+            {interactionsTotal.data === undefined
+              ? `Showing the first ${interactionsGraphRowLimit.toLocaleString()} interactions`
+              : `Showing the first ${interactionsGraphRowLimit.toLocaleString()} of ${interactionsTotal.data.toLocaleString()} interactions`}
           </AlertTitle>
           <AlertDescription>
             This search matches more interactions than the graph can draw.

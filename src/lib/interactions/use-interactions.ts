@@ -6,6 +6,7 @@ import { z } from "zod";
 import {
   DataRepository,
   DataRepositoryError,
+  collectionQueryOptions,
   dataQueryKeys,
   type ExportRequest,
 } from "@/lib/data-api";
@@ -141,4 +142,33 @@ export function useInteractions(
           staleTime: graphStaleTimeMs,
         },
   );
+}
+
+/**
+ * How many ppi rows the scope matches, for the truncation banner: a one-row collection read whose
+ * `total` is the full count, under the same `rql` and `keyword` as the graph's own request. Only
+ * wanted once the graph is truncated, so `enabled` keeps every other graph from paying for it.
+ *
+ * No previous predicate's count stands in while a new one loads (`placeholderData`): a stale number
+ * beside a narrower search would read as its size. A failed read is just a query error; the banner
+ * falls back to the title without a count.
+ */
+export function useInteractionsTotal(
+  rql: string,
+  keyword: string,
+  enabled: boolean,
+) {
+  return useQuery({
+    ...collectionQueryOptions(repository, "ppi", {
+      rql: rql || undefined,
+      keyword: keyword || undefined,
+      page: 1,
+      pageSize: 1,
+      fields: ["id"],
+    }),
+    placeholderData: undefined,
+    enabled,
+    select: (result) => result.total,
+    staleTime: graphStaleTimeMs,
+  });
 }

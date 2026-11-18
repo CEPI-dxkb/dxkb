@@ -265,6 +265,9 @@ test.describe("taxon interactions tab: narrowing a graph", () => {
     browserName,
   }) => {
     test.skip(browserName === "firefox", sigmaSkip);
+    // Every pick re-reads and redraws all 5,001 rows (the mock ignores `rql`): ~10-15 s locally,
+    // but CI runners (2 workers, software WebGL) were still mid-test at the default 30 s.
+    test.slow();
 
     // One row past the Graph's 5,000: the mock serves every row to the export, so the Graph
     // slices and flags it, and answers the one-row count read with the full total.

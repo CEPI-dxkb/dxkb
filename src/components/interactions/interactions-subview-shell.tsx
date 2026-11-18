@@ -132,8 +132,10 @@ export function InteractionsSubviewShell({
   };
 
   // The Graph's "Focus on this protein": the node becomes an `interactor` filter,
-  // which narrows the Table too. A pushed entry, so Back undoes it.
+  // which narrows the Table too. A pushed entry, so Back undoes it. A Show in Graph selection is
+  // left too: its rows are read by id, so the filter would not change what is drawn.
   const handleFocusNode = (node: GNode) => {
+    setGraphSelection(null);
     setTableState({
       ...tableState,
       filters: { ...tableState.filters, interactor: [node.id] },

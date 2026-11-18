@@ -167,14 +167,6 @@ export class TaxonInteractionsPage {
     }
   }
 
-  async expectNoTruncatedBanner(): Promise<void> {
-    await expect(this.truncatedBanner()).toHaveCount(0);
-  }
-
-  async openFilters(): Promise<void> {
-    await this.toolbar.openFilters();
-  }
-
   /** Picks `value` under the facet `field` ("Interaction Type") and closes the menu. */
   async pickFilter(field: string, value: string): Promise<void> {
     await this.toolbar.pickFacetValue(field, value);

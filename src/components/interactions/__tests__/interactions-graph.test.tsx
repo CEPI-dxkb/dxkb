@@ -1269,7 +1269,9 @@ describe("InteractionsGraph row selection", () => {
     expect(screen.getByRole("button", { name: "Hub Protein" })).toBeInTheDocument();
   });
 
-  it("still selects the focused protein in a selection's rows", () => {
+  // The shell's Focus leaves a selection, so a selection and a focus meet only when Show in Graph
+  // runs on a Table already narrowed to a protein (the focus is in the URL).
+  it("selects the focused protein among a selection's rows when the Table was already focused", () => {
     resolved({ rows: graphRows, isTruncated: false });
     renderGraph(
       <GraphHarness
@@ -1281,6 +1283,10 @@ describe("InteractionsGraph row selection", () => {
       />,
     );
 
+    // The detail panel lists the node's BRC ID, which only a selection shows.
     expect(screen.getByText("node-a")).toBeInTheDocument();
+    expect(
+      screen.queryByText("Select a node or edge to see details."),
+    ).not.toBeInTheDocument();
   });
 });

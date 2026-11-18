@@ -1,4 +1,5 @@
-import { act, renderHook } from "@testing-library/react";
+import { Activity } from "react";
+import { act, render, renderHook } from "@testing-library/react";
 import { keywordDebounceMs } from "@/components/filterbar/keyword-search";
 import { useDebouncedDraft } from "../use-debounced-draft";
 
@@ -281,6 +282,36 @@ describe("useDebouncedDraft", () => {
       unmount();
 
       expect(commit).not.toHaveBeenCalled();
+    });
+
+    it("flushes a draft once, however often its owner is hidden and shown before the commit lands", () => {
+      const commit = vi.fn();
+      let setDraft: (value: string) => void = () => undefined;
+      function Box() {
+        const [, setBoxDraft] = useDebouncedDraft("", commit, {
+          flushOnUnmount: true,
+        });
+        setDraft = setBoxDraft;
+        return null;
+      }
+      // Activity hides by running the effect cleanups and shows by running every effect again, the
+      // replay `flushOnUnmount` has to survive without committing the same draft a second time.
+      const ui = (mode: "visible" | "hidden") => (
+        <Activity mode={mode}>
+          <Box />
+        </Activity>
+      );
+      const { rerender } = render(ui("visible"));
+
+      act(() => {
+        setDraft("eco");
+      });
+      rerender(ui("hidden"));
+      expect(commit).toHaveBeenCalledExactlyOnceWith("eco");
+
+      rerender(ui("visible"));
+      rerender(ui("hidden"));
+      expect(commit).toHaveBeenCalledOnce();
     });
 
     it("drops an uncommitted draft on unmount when not opted in", () => {

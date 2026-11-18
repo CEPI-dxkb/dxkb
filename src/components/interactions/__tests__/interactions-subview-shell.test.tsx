@@ -758,4 +758,56 @@ describe("InteractionsSubviewShell Show in Graph", () => {
       expect.objectContaining({ ids: ["ppi-1"] }),
     );
   });
+
+  describe("Focus on this protein during a selection", () => {
+    const protein: GNode = { id: "fig|224914.16.peg.635", kind: "microbial" };
+    const encodedProtein = "fig%7C224914.16.peg.635";
+    const focusClause = `or(eq(interactor_a,${encodedProtein}),eq(interactor_b,${encodedProtein}))`;
+
+    function focusNode(node: GNode) {
+      act(() => {
+        const { onFocusNode } = graphProps();
+        if (!onFocusNode) throw new Error("The Graph was given no onFocusNode.");
+        onFocusNode(node);
+      });
+    }
+
+    it("leaves the selection, so the Graph draws the protein's interactions in scope", () => {
+      render(<InteractionsSubviewShell rql={scope} />);
+      showInGraph(["ppi-1", "ppi-2"]);
+      expect(graphProps().selection).toBeDefined();
+      // The selection ignores the rql, which is not narrowed by anything yet.
+      expect(graphProps().rql).toBe(defaultGraphRql);
+
+      focusNode(protein);
+
+      expect(graphProps().selection).toBeUndefined();
+      expect(window.location.search).toBe(
+        `?interactions.interactor=${encodedProtein}`,
+      );
+      expect(graphProps().focusId).toBe(protein.id);
+      expect(graphProps().rql).toBe(
+        `and(${scope},and(${focusClause},${experimentalClause}))`,
+      );
+      // The Table keeps its scope and stays mounted.
+      expect(screen.getByTestId("table-panel")).toHaveAttribute("data-rql", scope);
+      expect(tableMountCount).toBe(1);
+    });
+
+    it("hands the Graph the selection and the focus together when the Table was already narrowed to a protein", () => {
+      window.history.replaceState(
+        null,
+        "",
+        `/genome/1.1?interactions.interactor=${encodedProtein}`,
+      );
+      render(<InteractionsSubviewShell rql={scope} />);
+
+      showInGraph(["ppi-1"]);
+
+      expect(graphProps().selection).toEqual(
+        expect.objectContaining({ ids: ["ppi-1"] }),
+      );
+      expect(graphProps().focusId).toBe(protein.id);
+    });
+  });
 });

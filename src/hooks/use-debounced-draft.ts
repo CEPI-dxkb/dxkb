@@ -33,6 +33,7 @@ export function useDebouncedDraft(
   // The last value this hook committed, until `committed` next changes: a ref, so an unmount
   // straight after the timer fires (before `ownCommit` renders) still sees it.
   const sentRef = useRef<string | null>(null);
+  const sentForRef = useRef(committed);
   const commitDraft = useEffectEvent((value: string) => {
     sentRef.current = value;
     setOwnCommit(value);
@@ -42,11 +43,16 @@ export function useDebouncedDraft(
   // A string, so an inline `normalize` does not restart the timer every render.
   const nextCommit = normalize(draft);
   useEffect(() => {
+    // Only a real change clears it: an effect replay (StrictMode, an Activity shown again) re-runs
+    // this with the same `committed`, and what was sent before it must still count as sent.
+    if (sentForRef.current === committed) return;
+    sentForRef.current = committed;
     sentRef.current = null;
   }, [committed]);
   const flushPendingDraft = useEffectEvent(() => {
     if (!flushOnUnmount) return;
     if (nextCommit === committed || nextCommit === sentRef.current) return;
+    sentRef.current = nextCommit;
     commit(nextCommit);
   });
   useEffect(

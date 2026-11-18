@@ -148,7 +148,7 @@ describe("GraphDetailPanel", () => {
 
       expect(
         screen.getByText(
-          "Shows only this protein's interactions; remove the Protein filter above to undo.",
+          "Shows only this protein's interactions; remove the Protein filter in the Filters menu to undo.",
         ),
       ).toBeInTheDocument();
     });

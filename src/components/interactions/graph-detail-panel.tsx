@@ -64,7 +64,7 @@ export function GraphDetailPanel({ selection, incidentEdges, nodesById, onSelect
                 Focus on this protein
               </Button>
               <p className="text-xs text-muted-foreground">
-                Shows only this protein&apos;s interactions; remove the Protein filter above to undo.
+                Shows only this protein&apos;s interactions; remove the Protein filter in the Filters menu to undo.
               </p>
             </div>
           )}

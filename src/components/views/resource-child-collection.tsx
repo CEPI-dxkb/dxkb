@@ -28,6 +28,7 @@ import {
   type CollectionState,
   type CollectionStateOptions,
 } from "@/lib/views/collection-state";
+import { scopedStructuralRql } from "@/lib/views/scoped-structural-rql";
 import {
   ResourceCollection,
   type ResourceCollectionProfile,
@@ -35,21 +36,6 @@ import {
 
 const repository = new DataRepository();
 type ChildRow = Record<string, unknown>;
-
-/**
- * `ResourceCollection` uses `buildStructuralRql` instead of `basePredicate`
- * whenever it returns a clause, so each branch must `and` the parent rql back
- * in or a facet click widens the tab.
- */
-function scopedStructuralRql(
-  rql: string,
-  buildStructuralRql?: (state: CollectionState) => string | undefined,
-) {
-  return (state: CollectionState) => {
-    const structuralRql = buildStructuralRql?.(state);
-    return structuralRql ? `and(${rql},${structuralRql})` : rql;
-  };
-}
 
 function scopedProfile<Row extends DataTableRow>(
   { rowHref, ...canonical }: ResourceCollectionProfile<Row>,

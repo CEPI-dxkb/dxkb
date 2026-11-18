@@ -347,11 +347,19 @@ legacy Topic.publish('/navigate') to a Next router push:
 
 | Action | Target |
 |---|---|
-| View Feature | `/view/Feature/{feature_id}#view_tab=overview` |
+| View Feature | `/view/Feature/{feature_id}#view_tab=overview` (shipped as links, see below) |
 | View FeatureList | `/view/FeatureList/?in(feature_id,(…))#view_tab=features` |
 | View FASTA (DNA/Protein) | `/view/FASTA/{dna|protein}/?in(feature_id,(…))` |
 | MSA (2–200 features) | `/view/MSA/?in(feature_id,(…))` |
 | Add to Group | opens group dialog (auth required) |
+
+The Next port does not expose "View Feature" as an action-bar action. It ships as
+links instead. In the details pane, a selected node's BRC ID and Gene link to
+`/feature/{feature_id}` and its Genome links to `/genome/{genome_id}`, and the
+From/To endpoints of a selected edge link to their feature pages. The Interactions
+table links the same features and genomes in its cells. Host nodes are never
+linked. The links go straight to the current `/feature/…` and `/genome/…` routes,
+not the legacy `/view/Feature/…` path.
 
 ```tsx
 // selection → unique feature_ids (nodes are proteins; skip molecules)

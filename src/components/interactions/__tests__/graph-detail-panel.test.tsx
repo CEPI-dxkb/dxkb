@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { GraphDetailPanel } from "../graph-detail-panel";
@@ -274,7 +274,9 @@ describe("GraphDetailPanel", () => {
         incidentEdges: [linkedEdge],
       });
 
-      expect(screen.getByRole("button", { name: /metH/ })).toBeInTheDocument();
+      const incidentButton = screen.getByRole("button", { name: /metH/ });
+      expect(incidentButton).toBeInTheDocument();
+      expect(within(incidentButton).queryByRole("link")).toBeNull();
       expect(screen.queryByRole("link", { name: /predicted interaction/ })).not.toBeInTheDocument();
     });
   });

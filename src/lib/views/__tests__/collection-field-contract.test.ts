@@ -543,6 +543,34 @@ describe("interactions table links", () => {
       ),
     ).toBeUndefined();
   });
+
+  it("drops the feature link when feature_id_a is missing", () => {
+    const template = columns.get("interactor_a")?.valueHref ?? "";
+    expect(
+      resolveLink(template, { interactor_a: "P12345" }, "interactor_a"),
+    ).toBeUndefined();
+  });
+
+  it("resolves a genome link from genome_id and drops it when genome_id is empty or missing", () => {
+    const template = columns.get("genome_name_a")?.valueHref ?? "";
+    expect(
+      resolveLink(
+        template,
+        { genome_name_a: "Brucella melitensis", genome_id_a: "224914.16" },
+        "genome_name_a",
+      ),
+    ).toBe("/genome/224914.16");
+    expect(
+      resolveLink(
+        template,
+        { genome_name_a: "Homo sapiens", genome_id_a: "" },
+        "genome_name_a",
+      ),
+    ).toBeUndefined();
+    expect(
+      resolveLink(template, { genome_name_a: "Homo sapiens" }, "genome_name_a"),
+    ).toBeUndefined();
+  });
 });
 
 describe("child-resource columns", () => {

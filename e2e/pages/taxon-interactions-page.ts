@@ -24,6 +24,13 @@ export class TaxonInteractionsPage {
     await expect(this.page.getByRole("button", { name })).toBeVisible();
   }
 
+  /** A linked cell in the Table sub-tab: a link named `name` that points at `href`. */
+  async expectTableLink(name: string | RegExp, href: string): Promise<void> {
+    await expect(
+      this.page.getByRole("tabpanel", { name: "Table" }).getByRole("link", { name, exact: true }),
+    ).toHaveAttribute("href", href);
+  }
+
   async switchToGraph(): Promise<void> {
     const tab = this.page.getByRole("tab", { name: "Graph" });
     await tab.click();
@@ -113,6 +120,11 @@ export class TaxonInteractionsPage {
 
   async expectDetailText(text: string): Promise<void> {
     await expect(this.detailPanel().getByText(text, { exact: false }).first()).toBeVisible();
+  }
+
+  /** A link in the Graph sub-tab's "Selection details" pane, named `name`, that points at `href`. */
+  async expectDetailLink(name: string | RegExp, href: string): Promise<void> {
+    await expect(this.detailPanel().getByRole("link", { name, exact: true })).toHaveAttribute("href", href);
   }
 
   async selectFirstIncidentEdge(): Promise<void> {

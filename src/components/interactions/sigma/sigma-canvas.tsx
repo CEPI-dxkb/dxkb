@@ -19,6 +19,12 @@ import "@react-sigma/core/lib/style.css";
 import Graph from "graphology";
 import { drawDiscNodeHover, EdgeRectangleProgram } from "sigma/rendering";
 import type { NodeHoverDrawingFunction } from "sigma/rendering";
+import type {
+  SigmaEdgeEventPayload,
+  SigmaEventPayload,
+  SigmaNodeEventPayload,
+  SigmaStageEventPayload,
+} from "sigma/types";
 import { downloadAsImage } from "@sigma/export-image";
 
 import {
@@ -28,6 +34,14 @@ import {
   renderEdge,
   renderEdgeExperimental,
 } from "@/lib/interactions/graph-theme";
+import {
+  applySelectionClick,
+  buildIncidenceIndex,
+  computeSelectionFocus,
+  isAdditiveClick,
+  type SelectionFocus,
+  type SelectionTarget,
+} from "@/lib/interactions/selection-focus";
 import type {
   GEdge,
   GNode,
@@ -134,39 +148,74 @@ interface TooltipState {
   edge?: GEdge;
 }
 
+// Sigma turns a second click inside its double-click window into `doubleClick*` (never `click*`)
+// and zooms. A quick Cmd/Ctrl pair must still toggle twice, so an additive double-click is handled
+// as a click with sigma's zoom suppressed; a plain double-click keeps zooming.
+function additiveDoubleClick<P extends SigmaEventPayload>(
+  handler: (payload: P) => void,
+) {
+  return (payload: P) => {
+    if (!isAdditiveClick(payload.event.original)) return;
+    payload.preventSigmaDefault();
+    handler(payload);
+  };
+}
+
 interface GraphEventsProps {
   onSelect: (sel: GraphSelection) => void;
   onHover: (tooltip: TooltipState | null) => void;
+  selection: GraphSelection;
   selectedNodeIds: ReadonlySet<string>;
   selectedEdgeIds: ReadonlySet<string>;
+  focus: SelectionFocus | null;
 }
 
 function GraphEvents({
   onSelect,
   onHover,
+  selection,
   selectedNodeIds,
   selectedEdgeIds,
+  focus,
 }: GraphEventsProps) {
   const sigma = useSigma();
   const registerEvents = useRegisterEvents();
   const setSettings = useSetSettings();
   const [hoveredEdge, setHoveredEdge] = useState<string | null>(null);
-  const select = useEffectEvent(onSelect);
+  // An Effect Event reads the latest selection, so the handlers registered once below toggle
+  // against what is selected now.
+  const click = useEffectEvent(
+    (target: SelectionTarget | null, original: MouseEvent | TouchEvent) => {
+      const additive = isAdditiveClick(original);
+      if (target === null) {
+        // A Cmd/Ctrl-click that misses every node and edge must not wipe a multi-selection.
+        if (!additive) onSelect({ nodes: [], edges: [] });
+        return;
+      }
+      onSelect(applySelectionClick(selection, target, additive));
+    },
+  );
   const hover = useEffectEvent(onHover);
 
   useEffect(() => {
+    const clickNode = ({ node, event }: SigmaNodeEventPayload) => {
+      const data = sigma.getGraph().getNodeAttributes(node) as GNode;
+      click({ kind: "node", node: data }, event.original);
+    };
+    const clickEdge = ({ edge, event }: SigmaEdgeEventPayload) => {
+      const data = sigma.getGraph().getEdgeAttributes(edge) as GEdge;
+      click({ kind: "edge", edge: data }, event.original);
+    };
+    const clickStage = ({ event }: SigmaStageEventPayload) => {
+      click(null, event.original);
+    };
     registerEvents({
-      clickNode: ({ node }) => {
-        const data = sigma.getGraph().getNodeAttributes(node) as GNode;
-        select({ nodes: [data], edges: [] });
-      },
-      clickEdge: ({ edge }) => {
-        const data = sigma.getGraph().getEdgeAttributes(edge) as GEdge;
-        select({ nodes: [], edges: [data] });
-      },
-      clickStage: () => {
-        select({ nodes: [], edges: [] });
-      },
+      clickNode,
+      clickEdge,
+      clickStage,
+      doubleClickNode: additiveDoubleClick(clickNode),
+      doubleClickEdge: additiveDoubleClick(clickEdge),
+      doubleClickStage: additiveDoubleClick(clickStage),
       enterNode: ({ node, event }) => {
         const data = sigma.getGraph().getNodeAttributes(node) as GNode;
         hover({ x: event.x, y: event.y, node: data });
@@ -188,10 +237,10 @@ function GraphEvents({
 
   useEffect(() => {
     setSettings({
-      nodeReducer: nodeHighlightReducer(selectedNodeIds),
-      edgeReducer: edgeHighlightReducer(selectedEdgeIds, hoveredEdge),
+      nodeReducer: nodeHighlightReducer(selectedNodeIds, focus),
+      edgeReducer: edgeHighlightReducer(selectedEdgeIds, hoveredEdge, focus),
     });
-  }, [setSettings, selectedNodeIds, selectedEdgeIds, hoveredEdge]);
+  }, [setSettings, selectedNodeIds, selectedEdgeIds, hoveredEdge, focus]);
 
   // Flat labels default to #000, invisible on the dark canvas. Canvas 2D can't parse var(), so
   // resolve --foreground and re-resolve on data-theme changes (observe the attribute: this effect
@@ -257,6 +306,7 @@ export function SigmaCanvas({
   const [tooltip, setTooltip] = useState<TooltipState | null>(null);
   const selectedNodeIds = new Set(selection.nodes.map((node) => node.id));
   const selectedEdgeIds = new Set(selection.edges.map((edge) => edge.id));
+  const focus = computeSelectionFocus(buildIncidenceIndex(edges), selection);
 
   return (
     <div className="relative size-full">
@@ -286,8 +336,10 @@ export function SigmaCanvas({
         <GraphEvents
           onSelect={onSelect}
           onHover={setTooltip}
+          selection={selection}
           selectedNodeIds={selectedNodeIds}
           selectedEdgeIds={selectedEdgeIds}
+          focus={focus}
         />
         <HandleBridge handleRef={handleRef} onReady={onReady} />
         <ZoomControl />

@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { act, render, screen, waitFor } from "@testing-library/react";
+import { useSearchParams } from "next/navigation";
 import userEvent from "@testing-library/user-event";
 import type { DataRepository, DataResource } from "@/lib/data-api";
 import type { DownloadRequest } from "@/lib/data-api/downloads";
@@ -426,6 +427,54 @@ describe("ResourceChildCollection URL state", () => {
       });
       expect(lastResourceCollectionProps().state).toMatchObject({ page: 2 });
       expect(window.location.search).toBe("?assays.page=2");
+    });
+
+    /** An owner whose keyword is URL state, as the Interactions shell's `interactionsGraph.q` is. */
+    function UrlKeywordOwner() {
+      const keyword = useSearchParams().get("q") ?? "";
+      return (
+        <ResourceChildCollection
+          {...assaysChildProps}
+          keywordValue={keyword}
+          onKeywordChange={vi.fn()}
+        />
+      );
+    }
+
+    it("shows the restored page when Back changes the keyword and the page together", () => {
+      window.history.replaceState(null, "", "/genome/1.1?q=bar");
+      render(<UrlKeywordOwner />);
+      expect(lastResourceCollectionProps().state).toMatchObject({
+        keyword: "bar",
+        page: 1,
+      });
+
+      // A popstate moves the whole address in one render.
+      act(() => {
+        window.history.replaceState(null, "", "/genome/1.1?q=foo&assays.page=3");
+      });
+      expect(lastResourceCollectionProps().state).toMatchObject({
+        keyword: "foo",
+        page: 3,
+      });
+    });
+
+    it("drops a pending page-1 hold when Back restores a page", () => {
+      window.history.replaceState(null, "", "/genome/1.1?q=foo&assays.page=3");
+      render(<UrlKeywordOwner />);
+      // The keyword lands before the owner's page drop: hold page 1.
+      act(() => {
+        window.history.replaceState(null, "", "/genome/1.1?q=bar&assays.page=3");
+      });
+      expect(lastResourceCollectionProps().state).toMatchObject({ page: 1 });
+
+      act(() => {
+        window.history.replaceState(null, "", "/genome/1.1?q=foo&assays.page=2");
+      });
+      expect(lastResourceCollectionProps().state).toMatchObject({
+        keyword: "foo",
+        page: 2,
+      });
     });
 
     it("keeps the shared keyword out of the URL", () => {

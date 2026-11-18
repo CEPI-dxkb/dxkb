@@ -289,13 +289,18 @@ function assignCola(g: Graph) {
   });
 }
 
-export function runGraphLayout(g: Graph, name: LayoutName) {
+/** `rng` feeds the random layout; the default is `Math.random`. */
+export function runGraphLayout(
+  g: Graph,
+  name: LayoutName,
+  rng: () => number = Math.random,
+) {
   if (name === "circular") {
     circular.assign(g, { scale: 100 });
     return;
   }
   if (name === "random") {
-    random.assign(g);
+    random.assign(g, { rng });
     return;
   }
   if (name === "grid") {

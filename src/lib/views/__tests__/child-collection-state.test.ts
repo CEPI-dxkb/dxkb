@@ -140,6 +140,24 @@ describe("child collection URL state", () => {
     expect(params.toString()).toBe("tab=genome-browser&keyword=x");
   });
 
+  it("clears the Interactions Graph's params on a tab switch, but not on an Interactions table write", () => {
+    const params = new URLSearchParams(
+      "tab=interactions&interactions.page=2&interactionsGraph.view=graph&interactionsGraph.node=peg.1",
+    );
+    expect(
+      replaceChildCollectionSearchParams(
+        Object.fromEntries(params),
+        "interactions",
+        { filters: {}, page: 3, sort: "start:asc" },
+        options,
+      ).toString(),
+    ).toBe(
+      "tab=interactions&interactionsGraph.view=graph&interactionsGraph.node=peg.1&interactions.page=3",
+    );
+    deleteChildCollectionParams(params);
+    expect(params.toString()).toBe("tab=interactions");
+  });
+
   it("leaves a dotted param that no nested table owns", () => {
     expect(isChildCollectionParam("source.id")).toBe(false);
     expect(isChildCollectionParam(".page")).toBe(false);

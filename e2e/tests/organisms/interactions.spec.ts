@@ -144,6 +144,37 @@ test.describe("taxon interactions tab", () => {
   });
 });
 
+test.describe("taxon interactions tab: Back from a linked page", () => {
+  test("Back from a node's feature page restores the Graph subview, the selected node and the zoom", async ({
+    page,
+    browserName,
+  }) => {
+    test.skip(
+      browserName === "firefox",
+      "Headless Firefox has no WebGL for Sigma.js to render into",
+    );
+
+    const interactionsPage = await setupInteractionsPage(page);
+    await interactionsPage.switchToGraph();
+    await interactionsPage.waitForLayout();
+    const zoomPercent = await interactionsPage.zoomIn();
+    expect(zoomPercent).not.toBe("100");
+    await interactionsPage.selectNodeInList("fig|224914.16.peg.600");
+    await interactionsPage.expectNodeSelected("fig|224914.16.peg.600");
+
+    await interactionsPage.followDetailLink(
+      "fig|224914.16.peg.600",
+      "/feature/PATRIC.224914.16.feature-a-0",
+    );
+    await interactionsPage.goBack();
+
+    await expect(page).toHaveURL(/interactionsGraph\.view=graph/);
+    await interactionsPage.expectGraphActive();
+    await interactionsPage.expectNodeSelected("fig|224914.16.peg.600");
+    await interactionsPage.expectZoomPercent(zoomPercent);
+  });
+});
+
 test.describe("taxon interactions tab: filter sync between Table and Graph", () => {
   const rows = buildPpiRows(2);
 

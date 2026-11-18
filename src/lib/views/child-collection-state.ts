@@ -11,8 +11,8 @@ import type { SearchParamsRecord } from "./rql";
  * Each child's params carry a `<urlKey>.` prefix so they cannot collide with
  * the page's own. Only listed keys are recognized, so an unrelated dotted param
  * (`source.id=123`) survives a tab switch.
- * `browser` and `compare` are not tables but tab-owned state the same cleanup
- * must drop.
+ * `browser`, `compare` and `interactionsGraph` are not tables but tab-owned
+ * state the same cleanup must drop.
  */
 export const childCollectionUrlKeys = [
   "amr",
@@ -24,6 +24,7 @@ export const childCollectionUrlKeys = [
   "epitopes",
   "features",
   "interactions",
+  "interactionsGraph",
   "proteins",
   "sequences",
   "serology",

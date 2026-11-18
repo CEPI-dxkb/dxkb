@@ -194,14 +194,22 @@ function ScopedResourceChildCollection({
   /**
    * A keyword arriving as a prop never passes through `handleStateChange`, so
    * this is the only place that sees it; request page 1 until the owner drops
-   * `<urlKey>.page`.
+   * `<urlKey>.page`. A page that moved in the same render is the URL's own
+   * answer (Back to an entry with another keyword and its page), so it wins
+   * and ends any hold.
    */
-  const [previousKeywordValue, setPreviousKeywordValue] =
-    useState(keywordValue);
+  const [previousInputs, setPreviousInputs] = useState({
+    keywordValue,
+    page: state.page,
+  });
   const [awaitingPageReset, setAwaitingPageReset] = useState(false);
-  if (isControlledServerKeyword && previousKeywordValue !== keywordValue) {
-    setPreviousKeywordValue(keywordValue);
-    setAwaitingPageReset(true);
+  if (
+    previousInputs.keywordValue !== keywordValue ||
+    previousInputs.page !== state.page
+  ) {
+    setPreviousInputs({ keywordValue, page: state.page });
+    if (previousInputs.page !== state.page) setAwaitingPageReset(false);
+    else if (isControlledServerKeyword) setAwaitingPageReset(true);
   }
   if (awaitingPageReset && state.page === 1) setAwaitingPageReset(false);
   const pagedState = awaitingPageReset ? { ...state, page: 1 } : state;

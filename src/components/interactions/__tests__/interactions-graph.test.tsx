@@ -208,6 +208,10 @@ function failed(error: Error) {
   return refetch;
 }
 
+function detailsPane() {
+  return within(screen.getByLabelText("Selection details"));
+}
+
 stubMenuLayout();
 vi.stubGlobal("scrollTo", vi.fn());
 
@@ -878,109 +882,91 @@ describe("InteractionsGraph protein focus", () => {
   ];
   const focusedData = { rows: twoNodeRows, isTruncated: false };
 
-  it("selects the focused protein when its data arrives", () => {
-    const { rerender } = renderGraph(
-      <GraphHarness
-        rql="focused"
-        keywordValue=""
-        onKeywordChange={vi.fn()}
-        focusId="node-a"
-      />,
-    );
+  it("selects the focused protein when the scope changes on its own", async () => {
+    resolved(focusedData);
+    const onSelectedChange = vi.fn();
+    const props = {
+      keywordValue: "",
+      onKeywordChange: vi.fn(),
+      focusId: "node-a",
+      onSelectedChange,
+    };
+    const { rerender } = renderGraph(<GraphHarness {...props} rql="eq(a,1)" />);
     expect(
-      screen.queryByRole("button", { name: "Focus on this protein" }),
-    ).not.toBeInTheDocument();
-
-    resolved(focusedData);
-    rerender(
-      <GraphHarness
-        rql="focused"
-        keywordValue=""
-        onKeywordChange={vi.fn()}
-        focusId="node-a"
-      />,
-    );
-
-    // The detail panel lists the node's BRC ID, which only a selection shows.
-    expect(screen.getByText("node-a")).toBeInTheDocument();
-    expect(
-      screen.queryByText("Select a node or edge to see details."),
-    ).not.toBeInTheDocument();
-  });
-
-  it("selects it too when the data is already there on mount", () => {
-    resolved(focusedData);
-    renderGraph(
-      <GraphHarness
-        rql="focused"
-        keywordValue=""
-        onKeywordChange={vi.fn()}
-        focusId="node-a"
-      />,
-    );
-
-    expect(screen.getByText("node-a")).toBeInTheDocument();
-  });
-
-  it("selects it over a node the user had picked, once new data arrives", async () => {
-    const user = userEvent.setup();
-    resolved(focusedData);
-    const { rerender } = renderGraph(
-      <GraphHarness
-        rql="focused"
-        keywordValue=""
-        onKeywordChange={vi.fn()}
-        focusId="node-a"
-      />,
-    );
-    await user.click(screen.getByRole("option", { name: "geneC" }));
-    expect(screen.getByText("node-c")).toBeInTheDocument();
-    expect(screen.queryByText("node-a")).not.toBeInTheDocument();
-
-    resolved({ rows: [...twoNodeRows], isTruncated: false });
-    rerender(
-      <GraphHarness
-        rql="focused"
-        keywordValue=""
-        onKeywordChange={vi.fn()}
-        focusId="node-a"
-      />,
-    );
-
-    expect(screen.getByText("node-a")).toBeInTheDocument();
-    expect(screen.queryByText("node-c")).not.toBeInTheDocument();
-  });
-
-  it("selects nothing when the focused protein is not among the rows", () => {
-    resolved(focusedData);
-    renderGraph(
-      <GraphHarness
-        rql="focused"
-        keywordValue=""
-        onKeywordChange={vi.fn()}
-        focusId="node-z"
-      />,
-    );
-
-    expect(
-      screen.getByText("Select a node or edge to see details."),
+      detailsPane().getByText("Select a node or edge to see details."),
     ).toBeInTheDocument();
+
+    rerender(<GraphHarness {...props} rql="eq(a,2)" />);
+
+    await waitFor(() => {
+      expect(onSelectedChange).toHaveBeenCalledWith({
+        kind: "node",
+        id: "node-a",
+      });
+    });
+    // The detail panel lists the node's BRC ID, which only a selection shows.
+    expect(detailsPane().getByText("node-a")).toBeInTheDocument();
   });
 
-  it("still clears the selection on new data without a focus", async () => {
-    const user = userEvent.setup();
+  it("keeps a selection that changes together with the rql (a Back step)", async () => {
     resolved(focusedData);
+    const onSelectedChange = vi.fn();
+    const props = {
+      keywordValue: "",
+      onKeywordChange: vi.fn(),
+      focusId: "node-a",
+      layout: defaultLayout,
+      onLayoutChange: vi.fn(),
+      filters: {},
+      facetRql: () => undefined,
+      onFilterChange: vi.fn(),
+      onSelectedChange,
+      camera: null,
+      onCameraChange: vi.fn(),
+    };
     const { rerender } = renderGraph(
-      <GraphHarness rql="" keywordValue="" onKeywordChange={vi.fn()} />,
+      <InteractionsGraph
+        {...props}
+        rql="eq(a,2)"
+        selected={{ kind: "node", id: "node-a" }}
+      />,
     );
-    await user.click(screen.getByText("geneC"));
-    expect(screen.getByText("node-c")).toBeInTheDocument();
 
-    resolved({ rows: [...twoNodeRows], isTruncated: false });
-    rerender(<GraphHarness rql="" keywordValue="" onKeywordChange={vi.fn()} />);
+    rerender(
+      <InteractionsGraph
+        {...props}
+        rql="eq(a,1)"
+        selected={{ kind: "node", id: "node-c" }}
+      />,
+    );
 
+    expect(detailsPane().getByText("node-c")).toBeInTheDocument();
+    await settleBackgroundWork();
+    expect(onSelectedChange).not.toHaveBeenCalled();
+  });
+
+  it("drops a focused protein the new scope's rows lack, like any stale id", async () => {
+    resolved(focusedData);
+    const onSelectedChange = vi.fn();
+    const props = {
+      keywordValue: "",
+      onKeywordChange: vi.fn(),
+      focusId: "node-z",
+      onSelectedChange,
+    };
+    const { rerender } = renderGraph(<GraphHarness {...props} rql="eq(a,1)" />);
+
+    rerender(<GraphHarness {...props} rql="eq(a,2)" />);
+
+    await waitFor(() => {
+      expect(onSelectedChange).toHaveBeenLastCalledWith(null);
+    });
+    expect(onSelectedChange).toHaveBeenCalledWith({
+      kind: "node",
+      id: "node-z",
+    });
     expect(
-      screen.getByText("Select a node or edge to see details."),
+      detailsPane().getByText("Select a node or edge to see details."),
     ).toBeInTheDocument();
   });
 
@@ -1022,10 +1008,6 @@ describe("InteractionsGraph protein focus", () => {
     ).not.toBeInTheDocument();
   });
 });
-
-function detailsPane() {
-  return within(screen.getByLabelText("Selection details"));
-}
 
 describe("InteractionsGraph selection from the URL", () => {
   it("selects the URL's node once the data has loaded, filling the pane and the canvas", async () => {
@@ -1602,7 +1584,8 @@ describe("InteractionsGraph row selection", () => {
   });
 
   // The shell's Focus leaves a selection, so a selection and a focus meet only when Show in Graph
-  // runs on a Table already narrowed to a protein (the focus is in the URL).
+  // runs on a Table already narrowed to a protein (the focus is in the URL), and the shell then
+  // writes the focused protein as the selected node.
   it("selects the focused protein among a selection's rows when the Table was already focused", () => {
     resolved({ rows: graphRows, isTruncated: false });
     renderGraph(
@@ -1611,6 +1594,7 @@ describe("InteractionsGraph row selection", () => {
         keywordValue=""
         onKeywordChange={vi.fn()}
         focusId="node-a"
+        initialSelected={{ kind: "node", id: "node-a" }}
         selection={rowSelection(["edge-1"])}
       />,
     );

@@ -628,7 +628,7 @@ describe("InteractionsSubviewShell filters", () => {
     });
 
     expect(window.location.search).toBe(
-      "?tab=interactions&interactions.evidence=computational",
+      "?tab=interactions&interactionsGraph.view=graph&interactions.evidence=computational",
     );
     expect(graphProps().rql).toBe(`and(${scope},${computationalClause})`);
     expect(graphProps().filters).toEqual({ evidence: ["computational"] });
@@ -647,7 +647,7 @@ describe("InteractionsSubviewShell filters", () => {
       graphProps().onFilterChange({ filters: {} });
     });
 
-    expect(window.location.search).toBe("");
+    expect(window.location.search).toBe("?interactionsGraph.view=graph");
     expect(graphProps().rql).toBe(scope);
     expect(graphProps().filters).toEqual({});
   });
@@ -748,7 +748,9 @@ describe("InteractionsSubviewShell filters", () => {
       graphProps().onFilterChange({ filters: {} });
     });
 
-    expect(window.location.search).toBe("?tab=interactions");
+    expect(window.location.search).toBe(
+      "?tab=interactions&interactionsGraph.view=graph",
+    );
     expect(screen.getByTestId("graph-panel")).toHaveAttribute(
       "data-rql",
       scope,
@@ -766,7 +768,7 @@ describe("InteractionsSubviewShell filters", () => {
     });
 
     expect(window.location.search).toBe(
-      "?interactions.interaction_type=association",
+      "?interactionsGraph.view=graph&interactions.interaction_type=association",
     );
     expect(screen.getByTestId("graph-panel")).toHaveAttribute(
       "data-rql",
@@ -794,7 +796,58 @@ describe("InteractionsSubviewShell filters", () => {
       "data-keyword",
       "groEL",
     );
-    expect(window.location.search).toBe("");
+    expect(window.location.search).toBe(
+      "?interactionsGraph.view=graph&interactionsGraph.q=groEL",
+    );
+  });
+
+  it("drops the selection and the camera with a pick, in the pick's own history entry", () => {
+    window.history.replaceState(
+      null,
+      "",
+      "/genome/1.1?interactionsGraph.view=graph&interactionsGraph.node=peg.1&interactionsGraph.cam=0.5,0.1,0.2",
+    );
+    render(<InteractionsSubviewShell rql={scope} />);
+    const pushState = vi.spyOn(window.history, "pushState");
+    const lengthBefore = window.history.length;
+
+    act(() => {
+      graphProps().onFilterChange({
+        filters: { interaction_type: ["association"] },
+      });
+    });
+
+    expect(pushState).toHaveBeenCalledTimes(1);
+    expect(window.history.length).toBe(lengthBefore + 1);
+    expect(window.location.search).toBe(
+      "?interactionsGraph.view=graph&interactions.interaction_type=association",
+    );
+    expect(screen.getByTestId("graph-panel")).toHaveAttribute(
+      "data-selected",
+      "none",
+    );
+    expect(screen.getByTestId("graph-panel")).toHaveAttribute(
+      "data-camera",
+      "none",
+    );
+  });
+
+  it("writes a pick and a keyword from one update into the same entry", () => {
+    render(<InteractionsSubviewShell rql={scope} />);
+    fireEvent.click(screen.getByRole("tab", { name: "Graph" }));
+    const pushState = vi.spyOn(window.history, "pushState");
+
+    act(() => {
+      graphProps().onFilterChange({
+        keyword: "groEL",
+        filters: { interaction_type: ["association"] },
+      });
+    });
+
+    expect(pushState).toHaveBeenCalledTimes(1);
+    expect(window.location.search).toBe(
+      "?interactionsGraph.view=graph&interactions.interaction_type=association&interactionsGraph.q=groEL",
+    );
   });
 });
 
@@ -825,7 +878,7 @@ describe("InteractionsSubviewShell protein focus", () => {
     focusNode(protein);
 
     expect(window.location.search).toBe(
-      `?tab=interactions&interactions.interactor=${encodedProtein}`,
+      `?tab=interactions&interactionsGraph.view=graph&interactions.interactor=${encodedProtein}&interactionsGraph.node=${encodedProtein}`,
     );
     expect(screen.getByTestId("table-panel")).toHaveAttribute("data-rql", scope);
     expect(tableMountCount).toBe(1);
@@ -883,6 +936,57 @@ describe("InteractionsSubviewShell protein focus", () => {
     }
   });
 
+  it("selects the protein and drops the camera in the focus's own history entry", () => {
+    window.history.replaceState(
+      null,
+      "",
+      "/genome/1.1?interactionsGraph.view=graph&interactionsGraph.node=peg.1&interactionsGraph.cam=0.5,0.1,0.2",
+    );
+    render(<InteractionsSubviewShell rql={scope} />);
+    const lengthBefore = window.history.length;
+
+    focusNode(protein);
+
+    expect(window.history.length).toBe(lengthBefore + 1);
+    expect(screen.getByTestId("graph-panel")).toHaveAttribute(
+      "data-selected",
+      `node:${protein.id}`,
+    );
+    expect(screen.getByTestId("graph-panel")).toHaveAttribute(
+      "data-camera",
+      "none",
+    );
+  });
+
+  it("selects the focused protein again with a new keyword or a new pick", () => {
+    window.history.replaceState(
+      null,
+      "",
+      `/genome/1.1?interactionsGraph.view=graph&interactions.interactor=${encodedProtein}&interactionsGraph.edge=ppi-9`,
+    );
+    render(<InteractionsSubviewShell rql={scope} />);
+
+    fireEvent.click(screen.getByText("set-from-graph"));
+    expect(screen.getByTestId("graph-panel")).toHaveAttribute(
+      "data-selected",
+      `node:${protein.id}`,
+    );
+
+    act(() => {
+      graphProps().onSelectedChange({ kind: "edge", id: "ppi-9" });
+    });
+    act(() => {
+      graphProps().onFilterChange({
+        keyword: "fromGraph",
+        filters: { interactor: [protein.id], interaction_type: ["association"] },
+      });
+    });
+    expect(screen.getByTestId("graph-panel")).toHaveAttribute(
+      "data-selected",
+      `node:${protein.id}`,
+    );
+  });
+
   it("keeps the shared keyword when focusing", () => {
     render(<InteractionsSubviewShell rql={scope} />);
     fireEvent.click(screen.getByText("set-from-table"));
@@ -912,7 +1016,7 @@ describe("InteractionsSubviewShell protein focus", () => {
       graphProps().onFilterChange({ filters: {} });
     });
 
-    expect(window.location.search).toBe("");
+    expect(window.location.search).toBe("?interactionsGraph.view=graph");
     expect(graphProps().focusId).toBeUndefined();
     expect(screen.getByTestId("graph-panel")).toHaveAttribute(
       "data-rql",
@@ -974,6 +1078,41 @@ describe("InteractionsSubviewShell Show in Graph", () => {
     expect(graphProps().rql).toBe(scope);
     expect(screen.getByTestId("table-panel")).toHaveAttribute("data-rql", scope);
     expect(tableMountCount).toBe(1);
+  });
+
+  it("writes the Graph subview and drops the selected id and camera, without a history entry", () => {
+    window.history.replaceState(
+      null,
+      "",
+      "/genome/1.1?interactionsGraph.node=peg.1&interactionsGraph.cam=0.5,0.1,0.2",
+    );
+    render(<InteractionsSubviewShell rql={scope} />);
+    const pushState = vi.spyOn(window.history, "pushState");
+
+    showInGraph(["ppi-1"]);
+
+    expect(pushState).not.toHaveBeenCalled();
+    expect(window.location.search).toBe("?interactionsGraph.view=graph");
+  });
+
+  it("selects the focused protein over a Show in Graph selection and again on Show all", () => {
+    window.history.replaceState(
+      null,
+      "",
+      "/genome/1.1?interactions.interactor=peg.5",
+    );
+    render(<InteractionsSubviewShell rql={scope} />);
+
+    showInGraph(["ppi-1"]);
+    expect(graphProps().selected).toEqual({ kind: "node", id: "peg.5" });
+
+    act(() => {
+      graphProps().onSelectedChange(null);
+    });
+    act(() => {
+      graphProps().selection?.onClear();
+    });
+    expect(graphProps().selected).toEqual({ kind: "node", id: "peg.5" });
   });
 
   it("returns to the plain Graph when the selection is cleared", () => {
@@ -1063,7 +1202,7 @@ describe("InteractionsSubviewShell Show in Graph", () => {
 
       expect(graphProps().selection).toBeUndefined();
       expect(window.location.search).toBe(
-        `?interactions.interactor=${encodedProtein}`,
+        `?interactionsGraph.view=graph&interactions.interactor=${encodedProtein}&interactionsGraph.node=${encodedProtein}`,
       );
       expect(graphProps().focusId).toBe(protein.id);
       expect(graphProps().rql).toBe(`and(${scope},${focusClause})`);

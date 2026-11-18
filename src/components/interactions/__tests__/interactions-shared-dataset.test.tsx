@@ -452,7 +452,7 @@ describe("Interactions Table and Graph share one set of filters", () => {
     });
     expect(tablePredicates.at(-1)).toEqual(graphPredicates.at(-1));
     expect(window.location.search).toBe(
-      "?interactions.interaction_type=association",
+      "?interactionsGraph.view=graph&interactions.interaction_type=association",
     );
     // The other facets count within the pick; Interaction Type is counted without its own filter
     // (the scope's cached counts), so a second value stays pickable.
@@ -556,7 +556,7 @@ describe("Interactions Table and Graph share the Evidence facet, which has no de
     // Experimental and computational rows alike: no evidence term at all.
     expect(tablePredicates.at(-1)?.rql).toBe(scopeRql);
     expect(graphPredicates.at(-1)).toEqual(tablePredicates.at(-1));
-    expect(window.location.search).toBe("");
+    expect(window.location.search).toBe("?interactionsGraph.view=graph");
     expect(
       graphPanel().queryByRole("button", { name: /^Evidence:/ }),
     ).not.toBeInTheDocument();
@@ -620,7 +620,7 @@ describe("Interactions Table and Graph share the Evidence facet, which has no de
     });
     expect(tablePredicates.at(-1)).toEqual(graphPredicates.at(-1));
     // The cleared state is the empty state, so no param is written.
-    expect(window.location.search).toBe("");
+    expect(window.location.search).toBe("?interactionsGraph.view=graph");
   });
 
   it.each([
@@ -660,7 +660,9 @@ describe("Interactions Table and Graph share the Evidence facet, which has no de
         expect(tablePredicates.at(-1)?.rql).toBe(pickedRql);
       });
       expect(tablePredicates.at(-1)).toEqual(graphPredicates.at(-1));
-      expect(window.location.search).toBe(`?interactions.evidence=${pick}`);
+      expect(window.location.search).toBe(
+        `?interactionsGraph.view=graph&interactions.evidence=${pick}`,
+      );
 
       await user.click(screen.getByRole("tab", { name: "Table" }));
       expect(
@@ -846,7 +848,9 @@ describe("Interactions Table and Graph share a protein focus", () => {
       expect(tablePredicates.at(-1)?.rql).toBe(focusedRql);
     });
     expect(tablePredicates.at(-1)).toEqual(graphPredicates.at(-1));
-    expect(window.location.search).toBe(`?${focusUrlParam}`);
+    expect(window.location.search).toBe(
+      "?interactionsGraph.view=graph&interactionsGraph.node=fig%7C1.1.peg.1&interactions.interactor=fig%7C1.1.peg.1",
+    );
     // The focus is a filter like the rest: the bar names it, and the counts stay inside it.
     expect(
       graphPanel().getByRole("button", {
@@ -995,7 +999,7 @@ describe("Interactions Table and Graph share a protein focus", () => {
     await waitFor(() => {
       expect(tablePredicates.at(-1)?.rql).toBe(scopeRql);
     });
-    expect(window.location.search).toBe("");
+    expect(window.location.search).toBe("?interactionsGraph.view=graph");
   });
 });
 

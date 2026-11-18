@@ -1,5 +1,6 @@
 import {
   buildGraphSelectionIndex,
+  focusSelectionRef,
   resolveGraphSelection,
   selectHubs,
   selectSubgraphs,
@@ -93,5 +94,14 @@ describe("single selection refs", () => {
     expect(singleSelectionRef({ nodes: [], edges: [] })).toBeNull();
     expect(singleSelectionRef({ nodes: [nodes[0]], edges: [edges[0]] })).toBeNull();
     expect(singleSelectionRef({ nodes: nodes.slice(0, 2), edges: [] })).toBeNull();
+  });
+
+  it("selects the focused protein as a node, and nothing without a focus", () => {
+    expect(focusSelectionRef("fig|1.1.peg.1")).toEqual({
+      kind: "node",
+      id: "fig|1.1.peg.1",
+    });
+    expect(focusSelectionRef(undefined)).toBeNull();
+    expect(focusSelectionRef("")).toBeNull();
   });
 });

@@ -19,7 +19,10 @@ import type { FolderIconVariant } from "@/components/workspace/workspace-item-ic
 import { useWorkspaceRepository } from "@/contexts/workspace-repository-context";
 import { useKeptQueryError } from "@/hooks/services/jobs/use-kept-query-error";
 import { useWorkspacePickerListing } from "@/hooks/services/workspace/use-workspace-picker-listing";
+import { useStorageItem } from "@/hooks/use-storage-item";
+import { useViewportSize } from "@/hooks/use-viewport-size";
 import { useAuth } from "@/lib/auth/provider";
+import { writeStorageItem } from "@/lib/browser-storage";
 import type { WorkspaceItem } from "@/lib/services/workspace/domain";
 import { normalizePath } from "@/lib/services/workspace/mini-browser-items";
 import {
@@ -48,9 +51,26 @@ import {
 import { knownUploadTypes } from "@/lib/services/workspace/types";
 import { workspaceQueryKeys } from "@/lib/services/workspace/workspace-query-keys";
 import { cn } from "@/lib/utils";
+import { FolderPickerActions } from "./folder-picker-actions";
 import { FolderPickerBreadcrumb } from "./folder-picker-breadcrumb";
 import { FolderPickerColumn } from "./folder-picker-column";
+import { DialogResizeHandles } from "./folder-picker-dialog-resize";
 import { FolderPickerHeader } from "./folder-picker-header";
+import {
+  canMaximize,
+  dialogGutter,
+  dialogHeightLimits,
+  dialogWidthLimits,
+  effectiveDialogSize,
+  expandedDialogSize,
+  isMaximized,
+  parsePickerLayout,
+  pickerLayoutKey,
+  rememberUntouchedAxes,
+  serializePickerLayout,
+  type DialogSize,
+  type StoredPickerLayout,
+} from "./folder-picker-layout";
 import { FolderPickerPlacesNav } from "./folder-picker-places-nav";
 import {
   FilePickerInfo,
@@ -59,6 +79,7 @@ import {
 } from "./folder-picker-preview";
 import { PaneResizeHandle } from "./folder-picker-resize-handle";
 import {
+  actionsUnavailableReason,
   columnWidthLimitsFor,
   folderTarget,
   isInlineEditTarget,
@@ -96,6 +117,9 @@ interface PickerLayout {
 
 interface FolderColumnsBrowserProps {
   layout: PickerLayout;
+  isExpanded: boolean;
+  canToggleExpanded: boolean;
+  onToggleExpanded: () => void;
   target: PickerTarget;
   initialPath: string;
   title: string;
@@ -109,6 +133,9 @@ interface FolderColumnsBrowserProps {
 
 function FolderColumnsBrowser({
   layout,
+  isExpanded,
+  canToggleExpanded,
+  onToggleExpanded,
   target,
   initialPath,
   title,
@@ -443,15 +470,45 @@ function FolderColumnsBrowser({
       ? labelFor(selectedPath)
       : "";
   const isPickingFiles = target.kind === "object";
+  const unavailableReason = actionsUnavailableReason({
+    folderPath,
+    hasListingError: listingError !== null,
+    canChange,
+  });
+  const openNewFolder = () => {
+    pendingFocusRef.current = null;
+    setIsUploadOpen(false);
+    setNaming(true);
+  };
+  const openUpload = () => {
+    pendingFocusRef.current = null;
+    setNaming(false);
+    setIsUploadOpen(true);
+  };
+
+  // One element, handed to whichever Info view shows; the upload form takes the pane's
+  // place, so nothing here is reachable while it is open.
+  const actions = (
+    <FolderPickerActions
+      showNewFolder={!isPickingFiles}
+      unavailableReason={unavailableReason}
+      onNewFolder={openNewFolder}
+      onUpload={openUpload}
+      showFiles={showFiles}
+      onShowFilesChange={onShowFilesChange}
+      isPickingFiles={isPickingFiles}
+    />
+  );
 
   return (
     <>
       <FolderPickerHeader
         title={title}
         target={target}
-        showFiles={showFiles}
-        onShowFilesChange={onShowFilesChange}
         isUploading={isUploading}
+        isExpanded={isExpanded}
+        canToggleExpanded={canToggleExpanded}
+        onToggleExpanded={onToggleExpanded}
       />
 
       <div className="-mx-4 -mb-4 flex min-h-0 flex-1 flex-col border-t md:flex-row">
@@ -587,7 +644,12 @@ function FolderColumnsBrowser({
               onUploadingChange={onUploadingChange}
             />
           ) : file && selectedItem ? (
-            <FilePickerInfo item={selectedItem} place={place} commit={commit} />
+            <FilePickerInfo
+              item={selectedItem}
+              place={place}
+              commit={commit}
+              actions={actions}
+            />
           ) : (
             <FolderPickerInfo
               target={target}
@@ -598,17 +660,7 @@ function FolderColumnsBrowser({
               contents={contents}
               listingError={listingError}
               commit={commit}
-              canChange={canChange}
-              onNewFolder={() => {
-                pendingFocusRef.current = null;
-                setIsUploadOpen(false);
-                setNaming(true);
-              }}
-              onUpload={() => {
-                pendingFocusRef.current = null;
-                setNaming(false);
-                setIsUploadOpen(true);
-              }}
+              actions={actions}
             />
           )}
         </div>
@@ -680,18 +732,61 @@ export function WorkspaceFolderPickerDialog({
 }: WorkspaceFolderPickerDialogProps) {
   const [isUploading, setIsUploading] = useState(false);
   const stripRef = useRef<HTMLDivElement>(null);
+  // Sizes live in storage, read and written straight through, so every mounted picker
+  // (a form can hold several) and the next open share one remembered layout. Showing
+  // files is a choice for this picker only.
+  const stored = parsePickerLayout(useStorageItem(pickerLayoutKey));
+  const viewport = useViewportSize();
+  const size = effectiveDialogSize(stored.dialog, viewport);
+  // At the default size on a small window the dialog may already fill it, but it is not
+  // expanded: Restore would change nothing, so the button offers Expand.
+  const expanded = stored.dialog !== undefined && isMaximized(size, viewport);
+  // Expand on a window the dialog already fills would store a size that a later, larger
+  // window opens below the default, so it is offered only where it grows the dialog.
+  // Restore stays for a stored expanded size.
+  const canToggleExpanded = expanded || canMaximize(size, viewport);
+  // What is remembered for each axis, which a window smaller than it only clamps for now.
+  // A resize leaves an axis it did not visibly change at this value, so nudging the width
+  // on a short window does not shrink the height for later.
+  const remembered: DialogSize = {
+    width: stored.dialog?.width ?? dialogWidthLimits.initial,
+    height: stored.dialog?.height ?? dialogHeightLimits.initial,
+  };
   const [showFiles, setShowFiles] = useState(false);
-  const [columnWidths, setColumnWidths] = useState<Record<number, number>>({});
-  const [previewWidth, setPreviewWidth] = useState(previewWidthLimits.initial);
+
+  const saveLayout = (patch: Partial<StoredPickerLayout>) => {
+    writeStorageItem(
+      pickerLayoutKey,
+      serializePickerLayout({ ...stored, ...patch }),
+    );
+  };
+  // The default size is stored as no size, so a reset leaves nothing behind.
+  const setDialogSize = (next: DialogSize | undefined) => {
+    const isDefault =
+      next?.width === dialogWidthLimits.initial &&
+      next.height === dialogHeightLimits.initial;
+    saveLayout({ dialog: isDefault ? undefined : next });
+  };
   const layout: PickerLayout = {
     showFiles,
     onShowFilesChange: setShowFiles,
-    columnWidths,
+    columnWidths: stored.columns,
     onColumnWidthChange: (index, width) => {
-      setColumnWidths((previous) => ({ ...previous, [index]: width }));
+      saveLayout({ columns: { ...stored.columns, [index]: width } });
     },
-    previewWidth,
-    onPreviewWidthChange: setPreviewWidth,
+    previewWidth: stored.preview ?? previewWidthLimits.initial,
+    onPreviewWidthChange: (width) => {
+      saveLayout({ preview: width });
+    },
+  };
+  // The stored size can exceed a smaller window; the separator reports the range it
+  // really has there.
+  const widthLimits = {
+    ...dialogWidthLimits,
+    max: Math.max(
+      size.width,
+      Math.min(dialogWidthLimits.max, viewport.width - dialogGutter),
+    ),
   };
 
   const close = () => {
@@ -720,8 +815,17 @@ export function WorkspaceFolderPickerDialog({
         close();
       }}
     >
+      {/* The size applies from md up; below it the dialog keeps the phone layout. `resize="live"`
+         stops the size gliding for 100ms behind a drag. */}
       <DialogContent
-        className="flex h-[min(42rem,calc(100dvh-2rem))] flex-col overflow-clip sm:max-w-5xl"
+        resize="live"
+        className="flex h-[min(42rem,calc(100dvh-2rem))] flex-col overflow-clip sm:max-w-[calc(100%-2rem)] md:h-(--picker-height) md:max-h-[calc(100dvh-2rem)] md:w-(--picker-width)"
+        style={
+          {
+            "--picker-width": `${String(size.width)}px`,
+            "--picker-height": `${String(size.height)}px`,
+          } as CSSProperties
+        }
         showCloseButton={false}
         initialFocus={() =>
           stripRef.current?.querySelector<HTMLElement>(tabStopSelector) ?? true
@@ -729,6 +833,13 @@ export function WorkspaceFolderPickerDialog({
       >
         <FolderColumnsBrowser
           layout={layout}
+          isExpanded={expanded}
+          canToggleExpanded={canToggleExpanded}
+          onToggleExpanded={() => {
+            setDialogSize(
+              expanded ? undefined : expandedDialogSize(stored.dialog, viewport),
+            );
+          }}
           target={target}
           initialPath={initialPath}
           title={title}
@@ -741,6 +852,46 @@ export function WorkspaceFolderPickerDialog({
             close();
           }}
           onCancel={close}
+        />
+        {/* Last in the popup so they follow its content in the tab order, and inside it
+           so Base UI does not take a drag for an outside press; `right-0` because the
+           popup clips anything past its edge. The separator is the east side; the
+           pointer handles below take every other side and corner. */}
+        <PaneResizeHandle
+          edge="end"
+          label="Resize dialog width"
+          width={size.width}
+          limits={widthLimits}
+          pointerScale={2}
+          keyboardStep={32}
+          // A press at the window's maximum width changes nothing visible, so it stores
+          // nothing new: the height is passed as the rendered one, so it is untouched.
+          onResize={(width) => {
+            setDialogSize(
+              rememberUntouchedAxes(
+                { width, height: size.height },
+                size,
+                remembered,
+              ),
+            );
+          }}
+          // The true default width, not the one the window clamps it to; a reset that
+          // lands on the width already shown must still reset, so it skips
+          // `rememberUntouchedAxes`.
+          onReset={() => {
+            setDialogSize({
+              width: dialogWidthLimits.initial,
+              height: remembered.height,
+            });
+          }}
+          showPointerLine={false}
+          className="right-0 hidden md:block"
+        />
+        <DialogResizeHandles
+          size={size}
+          remembered={remembered}
+          viewport={viewport}
+          onResize={setDialogSize}
         />
       </DialogContent>
     </Dialog>

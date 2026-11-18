@@ -83,11 +83,10 @@ it("selects the file it just uploaded when it matches", async () => {
 
 it("leaves the selection on the folder when the upload doesn't match", async () => {
   await uploadInto("new.txt", "txt", "Finish text upload");
-  await waitFor(() => {
-    expect(
-      screen.getByRole("button", { name: "Upload here" }),
-    ).toBeInTheDocument();
-  });
+  // The Info pane's count changes once the refreshed listing has landed, which is the
+  // last thing the upload does; waiting for the form to go would not wait for it.
+  expect(await screen.findByText("0 folders, 1 file")).toBeInTheDocument();
+  expect(screen.queryByText(/^Upload to /)).not.toBeInTheDocument();
   expect(selectButton()).toHaveAccessibleName("Select “Alpha”");
 });
 

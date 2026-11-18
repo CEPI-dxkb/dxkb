@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
+import { workshopBrowserHref } from "@/lib/services/workspace/workshop";
 
 export default function WorkshopPage() {
-  redirect("/workspace/public/ARWattam@patricbrc.org/BV-BRC%20Workshop");
+  redirect(workshopBrowserHref);
 }

@@ -33,6 +33,7 @@ import {
   viewLabel,
   visiblePickerRows,
 } from "../picker-views";
+import { workshopWorkspacePath } from "../workshop";
 
 const username = "alice@bvbrc";
 const home = "/alice@bvbrc/home";
@@ -83,6 +84,13 @@ describe("locationForView", () => {
       view: "recent",
     });
   });
+
+  it("maps the workshop to its fixed public folder", () => {
+    expect(locationForView("workshop", username)).toEqual({
+      kind: "path",
+      path: workshopWorkspacePath,
+    });
+  });
 });
 
 describe("viewLabel", () => {
@@ -92,6 +100,7 @@ describe("viewLabel", () => {
       "My Workspaces",
       "Shared Workspaces",
       "Public Workspaces",
+      "BV-BRC Workshop",
       "Favorites",
       "Recently Used",
     ]);
@@ -198,6 +207,25 @@ describe("initialColumnChain", () => {
       initialColumnChain("/carol@patricbrc.org/home/Data", legacy),
     ).toEqual({ view: "home", chain: ["/carol@patricbrc.org/home/Data"] });
   });
+
+  it("starts the workshop's chain below the folder, as Home's does", () => {
+    expect(
+      initialColumnChain(`${workshopWorkspacePath}/Assembly/Reads`, username),
+    ).toEqual({
+      view: "workshop",
+      chain: [
+        `${workshopWorkspacePath}/Assembly`,
+        `${workshopWorkspacePath}/Assembly/Reads`,
+      ],
+    });
+  });
+
+  it("selects the workshop folder itself when it is the value", () => {
+    expect(initialColumnChain(workshopWorkspacePath, username)).toEqual({
+      view: "workshop",
+      chain: [],
+    });
+  });
 });
 
 describe("viewForLocation", () => {
@@ -228,6 +256,37 @@ describe("viewForLocation", () => {
       viewForLocation({ kind: "list", view: "favorites" }, username, "shared"),
     ).toBe("favorites");
   });
+
+  it("reports the workshop for its folder and everything inside it", () => {
+    for (const path of [
+      workshopWorkspacePath,
+      `${workshopWorkspacePath}/Assembly/a.fasta`,
+    ]) {
+      expect(
+        viewForLocation({ kind: "path", path }, username, "shared"),
+      ).toBe("workshop");
+    }
+  });
+
+  it("reports the workshop even to the folder's own owner", () => {
+    expect(
+      viewForLocation(
+        { kind: "path", path: `${workshopWorkspacePath}/x` },
+        "ARWattam@patricbrc.org",
+        "shared",
+      ),
+    ).toBe("workshop");
+  });
+
+  it("does not mistake a lookalike folder for the workshop", () => {
+    expect(
+      viewForLocation(
+        { kind: "path", path: `${workshopWorkspacePath}2/x` },
+        username,
+        "public",
+      ),
+    ).toBe("public");
+  });
 });
 
 describe("listingSourceFor", () => {
@@ -257,6 +316,12 @@ describe("listingSourceFor", () => {
     expect(listingSourceFor({ kind: "list", view: "public" }, username)).toEqual(
       { kind: "root" },
     );
+  });
+
+  it("lists the workshop as a directory", () => {
+    expect(
+      listingSourceFor(locationForView("workshop", username), username),
+    ).toEqual({ kind: "directory", path: workshopWorkspacePath });
   });
 });
 
@@ -677,6 +742,28 @@ describe("initialPickerSelection", () => {
       { ...initialColumnChain("/a@b/home/Data", "a@b"), file: null },
     );
   });
+  it("opens a workshop file's folder on the workshop place", () => {
+    expect(
+      initialPickerSelection(
+        `${workshopWorkspacePath}/Assembly/a.fasta`,
+        username,
+        contigs,
+      ),
+    ).toEqual({
+      view: "workshop",
+      chain: [`${workshopWorkspacePath}/Assembly`],
+      file: `${workshopWorkspacePath}/Assembly/a.fasta`,
+    });
+  });
+  it("selects a file that sits in the workshop folder itself", () => {
+    expect(
+      initialPickerSelection(`${workshopWorkspacePath}/a.fasta`, username, contigs),
+    ).toEqual({
+      view: "workshop",
+      chain: [],
+      file: `${workshopWorkspacePath}/a.fasta`,
+    });
+  });
 });
 
 describe("labels", () => {
@@ -862,6 +949,24 @@ describe("canWriteTo", () => {
     expect(
       canWriteTo({ path: "/bob@bvbrc/ws/a", username, siblings: [] }),
     ).toBe(false);
+  });
+
+  it("treats a workshop folder as read-only for anyone else", () => {
+    const folder = item(`${workshopWorkspacePath}/Assembly`, "folder", {
+      user: "r",
+      global: "r",
+    });
+    expect(
+      canWriteTo({ path: folder.path, username, item: folder, siblings: [] }),
+    ).toBe(false);
+    expect(
+      canWriteTo({
+        path: folder.path,
+        username: "ARWattam@patricbrc.org",
+        item: folder,
+        siblings: [],
+      }),
+    ).toBe(true);
   });
 });
 

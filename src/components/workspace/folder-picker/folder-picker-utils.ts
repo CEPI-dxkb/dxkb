@@ -1,6 +1,7 @@
 import {
   Clock,
   Globe,
+  GraduationCap,
   HardDrive,
   House,
   Star,
@@ -19,6 +20,7 @@ export const placeIcons: Record<PickerView, LucideIcon> = {
   myWorkspaces: HardDrive,
   shared: Users,
   public: Globe,
+  workshop: GraduationCap,
   favorites: Star,
   recent: Clock,
 };
@@ -28,7 +30,7 @@ export const placeGroups: readonly {
   views: readonly PickerView[];
 }[] = [
   { label: "Workspaces", views: ["home", "myWorkspaces"] },
-  { label: "Shared with me", views: ["shared", "public"] },
+  { label: "Shared with me", views: ["shared", "public", "workshop"] },
   { label: "Quick access", views: ["favorites", "recent"] },
 ];
 
@@ -56,4 +58,24 @@ export function isInlineEditTarget(target: EventTarget | null): boolean {
     target instanceof Element &&
     target.closest(`[${inlineEditAttribute}]`) !== null
   );
+}
+
+/**
+ * Why the Info pane's New folder and Upload are off, or null when both can be used.
+ * Both buttons disable on, and explain with, this one value. An upload needs no reason:
+ * its form takes the Info pane's place, so the buttons are not shown while it runs.
+ */
+export function actionsUnavailableReason({
+  folderPath,
+  hasListingError,
+  canChange,
+}: {
+  folderPath: string | null;
+  hasListingError: boolean;
+  canChange: boolean;
+}): string | null {
+  if (folderPath === null) return "Open a folder first.";
+  if (hasListingError) return "Couldn't check this folder's write access.";
+  if (!canChange) return "You don't have write access to this folder.";
+  return null;
 }

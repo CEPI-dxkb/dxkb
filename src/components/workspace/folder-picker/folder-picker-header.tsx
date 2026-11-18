@@ -1,4 +1,4 @@
-import { Eye, EyeOff, XIcon } from "lucide-react";
+import { Maximize2, Minimize2, XIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DialogClose,
@@ -12,19 +12,23 @@ import { FolderPickerAcceptedTypes } from "./folder-picker-accepted-types";
 interface FolderPickerHeaderProps {
   title: string;
   target: PickerTarget;
-  showFiles: boolean;
-  onShowFilesChange: (showFiles: boolean) => void;
   isUploading: boolean;
+  /** The dialog fills the window; the button then restores the default size. */
+  isExpanded: boolean;
+  /** False where the window leaves nothing to expand into, so there is no button. */
+  canToggleExpanded: boolean;
+  onToggleExpanded: () => void;
 }
 
 export function FolderPickerHeader({
   title,
   target,
-  showFiles,
-  onShowFilesChange,
   isUploading,
+  isExpanded,
+  canToggleExpanded,
+  onToggleExpanded,
 }: FolderPickerHeaderProps) {
-  const isPickingFiles = target.kind === "object";
+  const expandLabel = isExpanded ? "Restore dialog size" : "Expand dialog";
   return (
     <DialogHeader>
       <div className="flex items-start justify-between gap-4">
@@ -43,44 +47,39 @@ export function FolderPickerHeader({
         </div>
         <div className="flex shrink-0 items-center gap-4">
           <KeyboardHints />
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            aria-pressed={showFiles}
-            onClick={() => {
-              onShowFilesChange(!showFiles);
-            }}
-          >
-            {showFiles ? (
-              <EyeOff data-icon="inline-start" />
-            ) : (
-              <Eye data-icon="inline-start" />
-            )}
-            {isPickingFiles
-              ? showFiles
-                ? "Hide other files"
-                : "Show other files"
-              : showFiles
-                ? "Hide files"
-                : "Show files"}
-          </Button>
-          {/* Disabled, not hidden, mid-upload so the row doesn't shift; the
-             dialog's own corner button sits 8px higher than the rest of the row. */}
-          <DialogClose
-            disabled={isUploading}
-            render={
+          {/* The two buttons sit 8px apart, like the other buttons in the popup. */}
+          <div className="flex items-center gap-2">
+            {/* The dialog is sized only from md up, so below that there is nothing to expand. */}
+            {canToggleExpanded ? (
               <Button
                 type="button"
-                variant="ghost"
+                variant="outline"
                 size="icon-sm"
-                aria-label="Close"
-                title="Close"
+                className="hidden md:inline-flex"
+                aria-label={expandLabel}
+                title={expandLabel}
+                onClick={onToggleExpanded}
               >
-                <XIcon />
+                {isExpanded ? <Minimize2 /> : <Maximize2 />}
               </Button>
-            }
-          />
+            ) : null}
+            {/* Disabled, not hidden, mid-upload so the row doesn't shift; the
+               dialog's own corner button sits 8px higher than the rest of the row. */}
+            <DialogClose
+              disabled={isUploading}
+              render={
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon-sm"
+                  aria-label="Close"
+                  title="Close"
+                >
+                  <XIcon />
+                </Button>
+              }
+            />
+          </div>
         </div>
       </div>
     </DialogHeader>

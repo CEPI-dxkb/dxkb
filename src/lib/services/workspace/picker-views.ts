@@ -11,11 +11,19 @@ import { normalizePath } from "./mini-browser-items";
 import { sanitizePathSegment } from "./path-utils";
 import { knownUploadTypes } from "./types";
 import { isFolder, isFolderType, normalizeWorkspaceObjectType } from "./utils";
+import { workshopWorkspacePath } from "./workshop";
 
 export type PickerView =
-  "home" | "myWorkspaces" | "shared" | "public" | "favorites" | "recent";
+  | "home"
+  | "myWorkspaces"
+  | "shared"
+  | "public"
+  | "workshop"
+  | "favorites"
+  | "recent";
 
-export type PickerListView = Exclude<PickerView, "home">;
+/** Views whose first column is a listing; Home and Workshop open a fixed folder. */
+export type PickerListView = Exclude<PickerView, "home" | "workshop">;
 
 export type PickerForeignOrigin = "shared" | "public";
 
@@ -103,6 +111,7 @@ export const pickerViewOptions: readonly {
   { value: "myWorkspaces", label: "My Workspaces" },
   { value: "shared", label: "Shared Workspaces" },
   { value: "public", label: "Public Workspaces" },
+  { value: "workshop", label: "BV-BRC Workshop" },
   { value: "favorites", label: "Favorites" },
   { value: "recent", label: "Recently Used" },
 ];
@@ -137,6 +146,7 @@ export function locationForView(
   username: string,
 ): PickerLocation {
   if (view === "home") return { kind: "path", path: pickerHomePath(username) };
+  if (view === "workshop") return { kind: "path", path: workshopWorkspacePath };
   return { kind: "list", view };
 }
 
@@ -147,15 +157,17 @@ export function viewForLocation(
 ): PickerView {
   if (location.kind === "list") return location.view;
   if (isWithin(location.path, pickerHomePath(username))) return "home";
+  if (isWithin(location.path, workshopWorkspacePath)) return "workshop";
   if (isOwnPath(location.path, username)) return "myWorkspaces";
   return origin;
 }
 
 /**
  * Where the picker opens: the view of the current value and the chain of
- * folders from its first column down to the value. Home's first column is a
- * directory (`/owner/home`); every other view starts with a workspace listing,
- * so its first column already holds `/owner/workspace`.
+ * folders from its first column down to the value. Home's and the Workshop's
+ * first column is a directory (`/owner/home`, `/owner/BV-BRC Workshop`); every
+ * other view starts with a workspace listing, so its first column already holds
+ * `/owner/workspace`.
  */
 export function initialColumnChain(
   initialPath: string | undefined,
@@ -168,7 +180,7 @@ export function initialColumnChain(
     username,
     "shared",
   );
-  const rootDepth = view === "home" ? 2 : 1;
+  const rootDepth = view === "home" || view === "workshop" ? 2 : 1;
   const chain: string[] = [];
   for (let depth = rootDepth + 1; depth <= segments.length; depth += 1) {
     chain.push(`/${segments.slice(0, depth).join("/")}`);

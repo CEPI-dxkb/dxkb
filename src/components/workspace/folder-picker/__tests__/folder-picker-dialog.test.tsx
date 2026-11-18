@@ -2,6 +2,7 @@ import { screen, waitFor, within } from "@testing-library/react";
 import { http, HttpResponse } from "msw";
 import { recentWorkspaceFoldersStorageKey } from "@/lib/recent-workspace-folders";
 import { formatDate } from "@/lib/services/workspace/helpers";
+import { workshopWorkspacePath } from "@/lib/services/workspace/workshop";
 import { server } from "@/test-helpers/msw-server";
 import {
   breadcrumbLabels,
@@ -341,6 +342,57 @@ describe("WorkspaceFolderPickerDialog places", () => {
     expect(screen.getByRole("button", { name: "Upload here" })).toBeDisabled();
   });
 
+  it("lists the workshop in the sidebar and opens its folders", async () => {
+    const { user } = renderPicker();
+    await findOption("Home", "Alpha");
+
+    await user.click(place("BV-BRC Workshop"));
+
+    expect(
+      await findOption("BV-BRC Workshop", /^Assembly\s*\(read-only\)$/),
+    ).toBeInTheDocument();
+    expect(place("BV-BRC Workshop")).toHaveAttribute("aria-current", "true");
+  });
+
+  it("browses the workshop but cannot commit its folders", async () => {
+    const { user } = renderPicker();
+    await findOption("Home", "Alpha");
+
+    await user.click(place("BV-BRC Workshop"));
+    await user.click(await findOption("BV-BRC Workshop", /Assembly/));
+
+    expect(
+      await screen.findByText("You don't have write access to this folder."),
+    ).toBeInTheDocument();
+    expect(selectButton()).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: "New folder here" }),
+    ).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Upload here" })).toBeDisabled();
+  });
+
+  it("opens on BV-BRC Workshop for a value inside it", async () => {
+    renderPicker({ initialPath: `${workshopWorkspacePath}/Assembly` });
+
+    expect(await findOption("BV-BRC Workshop", /Assembly/)).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    expect(place("BV-BRC Workshop")).toHaveAttribute("aria-current", "true");
+    expect(breadcrumbLabels()).toEqual(["BV-BRC Workshop", "Assembly"]);
+  });
+
+  it("does not commit a read-only workshop folder on double click", async () => {
+    const { user, onSelect } = renderPicker();
+    await findOption("Home", "Alpha");
+    await user.click(place("BV-BRC Workshop"));
+
+    await user.dblClick(await findOption("BV-BRC Workshop", /Assembly/));
+
+    expect(onSelect).not.toHaveBeenCalled();
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+  });
+
   it("lists recently used folders, newest first", async () => {
     localStorage.setItem(
       recentWorkspaceFoldersStorageKey,
@@ -634,7 +686,32 @@ describe("WorkspaceFolderPickerDialog info pane", () => {
       screen.getByText("Folders you used recently, newest first."),
     ).toBeInTheDocument();
     expect(
-      screen.queryByRole("button", { name: "New folder here" }),
+      screen.getByRole("button", { name: "New folder here" }),
+    ).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Upload here" })).toBeDisabled();
+    // Show files filters the columns, so it needs no open folder.
+    expect(
+      screen.getByRole("button", { name: "Show files", pressed: false }),
+    ).toBeEnabled();
+  });
+
+  it("holds New folder, Upload and Show files in the Info pane, not the header", async () => {
+    renderPicker();
+    await findOption("Home", "Alpha");
+
+    const infoPane = screen.getByRole("separator", {
+      name: "Resize info pane",
+    }).parentElement;
+    const actions = screen.getByRole("group", { name: "Folder actions" });
+    expect(infoPane).toContainElement(actions);
+    for (const name of ["New folder here", "Upload here", "Show files"]) {
+      expect(actions).toContainElement(screen.getByRole("button", { name }));
+    }
+    const header = document.querySelector('[data-slot="dialog-header"]');
+    if (!(header instanceof HTMLElement)) throw new Error("No dialog header");
+    expect(header).toContainElement(screen.getByRole("button", { name: "Close" }));
+    expect(
+      within(header).queryByRole("button", { name: /files$/ }),
     ).not.toBeInTheDocument();
   });
 });
@@ -685,6 +762,26 @@ describe("WorkspaceFolderPickerDialog Show files and widths", () => {
         .getAllByRole("separator", { name: /column$/ })
         .map((handle) => handle.getAttribute("aria-valuenow")),
     ).toEqual(["240", "180", "180"]);
+  });
+
+  it("is wide enough for three default columns beside the places nav and info pane", async () => {
+    vi.stubGlobal("innerWidth", 1600);
+    try {
+      renderPicker();
+      await findOption("Home", "Experiments");
+
+      const dialog = screen.getByRole("dialog");
+      // jsdom reads the classes and the custom property but lays nothing out; layout
+      // itself is covered by the e2e spec.
+      expect(dialog).toHaveClass("md:w-(--picker-width)");
+      expect(dialog.style.getPropertyValue("--picker-width")).toBe("1280px");
+      expect(dialog).toHaveClass("sm:max-w-[calc(100%-2rem)]");
+      expect(dialog).not.toHaveClass("sm:max-w-5xl");
+      // Below md the phone layout keeps its own height and full width.
+      expect(dialog).toHaveClass("h-[min(42rem,calc(100dvh-2rem))]", "w-full");
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 
   it("resizes a column from the keyboard and resets it on double click", async () => {

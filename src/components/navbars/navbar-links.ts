@@ -1,3 +1,4 @@
+import { workshopBrowserHref } from "@/lib/services/workspace/workshop";
 import { encodeQueryComponent } from "@/lib/url";
 
 const resourcesItems: {
@@ -263,7 +264,7 @@ const workspaceNavItems: Record<string, WorkspaceNavSection> = {
       },
       {
         title: "BV-BRC Workshop",
-        href: "/workspace/public/ARWattam@patricbrc.org/BV-BRC%20Workshop",
+        href: workshopBrowserHref,
         requiresAuth: true,
         signInRedirect: "/sign-in?redirect=/workspace/workshop",
       },

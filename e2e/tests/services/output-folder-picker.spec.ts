@@ -10,7 +10,12 @@ import {
   journeyOverrides,
   type TupleItem,
 } from "../../fixtures/overrides";
-import { FolderPickerDialog, ServiceFormPage } from "../../pages";
+import {
+  FolderPickerDialog,
+  ServiceFormPage,
+  pointerResizeDirections,
+  type PointerResizeDirection,
+} from "../../pages";
 
 /**
  * The Output Folder picker on BLAST, covering what jsdom cannot: layout, mouse drags,
@@ -140,6 +145,14 @@ function workspaceRpcMethod(request: Request): string | null {
   }
 }
 
+/** Within a pixel: a centred dialog can sit on a half pixel, and a box is read unrounded. */
+function expectNear(actual: number, expected: number, what: string) {
+  expect(
+    Math.abs(actual - expected),
+    `${what}: ${String(actual)} against ${String(expected)}`,
+  ).toBeLessThanOrEqual(1);
+}
+
 function expectMonotonic(values: number[], direction: 1 | -1) {
   for (let index = 1; index < values.length; index += 1) {
     expect(
@@ -251,7 +264,7 @@ test.describe("output folder picker: choosing", () => {
     const create = page.waitForRequest(
       (request) => workspaceRpcMethod(request) === "Workspace.create",
     );
-    await picker.dialog.getByRole("button", { name: "New folder here" }).click();
+    await picker.newFolderButton.click();
     await picker.dialog
       .getByRole("textbox", { name: "New folder name" })
       .fill("BLAST Results");
@@ -279,7 +292,7 @@ test.describe("output folder picker: choosing", () => {
     const { picker } = await openBlast(page, { reflectUploads: true });
     await picker.open();
     await picker.option("Home", "Experiments").click();
-    await picker.dialog.getByRole("button", { name: "Upload here" }).click();
+    await picker.uploadButton.click();
     await expect(picker.dialog.getByText("Upload to “Experiments”")).toBeVisible();
 
     // Routes registered later run first, so this one wins over the default mock.
@@ -303,14 +316,23 @@ test.describe("output folder picker: choosing", () => {
 
     await expect(picker.closeButton).toBeDisabled();
     await expect(picker.cancelButton).toBeDisabled();
+    await expect(
+      picker.dialog.getByText("Upload to “Experiments”"),
+    ).toBeVisible();
+    // The upload form holds the Info pane, so its actions are not shown at all.
+    await expect(picker.newFolderButton).toBeHidden();
+    await expect(picker.uploadButton).toBeHidden();
+    await expect(picker.showFilesButton).toBeHidden();
     await page.keyboard.press("Escape");
     await expect(picker.dialog).toBeVisible();
 
     uploadHeld.resolve(undefined);
     await expect(
-      picker.dialog.getByRole("button", { name: "Upload here" }),
-    ).toBeVisible();
+      picker.dialog.getByText("Upload to “Experiments”"),
+    ).toBeHidden();
     await expect(picker.closeButton).toBeEnabled();
+    await expect(picker.newFolderButton).toBeVisible();
+    await expect(picker.uploadButton).toBeVisible();
     await picker.showFilesButton.click();
     await expect(picker.option("Experiments", /picked\.fq/)).toBeVisible();
   });
@@ -444,15 +466,21 @@ test.describe("output folder picker: layout", () => {
     const { picker } = await openBlast(page);
     await picker.open();
 
-    const close = await picker.closeButton.boundingBox();
-    const showFiles = await picker.showFilesButton.boundingBox();
-    const dialog = await picker.dialog.boundingBox();
-    expect(close && showFiles && dialog).toBeTruthy();
-    if (close && showFiles && dialog) {
+    // Expand is Close's neighbour in the header row: the default dialog is shorter than
+    // the window, so there is room to expand into.
+    const expand = picker.expandButton();
+    await expect(expand).toBeVisible();
+    const [close, neighbour, dialog] = await Promise.all([
+      picker.closeButton.boundingBox(),
+      expand.boundingBox(),
+      picker.dialog.boundingBox(),
+    ]);
+    expect(close && neighbour && dialog).toBeTruthy();
+    if (close && neighbour && dialog) {
       const middle = (box: { y: number; height: number }) =>
         box.y + box.height / 2;
-      expect(Math.abs(middle(close) - middle(showFiles))).toBeLessThanOrEqual(1);
-      expect(close.x).toBeGreaterThan(showFiles.x + showFiles.width);
+      expect(Math.abs(middle(close) - middle(neighbour))).toBeLessThanOrEqual(1);
+      expect(close.x).toBeGreaterThan(neighbour.x + neighbour.width);
       expect(close.x + close.width).toBeLessThanOrEqual(dialog.x + dialog.width);
     }
   });
@@ -467,20 +495,18 @@ test.describe("output folder picker: layout", () => {
     await expect(picker.option("Experiments", "Run 1")).toBeVisible();
     await picker.settled();
 
-    const newFolder = picker.dialog.getByRole("button", {
-      name: "New folder here",
-    });
     const [dialog, places, strip, action] = await Promise.all([
       picker.dialog.boundingBox(),
       picker.places.boundingBox(),
       picker.strip.boundingBox(),
-      newFolder.boundingBox(),
+      picker.newFolderButton.boundingBox(),
     ]);
     expect(dialog && places && strip && action).toBeTruthy();
     if (dialog && places && strip && action) {
       expect(strip.width).toBeGreaterThanOrEqual(dialog.width - 1);
       expect(strip.height).toBeGreaterThan(160);
       expect(places.y + places.height).toBeLessThanOrEqual(strip.y + 1);
+      // The actions live in the Info pane, which stacks under the columns on a phone.
       expect(action.y).toBeGreaterThanOrEqual(strip.y + strip.height);
       expect(action.x).toBeGreaterThanOrEqual(dialog.x);
       expect(action.x + action.width).toBeLessThanOrEqual(
@@ -496,9 +522,10 @@ test.describe("output folder picker: layout", () => {
 
     await picker.places.getByRole("button", { name: "Home" }).click();
     await picker.option("Home", "Experiments").click();
-    await picker.dialog.getByRole("button", { name: "Upload here" }).click();
+    await picker.uploadButton.click();
     await expect(picker.dialog.getByText("Upload to “Experiments”")).toBeVisible();
     await expect(picker.strip).toBeHidden();
+    await expect(picker.actions).toBeHidden();
     await picker.dialog
       .getByRole("button", { name: "Back to folder info" })
       .click();
@@ -665,6 +692,178 @@ test.describe("output folder picker: dialog size", () => {
     expect(await picker.dialogSize()).toEqual({ width: 1380, height: 752 });
   });
 
+  // The dialog is centred, so a side follows the pointer only if the size moves by twice
+  // the travel, and the opposite side moves the same distance the other way.
+  test("resizes from the west edge, growing on both sides so the dialog stays centred", async ({
+    page,
+  }) => {
+    const { picker } = await openBlast(page);
+    await picker.open();
+    const before = await picker.dialogBox();
+    await expect(picker.resizeEdge("w")).toHaveAttribute("aria-hidden", "true");
+
+    await picker.dragHandle(picker.resizeEdge("w"), -40);
+
+    const after = await picker.dialogBox();
+    expectNear(after.width, before.width + 80, "width");
+    expectNear(after.x, before.x - 40, "left edge");
+    expectNear(after.height, before.height, "height");
+    expectNear(after.y, before.y, "top edge");
+    expect(await storedLayout(page)).toEqual({
+      dialog: { width: 1360, height: 672 },
+    });
+  });
+
+  test("resizes from the north edge, growing above and below so the dialog stays centred", async ({
+    page,
+  }) => {
+    const { picker } = await openBlast(page);
+    await picker.open();
+    const before = await picker.dialogBox();
+    await expect(picker.resizeEdge("n")).toHaveAttribute("aria-hidden", "true");
+
+    await picker.dragHandle(picker.resizeEdge("n"), 0, -30);
+
+    const after = await picker.dialogBox();
+    expectNear(after.height, before.height + 60, "height");
+    expectNear(after.y, before.y - 30, "top edge");
+    expectNear(after.width, before.width, "width");
+    expectNear(after.x, before.x, "left edge");
+    expect(await storedLayout(page)).toEqual({
+      dialog: { width: 1280, height: 732 },
+    });
+  });
+
+  test("resizes both axes from the north-west corner", async ({ page }) => {
+    const { picker } = await openBlast(page);
+    await picker.open();
+    const before = await picker.dialogBox();
+
+    await picker.dragHandle(picker.resizeEdge("nw"), -50, -30);
+
+    const after = await picker.dialogBox();
+    expectNear(after.width, before.width + 100, "width");
+    expectNear(after.height, before.height + 60, "height");
+    expectNear(after.x, before.x - 50, "left edge");
+    expectNear(after.y, before.y - 30, "top edge");
+    expect(await storedLayout(page)).toEqual({
+      dialog: { width: 1380, height: 732 },
+    });
+  });
+
+  test("has a pointer handle on every side and corner but the east, with the corners over the edges and the width separator", async ({
+    page,
+  }) => {
+    const { picker } = await openBlast(page);
+    await picker.open();
+    const box = await picker.dialogBox();
+    const left = box.x;
+    const top = box.y;
+    const right = box.x + box.width;
+    const bottom = box.y + box.height;
+    const centreX = left + box.width / 2;
+    const centreY = top + box.height / 2;
+
+    // Edges are 8px strips along the whole side; corners are 16px squares.
+    const expectedBoxes: Record<
+      PointerResizeDirection,
+      { x: number; y: number; width: number; height: number }
+    > = {
+      w: { x: left, y: top, width: 8, height: box.height },
+      n: { x: left, y: top, width: box.width, height: 8 },
+      s: { x: left, y: bottom - 8, width: box.width, height: 8 },
+      nw: { x: left, y: top, width: 16, height: 16 },
+      ne: { x: right - 16, y: top, width: 16, height: 16 },
+      sw: { x: left, y: bottom - 16, width: 16, height: 16 },
+      se: { x: right - 16, y: bottom - 16, width: 16, height: 16 },
+    };
+    const cursors: Record<PointerResizeDirection, string> = {
+      w: "ew-resize",
+      n: "ns-resize",
+      s: "ns-resize",
+      nw: "nwse-resize",
+      se: "nwse-resize",
+      ne: "nesw-resize",
+      sw: "nesw-resize",
+    };
+    for (const direction of pointerResizeDirections) {
+      const handle = picker.resizeEdge(direction);
+      await expect(handle).toBeVisible();
+      await expect(handle).toHaveAttribute("aria-hidden", "true");
+      const handleBox = await handle.boundingBox();
+      if (!handleBox) throw new Error(`no ${direction} handle box`);
+      const expected = expectedBoxes[direction];
+      expectNear(handleBox.x, expected.x, `${direction} x`);
+      expectNear(handleBox.y, expected.y, `${direction} y`);
+      expectNear(handleBox.width, expected.width, `${direction} width`);
+      expectNear(handleBox.height, expected.height, `${direction} height`);
+      expect(
+        await handle.evaluate((element) => getComputedStyle(element).cursor),
+        `${direction} cursor`,
+      ).toBe(cursors[direction]);
+    }
+
+    // What a press lands on: a point 6px in from a corner is inside the corner square and
+    // also inside the edge strips it overlaps, and the corner wins. 24px along the edge the
+    // corner is over and the edge takes the press, the east one being the separator.
+    const near = 6;
+    const along = 24;
+    const probes: [string, number, number, PointerResizeDirection | "e"][] = [
+      ["inside the north-west corner", left + near, top + near, "nw"],
+      ["inside the north-east corner", right - near, top + near, "ne"],
+      ["inside the south-west corner", left + near, bottom - near, "sw"],
+      ["inside the south-east corner", right - near, bottom - near, "se"],
+      ["beside the north-west corner on the north edge", left + along, top + 4, "n"],
+      ["beside the north-east corner on the north edge", right - along, top + 4, "n"],
+      ["beside the south-west corner on the south edge", left + along, bottom - 4, "s"],
+      ["beside the south-east corner on the south edge", right - along, bottom - 4, "s"],
+      ["below the north-west corner on the west edge", left + 4, top + along, "w"],
+      ["above the south-west corner on the west edge", left + 4, bottom - along, "w"],
+      ["below the north-east corner on the east edge", right - 4, top + along, "e"],
+      ["above the south-east corner on the east edge", right - 4, bottom - along, "e"],
+      ["middle of the north edge", centreX, top + 4, "n"],
+      ["middle of the south edge", centreX, bottom - 4, "s"],
+      ["middle of the west edge", left + 4, centreY, "w"],
+      ["middle of the east edge", right - 4, centreY, "e"],
+    ];
+    for (const [what, x, y, expected] of probes) {
+      expect(await picker.resizeTargetAt(x, y), what).toBe(expected);
+    }
+    // Past the 8px strips the dialog's own content takes the press.
+    expect(await picker.resizeTargetAt(left + 12, centreY)).toBeNull();
+    expect(await picker.resizeTargetAt(centreX, top + 12)).toBeNull();
+    expect(await picker.resizeTargetAt(centreX, bottom - 12)).toBeNull();
+  });
+
+  test("keeps the header and footer buttons clear of the resize handles", async ({
+    page,
+  }) => {
+    const { picker } = await openBlast(page);
+    await picker.open();
+
+    // At the default size, and at a window as narrow as the md layout starts: the popup's
+    // 16px padding keeps these buttons 16px from every handle however small the dialog.
+    for (const viewport of [
+      { width: 1600, height: 900 },
+      { width: 800, height: 600 },
+    ]) {
+      await page.setViewportSize(viewport);
+      await expect
+        .poll(async () => picker.dialogWidth())
+        .toBe(Math.min(1280, viewport.width - 32));
+      for (const [name, button] of [
+        ["Close", picker.closeButton],
+        ["Cancel", picker.cancelButton],
+        ["Select", picker.selectButton],
+      ] as const) {
+        expect(
+          await picker.isPressable(button),
+          `${name} at ${String(viewport.width)}px`,
+        ).toBe(true);
+      }
+    }
+  });
+
   test("expands to the window less a 2rem margin, restores, and remembers the expanded size", async ({
     page,
   }) => {
@@ -771,7 +970,9 @@ test.describe("output folder picker: dialog size", () => {
     await picker.open();
 
     await expect(picker.dialogWidthHandle()).toBeHidden();
-    await expect(picker.dialogGrip()).toBeHidden();
+    for (const direction of pointerResizeDirections) {
+      await expect(picker.resizeEdge(direction)).toBeHidden();
+    }
     await expect(picker.expandButton()).toBeHidden();
   });
 

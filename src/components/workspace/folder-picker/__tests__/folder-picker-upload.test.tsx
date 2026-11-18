@@ -27,6 +27,16 @@ function chooseFile(name: string) {
   });
 }
 
+/** The Info pane's New folder, Upload and Show files; the upload form replaces them. */
+function expectNoFolderActions() {
+  expect(
+    screen.queryByRole("group", { name: "Folder actions" }),
+  ).not.toBeInTheDocument();
+  for (const name of [/^New folder here$/, /^Upload here$/, /^(Show|Hide) files$/]) {
+    expect(screen.queryByRole("button", { name })).not.toBeInTheDocument();
+  }
+}
+
 function infoPaneWidth() {
   const pane = screen.getByRole("separator", {
     name: "Resize info pane",
@@ -52,6 +62,7 @@ describe("WorkspaceFolderPickerDialog upload pane", () => {
     expect(screen.getByText("Upload to “Alpha”")).toBeInTheDocument();
     expect(screen.getByText(`${home}/Alpha`)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Start Upload" })).toBeDisabled();
+    expectNoFolderActions();
     await waitFor(() => {
       expect(
         screen.getByRole("button", { name: "Back to folder info" }),
@@ -62,7 +73,11 @@ describe("WorkspaceFolderPickerDialog upload pane", () => {
       screen.getByRole("button", { name: "Back to folder info" }),
     );
     expect(
-      screen.getByRole("button", { name: "Upload here" }),
+      screen.queryByRole("button", { name: "Start Upload" }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText("Where", { selector: "dt" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("group", { name: "Folder actions" }),
     ).toBeInTheDocument();
     await waitFor(async () => {
       expect(await findOption("Home", "Alpha")).toHaveFocus();
@@ -75,8 +90,9 @@ describe("WorkspaceFolderPickerDialog upload pane", () => {
     await user.click(screen.getByRole("button", { name: "Back" }));
 
     expect(
-      screen.getByRole("button", { name: "Upload here" }),
-    ).toBeInTheDocument();
+      screen.queryByRole("button", { name: "Start Upload" }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText("Where", { selector: "dt" })).toBeInTheDocument();
   });
 
   it("uploads into Home when Home is selected", async () => {
@@ -95,7 +111,7 @@ describe("WorkspaceFolderPickerDialog upload pane", () => {
     await user.click(await findOption("Home", "Experiments"));
 
     expect(screen.queryByText("Upload to “Alpha”")).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Upload here" })).toBeVisible();
+    expect(screen.getByText("Where", { selector: "dt" })).toBeInTheDocument();
   });
 
   it("widens the info pane to fit the form while it is open", async () => {
@@ -153,6 +169,8 @@ describe("WorkspaceFolderPickerDialog upload pane", () => {
     expect(screen.getByRole("button", { name: "Close" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "Cancel" })).toBeDisabled();
     expect(selectButton()).toBeDisabled();
+    // The form holds the Info pane, so New folder, Upload and Show files are not shown.
+    expectNoFolderActions();
     expect(
       screen.getByRole("button", { name: "Back to folder info" }),
     ).toBeDisabled();
@@ -185,5 +203,13 @@ describe("WorkspaceFolderPickerDialog upload pane", () => {
       "inert",
     );
     expect(selectButton()).toBeEnabled();
+    const back = screen.getByRole("button", { name: "Back to folder info" });
+    expect(back).toBeEnabled();
+    expectNoFolderActions();
+
+    await user.click(back);
+    expect(screen.getByRole("button", { name: "New folder here" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Upload here" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Show files" })).toBeEnabled();
   });
 });

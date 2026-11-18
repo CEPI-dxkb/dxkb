@@ -686,7 +686,32 @@ describe("WorkspaceFolderPickerDialog info pane", () => {
       screen.getByText("Folders you used recently, newest first."),
     ).toBeInTheDocument();
     expect(
-      screen.queryByRole("button", { name: "New folder here" }),
+      screen.getByRole("button", { name: "New folder here" }),
+    ).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Upload here" })).toBeDisabled();
+    // Show files filters the columns, so it needs no open folder.
+    expect(
+      screen.getByRole("button", { name: "Show files", pressed: false }),
+    ).toBeEnabled();
+  });
+
+  it("holds New folder, Upload and Show files in the Info pane, not the header", async () => {
+    renderPicker();
+    await findOption("Home", "Alpha");
+
+    const infoPane = screen.getByRole("separator", {
+      name: "Resize info pane",
+    }).parentElement;
+    const actions = screen.getByRole("group", { name: "Folder actions" });
+    expect(infoPane).toContainElement(actions);
+    for (const name of ["New folder here", "Upload here", "Show files"]) {
+      expect(actions).toContainElement(screen.getByRole("button", { name }));
+    }
+    const header = document.querySelector('[data-slot="dialog-header"]');
+    if (!(header instanceof HTMLElement)) throw new Error("No dialog header");
+    expect(header).toContainElement(screen.getByRole("button", { name: "Close" }));
+    expect(
+      within(header).queryByRole("button", { name: /files$/ }),
     ).not.toBeInTheDocument();
   });
 });

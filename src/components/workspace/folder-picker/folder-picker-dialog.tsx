@@ -51,9 +51,10 @@ import {
 import { knownUploadTypes } from "@/lib/services/workspace/types";
 import { workspaceQueryKeys } from "@/lib/services/workspace/workspace-query-keys";
 import { cn } from "@/lib/utils";
+import { FolderPickerActions } from "./folder-picker-actions";
 import { FolderPickerBreadcrumb } from "./folder-picker-breadcrumb";
 import { FolderPickerColumn } from "./folder-picker-column";
-import { DialogCornerGrip } from "./folder-picker-dialog-resize";
+import { DialogResizeHandles } from "./folder-picker-dialog-resize";
 import { FolderPickerHeader } from "./folder-picker-header";
 import {
   canMaximize,
@@ -78,6 +79,7 @@ import {
 } from "./folder-picker-preview";
 import { PaneResizeHandle } from "./folder-picker-resize-handle";
 import {
+  actionsUnavailableReason,
   columnWidthLimitsFor,
   folderTarget,
   isInlineEditTarget,
@@ -468,14 +470,41 @@ function FolderColumnsBrowser({
       ? labelFor(selectedPath)
       : "";
   const isPickingFiles = target.kind === "object";
+  const unavailableReason = actionsUnavailableReason({
+    folderPath,
+    hasListingError: listingError !== null,
+    canChange,
+  });
+  const openNewFolder = () => {
+    pendingFocusRef.current = null;
+    setIsUploadOpen(false);
+    setNaming(true);
+  };
+  const openUpload = () => {
+    pendingFocusRef.current = null;
+    setNaming(false);
+    setIsUploadOpen(true);
+  };
+
+  // One element, handed to whichever Info view shows; the upload form takes the pane's
+  // place, so nothing here is reachable while it is open.
+  const actions = (
+    <FolderPickerActions
+      showNewFolder={!isPickingFiles}
+      unavailableReason={unavailableReason}
+      onNewFolder={openNewFolder}
+      onUpload={openUpload}
+      showFiles={showFiles}
+      onShowFilesChange={onShowFilesChange}
+      isPickingFiles={isPickingFiles}
+    />
+  );
 
   return (
     <>
       <FolderPickerHeader
         title={title}
         target={target}
-        showFiles={showFiles}
-        onShowFilesChange={onShowFilesChange}
         isUploading={isUploading}
         isExpanded={isExpanded}
         canToggleExpanded={canToggleExpanded}
@@ -615,7 +644,12 @@ function FolderColumnsBrowser({
               onUploadingChange={onUploadingChange}
             />
           ) : file && selectedItem ? (
-            <FilePickerInfo item={selectedItem} place={place} commit={commit} />
+            <FilePickerInfo
+              item={selectedItem}
+              place={place}
+              commit={commit}
+              actions={actions}
+            />
           ) : (
             <FolderPickerInfo
               target={target}
@@ -626,17 +660,7 @@ function FolderColumnsBrowser({
               contents={contents}
               listingError={listingError}
               commit={commit}
-              canChange={canChange}
-              onNewFolder={() => {
-                pendingFocusRef.current = null;
-                setIsUploadOpen(false);
-                setNaming(true);
-              }}
-              onUpload={() => {
-                pendingFocusRef.current = null;
-                setNaming(false);
-                setIsUploadOpen(true);
-              }}
+              actions={actions}
             />
           )}
         </div>
@@ -831,7 +855,8 @@ export function WorkspaceFolderPickerDialog({
         />
         {/* Last in the popup so they follow its content in the tab order, and inside it
            so Base UI does not take a drag for an outside press; `right-0` because the
-           popup clips anything past its edge. */}
+           popup clips anything past its edge. The separator is the east side; the
+           pointer handles below take every other side and corner. */}
         <PaneResizeHandle
           edge="end"
           label="Resize dialog width"
@@ -859,9 +884,10 @@ export function WorkspaceFolderPickerDialog({
               height: remembered.height,
             });
           }}
+          showPointerLine={false}
           className="right-0 hidden md:block"
         />
-        <DialogCornerGrip
+        <DialogResizeHandles
           size={size}
           remembered={remembered}
           viewport={viewport}

@@ -534,7 +534,7 @@ test.describe("file picker: upload, then pick", () => {
     });
     await picker.open();
     await picker.option("Home", "Inputs").click();
-    await picker.dialog.getByRole("button", { name: "Upload here" }).click();
+    await picker.uploadButton.click();
     // The trigger's text also holds its arrow, so read the value.
     await expect(
       picker.dialog

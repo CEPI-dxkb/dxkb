@@ -279,6 +279,18 @@ describe("picking a file", () => {
     expect(screen.getByRole("button", { name: "Upload here" })).toBeEnabled();
   });
 
+  it("keeps Upload and Show other files in the Info pane once a file is selected", async () => {
+    const { user } = pickContigs();
+    await user.click(await findOption("Home", /draft\.fasta/));
+    expect(screen.getByText("You can use this file here.")).toBeInTheDocument();
+    const actions = screen.getByRole("group", { name: "Folder actions" });
+    expect(within(actions).getByRole("button", { name: "Upload here" })).toBeEnabled();
+    expect(
+      within(actions).getByRole("button", { name: "Show other files" }),
+    ).toBeEnabled();
+    expect(screen.queryByRole("button", { name: "New folder here" })).toBeNull();
+  });
+
   it("defaults the upload type to the requested type", async () => {
     const { user } = pickContigs();
     await user.click(await findOption("Home", "Alpha"));

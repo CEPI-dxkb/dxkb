@@ -21,10 +21,47 @@ function dialogWidthHandle() {
   return screen.getByRole("separator", { name: "Resize dialog width" });
 }
 
+type PointerHandle = "n" | "s" | "w" | "nw" | "ne" | "sw" | "se";
+
+const pointerHandles: readonly PointerHandle[] = [
+  "w",
+  "n",
+  "s",
+  "nw",
+  "ne",
+  "sw",
+  "se",
+];
+
+function resizeHandle(direction: PointerHandle) {
+  const handle = document.querySelector(
+    `[data-slot="picker-resize-grip"][data-direction="${direction}"]`,
+  );
+  if (!handle) throw new Error(`The ${direction} resize handle is not rendered`);
+  return handle;
+}
+
 function cornerGrip() {
-  const grip = document.querySelector('[data-slot="picker-resize-grip"]');
-  if (!grip) throw new Error("The corner grip is not rendered");
-  return grip;
+  return resizeHandle("se");
+}
+
+/** Presses `direction`'s handle at `from`, moves the pointer through `moves`, then lets go. */
+function dragHandle(
+  direction: PointerHandle,
+  moves: readonly (readonly [x: number, y: number])[],
+  from: readonly [x: number, y: number] = [800, 500],
+) {
+  const handle = resizeHandle(direction);
+  fireEvent.pointerDown(handle, {
+    button: 0,
+    clientX: from[0],
+    clientY: from[1],
+    pointerId: 3,
+  });
+  for (const [x, y] of moves) {
+    fireEvent.pointerMove(handle, { clientX: x, clientY: y, pointerId: 3 });
+  }
+  fireEvent.pointerUp(handle, { pointerId: 3 });
 }
 
 function sizeVars() {
@@ -287,26 +324,180 @@ describe("resizable picker dialog", () => {
     expect(sizeVars()).toEqual({ width: "1380px", height: "772px" });
   });
 
+  describe("from every side and corner", () => {
+    it("has the east separator once and a pointer handle on each other side and corner, none of them in the accessibility tree", async () => {
+      renderPicker();
+      await findOption("Home", "Experiments");
+
+      expect(
+        screen.getAllByRole("separator", { name: "Resize dialog width" }),
+      ).toHaveLength(1);
+      const handles = [
+        ...document.querySelectorAll('[data-slot="picker-resize-grip"]'),
+      ];
+      expect(handles.map((handle) => handle.getAttribute("data-direction")).sort()).toEqual(
+        [...pointerHandles].sort(),
+      );
+      for (const handle of handles) {
+        expect(handle).toHaveAttribute("aria-hidden", "true");
+        // Not focusable and not a widget, so a keyboard or a screen reader never meets one.
+        expect(handle).not.toHaveAttribute("role");
+        expect(handle).not.toHaveAttribute("tabindex");
+        // Shown from md up only, and a touch on one is a drag, not a scroll.
+        expect(handle).toHaveClass("hidden", "md:block", "touch-none");
+      }
+    });
+
+    // The pointer travels from (800, 500); the dialog starts at 1280 x 672. Each side moves
+    // by twice the travel, because the dialog stays centred.
+    const drags: readonly {
+      direction: PointerHandle;
+      to: readonly [x: number, y: number];
+      width: number;
+      height: number;
+    }[] = [
+      { direction: "w", to: [750, 500], width: 1380, height: 672 },
+      { direction: "w", to: [850, 500], width: 1180, height: 672 },
+      { direction: "n", to: [800, 460], width: 1280, height: 752 },
+      { direction: "n", to: [800, 540], width: 1280, height: 592 },
+      { direction: "s", to: [800, 540], width: 1280, height: 752 },
+      { direction: "s", to: [800, 460], width: 1280, height: 592 },
+      { direction: "nw", to: [750, 460], width: 1380, height: 752 },
+      { direction: "nw", to: [850, 540], width: 1180, height: 592 },
+      { direction: "ne", to: [850, 460], width: 1380, height: 752 },
+      { direction: "ne", to: [750, 540], width: 1180, height: 592 },
+      { direction: "sw", to: [750, 540], width: 1380, height: 752 },
+      { direction: "sw", to: [850, 460], width: 1180, height: 592 },
+      { direction: "se", to: [850, 540], width: 1380, height: 752 },
+      { direction: "se", to: [750, 460], width: 1180, height: 592 },
+    ];
+
+    it.each(drags)(
+      "$direction dragged to $to resizes to $width x $height and remembers it",
+      async ({ direction, to, width, height }) => {
+        renderPicker();
+        await findOption("Home", "Experiments");
+
+        dragHandle(direction, [to]);
+
+        expect(sizeVars()).toEqual({
+          width: `${String(width)}px`,
+          height: `${String(height)}px`,
+        });
+        expect(storedLayout()).toEqual({ dialog: { width, height } });
+      },
+    );
+
+    it("follows the pointer through a drag and stops at the release", async () => {
+      renderPicker();
+      await findOption("Home", "Experiments");
+      const handle = resizeHandle("w");
+
+      fireEvent.pointerDown(handle, {
+        button: 0,
+        clientX: 800,
+        clientY: 500,
+        pointerId: 4,
+      });
+      fireEvent.pointerMove(handle, { clientX: 790, clientY: 500, pointerId: 4 });
+      expect(sizeVars().width).toBe("1300px");
+      fireEvent.pointerMove(handle, { clientX: 750, clientY: 500, pointerId: 4 });
+      expect(sizeVars().width).toBe("1380px");
+
+      fireEvent.pointerUp(handle, { pointerId: 4 });
+      fireEvent.pointerMove(handle, { clientX: 700, clientY: 500, pointerId: 4 });
+      expect(sizeVars().width).toBe("1380px");
+    });
+
+    it("does not start a drag from a press of another button", async () => {
+      renderPicker();
+      await findOption("Home", "Experiments");
+      const handle = resizeHandle("nw");
+
+      fireEvent.pointerDown(handle, {
+        button: 2,
+        clientX: 800,
+        clientY: 500,
+        pointerId: 5,
+      });
+      fireEvent.pointerMove(handle, { clientX: 700, clientY: 400, pointerId: 5 });
+
+      expect(sizeVars()).toEqual({ width: "1280px", height: "672px" });
+      expect(readStorageItem(pickerLayoutKey)).toBeNull();
+    });
+
+    it("leaves the axis a side does not touch alone, wherever the pointer wanders", async () => {
+      renderPicker();
+      await findOption("Home", "Experiments");
+
+      dragHandle("w", [[750, 900]]);
+      expect(sizeVars()).toEqual({ width: "1380px", height: "672px" });
+
+      dragHandle("n", [[1500, 460]], [800, 500]);
+      expect(sizeVars()).toEqual({ width: "1380px", height: "752px" });
+    });
+
+    it("keeps the remembered width when the window narrows during a north-edge drag", async () => {
+      renderPicker();
+      await findOption("Home", "Experiments");
+      const handle = resizeHandle("n");
+
+      fireEvent.pointerDown(handle, {
+        button: 0,
+        clientX: 800,
+        clientY: 500,
+        pointerId: 6,
+      });
+      // The window narrows under the dialog: it renders clamped, but the north edge
+      // never touches the width, so what is stored for it must not change.
+      vi.stubGlobal("innerWidth", 1000);
+      act(() => {
+        window.dispatchEvent(new Event("resize"));
+      });
+      fireEvent.pointerMove(handle, { clientX: 800, clientY: 460, pointerId: 6 });
+      fireEvent.pointerUp(handle, { pointerId: 6 });
+
+      expect(storedLayout()).toEqual({ dialog: { width: 1280, height: 752 } });
+    });
+
+    it("stops at the smallest size however far a side is dragged inward", async () => {
+      renderPicker();
+      await findOption("Home", "Experiments");
+
+      dragHandle("w", [[3000, 500]]);
+      expect(sizeVars()).toEqual({ width: "720px", height: "672px" });
+      dragHandle("n", [[800, 3000]]);
+      expect(sizeVars()).toEqual({ width: "720px", height: "480px" });
+      expect(storedLayout()).toEqual({ dialog: { width: 720, height: 480 } });
+    });
+
+    it("stops at the window less 2rem however far a side is dragged outward", async () => {
+      renderPicker();
+      await findOption("Home", "Experiments");
+
+      dragHandle("w", [[-2000, 500]]);
+      expect(sizeVars()).toEqual({ width: "1568px", height: "672px" });
+      dragHandle("n", [[800, -2000]]);
+      expect(sizeVars()).toEqual({ width: "1568px", height: "868px" });
+      expect(storedLayout()).toEqual({ dialog: { width: 1568, height: 868 } });
+    });
+
+    it("stops at the size limits on a window bigger than they are", async () => {
+      vi.stubGlobal("innerWidth", 2400);
+      vi.stubGlobal("innerHeight", 1600);
+      renderPicker();
+      await findOption("Home", "Experiments");
+
+      dragHandle("nw", [[-2000, -2000]]);
+
+      expect(sizeVars()).toEqual({ width: "1920px", height: "1400px" });
+      expect(storedLayout()).toEqual({ dialog: { width: 1920, height: 1400 } });
+    });
+  });
+
   describe("on a window smaller than the remembered size", () => {
     // The dialog renders clamped to the window, but a resize must not write that clamped
     // value for an axis it did not visibly change, or a later, larger window loses it.
-    function dragCorner(
-      moves: readonly (readonly [x: number, y: number])[],
-      from: readonly [x: number, y: number] = [800, 500],
-    ) {
-      const grip = cornerGrip();
-      fireEvent.pointerDown(grip, {
-        button: 0,
-        clientX: from[0],
-        clientY: from[1],
-        pointerId: 3,
-      });
-      for (const [x, y] of moves) {
-        fireEvent.pointerMove(grip, { clientX: x, clientY: y, pointerId: 3 });
-      }
-      fireEvent.pointerUp(grip, { pointerId: 3 });
-    }
-
     it("keeps the remembered width when the corner grip only moves the height", async () => {
       vi.stubGlobal("innerWidth", 1000);
       writeStorageItem(
@@ -317,7 +508,7 @@ describe("resizable picker dialog", () => {
       await findOption("Home", "Experiments");
       expect(sizeVars()).toEqual({ width: "968px", height: "800px" });
 
-      dragCorner([[800, 520]]);
+      dragHandle("se", [[800, 520]]);
 
       expect(sizeVars()).toEqual({ width: "968px", height: "840px" });
       expect(storedLayout()).toEqual({ dialog: { width: 1500, height: 840 } });
@@ -333,7 +524,7 @@ describe("resizable picker dialog", () => {
       await findOption("Home", "Experiments");
       expect(sizeVars()).toEqual({ width: "1280px", height: "668px" });
 
-      dragCorner([[820, 500]]);
+      dragHandle("se", [[820, 500]]);
 
       expect(sizeVars()).toEqual({ width: "1320px", height: "668px" });
       expect(storedLayout()).toEqual({ dialog: { width: 1320, height: 900 } });
@@ -346,7 +537,7 @@ describe("resizable picker dialog", () => {
       await findOption("Home", "Experiments");
 
       // 20px left narrows to 928; 500px down is clamped to the 868 the window allows.
-      dragCorner([[780, 1000]]);
+      dragHandle("se", [[780, 1000]]);
 
       expect(sizeVars()).toEqual({ width: "928px", height: "868px" });
       expect(storedLayout()).toEqual({ dialog: { width: 928, height: 868 } });
@@ -361,7 +552,69 @@ describe("resizable picker dialog", () => {
       renderPicker();
       await findOption("Home", "Experiments");
 
-      dragCorner([[780, 500], [800, 500]]);
+      dragHandle("se", [[780, 500], [800, 500]]);
+
+      expect(sizeVars()).toEqual({ width: "968px", height: "800px" });
+      expect(storedLayout()).toEqual({ dialog: { width: 1500, height: 800 } });
+    });
+
+    it("keeps the remembered width when the north edge only moves the height", async () => {
+      vi.stubGlobal("innerWidth", 1000);
+      writeStorageItem(
+        pickerLayoutKey,
+        JSON.stringify({ dialog: { width: 1500, height: 800 } }),
+      );
+      renderPicker();
+      await findOption("Home", "Experiments");
+      expect(sizeVars()).toEqual({ width: "968px", height: "800px" });
+
+      dragHandle("n", [[800, 480]]);
+
+      expect(sizeVars()).toEqual({ width: "968px", height: "840px" });
+      expect(storedLayout()).toEqual({ dialog: { width: 1500, height: 840 } });
+    });
+
+    it("keeps the remembered height when the west edge only moves the width", async () => {
+      vi.stubGlobal("innerHeight", 700);
+      writeStorageItem(
+        pickerLayoutKey,
+        JSON.stringify({ dialog: { width: 1280, height: 900 } }),
+      );
+      renderPicker();
+      await findOption("Home", "Experiments");
+      expect(sizeVars()).toEqual({ width: "1280px", height: "668px" });
+
+      dragHandle("w", [[780, 500]]);
+
+      expect(sizeVars()).toEqual({ width: "1320px", height: "668px" });
+      expect(storedLayout()).toEqual({ dialog: { width: 1320, height: 900 } });
+    });
+
+    it("keeps the remembered size when an edge is dragged outward where the window already clamps it", async () => {
+      vi.stubGlobal("innerWidth", 1000);
+      writeStorageItem(
+        pickerLayoutKey,
+        JSON.stringify({ dialog: { width: 1500, height: 800 } }),
+      );
+      renderPicker();
+      await findOption("Home", "Experiments");
+
+      dragHandle("w", [[700, 500]]);
+
+      expect(sizeVars()).toEqual({ width: "968px", height: "800px" });
+      expect(storedLayout()).toEqual({ dialog: { width: 1500, height: 800 } });
+    });
+
+    it("restores the remembered width of an edge dragged inward and back to where it began", async () => {
+      vi.stubGlobal("innerWidth", 1000);
+      writeStorageItem(
+        pickerLayoutKey,
+        JSON.stringify({ dialog: { width: 1500, height: 800 } }),
+      );
+      renderPicker();
+      await findOption("Home", "Experiments");
+
+      dragHandle("w", [[820, 500], [800, 500]]);
 
       expect(sizeVars()).toEqual({ width: "968px", height: "800px" });
       expect(storedLayout()).toEqual({ dialog: { width: 1500, height: 800 } });

@@ -16,7 +16,7 @@ import {
   useSigma,
 } from "@react-sigma/core";
 import "@react-sigma/core/lib/style.css";
-import Graph from "graphology";
+import Graph, { MultiGraph } from "graphology";
 import { drawDiscNodeHover, EdgeRectangleProgram } from "sigma/rendering";
 import type { NodeHoverDrawingFunction } from "sigma/rendering";
 import type {
@@ -395,6 +395,10 @@ export function SigmaCanvas({
   return (
     <div className="relative size-full">
       <SigmaContainer
+        // `loadGraph` imports into the container's own graph, which defaults to a non-multi
+        // `new Graph()` and throws on a second edge between the same pair (two experimental PPI
+        // rows for one feature pair). A module-scope constructor keeps the prop's identity stable.
+        graph={MultiGraph}
         className="size-full"
         // Match the "Search proteins" box: --graph-surface is the input/30-over-card composite,
         // whereas plain var(--card) is pure white in light themes.

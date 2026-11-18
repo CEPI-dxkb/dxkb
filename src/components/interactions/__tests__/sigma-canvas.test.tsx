@@ -1,6 +1,6 @@
 import { act, render } from "@testing-library/react";
 import Graph from "graphology";
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 
 import { SigmaCanvas } from "../sigma/sigma-canvas";
 import type { GEdge, GNode, GraphCanvasProps } from "@/lib/interactions/types";
@@ -55,7 +55,20 @@ vi.mock("@react-sigma/core", () => {
       Object.assign(cameraStub, { animatedReset: sigmaStub.animatedReset }),
   };
   return {
-    SigmaContainer: ({ children }: { children: ReactNode }) => <>{children}</>,
+    // The real container builds its graph from the `graph` prop (a constructor), else a plain
+    // non-multi `new Graph()`; mirroring that keeps a missing `graph` prop from passing silently.
+    SigmaContainer: ({
+      children,
+      graph,
+    }: {
+      children: ReactNode;
+      graph?: new () => Graph;
+    }) => {
+      useState(() => {
+        sigmaStub.graph = graph ? new graph() : new Graph();
+      });
+      return <>{children}</>;
+    },
     useSigma: () => sigma,
     useLoadGraph: () => sigmaStub.loadGraph,
     useRegisterEvents: () => sigmaStub.registerEvents,
@@ -116,7 +129,7 @@ beforeEach(() => {
   cameraStub.state = { x: 0.5, y: 0.5, ratio: 1, angle: 0 };
   cameraStub.listeners.clear();
   cameraStub.getBoundedRatio.mockImplementation((ratio: number) => ratio);
-  sigmaStub.graph = new Graph({ multi: true });
+  sigmaStub.graph = null;
   sigmaStub.loadGraph.mockImplementation((graph: Graph) => {
     loadedGraph().clear();
     loadedGraph().import(graph);
@@ -124,6 +137,25 @@ beforeEach(() => {
 });
 
 describe("SigmaCanvas graph loading", () => {
+  it("keeps parallel edges between the same pair of nodes", () => {
+    // Two experimental PPI rows can link one feature pair (different detection methods).
+    const parallel: GEdge[] = [
+      ...edges,
+      { ...edges[0], id: "a-b-second", detectionMethod: "two hybrid" },
+    ];
+
+    render(
+      canvas({
+        edges: parallel,
+        positions: new Float64Array([1, 2, 3, 4]),
+      }),
+    );
+
+    expect(loadedGraph().hasEdge("a-b")).toBe(true);
+    expect(loadedGraph().hasEdge("a-b-second")).toBe(true);
+    expect(loadedGraph().size).toBe(2);
+  });
+
   it("loads nothing until positions for these exact nodes arrive", () => {
     const { rerender } = render(canvas({ positions: null }));
     expect(sigmaStub.loadGraph).not.toHaveBeenCalled();

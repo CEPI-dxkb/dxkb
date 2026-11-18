@@ -148,11 +148,11 @@ vi.stubGlobal("scrollTo", vi.fn());
 vi.setConfig({ testTimeout: 15_000, hookTimeout: 15_000 });
 beforeAll(() => import("@/lib/interactions/layout-positions"));
 
-// A stand-in for the taxon scope, which pins no evidence: the evidence default is the shell's.
+// A stand-in for the taxon scope, which pins no evidence, and the shell adds none: the unfiltered
+// Interactions tab lists experimental and computational interactions alike.
 const scopeRql = "eq(genome_id_a,*)";
 const experimentalClause = "eq(evidence,experimental)";
-/** What both views send for the scope while only the evidence default applies. */
-const defaultRql = `and(${scopeRql},${experimentalClause})`;
+const computationalClause = "eq(evidence,computational)";
 const beyondFirstPageIndex = resourceCollectionPageSize + 49;
 
 const allRows = Array.from(
@@ -332,7 +332,7 @@ describe("Interactions Table and Graph share one dataset", () => {
     await waitFor(() => { expect(graphPredicates).toHaveLength(1); });
 
     expect(graphPredicates.at(-1)).toEqual({
-      rql: defaultRql,
+      rql: scopeRql,
       keyword: "peg.601",
       keywordMode: undefined,
     });
@@ -419,8 +419,7 @@ async function pickAssociation(
   await user.keyboard("{Escape}");
 }
 
-// The evidence default stays beside a pick; the filters sort in the facets' own order.
-const associationRql = `and(${scopeRql},and(eq(interaction_type,association),${experimentalClause}))`;
+const associationRql = `and(${scopeRql},eq(interaction_type,association))`;
 
 describe("Interactions Table and Graph share one set of filters", () => {
   it("narrows both views alike from a pick in the Graph's Filters menu", async () => {
@@ -529,8 +528,8 @@ async function openEvidenceValues(
   return within(screen.getByRole("listbox", { name: "Evidence values" }));
 }
 
-describe("Interactions Table and Graph share the evidence default", () => {
-  it("sends experimental evidence from both views while the URL carries no evidence param", async () => {
+describe("Interactions Table and Graph share the Evidence facet, which has no default", () => {
+  it("sends the bare scope from both views while the URL carries no evidence param", async () => {
     const user = userEvent.setup();
     render(<InteractionsSubviewShell rql={scopeRql} />, {
       wrapper: createQueryClientWrapper(),
@@ -538,23 +537,27 @@ describe("Interactions Table and Graph share the evidence default", () => {
     await waitFor(() => {
       expect(tablePredicates).toHaveLength(1);
     });
+    // The Table's panel is inert once the Graph tab is up, so it is read first.
+    expect(
+      tablePanel().queryByRole("button", { name: /^Evidence:/ }),
+    ).not.toBeInTheDocument();
     await user.click(screen.getByRole("tab", { name: "Graph" }));
     await waitFor(() => {
       expect(graphPredicates).toHaveLength(1);
     });
 
-    expect(tablePredicates.at(-1)?.rql).toBe(defaultRql);
+    // Experimental and computational rows alike: no evidence term at all.
+    expect(tablePredicates.at(-1)?.rql).toBe(scopeRql);
     expect(graphPredicates.at(-1)).toEqual(tablePredicates.at(-1));
     expect(window.location.search).toBe("");
-    // The default shows as a pill, in both views, that the user can remove.
     expect(
-      graphPanel().getByRole("button", {
-        name: "Evidence: experimental. Edit filter",
-      }),
-    ).toBeInTheDocument();
+      graphPanel().queryByRole("button", { name: /^Evidence:/ }),
+    ).not.toBeInTheDocument();
   });
 
-  it("sends no evidence term from either view once the URL removed the default", async () => {
+  it("treats a literal `*` filter value as ordinary: valid RQL, and a pill that clears", async () => {
+    // A literal `*` is an ordinary filter value: the rql escapes it (`%2A`), so the clause is
+    // valid, nothing crashes, and the pill names it so a click restores the bare scope.
     const user = userEvent.setup();
     window.history.replaceState(null, "", "/genome/1.1?interactions.evidence=*");
     render(<InteractionsSubviewShell rql={scopeRql} />, {
@@ -563,25 +566,35 @@ describe("Interactions Table and Graph share the evidence default", () => {
     await waitFor(() => {
       expect(tablePredicates).toHaveLength(1);
     });
-    await user.click(screen.getByRole("tab", { name: "Graph" }));
-    await waitFor(() => {
-      expect(graphPredicates).toHaveLength(1);
-    });
-
-    expect(tablePredicates.at(-1)?.rql).toBe(scopeRql);
-    expect(graphPredicates.at(-1)).toEqual(tablePredicates.at(-1));
+    expect(tablePredicates.at(-1)?.rql).toBe(`and(${scopeRql},eq(evidence,%2A))`);
     expect(
-      graphPanel().queryByRole("button", { name: /^Evidence:/ }),
-    ).not.toBeInTheDocument();
+      tablePanel().getByRole("button", { name: "Evidence: *. Edit filter" }),
+    ).toBeInTheDocument();
+
+    await user.click(
+      tablePanel().getByRole("button", { name: "Clear Evidence filter" }),
+    );
+
+    await waitFor(() => {
+      expect(tablePredicates.at(-1)?.rql).toBe(scopeRql);
+    });
+    expect(window.location.search).toBe("");
   });
 
   it("widens both views when the Graph's Evidence pill is removed", async () => {
     const user = userEvent.setup();
+    window.history.replaceState(
+      null,
+      "",
+      "/genome/1.1?interactions.evidence=experimental",
+    );
     render(<InteractionsSubviewShell rql={scopeRql} />, {
       wrapper: createQueryClientWrapper(),
     });
     await waitFor(() => {
-      expect(tablePredicates).toHaveLength(1);
+      expect(tablePredicates.at(-1)?.rql).toBe(
+        `and(${scopeRql},${experimentalClause})`,
+      );
     });
     await user.click(screen.getByRole("tab", { name: "Graph" }));
     await waitFor(() => {
@@ -599,49 +612,57 @@ describe("Interactions Table and Graph share the evidence default", () => {
       expect(tablePredicates.at(-1)?.rql).toBe(scopeRql);
     });
     expect(tablePredicates.at(-1)).toEqual(graphPredicates.at(-1));
-    // The removal is written, so it survives a reload.
-    expect(window.location.search).toBe("?interactions.evidence=*");
+    // The cleared state is the empty state, so no param is written.
+    expect(window.location.search).toBe("");
   });
 
-  it("narrows both views to computational picked from the Graph's Filters menu", async () => {
-    const user = userEvent.setup();
-    render(<InteractionsSubviewShell rql={scopeRql} />, {
-      wrapper: createQueryClientWrapper(),
-    });
-    await waitFor(() => {
-      expect(tablePredicates).toHaveLength(1);
-    });
-    await user.click(screen.getByRole("tab", { name: "Graph" }));
-    await waitFor(() => {
-      expect(graphPredicates).toHaveLength(1);
-    });
+  it.each([
+    { pick: "experimental", clause: experimentalClause },
+    { pick: "computational", clause: computationalClause },
+  ])(
+    "narrows both views to $pick picked from the Graph's Filters menu",
+    async ({ pick, clause }) => {
+      const user = userEvent.setup();
+      render(<InteractionsSubviewShell rql={scopeRql} />, {
+        wrapper: createQueryClientWrapper(),
+      });
+      await waitFor(() => {
+        expect(tablePredicates).toHaveLength(1);
+      });
+      await user.click(screen.getByRole("tab", { name: "Graph" }));
+      await waitFor(() => {
+        expect(graphPredicates).toHaveLength(1);
+      });
 
-    const values = await openEvidenceValues(user, graphPanel());
-    // The menu lists both values, the default one selected.
-    expect(
-      await values.findByRole("option", { name: /^experimental/ }),
-    ).toHaveAttribute("aria-selected", "true");
-    await user.click(await values.findByRole("option", { name: /^computational/ }));
-    await user.click(values.getByRole("option", { name: /^experimental/ }));
-    await user.keyboard("{Escape}");
+      const values = await openEvidenceValues(user, graphPanel());
+      // The menu lists both values, neither one selected.
+      expect(
+        await values.findByRole("option", { name: /^experimental/ }),
+      ).toHaveAttribute("aria-selected", "false");
+      expect(
+        values.getByRole("option", { name: /^computational/ }),
+      ).toHaveAttribute("aria-selected", "false");
+      await user.click(values.getByRole("option", { name: new RegExp(`^${pick}`) }));
+      await user.keyboard("{Escape}");
 
-    const computationalRql = `and(${scopeRql},eq(evidence,computational))`;
-    await waitFor(() => {
-      expect(graphPredicates.at(-1)?.rql).toBe(computationalRql);
-    });
-    await waitFor(() => {
-      expect(tablePredicates.at(-1)?.rql).toBe(computationalRql);
-    });
-    expect(tablePredicates.at(-1)).toEqual(graphPredicates.at(-1));
-    expect(window.location.search).toBe("?interactions.evidence=computational");
+      const pickedRql = `and(${scopeRql},${clause})`;
+      await waitFor(() => {
+        expect(graphPredicates.at(-1)?.rql).toBe(pickedRql);
+      });
+      await waitFor(() => {
+        expect(tablePredicates.at(-1)?.rql).toBe(pickedRql);
+      });
+      expect(tablePredicates.at(-1)).toEqual(graphPredicates.at(-1));
+      expect(window.location.search).toBe(`?interactions.evidence=${pick}`);
 
-    await user.click(screen.getByRole("tab", { name: "Table" }));
-    expect(
-      tablePanel().getByRole("button", {
-        name: "Evidence: computational. Edit filter",
-      }),
-    ).toBeInTheDocument();
-  });
+      await user.click(screen.getByRole("tab", { name: "Table" }));
+      expect(
+        tablePanel().getByRole("button", {
+          name: `Evidence: ${pick}. Edit filter`,
+        }),
+      ).toBeInTheDocument();
+    },
+  );
 
   it("lists both evidence values in either menu, counted over the whole scope", async () => {
     const user = userEvent.setup();
@@ -672,7 +693,7 @@ describe("Interactions Table and Graph share the evidence default", () => {
       graphValues.getByRole("option", { name: /^experimental/ }),
     ).toBeInTheDocument();
 
-    // Evidence is counted without its own filter, by both views, so the default's hidden value shows.
+    // Evidence is counted without its own filter, by both views, so both values show.
     const evidenceCounts = facetPredicates.filter((request) =>
       request.facets.includes("evidence"),
     );
@@ -732,10 +753,11 @@ async function facetCountRqls(
 }
 
 describe("Interactions Table and Graph count every facet over the same scope", () => {
-  const picked = `and(${scopeRql},eq(evidence,computational))`;
+  const experimental = `and(${scopeRql},${experimentalClause})`;
+  const computational = `and(${scopeRql},${computationalClause})`;
   it.each([
     {
-      state: "only the default applies",
+      state: "the URL carries no evidence param",
       search: "",
       expected: {
         category: scopeRql,
@@ -745,23 +767,23 @@ describe("Interactions Table and Graph count every facet over the same scope", (
       },
     },
     {
-      state: "the default is removed",
-      search: "?interactions.evidence=*",
+      state: "experimental is picked",
+      search: "?interactions.evidence=experimental",
       expected: {
-        category: scopeRql,
-        detection_method: scopeRql,
+        category: experimental,
+        detection_method: experimental,
         evidence: scopeRql,
-        interaction_type: scopeRql,
+        interaction_type: experimental,
       },
     },
     {
       state: "computational is picked",
       search: "?interactions.evidence=computational",
       expected: {
-        category: picked,
-        detection_method: picked,
+        category: computational,
+        detection_method: computational,
         evidence: scopeRql,
-        interaction_type: picked,
+        interaction_type: computational,
       },
     },
   ])("when $state", async ({ search, expected }) => {
@@ -779,7 +801,7 @@ describe("Interactions Table and Graph count every facet over the same scope", (
 const focusedProteinId = "fig|1.1.peg.1";
 const focusClause =
   "or(eq(interactor_a,fig%7C1.1.peg.1),eq(interactor_b,fig%7C1.1.peg.1))";
-const focusedRql = `and(${scopeRql},and(${focusClause},${experimentalClause}))`;
+const focusedRql = `and(${scopeRql},${focusClause})`;
 const focusUrlParam = "interactions.interactor=fig%7C1.1.peg.1";
 
 /** Picks the node in the Graph's list, then its detail panel's focus button. */
@@ -863,7 +885,7 @@ describe("Interactions Table and Graph share a protein focus", () => {
     ).toBeInTheDocument();
     await pickAssociation(user, tablePanel());
 
-    const bothRql = `and(${scopeRql},and(${focusClause},and(eq(interaction_type,association),${experimentalClause})))`;
+    const bothRql = `and(${scopeRql},and(${focusClause},eq(interaction_type,association)))`;
     await waitFor(() => {
       expect(tablePredicates.at(-1)?.rql).toBe(bothRql);
     });
@@ -898,7 +920,7 @@ describe("Interactions Table and Graph share a protein focus", () => {
     });
     await focusFromGraph(user);
 
-    const bothRql = `and(${scopeRql},and(${focusClause},and(eq(interaction_type,association),${experimentalClause})))`;
+    const bothRql = `and(${scopeRql},and(${focusClause},eq(interaction_type,association)))`;
     await waitFor(() => {
       expect(graphPredicates.at(-1)?.rql).toBe(bothRql);
     });
@@ -961,10 +983,10 @@ describe("Interactions Table and Graph share a protein focus", () => {
     );
 
     await waitFor(() => {
-      expect(graphPredicates.at(-1)?.rql).toBe(defaultRql);
+      expect(graphPredicates.at(-1)?.rql).toBe(scopeRql);
     });
     await waitFor(() => {
-      expect(tablePredicates.at(-1)?.rql).toBe(defaultRql);
+      expect(tablePredicates.at(-1)?.rql).toBe(scopeRql);
     });
     expect(window.location.search).toBe("");
   });
@@ -1171,7 +1193,7 @@ describe("Interactions Show in Graph from the Table's selection", () => {
       expect(graphPanel().getByText("geneD")).toBeInTheDocument();
     });
     expect(graphPredicates).toStrictEqual([
-      { rql: defaultRql, keyword: undefined, keywordMode: undefined },
+      { rql: scopeRql, keyword: undefined, keywordMode: undefined },
     ]);
   });
 });

@@ -8,7 +8,6 @@ import {
   interactionCollectionOptions,
   interactionCollectionProfile,
   interactionColumns,
-  interactionDefaultFilters,
   interactionExtraFilters,
   interactionFacets,
   interactionStructuralRql,
@@ -107,14 +106,14 @@ describe("interaction focus filter", () => {
       "interactor",
     ]);
     expect(interactionCollectionOptions.defaultSort).toBe("id:asc");
-    // The evidence default is in the state beside the focus, as it is for every parse.
+    // Evidence has no default, so the focus is the only filter a bare focus URL parses to.
     expect(
       parseChildCollectionState(
         { "interactions.interactor": protein },
         "interactions",
         interactionCollectionOptions,
       ).filters,
-    ).toEqual({ evidence: ["experimental"], interactor: [protein] });
+    ).toEqual({ interactor: [protein] });
   });
 
   it("is the profile's builder", () => {
@@ -195,60 +194,57 @@ describe("interaction focus filter", () => {
   });
 });
 
-describe("interaction evidence default", () => {
+describe("interaction evidence facet (no default)", () => {
   const parse = (params: Record<string, string | string[]>) =>
     parseChildCollectionState(params, "interactions", interactionCollectionOptions);
 
-  it("defaults evidence to experimental", () => {
-    expect(interactionDefaultFilters).toEqual({ evidence: ["experimental"] });
-    expect(interactionCollectionOptions.defaultFilters).toBe(
-      interactionDefaultFilters,
-    );
+  it("has no default filter, so the default view lists every interaction", () => {
+    expect(interactionCollectionOptions.defaultFilters).toBeUndefined();
+    // Evidence is still a facet the Filters menu offers.
+    expect(interactionCollectionOptions.friendlyFilters).toContain("evidence");
+    expect(interactionFacets.map((facet) => facet.field)).toContain("evidence");
   });
 
   it("is the one expression the Table builds its options from", () => {
     // `ResourceChildCollection` builds `childCollectionOptions(profile.columns, profile.facets,
-    // defaultSort, defaultFilters, profile.extraFilters)` from the profile and the shell's props;
-    // the shell reads the same URL through `interactionCollectionOptions`, so the two must be equal.
+    // defaultSort, defaultFilters, profile.extraFilters)` from the profile and the shell's props
+    // (it passes no `defaultFilters`); the shell reads the same URL through
+    // `interactionCollectionOptions`, so the two must be equal.
     expect(
       childCollectionOptions(
         interactionCollectionProfile.columns,
         interactionCollectionProfile.facets,
         interactionCollectionOptions.defaultSort,
-        interactionDefaultFilters,
+        undefined,
         interactionCollectionProfile.extraFilters,
       ),
     ).toEqual(interactionCollectionOptions);
   });
 
-  it("applies experimental to an empty URL, and the clause names it", () => {
+  it("applies no evidence term to an empty URL", () => {
     const state = parse({});
+
+    expect(state.filters).toEqual({});
+    expect(interactionStructuralRql(state)).toBeUndefined();
+  });
+
+  it("sends the bare scope, which the Data API accepts, from an empty URL", () => {
+    const scope = taxonomyInteractionsRql("eq(taxon_lineage_ids,561)");
+    const rql = scopedStructuralRql(scope, interactionStructuralRql)(parse({}));
+
+    expect(rql).toBe(scope);
+    expect(rql).not.toContain("evidence");
+    expect(() => validateRql("ppi", rql)).not.toThrow();
+  });
+
+  it("filters on experimental alone when that is picked", () => {
+    const state = parse({ "interactions.evidence": "experimental" });
 
     expect(state.filters).toEqual({ evidence: ["experimental"] });
     expect(interactionStructuralRql(state)).toBe("eq(evidence,experimental)");
     expect(() =>
       validateRql("ppi", interactionStructuralRql(state) ?? ""),
     ).not.toThrow();
-  });
-
-  it("sends the default request the Data API accepts, still naming experimental evidence", () => {
-    const scope = taxonomyInteractionsRql("eq(taxon_lineage_ids,561)");
-    const rql = scopedStructuralRql(scope, interactionStructuralRql)(parse({}));
-
-    expect(rql).toBe(`and(${scope},eq(evidence,experimental))`);
-    expect(() => validateRql("ppi", rql)).not.toThrow();
-    const removed = scopedStructuralRql(scope, interactionStructuralRql)(
-      parse({ "interactions.evidence": "*" }),
-    );
-    expect(removed).toBe(scope);
-    expect(() => validateRql("ppi", removed)).not.toThrow();
-  });
-
-  it("applies no evidence term once the default is removed (evidence=*)", () => {
-    const state = parse({ "interactions.evidence": "*" });
-
-    expect(state.filters).toEqual({});
-    expect(interactionStructuralRql(state)).toBeUndefined();
   });
 
   it("filters on computational alone when that is picked", () => {
@@ -271,7 +267,7 @@ describe("interaction evidence default", () => {
     );
   });
 
-  it("leaves the default out of the URL and writes the removal as evidence=*", () => {
+  it("writes a pick as its value and the empty state as no param", () => {
     const written = (filters: CollectionState["filters"]) =>
       replaceChildCollectionSearchParams(
         {},
@@ -280,41 +276,49 @@ describe("interaction evidence default", () => {
         interactionCollectionOptions,
       ).toString();
 
-    expect(written({ evidence: ["experimental"] })).toBe("");
-    expect(written({})).toBe("interactions.evidence=*");
+    expect(written({})).toBe("");
+    expect(written({ evidence: ["experimental"] })).toBe(
+      "interactions.evidence=experimental",
+    );
     expect(written({ evidence: ["computational"] })).toBe(
       "interactions.evidence=computational",
     );
   });
 
-  it("keeps the default beside the other facet picks and the focus", () => {
+  it("leaves the other facet picks and the focus as the only terms", () => {
     const state = parse({
       "interactions.interaction_type": "association",
       "interactions.interactor": "fig|1.1",
     });
 
     expect(interactionStructuralRql(state)).toBe(
-      "and(or(eq(interactor_a,fig%7C1.1),eq(interactor_b,fig%7C1.1)),and(eq(interaction_type,association),eq(evidence,experimental)))",
+      "and(or(eq(interactor_a,fig%7C1.1),eq(interactor_b,fig%7C1.1)),eq(interaction_type,association))",
     );
   });
 
-  it("counts the evidence facet without its own filter, and every facet bare while only the default applies", () => {
-    // Untouched defaults are left out of the counts (a default's own facet still lists the values
-    // it hides), so Evidence lists both values; with a pick beside the default they stay in.
-    expect(
-      facetCountState(parse({}), interactionCollectionOptions).filters,
-    ).toEqual({});
-    expect(
-      facetCountState(
-        parse({ "interactions.evidence": "computational" }),
-        interactionCollectionOptions,
-      ).filters,
-    ).toEqual({ evidence: ["computational"] });
-    expect(
-      facetCountState(
-        parse({ "interactions.interaction_type": "association" }),
-        interactionCollectionOptions,
-      ).filters,
-    ).toEqual({ interaction_type: ["association"], evidence: ["experimental"] });
+  it("counts every facet under the state as it stands, with no default to leave out", () => {
+    // `facetCountState` has no defaults to drop here, so it hands the state back as it is; the
+    // evidence facet is counted without its own filter by the callers, not by this function.
+    const urls: Record<string, string>[] = [
+      {},
+      { "interactions.evidence": "computational" },
+      { "interactions.interaction_type": "association" },
+    ];
+    for (const params of urls) {
+      const state = parse(params);
+      expect(facetCountState(state, interactionCollectionOptions)).toBe(state);
+    }
+  });
+
+  it("reads a literal `*` filter value as an ordinary value, in a valid clause", () => {
+    // A literal `*` is an ordinary filter value: the rql escapes it (`%2A`), so the clause is
+    // valid RQL that names a literal `*` (no row has one) and shows as an Evidence pill the user
+    // can clear.
+    const state = parse({ "interactions.evidence": "*" });
+
+    expect(state.filters).toEqual({ evidence: ["*"] });
+    const clause = interactionStructuralRql(state);
+    expect(clause).toBe("eq(evidence,%2A)");
+    expect(() => validateRql("ppi", clause ?? "")).not.toThrow();
   });
 });

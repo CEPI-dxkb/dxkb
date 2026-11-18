@@ -14,7 +14,6 @@ import type { InteractionsSelection } from "@/lib/interactions/use-interactions"
 import {
   interactionCollectionOptions,
   interactionCollectionProfile,
-  interactionDefaultFilters,
 } from "@/lib/views/child-resources";
 import {
   facetCountState,
@@ -95,8 +94,8 @@ export function InteractionsSubviewShell({
     });
   const graphRql = graphRqlFor(tableState.filters);
   // The counts follow the Table's rule (`facetCountState`, which leaves out defaults the user has
-  // not touched), so the two Filters menus show the same numbers for the same filters; on top of
-  // that each field leaves out its own filter.
+  // not touched; the Interactions options have none today), so the two Filters menus show the same
+  // numbers for the same filters; on top of that each field leaves out its own filter.
   const countFilters = facetCountState(
     tableState,
     interactionCollectionOptions,
@@ -171,7 +170,6 @@ export function InteractionsSubviewShell({
           rql={scopedRql}
           profile={{ ...interactionCollectionProfile, guideUrl }}
           defaultSort={interactionCollectionOptions.defaultSort}
-          defaultFilters={interactionDefaultFilters}
           keywordValue={keywordText}
           onKeywordChange={handleKeywordChange}
           keywordPlaceholder="Search interaction results..."

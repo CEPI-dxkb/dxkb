@@ -76,7 +76,7 @@ describe("toGraph", () => {
   });
 
   it("styles a computational-only edge as predicted, the legend's grey, not experimental", () => {
-    // `evidence=computational` rows reach the Graph once the Interactions tab's default is removed.
+    // `evidence=computational` rows reach the Graph on the taxon tab, whose scope pins no evidence.
     const { edges } = toGraph([
       makeRow({ id: "scalar", evidence: "computational" }),
       makeRow({ id: "list", evidence: ["computational"] }),

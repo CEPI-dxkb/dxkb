@@ -546,7 +546,7 @@ describe("makeInteractionsView", () => {
     const { getByTestId } = render(<InteractionsView />);
     const panel = getByTestId("taxon-data-panel");
     expect(panel).toHaveAttribute("data-resource", "ppi");
-    // Evidence is the Interactions tab's removable default, not part of the scope.
+    // Evidence is the Interactions tab's facet, not part of the scope.
     expect(panel.getAttribute("data-q")).toBe(
       "and(eq(genome_id_a,*),genome(to(genome_id_a),and(eq(taxon_lineage_ids,1234),ne(genome_status,Deprecated))))",
     );

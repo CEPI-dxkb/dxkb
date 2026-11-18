@@ -3,10 +3,7 @@ import { act, render, screen, fireEvent } from "@testing-library/react";
 
 import type { GNode } from "@/lib/interactions/types";
 import { childCollectionOptions } from "@/lib/views/child-collection-state";
-import {
-  interactionCollectionOptions,
-  interactionDefaultFilters,
-} from "@/lib/views/child-resources";
+import { interactionCollectionOptions } from "@/lib/views/child-resources";
 
 import type { InteractionsGraph } from "../interactions-graph";
 import { InteractionsSubviewShell } from "../interactions-subview-shell";
@@ -14,14 +11,12 @@ import { InteractionsSubviewShell } from "../interactions-subview-shell";
 type GraphProps = ComponentProps<typeof InteractionsGraph>;
 
 /**
- * A stand-in scope. Evidence is not part of the real taxon scope any more (it is a default filter
- * the shell adds), so this one names none.
+ * A stand-in scope. The real taxon scope pins no evidence and the Interactions tab adds no default
+ * for it, so this one names none: the unfiltered view lists every interaction.
  */
 const scope = "eq(genome_id_a,*)";
 const experimentalClause = "eq(evidence,experimental)";
 const computationalClause = "eq(evidence,computational)";
-/** What the Graph sends for the scope while the evidence default applies. */
-const defaultGraphRql = `and(${scope},${experimentalClause})`;
 
 let tableMountCount = 0;
 /** The rows the Table stub's "show-in-graph" button hands to `onShowInGraph`. */
@@ -162,7 +157,7 @@ describe("InteractionsSubviewShell", () => {
     expect(screen.queryByTestId("graph-panel")).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("tab", { name: "Graph" }));
-    expect(screen.getByTestId("graph-panel")).toHaveAttribute("data-rql", defaultGraphRql);
+    expect(screen.getByTestId("graph-panel")).toHaveAttribute("data-rql", scope);
   });
 
   it("keeps the Table subview mounted across a switch to Graph and back (bug #3 root cause)", () => {
@@ -187,7 +182,7 @@ describe("InteractionsSubviewShell", () => {
     expect(screen.getByTestId("table-panel")).toHaveAttribute("data-rql", scope);
     expect(screen.getByTestId("graph-panel")).toHaveAttribute(
       "data-rql",
-      defaultGraphRql,
+      scope,
     );
   });
 
@@ -277,13 +272,11 @@ describe("InteractionsSubviewShell filters", () => {
     expect(screen.getByTestId("table-panel")).toHaveAttribute("data-rql", scope);
   });
 
-  it("gives the Table the evidence default the shell reads the URL with", () => {
+  it("gives the Table no default filters, so the shell and the Table read the URL alike", () => {
     render(<InteractionsSubviewShell rql={scope} />);
 
-    expect(lastTableOptionProps?.defaultFilters).toBe(interactionDefaultFilters);
-    expect(lastTableOptionProps?.defaultFilters).toEqual({
-      evidence: ["experimental"],
-    });
+    expect(lastTableOptionProps?.defaultFilters).toBeUndefined();
+    expect(interactionCollectionOptions.defaultFilters).toBeUndefined();
   });
 
   it("builds the Table's collection options to equal the ones the shell reads the URL with", () => {
@@ -304,39 +297,34 @@ describe("InteractionsSubviewShell filters", () => {
     ).toEqual(interactionCollectionOptions);
   });
 
-  it("sends the evidence default in the Graph's rql from an empty URL, and none once it is removed", () => {
-    render(<InteractionsSubviewShell rql={scope} />);
-    fireEvent.click(screen.getByRole("tab", { name: "Graph" }));
-
-    expect(graphProps().rql).toBe(`and(${scope},${experimentalClause})`);
-    expect(graphProps().filters).toEqual({ evidence: ["experimental"] });
-    expect(screen.getByTestId("table-panel")).toHaveAttribute("data-rql", scope);
-  });
-
-  it("sends no evidence term when the URL removed the default (evidence=*)", () => {
-    window.history.replaceState(null, "", "/genome/1.1?interactions.evidence=*");
+  it("sends the bare scope in the Graph's rql from an empty URL, naming no evidence", () => {
     render(<InteractionsSubviewShell rql={scope} />);
     fireEvent.click(screen.getByRole("tab", { name: "Graph" }));
 
     expect(graphProps().rql).toBe(scope);
+    expect(graphProps().rql).not.toContain("evidence");
     expect(graphProps().filters).toEqual({});
     expect(screen.getByTestId("table-panel")).toHaveAttribute("data-rql", scope);
   });
 
-  it("sends the picked evidence in place of the default", () => {
+  it.each([
+    { pick: "experimental", clause: experimentalClause },
+    { pick: "computational", clause: computationalClause },
+  ])("sends the picked evidence ($pick) in the Graph's rql", ({ pick, clause }) => {
     window.history.replaceState(
       null,
       "",
-      "/genome/1.1?interactions.evidence=computational",
+      `/genome/1.1?interactions.evidence=${pick}`,
     );
     render(<InteractionsSubviewShell rql={scope} />);
     fireEvent.click(screen.getByRole("tab", { name: "Graph" }));
 
-    expect(graphProps().rql).toBe(`and(${scope},${computationalClause})`);
-    expect(graphProps().filters).toEqual({ evidence: ["computational"] });
+    expect(graphProps().rql).toBe(`and(${scope},${clause})`);
+    expect(graphProps().filters).toEqual({ evidence: [pick] });
+    expect(screen.getByTestId("table-panel")).toHaveAttribute("data-rql", scope);
   });
 
-  it("writes the default's removal as evidence=* and drops the Table's page", () => {
+  it("writes an evidence pick to the URL and drops the Table's page", () => {
     window.history.replaceState(
       null,
       "",
@@ -346,25 +334,32 @@ describe("InteractionsSubviewShell filters", () => {
     fireEvent.click(screen.getByRole("tab", { name: "Graph" }));
 
     act(() => {
-      graphProps().onFilterChange({ filters: {} });
+      graphProps().onFilterChange({ filters: { evidence: ["computational"] } });
     });
 
-    expect(window.location.search).toBe("?tab=interactions&interactions.evidence=*");
-    expect(graphProps().rql).toBe(scope);
-    expect(graphProps().filters).toEqual({});
+    expect(window.location.search).toBe(
+      "?tab=interactions&interactions.evidence=computational",
+    );
+    expect(graphProps().rql).toBe(`and(${scope},${computationalClause})`);
+    expect(graphProps().filters).toEqual({ evidence: ["computational"] });
   });
 
-  it("restores the default by dropping the removal marker, writing no param", () => {
-    window.history.replaceState(null, "", "/genome/1.1?interactions.evidence=*");
+  it("drops the evidence param, writing no marker, when the pick is cleared", () => {
+    window.history.replaceState(
+      null,
+      "",
+      "/genome/1.1?interactions.evidence=computational",
+    );
     render(<InteractionsSubviewShell rql={scope} />);
     fireEvent.click(screen.getByRole("tab", { name: "Graph" }));
 
     act(() => {
-      graphProps().onFilterChange({ filters: { evidence: ["experimental"] } });
+      graphProps().onFilterChange({ filters: {} });
     });
 
     expect(window.location.search).toBe("");
-    expect(graphProps().rql).toBe(defaultGraphRql);
+    expect(graphProps().rql).toBe(scope);
+    expect(graphProps().filters).toEqual({});
   });
 
   it("narrows only the Graph's rql by the filters in the URL", () => {
@@ -376,76 +371,78 @@ describe("InteractionsSubviewShell filters", () => {
     render(<InteractionsSubviewShell rql={`${scope}#view_tab=interactions`} />);
     fireEvent.click(screen.getByRole("tab", { name: "Graph" }));
 
-    // The evidence default stays beside the pick.
     expect(screen.getByTestId("graph-panel")).toHaveAttribute(
       "data-rql",
-      `and(${scope},and(${typeClause},${experimentalClause}))`,
+      `and(${scope},${typeClause})`,
     );
     expect(screen.getByTestId("table-panel")).toHaveAttribute("data-rql", scope);
-    expect(graphProps().filters).toEqual({
-      interaction_type: ["association"],
-      evidence: ["experimental"],
-    });
+    expect(graphProps().filters).toEqual({ interaction_type: ["association"] });
   });
 
   it("scopes each facet's counts with every filter but its own", () => {
     window.history.replaceState(
       null,
       "",
-      "/genome/1.1?interactions.interaction_type=association",
+      "/genome/1.1?interactions.interaction_type=association&interactions.evidence=computational",
     );
     render(<InteractionsSubviewShell rql={scope} />);
     fireEvent.click(screen.getByRole("tab", { name: "Graph" }));
 
     expect(graphProps().facetRql("interaction_type")).toBe(
-      `and(${scope},${experimentalClause})`,
+      `and(${scope},${computationalClause})`,
     );
     expect(graphProps().facetRql("detection_method")).toBe(
-      `and(${scope},and(${typeClause},${experimentalClause}))`,
+      `and(${scope},and(${typeClause},${computationalClause}))`,
     );
     // Evidence is counted without its own filter, so both of its values stay listed.
     expect(graphProps().facetRql("evidence")).toBe(`and(${scope},${typeClause})`);
   });
 
-  it("counts every facet over the bare scope while only the default applies, as the Table does", () => {
-    // The Table leaves untouched defaults out of its counts (`facetCountState`), so the Graph's
-    // counts follow the same rule or the two menus show different numbers for the same filters.
-    render(<InteractionsSubviewShell rql={scope} />);
-    fireEvent.click(screen.getByRole("tab", { name: "Graph" }));
+  it.each([
+    {
+      state: "an empty URL",
+      search: "",
+      expected: {
+        category: scope,
+        interaction_type: scope,
+        detection_method: scope,
+        evidence: scope,
+      },
+    },
+    {
+      state: "experimental picked",
+      search: "?interactions.evidence=experimental",
+      expected: {
+        category: `and(${scope},${experimentalClause})`,
+        interaction_type: `and(${scope},${experimentalClause})`,
+        detection_method: `and(${scope},${experimentalClause})`,
+        evidence: scope,
+      },
+    },
+    {
+      state: "computational picked",
+      search: "?interactions.evidence=computational",
+      expected: {
+        category: `and(${scope},${computationalClause})`,
+        interaction_type: `and(${scope},${computationalClause})`,
+        detection_method: `and(${scope},${computationalClause})`,
+        evidence: scope,
+      },
+    },
+  ])(
+    "counts each facet over the rql the Table counts it over, from $state",
+    ({ search, expected }) => {
+      window.history.replaceState(null, "", `/genome/1.1${search}`);
+      render(<InteractionsSubviewShell rql={scope} />);
+      fireEvent.click(screen.getByRole("tab", { name: "Graph" }));
 
-    for (const field of [
-      "category",
-      "interaction_type",
-      "detection_method",
-      "evidence",
-    ]) {
-      expect(graphProps().facetRql(field)).toBe(scope);
-    }
-  });
-
-  it("counts each facet inside a picked evidence, and Evidence over the whole scope", () => {
-    window.history.replaceState(
-      null,
-      "",
-      "/genome/1.1?interactions.evidence=computational",
-    );
-    render(<InteractionsSubviewShell rql={scope} />);
-    fireEvent.click(screen.getByRole("tab", { name: "Graph" }));
-
-    expect(graphProps().facetRql("category")).toBe(
-      `and(${scope},${computationalClause})`,
-    );
-    expect(graphProps().facetRql("evidence")).toBe(scope);
-  });
-
-  it("counts every facet over the bare scope once the default is removed", () => {
-    window.history.replaceState(null, "", "/genome/1.1?interactions.evidence=*");
-    render(<InteractionsSubviewShell rql={scope} />);
-    fireEvent.click(screen.getByRole("tab", { name: "Graph" }));
-
-    expect(graphProps().facetRql("category")).toBe(scope);
-    expect(graphProps().facetRql("evidence")).toBe(scope);
-  });
+      // The Graph's counts follow the Table's rule (`facetCountState`), so the two Filters menus
+      // show the same numbers for the same filters; a facet leaves out only its own filter.
+      for (const [field, rql] of Object.entries(expected)) {
+        expect(graphProps().facetRql(field)).toBe(rql);
+      }
+    },
+  );
 
   it("writes a filter change to the URL and drops the Table's page", () => {
     window.history.replaceState(
@@ -457,14 +454,14 @@ describe("InteractionsSubviewShell filters", () => {
     fireEvent.click(screen.getByRole("tab", { name: "Graph" }));
 
     act(() => {
-      // The bar hands back every filter it holds, the default included.
-      graphProps().onFilterChange({ filters: { evidence: ["experimental"] } });
+      // The bar hands back every filter it holds: none once the pick is cleared.
+      graphProps().onFilterChange({ filters: {} });
     });
 
     expect(window.location.search).toBe("?tab=interactions");
     expect(screen.getByTestId("graph-panel")).toHaveAttribute(
       "data-rql",
-      defaultGraphRql,
+      scope,
     );
   });
 
@@ -474,20 +471,16 @@ describe("InteractionsSubviewShell filters", () => {
 
     act(() => {
       graphProps().onFilterChange({
-        filters: {
-          interaction_type: ["association"],
-          evidence: ["experimental"],
-        },
+        filters: { interaction_type: ["association"] },
       });
     });
 
-    // The default is implicit, so only the pick is written.
     expect(window.location.search).toBe(
       "?interactions.interaction_type=association",
     );
     expect(screen.getByTestId("graph-panel")).toHaveAttribute(
       "data-rql",
-      `and(${scope},and(${typeClause},${experimentalClause}))`,
+      `and(${scope},${typeClause})`,
     );
   });
 
@@ -499,7 +492,7 @@ describe("InteractionsSubviewShell filters", () => {
     act(() => {
       graphProps().onFilterChange({
         keyword: "groEL",
-        filters: { evidence: ["experimental"] },
+        filters: {},
       });
     });
 
@@ -556,13 +549,10 @@ describe("InteractionsSubviewShell protein focus", () => {
     focusNode(protein);
 
     expect(graphProps().focusId).toBe("fig|224914.16.peg.635");
-    expect(graphProps().filters).toEqual({
-      evidence: ["experimental"],
-      interactor: [protein.id],
-    });
+    expect(graphProps().filters).toEqual({ interactor: [protein.id] });
     expect(screen.getByTestId("graph-panel")).toHaveAttribute(
       "data-rql",
-      `and(${scope},and(${focusClause},${experimentalClause}))`,
+      `and(${scope},${focusClause})`,
     );
   });
 
@@ -583,11 +573,11 @@ describe("InteractionsSubviewShell protein focus", () => {
     );
     expect(screen.getByTestId("graph-panel")).toHaveAttribute(
       "data-rql",
-      `and(${scope},and(${focusClause},and(${typeClause},${experimentalClause})))`,
+      `and(${scope},and(${focusClause},${typeClause}))`,
     );
-    // A facet's counts leave out its own pick only, so they stay inside the focus and the default.
+    // A facet's counts leave out its own pick only, so they stay inside the focus.
     expect(graphProps().facetRql("interaction_type")).toBe(
-      `and(${scope},and(${focusClause},${experimentalClause}))`,
+      `and(${scope},${focusClause})`,
     );
   });
 
@@ -628,15 +618,15 @@ describe("InteractionsSubviewShell protein focus", () => {
     expect(graphProps().focusId).toBe(protein.id);
 
     act(() => {
-      // Clearing the Protein pill leaves the other filters, the default among them.
-      graphProps().onFilterChange({ filters: { evidence: ["experimental"] } });
+      // Clearing the Protein pill leaves the other filters, of which there are none here.
+      graphProps().onFilterChange({ filters: {} });
     });
 
     expect(window.location.search).toBe("");
     expect(graphProps().focusId).toBeUndefined();
     expect(screen.getByTestId("graph-panel")).toHaveAttribute(
       "data-rql",
-      defaultGraphRql,
+      scope,
     );
   });
 
@@ -652,7 +642,7 @@ describe("InteractionsSubviewShell protein focus", () => {
     expect(graphProps().focusId).toBe(protein.id);
     expect(screen.getByTestId("graph-panel")).toHaveAttribute(
       "data-rql",
-      `and(${scope},and(${focusClause},${experimentalClause}))`,
+      `and(${scope},${focusClause})`,
     );
     expect(screen.getByTestId("table-panel")).toHaveAttribute("data-rql", scope);
   });
@@ -691,7 +681,7 @@ describe("InteractionsSubviewShell Show in Graph", () => {
         version: expect.any(Number) as number,
       }),
     );
-    expect(graphProps().rql).toBe(defaultGraphRql);
+    expect(graphProps().rql).toBe(scope);
     expect(screen.getByTestId("table-panel")).toHaveAttribute("data-rql", scope);
     expect(tableMountCount).toBe(1);
   });
@@ -705,7 +695,7 @@ describe("InteractionsSubviewShell Show in Graph", () => {
     });
 
     expect(graphProps().selection).toBeUndefined();
-    expect(graphProps().rql).toBe(defaultGraphRql);
+    expect(graphProps().rql).toBe(scope);
     expect(screen.getByRole("tab", { name: "Graph" })).toHaveAttribute(
       "aria-selected",
       "true",
@@ -745,7 +735,7 @@ describe("InteractionsSubviewShell Show in Graph", () => {
     rerender(<InteractionsSubviewShell rql="eq(genome_id_b,*)" />);
 
     expect(graphProps().selection).toBeUndefined();
-    expect(graphProps().rql).toBe(`and(eq(genome_id_b,*),${experimentalClause})`);
+    expect(graphProps().rql).toBe("eq(genome_id_b,*)");
   });
 
   it("keeps the selection across a fragment-only change of the scope", () => {
@@ -777,7 +767,7 @@ describe("InteractionsSubviewShell Show in Graph", () => {
       showInGraph(["ppi-1", "ppi-2"]);
       expect(graphProps().selection).toBeDefined();
       // The selection ignores the rql, which is not narrowed by anything yet.
-      expect(graphProps().rql).toBe(defaultGraphRql);
+      expect(graphProps().rql).toBe(scope);
 
       focusNode(protein);
 
@@ -786,9 +776,7 @@ describe("InteractionsSubviewShell Show in Graph", () => {
         `?interactions.interactor=${encodedProtein}`,
       );
       expect(graphProps().focusId).toBe(protein.id);
-      expect(graphProps().rql).toBe(
-        `and(${scope},and(${focusClause},${experimentalClause}))`,
-      );
+      expect(graphProps().rql).toBe(`and(${scope},${focusClause})`);
       // The Table keeps its scope and stays mounted.
       expect(screen.getByTestId("table-panel")).toHaveAttribute("data-rql", scope);
       expect(tableMountCount).toBe(1);

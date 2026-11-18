@@ -191,7 +191,7 @@ export class TaxonInteractionsPage {
 
   /**
    * `label`'s filter is active in the toolbar of the subview that is showing: its pill, or, when
-   * the toolbar is too narrow for every pill (the evidence default, a pick and a focus), the
+   * the toolbar is too narrow for every pill (a facet pick and a focus), the
    * "+N more filters: <labels>" button that names it.
    */
   async expectFilterActive(label: string): Promise<void> {

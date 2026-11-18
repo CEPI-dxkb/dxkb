@@ -100,9 +100,9 @@ describe("interaction scoping predicates", () => {
     ).toThrow(/genome_id_a/);
   });
 
-  it("leaves evidence to the Interactions tab's removable default", () => {
-    // Evidence is a default filter there (`interactionDefaultFilters`), so the scope must not pin it
-    // or a user could never add computational interactions.
+  it("leaves evidence to the Interactions tab's Evidence facet", () => {
+    // The tab lists experimental and computational interactions alike and offers Evidence as a
+    // facet, so the scope must not pin it or a user could never pick computational interactions.
     const rql = taxonomyInteractionsRql("eq(taxon_lineage_ids,561)");
 
     expect(rql).toBe(
@@ -112,7 +112,7 @@ describe("interaction scoping predicates", () => {
   });
 
   it("keeps the Genome and Feature scopes pinned to experimental evidence", () => {
-    // Those tabs do not opt in to the evidence filter.
+    // Those tabs have no Evidence facet, so they keep the pin.
     expect(genomeInteractionsRql("83332.12")).toContain(
       "eq(evidence,experimental)",
     );

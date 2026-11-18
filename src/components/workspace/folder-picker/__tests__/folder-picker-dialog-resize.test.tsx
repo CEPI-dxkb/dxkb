@@ -437,6 +437,29 @@ describe("resizable picker dialog", () => {
       expect(sizeVars()).toEqual({ width: "1380px", height: "752px" });
     });
 
+    it("keeps the remembered width when the window narrows during a north-edge drag", async () => {
+      renderPicker();
+      await findOption("Home", "Experiments");
+      const handle = resizeHandle("n");
+
+      fireEvent.pointerDown(handle, {
+        button: 0,
+        clientX: 800,
+        clientY: 500,
+        pointerId: 6,
+      });
+      // The window narrows under the dialog: it renders clamped, but the north edge
+      // never touches the width, so what is stored for it must not change.
+      vi.stubGlobal("innerWidth", 1000);
+      act(() => {
+        window.dispatchEvent(new Event("resize"));
+      });
+      fireEvent.pointerMove(handle, { clientX: 800, clientY: 460, pointerId: 6 });
+      fireEvent.pointerUp(handle, { pointerId: 6 });
+
+      expect(storedLayout()).toEqual({ dialog: { width: 1280, height: 752 } });
+    });
+
     it("stops at the smallest size however far a side is dragged inward", async () => {
       renderPicker();
       await findOption("Home", "Experiments");

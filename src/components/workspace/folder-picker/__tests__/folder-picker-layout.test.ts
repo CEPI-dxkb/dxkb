@@ -8,6 +8,7 @@ import {
   maximizeDialogSize,
   parsePickerLayout,
   rememberUntouchedAxes,
+  resizedAxes,
   resizeDialogByEdge,
   resizeDialogSize,
   serializePickerLayout,
@@ -256,6 +257,35 @@ describe("rememberUntouchedAxes", () => {
       width: 928,
       height: 840,
     });
+  });
+
+  it("keeps the remembered value for an axis the dragged side never touches, even if the window clamped it", () => {
+    // The window narrowed mid-drag: width differs from `current` only through the clamp.
+    const next = { width: 928, height: 840 };
+    expect(
+      rememberUntouchedAxes(next, current, remembered, {
+        width: false,
+        height: true,
+      }),
+    ).toEqual({ width: 1500, height: 840 });
+    expect(
+      rememberUntouchedAxes(next, current, remembered, {
+        width: true,
+        height: false,
+      }),
+    ).toEqual({ width: 928, height: 800 });
+  });
+});
+
+describe("resizedAxes", () => {
+  it("moves one axis for a side and two for a corner", () => {
+    expect(resizedAxes("n")).toEqual({ width: false, height: true });
+    expect(resizedAxes("s")).toEqual({ width: false, height: true });
+    expect(resizedAxes("e")).toEqual({ width: true, height: false });
+    expect(resizedAxes("w")).toEqual({ width: true, height: false });
+    for (const corner of ["nw", "ne", "sw", "se"] as const) {
+      expect(resizedAxes(corner)).toEqual({ width: true, height: true });
+    }
   });
 });
 

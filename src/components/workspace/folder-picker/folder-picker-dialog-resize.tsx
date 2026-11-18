@@ -4,6 +4,7 @@ import { useRef } from "react";
 import { cn } from "@/lib/utils";
 import {
   rememberUntouchedAxes,
+  resizedAxes,
   resizeDialogByEdge,
   type DialogSize,
   type ResizeEdge,
@@ -111,6 +112,7 @@ function DialogResizeHandle({
             ),
             drag.start,
             drag.remembered,
+            resizedAxes(direction),
           ),
         );
       }}

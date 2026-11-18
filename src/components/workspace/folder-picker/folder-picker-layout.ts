@@ -117,20 +117,38 @@ export function maximizeDialogSize(viewport: Viewport): DialogSize {
   );
 }
 
+/** The axes a side or corner moves: a side moves one, a corner two. */
+export function resizedAxes(edge: ResizeEdge): {
+  width: boolean;
+  height: boolean;
+} {
+  const signs = edgeSigns[edge];
+  return { width: signs.x !== 0, height: signs.y !== 0 };
+}
+
 /**
  * The size a resize stores. A resize reports the size the dialog renders, which a small
  * window clamps, so an axis it did not visibly change (`next` equals `current`) keeps the
  * value remembered for it instead of the clamped one, and a later, larger window still
- * opens at that value.
+ * opens at that value. An axis the dragged side never touches (`touched`, from
+ * `resizedAxes`) always keeps it: the window can narrow mid-drag, and `next` then differs
+ * from `current` on that axis only because of the clamp.
  */
 export function rememberUntouchedAxes(
   next: DialogSize,
   current: DialogSize,
   remembered: DialogSize,
+  touched: { width: boolean; height: boolean } = { width: true, height: true },
 ): DialogSize {
   return {
-    width: next.width === current.width ? remembered.width : next.width,
-    height: next.height === current.height ? remembered.height : next.height,
+    width:
+      !touched.width || next.width === current.width
+        ? remembered.width
+        : next.width,
+    height:
+      !touched.height || next.height === current.height
+        ? remembered.height
+        : next.height,
   };
 }
 

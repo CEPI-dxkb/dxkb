@@ -1,5 +1,5 @@
 import { render } from "@testing-library/react";
-import { useState } from "react";
+import { useState, type ComponentType, type ReactNode } from "react";
 import type { ResourceFacets } from "@/hooks/views/use-resource-collection";
 import type { ResourceCollectionFacet } from "../../../resource-collection";
 import { CollectionToolbar } from "../../collection-toolbar";
@@ -37,6 +37,8 @@ interface ToolbarOptions {
   filters?: Filters;
   favorites?: string[];
   overrides?: Partial<CollectionToolbarProps>;
+  /** Wraps the toolbar, for a test of what it reads from context. */
+  wrapper?: ComponentType<{ children: ReactNode }>;
 }
 
 export function renderToolbar({
@@ -46,6 +48,7 @@ export function renderToolbar({
   filters: initialFilters = {},
   favorites: initialFavorites = ["genome_status", "host_name"],
   overrides = {},
+  wrapper,
 }: ToolbarOptions = {}) {
   const spies = {
     setFieldFavorite: vi.fn<(field: string, favorite: boolean) => void>(),
@@ -127,5 +130,5 @@ export function renderToolbar({
     );
   }
 
-  return { ...render(<Harness />), spies, state };
+  return { ...render(<Harness />, { wrapper }), spies, state };
 }

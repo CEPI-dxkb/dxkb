@@ -17,6 +17,8 @@ import { buildIncidenceIndex } from "@/lib/interactions/selection-focus";
 const sigmaStub = vi.hoisted(() => ({
   graph: null as Graph | null,
   refresh: vi.fn(),
+  scheduleRefresh: vi.fn(),
+  container: null as HTMLElement | null,
   animatedReset: vi.fn(() => Promise.resolve()),
   loadGraph: vi.fn(),
   registerEvents: vi.fn(),
@@ -51,6 +53,8 @@ vi.mock("@react-sigma/core", () => {
   const sigma = {
     getGraph: () => sigmaStub.graph,
     refresh: sigmaStub.refresh,
+    scheduleRefresh: sigmaStub.scheduleRefresh,
+    getContainer: () => sigmaStub.container,
     getCamera: () =>
       Object.assign(cameraStub, { animatedReset: sigmaStub.animatedReset }),
   };
@@ -130,9 +134,119 @@ beforeEach(() => {
   cameraStub.listeners.clear();
   cameraStub.getBoundedRatio.mockImplementation((ratio: number) => ratio);
   sigmaStub.graph = null;
+  sigmaStub.container = document.createElement("div");
   sigmaStub.loadGraph.mockImplementation((graph: Graph) => {
     loadedGraph().clear();
     loadedGraph().import(graph);
+  });
+});
+
+describe("SigmaCanvas container size", () => {
+  let observed: (() => void) | null = null;
+  const disconnect = vi.fn();
+
+  beforeEach(() => {
+    observed = null;
+    disconnect.mockClear();
+    vi.stubGlobal(
+      "ResizeObserver",
+      class {
+        constructor(callback: () => void) {
+          observed = callback;
+        }
+        observe = () => undefined;
+        disconnect = disconnect;
+      },
+    );
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  function sizeContainer(width: number, height: number) {
+    Object.defineProperty(sigmaStub.container, "offsetWidth", {
+      configurable: true,
+      value: width,
+    });
+    Object.defineProperty(sigmaStub.container, "offsetHeight", {
+      configurable: true,
+      value: height,
+    });
+  }
+
+  // Sigma's synchronous redraw: an empty partial graph with indexation skipped.
+  const redraw = {
+    partialGraph: { nodes: [], edges: [] },
+    skipIndexation: true,
+  };
+
+  it("redraws at once when its container changes size, without re-indexing the graph", () => {
+    render(canvas({}));
+    sizeContainer(400, 300);
+
+    observed?.();
+
+    // A ResizeObserver callback runs before paint, so the redraw must be synchronous (a scheduled
+    // refresh paints the old bitmap for a frame) and must not re-index every node and edge.
+    expect(sigmaStub.refresh).toHaveBeenCalledTimes(1);
+    expect(sigmaStub.refresh).toHaveBeenCalledWith(redraw);
+    expect(sigmaStub.scheduleRefresh).not.toHaveBeenCalled();
+  });
+
+  it("rebuilds the label grid once, after the size has settled", () => {
+    vi.useFakeTimers();
+    try {
+      render(canvas({}));
+      sizeContainer(400, 300);
+
+      observed?.();
+      vi.advanceTimersByTime(100);
+      observed?.();
+      vi.advanceTimersByTime(100);
+      // Two redraws, and the settle timer restarted by the second: 100 ms after it, still waiting.
+      expect(sigmaStub.refresh).toHaveBeenCalledTimes(2);
+      expect(sigmaStub.scheduleRefresh).not.toHaveBeenCalled();
+
+      vi.advanceTimersByTime(100);
+      expect(sigmaStub.scheduleRefresh).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("leaves a container with no size alone, because Sigma throws measuring one", () => {
+    render(canvas({}));
+    sizeContainer(0, 0);
+
+    observed?.();
+
+    expect(sigmaStub.refresh).not.toHaveBeenCalled();
+    expect(sigmaStub.scheduleRefresh).not.toHaveBeenCalled();
+  });
+
+  it("drops a pending label-grid rebuild when the canvas unmounts", () => {
+    vi.useFakeTimers();
+    try {
+      const { unmount } = render(canvas({}));
+      sizeContainer(400, 300);
+      observed?.();
+
+      unmount();
+      vi.advanceTimersByTime(1000);
+
+      expect(sigmaStub.scheduleRefresh).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("stops watching when the canvas unmounts", () => {
+    const { unmount } = render(canvas({}));
+
+    unmount();
+
+    expect(disconnect).toHaveBeenCalled();
   });
 });
 

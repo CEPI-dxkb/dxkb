@@ -4,6 +4,7 @@ import { workspacePanelIds } from "@/constants/workspace-panels";
 import { jobsPanelIds } from "@/constants/jobs-panels";
 import { workspaceSortFields } from "@/constants/workspace-sort";
 import { compareRegionDensities } from "@/lib/compare-region/density-options";
+import { graphColumnLimits } from "@/lib/interactions/graph-columns";
 import { tabTopMax, tabTopMin } from "@/lib/copilot/edge-tab";
 import {
   copilotSurfaces,
@@ -32,6 +33,13 @@ export const uiPreferenceSchemas: {
     [jobsPanelIds.details]: panelShare,
   }),
   resourceDetailPanelSize: z.number().min(10).max(60),
+  interactionsGraphColumns: z.strictObject({
+    list: z.number().min(graphColumnLimits.list.min).max(graphColumnLimits.list.max),
+    details: z
+      .number()
+      .min(graphColumnLimits.details.min)
+      .max(graphColumnLimits.details.max),
+  }),
   workspaceShowHiddenFiles: z.boolean(),
   workspaceSort: z.strictObject({
     field: z.enum(workspaceSortFields),

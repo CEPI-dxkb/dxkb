@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import {
   render,
   screen,
@@ -10,6 +11,7 @@ import { http, HttpResponse } from "msw";
 import { useState, type ComponentProps } from "react";
 
 import { InteractionsGraph } from "../interactions-graph";
+import { CollectionToolbarLayoutProvider } from "@/components/views/collection-filters/toolbar-layout";
 import {
   interactionsGraphRowLimit,
   useInteractions,
@@ -224,6 +226,27 @@ function detailsPane() {
 }
 
 stubMenuLayout();
+
+// The real columns are covered in graph-columns.test.tsx. In jsdom every pointer press lands at
+// (0, 0), where the panel library sees a drag on a handle and swallows it, so a click or a typed
+// key in these tests would never reach its target.
+vi.mock("../graph-columns", () => ({
+  GraphColumns: ({
+    list,
+    canvas,
+    details,
+  }: {
+    list: ReactNode;
+    canvas: ReactNode;
+    details: ReactNode;
+  }) => (
+    <div className="flex min-h-0 flex-1">
+      {list}
+      {canvas}
+      {details}
+    </div>
+  ),
+}));
 vi.stubGlobal("scrollTo", vi.fn());
 
 interface FacetRequest {
@@ -269,6 +292,27 @@ async function openFilters(user: ReturnType<typeof userEvent.setup>) {
   await user.click(screen.getByRole("button", { name: /^Filters/ }));
   return screen.findByRole("listbox", { name: "Filters" });
 }
+
+function isTruncationNotice(element: HTMLElement) {
+  return element.textContent.startsWith("Showing the first");
+}
+
+/**
+ * The truncation notice. A status carries no accessible name to match, and the "Laying out…" veil
+ * is a status too, so the notice is the one whose text opens with its title.
+ */
+function truncationNotice() {
+  const notice = screen.queryAllByRole("status").find(isTruncationNotice);
+  if (!notice) throw new Error("The truncation notice is not shown.");
+  return notice;
+}
+
+function hasTruncationNotice() {
+  return screen.queryAllByRole("status").some(isTruncationNotice);
+}
+
+const truncationReason =
+  "The graph can't draw them all. Narrow with search or Filters, or use the Table to see every interaction.";
 
 describe("InteractionsGraph query inputs", () => {
   it("passes the scope predicate and the shared keyword through untouched", () => {
@@ -354,7 +398,7 @@ describe("InteractionsGraph filters", () => {
       <GraphHarness rql={scope} keywordValue="" onKeywordChange={vi.fn()} />,
     );
     await user.click(screen.getByText("geneA"));
-    expect(screen.getByText("node-a")).toBeInTheDocument();
+    expect(detailsPane().getByRole("heading", { level: 2, name: "geneA" })).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Hub Protein" }));
     await user.click(
       screen.getByRole("button", { name: "Most Connected Hub" }),
@@ -605,25 +649,24 @@ describe("InteractionsGraph empty state", () => {
 });
 
 describe("InteractionsGraph row ceiling", () => {
-  it("says the graph is showing only the first page of an over-limit result", () => {
+  it("says the graph is showing only the first page of an over-limit result", async () => {
+    const user = userEvent.setup();
     resolved({ rows: graphRows, isTruncated: true });
 
     renderGraph(<GraphHarness rql="" keywordValue="" onKeywordChange={vi.fn()} />);
 
+    const notice = truncationNotice();
     expect(
-      screen.getByText(
+      within(notice).getByText(
         `Showing the first ${interactionsGraphRowLimit.toLocaleString()} interactions`,
       ),
     ).toBeInTheDocument();
-    const alert = screen.getByRole("alert");
-    expect(alert).toHaveTextContent("use the Table subview to see them all");
-    // Each control the banner sends the user to, named as it is labelled.
-    expect(alert).toHaveTextContent(/Filters menu/);
-    expect(alert).toHaveTextContent(/interaction type/i);
-    expect(alert).toHaveTextContent(/detection method/i);
-    expect(alert).toHaveTextContent(/evidence/i);
-    expect(alert).toHaveTextContent(/Focus on this protein/);
-    expect(alert).toHaveTextContent(/Show in Graph/);
+    // A capped result is not an error: the notice is a polite status, not an alert.
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    // The reason stays behind "Why?" and is not on the canvas until it is asked for.
+    expect(screen.queryByText(truncationReason)).not.toBeInTheDocument();
+    await user.click(within(notice).getByRole("button", { name: /Why/ }));
+    expect(await screen.findByText(truncationReason)).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: /^Filters/ }),
     ).toBeInTheDocument();
@@ -634,6 +677,8 @@ describe("InteractionsGraph row ceiling", () => {
 
     renderGraph(<GraphHarness rql="" keywordValue="" onKeywordChange={vi.fn()} />);
 
+    expect(hasTruncationNotice()).toBe(false);
+    expect(screen.queryByText(/Showing the first/)).not.toBeInTheDocument();
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
@@ -646,6 +691,26 @@ describe("InteractionsGraph row ceiling", () => {
     await openFilters(user);
 
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("keeps the notice beside a layout error, each in its own element", async () => {
+    resolved({ rows: graphRows, isTruncated: true });
+    vi.mocked(requestGraphLayout).mockRejectedValueOnce(
+      new Error("Graph.addEdge: source node not found"),
+    );
+
+    renderGraph(<GraphHarness rql="" keywordValue="" onKeywordChange={vi.fn()} />);
+
+    const alert = await screen.findByRole("alert");
+    const notice = truncationNotice();
+    expect(alert).toHaveTextContent("Could not lay out the graph");
+    expect(alert).toHaveTextContent("Graph.addEdge: source node not found");
+    expect(notice).not.toHaveTextContent("Could not lay out the graph");
+    expect(notice).not.toContainElement(alert);
+    expect(alert).not.toContainElement(notice);
+    // Each keeps its own control: the error its Retry, the notice its "Why?".
+    expect(within(alert).getByRole("button", { name: "Retry" })).toBeInTheDocument();
+    expect(within(notice).getByRole("button", { name: /Why/ })).toBeInTheDocument();
   });
 
   describe("total count", () => {
@@ -681,9 +746,8 @@ describe("InteractionsGraph row ceiling", () => {
           `Showing the first ${interactionsGraphRowLimit.toLocaleString()} interactions`,
         ),
       ).toBeInTheDocument();
-      const alert = screen.getByRole("alert");
       expect(
-        within(alert).queryByText(/^Showing the first [\d,]+ of /),
+        within(truncationNotice()).queryByText(/^Showing the first [\d,]+ of /),
       ).not.toBeInTheDocument();
     });
 
@@ -697,14 +761,14 @@ describe("InteractionsGraph row ceiling", () => {
 
       renderGraph(<GraphHarness rql="" keywordValue="" onKeywordChange={vi.fn()} />);
 
-      const alert = screen.getByRole("alert");
+      const notice = truncationNotice();
       expect(
-        within(alert).getByText(
+        within(notice).getByText(
           `Showing the first ${interactionsGraphRowLimit.toLocaleString()} interactions`,
         ),
       ).toBeInTheDocument();
       expect(
-        within(alert).queryByText(/^Showing the first [\d,]+ of /),
+        within(notice).queryByText(/^Showing the first [\d,]+ of /),
       ).not.toBeInTheDocument();
     });
 
@@ -800,7 +864,7 @@ describe("InteractionsGraph data changes", () => {
     );
 
     await user.click(screen.getByText("geneA"));
-    expect(screen.getByText("node-a")).toBeInTheDocument();
+    expect(detailsPane().getByRole("heading", { level: 2, name: "geneA" })).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Hub Protein" }));
     await user.click(
       screen.getByRole("button", { name: "Most Connected Hub" }),
@@ -917,7 +981,7 @@ describe("InteractionsGraph protein focus", () => {
       });
     });
     // The detail panel lists the node's BRC ID, which only a selection shows.
-    expect(detailsPane().getByText("node-a")).toBeInTheDocument();
+    expect(detailsPane().getByRole("heading", { level: 2, name: "geneA" })).toBeInTheDocument();
   });
 
   it("leaves the selection to its owner when the filters change the rql inside one scope", async () => {
@@ -954,7 +1018,7 @@ describe("InteractionsGraph protein focus", () => {
       />,
     );
 
-    expect(detailsPane().getByText("node-c")).toBeInTheDocument();
+    expect(detailsPane().getByRole("heading", { level: 2, name: "geneC" })).toBeInTheDocument();
     await settleBackgroundWork();
     expect(onSelectedChange).not.toHaveBeenCalled();
   });
@@ -1016,7 +1080,7 @@ describe("InteractionsGraph protein focus", () => {
 
     await user.click(screen.getByText("geneC"));
 
-    expect(screen.getByText("node-c")).toBeInTheDocument();
+    expect(detailsPane().getByRole("heading", { level: 2, name: "geneC" })).toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: "Focus on this protein" }),
     ).not.toBeInTheDocument();
@@ -1051,7 +1115,7 @@ describe("InteractionsGraph selection from the URL", () => {
     );
 
     expect(detailsPane().getByText("BRC ID")).toBeInTheDocument();
-    expect(detailsPane().getByText("node-b")).toBeInTheDocument();
+    expect(detailsPane().getByRole("heading", { level: 2, name: "geneB" })).toBeInTheDocument();
     expect(screen.getByTestId("sigma-canvas")).toHaveAttribute(
       "data-selection",
       "node-b",
@@ -1075,7 +1139,7 @@ describe("InteractionsGraph selection from the URL", () => {
     );
 
     expect(detailsPane().getByText("Interaction")).toBeInTheDocument();
-    expect(detailsPane().getByText("geneA")).toBeInTheDocument();
+    expect(detailsPane().getByText("Between geneA and geneB")).toBeInTheDocument();
     expect(screen.getByTestId("sigma-canvas")).toHaveAttribute(
       "data-selection",
       "edge-1",
@@ -1149,9 +1213,12 @@ describe("InteractionsGraph selection from the URL", () => {
       kind: "node",
       id: "node-a",
     });
-    expect(detailsPane().getByText("node-a")).toBeInTheDocument();
+    expect(detailsPane().getByRole("heading", { level: 2, name: "geneA" })).toBeInTheDocument();
 
-    await user.click(detailsPane().getByRole("button", { name: /geneB/ }));
+    // The partner's row in the Interactions list opens the interaction itself.
+    await user.click(
+      within(detailsPane().getByRole("list")).getByText("geneB"),
+    );
     expect(onSelectedChange).toHaveBeenLastCalledWith({
       kind: "edge",
       id: "edge-1",
@@ -1195,7 +1262,7 @@ describe("InteractionsGraph selection from the URL", () => {
       onSelectedChange,
     };
     const { rerender } = renderGraph(<GraphHarness {...props} />);
-    expect(detailsPane().getByText("node-a")).toBeInTheDocument();
+    expect(detailsPane().getByRole("heading", { level: 2, name: "geneA" })).toBeInTheDocument();
 
     // Same rql and keyword, a new `data` object with new row objects: the reset block runs.
     resolved({
@@ -1210,7 +1277,9 @@ describe("InteractionsGraph selection from the URL", () => {
     });
     rerender(<GraphHarness {...props} />);
 
-    expect(detailsPane().getByText("node-a")).toBeInTheDocument();
+    expect(
+      detailsPane().getByRole("heading", { level: 2, name: "geneA" }),
+    ).toBeInTheDocument();
     expect(detailsPane().getByText("Interactions (2)")).toBeInTheDocument();
     expect(screen.getByTestId("sigma-canvas")).toHaveAttribute(
       "data-selection",
@@ -1563,7 +1632,7 @@ describe("InteractionsGraph row selection", () => {
     expect(requests).toHaveLength(requestsBeforeSelection);
   });
 
-  it("draws no truncation banner for a selection", () => {
+  it("draws no truncation notice or alert for a selection", () => {
     resolved({ rows: graphRows, isTruncated: false });
     renderGraph(
       <GraphHarness
@@ -1581,6 +1650,26 @@ describe("InteractionsGraph row selection", () => {
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
+  it("draws no truncation notice for a selection, even one the row limit would cut", () => {
+    // A selection is read by id, so the graph never holds more than it was asked for.
+    resolved({ rows: graphRows, isTruncated: true });
+    vi.mocked(useInteractionsTotal).mockReturnValue({
+      data: interactionsGraphRowLimit + 1,
+    } as ReturnType<typeof useInteractionsTotal>);
+    renderGraph(
+      <GraphHarness
+        rql={scope}
+        keywordValue=""
+        onKeywordChange={vi.fn()}
+        selection={rowSelection()}
+      />,
+    );
+
+    expect(hasTruncationNotice()).toBe(false);
+    expect(screen.queryByText(/Showing the first/)).not.toBeInTheDocument();
+    expect(screen.getByText("Showing 3 selected interactions")).toBeInTheDocument();
+  });
+
   it("clears the stale node selection and presets when a new selection arrives", async () => {
     const user = userEvent.setup();
     const data = { rows: graphRows, isTruncated: false };
@@ -1594,7 +1683,7 @@ describe("InteractionsGraph row selection", () => {
       />,
     );
     await user.click(screen.getByText("geneA"));
-    expect(screen.getByText("node-a")).toBeInTheDocument();
+    expect(detailsPane().getByRole("heading", { level: 2, name: "geneA" })).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Hub Protein" }));
     await user.click(
       screen.getByRole("button", { name: "Most Connected Hub" }),
@@ -1635,10 +1724,94 @@ describe("InteractionsGraph row selection", () => {
     );
 
     // The detail panel lists the node's BRC ID, which only a selection shows.
-    expect(screen.getByText("node-a")).toBeInTheDocument();
+    expect(detailsPane().getByRole("heading", { level: 2, name: "geneA" })).toBeInTheDocument();
     expect(
       screen.queryByText("Select a node or edge to see details."),
     ).not.toBeInTheDocument();
+  });
+});
+
+describe("InteractionsGraph header layout", () => {
+  const scope = "eq(evidence,experimental)";
+  const selection = { ids: ["edge-1"], version: 1, onClear: vi.fn() };
+
+  /** The selection bar stands in for the toolbar, so it takes the toolbar's frame (its outer box). */
+  function selectionBarFrame() {
+    const frame = screen.getByRole("button", { name: "Show all" }).parentElement
+      ?.parentElement;
+    if (!frame) throw new Error("The selection bar has no frame.");
+    return frame;
+  }
+
+  function filterBarFrame() {
+    const frame = screen.getByRole("toolbar", { name: "Filters" }).parentElement;
+    if (!frame) throw new Error("The filter bar has no frame.");
+    return frame;
+  }
+
+  function renderBesideViewSwitch(props: Partial<GraphHarnessProps> = {}) {
+    return renderGraph(
+      <CollectionToolbarLayoutProvider value="besideViewSwitch">
+        <GraphHarness
+          rql={scope}
+          keywordValue=""
+          onKeywordChange={vi.fn()}
+          {...props}
+        />
+      </CollectionToolbarLayoutProvider>,
+    );
+  }
+
+  beforeEach(() => {
+    resolved({ rows: graphRows, isTruncated: false });
+  });
+
+  it("frames the filter bar as any collection toolbar by default", () => {
+    renderGraph(
+      <GraphHarness rql={scope} keywordValue="" onKeywordChange={vi.fn()} />,
+    );
+
+    expect(filterBarFrame().className).toBe("@container mb-1 shrink-0");
+  });
+
+  it("frames the selection bar as the toolbar by default", () => {
+    renderGraph(
+      <GraphHarness
+        rql={scope}
+        keywordValue=""
+        onKeywordChange={vi.fn()}
+        selection={selection}
+      />,
+    );
+
+    expect(selectionBarFrame().className).toBe("mb-1 shrink-0");
+  });
+
+  it("reserves the view switch's inset in the filter bar beside it", () => {
+    renderBesideViewSwitch();
+
+    expect(filterBarFrame()).toHaveClass("@container", "mb-2", "shrink-0");
+    expect(filterBarFrame()).not.toHaveClass("mb-1");
+    // The inset is a margin on the row inside the container, so the container keeps its width.
+    expect(filterBarFrame()).not.toHaveClass("ps-(--view-switch-inset)");
+    expect(
+      screen.getByRole("toolbar", { name: "Filters" }),
+    ).toHaveClass("ms-(--view-switch-inset)");
+  });
+
+  it("reserves the view switch's inset in the selection bar beside it", () => {
+    renderBesideViewSwitch({ selection });
+
+    expect(selectionBarFrame()).toHaveClass("mb-2", "shrink-0");
+    expect(selectionBarFrame()).not.toHaveClass("mb-1");
+    // Its chip row sits at the same inset as the filter bar's row.
+    expect(
+      screen.getByRole("button", { name: "Show all" }).parentElement,
+    ).toHaveClass("ms-(--view-switch-inset)");
+    // Its chip and button keep their own row inside the frame.
+    expect(
+      within(selectionBarFrame()).getByText("Showing 1 selected interaction"),
+    ).toBeInTheDocument();
   });
 });
 
@@ -1665,7 +1838,7 @@ describe("InteractionsGraph multi-selection", () => {
     expect(within(details).queryByText("Multiple selection")).toBeNull();
     expect(within(details).getByText("Interactions (1)")).toBeInTheDocument();
     // Both genes show "Interactions (1)", so the BRC ID is what says the click kept geneB only.
-    expect(within(details).getByText("node-b")).toBeInTheDocument();
+    expect(within(details).getByRole("heading", { level: 2, name: "geneB" })).toBeInTheDocument();
     expect(within(details).queryByText("node-a")).toBeNull();
   });
 
@@ -1697,7 +1870,7 @@ describe("InteractionsGraph multi-selection", () => {
       kind: "node",
       id: "node-a",
     });
-    expect(detailsPane().getByText("node-a")).toBeInTheDocument();
+    expect(detailsPane().getByRole("heading", { level: 2, name: "geneA" })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("option", { name: "geneB" }), {
       metaKey: true,
@@ -1742,24 +1915,26 @@ describe("InteractionsGraph multi-selection", () => {
     rerender(
       <InteractionsGraph {...props} selected={{ kind: "node", id: "node-a" }} />,
     );
-    expect(detailsPane().getByText("node-a")).toBeInTheDocument();
+    expect(detailsPane().getByRole("heading", { level: 2, name: "geneA" })).toBeInTheDocument();
 
     // The owner has not rendered this pick yet, so the pane shows it from the held copy.
     fireEvent.click(screen.getByRole("option", { name: "geneB" }));
-    expect(detailsPane().getByText("node-b")).toBeInTheDocument();
-    expect(detailsPane().queryByText("node-a")).toBeNull();
+    const heading = (name: string) =>
+      detailsPane().queryByRole("heading", { level: 2, name });
+    expect(heading("geneB")).toBeInTheDocument();
+    expect(heading("geneA")).toBeNull();
 
     rerender(
       <InteractionsGraph {...props} selected={{ kind: "node", id: "node-b" }} />,
     );
-    expect(detailsPane().getByText("node-b")).toBeInTheDocument();
+    expect(heading("geneB")).toBeInTheDocument();
 
     // A change nobody here made: with the held copy gone, the pane follows the prop again.
     rerender(
       <InteractionsGraph {...props} selected={{ kind: "node", id: "node-a" }} />,
     );
-    expect(detailsPane().getByText("node-a")).toBeInTheDocument();
-    expect(detailsPane().queryByText("node-b")).toBeNull();
+    expect(heading("geneA")).toBeInTheDocument();
+    expect(heading("geneB")).toBeNull();
   });
 
   it("writes a multi-item pick as no id and a toggle back to one item as its id", () => {

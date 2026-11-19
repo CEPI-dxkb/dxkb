@@ -6,6 +6,7 @@ import dynamic from "next/dynamic";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { useCollectionToolbarLayout } from "@/components/views/collection-filters/toolbar-layout";
 import { QueryRetryButton } from "@/components/views/query-retry-button";
 import { useRetryKeepingError } from "@/components/views/use-retry-keeping-error";
 import { useFacetCounts } from "@/hooks/views/use-facet-counts";
@@ -30,7 +31,7 @@ import {
   buildIncidenceIndex,
 } from "@/lib/interactions/selection-focus";
 import { useGraphLayout } from "@/lib/interactions/use-graph-layout";
-import { formatUserFacingErrorMessage } from "@/lib/utils";
+import { cn, formatUserFacingErrorMessage } from "@/lib/utils";
 import { interactionFacets } from "@/lib/views/child-resources";
 import type { CollectionState } from "@/lib/views/collection-state";
 import type {
@@ -50,8 +51,11 @@ import type {
 import { GraphFilterBar } from "./graph-filter-bar";
 import { GraphActionBar } from "./graph-action-bar";
 import { GraphLegend } from "./graph-legend";
+import { GraphColumns } from "./graph-columns";
+import { GraphControls } from "./graph-controls";
 import { GraphDetailPanel } from "./graph-detail-panel";
 import { GraphNodeList } from "./graph-node-list";
+import { GraphTruncationNotice } from "./graph-truncation-notice";
 import { InteractionsGraphSkeleton } from "./interactions-graph-skeleton";
 
 const SigmaCanvas = dynamic<GraphCanvasProps>(
@@ -76,7 +80,8 @@ const genericFacetErrorMessage =
 
 /**
  * Stands in for the keyword box and Filters menu while the Graph shows a Table selection: the
- * selection is read by id, so neither would change what is drawn.
+ * selection is read by id, so neither would change what is drawn. It takes the toolbar's frame,
+ * so it keeps the toolbar's place in the header row.
  */
 function GraphSelectionBar({
   count,
@@ -85,14 +90,17 @@ function GraphSelectionBar({
   count: number;
   onClear: () => void;
 }) {
+  const layout = useCollectionToolbarLayout();
   return (
-    <div className="mb-1 flex h-10 shrink-0 items-center gap-2 p-1">
-      <Badge variant="secondary">
-        {`Showing ${count.toLocaleString()} selected ${count === 1 ? "interaction" : "interactions"}`}
-      </Badge>
-      <Button variant="outline" size="xs" onClick={onClear}>
-        Show all
-      </Button>
+    <div className={layout.frame}>
+      <div className={cn("flex h-10 items-center gap-2 p-1", layout.rowInset)}>
+        <Badge variant="secondary">
+          {`Showing ${count.toLocaleString()} selected ${count === 1 ? "interaction" : "interactions"}`}
+        </Badge>
+        <Button variant="outline" size="xs" onClick={onClear}>
+          Show all
+        </Button>
+      </div>
     </div>
   );
 }
@@ -192,7 +200,7 @@ export function InteractionsGraph({
   const interactions = useInteractions(rql, keywordValue, rowSelection);
   const { data } = interactions;
   // Only a truncated scope result has a count worth a second read; a selection is never truncated.
-  // A count that is loading or failed leaves the banner title without it: the graph itself loaded.
+  // A count that is loading or failed leaves the notice title without it: the graph itself loaded.
   const interactionsTotal = useInteractionsTotal(
     rql,
     keywordValue,
@@ -414,6 +422,10 @@ export function InteractionsGraph({
       applySelectionClick(selection, { kind: "node", node }, additive),
     );
   }
+  // Shift-click in the list: the range is the whole selection, however many nodes it holds.
+  function selectNodes(range: GNode[]) {
+    applySelection({ nodes: range, edges: [] });
+  }
   function selectEdge(edge: GEdge) {
     applySelection({ nodes: [], edges: [edge] });
   }
@@ -442,125 +454,135 @@ export function InteractionsGraph({
     interactionsTotal.data > interactionsGraphRowLimit
       ? interactionsTotal.data
       : undefined;
+  // Defensive: `useInteractions` already reports a Show in Graph selection (read by id) as never
+  // truncated, so this guard only keeps the notice off if that ever changes.
+  const showTruncation = data.isTruncated && !rowSelection;
 
   return (
     <div className="flex h-full min-h-0 flex-col">
       {toolbar}
-      {data.isTruncated && (
-        <Alert className="mb-2">
-          <AlertTitle>
-            {totalShown === undefined
-              ? `Showing the first ${interactionsGraphRowLimit.toLocaleString()} interactions`
-              : `Showing the first ${interactionsGraphRowLimit.toLocaleString()} of ${totalShown.toLocaleString()} interactions`}
-          </AlertTitle>
-          <AlertDescription>
-            This search matches more interactions than the graph can draw.
-            Narrow it with the search box or the Filters menu (interaction
-            type, detection method, evidence, category), choose Focus on this
-            protein for a selected node, or select rows in the Table subview
-            and choose Show in Graph. Or use the Table subview to see them all.
-          </AlertDescription>
-        </Alert>
-      )}
-      <div className="flex min-h-0 flex-1">
-        <div className="flex w-60 shrink-0 flex-col rounded-tl-md border-x border-t bg-card">
-          <div className="border-b p-3">
-            <GraphLegend />
+      <GraphColumns
+        list={
+          <div className="flex h-full flex-col rounded-tl-md border-t border-l bg-card">
+            <div className="border-b p-3">
+              <GraphLegend />
+            </div>
+            <div className="min-h-0 flex-1">
+              <GraphNodeList
+                nodes={nodes}
+                selectedIds={selectedNodeIds}
+                incidence={incidenceIndex}
+                onSelectNode={selectNode}
+                onSelectRange={selectNodes}
+              />
+            </div>
           </div>
-          <div className="min-h-0 flex-1">
-            <GraphNodeList
-              nodes={nodes}
-              selectedIds={selectedNodeIds}
+        }
+        canvas={
+          <div className="flex h-full min-h-0 min-w-0 flex-col border-t">
+            <GraphActionBar
+              layout={layout}
+              activeSubgraph={activeSubgraph}
+              activeHub={activeHub}
+              onLayoutChange={handleLayoutChange}
+              onExport={() => {
+                canvasHandleRef.current?.exportPng();
+              }}
+              onSelectSubgraphs={handleSelectSubgraphs}
+              onSelectHubs={handleSelectHubs}
+              exportReady={
+                canvasReady &&
+                nodes.length > 0 &&
+                !layoutQuery.isFetching &&
+                layoutQuery.data !== undefined
+              }
+            />
+            {/* The WebGL canvases have no accessible role; keep this wrapper exposed for SigmaCanvas's labeled zoom controls. */}
+            <div className="relative min-h-0 flex-1">
+              {nodes.length === 0 ? (
+                <div className="flex size-full items-center justify-center text-sm text-muted-foreground">
+                  No Interactions
+                </div>
+              ) : (
+                <SigmaCanvas
+                  nodes={nodes}
+                  edges={edges}
+                  incidence={incidenceIndex}
+                  positions={layoutQuery.data ?? null}
+                  selection={selection}
+                  onSelect={applySelection}
+                  handleRef={canvasHandleRef}
+                  onReady={() => {
+                    setCanvasReady(true);
+                  }}
+                  camera={camera}
+                  onCameraChange={onCameraChange}
+                />
+              )}
+              {nodes.length > 0 && <GraphControls />}
+              {layoutQuery.isFetching && (
+                <div
+                  role="status"
+                  aria-live="polite"
+                  className="absolute inset-0 z-10 flex items-center justify-center bg-background/60 text-sm text-muted-foreground"
+                >
+                  Laying out…
+                </div>
+              )}
+              {/* One column over the canvas's top, so the notice and the layout error stack rather
+                 than overlap; above the "Laying out…" veil, and clicks pass through to the canvas
+                 except on their controls. */}
+              {(showTruncation || layoutQuery.isError) && (
+                <div className="pointer-events-none absolute inset-x-0 top-0 z-20 flex flex-col gap-1 p-2">
+                  {showTruncation && (
+                    <GraphTruncationNotice
+                      limit={interactionsGraphRowLimit}
+                      total={totalShown}
+                    />
+                  )}
+                  {layoutQuery.isError && (
+                    <div className="pointer-events-auto">
+                      <Alert variant="destructive">
+                        <AlertTitle>Could not lay out the graph</AlertTitle>
+                        <AlertDescription>
+                          <p>
+                            {formatUserFacingErrorMessage(
+                              layoutQuery.error,
+                              "Failed to lay out the graph.",
+                            )}
+                          </p>
+                          <QueryRetryButton
+                            retrying={layoutQuery.isFetching}
+                            onRetry={() => {
+                              void layoutQuery.refetch();
+                            }}
+                          />
+                        </AlertDescription>
+                      </Alert>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        }
+        details={
+          <div
+            className="h-full overflow-y-auto border-t bg-card"
+            tabIndex={0}
+            aria-label="Selection details"
+          >
+            <GraphDetailPanel
+              selection={selection}
+              incidentEdgesByNode={incidenceIndex}
+              nodesById={nodesById}
+              onSelectEdge={selectEdge}
               onSelectNode={selectNode}
+              onFocusNode={onFocusNode}
             />
           </div>
-        </div>
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col border-t">
-          <GraphActionBar
-            layout={layout}
-            activeSubgraph={activeSubgraph}
-            activeHub={activeHub}
-            onLayoutChange={handleLayoutChange}
-            onExport={() => {
-              canvasHandleRef.current?.exportPng();
-            }}
-            onSelectSubgraphs={handleSelectSubgraphs}
-            onSelectHubs={handleSelectHubs}
-            exportReady={
-              canvasReady &&
-              nodes.length > 0 &&
-              !layoutQuery.isFetching &&
-              layoutQuery.data !== undefined
-            }
-          />
-          {/* The WebGL canvases have no accessible role; keep this wrapper exposed for SigmaCanvas's labeled zoom controls. */}
-          <div className="relative min-h-0 flex-1">
-            {nodes.length === 0 ? (
-              <div className="flex size-full items-center justify-center text-sm text-muted-foreground">
-                No Interactions
-              </div>
-            ) : (
-              <SigmaCanvas
-                nodes={nodes}
-                edges={edges}
-                incidence={incidenceIndex}
-                positions={layoutQuery.data ?? null}
-                selection={selection}
-                onSelect={applySelection}
-                handleRef={canvasHandleRef}
-                onReady={() => {
-                  setCanvasReady(true);
-                }}
-                camera={camera}
-                onCameraChange={onCameraChange}
-              />
-            )}
-            {layoutQuery.isFetching && (
-              <div
-                role="status"
-                aria-live="polite"
-                className="absolute inset-0 z-10 flex items-center justify-center bg-background/60 text-sm text-muted-foreground"
-              >
-                Laying out…
-              </div>
-            )}
-            {layoutQuery.isError && (
-              <div className="absolute inset-x-0 top-0 z-10 p-2">
-                <Alert variant="destructive">
-                  <AlertTitle>Could not lay out the graph</AlertTitle>
-                  <AlertDescription>
-                    <p>
-                      {formatUserFacingErrorMessage(
-                        layoutQuery.error,
-                        "Failed to lay out the graph.",
-                      )}
-                    </p>
-                    <QueryRetryButton
-                      retrying={layoutQuery.isFetching}
-                      onRetry={() => {
-                        void layoutQuery.refetch();
-                      }}
-                    />
-                  </AlertDescription>
-                </Alert>
-              </div>
-            )}
-          </div>
-        </div>
-        <div
-          className="w-64 shrink-0 overflow-y-auto border-t border-l bg-card"
-          tabIndex={0}
-          aria-label="Selection details"
-        >
-          <GraphDetailPanel
-            selection={selection}
-            incidentEdgesByNode={incidenceIndex}
-            nodesById={nodesById}
-            onSelectEdge={selectEdge}
-            onFocusNode={onFocusNode}
-          />
-        </div>
-      </div>
+        }
+      />
     </div>
   );
 }

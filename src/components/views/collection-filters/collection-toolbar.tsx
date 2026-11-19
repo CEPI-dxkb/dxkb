@@ -25,6 +25,7 @@ import {
   useFiltersMenuState,
   type FacetGroup,
 } from "./filters-menu";
+import { useCollectionToolbarLayout } from "./toolbar-layout";
 import type { CollectionToolbarProps } from "./types";
 
 export function CollectionToolbar(props: CollectionToolbarProps) {
@@ -55,6 +56,7 @@ export function CollectionToolbar(props: CollectionToolbarProps) {
     setColumns,
     resetColumns,
   } = props;
+  const layout = useCollectionToolbarLayout();
 
   const definedFields = definitions.map((definition) => definition.field);
   const isDefined = (field: string) => definedFields.includes(field);
@@ -122,16 +124,20 @@ export function CollectionToolbar(props: CollectionToolbarProps) {
     facetsError && `Could not load filter values: ${facetsError}`;
 
   return (
-    <div className="@container mb-1 shrink-0">
+    <div className={cn("@container", layout.frame)}>
       <div
         role="toolbar"
         aria-label="Filters"
-        className="relative flex flex-wrap items-center gap-2 p-1 @2xl:h-10 @2xl:flex-nowrap @2xl:py-0"
+        className={cn(
+          "relative flex flex-wrap items-center gap-2 p-1 @2xl:h-10 @2xl:flex-nowrap @2xl:py-0",
+          layout.rowInset,
+        )}
       >
         <KeywordBox
           value={keyword}
           onChange={onKeywordChange}
           placeholder={keywordPlaceholder}
+          widthClassName={layout.keywordWidth}
         />
 
         {definitions.length > 0 && (
@@ -295,16 +301,20 @@ function KeywordBox({
   value,
   onChange,
   placeholder = "Search keywords…",
+  widthClassName,
 }: {
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
+  /** The `@2xl` widths of the toolbar's layout (`toolbar-layout.tsx`); a typed keyword holds `w-56`. */
+  widthClassName: string;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   return (
     <div
       className={cn(
-        "flex h-8 w-full shrink-0 items-center gap-1.5 rounded-md border bg-background pr-1 pl-2 transition-[width] duration-100 focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/50 motion-reduce:transition-none @2xl:w-44 @2xl:focus-within:w-64",
+        "flex h-8 w-full shrink-0 items-center gap-1.5 rounded-md border bg-background pr-1 pl-2 transition-[width] duration-100 focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/50 motion-reduce:transition-none",
+        widthClassName,
         value ? "border-primary/60 @2xl:w-56" : "border-input",
       )}
     >

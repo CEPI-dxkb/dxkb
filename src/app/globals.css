@@ -473,6 +473,20 @@
   contain-intrinsic-size: auto 2rem;
 }
 
+/*
+ * The Graph protein list's rank and interaction count are drawn from data attributes rather than
+ * written as text, so a row's visible text is its name alone: an accessible name must contain the
+ * visible text (WCAG 2.5.3, axe's label-content-name-mismatch), and the name is the protein's
+ * label. The count is also in the row's description (its title).
+ */
+[data-slot="graph-node-rank"]::before {
+  content: attr(data-rank);
+}
+
+[data-slot="graph-node-degree"]::before {
+  content: attr(data-degree);
+}
+
 .scrollbar-themed {
   scrollbar-width: thin;
   scrollbar-color: color-mix(in oklch, var(--muted-foreground) 25%, transparent)

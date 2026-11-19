@@ -408,6 +408,25 @@ describe("GraphNodeList ranking", () => {
       .map((option) => option.getAttribute("aria-label"));
   }
 
+  // The rank and count are drawn from data attributes (see globals.css), not written as text.
+  function rankAndCount(name: string): [string | undefined, string | undefined] {
+    const row = screen.getByRole("option", { name });
+    return [
+      row.querySelector<HTMLElement>('[data-slot="graph-node-rank"]')?.dataset
+        .rank,
+      row.querySelector<HTMLElement>('[data-slot="graph-node-degree"]')?.dataset
+        .degree,
+    ];
+  }
+
+  it("keeps a row's visible text to its name, so the name contains it", () => {
+    renderRanked();
+
+    const row = screen.getByRole("option", { name: "hub" });
+    expect(row).toHaveTextContent(/^hub$/);
+    expect(row).toHaveAccessibleName("hub");
+  });
+
   it("lists the best-connected protein first and breaks ties by name", () => {
     renderRanked();
 
@@ -417,10 +436,8 @@ describe("GraphNodeList ranking", () => {
   it("shows each row's rank and interaction count", () => {
     renderRanked();
 
-    const hubRow = screen.getByRole("option", { name: "hub" });
-    expect(hubRow).toHaveTextContent(/^1hub3/);
-    const gammaRow = screen.getByRole("option", { name: "gamma" });
-    expect(gammaRow).toHaveTextContent(/^4gamma1/);
+    expect(rankAndCount("hub")).toEqual(["1", "3"]);
+    expect(rankAndCount("gamma")).toEqual(["4", "1"]);
   });
 
   it("sizes each bar by interactions and splits it into verified and predicted", () => {
@@ -508,12 +525,8 @@ describe("GraphNodeList ranking", () => {
     await user.type(screen.getByPlaceholderText("Search proteins…"), "synthase");
 
     expect(optionNames()).toEqual(["alpha", "delta"]);
-    expect(screen.getByRole("option", { name: "alpha" })).toHaveTextContent(
-      /^2alpha2/,
-    );
-    expect(screen.getByRole("option", { name: "delta" })).toHaveTextContent(
-      /^3delta2/,
-    );
+    expect(rankAndCount("alpha")).toEqual(["2", "2"]);
+    expect(rankAndCount("delta")).toEqual(["3", "2"]);
   });
 
   it("draws the selected protein in the selection colour wherever it ranks", () => {

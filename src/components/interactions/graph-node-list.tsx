@@ -209,14 +209,24 @@ export function GraphNodeList({
                   style={{ "--predicted-color": colors.dim } as CSSProperties}
                 />
               </span>
-              <span className="relative w-5 shrink-0 text-right text-2xs text-muted-foreground tabular-nums">
-                {rank}
-              </span>
+              {/* The rank and the count are drawn from their data attributes (globals.css), so the row's
+                  visible text is its name alone: an accessible name must contain the visible text
+                  (WCAG 2.5.3), and the name is the protein's label. The count is in the row's
+                  description, its title. */}
+              <span
+                aria-hidden
+                data-slot="graph-node-rank"
+                data-rank={rank}
+                className="relative w-5 shrink-0 text-right text-2xs text-muted-foreground tabular-nums"
+              />
               <GraphNodeDot node={node} selected={isSelected} />
               <span className="relative min-w-0 flex-1 truncate">{label}</span>
-              <span className="relative shrink-0 text-xs tabular-nums">
-                {degree}
-              </span>
+              <span
+                aria-hidden
+                data-slot="graph-node-degree"
+                data-degree={degree}
+                className="relative shrink-0 text-xs tabular-nums"
+              />
             </CommandItem>
           );
         })}

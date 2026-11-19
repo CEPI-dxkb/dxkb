@@ -5,6 +5,7 @@ import {
   cameraUrlView,
   defaultInteractionsGraphUrlState,
   interactionsGraphUrlParams,
+  liveTabScope,
   parseInteractionsGraphUrlState,
   writeInteractionsGraphUrlState,
 } from "../url-state";
@@ -254,5 +255,16 @@ describe("Interactions Table/Graph URL state", () => {
     const params = new URLSearchParams();
     applyInteractionsGraphUrlState(params, { camera });
     expect(parseInteractionsGraphUrlState(params).camera).toEqual(camera);
+  });
+
+  it("names the live page and tab, and nothing else of the query", () => {
+    window.history.replaceState(
+      null,
+      "",
+      "/taxonomy/234?tab=interactions&interactionsGraph.q=groEL#x",
+    );
+    expect(liveTabScope()).toBe("/taxonomy/234?tab=interactions");
+    window.history.replaceState(null, "", "/feature/fig%7C1.1.peg.1");
+    expect(liveTabScope()).toBe("/feature/fig%7C1.1.peg.1?tab=");
   });
 });

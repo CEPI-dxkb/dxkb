@@ -36,8 +36,7 @@ import {
   Contrast,
   Mail,
   ShieldUser,
-  LogIn,
-  LogOut,
+  ShieldX,
 } from "lucide-react";
 
 export function UserAvatarDropdown() {
@@ -148,7 +147,7 @@ export function UserAvatarDropdown() {
                         setSuDialogOpen(true);
                       }}
                     >
-                      <LogIn className="size-4 text-foreground" />
+                      <ShieldUser className="size-4 text-foreground" />
                       SU Login
                     </DropdownMenuItem>
                   </>
@@ -162,7 +161,7 @@ export function UserAvatarDropdown() {
                         void exitImpersonation();
                       }}
                     >
-                      <LogOut className="size-4 text-foreground" />
+                      <ShieldX className="size-4 text-foreground" />
                       Exit SU
                     </DropdownMenuItem>
                   </>

@@ -17,6 +17,8 @@ import { surveillanceCollectionProfile } from "@/lib/surveillance-view/profile";
 import type { useResourceCollection as useResourceCollectionHook } from "@/hooks/views/use-resource-collection";
 import type { DownloadRequest } from "@/lib/data-api/downloads";
 import { maxSelectedRows } from "@/lib/data-api/validation";
+import { interactionsGraphRowLimit } from "@/lib/interactions/use-interactions";
+import { selectionGraphMaxRows } from "@/lib/views/collection-selection";
 import {
   copyAndServicesSelectionActionIds,
   featureSelectionActionIds,
@@ -1384,6 +1386,121 @@ describe.each(actionMatrixFixtures)(
     );
   },
 );
+
+describe("useResourceCollectionActions SHOW IN GRAPH limits", () => {
+  const interactionRows = [
+    { id: "ppi-1", feature_id_a: "A1", feature_id_b: "B1" },
+    { id: "ppi-2", feature_id_a: "A2", feature_id_b: "B2" },
+  ];
+  const services = noServicesReason("Interaction", "Interactions", 2);
+
+  function renderInteractions(
+    overrides: Partial<ReturnType<typeof useResourceCollectionHook>>,
+  ) {
+    useResourceCollection.mockReturnValue({
+      ...collectionResult(),
+      activeId: "ppi-1",
+      detail: interactionRows[0],
+      rows: interactionRows,
+      sorting: [],
+      ...overrides,
+    });
+    render(
+      <ResourceCollection
+        profile={{
+          resource: "ppi",
+          label: "Interactions",
+          idField: "id",
+          columns: [
+            { id: "feature_id_a", label: "Interactor A" },
+            { id: "feature_id_b", label: "Interactor B" },
+          ],
+        }}
+        repository={repository()}
+        state={{ filters: {}, page: 1, sort: "id:asc" }}
+        onStateChange={vi.fn()}
+        onShowInGraph={vi.fn()}
+      />,
+    );
+  }
+
+  it("is the Graph's own row bound", () => {
+    expect(selectionGraphMaxRows).toBe(interactionsGraphRowLimit);
+  });
+
+  it("adds no reason for specific rows within the bound", () => {
+    renderInteractions({
+      selection: { "ppi-1": true, "ppi-2": true },
+      selectedIds: ["ppi-1", "ppi-2"],
+      total: 2,
+    });
+
+    expect(actionBarProps.disabledActions).toStrictEqual({ services });
+    expect(
+      screen.getByRole("button", { name: "Show in Graph action" }),
+    ).toBeEnabled();
+  });
+
+  it("asks for specific rows when every matching row is selected", () => {
+    renderInteractions({
+      selection: {},
+      selectedIds: [],
+      isAllPagesSelected: true,
+      total: 7,
+    });
+
+    expect(actionBarProps.disabledActions).toStrictEqual({
+      services: noServicesReason("Interaction", "Interactions", 7),
+      showInGraph: "Select specific rows (not all pages) to show them in the graph.",
+    });
+    expect(
+      screen.getByRole("button", { name: "Show in Graph action" }),
+    ).toBeDisabled();
+  });
+
+  it("asks for a narrower selection above the Graph's row bound", () => {
+    const selectedIds = Array.from(
+      { length: selectionGraphMaxRows + 1 },
+      (_, index) => `ppi-${String(index)}`,
+    );
+    renderInteractions({
+      selection: Object.fromEntries(
+        selectedIds.map((id) => [id, true as const]),
+      ),
+      selectedIds,
+      total: selectedIds.length,
+    });
+
+    expect(actionBarProps.disabledActions).toStrictEqual({
+      services: noServicesReason(
+        "Interaction",
+        "Interactions",
+        selectedIds.length,
+      ),
+      showInGraph:
+        "Show in Graph supports at most 5,000 interactions. Narrow the selection.",
+    });
+    expect(
+      screen.getByRole("button", { name: "Show in Graph action" }),
+    ).toBeDisabled();
+  });
+
+  it("keeps a selection exactly at the bound enabled", () => {
+    const selectedIds = Array.from(
+      { length: selectionGraphMaxRows },
+      (_, index) => `ppi-${String(index)}`,
+    );
+    renderInteractions({
+      selection: Object.fromEntries(
+        selectedIds.map((id) => [id, true as const]),
+      ),
+      selectedIds,
+      total: selectedIds.length,
+    });
+
+    expect(actionBarProps.disabledActions).not.toHaveProperty("showInGraph");
+  });
+});
 
 describe("useResourceCollectionActions error integration", () => {
   it("returns an owned action's failure to the collection shell and clears it on the next run", async () => {

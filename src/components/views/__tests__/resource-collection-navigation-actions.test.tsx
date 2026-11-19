@@ -358,6 +358,95 @@ describe("ResourceCollection resource-navigation actions", () => {
     expect(screen.getByRole("button", { name: "services" })).toBeDisabled();
   });
 
+  describe("Interaction SHOW IN GRAPH", () => {
+    const interactionRows = [
+      { id: "ppi-1", feature_id_a: "feature-a1", feature_id_b: "feature-b1" },
+      { id: "ppi-2", feature_id_a: "feature-a2", feature_id_b: "feature-a1" },
+    ];
+    const interactionProfile = {
+      resource: "ppi" as const,
+      label: "Interactions",
+      idField: "id",
+      columns: [
+        { id: "feature_id_a", label: "Interactor A" },
+        { id: "feature_id_b", label: "Interactor B" },
+      ],
+    };
+
+    beforeEach(() => {
+      useResourceCollection.mockReturnValue({
+        ...collectionResult(),
+        activeId: "ppi-1",
+        detail: interactionRows[0],
+        rows: interactionRows,
+        selection: { "ppi-1": true, "ppi-2": true },
+        selectedIds: ["ppi-1", "ppi-2"],
+      });
+    });
+
+    it("hands the selected interaction ids to onShowInGraph and clears the action error", async () => {
+      const user = userEvent.setup();
+      const selected = vi.fn(() =>
+        Promise.reject(new Error("Data service is unavailable (503)")),
+      );
+      const onShowInGraph = vi.fn();
+
+      render(
+        <ResourceCollection
+          profile={interactionProfile}
+          repository={{ selected } as unknown as DataRepository}
+          state={{ filters: {}, page: 1, sort: "id:asc" }}
+          onStateChange={vi.fn()}
+          onShowInGraph={onShowInGraph}
+        />,
+      );
+
+      expect(actionBarProps).toMatchObject({
+        searchType: "ppi",
+        enabledActions: [
+          "copyRows",
+          "services",
+          "ppiFeatures",
+          "group",
+          "showInGraph",
+        ],
+      });
+
+      // A failed action leaves its error up; Show in Graph starts afresh.
+      await user.click(
+        screen.getByRole("button", { name: "Interaction features action" }),
+      );
+      expect(
+        await screen.findByText("Data service is unavailable (503)"),
+      ).toBeVisible();
+
+      await user.click(
+        screen.getByRole("button", { name: "Show in Graph action" }),
+      );
+      expect(onShowInGraph).toHaveBeenCalledExactlyOnceWith(["ppi-1", "ppi-2"]);
+      expect(
+        screen.queryByText("Data service is unavailable (503)"),
+      ).not.toBeInTheDocument();
+      expect(selected).toHaveBeenCalledTimes(1);
+    });
+
+    it("does not enable SHOW IN GRAPH without onShowInGraph", () => {
+      render(
+        <ResourceCollection
+          profile={interactionProfile}
+          repository={repository()}
+          state={{ filters: {}, page: 1, sort: "id:asc" }}
+          onStateChange={vi.fn()}
+        />,
+      );
+
+      expect(actionBarProps.enabledActions).not.toContain("showInGraph");
+      expect(
+        screen.queryByRole("button", { name: "Show in Graph action" }),
+      ).not.toBeInTheDocument();
+    });
+  });
+
   it("opens the selected Surveillance member with its test type", async () => {
     const user = userEvent.setup();
     const open = vi.fn(() => ({ opener: window }));

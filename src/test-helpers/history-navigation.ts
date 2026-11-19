@@ -1,4 +1,4 @@
-/** `next/navigation` mock for History-API URL state, which jsdom does not keep in step with `useSearchParams`; call inside the `vi.mock` factory and reset the address in `beforeEach`. */
+/** `next/navigation` mock for History-API URL state, which jsdom does not keep in step with `useSearchParams` (pushes, replaces and Back/Forward re-render subscribers); call inside the `vi.mock` factory and reset the address in `beforeEach`. */
 export async function historyNavigationMock({
   pathname = "/",
 }: { pathname?: string } = {}) {
@@ -17,10 +17,13 @@ export async function historyNavigationMock({
       });
     };
   }
+  // Back/Forward changes the address too, and Next re-renders on it.
   const subscribe = (listener: () => void) => {
     listeners.add(listener);
+    window.addEventListener("popstate", listener);
     return () => {
       listeners.delete(listener);
+      window.removeEventListener("popstate", listener);
     };
   };
   return {

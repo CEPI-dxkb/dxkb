@@ -42,11 +42,14 @@ function ResourceChildCollection({
   resource,
   rql,
   guideUrl,
+  profile,
   keywordMode,
 }: {
   resource: string;
   rql: string;
   guideUrl?: string;
+  /** A supplied profile's `guideUrl` wins over the prop (the Interactions Table sets it there). */
+  profile?: { guideUrl?: string };
   keywordMode?: "server" | "loaded";
 }) {
   return (
@@ -54,7 +57,7 @@ function ResourceChildCollection({
       data-testid={resource === "bioset" ? "resource-child-collection" : "taxon-data-panel"}
       data-resource={resource}
       data-q={rql}
-      data-guide={guideUrl}
+      data-guide={profile?.guideUrl ?? guideUrl}
       data-keyword-mode={keywordMode}
     />
   );
@@ -558,12 +561,10 @@ describe("makeInteractionsView", () => {
     const { getByTestId } = render(<InteractionsView />);
     const panel = getByTestId("taxon-data-panel");
     expect(panel).toHaveAttribute("data-resource", "ppi");
-    const q = panel.getAttribute("data-q") ?? "";
-    expect(q).toContain("eq(genome_id_a,*)");
-    expect(q).toContain(
-      "genome(to(genome_id_a),and(eq(taxon_lineage_ids,1234),ne(genome_status,Deprecated)))",
+    // Evidence is the Interactions tab's facet, not part of the scope.
+    expect(panel.getAttribute("data-q")).toBe(
+      "and(eq(genome_id_a,*),genome(to(genome_id_a),and(eq(taxon_lineage_ids,1234),ne(genome_status,Deprecated))))",
     );
-    expect(q).toContain("eq(evidence,experimental)");
   });
 
   it("passes the interactions guide URL", () => {

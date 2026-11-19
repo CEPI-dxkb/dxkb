@@ -240,3 +240,78 @@ describe("child collection default filters", () => {
     ).toBe("tab=features");
   });
 });
+
+describe("child collection extra filters", () => {
+  const withExtra = childCollectionOptions(
+    [{ id: "id" }],
+    [{ field: "interaction_type" }],
+    "id:asc",
+    undefined,
+    ["interactor"],
+  );
+  const encodedId = "fig%7C224914.16.peg.635";
+
+  it("adds them to the friendly filters without making them facets", () => {
+    expect(withExtra.friendlyFilters).toStrictEqual([
+      "interaction_type",
+      "interactor",
+    ]);
+    // `filterValues` stays facet-only, so an extra filter takes any value.
+    expect(withExtra.filterValues).not.toHaveProperty("interactor");
+  });
+
+  it("changes nothing for a table that names none", () => {
+    expect(
+      childCollectionOptions([{ id: "id" }], [{ field: "a" }], "id:asc")
+        .friendlyFilters,
+    ).toStrictEqual(["a"]);
+    expect(
+      childCollectionOptions([{ id: "id" }], undefined, "id:asc", undefined, [
+        "interactor",
+      ]).friendlyFilters,
+    ).toStrictEqual(["interactor"]);
+  });
+
+  it("parses a prefixed extra filter, ids with a pipe included", () => {
+    const state = parseChildCollectionState(
+      { "interactions.interactor": "fig|224914.16.peg.635" },
+      "interactions",
+      withExtra,
+    );
+    expect(state.filters).toStrictEqual({
+      interactor: ["fig|224914.16.peg.635"],
+    });
+  });
+
+  it("writes it back under its prefix", () => {
+    const params = replaceChildCollectionSearchParams(
+      { tab: "interactions" },
+      "interactions",
+      {
+        filters: { interactor: ["fig|224914.16.peg.635"] },
+        page: 1,
+        sort: "id:asc",
+      },
+      withExtra,
+    );
+    expect(params.get("interactions.interactor")).toBe("fig|224914.16.peg.635");
+    expect(params.toString()).toBe(
+      `tab=interactions&interactions.interactor=${encodedId}`,
+    );
+  });
+
+  it("drops the same param on replace when the options name no extra filter", () => {
+    const plain = childCollectionOptions(
+      [{ id: "id" }],
+      [{ field: "interaction_type" }],
+      "id:asc",
+    );
+    const params = replaceChildCollectionSearchParams(
+      { tab: "interactions", "interactions.interactor": "fig|1.1" },
+      "interactions",
+      { filters: { interactor: ["fig|1.1"] }, page: 1, sort: "id:asc" },
+      plain,
+    );
+    expect(params.toString()).toBe("tab=interactions");
+  });
+});

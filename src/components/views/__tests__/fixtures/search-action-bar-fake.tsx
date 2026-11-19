@@ -22,6 +22,7 @@ const fakeLabelByConfigKey: Record<string, string> = {
   genome: "Genome action",
   genomes: "Genomes action",
   ppiFeatures: "Interaction features action",
+  showInGraph: "Show in Graph action",
   structure: "Structure action",
   surveillance: "Surveillance action",
 };
@@ -52,6 +53,7 @@ export function createSearchActionBarFake(
           searchType: props.searchType as string,
           selectedCount: props.selectedCount as number,
           hasGuideUrl: Boolean(props.guideUrl),
+          enabledActions: enablement.enabledActions,
         }).map((action) => (
           <button
             key={action.configKey ?? action.id}

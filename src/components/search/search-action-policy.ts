@@ -9,6 +9,7 @@ import {
   Map,
   Eye,
   List,
+  Network,
   PanelsTopLeft,
   type LucideIcon,
 } from "lucide-react";
@@ -37,6 +38,7 @@ export type SearchActionId =
   | "taxonOverview"
   | "features"
   | "ppiFeatures"
+  | "showInGraph"
   | "experiment"
   | "biosets"
   | "browser";
@@ -56,6 +58,12 @@ export interface SearchActionConfig {
   requiresSelection?: boolean;
   maxSelection?: number;
   disabledWithTooltip?: string;
+  /**
+   * Shown only where the consumer lists it in `enabledActions`: an action only
+   * some tables of a search type can run (Show in Graph needs a Graph beside the
+   * table), so the rest neither show it nor need to hide it.
+   */
+  optIn?: boolean;
 }
 
 export const notReady = "Coming soon, still under construction";
@@ -194,6 +202,14 @@ export const searchActionConfig: SearchActionConfig[] = [
     disabledWithTooltip: notReady,
   },
   {
+    id: "showInGraph",
+    label: "SHOW IN\nGRAPH",
+    icon: Network,
+    validSearchTypes: ["ppi"],
+    requiresSelection: true,
+    optIn: true,
+  },
+  {
     id: "fasta",
     label: "FASTA",
     icon: Binary,
@@ -308,6 +324,8 @@ export interface SearchActionVisibility {
   searchType: string;
   selectedCount: number;
   hasGuideUrl: boolean;
+  /** Admits the `optIn` actions it lists; nothing else here reads it. */
+  enabledActions?: readonly SearchActionId[];
 }
 
 /** An action outside this list is absent from the DOM, not present-and-disabled. */
@@ -315,12 +333,16 @@ export function visibleSearchActions({
   searchType,
   selectedCount,
   hasGuideUrl,
+  enabledActions,
 }: SearchActionVisibility): SearchActionConfig[] {
   return searchActionConfig.filter((action) => {
     if (
       action.validSearchTypes !== "*" &&
       !action.validSearchTypes.includes(searchType)
     ) {
+      return false;
+    }
+    if (action.optIn && !enabledActions?.includes(action.id)) {
       return false;
     }
     if (action.id === "guide" && !hasGuideUrl) {

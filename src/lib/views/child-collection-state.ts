@@ -126,11 +126,19 @@ export function replaceChildCollectionSearchParams(
   return result;
 }
 
+/**
+ * `extraFilters` are URL filters that are not facets (the Interactions
+ * `interactor` focus): they parse and serialize like a facet's, but `filterValues`
+ * stays facet-only and nothing counts them. The Table and any other writer of the
+ * same `<urlKey>.` params build their options from one expression, or a write by
+ * one drops the other's param.
+ */
 export function childCollectionOptions(
   columns: readonly { id: string; sortable?: boolean }[],
   facets: readonly { field: string }[] | undefined,
   defaultSort: string,
   defaultFilters?: CollectionStateOptions["defaultFilters"],
+  extraFilters: readonly string[] = [],
 ): CollectionStateOptions {
   const sortable = columns
     .filter((column) => column.sortable !== false)
@@ -144,7 +152,10 @@ export function childCollectionOptions(
         ...sortable.flatMap((id) => [`${id}:asc`, `${id}:desc`]),
       ]),
     ],
-    friendlyFilters: facets?.map((facet) => facet.field) ?? [],
+    friendlyFilters: [
+      ...(facets?.map((facet) => facet.field) ?? []),
+      ...extraFilters,
+    ],
     filterValues: booleanFilterValues(facets?.map((facet) => facet.field) ?? []),
     defaultFilters,
   };

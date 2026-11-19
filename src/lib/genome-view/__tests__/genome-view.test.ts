@@ -300,7 +300,7 @@ describe("Genome view contracts", () => {
       "and(eq(genome_id,*),genome(and(eq(taxon_lineage_ids,561),ne(genome_status,Deprecated))))",
     );
     expect(taxonomyInteractionsRql("eq(taxon_lineage_ids,561)")).toBe(
-      "and(eq(genome_id_a,*),genome(to(genome_id_a),and(eq(taxon_lineage_ids,561),ne(genome_status,Deprecated))),eq(evidence,experimental))",
+      "and(eq(genome_id_a,*),genome(to(genome_id_a),and(eq(taxon_lineage_ids,561),ne(genome_status,Deprecated))))",
     );
   });
 

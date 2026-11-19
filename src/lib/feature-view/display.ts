@@ -13,7 +13,7 @@ export function featureDisplayName(feature: FeatureViewRecord): string {
 /** The PATRIC annotation pipeline wrote `"undefined " + feature_type` (and a typo, `"undefind "`) into `product` for millions of non-CDS features, e.g. "undefined gap". */
 const placeholderProduct = /^undefine?d(?=\s|$)\s*(.*?)\s*$/i;
 
-/** The feature keys of the INSDC feature table (plus PATRIC's "NonStdRes"). The pipeline's placeholder suffix is the GenBank key it read, which Solr's `feature_type` does not always repeat: "undefined mRNA" and "undefined ncRNA" rows are `misc_RNA` there. Keys are compared lower-cased. */
+/** INSDC feature keys, current ones and the deprecated ones legacy GenBank data still carries (plus PATRIC's "NonStdRes"). The pipeline's placeholder suffix is the GenBank key it read, which Solr's `feature_type` does not always repeat: "undefined mRNA" and "undefined ncRNA" rows are `misc_RNA` there. Keys are compared lower-cased. */
 const placeholderFeatureKeys: ReadonlySet<string> = new Set(
   [
     "-10_signal",
@@ -56,11 +56,13 @@ const placeholderFeatureKeys: ReadonlySet<string> = new Set(
     "NonStdRes",
     "operon",
     "oriT",
+    "polyA_signal",
     "polyA_site",
     "precursor_RNA",
     "prim_transcript",
     "primer_bind",
     "promoter",
+    "propeptide",
     "protein_bind",
     "RBS",
     "regulatory",
@@ -68,7 +70,10 @@ const placeholderFeatureKeys: ReadonlySet<string> = new Set(
     "repeat_region",
     "rRNA",
     "S_region",
+    "scRNA",
     "sig_peptide",
+    "snoRNA",
+    "snRNA",
     "source",
     "stem_loop",
     "STS",

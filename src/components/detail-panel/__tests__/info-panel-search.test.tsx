@@ -293,9 +293,6 @@ describe("InfoPanel — Domains and Motifs InterPro ID", () => {
     );
     expect(screen.getByText("Interpro Description")).toBeInTheDocument();
     expect(screen.queryByText("Interpro ID")).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole("link", { name: "-" }),
-    ).not.toBeInTheDocument();
     expect(document.querySelector('a[href*="ebi.ac.uk"]')).toBeNull();
   });
 

@@ -181,6 +181,9 @@ describe("cleanFeatureProduct", () => {
     expect(cleanFeatureProduct("undefined ncRNA", "misc_RNA")).toBe("");
     expect(cleanFeatureProduct("undefined NonStdRes")).toBe("");
     expect(cleanFeatureProduct("undefind tmRNA", "misc_RNA")).toBe("");
+    expect(cleanFeatureProduct("undefined propeptide")).toBe("");
+    expect(cleanFeatureProduct("undefind polyA_signal")).toBe("");
+    expect(cleanFeatureProduct("undefined snoRNA", "misc_RNA")).toBe("");
   });
 
   it("drops the placeholder whose suffix is the row's own feature_type even if it is not an INSDC key", () => {

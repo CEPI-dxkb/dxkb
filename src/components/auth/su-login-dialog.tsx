@@ -14,6 +14,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/settings/password-input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 
@@ -107,9 +108,9 @@ export function SuLoginDialog({ open, onOpenChange }: SuLoginDialogProps) {
 
             <div className="space-y-2">
               <Label htmlFor="su-password">Your Password</Label>
-              <Input
+              <PasswordInput
                 id="su-password"
-                type="password"
+                label="password"
                 placeholder="Your admin password"
                 value={password}
                 onChange={(e) => {

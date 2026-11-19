@@ -15,7 +15,11 @@ interface PasswordInputProps {
   value: string;
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onBlur?: () => void;
+  /** Names the field in the toggle's label: "Show {label}" / "Hide {label}". */
   label: string;
+  placeholder?: string;
+  autoComplete?: string;
+  disabled?: boolean;
 }
 
 export function PasswordInput({
@@ -24,6 +28,9 @@ export function PasswordInput({
   onChange,
   onBlur,
   label,
+  placeholder,
+  autoComplete,
+  disabled,
 }: PasswordInputProps) {
   const [visible, setVisible] = useState(false);
 
@@ -35,6 +42,9 @@ export function PasswordInput({
         value={value}
         onChange={onChange}
         onBlur={onBlur}
+        placeholder={placeholder}
+        autoComplete={autoComplete}
+        disabled={disabled}
       />
       <InputGroupAddon align="inline-end">
         <InputGroupButton

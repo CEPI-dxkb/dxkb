@@ -8,8 +8,18 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("next/navigation", () => ({ redirect: mocks.redirect }));
 vi.mock("@/app/all-term-search-results", () => ({
-  SearchResults: ({ query }: { query: string }) => (
-    <div data-testid="all-results" data-query={query} />
+  SearchResults: ({
+    query,
+    displayQuery,
+  }: {
+    query: string;
+    displayQuery?: string;
+  }) => (
+    <div
+      data-testid="all-results"
+      data-query={query}
+      data-display-query={displayQuery}
+    />
   ),
 }));
 
@@ -179,6 +189,51 @@ describe("legacy search route", () => {
       "data-query",
       "Escherichia",
     );
+  });
+
+  it.each([
+    ["SARS-CoV-2", 'SARS CoV "2"'],
+    ["HIV-1", 'HIV "1"'],
+  ])(
+    "searches the normalized %s but labels it with the typed text",
+    async (typed, normalized) => {
+      render(
+        await GlobalSearch({
+          searchParams: Promise.resolve({ type: "everything", q: typed }),
+        }),
+      );
+      const results = screen.getByTestId("all-results");
+      expect(results).toHaveAttribute("data-query", normalized);
+      expect(results).toHaveAttribute("data-display-query", typed);
+    },
+  );
+
+  it("labels the results with the trimmed first q, collapsing nothing else", async () => {
+    render(
+      await GlobalSearch({
+        searchParams: Promise.resolve({
+          type: "everything",
+          q: ["  Influenza  A-1 ", "ignored"],
+        }),
+      }),
+    );
+    const results = screen.getByTestId("all-results");
+    expect(results).toHaveAttribute("data-query", 'Influenza  A "1"');
+    expect(results).toHaveAttribute("data-display-query", "Influenza  A-1");
+  });
+
+  it("shows the typed text in the all-types link for a type with no view", async () => {
+    render(
+      await GlobalSearch({
+        searchParams: Promise.resolve({ type: "pathway", q: "SARS-CoV-2" }),
+      }),
+    );
+    const link = screen.getByRole("link", { name: /search all data types/i });
+    expect(link).toHaveTextContent(
+      "Search all data types for \u201cSARS-CoV-2\u201d",
+    );
+    expect(link).not.toHaveTextContent('SARS CoV "2"');
+    expect(link).toHaveAttribute("href", "/search?type=everything&q=SARS-CoV-2");
   });
 
   it("continues rendering everything searches", async () => {

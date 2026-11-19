@@ -3,7 +3,7 @@
 import { allTermSearchTypes } from "@/constants/search-info";
 import type { DataApiMultiQuery } from "@/lib/data-api/repository";
 import { keywordQuery } from "@/lib/data-api/keyword-terms";
-import { keywordClauses } from "@/lib/data-api/rql";
+import { keywordClauses, taxonomyKeywordClause } from "@/lib/data-api/rql";
 import {
   genomeScopeRql,
   nonDeprecatedGenomeClause,
@@ -26,7 +26,10 @@ export function typeSearchQuery(
   keyword: string,
   limit: number,
 ): string {
-  let query = rqlAnd(...keywordClauses(keyword, "exact"));
+  // Taxa also match plain words against `other_names`: the keyword field omits them, and a stored name often lacks the abbreviation people type ("SARS-CoV-2" is only an other name of "Severe acute respiratory syndrome coronavirus 2"). The `/taxonomy?keyword=` list builds the same predicate.
+  let query =
+    (id === "taxonomy" ? taxonomyKeywordClause(keyword, "exact") : undefined) ??
+    rqlAnd(...keywordClauses(keyword, "exact"));
   if (id === "genome_feature")
     query += "&ne(annotation,brc1)&ne(feature_type,source)";
   // As the `/genome?keyword=` list it links to (`genomeBaseRql`), so the card counts its rows.
@@ -34,12 +37,15 @@ export function typeSearchQuery(
   // The stored `genomes` field only filters and ranks Taxa; the count shown comes from `taxonGenomeCountQueries`.
   if (id === "taxonomy") query += "&gt(genomes,1)";
   // Taxa by genome count, not score: score ranks "Swine influenza virus" (166 genomes) above "Influenza A virus" (1.9M).
+  // Genomes by status, then quality, then score: plain `-score` ranks short partial records first (SARS-CoV-2 opens with 668 bp and 713 bp fragments). Ascending, "Complete" sorts before "Partial", "Plasmid" and "WGS", "Good" before "Poor", and a blank value last; relevance orders what is left. Only the preview order changes: the filter and the count are the `/genome?keyword=` list's. This departs from legacy BV-BRC (`AdvancedSearch.js` sorts every card but features by `-score`) on purpose.
   const sort =
     id === "genome_feature"
       ? "+annotation,-score"
       : id === "taxonomy"
         ? "-genomes"
-        : "-score";
+        : id === "genome"
+          ? "+genome_status,+genome_quality,-score"
+          : "-score";
   return `${query}&limit(${String(limit)})&sort(${sort})`;
 }
 

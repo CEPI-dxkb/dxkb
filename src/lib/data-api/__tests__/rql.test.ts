@@ -5,6 +5,7 @@ import {
   maxRqlInValues,
   parseRql,
   serializeRql,
+  taxonomyKeywordClause,
   upstreamRql,
   validateRql,
 } from "../rql";
@@ -378,6 +379,98 @@ describe("keywordClauses", () => {
     ["a lone slash", "/", "exact", []],
   ] as const)("reads %s", (_label, keyword, mode, expected) => {
     expect(keywordClauses(keyword, mode)).toEqual(expected);
+  });
+});
+
+describe("taxonomyKeywordClause", () => {
+  // Taxonomy's keyword field holds `taxon_name` but not `other_names`, where
+  // abbreviations such as "SARS-CoV-2" live.
+  it.each([
+    [
+      "a hyphenated abbreviation",
+      "SARS-CoV-2",
+      "or(and(keyword(SARS),keyword(CoV),keyword(2)),eq(other_names,%22SARS%20CoV%202%22))",
+    ],
+    [
+      "the search page's normalized form, whose quoted digit is one word",
+      'SARS CoV "2"',
+      "or(and(keyword(SARS),keyword(CoV),keyword(%222%22)),eq(other_names,%22SARS%20CoV%202%22))",
+    ],
+    [
+      "an abbreviation ending in a digit",
+      "HIV-1",
+      "or(and(keyword(HIV),keyword(1)),eq(other_names,%22HIV%201%22))",
+    ],
+    [
+      "one word",
+      "influenza",
+      "or(keyword(influenza),eq(other_names,%22influenza%22))",
+    ],
+    [
+      "words with repeated spaces",
+      "  Ebola   virus ",
+      "or(and(keyword(Ebola),keyword(virus)),eq(other_names,%22Ebola%20virus%22))",
+    ],
+    [
+      "lowercase operator words, which Solr reads as words",
+      "a or b",
+      "or(and(keyword(a),keyword(or),keyword(b)),eq(other_names,%22a%20or%20b%22))",
+    ],
+  ])("also matches other_names for %s", (_label, keyword, expected) => {
+    expect(taxonomyKeywordClause(keyword, "exact")).toBe(expected);
+  });
+
+  it("keeps the keyword mode for the keyword words, not for the other_names phrase", () => {
+    expect(taxonomyKeywordClause("influenza virus")).toBe(
+      "or(and(keyword(influenza%2A),keyword(virus%2A)),eq(other_names,%22influenza%20virus%22))",
+    );
+  });
+
+  it.each([
+    ["a negated word", "coli -Salmonella", "and(keyword(coli),not(keyword(Salmonella)))"],
+    ["NOT", "kinase NOT hypothetical", "and(keyword(kinase),not(keyword(hypothetical)))"],
+    ["a quoted phrase", '"quoted phrase"', "keyword(%22quoted%20phrase%22)"],
+    ["OR", "a OR b", "or(keyword(a),keyword(b))"],
+    ["AND", "a AND b", "and(keyword(a),keyword(b))"],
+    ["a wildcard", "E*", "keyword(E%2A)"],
+    ["a single-character wildcard", "E?", "keyword(E%3F)"],
+    ["a pipe", "fig|83332", "keyword(fig%7C83332)"],
+  ])("leaves the keyword clause unchanged for %s", (_label, keyword, expected) => {
+    expect(taxonomyKeywordClause(keyword, "exact")).toBe(expected);
+    const clauses = keywordClauses(keyword, "exact");
+    expect(expected).toBe(
+      clauses.length === 1 ? clauses[0] : `and(${clauses.join(",")})`,
+    );
+  });
+
+  it.each(["", "  ", '""', "OR"])(
+    "builds nothing from text without terms (%j)",
+    (keyword) => {
+      expect(taxonomyKeywordClause(keyword, "exact")).toBeUndefined();
+    },
+  );
+
+  it("parses as taxonomy RQL and carries the phrase quotes as %22", () => {
+    const clause = taxonomyKeywordClause("SARS-CoV-2", "exact") ?? "";
+    // The Data API rejects a raw `"` in a POSTed multi-query ("Illegal
+    // character in query string") and misreads one in a GET, so the phrase
+    // travels as `%22`, as a keyword phrase does.
+    expect(clause).not.toContain('"');
+    expect(parseRql("taxonomy", clause)).toEqual({
+      operator: "or",
+      operands: [
+        {
+          operator: "and",
+          operands: [
+            { operator: "keyword", value: "SARS" },
+            { operator: "keyword", value: "CoV" },
+            { operator: "keyword", value: "2" },
+          ],
+        },
+        { operator: "eq", field: "other_names", value: '"SARS CoV 2"' },
+      ],
+    });
+    expect(upstreamRql(clause)).toBe(clause);
   });
 });
 

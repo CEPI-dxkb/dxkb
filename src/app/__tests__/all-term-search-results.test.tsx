@@ -194,7 +194,9 @@ describe("SearchResults", () => {
     expect(payload.taxonomy?.query).toMatch(
       /&gt\(genomes,1\)&limit\(10\)&sort\(-genomes\)$/,
     );
-    expect(payload.genome?.query).toMatch(/&limit\(10\)&sort\(-score\)$/);
+    expect(payload.genome?.query).toMatch(
+      /&limit\(10\)&sort\(\+genome_status,\+genome_quality,-score\)$/,
+    );
     expect(payload.genome_feature?.query).toMatch(
       /&ne\(annotation,brc1\)&ne\(feature_type,source\)&limit\(10\)&sort\(\+annotation,-score\)$/,
     );
@@ -250,6 +252,60 @@ describe("SearchResults", () => {
     expect(
       screen.queryByRole("menuitem", { name: "Strains" }),
     ).not.toBeInTheDocument();
+  });
+
+  it("leads with a taxon that has the typed text only among its other names", async () => {
+    // Its name has neither "SARS" nor "CoV"; "SARS-CoV-2" is one of its other names.
+    respondWith({
+      taxonomy: solr([
+        {
+          taxon_id: 2697049,
+          taxon_name: "Severe acute respiratory syndrome coronavirus 2",
+          taxon_rank: "no rank",
+          other_names: ["2019-nCoV", "COVID-19 virus", "SARS-CoV-2"],
+        },
+      ]),
+      "taxonGenomes:2697049": solr([], 8_900_000),
+    });
+
+    renderResults("SARS-CoV-2", { displayQuery: "SARS-CoV-2" });
+
+    await screen.findByRole("heading", { name: "Taxa" });
+    expect(
+      header().getByText("Severe acute respiratory syndrome coronavirus 2"),
+    ).toBeInTheDocument();
+    expect(header().getByText(/8,900,000 genomes/)).toHaveTextContent(
+      "8,900,000 genomes · No rank · Taxon ID 2697049",
+    );
+    expect(
+      header().getByRole("link", { name: /Open taxon view/ }),
+    ).toHaveAttribute("href", "/taxonomy/2697049");
+  });
+
+  it("leads with the taxon named as the search over a larger one that lists it as an other name", async () => {
+    respondWith({
+      taxonomy: solr([
+        {
+          taxon_id: 186538,
+          taxon_name: "Zaire ebolavirus",
+          taxon_rank: "species",
+          other_names: ["Ebola virus"],
+        },
+        { taxon_id: 1570291, taxon_name: "Ebola virus", taxon_rank: "no rank" },
+      ]),
+      "taxonGenomes:186538": solr([], 3_742),
+      "taxonGenomes:1570291": solr([], 236),
+    });
+
+    renderResults("Ebola virus");
+
+    await screen.findByRole("heading", { name: "Taxa" });
+    expect(header().getByText(/236 genomes/)).toHaveTextContent(
+      "236 genomes · No rank · Taxon ID 1570291",
+    );
+    expect(
+      header().getByRole("link", { name: /Open taxon view/ }),
+    ).toHaveAttribute("href", "/taxonomy/1570291");
   });
 
   it("links results to their member pages without coercing IDs", async () => {
@@ -325,6 +381,102 @@ describe("SearchResults", () => {
     expect(
       screen.queryByRole("button", { name: "Collapse all" }),
     ).not.toBeInTheDocument();
+  });
+
+  describe("display text", () => {
+    function captureKeyword() {
+      const keywords: string[] = [];
+      server.use(
+        http.post(searchRoute, async ({ request }) => {
+          const { keyword } = (await request.json()) as { keyword: string };
+          keywords.push(keyword);
+          return HttpResponse.json({ taxonomy: solr([], 0) });
+        }),
+      );
+      return keywords;
+    }
+
+    it.each([
+      ["SARS-CoV-2", 'SARS CoV "2"'],
+      ["HIV-1", 'HIV "1"'],
+    ])(
+      "heads the results with the typed %s, not the normalized text",
+      async (typed, normalized) => {
+        const keywords = captureKeyword();
+
+        renderResults(normalized, { displayQuery: typed });
+
+        expect(await screen.findByText("No results found")).toBeInTheDocument();
+        expect(
+          screen.getByRole("heading", { level: 1 }),
+        ).toHaveTextContent(`Results for ${typed}`);
+        expect(header().getByText(typed)).toBeInTheDocument();
+        expect(screen.queryByText(normalized, { exact: false })).toBeNull();
+        // The search itself still runs on the normalized keyword.
+        expect(keywords).toEqual([normalized]);
+      },
+    );
+
+    it("shows the typed text in the no-match card too", async () => {
+      captureKeyword();
+
+      renderResults('SARS CoV "2"', { displayQuery: "SARS-CoV-2" });
+
+      expect(
+        await screen.findByText(/No DXKB data type matches/),
+      ).toHaveTextContent("No DXKB data type matches “SARS-CoV-2”.");
+    });
+
+    it("shows the typed text while the search is still loading", async () => {
+      captureKeyword();
+
+      renderResults('HIV "1"', { displayQuery: "HIV-1" });
+
+      expect(
+        screen.getByText("Searching every DXKB data type…"),
+      ).toBeInTheDocument();
+      expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
+        "Results for HIV-1",
+      );
+      expect(await screen.findByText("No results found")).toBeInTheDocument();
+    });
+
+    it("renders typed markup as text", async () => {
+      captureKeyword();
+
+      renderResults("b", { displayQuery: "<b>b</b>-1" });
+
+      expect(await screen.findByText("No results found")).toBeInTheDocument();
+      expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
+        "Results for <b>b</b>-1",
+      );
+      expect(screen.getByRole("heading", { level: 1 }).querySelector("b")).toBeNull();
+    });
+
+    it("echoes the normalized keyword when no display text is given", async () => {
+      captureKeyword();
+
+      renderResults('SARS CoV "2"');
+
+      expect(await screen.findByText("No results found")).toBeInTheDocument();
+      expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
+        'Results for SARS CoV "2"',
+      );
+      expect(
+        screen.getByText(/No DXKB data type matches/),
+      ).toHaveTextContent('No DXKB data type matches “SARS CoV "2"”.');
+    });
+
+    it("falls back to the keyword for blank display text", async () => {
+      captureKeyword();
+
+      renderResults("influenza", { displayQuery: "" });
+
+      expect(await screen.findByText("No results found")).toBeInTheDocument();
+      expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
+        "Results for influenza",
+      );
+    });
   });
 
   it("shows the request's own error when the search fails", async () => {

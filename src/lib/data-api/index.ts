@@ -17,6 +17,7 @@ export {
   keywordClauses,
   parseRql,
   serializeRql,
+  taxonomyKeywordClause,
   validateRql,
 } from "./rql";
 export {

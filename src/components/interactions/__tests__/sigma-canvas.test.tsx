@@ -1,9 +1,16 @@
 import { act, render } from "@testing-library/react";
 import Graph from "graphology";
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 
 import { SigmaCanvas } from "../sigma/sigma-canvas";
 import type { GEdge, GNode, GraphCanvasProps } from "@/lib/interactions/types";
+import {
+  renderEdge,
+  renderEdgeDim,
+  renderEdgeFocus,
+  renderNodeDim,
+} from "@/lib/interactions/graph-theme";
+import { buildIncidenceIndex } from "@/lib/interactions/selection-focus";
 
 // Sigma needs WebGL; its React bindings are stubbed over a real graphology graph so GraphLoader's
 // load-vs-move choice is observable.
@@ -12,6 +19,8 @@ const sigmaStub = vi.hoisted(() => ({
   refresh: vi.fn(),
   animatedReset: vi.fn(() => Promise.resolve()),
   loadGraph: vi.fn(),
+  registerEvents: vi.fn(),
+  setSettings: vi.fn(),
 }));
 
 // Sigma's camera: `setState` emits "updated" synchronously, as the real one does.
@@ -46,11 +55,24 @@ vi.mock("@react-sigma/core", () => {
       Object.assign(cameraStub, { animatedReset: sigmaStub.animatedReset }),
   };
   return {
-    SigmaContainer: ({ children }: { children: ReactNode }) => <>{children}</>,
+    // The real container builds its graph from the `graph` prop (a constructor), else a plain
+    // non-multi `new Graph()`; mirroring that keeps a missing `graph` prop from passing silently.
+    SigmaContainer: ({
+      children,
+      graph,
+    }: {
+      children: ReactNode;
+      graph?: new () => Graph;
+    }) => {
+      useState(() => {
+        sigmaStub.graph = graph ? new graph() : new Graph();
+      });
+      return <>{children}</>;
+    },
     useSigma: () => sigma,
     useLoadGraph: () => sigmaStub.loadGraph,
-    useRegisterEvents: () => vi.fn(),
-    useSetSettings: () => vi.fn(),
+    useRegisterEvents: () => sigmaStub.registerEvents,
+    useSetSettings: () => sigmaStub.setSettings,
   };
 });
 vi.mock("../sigma/zoom-control", () => ({ ZoomControl: () => null }));
@@ -81,10 +103,12 @@ const edges: GEdge[] = [
 ];
 
 function canvas(props: Partial<GraphCanvasProps>) {
+  const canvasEdges = props.edges ?? edges;
   return (
     <SigmaCanvas
       nodes={nodes}
       edges={edges}
+      incidence={buildIncidenceIndex(canvasEdges)}
       positions={null}
       selection={{ nodes: [], edges: [] }}
       onSelect={vi.fn()}
@@ -105,7 +129,7 @@ beforeEach(() => {
   cameraStub.state = { x: 0.5, y: 0.5, ratio: 1, angle: 0 };
   cameraStub.listeners.clear();
   cameraStub.getBoundedRatio.mockImplementation((ratio: number) => ratio);
-  sigmaStub.graph = new Graph({ multi: true });
+  sigmaStub.graph = null;
   sigmaStub.loadGraph.mockImplementation((graph: Graph) => {
     loadedGraph().clear();
     loadedGraph().import(graph);
@@ -113,6 +137,25 @@ beforeEach(() => {
 });
 
 describe("SigmaCanvas graph loading", () => {
+  it("keeps parallel edges between the same pair of nodes", () => {
+    // Two experimental PPI rows can link one feature pair (different detection methods).
+    const parallel: GEdge[] = [
+      ...edges,
+      { ...edges[0], id: "a-b-second", detectionMethod: "two hybrid" },
+    ];
+
+    render(
+      canvas({
+        edges: parallel,
+        positions: new Float64Array([1, 2, 3, 4]),
+      }),
+    );
+
+    expect(loadedGraph().hasEdge("a-b")).toBe(true);
+    expect(loadedGraph().hasEdge("a-b-second")).toBe(true);
+    expect(loadedGraph().size).toBe(2);
+  });
+
   it("loads nothing until positions for these exact nodes arrive", () => {
     const { rerender } = render(canvas({ positions: null }));
     expect(sigmaStub.loadGraph).not.toHaveBeenCalled();
@@ -210,6 +253,293 @@ describe("SigmaCanvas graph loading", () => {
 
     expect(loadedGraph().order).toBe(2);
     expect(position(loadedGraph(), "a")).toEqual([1, 2]);
+  });
+});
+
+type Handler = (payload: unknown) => void;
+
+function handlers(): Record<string, Handler> {
+  const call = sigmaStub.registerEvents.mock.calls.at(-1);
+  if (!call) throw new Error("SigmaCanvas registered no events");
+  return call[0] as Record<string, Handler>;
+}
+
+interface Reducers {
+  nodeReducer: (id: string, data: object) => object;
+  edgeReducer: (id: string, data: object) => object;
+}
+
+function latestReducers(): Reducers {
+  const withReducers = sigmaStub.setSettings.mock.calls
+    .map(([settings]) => settings as Partial<Reducers>)
+    .filter((settings) => settings.nodeReducer !== undefined);
+  const last = withReducers.at(-1);
+  if (!last) throw new Error("no reducers were installed");
+  return last as Reducers;
+}
+
+function nodeClick(
+  node: string,
+  modifiers: { metaKey?: boolean; ctrlKey?: boolean } = {},
+) {
+  return {
+    node,
+    event: { original: { metaKey: false, ctrlKey: false, ...modifiers } },
+    preventSigmaDefault: vi.fn(),
+  };
+}
+
+function stageClick(modifiers: { metaKey?: boolean; ctrlKey?: boolean } = {}) {
+  return {
+    event: { original: { metaKey: false, ctrlKey: false, ...modifiers } },
+    preventSigmaDefault: vi.fn(),
+  };
+}
+
+const quad: GNode[] = [
+  { id: "a", kind: "microbial" },
+  { id: "b", kind: "host" },
+  { id: "c", kind: "microbial" },
+  { id: "d", kind: "microbial" },
+];
+const quadEdges: GEdge[] = [
+  { ...edges[0] },
+  { ...edges[0], id: "c-d", source: "c", target: "d" },
+];
+const quadPositions = new Float64Array([1, 2, 3, 4, 5, 6, 7, 8]);
+
+function renderQuad(props: Partial<GraphCanvasProps> = {}) {
+  return render(
+    canvas({
+      nodes: quad,
+      edges: quadEdges,
+      positions: quadPositions,
+      ...props,
+    }),
+  );
+}
+
+describe("SigmaCanvas selection clicks", () => {
+  it("replaces the selection on a plain node click", () => {
+    const onSelect = vi.fn();
+    renderQuad({ onSelect, selection: { nodes: [quad[2]], edges: [] } });
+
+    handlers().clickNode(nodeClick("a"));
+
+    expect(onSelect).toHaveBeenCalledWith({
+      nodes: [expect.objectContaining({ id: "a" })],
+      edges: [],
+    });
+  });
+
+  it("adds to the selection on a Cmd-click", () => {
+    const onSelect = vi.fn();
+    renderQuad({ onSelect, selection: { nodes: [quad[2]], edges: [] } });
+
+    handlers().clickNode(nodeClick("a", { metaKey: true }));
+
+    expect(onSelect).toHaveBeenCalledWith({
+      nodes: [
+        expect.objectContaining({ id: "c" }),
+        expect.objectContaining({ id: "a" }),
+      ],
+      edges: [],
+    });
+  });
+
+  it("removes an already-selected node on a Ctrl-click", () => {
+    const onSelect = vi.fn();
+    renderQuad({
+      onSelect,
+      selection: { nodes: [quad[0], quad[2]], edges: [] },
+    });
+
+    handlers().clickNode(nodeClick("a", { ctrlKey: true }));
+
+    expect(onSelect).toHaveBeenCalledWith({
+      nodes: [expect.objectContaining({ id: "c" })],
+      edges: [],
+    });
+  });
+
+  it("toggles an edge on a Cmd-click without dropping the selected nodes", () => {
+    const onSelect = vi.fn();
+    renderQuad({ onSelect, selection: { nodes: [quad[0]], edges: [] } });
+
+    handlers().clickEdge({
+      edge: "c-d",
+      event: { original: { metaKey: true, ctrlKey: false } },
+      preventSigmaDefault: vi.fn(),
+    });
+
+    expect(onSelect).toHaveBeenCalledWith({
+      nodes: [expect.objectContaining({ id: "a" })],
+      edges: [expect.objectContaining({ id: "c-d" })],
+    });
+  });
+
+  it("clears on a plain stage click but a Cmd-click on empty stage keeps the selection", () => {
+    const onSelect = vi.fn();
+    renderQuad({ onSelect, selection: { nodes: [quad[0]], edges: [] } });
+
+    handlers().clickStage(stageClick({ metaKey: true }));
+    expect(onSelect).not.toHaveBeenCalled();
+
+    handlers().clickStage(stageClick());
+    expect(onSelect).toHaveBeenCalledWith({ nodes: [], edges: [] });
+  });
+
+  it("treats a Cmd double-click as a click and suppresses sigma's zoom", () => {
+    const onSelect = vi.fn();
+    renderQuad({ onSelect });
+    const payload = nodeClick("a", { metaKey: true });
+
+    handlers().doubleClickNode(payload);
+
+    expect(payload.preventSigmaDefault).toHaveBeenCalled();
+    expect(onSelect).toHaveBeenCalledWith({
+      nodes: [expect.objectContaining({ id: "a" })],
+      edges: [],
+    });
+  });
+
+  it("suppresses sigma's zoom on a Cmd double-click of empty stage without clearing", () => {
+    const onSelect = vi.fn();
+    renderQuad({ onSelect, selection: { nodes: [quad[0]], edges: [] } });
+    const payload = stageClick({ metaKey: true });
+
+    handlers().doubleClickStage(payload);
+
+    expect(payload.preventSigmaDefault).toHaveBeenCalled();
+    expect(onSelect).not.toHaveBeenCalled();
+  });
+
+  it("ignores a Cmd press-drag-release that sigma reports as a double-click", () => {
+    const onSelect = vi.fn();
+    renderQuad({ onSelect });
+    const at = (x: number, y: number) => ({
+      node: "a",
+      event: { x, y, original: { metaKey: true, ctrlKey: false } },
+      preventSigmaDefault: vi.fn(),
+    });
+
+    handlers().downNode(at(100, 100));
+    const released = at(160, 100);
+    handlers().doubleClickNode(released);
+
+    // No toggle, and sigma's zoom stays suppressed so the drag does not also zoom.
+    expect(released.preventSigmaDefault).toHaveBeenCalled();
+    expect(onSelect).not.toHaveBeenCalled();
+  });
+
+  it("still toggles on a Cmd double-click whose pointer barely moved", () => {
+    const onSelect = vi.fn();
+    renderQuad({ onSelect });
+    const at = (x: number, y: number) => ({
+      node: "a",
+      event: { x, y, original: { metaKey: true, ctrlKey: false } },
+      preventSigmaDefault: vi.fn(),
+    });
+
+    handlers().downNode(at(100, 100));
+    handlers().doubleClickNode(at(102, 101));
+
+    expect(onSelect).toHaveBeenCalledWith({
+      nodes: [expect.objectContaining({ id: "a" })],
+      edges: [],
+    });
+  });
+
+  it("toggles an edge on a Cmd double-click", () => {
+    const onSelect = vi.fn();
+    renderQuad({ onSelect });
+    const payload = {
+      edge: "c-d",
+      event: { original: { metaKey: true, ctrlKey: false } },
+      preventSigmaDefault: vi.fn(),
+    };
+
+    handlers().doubleClickEdge(payload);
+
+    expect(payload.preventSigmaDefault).toHaveBeenCalled();
+    expect(onSelect).toHaveBeenCalledWith({
+      nodes: [],
+      edges: [expect.objectContaining({ id: "c-d" })],
+    });
+  });
+
+  it("toggles against the latest selection through handlers registered earlier", () => {
+    const onSelect = vi.fn();
+    const { rerender } = renderQuad({
+      onSelect,
+      selection: { nodes: [quad[2]], edges: [] },
+    });
+    // Sigma keeps the first handlers it was given; they must not close over the first selection.
+    const firstHandlers = sigmaStub.registerEvents.mock.calls[0][0] as Record<
+      string,
+      Handler
+    >;
+
+    rerender(
+      canvas({
+        nodes: quad,
+        edges: quadEdges,
+        positions: quadPositions,
+        onSelect,
+        selection: { nodes: [quad[2], quad[0]], edges: [] },
+      }),
+    );
+    firstHandlers.clickNode(nodeClick("a", { ctrlKey: true }));
+
+    expect(onSelect).toHaveBeenCalledTimes(1);
+    expect(onSelect).toHaveBeenCalledWith({
+      nodes: [expect.objectContaining({ id: "c" })],
+      edges: [],
+    });
+  });
+
+  it("leaves a plain double-click to sigma's zoom", () => {
+    const onSelect = vi.fn();
+    renderQuad({ onSelect });
+    const payload = nodeClick("a");
+
+    handlers().doubleClickNode(payload);
+
+    expect(payload.preventSigmaDefault).not.toHaveBeenCalled();
+    expect(onSelect).not.toHaveBeenCalled();
+  });
+});
+
+describe("SigmaCanvas selection focus", () => {
+  it("dims nothing while the selection is empty", () => {
+    renderQuad();
+    const data = { color: "x" };
+    expect(latestReducers().nodeReducer("c", data)).toBe(data);
+  });
+
+  it("keeps a selected node's neighbours and edges lit and dims the rest", () => {
+    renderQuad({ selection: { nodes: [quad[0]], edges: [] } });
+    const { nodeReducer, edgeReducer } = latestReducers();
+
+    expect(nodeReducer("b", { color: "x" })).toEqual({ color: "x", zIndex: 1 });
+    expect(nodeReducer("c", { color: "x" })).toEqual({
+      color: renderNodeDim,
+      label: null,
+      zIndex: 0,
+    });
+    expect(
+      edgeReducer("a-b", { color: renderEdge, size: 1, experimental: false }),
+    ).toEqual({
+      color: renderEdgeFocus,
+      size: 1.5,
+      zIndex: 1,
+      experimental: false,
+    });
+    expect(edgeReducer("c-d", { color: renderEdge, size: 1 })).toEqual({
+      color: renderEdgeDim,
+      size: 1,
+      zIndex: 0,
+    });
   });
 });
 

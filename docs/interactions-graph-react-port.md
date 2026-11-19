@@ -325,8 +325,8 @@ const [selection, setSelection] = useState<{nodes: GNode[]; edges: GEdge[]}>({no
 The Next port departs from this sketch so Back from a linked feature page restores
 the view: a single selected node or edge lives in the URL
 (`interactionsGraph.node` / `interactionsGraph.edge`, beside the subview, the
-shared keyword, the layout and the camera), and only bulk Sub-Graph/Hub picks are
-local state. See
+shared keyword, the layout and the camera), and a Cmd/Ctrl-built set of several items
+is local state, as is every Sub-Graph or Hub preset pick, even one that matches a single node. See
 "Interactions" in `docs/architecture.md`.
 
 ### Legend (static, shared)

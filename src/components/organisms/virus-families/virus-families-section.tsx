@@ -1,5 +1,5 @@
 import { GeneraCard } from "@/components/organisms/genera-grid/genera-card";
-import { taxonomyHref as familyHref } from "@/lib/views/hrefs";
+import { taxonomyHref } from "@/lib/views/hrefs";
 import { cn } from "@/lib/utils";
 
 import { FamilyPathogensPopover } from "./family-pathogens-popover";
@@ -24,14 +24,14 @@ function FamilyCard({
   return (
     <GeneraCard
       name={family.name}
-      href={familyHref(family.taxonId)}
+      href={taxonomyHref(family.taxonId)}
       viewLabel={viewLabel}
       action={
         <FamilyPathogensPopover
           familyName={family.name}
           pathogens={family.pathogens.map((pathogen) => ({
             name: pathogen.name,
-            href: familyHref(pathogen.taxonId),
+            href: taxonomyHref(pathogen.taxonId),
           }))}
           note={family.pathogenNote}
         />

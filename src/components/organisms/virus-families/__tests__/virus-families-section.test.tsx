@@ -1,6 +1,13 @@
 import { fireEvent, render, screen, within } from "@testing-library/react";
 
+import { virusFamilies } from "../virus-families-data";
 import { VirusFamiliesSection } from "../virus-families-section";
+
+const cards = virusFamilies.flatMap((column) =>
+  column.group === null
+    ? column.subGroups.flatMap((subGroup) => subGroup.families)
+    : column.families,
+);
 
 describe("VirusFamiliesSection", () => {
   it("renders the section heading", () => {
@@ -35,14 +42,18 @@ describe("VirusFamiliesSection", () => {
   it("gives every family card an info button outside its link", () => {
     render(<VirusFamiliesSection />);
 
-    // 20 cards; the mixed column renders twice for responsive CSS (jsdom has no CSS).
+    // The mixed column renders twice for responsive CSS (jsdom has no CSS), so compare sets.
     const buttons = screen.getAllByRole("button", {
       name: /^Major human pathogens in /,
     });
-    expect(buttons.length).toBeGreaterThanOrEqual(20);
     for (const button of buttons) {
       expect(button.closest("a")).toBeNull();
     }
+    expect(
+      new Set(buttons.map((button) => button.getAttribute("aria-label"))),
+    ).toEqual(
+      new Set(cards.map((card) => `Major human pathogens in ${card.name}`)),
+    );
   });
 
   it("lists a family's pathogens with taxon links from its info button", async () => {

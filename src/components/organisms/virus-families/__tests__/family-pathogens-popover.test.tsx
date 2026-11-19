@@ -49,7 +49,9 @@ describe("FamilyPathogensPopover", () => {
       screen.getByRole("button", { name: "Major human pathogens in Asfarviridae" }),
     );
 
-    const dialog = await screen.findByRole("dialog");
+    const dialog = await screen.findByRole("dialog", {
+      name: "Major human pathogens in Asfarviridae",
+    });
     expect(dialog).toHaveTextContent("No known human pathogens");
     expect(within(dialog).queryByRole("list")).not.toBeInTheDocument();
   });

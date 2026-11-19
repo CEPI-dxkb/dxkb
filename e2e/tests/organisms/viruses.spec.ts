@@ -80,6 +80,7 @@ test.describe("viruses organism landing page", () => {
 
     await page.keyboard.press("Escape");
     await expect(dialog).toBeHidden();
+    await expect(info).toBeFocused();
   });
 
   test("a family with no human pathogens says so", async ({ page }) => {

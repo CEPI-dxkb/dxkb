@@ -3,6 +3,7 @@ import { queryOptions } from "@tanstack/react-query";
 import { allTermSearchTypes, searchHref } from "@/constants/search-info";
 import { DataRepositoryError } from "@/lib/data-api/client";
 import { cleanFeatureProduct } from "@/lib/feature-view/display";
+import { cleanProteinFeatureValue } from "@/lib/protein-feature-view/display";
 import { isTaxonId, taxonViewHeader } from "@/lib/taxonomy-view";
 import {
   epitopeHref,
@@ -326,7 +327,11 @@ function describe(
       return {
         ...base,
         key: text(doc.id) || base.key,
-        title: text(doc.interpro_description) || text(doc.description),
+        // The Data API writes a lone "-" for a missing InterPro entry, which would defeat this `||` chain; `source source_id` (always real) is the last resort.
+        title:
+          cleanProteinFeatureValue(doc.interpro_description) ||
+          cleanProteinFeatureValue(doc.description) ||
+          join([text(doc.source), text(doc.source_id)], " "),
         context: join([text(doc.product), text(doc.genome_name)]),
         facts: facts([
           ["Source", join([text(doc.source), text(doc.source_id)], " ")],
@@ -334,9 +339,9 @@ function describe(
             "Position",
             doc.start != null ? `${text(doc.start)}–${text(doc.end)}` : "",
           ],
-          ["E-value", text(doc.e_value)],
+          ["E-value", cleanProteinFeatureValue(doc.e_value)],
         ]),
-        id: text(doc.interpro_id) || text(doc.source_id),
+        id: cleanProteinFeatureValue(doc.interpro_id) || text(doc.source_id),
         href: featureId ? featureHref(featureId) : null,
       };
     }

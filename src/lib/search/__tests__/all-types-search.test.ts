@@ -333,6 +333,52 @@ describe("describeRows", () => {
     });
   });
 
+  it("titles a Domain or Motif by its description when InterPro's is a lone dash", () => {
+    // The Data API writes "-" for a missing InterPro entry (34% of the docs); the SARS-CoV-2 ORF7b hits still carry a real `description`.
+    const [row] = describeRows("protein_feature", [
+      {
+        id: "pf1",
+        interpro_description: "-",
+        interpro_id: "-",
+        description: "ORF7b_SARS-CoV-2",
+        source: "CDD",
+        source_id: "cd21623",
+      },
+    ]);
+    expect(row).toMatchObject({
+      title: "ORF7b_SARS-CoV-2",
+      id: "cd21623",
+    });
+  });
+
+  it("titles a Domain or Motif by its source and source ID when both descriptions are a lone dash", () => {
+    const [row] = describeRows("protein_feature", [
+      {
+        id: "pf1",
+        interpro_description: "-",
+        interpro_id: "-",
+        description: "-",
+        source: "PANTHER",
+        source_id: "PTHR44846",
+      },
+    ]);
+    expect(row).toMatchObject({
+      title: "PANTHER PTHR44846",
+      id: "PTHR44846",
+    });
+  });
+
+  it("leaves a Domain or Motif's E-value out when it is a lone dash", () => {
+    const [dash] = describeRows("protein_feature", [
+      { id: "pf1", source: "CDD", source_id: "cd1", e_value: "-" },
+    ]);
+    expect(dash.facts.map((fact) => fact.label)).not.toContain("E-value");
+    const [real] = describeRows("protein_feature", [
+      { id: "pf2", source: "CDD", source_id: "cd1", e_value: "7.9E-34" },
+    ]);
+    expect(real.facts).toContainEqual({ label: "E-value", value: "7.9E-34" });
+  });
+
   it("links a Domain or Motif by its PATRIC ID when it has no feature ID", () => {
     const [row] = describeRows("protein_feature", [
       { id: "pf1", patric_id: "fig|11320.1.peg.1" },

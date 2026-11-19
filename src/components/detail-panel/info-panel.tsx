@@ -27,6 +27,7 @@ import {
 } from "@/lib/strain-view/link-policy";
 import { getItemFullPath } from "./info-panel-utils";
 import { cleanFeatureProduct } from "@/lib/feature-view/display";
+import { cleanProteinFeatureValue } from "@/lib/protein-feature-view/display";
 import { WorkspaceItemHeader } from "@/components/workspace/workspace-item-header";
 import { WorkspaceItemDetails } from "@/components/workspace/workspace-item-details";
 
@@ -143,15 +144,20 @@ export function InfoPanel(props: InfoPanelProps) {
   return renderSearchInfoPanel(props);
 }
 
-/** A row's stored value for the panel, without the Data API's "undefined <feature_type>" Feature product placeholder. */
+/** A row's stored value for the panel, without the Data API's "undefined <feature_type>" Feature product placeholder or Domains and Motifs' lone "-" InterPro ID (which would otherwise link to `/InterPro/-/`). */
 function detailValue(
   activeTab: string,
   fieldId: string,
   row: Record<string, unknown> | null | undefined,
 ): unknown {
   const value = row?.[fieldId];
-  if (activeTab !== "genome_feature" || fieldId !== "product") return value;
-  return cleanFeatureProduct(value, row?.feature_type) || undefined;
+  if (activeTab === "genome_feature" && fieldId === "product") {
+    return cleanFeatureProduct(value, row?.feature_type) || undefined;
+  }
+  if (activeTab === "protein_feature" && fieldId === "interpro_id") {
+    return cleanProteinFeatureValue(value) || undefined;
+  }
+  return value;
 }
 
 function hasDetailValue({ value }: DetailField): boolean {

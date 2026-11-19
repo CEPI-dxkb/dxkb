@@ -120,6 +120,13 @@ export class TaxonInteractionsPage {
       .click();
   }
 
+  async addNodeToSelectionInList(label: string): Promise<void> {
+    await this.page
+      .getByRole("tabpanel", { name: "Graph" })
+      .getByRole("option", { name: label })
+      .click({ modifiers: ["ControlOrMeta"] });
+  }
+
   private detailPanel() {
     return this.page.getByRole("tabpanel", { name: "Graph" }).getByLabel("Selection details");
   }

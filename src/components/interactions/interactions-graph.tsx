@@ -25,6 +25,10 @@ import {
   selectSubgraphs,
   singleSelectionRef,
 } from "@/lib/interactions/graph-selections";
+import {
+  applySelectionClick,
+  buildIncidenceIndex,
+} from "@/lib/interactions/selection-focus";
 import { useGraphLayout } from "@/lib/interactions/use-graph-layout";
 import { formatUserFacingErrorMessage } from "@/lib/utils";
 import { interactionFacets } from "@/lib/views/child-resources";
@@ -93,6 +97,13 @@ function GraphSelectionBar({
   );
 }
 
+function sameSelectionRef(
+  a: GraphSelectionRef | null,
+  b: GraphSelectionRef | null,
+): boolean {
+  return a?.kind === b?.kind && a?.id === b?.id;
+}
+
 interface InteractionsGraphProps {
   /**
    * The scope with the filters already composed in by the shell. The shared keyword is not folded
@@ -131,7 +142,7 @@ interface InteractionsGraphProps {
   selection?: InteractionsSelection & { onClear: () => void };
   /** The one selected node or edge, kept by the owner (the URL) and resolved here against the loaded graph. */
   selected: GraphSelectionRef | null;
-  /** `null` for no selection or a bulk one, which stays local. */
+  /** `null` for no selection or a multi-item one, which stays local. */
   onSelectedChange: (next: GraphSelectionRef | null) => void;
   /** The owner's (URL) camera, applied by the canvas on its first load. */
   camera: GraphCameraView | null;
@@ -196,6 +207,17 @@ export function InteractionsGraph({
   const [bulkSelection, setBulkSelection] = useState<GraphSelection | null>(
     null,
   );
+  // The owner renders a write to `selected` in a transition (Next applies History API writes in
+  // one), so the single pick just made is held here until the prop catches up: the pane and canvas
+  // show it at once, and a quick Cmd/Ctrl-click after a plain one adds to it rather than to the old
+  // selection. The hold ends when `selected` moves off `basis`, the value the pick replaced. That is
+  // safe only because Next applies every History API write to one router-state hook and React
+  // renders pending transitions on one hook together, so `selected` jumps from `basis` straight to
+  // the last write and never rests on an in-between one.
+  const [pendingSelected, setPendingSelected] = useState<{
+    ref: GraphSelectionRef | null;
+    basis: GraphSelectionRef | null;
+  } | null>(null);
   const [activeSubgraph, setActiveSubgraph] =
     useState<SubgraphSelection | null>(null);
   const [activeHub, setActiveHub] = useState<HubSelection | null>(null);
@@ -218,8 +240,16 @@ export function InteractionsGraph({
     // effect below on a new scope.
     setGraphSource({ rql, keywordValue, selectionVersion, data });
     setBulkSelection(null);
+    setPendingSelected(null);
     setActiveSubgraph(null);
     setActiveHub(null);
+  }
+  // The pick just written stands until the owner's `selected` moves off the value it replaced.
+  if (
+    pendingSelected !== null &&
+    !sameSelectionRef(pendingSelected.basis, selected)
+  ) {
+    setPendingSelected(null);
   }
 
   // Memoized on the rows by hand: `SigmaCanvas` reloads its graph and re-fits the camera when the
@@ -231,13 +261,24 @@ export function InteractionsGraph({
     () => buildGraphSelectionIndex(graph.nodes, graph.edges),
     [graph],
   );
+  // Memoized on the graph, not left to the compiler: a new index each render gives the canvas a new
+  // focus set and re-installs its reducers on every selection or camera write.
+  const incidenceIndex = useMemo(
+    () => buildIncidenceIndex(graph.edges),
+    [graph],
+  );
   const selection =
-    bulkSelection ?? resolveGraphSelection(selectionIndex, selected);
+    bulkSelection ??
+    resolveGraphSelection(
+      selectionIndex,
+      pendingSelected ? pendingSelected.ref : selected,
+    );
   // Loaded data that lacks the id (a stale or hand-edited URL): select nothing and drop the param.
   const selectedIsStale =
     data !== undefined &&
     selected !== null &&
     bulkSelection === null &&
+    pendingSelected === null &&
     selection.nodes.length === 0 &&
     selection.edges.length === 0;
   const dropSelected = useEffectEvent(() => {
@@ -353,13 +394,6 @@ export function InteractionsGraph({
 
   const nodesById = new Map(nodes.map((n) => [n.id, n]));
   const selectedNodeIds = new Set(selection.nodes.map((node) => node.id));
-  const selectedNode =
-    selection.nodes.length === 1 ? selection.nodes[0] : undefined;
-  const incidentEdges = selectedNode
-    ? edges.filter(
-        (e) => e.source === selectedNode.id || e.target === selectedNode.id,
-      )
-    : [];
 
   function clearActivePreset() {
     setActiveSubgraph(null);
@@ -371,10 +405,14 @@ export function InteractionsGraph({
     const single = singleSelectionRef(next);
     const isEmpty = next.nodes.length === 0 && next.edges.length === 0;
     setBulkSelection(single !== null || isEmpty ? null : next);
+    setPendingSelected({ ref: single, basis: selected });
     onSelectedChange(single);
   }
-  function selectNode(node: GNode) {
-    applySelection({ nodes: [node], edges: [] });
+  // A plain click replaces the selection; a Cmd/Ctrl one toggles the node in or out of it.
+  function selectNode(node: GNode, additive = false) {
+    applySelection(
+      applySelectionClick(selection, { kind: "node", node }, additive),
+    );
   }
   function selectEdge(edge: GEdge) {
     applySelection({ nodes: [], edges: [edge] });
@@ -385,12 +423,14 @@ export function InteractionsGraph({
     setActiveSubgraph(threshold);
     setActiveHub(null);
     setBulkSelection(selectSubgraphs(selectionIndex, threshold));
+    setPendingSelected(null);
     onSelectedChange(null);
   }
   function handleSelectHubs(threshold: HubSelection) {
     setActiveSubgraph(null);
     setActiveHub(threshold);
     setBulkSelection(selectHubs(selectionIndex, threshold));
+    setPendingSelected(null);
     onSelectedChange(null);
   }
 
@@ -463,6 +503,7 @@ export function InteractionsGraph({
               <SigmaCanvas
                 nodes={nodes}
                 edges={edges}
+                incidence={incidenceIndex}
                 positions={layoutQuery.data ?? null}
                 selection={selection}
                 onSelect={applySelection}
@@ -513,7 +554,7 @@ export function InteractionsGraph({
         >
           <GraphDetailPanel
             selection={selection}
-            incidentEdges={incidentEdges}
+            incidentEdgesByNode={incidenceIndex}
             nodesById={nodesById}
             onSelectEdge={selectEdge}
             onFocusNode={onFocusNode}

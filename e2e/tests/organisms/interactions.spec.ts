@@ -130,6 +130,28 @@ test.describe("taxon interactions tab", () => {
     await interactionsPage.expectDetailText("Interaction");
     await interactionsPage.expectDetailText("Detection method");
   });
+
+  test("Cmd/Ctrl-clicking nodes in the list builds a multi-selection", async ({
+    page,
+    browserName,
+  }) => {
+    test.skip(
+      browserName === "firefox",
+      "Headless Firefox has no WebGL for Sigma.js to render into",
+    );
+
+    const interactionsPage = await setupInteractionsPage(page);
+    await interactionsPage.switchToGraph();
+
+    await interactionsPage.selectNodeInList("fig|224914.16.peg.600");
+    await interactionsPage.addNodeToSelectionInList("fig|224914.16.peg.601");
+
+    await interactionsPage.expectDetailText("Multiple selection");
+    await interactionsPage.expectDetailText(
+      "2 proteins and 0 interactions selected.",
+    );
+    await expect(page).not.toHaveURL(/interactionsGraph\.node=/);
+  });
 });
 
 test.describe("taxon interactions tab: Back from a linked page", () => {

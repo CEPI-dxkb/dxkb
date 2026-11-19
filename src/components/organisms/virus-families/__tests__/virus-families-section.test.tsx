@@ -39,7 +39,7 @@ describe("VirusFamiliesSection", () => {
     expect(screen.getAllByText(/DS-RNA|SS-DNA|Partially/).length).toBeGreaterThan(0);
   });
 
-  it("gives every family card an info button outside its link", () => {
+  it("gives every family card a pathogens toggle outside its link", () => {
     render(<VirusFamiliesSection />);
 
     // The mixed column renders twice for responsive CSS (jsdom has no CSS), so compare sets.
@@ -50,25 +50,42 @@ describe("VirusFamiliesSection", () => {
       expect(button.closest("a")).toBeNull();
     }
     expect(
-      new Set(buttons.map((button) => button.getAttribute("aria-label"))),
+      new Set(
+        buttons.map((button) =>
+          // A pile that overflows says so after the sentence (", +4 more").
+          button.getAttribute("aria-label")?.replace(/, \+\d+ more$/, ""),
+        ),
+      ),
     ).toEqual(
       new Set(cards.map((card) => `Major human pathogens in ${card.name}`)),
     );
   });
 
-  it("lists a family's pathogens with taxon links from its info button", async () => {
+  it("lists a family's pathogens with taxon links from its toggle", () => {
     render(<VirusFamiliesSection />);
+    const toggle = screen.getByRole("button", {
+      name: /^Major human pathogens in Coronaviridae/,
+    });
 
-    fireEvent.click(
-      screen.getByRole("button", { name: "Major human pathogens in Coronaviridae" }),
-    );
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
 
-    const dialog = await screen.findByRole("dialog", {
+    fireEvent.click(toggle);
+
+    const panel = screen.getByRole("group", {
       name: "Major human pathogens in Coronaviridae",
     });
     expect(
-      within(dialog).getByRole("link", { name: "SARS-CoV-2" }),
+      within(panel).getByRole("link", { name: "SARS-CoV-2" }),
     ).toHaveAttribute("href", "/taxonomy/2697049");
+  });
+
+  it("dims the other cards while one panel is open through the grid group", () => {
+    const { container } = render(<VirusFamiliesSection />);
+
+    expect(container.querySelector(".group\\/grid")).not.toBeNull();
+    expect(
+      container.querySelectorAll(".group\\/grid [data-open]").length,
+    ).toBeGreaterThanOrEqual(cards.length);
   });
 
   it("keeps the family card link and its existing label", () => {

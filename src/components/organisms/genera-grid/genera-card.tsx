@@ -7,6 +7,8 @@ import { Card } from "@/components/ui/card";
 import { numberFormatter } from "@/lib/services/organisms/utils";
 import { cn } from "@/lib/utils";
 
+import { organismAvatarColors } from "./avatar-colors";
+
 interface GeneraCardProps {
   name: string;
   href: string;
@@ -43,7 +45,7 @@ export function GeneraCard({
           size={28}
           name={displayName}
           variant="beam"
-          colors={["#264653", "#2a9d8f", "#e9c46a", "#f4a261", "#e76f51"]}
+          colors={organismAvatarColors}
         />
         <div className="min-w-0 flex-1 space-y-0.5">
           <h3

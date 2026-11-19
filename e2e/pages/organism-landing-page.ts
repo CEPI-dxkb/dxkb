@@ -32,8 +32,20 @@ export class OrganismLandingPage {
 
   // Role queries skip display:none, so the hidden duplicate of the responsive
   // mixed column does not trip strict mode.
-  getFamilyInfoButton(family: string): Locator {
+  getPathogensToggle(family: string): Locator {
     return this.page.getByRole("button", {
+      name: `Major human pathogens in ${family}`,
+    });
+  }
+
+  // The wrapper that carries data-open: it fades while another card's panel is open.
+  getFamilyCardWrapper(family: string): Locator {
+    return this.getGenusCard(family).locator("xpath=ancestor::*[@data-open][1]");
+  }
+
+  // The panel that unfolds under a family card (a labelled group, not a dialog).
+  getPathogensPanel(family: string): Locator {
+    return this.page.getByRole("group", {
       name: `Major human pathogens in ${family}`,
     });
   }

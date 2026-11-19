@@ -2,7 +2,11 @@ import { GeneraCard } from "@/components/organisms/genera-grid/genera-card";
 import { taxonomyHref } from "@/lib/views/hrefs";
 import { cn } from "@/lib/utils";
 
-import { FamilyPathogensPopover } from "./family-pathogens-popover";
+import {
+  FamilyPathogensDisclosure,
+  FamilyPathogensDrawer,
+  FamilyPathogensToggle,
+} from "./family-pathogens-disclosure";
 import {
   type VirusFamiliesColumn,
   type VirusFamily,
@@ -21,22 +25,30 @@ function FamilyCard({
   family: VirusFamily;
   viewLabel?: string;
 }) {
+  const pathogens = family.pathogens.map((pathogen) => ({
+    name: pathogen.name,
+    href: taxonomyHref(pathogen.taxonId),
+  }));
+
   return (
-    <GeneraCard
-      name={family.name}
-      href={taxonomyHref(family.taxonId)}
-      viewLabel={viewLabel}
-      action={
-        <FamilyPathogensPopover
-          familyName={family.name}
-          pathogens={family.pathogens.map((pathogen) => ({
-            name: pathogen.name,
-            href: taxonomyHref(pathogen.taxonId),
-          }))}
-          note={family.pathogenNote}
-        />
-      }
-    />
+    <FamilyPathogensDisclosure>
+      <GeneraCard
+        name={family.name}
+        href={taxonomyHref(family.taxonId)}
+        viewLabel={viewLabel}
+        action={
+          <FamilyPathogensToggle
+            familyName={family.name}
+            pathogens={pathogens}
+          />
+        }
+      />
+      <FamilyPathogensDrawer
+        familyName={family.name}
+        pathogens={pathogens}
+        note={family.pathogenNote}
+      />
+    </FamilyPathogensDisclosure>
   );
 }
 
@@ -77,7 +89,7 @@ export function VirusFamiliesSection() {
           Common viral family groupings organized by genome type.
         </p>
       </div>
-      <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      <div className="group/grid grid gap-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {virusFamilies.map((column, index) => (
           <div
             key={

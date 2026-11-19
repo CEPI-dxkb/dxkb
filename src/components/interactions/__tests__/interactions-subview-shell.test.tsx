@@ -1,6 +1,10 @@
 import { useEffect, type ComponentProps } from "react";
-import { act, render, screen, fireEvent } from "@testing-library/react";
+import { act, render, screen, fireEvent, within } from "@testing-library/react";
 
+import {
+  collectionToolbarLayoutClasses,
+  useCollectionToolbarLayout,
+} from "@/components/views/collection-filters/toolbar-layout";
 import type { GNode } from "@/lib/interactions/types";
 import { childCollectionOptions } from "@/lib/views/child-collection-state";
 import { interactionCollectionOptions } from "@/lib/views/child-resources";
@@ -74,9 +78,12 @@ vi.mock("@/components/views/resource-child-collection", () => ({
     }, []);
     lastTableProfile = profile;
     lastTableOptionProps = { defaultSort, defaultFilters };
+    // What the Table's toolbar, three components down, would read.
+    const toolbarFrame = useCollectionToolbarLayout().frame;
     return (
       <div
         data-testid="table-panel"
+        data-toolbar-frame={toolbarFrame}
         data-url-key={urlKey}
         data-resource={resource}
         data-rql={rql}
@@ -111,9 +118,12 @@ vi.mock("../interactions-graph", () => ({
       camera,
       onCameraChange,
     } = props;
+    // What the Graph's filter bar and selection bar would read.
+    const toolbarFrame = useCollectionToolbarLayout().frame;
     return (
       <div
         data-testid="graph-panel"
+        data-toolbar-frame={toolbarFrame}
         data-rql={rql}
         data-keyword={keywordValue}
         data-selected={selected ? `${selected.kind}:${selected.id}` : "none"}
@@ -322,6 +332,110 @@ describe("InteractionsSubviewShell", () => {
 
     expect(window.location.search).toBe(
       "?interactionsGraph.q=fromTable&interactions.page=3",
+    );
+  });
+});
+
+describe("InteractionsSubviewShell view switch", () => {
+  function viewSwitch() {
+    return screen.getByRole("tablist");
+  }
+
+  function tabNames() {
+    return within(viewSwitch())
+      .getAllByRole("tab")
+      .map((tab) => tab.textContent);
+  }
+
+  it("draws one Table|Graph tablist in the Table view", () => {
+    render(<InteractionsSubviewShell rql={scope} />);
+
+    // `getByRole` throws on a second tablist.
+    expect(tabNames()).toEqual(["Table", "Graph"]);
+    expect(screen.getByRole("tab", { name: "Table" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    expect(screen.getByRole("tab", { name: "Graph" })).toHaveAttribute(
+      "aria-selected",
+      "false",
+    );
+  });
+
+  it("draws one Table|Graph tablist in the Graph view, the very one the Table view had", () => {
+    render(<InteractionsSubviewShell rql={scope} />);
+    const tablist = viewSwitch();
+    const graphTab = screen.getByRole("tab", { name: "Graph" });
+
+    fireEvent.click(graphTab);
+
+    expect(screen.getAllByRole("tablist")).toHaveLength(1);
+    // The pill is not rebuilt per subview, so a switch keeps it (and focus on it).
+    expect(viewSwitch()).toBe(tablist);
+    expect(screen.getByRole("tab", { name: "Graph" })).toBe(graphTab);
+    expect(tabNames()).toEqual(["Table", "Graph"]);
+    expect(graphTab).toHaveAttribute("aria-selected", "true");
+  });
+
+  it("keeps the single tablist through a switch there and back", () => {
+    render(<InteractionsSubviewShell rql={scope} />);
+    const tablist = viewSwitch();
+
+    fireEvent.click(screen.getByRole("tab", { name: "Graph" }));
+    fireEvent.click(screen.getByRole("tab", { name: "Table" }));
+
+    expect(screen.getAllByRole("tablist")).toHaveLength(1);
+    expect(viewSwitch()).toBe(tablist);
+    expect(screen.getByRole("tab", { name: "Table" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+  });
+
+  it("declares the view switch's width on the Tabs root and pins the pill with it", () => {
+    render(<InteractionsSubviewShell rql={scope} />);
+
+    const root = viewSwitch().closest('[data-slot="tabs"]');
+    expect(root).toHaveClass("view-switch-host");
+    expect(viewSwitch()).toHaveClass("absolute", "w-(--view-switch-width)");
+  });
+
+  it("keeps the Table's panel mounted and inert in the Graph view, which is not kept", () => {
+    render(<InteractionsSubviewShell rql={scope} />);
+    expect(screen.queryByTestId("graph-panel")).not.toBeInTheDocument();
+    expect(screen.getByTestId("table-panel").parentElement).not.toHaveAttribute(
+      "inert",
+    );
+
+    fireEvent.click(screen.getByRole("tab", { name: "Graph" }));
+
+    const tablePanel = screen.getByTestId("table-panel").parentElement;
+    expect(tablePanel).toHaveAttribute("data-slot", "tabs-content");
+    expect(tablePanel).toHaveAttribute("inert");
+    expect(screen.getByTestId("graph-panel").parentElement).not.toHaveAttribute(
+      "inert",
+    );
+
+    fireEvent.click(screen.getByRole("tab", { name: "Table" }));
+
+    expect(screen.getByTestId("table-panel").parentElement).not.toHaveAttribute(
+      "inert",
+    );
+    expect(screen.queryByTestId("graph-panel")).not.toBeInTheDocument();
+  });
+
+  it("lays out both subviews' toolbars beside the view switch", () => {
+    render(<InteractionsSubviewShell rql={scope} />);
+    fireEvent.click(screen.getByRole("tab", { name: "Graph" }));
+
+    const { frame } = collectionToolbarLayoutClasses.besideViewSwitch;
+    expect(screen.getByTestId("table-panel")).toHaveAttribute(
+      "data-toolbar-frame",
+      frame,
+    );
+    expect(screen.getByTestId("graph-panel")).toHaveAttribute(
+      "data-toolbar-frame",
+      frame,
     );
   });
 });

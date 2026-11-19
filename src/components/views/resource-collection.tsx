@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { InfoPanel } from "@/components/detail-panel/info-panel";
 import { QueryRetryButton } from "./query-retry-button";
+import { useCollectionToolbarLayout } from "./collection-filters/toolbar-layout";
 import { ResourceFilterBar } from "./resource-filter-bar";
 import { useRetryKeepingError } from "./use-retry-keeping-error";
 import { ResourceWorkspace } from "./resource-workspace";
@@ -148,6 +149,7 @@ export function ResourceCollection<Row extends DataTableRow>({
   onShowInGraph,
 }: ResourceCollectionProps<Row>) {
   const [actionError, setActionError] = useState<string | null>(null);
+  const toolbarLayout = useCollectionToolbarLayout();
   const [internalLoadedKeyword, setInternalLoadedKeyword] = useState("");
   const loadedKeyword = loadedKeywordValue ?? internalLoadedKeyword;
   const normalizedLoadedKeyword = loadedKeyword.trim().toLowerCase();
@@ -518,6 +520,15 @@ export function ResourceCollection<Row extends DataTableRow>({
     />
   );
 
+  // Leads the collection, or follows its toolbar where a view switch is pinned over the page's
+  // top-left (`toolbar-layout.tsx`).
+  const actionAlert = actionError && (
+    <Alert variant="destructive">
+      <AlertTitle>Could not complete action</AlertTitle>
+      <AlertDescription>{actionError}</AlertDescription>
+    </Alert>
+  );
+
   return (
     <section
       aria-label={profile.label}
@@ -535,12 +546,7 @@ export function ResourceCollection<Row extends DataTableRow>({
               : `${String(displayedTotal)} results`}
       </span>
 
-      {actionError && (
-        <Alert variant="destructive">
-          <AlertTitle>Could not complete action</AlertTitle>
-          <AlertDescription>{actionError}</AlertDescription>
-        </Alert>
-      )}
+      {!toolbarLayout.actionErrorBelowToolbar && actionAlert}
 
       {/* One workspace whether or not the rows failed, so the toolbar is
          never remounted by a failure or its Retry. */}
@@ -557,6 +563,7 @@ export function ResourceCollection<Row extends DataTableRow>({
         actionBar={actionBar}
         sidePanel={detailContent}
       >
+        {toolbarLayout.actionErrorBelowToolbar && actionAlert}
         {collectionError ? (
           <Alert variant="destructive" aria-busy={rowsRetrying || undefined}>
             <AlertTitle>

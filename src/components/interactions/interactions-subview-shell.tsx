@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { CollectionToolbarLayoutProvider } from "@/components/views/collection-filters/toolbar-layout";
 import { ResourceChildCollection } from "@/components/views/resource-child-collection";
 import { useTabContentSearchParams } from "@/components/views/tab-content-search-params";
 import { useChildCollectionUrlState } from "@/hooks/views/use-child-collection-url-state";
@@ -225,6 +226,10 @@ export function InteractionsSubviewShell({
     });
   };
 
+  // One header row in either subview: the single Table|Graph pill is pinned over the start of
+  // both subviews' toolbar rows, which reserve its width (`view-switch-host` in globals.css), so a
+  // switch neither moves nor remounts it and focus stays on it. `top-1 inset-s-1` matches the
+  // toolbar row's `p-1`; `mt-1.5` and the card's `mb-0.5` put the controls 12px under the card.
   return (
     <Tabs
       value={view}
@@ -233,56 +238,58 @@ export function InteractionsSubviewShell({
           view: value === "graph" ? "graph" : "table",
         });
       }}
-      className="mt-2.5 flex min-h-0 flex-1 flex-col"
+      className="relative mt-1.5 flex min-h-0 flex-1 flex-col view-switch-host"
     >
-      <TabsList className="w-fit shrink-0">
+      <TabsList className="absolute inset-s-1 top-1 z-10 w-(--view-switch-width)">
         <TabsTrigger value="table">Table</TabsTrigger>
         <TabsTrigger value="graph">Graph</TabsTrigger>
       </TabsList>
-      <TabsContent
-        value="table"
-        keepMounted
-        inert={view !== "table"}
-        className="flex min-h-0 flex-1 flex-col"
-      >
-        <ResourceChildCollection
-          urlKey={tableUrlKey}
-          resource="ppi"
-          label="Interactions"
-          idField="id"
-          rql={scopedRql}
-          profile={{ ...interactionCollectionProfile, guideUrl }}
-          defaultSort={interactionCollectionOptions.defaultSort}
-          keywordValue={keyword}
-          onKeywordChange={handleKeywordChange}
-          keywordPlaceholder="Search interaction results..."
-          onShowInGraph={handleShowInGraph}
-        />
-      </TabsContent>
-      <TabsContent value="graph" className="flex min-h-0 flex-1 flex-col">
-        <InteractionsGraph
-          rql={graphRql}
-          scopeRql={scopedRql}
-          keywordValue={keyword}
-          onKeywordChange={handleKeywordChange}
-          filters={tableState.filters}
-          facetRql={facetRql}
-          onFilterChange={handleFilterChange}
-          focusId={focusId}
-          onFocusNode={handleFocusNode}
-          selection={
-            graphSelection
-              ? { ...graphSelection, onClear: handleClearShowInGraph }
-              : undefined
-          }
-          layout={layout}
-          onLayoutChange={handleLayoutChange}
-          selected={selected}
-          onSelectedChange={handleSelectedChange}
-          camera={camera}
-          onCameraChange={handleCameraChange}
-        />
-      </TabsContent>
+      <CollectionToolbarLayoutProvider value="besideViewSwitch">
+        <TabsContent
+          value="table"
+          keepMounted
+          inert={view !== "table"}
+          className="flex min-h-0 flex-1 flex-col"
+        >
+          <ResourceChildCollection
+            urlKey={tableUrlKey}
+            resource="ppi"
+            label="Interactions"
+            idField="id"
+            rql={scopedRql}
+            profile={{ ...interactionCollectionProfile, guideUrl }}
+            defaultSort={interactionCollectionOptions.defaultSort}
+            keywordValue={keyword}
+            onKeywordChange={handleKeywordChange}
+            keywordPlaceholder="Search interaction results..."
+            onShowInGraph={handleShowInGraph}
+          />
+        </TabsContent>
+        <TabsContent value="graph" className="flex min-h-0 flex-1 flex-col">
+          <InteractionsGraph
+            rql={graphRql}
+            scopeRql={scopedRql}
+            keywordValue={keyword}
+            onKeywordChange={handleKeywordChange}
+            filters={tableState.filters}
+            facetRql={facetRql}
+            onFilterChange={handleFilterChange}
+            focusId={focusId}
+            onFocusNode={handleFocusNode}
+            selection={
+              graphSelection
+                ? { ...graphSelection, onClear: handleClearShowInGraph }
+                : undefined
+            }
+            layout={layout}
+            onLayoutChange={handleLayoutChange}
+            selected={selected}
+            onSelectedChange={handleSelectedChange}
+            camera={camera}
+            onCameraChange={handleCameraChange}
+          />
+        </TabsContent>
+      </CollectionToolbarLayoutProvider>
     </Tabs>
   );
 }

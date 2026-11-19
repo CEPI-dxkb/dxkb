@@ -1,9 +1,10 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { useState } from "react";
 
 import { GraphNodeList } from "../graph-node-list";
 import { colors } from "@/lib/interactions/graph-theme";
-import type { GNode } from "@/lib/interactions/types";
+import type { GEdge, GNode } from "@/lib/interactions/types";
 
 // cmdk needs scrollIntoView and ResizeObserver, which jsdom omits; stub both so the keyboard flow
 // runs.
@@ -35,9 +36,10 @@ const nodes: GNode[] = [
   { id: "fig|1.1", gene: "dnaA", kind: "microbial" },
   { id: "fig|2.2", gene: "recA", kind: "host" },
 ];
+const noIncidence = new Map<string, GEdge[]>();
 
 function dotColorOf(row: HTMLElement): string {
-  const dot = row.querySelector("span[aria-hidden]");
+  const dot = row.querySelector('[data-slot="graph-node-dot"]');
   if (!dot) throw new Error("row has no color dot");
   expect(dot).toHaveClass("bg-(--dot-color)");
   return (dot as HTMLElement).style.getPropertyValue("--dot-color");
@@ -51,8 +53,10 @@ describe("GraphNodeList", () => {
     render(
       <GraphNodeList
         nodes={nodes}
+        incidence={noIncidence}
         selectedIds={new Set()}
         onSelectNode={onSelectNode}
+        onSelectRange={vi.fn()}
       />,
     );
 
@@ -71,8 +75,10 @@ describe("GraphNodeList", () => {
     render(
       <GraphNodeList
         nodes={nodes}
+        incidence={noIncidence}
         selectedIds={new Set()}
         onSelectNode={onSelectNode}
+        onSelectRange={vi.fn()}
       />,
     );
 
@@ -85,8 +91,10 @@ describe("GraphNodeList", () => {
     render(
       <GraphNodeList
         nodes={nodes}
+        incidence={noIncidence}
         selectedIds={new Set(["fig|2.2"])}
         onSelectNode={vi.fn()}
+        onSelectRange={vi.fn()}
       />,
     );
 
@@ -103,8 +111,10 @@ describe("GraphNodeList", () => {
     render(
       <GraphNodeList
         nodes={nodes}
+        incidence={noIncidence}
         selectedIds={new Set(nodes.map((node) => node.id))}
         onSelectNode={vi.fn()}
+        onSelectRange={vi.fn()}
       />,
     );
 
@@ -122,8 +132,10 @@ describe("GraphNodeList", () => {
     render(
       <GraphNodeList
         nodes={nodes}
+        incidence={noIncidence}
         selectedIds={new Set(["fig|2.2"])}
         onSelectNode={vi.fn()}
+        onSelectRange={vi.fn()}
       />,
     );
 
@@ -140,8 +152,10 @@ describe("GraphNodeList", () => {
     render(
       <GraphNodeList
         nodes={nodes}
+        incidence={noIncidence}
         selectedIds={new Set(["fig|1.1"])}
         onSelectNode={vi.fn()}
+        onSelectRange={vi.fn()}
       />,
     );
 
@@ -160,8 +174,10 @@ describe("GraphNodeList", () => {
     render(
       <GraphNodeList
         nodes={nodes}
+        incidence={noIncidence}
         selectedIds={new Set(nodes.map((node) => node.id))}
         onSelectNode={vi.fn()}
+        onSelectRange={vi.fn()}
       />,
     );
 
@@ -177,8 +193,10 @@ describe("GraphNodeList", () => {
     render(
       <GraphNodeList
         nodes={nodes}
+        incidence={noIncidence}
         selectedIds={new Set()}
         onSelectNode={vi.fn()}
+        onSelectRange={vi.fn()}
       />,
     );
 
@@ -197,8 +215,10 @@ describe("GraphNodeList", () => {
     render(
       <GraphNodeList
         nodes={nodes}
+        incidence={noIncidence}
         selectedIds={new Set(["fig|1.1"])}
         onSelectNode={vi.fn()}
+        onSelectRange={vi.fn()}
       />,
     );
 
@@ -224,8 +244,10 @@ describe("GraphNodeList", () => {
     const { rerender } = render(
       <GraphNodeList
         nodes={nodes}
+        incidence={noIncidence}
         selectedIds={new Set()}
         onSelectNode={vi.fn()}
+        onSelectRange={vi.fn()}
       />,
     );
 
@@ -236,8 +258,10 @@ describe("GraphNodeList", () => {
     rerender(
       <GraphNodeList
         nodes={nodes}
+        incidence={noIncidence}
         selectedIds={new Set(["fig|2.2"])}
         onSelectNode={vi.fn()}
+        onSelectRange={vi.fn()}
       />,
     );
 
@@ -249,8 +273,10 @@ describe("GraphNodeList", () => {
     render(
       <GraphNodeList
         nodes={nodes}
+        incidence={noIncidence}
         selectedIds={new Set()}
         onSelectNode={onSelectNode}
+        onSelectRange={vi.fn()}
       />,
     );
 
@@ -273,8 +299,10 @@ describe("GraphNodeList", () => {
     render(
       <GraphNodeList
         nodes={nodes}
+        incidence={noIncidence}
         selectedIds={new Set()}
         onSelectNode={onSelectNode}
+        onSelectRange={vi.fn()}
       />,
     );
 
@@ -292,8 +320,10 @@ describe("GraphNodeList", () => {
     render(
       <GraphNodeList
         nodes={nodes}
+        incidence={noIncidence}
         selectedIds={new Set()}
         onSelectNode={onSelectNode}
+        onSelectRange={vi.fn()}
       />,
     );
 
@@ -303,5 +333,386 @@ describe("GraphNodeList", () => {
     fireEvent.keyDown(input, { key: "Enter", ctrlKey: true });
 
     expect(onSelectNode).toHaveBeenCalledWith(nodes[0], true);
+  });
+});
+
+describe("GraphNodeList ranking", () => {
+  const hub: GNode = {
+    id: "fig|9.9.peg.1",
+    gene: "hub",
+    interactorDesc: "Hub protein",
+    refseqLocusTag: "LOC_HUB",
+    genome: "Genome One",
+    kind: "microbial",
+  };
+  const alpha: GNode = {
+    id: "fig|9.9.peg.2",
+    gene: "alpha",
+    interactorDesc: "Alpha synthase",
+    kind: "microbial",
+  };
+  const delta: GNode = {
+    id: "fig|9.9.peg.3",
+    gene: "delta",
+    interactorDesc: "Delta synthase",
+    kind: "host",
+  };
+  const gamma: GNode = {
+    id: "fig|9.9.peg.4",
+    gene: "gamma",
+    interactorDesc: "Gamma protein",
+    kind: "microbial",
+  };
+  // Listed least connected first, so the order on screen comes from the ranking.
+  const ranked = [gamma, delta, alpha, hub];
+
+  function edge(id: string, source: GNode, target: GNode, experimental: boolean) {
+    return {
+      id,
+      source: source.id,
+      target: target.id,
+      evidence: "",
+      interactionType: "",
+      detectionMethod: "",
+      experimental,
+    } satisfies GEdge;
+  }
+  const edges = [
+    edge("e1", hub, alpha, true),
+    edge("e2", hub, gamma, false),
+    edge("e3", hub, delta, true),
+    edge("e4", alpha, delta, false),
+  ];
+  const incidence = new Map<string, GEdge[]>();
+  for (const e of edges) {
+    for (const id of [e.source, e.target]) {
+      incidence.set(id, [...(incidence.get(id) ?? []), e]);
+    }
+  }
+
+  function renderRanked(selectedIds: ReadonlySet<string> = new Set()) {
+    return render(
+      <GraphNodeList
+        nodes={ranked}
+        incidence={incidence}
+        selectedIds={selectedIds}
+        onSelectNode={vi.fn()}
+        onSelectRange={vi.fn()}
+      />,
+    );
+  }
+
+  function optionNames(): (string | null)[] {
+    return screen
+      .getAllByRole("option")
+      .map((option) => option.getAttribute("aria-label"));
+  }
+
+  it("lists the best-connected protein first and breaks ties by name", () => {
+    renderRanked();
+
+    expect(optionNames()).toEqual(["hub", "alpha", "delta", "gamma"]);
+  });
+
+  it("shows each row's rank and interaction count", () => {
+    renderRanked();
+
+    const hubRow = screen.getByRole("option", { name: "hub" });
+    expect(hubRow).toHaveTextContent(/^1hub3/);
+    const gammaRow = screen.getByRole("option", { name: "gamma" });
+    expect(gammaRow).toHaveTextContent(/^4gamma1/);
+  });
+
+  it("sizes each bar by interactions and splits it into verified and predicted", () => {
+    renderRanked();
+
+    const hubBar = screen
+      .getByRole("option", { name: "hub" })
+      .querySelector<HTMLElement>('[data-slot="graph-node-bar"]');
+    const gammaBar = screen
+      .getByRole("option", { name: "gamma" })
+      .querySelector<HTMLElement>('[data-slot="graph-node-bar"]');
+
+    // The hub has the most interactions (3), so its bar spans the row; gamma's one is a third.
+    expect(hubBar?.style.getPropertyValue("--bar-width")).toBe("100%");
+    expect(
+      parseFloat(gammaBar?.style.getPropertyValue("--bar-width") ?? ""),
+    ).toBeCloseTo(100 / 3);
+    // Two of the hub's three are verified; gamma's one is predicted.
+    const verifiedShare = (bar: HTMLElement | null | undefined) =>
+      parseFloat(
+        bar?.firstElementChild instanceof HTMLElement
+          ? bar.firstElementChild.style.getPropertyValue("--verified-share")
+          : "",
+      );
+    expect(verifiedShare(hubBar)).toBeCloseTo(200 / 3);
+    expect(verifiedShare(gammaBar)).toBe(0);
+  });
+
+  it("names a row by its protein and describes it with the product and counts", () => {
+    renderRanked();
+
+    expect(screen.getByRole("option", { name: "hub" })).toHaveAccessibleDescription(
+      "Hub protein · 3 interactions, 2 verified",
+    );
+    expect(
+      screen.getByRole("option", { name: "gamma" }),
+    ).toHaveAccessibleDescription("Gamma protein · 1 interaction, 0 verified");
+  });
+
+  it("says when a protein has no product annotation", () => {
+    render(
+      <GraphNodeList
+        nodes={[{ id: "fig|9.9.peg.5", kind: "microbial" }]}
+        incidence={noIncidence}
+        selectedIds={new Set()}
+        onSelectNode={vi.fn()}
+        onSelectRange={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole("option")).toHaveAccessibleDescription(
+      "No product annotation · 0 interactions, 0 verified",
+    );
+  });
+
+  it.each([
+    ["a product", "alpha synthase", ["alpha"]],
+    ["a locus tag", "loc_hub", ["hub"]],
+    ["a genome", "genome one", ["hub"]],
+    ["a BRC ID", "peg.4", ["gamma"]],
+  ])("searches by %s", async (_what, query, expected) => {
+    const user = userEvent.setup();
+    renderRanked();
+
+    await user.type(screen.getByPlaceholderText("Search proteins…"), query);
+
+    expect(optionNames()).toEqual(expected);
+  });
+
+  it("matches the text typed, not letters spread through a product name", async () => {
+    const user = userEvent.setup();
+    renderRanked();
+
+    // A fuzzy match would also pull in "Delta synthase" (d…l…s) and "Gamma protein".
+    await user.type(screen.getByPlaceholderText("Search proteins…"), "dls");
+
+    expect(screen.queryAllByRole("option")).toHaveLength(0);
+    expect(screen.getByText("No proteins match.")).toBeInTheDocument();
+  });
+
+  it("keeps the ranking, and each row's overall rank, while a search narrows the list", async () => {
+    const user = userEvent.setup();
+    renderRanked();
+
+    await user.type(screen.getByPlaceholderText("Search proteins…"), "synthase");
+
+    expect(optionNames()).toEqual(["alpha", "delta"]);
+    expect(screen.getByRole("option", { name: "alpha" })).toHaveTextContent(
+      /^2alpha2/,
+    );
+    expect(screen.getByRole("option", { name: "delta" })).toHaveTextContent(
+      /^3delta2/,
+    );
+  });
+
+  it("draws the selected protein in the selection colour wherever it ranks", () => {
+    renderRanked(new Set([gamma.id]));
+
+    expect(dotColorOf(screen.getByRole("option", { name: "gamma" }))).toBe(
+      colors.selected,
+    );
+  });
+});
+
+describe("GraphNodeList Shift-click range", () => {
+  // No interactions, so the ranking falls back to name: alpha, beta, delta, epsilon, gamma.
+  const named: GNode[] = ["gamma", "alpha", "epsilon", "beta", "delta"].map(
+    (gene) => ({ id: `fig|${gene}`, gene, kind: "microbial" }),
+  );
+  const ids = (genes: string[]) => new Set(genes.map((gene) => `fig|${gene}`));
+
+  // Holds the selection the way the Graph does: a plain pick replaces it, Cmd/Ctrl toggles, a range
+  // replaces it whole. `selectedIds` is what the list is given back, so the anchor logic sees it.
+  function Harness({ initial = new Set<string>() }: { initial?: Set<string> }) {
+    const [selected, setSelected] = useState<ReadonlySet<string>>(initial);
+    return (
+      <>
+        <output data-testid="selected">{[...selected].sort().join(",")}</output>
+        <GraphNodeList
+          nodes={named}
+          incidence={noIncidence}
+          selectedIds={selected}
+          onSelectNode={(node, additive) => {
+            setSelected((previous) => {
+              if (!additive) return new Set([node.id]);
+              const next = new Set(previous);
+              if (!next.delete(node.id)) next.add(node.id);
+              return next;
+            });
+          }}
+          onSelectRange={(range) => {
+            setSelected(new Set(range.map((node) => node.id)));
+          }}
+        />
+      </>
+    );
+  }
+
+  function selection(): string {
+    return screen.getByTestId("selected").textContent;
+  }
+  function expectSelected(genes: string[]) {
+    expect(selection()).toBe(
+      [...ids(genes)].sort().join(","),
+    );
+  }
+
+  it("selects every protein from the last one clicked to the one Shift-clicked", () => {
+    render(<Harness />);
+
+    fireEvent.click(screen.getByText("beta"));
+    fireEvent.click(screen.getByText("epsilon"), { shiftKey: true });
+
+    expectSelected(["beta", "delta", "epsilon"]);
+  });
+
+  it("ranges upward as well as downward", () => {
+    render(<Harness />);
+
+    fireEvent.click(screen.getByText("epsilon"));
+    fireEvent.click(screen.getByText("alpha"), { shiftKey: true });
+
+    expectSelected(["alpha", "beta", "delta", "epsilon"]);
+  });
+
+  it("replaces what was selected, and keeps its anchor for the next Shift-click", () => {
+    render(<Harness />);
+
+    fireEvent.click(screen.getByText("beta"));
+    fireEvent.click(screen.getByText("delta"), { shiftKey: true });
+    fireEvent.click(screen.getByText("gamma"), { shiftKey: true });
+
+    // From beta, not from delta: a range does not move the anchor.
+    expectSelected(["beta", "delta", "epsilon", "gamma"]);
+
+    fireEvent.click(screen.getByText("alpha"), { shiftKey: true });
+    expectSelected(["alpha", "beta"]);
+  });
+
+  it("anchors on a Cmd/Ctrl-click too", () => {
+    render(<Harness />);
+
+    fireEvent.click(screen.getByText("alpha"));
+    fireEvent.click(screen.getByText("delta"), { metaKey: true });
+    fireEvent.click(screen.getByText("gamma"), { shiftKey: true });
+
+    expectSelected(["delta", "epsilon", "gamma"]);
+  });
+
+  it("selects just the anchor when the anchor itself is Shift-clicked", () => {
+    render(<Harness />);
+
+    fireEvent.click(screen.getByText("beta"));
+    fireEvent.click(screen.getByText("delta"), { shiftKey: true });
+    fireEvent.click(screen.getByText("beta"), { shiftKey: true });
+
+    expectSelected(["beta"]);
+  });
+
+  it("runs through the rows the search leaves, not the whole list", async () => {
+    const user = userEvent.setup();
+    render(<Harness />);
+
+    fireEvent.click(screen.getByText("alpha"));
+    // "a" keeps alpha, beta, delta and gamma; epsilon has none.
+    await user.type(screen.getByPlaceholderText("Search proteins…"), "a");
+    fireEvent.click(screen.getByText("gamma"), { shiftKey: true });
+
+    expectSelected(["alpha", "beta", "delta", "gamma"]);
+  });
+
+  it("treats the click as a plain one when the search has filtered the anchor out", async () => {
+    const user = userEvent.setup();
+    render(<Harness />);
+
+    fireEvent.click(screen.getByText("alpha"));
+    await user.type(screen.getByPlaceholderText("Search proteins…"), "epsilon");
+    fireEvent.click(screen.getByText("epsilon"), { shiftKey: true });
+
+    expectSelected(["epsilon"]);
+  });
+
+  it("treats the click as a plain one when nothing has been chosen yet", () => {
+    render(<Harness />);
+
+    fireEvent.click(screen.getByText("delta"), { shiftKey: true });
+
+    expectSelected(["delta"]);
+  });
+
+  it("starts from a protein selected elsewhere, such as on the canvas", () => {
+    render(<Harness initial={ids(["beta"])} />);
+
+    fireEvent.click(screen.getByText("delta"), { shiftKey: true });
+
+    expectSelected(["beta", "delta"]);
+  });
+
+  it("drops an old anchor once the selection has moved on without it", () => {
+    const onSelectNode = vi.fn();
+    const onSelectRange = vi.fn();
+    const props = { nodes: named, incidence: noIncidence, onSelectNode, onSelectRange };
+    const { rerender } = render(
+      <GraphNodeList {...props} selectedIds={new Set()} />,
+    );
+    fireEvent.click(screen.getByText("alpha"));
+
+    // A canvas click selected delta; the list's last click, alpha, is no longer selected.
+    rerender(<GraphNodeList {...props} selectedIds={ids(["delta"])} />);
+    fireEvent.click(screen.getByText("gamma"), { shiftKey: true });
+
+    expect(onSelectRange.mock.lastCall?.[0]).toEqual([
+      named.find((node) => node.gene === "delta"),
+      named.find((node) => node.gene === "epsilon"),
+      named.find((node) => node.gene === "gamma"),
+    ]);
+  });
+
+  it("is not a range with the keyboard: Shift+Enter picks the highlighted row alone", async () => {
+    const user = userEvent.setup();
+    const onSelectNode = vi.fn();
+    const onSelectRange = vi.fn();
+    render(
+      <GraphNodeList
+        nodes={named}
+        incidence={noIncidence}
+        selectedIds={ids(["alpha"])}
+        onSelectNode={onSelectNode}
+        onSelectRange={onSelectRange}
+      />,
+    );
+
+    await user.type(screen.getByPlaceholderText("Search proteins…"), "gamma");
+    fireEvent.keyDown(screen.getByPlaceholderText("Search proteins…"), {
+      key: "Enter",
+      shiftKey: true,
+    });
+
+    expect(onSelectRange).not.toHaveBeenCalled();
+    expect(onSelectNode).toHaveBeenCalledWith(
+      expect.objectContaining({ gene: "gamma" }),
+      false,
+    );
+  });
+
+  it("keeps a Shift press from starting a text selection", () => {
+    render(<Harness />);
+
+    // `fireEvent` returns false when the default was prevented.
+    expect(
+      fireEvent.mouseDown(screen.getByText("beta"), { shiftKey: true }),
+    ).toBe(false);
+    expect(fireEvent.mouseDown(screen.getByText("beta"))).toBe(true);
   });
 });

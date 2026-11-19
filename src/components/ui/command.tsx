@@ -172,13 +172,16 @@ function CommandSeparator({
 }
 
 // Local edit: `app-selection` neutralises cmdk's `data-selected` fill so the
-// app's selection (`data-app-selected`) wins.
+// app's selection (`data-app-selected`) wins. It is for lists of thousands of
+// rows, so rows scrolled out of view skip layout and paint (`content-visibility`,
+// with a one-line row, 2rem, as the size they hold until first rendered):
+// without that, every width change of the list's column re-lays out them all.
 const commandItemVariants = cva("", {
   variants: {
     variant: {
       default: "",
       "app-selection":
-        "hover:bg-secondary/15 data-[app-selected=true]:bg-secondary/25! data-[app-selected=true]:font-medium data-[selected=true]:bg-transparent",
+        "[contain-intrinsic-size:auto_2rem] [content-visibility:auto] hover:bg-secondary/15 data-[app-selected=true]:bg-secondary/25! data-[app-selected=true]:font-medium data-[selected=true]:bg-transparent",
     },
   },
   defaultVariants: {

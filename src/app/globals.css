@@ -81,6 +81,17 @@
   }
 }
 
+/* Declared on a Tabs root whose view switch is pinned over the start of each
+   subview's collection toolbar row (the Interactions tab's Table|Graph pill),
+   so a switch neither moves nor remounts it. The pill reads its width
+   (`w-(--view-switch-width)`); a toolbar laid out `besideViewSwitch`
+   (`collection-filters/toolbar-layout.tsx`) reserves the inset, the width plus
+   the toolbar row's `gap-2`. */
+@utility view-switch-host {
+  --view-switch-width: 7rem;
+  --view-switch-inset: calc(var(--view-switch-width) + --spacing(2));
+}
+
 @utility animate-donut-legend-up {
   animation: donut-legend-up 0.4s 0.4s ease-out both;
 }

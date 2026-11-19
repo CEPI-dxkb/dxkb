@@ -87,7 +87,7 @@ function facetBuckets(rows: MockPpiRow[], field: string): FacetCount[] {
 
 /**
  * The gateway's collection read (`GET /api/data/ppi`): one page of the rows matching the keyword,
- * the count of all of them (the truncation banner's count and every Filters menu count read
+ * the count of all of them (the truncation notice's count and every Filters menu count read
  * `pageSize=1` for it) and a bucket list per `facet=` param. Like the rest of this mock it ignores
  * `rql`, so a filter pick narrows nothing and the counts are the keyword's.
  */

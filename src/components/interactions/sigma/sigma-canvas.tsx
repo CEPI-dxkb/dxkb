@@ -177,6 +177,52 @@ function GraphLoader({ nodes, edges, positions, camera }: GraphLoaderProps) {
   return null;
 }
 
+// How long the container must hold its size before the label grid is rebuilt.
+const resizeSettleMs = 150;
+
+// Sigma's synchronous render without reprocessing: it re-measures the container, resizes its
+// canvases and draws, and (an empty partial graph, indexation skipped) re-indexes no node or edge.
+// `render` itself is private in Sigma's types.
+const redrawOptions = {
+  partialGraph: { nodes: [], edges: [] },
+  skipIndexation: true,
+};
+
+/**
+ * Sigma re-measures its container only when it renders, and renders for a window resize alone, so
+ * a column dragged wider or narrower would leave the canvas at its old size. This redraws whenever
+ * the container changes size. A container with no size (a hidden tab) is skipped: Sigma throws when
+ * it measures one.
+ *
+ * The redraw is synchronous: a ResizeObserver callback runs after layout and before paint, so the
+ * frame that shows the new size already holds a canvas drawn for it. A scheduled refresh (what the
+ * window listener does) would paint the old bitmap for one frame against the new box, so a column
+ * drag made the nodes lag and snap, and it re-indexes every node and edge each time. Only the
+ * label grid, which a plain redraw leaves for the old size, is rebuilt, once the size has settled.
+ */
+function ContainerResizeSync() {
+  const sigma = useSigma();
+  useEffect(() => {
+    if (typeof ResizeObserver === "undefined") return;
+    const container = sigma.getContainer();
+    let settleTimer: ReturnType<typeof setTimeout> | undefined;
+    const observer = new ResizeObserver(() => {
+      if (container.offsetWidth === 0 || container.offsetHeight === 0) return;
+      sigma.refresh(redrawOptions);
+      clearTimeout(settleTimer);
+      settleTimer = setTimeout(() => {
+        sigma.scheduleRefresh();
+      }, resizeSettleMs);
+    });
+    observer.observe(container);
+    return () => {
+      observer.disconnect();
+      clearTimeout(settleTimer);
+    };
+  }, [sigma]);
+  return null;
+}
+
 const cameraWriteDelayMs = 250;
 
 /** The page and tab a camera report belongs to; the report is dropped if either has changed. */
@@ -441,6 +487,7 @@ export function SigmaCanvas({
           defaultDrawNodeHover: drawNodeHover,
         }}
       >
+        <ContainerResizeSync />
         <CameraReporter onCameraChange={onCameraChange} />
         <GraphLoader
           nodes={nodes}

@@ -70,6 +70,7 @@ function renderPanel(overrides: Partial<Parameters<typeof GraphDetailPanel>[0]> 
       incidentEdgesByNode={new Map()}
       nodesById={nodesById}
       onSelectEdge={vi.fn()}
+      onSelectNode={vi.fn()}
       {...overrides}
     />,
   );
@@ -189,72 +190,60 @@ describe("GraphDetailPanel", () => {
     });
   });
 
-  describe("node selected", () => {
-    it("renders every node field with its value", () => {
+  describe("one item selected", () => {
+    it("draws the protein panel for a single protein", () => {
       renderPanel({ selection: { nodes: [nodeA], edges: [] } });
 
-      for (const label of ["BRC ID", "Genome", "Locus tag", "Gene", "Product"]) {
-        expect(screen.getByText(label)).toBeInTheDocument();
-      }
-      expect(screen.getByText(nodeA.id)).toBeInTheDocument();
-      expect(screen.getByText("Ehrlichia canis")).toBeInTheDocument();
-      expect(screen.getByText("Ecaj_0270")).toBeInTheDocument();
-      expect(screen.getByText("dnaA")).toBeInTheDocument();
-      expect(screen.getByText("Chromosomal replication initiator protein DnaA")).toBeInTheDocument();
-    });
-
-    it("shows an em-dash for each missing optional field", () => {
-      const bare: GNode = { id: "fig|3.3", kind: "microbial" };
-      renderPanel({ selection: { nodes: [bare], edges: [] } });
-
-      expect(screen.getByText(bare.id)).toBeInTheDocument();
-      expect(screen.getAllByText("—")).toHaveLength(4);
-    });
-
-    it("flips label to foreground and value to muted-foreground", () => {
-      renderPanel({ selection: { nodes: [nodeA], edges: [] } });
-
-      expect(screen.getByText("BRC ID")).toHaveClass("text-foreground");
-      expect(screen.getByText(nodeA.id)).toHaveClass("text-muted-foreground");
-    });
-
-    it("lists incident edges under an Interactions (N) header and resolves endpoint labels", () => {
-      renderPanel({ selection: { nodes: [nodeA], edges: [] }, incidentEdgesByNode: incident([edge]) });
-
-      expect(screen.getByText("Interactions (1)")).toBeInTheDocument();
       expect(
-        screen.getByRole("button", { name: "ftsA · predicted interaction" }),
+        screen.getByRole("heading", { level: 2, name: "dnaA" }),
       ).toBeInTheDocument();
+      expect(screen.getByText("Identifiers")).toBeInTheDocument();
     });
 
-    it("invokes onSelectEdge with the clicked incident edge", async () => {
+    it("draws the interaction panel for a single interaction", () => {
+      renderPanel({ selection: { nodes: [], edges: [edge] } });
+
+      expect(
+        screen.getByRole("heading", { level: 2, name: "Interaction" }),
+      ).toBeInTheDocument();
+      expect(screen.getByText("Between dnaA and ftsA")).toBeInTheDocument();
+    });
+
+    it("starts a new protein with a closed Identifiers row and an empty partner filter", async () => {
       const user = userEvent.setup();
-      const onSelectEdge = vi.fn();
-      renderPanel({ selection: { nodes: [nodeA], edges: [] }, incidentEdgesByNode: incident([edge]), onSelectEdge });
+      const many = Array.from({ length: 10 }, (_, i): GNode => ({
+        id: `fig|${String(i)}.partner`,
+        gene: `p${String(i)}`,
+        kind: "microbial",
+      }));
+      const edges = many.map(
+        (partner, i): GEdge => ({ ...edge, id: `e${String(i)}`, target: partner.id }),
+      );
+      const edgesB = edges.map((e): GEdge => ({ ...e, id: `${e.id}b`, source: nodeB.id }));
+      const props = {
+        incidentEdgesByNode: new Map([[nodeA.id, edges]]),
+        nodesById: new Map([nodeA, nodeB, ...many].map((n) => [n.id, n])),
+      };
+      const { rerender } = renderPanel({
+        selection: { nodes: [nodeA], edges: [] },
+        ...props,
+      });
 
-      await user.click(screen.getByRole("button", { name: /ftsA/ }));
-      expect(onSelectEdge).toHaveBeenCalledWith(edge);
-    });
+      await user.click(screen.getByText("Identifiers"));
+      await user.type(screen.getByRole("searchbox", { name: "Filter partners" }), "p3");
 
-    it("omits the interactionType suffix when the edge has none", () => {
-      const bare: GEdge = { ...edge, interactionType: "" };
-      renderPanel({ selection: { nodes: [nodeA], edges: [] }, incidentEdgesByNode: incident([bare]) });
+      rerender(
+        <GraphDetailPanel
+          selection={{ nodes: [nodeB], edges: [] }}
+          incidentEdgesByNode={new Map([[nodeB.id, edgesB]])}
+          nodesById={props.nodesById}
+          onSelectEdge={vi.fn()}
+          onSelectNode={vi.fn()}
+        />,
+      );
 
-      expect(screen.getByRole("button", { name: "ftsA" })).toBeInTheDocument();
-    });
-
-    it("falls back to the raw id when the endpoint node is not in nodesById", () => {
-      const orphan: GEdge = { ...edge, target: "fig|9.9" };
-      renderPanel({ selection: { nodes: [nodeA], edges: [] }, incidentEdgesByNode: incident([orphan]) });
-
-      expect(
-        screen.getByRole("button", { name: "fig|9.9 · predicted interaction" }),
-      ).toBeInTheDocument();
-    });
-
-    it("hides the Interactions section when a node has no incident edges", () => {
-      renderPanel({ selection: { nodes: [nodeA], edges: [] }, incidentEdgesByNode: incident([]) });
-      expect(screen.queryByText(/^Interactions \(/)).not.toBeInTheDocument();
+      expect(screen.getByText("Identifiers").closest("details")).not.toHaveAttribute("open");
+      expect(screen.getByRole("searchbox", { name: "Filter partners" })).toHaveValue("");
     });
   });
 
@@ -408,130 +397,9 @@ describe("GraphDetailPanel", () => {
         screen.queryByRole("button", { name: "About focusing" }),
       ).not.toBeInTheDocument();
     });
-
-    it("keeps the em-dash count for a bare node", () => {
-      const bare: GNode = { id: "fig|3.3", kind: "microbial" };
-      renderPanel({
-        selection: { nodes: [bare], edges: [] },
-        onFocusNode: vi.fn(),
-      });
-
-      expect(screen.getAllByText("—")).toHaveLength(4);
-    });
-  });
-
-  describe("edge selected", () => {
-    it("renders the Interaction header and every edge field", () => {
-      renderPanel({ selection: { nodes: [], edges: [edge] } });
-
-      expect(screen.getByText("Interaction")).toBeInTheDocument();
-      expect(screen.getByText("From")).toBeInTheDocument();
-      expect(screen.getByText("dnaA")).toBeInTheDocument();
-      expect(screen.getByText("To")).toBeInTheDocument();
-      expect(screen.getByText("ftsA")).toBeInTheDocument();
-      expect(screen.getByText("predicted interaction")).toBeInTheDocument();
-      expect(screen.getByText("predictive text mining")).toBeInTheDocument();
-      expect(screen.getByText("experimental")).toBeInTheDocument();
-    });
-
-    it("shows em-dashes for blank type/method/evidence", () => {
-      const blank: GEdge = { ...edge, interactionType: "", detectionMethod: "", evidence: "" };
-      renderPanel({ selection: { nodes: [], edges: [blank] } });
-
-      expect(screen.getAllByText("—")).toHaveLength(3);
-    });
-
-    it("flips edge labels to foreground and values to muted-foreground", () => {
-      renderPanel({ selection: { nodes: [], edges: [edge] } });
-
-      expect(screen.getByText("Interaction")).toHaveClass("text-foreground");
-      expect(screen.getByText("From")).toHaveClass("text-foreground");
-      expect(screen.getByText("predicted interaction")).toHaveClass("text-muted-foreground");
-    });
   });
 
   describe("links", () => {
-    it("links a selected node's BRC ID and gene to its feature and its genome to the genome page", () => {
-      renderPanel({
-        selection: { nodes: [linkedA], edges: [] },
-        nodesById: linkedNodesById,
-      });
-
-      expect(screen.getByRole("link", { name: linkedA.id })).toHaveAttribute(
-        "href",
-        "/feature/PATRIC.224914.16.CDS.1",
-      );
-      expect(screen.getByRole("link", { name: "hisD" })).toHaveAttribute(
-        "href",
-        "/feature/PATRIC.224914.16.CDS.1",
-      );
-      expect(
-        screen.getByRole("link", { name: "Brucella melitensis" }),
-      ).toHaveAttribute("href", "/genome/224914.16");
-    });
-
-    it("renders plain text when the node has no feature or genome id", () => {
-      renderPanel({ selection: { nodes: [nodeA], edges: [] } });
-      expect(screen.queryByRole("link")).not.toBeInTheDocument();
-    });
-
-    it("never links a host node, even when ids are present", () => {
-      renderPanel({
-        selection: { nodes: [hostNode], edges: [] },
-        nodesById: linkedNodesById,
-      });
-
-      expect(screen.getByText("Homo sapiens")).toBeInTheDocument();
-      expect(screen.queryByRole("link")).not.toBeInTheDocument();
-    });
-
-    it("does not link a genome whose id is not a genome id", () => {
-      const odd: GNode = { ...linkedA, genomeId: "not-a-genome-id" };
-      renderPanel({ selection: { nodes: [odd], edges: [] } });
-
-      expect(screen.getByText("Brucella melitensis")).toBeInTheDocument();
-      expect(
-        screen.queryByRole("link", { name: "Brucella melitensis" }),
-      ).not.toBeInTheDocument();
-    });
-
-    it("shows the genome id as the linked label when the name is missing", () => {
-      const unnamed: GNode = { ...linkedA, genome: undefined };
-      renderPanel({ selection: { nodes: [unnamed], edges: [] } });
-
-      expect(screen.getByRole("link", { name: "224914.16" })).toHaveAttribute(
-        "href",
-        "/genome/224914.16",
-      );
-    });
-
-    it("links both endpoints of a selected edge to their feature pages", () => {
-      renderPanel({
-        selection: { nodes: [], edges: [linkedEdge] },
-        nodesById: linkedNodesById,
-      });
-
-      expect(screen.getByRole("link", { name: "hisD" })).toHaveAttribute(
-        "href",
-        "/feature/PATRIC.224914.16.CDS.1",
-      );
-      expect(screen.getByRole("link", { name: "metH" })).toHaveAttribute(
-        "href",
-        "/feature/PATRIC.224914.16.CDS.2",
-      );
-    });
-
-    it("leaves an edge endpoint missing from nodesById as plain text", () => {
-      const orphan: GEdge = { ...linkedEdge, target: "fig|9.9" };
-      renderPanel({
-        selection: { nodes: [], edges: [orphan] },
-        nodesById: linkedNodesById,
-      });
-
-      expect(screen.getByText("fig|9.9")).toBeInTheDocument();
-      expect(screen.queryByRole("link", { name: "fig|9.9" })).not.toBeInTheDocument();
-    });
-
     it("links each card of a multi-item selection, its heading included", () => {
       const unnamed: GNode = { ...linkedB, gene: undefined };
       renderPanel({
@@ -559,19 +427,6 @@ describe("GraphDetailPanel", () => {
         "/feature/PATRIC.224914.16.CDS.2",
       );
       expect(screen.queryByRole("button")).not.toBeInTheDocument();
-    });
-
-    it("keeps incident-edge rows as buttons, not links", () => {
-      renderPanel({
-        selection: { nodes: [linkedA], edges: [] },
-        nodesById: linkedNodesById,
-        incidentEdgesByNode: new Map([[linkedA.id, [linkedEdge]]]),
-      });
-
-      const incidentButton = screen.getByRole("button", { name: /metH/ });
-      expect(incidentButton).toBeInTheDocument();
-      expect(within(incidentButton).queryByRole("link")).toBeNull();
-      expect(screen.queryByRole("link", { name: /predicted interaction/ })).not.toBeInTheDocument();
     });
   });
 });

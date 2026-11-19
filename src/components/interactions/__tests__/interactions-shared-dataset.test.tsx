@@ -142,6 +142,27 @@ vi.mock("@/components/views/collection-selection-actions", async (
 });
 
 stubMenuLayout();
+
+// The real columns are covered in graph-columns.test.tsx. In jsdom every pointer press lands at
+// (0, 0), where the panel library sees a drag on a handle and swallows it, so a click or a typed
+// key in these tests would never reach its target.
+vi.mock("../graph-columns", () => ({
+  GraphColumns: ({
+    list,
+    canvas,
+    details,
+  }: {
+    list: React.ReactNode;
+    canvas: React.ReactNode;
+    details: React.ReactNode;
+  }) => (
+    <div className="flex min-h-0 flex-1">
+      {list}
+      {canvas}
+      {details}
+    </div>
+  ),
+}));
 vi.stubGlobal("scrollTo", vi.fn());
 
 // The first Graph render loads graphology on demand; paid here outside any test, with a wider
@@ -1437,7 +1458,7 @@ describe("Interactions subview and Graph selection survive leaving the page (Bac
     await user.click(screen.getByRole("tab", { name: "Graph" }));
     await user.click(await graphPanel().findByRole("option", { name: "peg.601" }));
 
-    expect((await detailsPane()).getByText("peg.601")).toBeInTheDocument();
+    expect((await detailsPane()).getByRole("heading", { level: 2, name: "peg.601" })).toBeInTheDocument();
     expect(window.location.search).toBe(
       "?tab=interactions&interactionsGraph.view=graph&interactionsGraph.node=peg.601",
     );
@@ -1453,7 +1474,7 @@ describe("Interactions subview and Graph selection survive leaving the page (Bac
       "aria-selected",
       "true",
     );
-    expect(await (await detailsPane()).findByText("peg.601")).toBeInTheDocument();
+    expect(await (await detailsPane()).findByRole("heading", { level: 2, name: "peg.601" })).toBeInTheDocument();
     expect((await detailsPane()).getByText("BRC ID")).toBeInTheDocument();
     expect(
       graphPanel().getByRole("option", { name: "peg.601" }),
@@ -1470,7 +1491,7 @@ describe("Interactions subview and Graph selection survive leaving the page (Bac
     );
     renderShell();
 
-    expect(await (await detailsPane()).findByText("peg.601")).toBeInTheDocument();
+    expect(await (await detailsPane()).findByRole("heading", { level: 2, name: "peg.601" })).toBeInTheDocument();
     expect(
       graphPanel().getByPlaceholderText("Search interaction results..."),
     ).toHaveValue("peg.601");
@@ -1508,7 +1529,7 @@ describe("Interactions subview and Graph selection survive leaving the page (Bac
       "/genome/1.1?tab=interactions&interactionsGraph.view=graph&interactionsGraph.node=peg.600",
     );
     renderShell();
-    expect(await (await detailsPane()).findByText("peg.600")).toBeInTheDocument();
+    expect(await (await detailsPane()).findByRole("heading", { level: 2, name: "peg.600" })).toBeInTheDocument();
 
     await user.type(
       graphPanel().getByPlaceholderText("Search interaction results..."),

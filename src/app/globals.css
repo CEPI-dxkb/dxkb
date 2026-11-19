@@ -81,6 +81,17 @@
   }
 }
 
+/* Declared on a Tabs root whose view switch is pinned over the start of each
+   subview's collection toolbar row (the Interactions tab's Table|Graph pill),
+   so a switch neither moves nor remounts it. The pill reads its width
+   (`w-(--view-switch-width)`); a toolbar laid out `besideViewSwitch`
+   (`collection-filters/toolbar-layout.tsx`) reserves the inset, the width plus
+   the toolbar row's `gap-2`. */
+@utility view-switch-host {
+  --view-switch-width: 7rem;
+  --view-switch-inset: calc(var(--view-switch-width) + --spacing(2));
+}
+
 @utility animate-donut-legend-up {
   animation: donut-legend-up 0.4s 0.4s ease-out both;
 }
@@ -448,6 +459,32 @@
     color: var(--link);
     text-decoration: underline;
   }
+}
+
+/*
+ * The Graph's protein list holds a row for every protein (thousands), and dragging a column's handle
+ * changes the list's width, which would re-lay out all of them on every pointer move. While a handle
+ * is being dragged, rows out of view skip layout and paint, and hold a one-line height (2rem) until
+ * they are rendered. It is only for the drag: left on, `content-visibility` makes every style check
+ * on the rows (an accessibility scan, Playwright's role locators) several times slower.
+ */
+[data-slot="resizable-panel-group"]:has([data-separator="active"]) [data-node-id] {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 2rem;
+}
+
+/*
+ * The Graph protein list's rank and interaction count are drawn from data attributes rather than
+ * written as text, so a row's visible text is its name alone: an accessible name must contain the
+ * visible text (WCAG 2.5.3, axe's label-content-name-mismatch), and the name is the protein's
+ * label. The count is also in the row's description (its title).
+ */
+[data-slot="graph-node-rank"]::before {
+  content: attr(data-rank);
+}
+
+[data-slot="graph-node-degree"]::before {
+  content: attr(data-degree);
 }
 
 .scrollbar-themed {

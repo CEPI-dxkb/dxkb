@@ -30,6 +30,14 @@ export class OrganismLandingPage {
     return this.page.getByRole("link", { name: `View ${name} genomes` });
   }
 
+  // Role queries skip display:none, so the hidden duplicate of the responsive
+  // mixed column does not trip strict mode.
+  getFamilyInfoButton(family: string): Locator {
+    return this.page.getByRole("button", {
+      name: `Major human pathogens in ${family}`,
+    });
+  }
+
   // A donut with linked slices is a group (an img's children are
   // presentational); one without links is an img.
   expectDonut(title: string): Promise<void> {

@@ -53,6 +53,47 @@ test.describe("viruses organism landing page", () => {
     await expect(page).toHaveURL(/\/organisms\/viruses$/);
   });
 
+  test("family card info button lists major human pathogens", async ({ page }) => {
+    const landing = new OrganismLandingPage(page);
+
+    await landing.goto("viruses");
+    await page.waitForLoadState("networkidle");
+
+    const info = landing.getFamilyInfoButton("Coronaviridae");
+    const dialog = page.getByRole("dialog", {
+      name: "Major human pathogens in Coronaviridae",
+    });
+
+    await info.hover();
+    await expect(
+      dialog.getByRole("link", { name: "SARS-CoV-2" }),
+    ).toHaveAttribute("href", "/taxonomy/2697049");
+
+    await page.keyboard.press("Escape");
+    await expect(dialog).toBeHidden();
+
+    // Keyboard parity: hover is not the only way in.
+    await page.mouse.move(0, 0);
+    await info.focus();
+    await page.keyboard.press("Enter");
+    await expect(dialog).toBeVisible();
+
+    await page.keyboard.press("Escape");
+    await expect(dialog).toBeHidden();
+  });
+
+  test("a family with no human pathogens says so", async ({ page }) => {
+    const landing = new OrganismLandingPage(page);
+
+    await landing.goto("viruses");
+    await page.waitForLoadState("networkidle");
+
+    await landing.getFamilyInfoButton("Asfarviridae").click();
+    await expect(
+      page.getByRole("dialog", { name: "Major human pathogens in Asfarviridae" }),
+    ).toContainText("No known human pathogens");
+  });
+
   test("matches the visual snapshot", async ({ page }) => {
     const landing = new OrganismLandingPage(page);
 

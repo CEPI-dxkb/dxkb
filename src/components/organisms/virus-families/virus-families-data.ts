@@ -70,7 +70,7 @@ export const virusFamilies: VirusFamiliesColumn[] = [
       },
       {
         name: "Hepeviridae",
-        taxonId: 291484,
+        taxonId: 3079366,
         pathogens: [{ name: "Hepatitis E virus", taxonId: 1678143 }],
       },
       {

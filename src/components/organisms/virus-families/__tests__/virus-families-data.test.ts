@@ -46,4 +46,9 @@ describe("virusFamilies pathogens", () => {
       }
     }
   });
+
+  it("links Hepeviridae to the family node, not the legacy species", () => {
+    const hepeviridae = cards.find((card) => card.name === "Hepeviridae");
+    expect(hepeviridae?.taxonId).toBe(3079366);
+  });
 });

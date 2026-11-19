@@ -137,6 +137,33 @@ describe("FeatureOverview", () => {
     );
   });
 
+  it("omits the Product row when the Data API stored its 'undefined <feature_type>' placeholder", () => {
+    render(
+      <FeatureOverview
+        feature={featureRecord({
+          product: "undefined gap",
+          feature_type: "gap",
+          gene: "x",
+        })}
+      />,
+    );
+    expect(overviewSectionLabels("Annotation and families")).toEqual([
+      "Gene symbol",
+    ]);
+    expect(screen.queryByText(/undefined/)).not.toBeInTheDocument();
+  });
+
+  it("keeps a real product in the Product row", () => {
+    render(
+      <FeatureOverview
+        feature={featureRecord({ product: "Aspartokinase", feature_type: "CDS" })}
+      />,
+    );
+    expect(overviewFieldValue("Annotation and families", "Product")).toBe(
+      "Aspartokinase",
+    );
+  });
+
   it("joins multi-valued annotation fields rather than showing a bare array", () => {
     render(
       <FeatureOverview

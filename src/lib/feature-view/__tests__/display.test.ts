@@ -110,6 +110,21 @@ describe("featureHeaderParts", () => {
       }),
     ).toEqual({ name: "BME_RS00080", details: ["hypothetical protein"] });
   });
+
+  it("drops the Data API's 'undefined <feature_type>' product placeholder", () => {
+    const parts = featureHeaderParts({
+      feature_id: featureId,
+      patric_id: "fig|2697049.10377022.gap.2",
+      refseq_locus_tag: "X_RS00010",
+      product: "undefined gap",
+      feature_type: "gap",
+    });
+    expect(parts).toEqual({
+      name: "fig|2697049.10377022.gap.2",
+      details: ["X_RS00010"],
+    });
+    expect(parts.details.join(" ")).not.toContain("undefined");
+  });
 });
 
 describe("cleanFeatureProduct", () => {
@@ -147,6 +162,11 @@ describe("cleanFeatureProduct", () => {
     expect(cleanFeatureProduct("undefined hypothetical protein")).toBe(
       "undefined hypothetical protein",
     );
+  });
+
+  it("keeps a product whose 'undefined' runs into punctuation", () => {
+    expect(cleanFeatureProduct("undefined-like")).toBe("undefined-like");
+    expect(cleanFeatureProduct("undefined(gap)")).toBe("undefined(gap)");
   });
 
   it("drops 'undefined <one word>' when the caller has no feature type", () => {

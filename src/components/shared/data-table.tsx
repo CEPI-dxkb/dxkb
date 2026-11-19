@@ -100,6 +100,12 @@ export interface DataTableColumn {
   sortable?: boolean;
   href?: (row: DataTableRow) => string | undefined;
   fallbackValue?: (row: DataTableRow) => unknown;
+  /**
+   * What the cell shows in place of the stored value (which sorting, filters
+   * and exports keep using); a nullish result leaves the cell to
+   * `fallbackValue`, or blank.
+   */
+  displayValue?: (row: DataTableRow) => unknown;
   valueHref?: string;
 }
 
@@ -340,7 +346,9 @@ function createColumnDefs(columns: DataTableColumn[]) {
       accessorKey: column.id,
       header: column.label,
       cell: (info: CellContext<DataTableFeatures, DataRow>) => {
-        const rawValue = info.getValue();
+        const rawValue = column.displayValue
+          ? column.displayValue(info.row.original)
+          : info.getValue();
         const displayValue =
           rawValue ?? column.fallbackValue?.(info.row.original);
         const value = formatCellValue(displayValue);

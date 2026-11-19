@@ -241,6 +241,42 @@ describe("InfoPanel — empty sections", () => {
   });
 });
 
+describe("InfoPanel — Feature product", () => {
+  it("omits the Data API's 'undefined <feature_type>' product placeholder", () => {
+    render(
+      <InfoPanel
+        selectedIds={["fig|1.1.gap.2"]}
+        activeTab="genome_feature"
+        selectedRow={{
+          patric_id: "fig|1.1.gap.2",
+          feature_type: "gap",
+          product: "undefined gap",
+          gene: "x",
+        }}
+      />,
+    );
+    expect(screen.getByText("Feature Type")).toBeInTheDocument();
+    expect(screen.queryByText(/undefined/)).not.toBeInTheDocument();
+    expect(screen.queryByText("Product")).not.toBeInTheDocument();
+  });
+
+  it("keeps a real product", () => {
+    render(
+      <InfoPanel
+        selectedIds={["fig|1.1.peg.2"]}
+        activeTab="genome_feature"
+        selectedRow={{
+          patric_id: "fig|1.1.peg.2",
+          feature_type: "CDS",
+          product: "Aspartokinase",
+        }}
+      />,
+    );
+    expect(screen.getByText("Product")).toBeInTheDocument();
+    expect(screen.getByText("Aspartokinase")).toBeInTheDocument();
+  });
+});
+
 describe("InfoPanel — header", () => {
   it("titles the record, unless its host already names it", () => {
     const row = { patric_id: "fig|1.1.peg.2", genome_id: "1.1" };

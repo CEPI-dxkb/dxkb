@@ -26,6 +26,7 @@ import {
   strainAccessionUrlTemplate,
 } from "@/lib/strain-view/link-policy";
 import { getItemFullPath } from "./info-panel-utils";
+import { cleanFeatureProduct } from "@/lib/feature-view/display";
 import { WorkspaceItemHeader } from "@/components/workspace/workspace-item-header";
 import { WorkspaceItemDetails } from "@/components/workspace/workspace-item-details";
 
@@ -140,6 +141,17 @@ export function InfoPanel(props: InfoPanelProps) {
   }
 
   return renderSearchInfoPanel(props);
+}
+
+/** A row's stored value for the panel, without the Data API's "undefined <feature_type>" Feature product placeholder. */
+function detailValue(
+  activeTab: string,
+  fieldId: string,
+  row: Record<string, unknown> | null | undefined,
+): unknown {
+  const value = row?.[fieldId];
+  if (activeTab !== "genome_feature" || fieldId !== "product") return value;
+  return cleanFeatureProduct(value, row?.feature_type) || undefined;
 }
 
 function hasDetailValue({ value }: DetailField): boolean {
@@ -846,7 +858,7 @@ function renderSearchInfoPanel(
 
             const fields: DetailField[] = items.map((item) => {
               const fieldId = item.id;
-              const rawValue = selectedRow?.[fieldId];
+              const rawValue = detailValue(activeTab, fieldId, selectedRow);
 
               if (!item.link) {
                 return { label: item.label, value: rawValue };

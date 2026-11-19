@@ -5,6 +5,7 @@ import { RecordUnavailable } from "@/components/errors/record-unavailable";
 import { DataApiError } from "@/lib/data-api/repository";
 import {
   canonicalFeatureTab,
+  cleanFeatureProduct,
   currentCompareRegionAvailability,
   featureDisplayName,
   isFeatureId,
@@ -84,7 +85,9 @@ export async function generateMetadata({
   const { feature } = loaded;
   return {
     title: `${featureDisplayName(feature)} | Feature`,
-    description: feature.product ?? `Feature record ${feature.feature_id}`,
+    description:
+      cleanFeatureProduct(feature.product, feature.feature_type) ||
+      `Feature record ${feature.feature_id}`,
   };
 }
 

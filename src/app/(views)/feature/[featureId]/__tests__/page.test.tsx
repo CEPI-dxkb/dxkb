@@ -249,6 +249,47 @@ describe("Feature member route", () => {
     ).toMatchObject({ title: `${feature.patric_id} | Feature` });
   });
 
+  it("keeps the Data API's 'undefined <feature_type>' product out of the header and description", async () => {
+    mocks.getFeature.mockResolvedValue({
+      feature: {
+        ...feature,
+        feature_type: "gap",
+        product: "undefined gap",
+        refseq_locus_tag: "MERS_RS00005",
+      },
+      usedAlternateId: false,
+    });
+    render(
+      await FeaturePage({
+        params: Promise.resolve({ featureId: feature.feature_id }),
+        searchParams: Promise.resolve({}),
+      }),
+    );
+    const heading = screen.getByRole("heading", {
+      level: 1,
+      name: feature.patric_id,
+    });
+    expect(heading.parentElement).toHaveTextContent(
+      `${feature.patric_id}|MERS_RS00005`,
+    );
+    expect(heading.parentElement).not.toHaveTextContent(/undefined/);
+    expect(
+      await generateMetadata({
+        params: Promise.resolve({ featureId: feature.feature_id }),
+        searchParams: Promise.resolve({}),
+      }),
+    ).toMatchObject({ description: `Feature record ${feature.feature_id}` });
+  });
+
+  it("describes a feature by its real product", async () => {
+    expect(
+      await generateMetadata({
+        params: Promise.resolve({ featureId: feature.feature_id }),
+        searchParams: Promise.resolve({}),
+      }),
+    ).toMatchObject({ description: "replicase polyprotein" });
+  });
+
   it("offers the feature's sequence downloads in the header", async () => {
     mocks.getFeature.mockResolvedValue({
       feature: { ...feature, na_length: 100, aa_length: 33 },

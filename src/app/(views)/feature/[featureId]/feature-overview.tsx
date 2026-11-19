@@ -4,7 +4,7 @@ import {
   formatOverviewValue,
   type OverviewSectionField,
 } from "@/components/views";
-import type { FeatureViewRecord } from "@/lib/feature-view";
+import { cleanFeatureProduct, type FeatureViewRecord } from "@/lib/feature-view";
 import { genomeHref, taxonomyHref } from "@/lib/views/hrefs";
 import { isTaxonId } from "@/lib/taxonomy-view";
 
@@ -85,7 +85,10 @@ export function FeatureOverview({ feature }: FeatureOverviewProps) {
         title="Annotation and families"
         fields={[
           { label: "Gene symbol", value: feature.gene },
-          { label: "Product", value: feature.product },
+          {
+            label: "Product",
+            value: cleanFeatureProduct(feature.product, feature.feature_type),
+          },
           { label: "Local family", value: feature.plfam_id },
           { label: "Global family", value: feature.pgfam_id },
           { label: "SOG ID", value: feature.sog_id },

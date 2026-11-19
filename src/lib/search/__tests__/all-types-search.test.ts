@@ -398,6 +398,13 @@ describe("describeRows", () => {
     expect(row.title).toBe("gene | S");
   });
 
+  it("keeps the gene beside the feature type when the product is a placeholder", () => {
+    const [row] = describeRows("genome_feature", [
+      { feature_id: "f4", product: "undefined gap", feature_type: "gap", gene: "x" },
+    ]);
+    expect(row.title).toBe("gap | x");
+  });
+
   it("falls back to the BRC ID when a Feature has neither a usable product nor a type", () => {
     const [row] = describeRows("genome_feature", [
       { feature_id: "f3", patric_id: "fig|1.1.peg.1", product: "undefined" },

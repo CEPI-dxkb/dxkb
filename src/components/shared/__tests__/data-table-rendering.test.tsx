@@ -436,6 +436,35 @@ describe("DataTable shared view seams", () => {
     ).toHaveAttribute("href", "/feature/fig%7C83332.12.peg.1");
   });
 
+  it("shows a column's displayValue in place of the stored value", () => {
+    render(
+      <DataTable
+        id="display-value"
+        data={[
+          { stable_id: "row-1", product: "stored", shown: "derived" },
+          { stable_id: "row-2", product: "placeholder" },
+        ]}
+        columns={[
+          {
+            id: "product",
+            label: "Product",
+            displayValue: (row) =>
+              row.product === "placeholder" ? undefined : row.shown,
+          },
+        ]}
+        totalItems={2}
+        resource="unregistered-resource"
+        idField="stable_id"
+        pageIndex={0}
+        pageSize={200}
+      />,
+    );
+
+    expect(screen.getByText("derived")).toBeInTheDocument();
+    expect(screen.queryByText("stored")).not.toBeInTheDocument();
+    expect(screen.queryByText("placeholder")).not.toBeInTheDocument();
+  });
+
   it("delegates selected exports without fetching", async () => {
     const user = userEvent.setup();
     const onDownloadSelected = vi.fn();

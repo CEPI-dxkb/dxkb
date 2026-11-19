@@ -1,4 +1,4 @@
-import type { DataRepository } from "./client";
+import { retryRateLimited, type DataRepository } from "./client";
 import type { DataResource } from "./types";
 import { maxSelectedRows } from "./validation";
 
@@ -22,13 +22,16 @@ export async function fetchSelectedRows(
     Array.from(
       { length: Math.ceil(ids.length / maxSelectedRows) },
       (_, index) =>
-        repository.selected(resource, {
-          ids: ids.slice(
-            index * maxSelectedRows,
-            (index + 1) * maxSelectedRows,
-          ),
-          fields: requestFields,
-        }),
+        // Each batch waits out its own 429, so one throttled batch does not discard the rest.
+        retryRateLimited(() =>
+          repository.selected(resource, {
+            ids: ids.slice(
+              index * maxSelectedRows,
+              (index + 1) * maxSelectedRows,
+            ),
+            fields: requestFields,
+          }),
+        ),
     ),
   );
   const orderById = new Map(ids.map((id, index) => [id, index]));

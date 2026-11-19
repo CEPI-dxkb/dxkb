@@ -57,6 +57,40 @@ describe("fetchSelectedRows", () => {
     expect(rows.map((row) => row.id)).toStrictEqual(ids);
   });
 
+  it("waits out a rate limit on one batch and keeps the rows of the others", async () => {
+    let refused = false;
+    const bodies: SelectedBody[] = [];
+    server.use(
+      http.post("/api/data/ppi", async ({ request }) => {
+        const body = (await request.json()) as SelectedBody;
+        bodies.push(body);
+        if (body.ids[0] === "ppi-500" && !refused) {
+          refused = true;
+          return HttpResponse.json(
+            { error: "Too many requests.", code: "rate_limited" },
+            { status: 429, headers: { "Retry-After": "0" } },
+          );
+        }
+        return HttpResponse.json({
+          rows: body.ids.map((id) => ({ id, evidence: "x" })),
+        });
+      }),
+    );
+    const ids = Array.from({ length: 1_200 }, (_, index) => `ppi-${String(index)}`);
+
+    const rows = await fetchSelectedRows(
+      new DataRepository(),
+      "ppi",
+      "id",
+      ids,
+      ["id", "evidence"],
+    );
+
+    // Three batches, and the refused one is sent again.
+    expect(bodies).toHaveLength(4);
+    expect(rows.map((row) => row.id)).toStrictEqual(ids);
+  });
+
   it("adds the id field to the requested fields when it is missing", async () => {
     const bodies = serveSelected();
 

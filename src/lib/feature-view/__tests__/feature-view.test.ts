@@ -57,6 +57,24 @@ describe("Feature view contracts", () => {
     expect(featureCollectionProfile.detailFields).not.toContain("Codon Start");
   });
 
+  it("leaves the Data API's 'undefined <feature_type>' product out of the Product column", () => {
+    const product = featureCollectionProfile.columns.find(
+      (column) => column.id === "product",
+    );
+    expect(product).toEqual(expect.objectContaining({ sortable: true }));
+    const shown = product?.displayValue;
+    expect(
+      shown?.({ feature_id: "f1", product: "undefined gap", feature_type: "gap" }),
+    ).toBeUndefined();
+    expect(
+      shown?.({ feature_id: "f2", product: "undefind 5'UTR", feature_type: "5'UTR" }),
+    ).toBeUndefined();
+    expect(
+      shown?.({ feature_id: "f3", product: "Aspartokinase", feature_type: "CDS" }),
+    ).toBe("Aspartokinase");
+    expect(shown?.({ feature_id: "f4", feature_type: "CDS" })).toBeUndefined();
+  });
+
   it("parses collection state without silently adding annotation", () => {
     const state = parseFeatureCollectionState({
       genome_id: "83332.12",

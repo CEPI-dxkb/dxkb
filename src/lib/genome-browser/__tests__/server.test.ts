@@ -153,6 +153,32 @@ describe("toGenomeBrowserFeature", () => {
     });
   });
 
+  it("omits the Data API's placeholder product, so the tooltip has no Product row", () => {
+    const feature = toGenomeBrowserFeature(
+      { ...row, feature_type: "gap", product: "undefined gap" },
+      "ATGO01000001",
+    );
+    expect(feature).toEqual(
+      expect.objectContaining({ type: "gap", feature_id: row.feature_id }),
+    );
+    expect(feature).not.toHaveProperty("product");
+    expect(
+      toGenomeBrowserFeature(
+        { ...row, feature_type: "gap", product: "undefind gap" },
+        "ATGO01000001",
+      ),
+    ).not.toHaveProperty("product");
+  });
+
+  it("keeps a real product, even one that starts with 'Undefined'", () => {
+    expect(
+      toGenomeBrowserFeature(
+        { ...row, product: "Undefined protein" },
+        "ATGO01000001",
+      ),
+    ).toEqual(expect.objectContaining({ product: "Undefined protein" }));
+  });
+
   it("names a RefSeq feature by its locus tag", () => {
     expect(
       toGenomeBrowserFeature(

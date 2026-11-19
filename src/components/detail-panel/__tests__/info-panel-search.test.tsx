@@ -241,6 +241,81 @@ describe("InfoPanel — empty sections", () => {
   });
 });
 
+describe("InfoPanel — Feature product", () => {
+  it("omits the Data API's 'undefined <feature_type>' product placeholder", () => {
+    render(
+      <InfoPanel
+        selectedIds={["fig|1.1.gap.2"]}
+        activeTab="genome_feature"
+        selectedRow={{
+          patric_id: "fig|1.1.gap.2",
+          feature_type: "gap",
+          product: "undefined gap",
+          gene: "x",
+        }}
+      />,
+    );
+    expect(screen.getByText("Feature Type")).toBeInTheDocument();
+    expect(screen.queryByText(/undefined/)).not.toBeInTheDocument();
+    expect(screen.queryByText("Product")).not.toBeInTheDocument();
+  });
+
+  it("keeps a real product", () => {
+    render(
+      <InfoPanel
+        selectedIds={["fig|1.1.peg.2"]}
+        activeTab="genome_feature"
+        selectedRow={{
+          patric_id: "fig|1.1.peg.2",
+          feature_type: "CDS",
+          product: "Aspartokinase",
+        }}
+      />,
+    );
+    expect(screen.getByText("Product")).toBeInTheDocument();
+    expect(screen.getByText("Aspartokinase")).toBeInTheDocument();
+  });
+});
+
+describe("InfoPanel — Domains and Motifs InterPro ID", () => {
+  it("omits the InterPro ID row, and its link, when the Data API wrote a lone dash", () => {
+    render(
+      <InfoPanel
+        selectedIds={["pf1"]}
+        activeTab="protein_feature"
+        selectedRow={{
+          id: "pf1",
+          genome_id: "83332.12",
+          interpro_id: "-",
+          interpro_description: "-",
+        }}
+      />,
+    );
+    expect(screen.getByText("Interpro Description")).toBeInTheDocument();
+    expect(screen.queryByText("Interpro ID")).not.toBeInTheDocument();
+    expect(document.querySelector('a[href*="ebi.ac.uk"]')).toBeNull();
+  });
+
+  it("links a real InterPro ID to its InterPro entry", () => {
+    render(
+      <InfoPanel
+        selectedIds={["pf2"]}
+        activeTab="protein_feature"
+        selectedRow={{
+          id: "pf2",
+          genome_id: "83332.12",
+          interpro_id: "IPR001364",
+        }}
+      />,
+    );
+    expect(screen.getByText("Interpro ID")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "IPR001364" })).toHaveAttribute(
+      "href",
+      "https://www.ebi.ac.uk/interpro/entry/InterPro/IPR001364/",
+    );
+  });
+});
+
 describe("InfoPanel — header", () => {
   it("titles the record, unless its host already names it", () => {
     const row = { patric_id: "fig|1.1.peg.2", genome_id: "1.1" };

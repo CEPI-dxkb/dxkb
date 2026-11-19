@@ -100,6 +100,15 @@ export interface DataTableColumn {
   sortable?: boolean;
   href?: (row: DataTableRow) => string | undefined;
   fallbackValue?: (row: DataTableRow) => unknown;
+  /**
+   * What the cell shows in place of the stored value (which sorting, filters
+   * and exports keep using); a nullish result leaves the cell to
+   * `fallbackValue`, or blank. An array result also feeds the `valueHref`
+   * array branch, so return a string. Column auto-sizing
+   * (`computeAutoColumnSizes`) still measures the stored value, so a column
+   * whose cells are all hidden may be a little wide.
+   */
+  displayValue?: (row: DataTableRow) => unknown;
   valueHref?: string;
 }
 
@@ -340,16 +349,18 @@ function createColumnDefs(columns: DataTableColumn[]) {
       accessorKey: column.id,
       header: column.label,
       cell: (info: CellContext<DataTableFeatures, DataRow>) => {
-        const rawValue = info.getValue();
-        const displayValue =
-          rawValue ?? column.fallbackValue?.(info.row.original);
-        const value = formatCellValue(displayValue);
+        const cellValue = column.displayValue
+          ? column.displayValue(info.row.original)
+          : info.getValue();
+        const shownValue =
+          cellValue ?? column.fallbackValue?.(info.row.original);
+        const value = formatCellValue(shownValue);
         const href = column.href?.(info.row.original);
         const valueHref = column.valueHref;
-        if (valueHref && Array.isArray(rawValue)) {
+        if (valueHref && Array.isArray(cellValue)) {
           return (
             <span className="flex min-w-0 scrollbar-none gap-x-2 overflow-x-auto whitespace-nowrap">
-              {[...new Set(rawValue.map(String))].map((itemValue) => {
+              {[...new Set(cellValue.map(String))].map((itemValue) => {
                 const itemHref = resolveLink(
                   valueHref,
                   { ...info.row.original, [column.id]: itemValue },
@@ -381,7 +392,7 @@ function createColumnDefs(columns: DataTableColumn[]) {
           valueHref && !isEmptyValue
             ? resolveLink(
                 valueHref,
-                { ...info.row.original, [column.id]: displayValue },
+                { ...info.row.original, [column.id]: shownValue },
                 column.id,
               )
             : undefined;

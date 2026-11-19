@@ -1,4 +1,5 @@
 import {
+  cleanFeatureProduct,
   featureDisplayName,
   featureFastaTypes,
   featureHeaderParts,
@@ -108,5 +109,104 @@ describe("featureHeaderParts", () => {
         product: "hypothetical protein",
       }),
     ).toEqual({ name: "BME_RS00080", details: ["hypothetical protein"] });
+  });
+
+  it("drops the Data API's 'undefined <feature_type>' product placeholder", () => {
+    const parts = featureHeaderParts({
+      feature_id: featureId,
+      patric_id: "fig|2697049.10377022.gap.2",
+      refseq_locus_tag: "X_RS00010",
+      product: "undefined gap",
+      feature_type: "gap",
+    });
+    expect(parts).toEqual({
+      name: "fig|2697049.10377022.gap.2",
+      details: ["X_RS00010"],
+    });
+    expect(parts.details.join(" ")).not.toContain("undefined");
+  });
+});
+
+describe("cleanFeatureProduct", () => {
+  it("keeps a real product, trimmed", () => {
+    expect(cleanFeatureProduct("  nucleocapsid phosphoprotein ", "CDS")).toBe(
+      "nucleocapsid phosphoprotein",
+    );
+  });
+
+  it("drops the Data API's 'undefined <feature_type>' placeholder", () => {
+    expect(cleanFeatureProduct("undefined gap", "gap")).toBe("");
+    expect(cleanFeatureProduct("undefined 5'UTR", "5'UTR")).toBe("");
+    expect(cleanFeatureProduct("undefined assembly_gap", "assembly_gap")).toBe(
+      "",
+    );
+  });
+
+  it("drops the typo spelling and ignores case and spacing", () => {
+    expect(cleanFeatureProduct("undefind gap", "gap")).toBe("");
+    expect(cleanFeatureProduct("  Undefined   GAP ", "gap")).toBe("");
+  });
+
+  it("drops a bare 'undefined'", () => {
+    expect(cleanFeatureProduct("undefined", "gap")).toBe("");
+    expect(cleanFeatureProduct("undefined")).toBe("");
+  });
+
+  it("keeps a real product that only starts with 'Undefined'", () => {
+    expect(cleanFeatureProduct("Undefined protein", "CDS")).toBe(
+      "Undefined protein",
+    );
+    expect(cleanFeatureProduct("undefinedX gap", "gap")).toBe(
+      "undefinedX gap",
+    );
+    expect(cleanFeatureProduct("undefined hypothetical protein")).toBe(
+      "undefined hypothetical protein",
+    );
+  });
+
+  it("keeps a product whose 'undefined' runs into punctuation", () => {
+    expect(cleanFeatureProduct("undefined-like")).toBe("undefined-like");
+    expect(cleanFeatureProduct("undefined(gap)")).toBe("undefined(gap)");
+  });
+
+  it("drops 'undefined <INSDC feature key>' when the caller has no feature type", () => {
+    expect(cleanFeatureProduct("undefined gap")).toBe("");
+    expect(cleanFeatureProduct("undefind 5'UTR", undefined)).toBe("");
+    expect(cleanFeatureProduct("undefined repeat_region", "")).toBe("");
+  });
+
+  it("drops the placeholder whose suffix is an INSDC key other than the row's feature_type", () => {
+    // Solr types these rows misc_RNA, but the pipeline wrote the GenBank key.
+    expect(cleanFeatureProduct("undefined mRNA", "misc_RNA")).toBe("");
+    expect(cleanFeatureProduct("undefined ncRNA", "misc_RNA")).toBe("");
+    expect(cleanFeatureProduct("undefined NonStdRes")).toBe("");
+    expect(cleanFeatureProduct("undefind tmRNA", "misc_RNA")).toBe("");
+    expect(cleanFeatureProduct("undefined propeptide")).toBe("");
+    expect(cleanFeatureProduct("undefind polyA_signal")).toBe("");
+    expect(cleanFeatureProduct("undefined snoRNA", "misc_RNA")).toBe("");
+  });
+
+  it("drops the placeholder whose suffix is the row's own feature_type even if it is not an INSDC key", () => {
+    expect(cleanFeatureProduct("undefined customKey", "customKey")).toBe("");
+  });
+
+  it("keeps a real product that starts with 'Undefined' and is not an INSDC key", () => {
+    expect(cleanFeatureProduct("Undefined function")).toBe("Undefined function");
+    expect(cleanFeatureProduct("Undefined function", "CDS")).toBe(
+      "Undefined function",
+    );
+    expect(cleanFeatureProduct("undefined customKey")).toBe(
+      "undefined customKey",
+    );
+    expect(cleanFeatureProduct("Undefined Glycoside hydrolase")).toBe(
+      "Undefined Glycoside hydrolase",
+    );
+  });
+
+  it("returns an empty string for a missing, blank or non-string product", () => {
+    expect(cleanFeatureProduct(undefined, "gap")).toBe("");
+    expect(cleanFeatureProduct(null, "gap")).toBe("");
+    expect(cleanFeatureProduct("   ", "gap")).toBe("");
+    expect(cleanFeatureProduct(42, "gap")).toBe("");
   });
 });

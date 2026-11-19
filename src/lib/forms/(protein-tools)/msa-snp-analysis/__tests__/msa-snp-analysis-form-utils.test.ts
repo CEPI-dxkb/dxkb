@@ -17,6 +17,7 @@ import {
   removeFastaFileAtIndex,
   createFastaFileItem,
   fastaFileFromObject,
+  featureOptionLabel,
   validateSequenceFasta,
   transformMsaSnpAnalysisParams,
 } from "../msa-snp-analysis-form-utils";
@@ -498,5 +499,55 @@ describe("transformMsaSnpAnalysisParams", () => {
     };
     const result = transformMsaSnpAnalysisParams(data);
     expect(result.alphabet).toBe("protein");
+  });
+});
+
+describe("featureOptionLabel", () => {
+  it("joins the patric_id and the product", () => {
+    expect(
+      featureOptionLabel({
+        feature_id: "F1",
+        patric_id: "fig|83332.12.peg.1",
+        feature_type: "CDS",
+        product: "Chromosomal replication initiator",
+      }),
+    ).toBe("fig|83332.12.peg.1 --- Chromosomal replication initiator");
+  });
+
+  it("drops the Data API's placeholder product, leaving the bare patric_id", () => {
+    expect(
+      featureOptionLabel({
+        feature_id: "F2",
+        patric_id: "fig|83332.12.rna.3",
+        feature_type: "gap",
+        product: "undefined gap",
+      }),
+    ).toBe("fig|83332.12.rna.3");
+    expect(
+      featureOptionLabel({
+        feature_id: "F2",
+        patric_id: "fig|83332.12.rna.3",
+        feature_type: "gap",
+        product: "undefind gap",
+      }),
+    ).toBe("fig|83332.12.rna.3");
+  });
+
+  it("keeps a real product that starts with 'Undefined'", () => {
+    expect(
+      featureOptionLabel({
+        feature_id: "F3",
+        patric_id: "fig|1.1.peg.1",
+        feature_type: "CDS",
+        product: "Undefined protein",
+      }),
+    ).toBe("fig|1.1.peg.1 --- Undefined protein");
+  });
+
+  it("labels a feature without a product by its patric_id, and one without a patric_id by its feature_id", () => {
+    expect(featureOptionLabel({ feature_id: "F4", patric_id: "fig|1.1.peg.2" })).toBe(
+      "fig|1.1.peg.2",
+    );
+    expect(featureOptionLabel({ feature_id: "F5", product: "undefined gap" })).toBe("F5");
   });
 });

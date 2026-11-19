@@ -5,6 +5,7 @@
 import { createHash } from "node:crypto";
 import { DataApiError, type ServerDataRepository } from "@/lib/data-api/repository";
 import { DataApiValidationError } from "@/lib/data-api/resources";
+import { cleanFeatureProduct } from "@/lib/feature-view/display";
 import { isGenomeId } from "@/lib/genome-view/schema";
 import { escapeRqlValue } from "@/lib/views/rql";
 import { BoundedCache } from "./bounded-cache";
@@ -211,7 +212,7 @@ export function toGenomeBrowserFeature(
     refseq_locus_tag: refseqLocusTag,
     alt_locus_tag: text(row.alt_locus_tag),
     gene,
-    product: text(row.product),
+    product: cleanFeatureProduct(row.product, row.feature_type) || undefined,
     protein_id: text(row.protein_id),
     na_length: asInteger(row.na_length),
     aa_length: asInteger(row.aa_length),

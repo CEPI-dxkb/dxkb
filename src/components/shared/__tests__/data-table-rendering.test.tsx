@@ -5,6 +5,7 @@ import userEvent from "@testing-library/user-event";
 import { stretchedColumnWidths } from "../column-resize";
 import { DataTable } from "../data-table";
 import { formatCellValue } from "../data-table-utils";
+import { proteinFeatureMetadata } from "@/lib/protein-feature-view/fields";
 
 vi.mock("@tanstack/react-virtual", () => ({
   useVirtualizer: ({
@@ -434,6 +435,64 @@ describe("DataTable shared view seams", () => {
     expect(
       screen.getByRole("link", { name: "fig|83332.12.peg.1" }),
     ).toHaveAttribute("href", "/feature/fig%7C83332.12.peg.1");
+  });
+
+  it("shows a column's displayValue in place of the stored value", () => {
+    render(
+      <DataTable
+        id="display-value"
+        data={[
+          { stable_id: "row-1", product: "stored", shown: "derived" },
+          { stable_id: "row-2", product: "placeholder" },
+        ]}
+        columns={[
+          {
+            id: "product",
+            label: "Product",
+            displayValue: (row) =>
+              row.product === "placeholder" ? undefined : row.shown,
+          },
+        ]}
+        totalItems={2}
+        resource="unregistered-resource"
+        idField="stable_id"
+        pageIndex={0}
+        pageSize={200}
+      />,
+    );
+
+    expect(screen.getByText("derived")).toBeInTheDocument();
+    expect(screen.queryByText("stored")).not.toBeInTheDocument();
+    expect(screen.queryByText("placeholder")).not.toBeInTheDocument();
+  });
+
+  it("leaves a Domains and Motifs lone-dash InterPro ID blank and unlinked", () => {
+    const interproId = proteinFeatureMetadata.columns.find(
+      (column) => column.id === "interpro_id",
+    );
+    expect(interproId).toBeDefined();
+    render(
+      <DataTable
+        id="interpro-id"
+        data={[
+          { id: "pf-1", interpro_id: "-" },
+          { id: "pf-2", interpro_id: "IPR001364" },
+        ]}
+        columns={interproId ? [interproId] : []}
+        totalItems={2}
+        resource="unregistered-resource"
+        idField="id"
+        pageIndex={0}
+        pageSize={200}
+      />,
+    );
+
+    expect(screen.getAllByRole("link")).toHaveLength(1);
+    expect(screen.getByRole("link", { name: "IPR001364" })).toHaveAttribute(
+      "href",
+      "https://www.ebi.ac.uk/interpro/entry/InterPro/IPR001364/",
+    );
+    expect(screen.queryByText("-")).not.toBeInTheDocument();
   });
 
   it("delegates selected exports without fetching", async () => {

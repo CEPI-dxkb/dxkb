@@ -333,6 +333,52 @@ describe("describeRows", () => {
     });
   });
 
+  it("titles a Domain or Motif by its description when InterPro's is a lone dash", () => {
+    // The Data API writes "-" for a missing InterPro entry (34% of the docs); the SARS-CoV-2 ORF7b hits still carry a real `description`.
+    const [row] = describeRows("protein_feature", [
+      {
+        id: "pf1",
+        interpro_description: "-",
+        interpro_id: "-",
+        description: "ORF7b_SARS-CoV-2",
+        source: "CDD",
+        source_id: "cd21623",
+      },
+    ]);
+    expect(row).toMatchObject({
+      title: "ORF7b_SARS-CoV-2",
+      id: "cd21623",
+    });
+  });
+
+  it("titles a Domain or Motif by its source and source ID when both descriptions are a lone dash", () => {
+    const [row] = describeRows("protein_feature", [
+      {
+        id: "pf1",
+        interpro_description: "-",
+        interpro_id: "-",
+        description: "-",
+        source: "PANTHER",
+        source_id: "PTHR44846",
+      },
+    ]);
+    expect(row).toMatchObject({
+      title: "PANTHER PTHR44846",
+      id: "PTHR44846",
+    });
+  });
+
+  it("leaves a Domain or Motif's E-value out when it is a lone dash", () => {
+    const [dash] = describeRows("protein_feature", [
+      { id: "pf1", source: "CDD", source_id: "cd1", e_value: "-" },
+    ]);
+    expect(dash.facts.map((fact) => fact.label)).not.toContain("E-value");
+    const [real] = describeRows("protein_feature", [
+      { id: "pf2", source: "CDD", source_id: "cd1", e_value: "7.9E-34" },
+    ]);
+    expect(real.facts).toContainEqual({ label: "E-value", value: "7.9E-34" });
+  });
+
   it("links a Domain or Motif by its PATRIC ID when it has no feature ID", () => {
     const [row] = describeRows("protein_feature", [
       { id: "pf1", patric_id: "fig|11320.1.peg.1" },
@@ -343,6 +389,73 @@ describe("describeRows", () => {
   it("leaves a Domain or Motif without a feature unlinked", () => {
     const [row] = describeRows("protein_feature", [{ id: "pf1" }]);
     expect(row).toMatchObject({ key: "pf1", href: null });
+  });
+
+  it("titles a Feature by its product and gene, linking its record", () => {
+    const [row] = describeRows("genome_feature", [
+      {
+        feature_id: "PATRIC.2697049.1.NC_045512.CDS.28274.29533.fwd",
+        patric_id: "fig|2697049.1.peg.10",
+        product: "nucleocapsid phosphoprotein",
+        gene: "N",
+        feature_type: "CDS",
+        annotation: "PATRIC",
+        genome_name: "SARS-CoV-2",
+      },
+    ]);
+    expect(row).toMatchObject({
+      title: "nucleocapsid phosphoprotein | N",
+      id: "fig|2697049.1.peg.10",
+      href: "/feature/PATRIC.2697049.1.NC_045512.CDS.28274.29533.fwd",
+    });
+  });
+
+  it("falls back to the feature type when the Data API's product is 'undefined gap'", () => {
+    const [row] = describeRows("genome_feature", [
+      {
+        feature_id: "PATRIC.2697049.10377022.PX491150.gap.4410.4603.fwd",
+        patric_id: "fig|2697049.10377022.gap.2",
+        product: "undefined gap",
+        feature_type: "gap",
+        annotation: "PATRIC",
+        na_length: 194,
+      },
+    ]);
+    expect(row.title).toBe("gap");
+    expect(row.title).not.toContain("undefined");
+    expect(row.id).toBe("fig|2697049.10377022.gap.2");
+  });
+
+  it("treats the 'undefind' typo placeholder the same way", () => {
+    const [row] = describeRows("genome_feature", [
+      {
+        feature_id: "f1",
+        product: "undefind assembly_gap",
+        feature_type: "assembly_gap",
+      },
+    ]);
+    expect(row.title).toBe("assembly_gap");
+  });
+
+  it("falls back to the feature type when a Feature has no product", () => {
+    const [row] = describeRows("genome_feature", [
+      { feature_id: "f2", feature_type: "gene", gene: "S" },
+    ]);
+    expect(row.title).toBe("gene | S");
+  });
+
+  it("keeps the gene beside the feature type when the product is a placeholder", () => {
+    const [row] = describeRows("genome_feature", [
+      { feature_id: "f4", product: "undefined gap", feature_type: "gap", gene: "x" },
+    ]);
+    expect(row.title).toBe("gap | x");
+  });
+
+  it("falls back to the BRC ID when a Feature has neither a usable product nor a type", () => {
+    const [row] = describeRows("genome_feature", [
+      { feature_id: "f3", patric_id: "fig|1.1.peg.1", product: "undefined" },
+    ]);
+    expect(row.title).toBe("fig|1.1.peg.1");
   });
 
   it("shows an Epitope's sequence in mono and links it", () => {

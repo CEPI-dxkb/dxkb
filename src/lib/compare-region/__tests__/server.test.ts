@@ -214,6 +214,36 @@ describe("normalizeCompareRegionRows", () => {
     ]);
   });
 
+  it.each([
+    ["gap", "undefined gap", ""],
+    ["assembly_gap", "undefind assembly_gap", ""],
+    ["peg", "undefined CDS", ""],
+    ["misc_RNA", "undefined mRNA", ""],
+    [
+      "peg",
+      "undefined end, 92%ID IS1351 (Origin Escherichia coli)",
+      "undefined end, 92%ID IS1351 (Origin Escherichia coli)",
+    ],
+    ["peg", "putative ORF1a polyprotein", "putative ORF1a polyprotein"],
+  ])(
+    "reads a %s feature whose function is %j as product %j",
+    async (type, text, product) => {
+      const { normalizeCompareRegionRows } = await import("../server");
+      const row = {
+        ...rawFocusRow,
+        features: [
+          rawFocusRow.features[0],
+          { fid: "fig|1004954.3.x.1", type, beg: 700, end: 900, function: text },
+        ],
+      };
+      const features = normalizeCompareRegionRows([row], "pgfam").at(0)
+        ?.features;
+      expect(features?.at(1)).toEqual(
+        expect.objectContaining({ fid: "fig|1004954.3.x.1", type, product }),
+      );
+    },
+  );
+
   it("names the family the chosen method colors by", async () => {
     const { normalizeCompareRegionRows } = await import("../server");
     const rows = normalizeCompareRegionRows([rawFocusRow], "plfam");

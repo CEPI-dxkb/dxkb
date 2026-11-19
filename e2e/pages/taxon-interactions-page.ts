@@ -71,7 +71,7 @@ export class TaxonInteractionsPage {
     await expect(graphPanel.getByText("No Interactions", { exact: true })).toBeVisible();
     await expect(graphPanel.getByRole("combobox", { name: "Layout" })).toBeVisible();
     await expect(graphPanel.getByRole("button", { name: "Export" })).toBeDisabled();
-    await expect(graphPanel.getByLabel("Selection details")).toBeVisible();
+    await expect(graphPanel.getByLabel("Selection details", { exact: true })).toBeVisible();
   }
 
   async filterByKeyword(text: string): Promise<void> {
@@ -128,7 +128,7 @@ export class TaxonInteractionsPage {
   }
 
   private detailPanel() {
-    return this.page.getByRole("tabpanel", { name: "Graph" }).getByLabel("Selection details");
+    return this.page.getByRole("tabpanel", { name: "Graph" }).getByLabel("Selection details", { exact: true });
   }
 
   async expectDetailText(text: string): Promise<void> {

@@ -169,10 +169,35 @@ describe("cleanFeatureProduct", () => {
     expect(cleanFeatureProduct("undefined(gap)")).toBe("undefined(gap)");
   });
 
-  it("drops 'undefined <one word>' when the caller has no feature type", () => {
+  it("drops 'undefined <INSDC feature key>' when the caller has no feature type", () => {
     expect(cleanFeatureProduct("undefined gap")).toBe("");
     expect(cleanFeatureProduct("undefind 5'UTR", undefined)).toBe("");
     expect(cleanFeatureProduct("undefined repeat_region", "")).toBe("");
+  });
+
+  it("drops the placeholder whose suffix is an INSDC key other than the row's feature_type", () => {
+    // Solr types these rows misc_RNA, but the pipeline wrote the GenBank key.
+    expect(cleanFeatureProduct("undefined mRNA", "misc_RNA")).toBe("");
+    expect(cleanFeatureProduct("undefined ncRNA", "misc_RNA")).toBe("");
+    expect(cleanFeatureProduct("undefined NonStdRes")).toBe("");
+    expect(cleanFeatureProduct("undefind tmRNA", "misc_RNA")).toBe("");
+  });
+
+  it("drops the placeholder whose suffix is the row's own feature_type even if it is not an INSDC key", () => {
+    expect(cleanFeatureProduct("undefined customKey", "customKey")).toBe("");
+  });
+
+  it("keeps a real product that starts with 'Undefined' and is not an INSDC key", () => {
+    expect(cleanFeatureProduct("Undefined function")).toBe("Undefined function");
+    expect(cleanFeatureProduct("Undefined function", "CDS")).toBe(
+      "Undefined function",
+    );
+    expect(cleanFeatureProduct("undefined customKey")).toBe(
+      "undefined customKey",
+    );
+    expect(cleanFeatureProduct("Undefined Glycoside hydrolase")).toBe(
+      "Undefined Glycoside hydrolase",
+    );
   });
 
   it("returns an empty string for a missing, blank or non-string product", () => {

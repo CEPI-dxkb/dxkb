@@ -13,8 +13,80 @@ export function featureDisplayName(feature: FeatureViewRecord): string {
 /** The PATRIC annotation pipeline wrote `"undefined " + feature_type` (and a typo, `"undefind "`) into `product` for millions of non-CDS features, e.g. "undefined gap". */
 const placeholderProduct = /^undefine?d(?=\s|$)\s*(.*?)\s*$/i;
 
+/** The feature keys of the INSDC feature table (plus PATRIC's "NonStdRes"). The pipeline's placeholder suffix is the GenBank key it read, which Solr's `feature_type` does not always repeat: "undefined mRNA" and "undefined ncRNA" rows are `misc_RNA` there. Keys are compared lower-cased. */
+const placeholderFeatureKeys: ReadonlySet<string> = new Set(
+  [
+    "-10_signal",
+    "-35_signal",
+    "3'clip",
+    "3'UTR",
+    "5'clip",
+    "5'UTR",
+    "allele",
+    "assembly_gap",
+    "attenuator",
+    "C_region",
+    "CAAT_signal",
+    "CDS",
+    "centromere",
+    "D-loop",
+    "D_segment",
+    "enhancer",
+    "exon",
+    "gap",
+    "GC_signal",
+    "gene",
+    "iDNA",
+    "intron",
+    "J_segment",
+    "LTR",
+    "mat_peptide",
+    "misc_binding",
+    "misc_difference",
+    "misc_feature",
+    "misc_recomb",
+    "misc_RNA",
+    "misc_signal",
+    "misc_structure",
+    "mobile_element",
+    "modified_base",
+    "mRNA",
+    "N_region",
+    "ncRNA",
+    "NonStdRes",
+    "operon",
+    "oriT",
+    "polyA_site",
+    "precursor_RNA",
+    "prim_transcript",
+    "primer_bind",
+    "promoter",
+    "protein_bind",
+    "RBS",
+    "regulatory",
+    "rep_origin",
+    "repeat_region",
+    "rRNA",
+    "S_region",
+    "sig_peptide",
+    "source",
+    "stem_loop",
+    "STS",
+    "TATA_signal",
+    "telomere",
+    "terminator",
+    "tmRNA",
+    "transit_peptide",
+    "tRNA",
+    "unsure",
+    "V_region",
+    "V_segment",
+    "variation",
+  ].map((key) => key.toLowerCase()),
+);
+
 /**
- * The feature's product, or `""` when it is absent or the Data API's "undefined <feature_type>" placeholder, so a caller's `||` fallback (feature type, then ID) can run. The placeholder is the word alone, or followed by exactly the row's own feature type; a caller without the type gets the looser rule that one following word is enough, since feature types are single tokens. A real product that merely starts with "Undefined" is kept whenever the type is known.
+ * The feature's product, or `""` when it is absent or the Data API's "undefined <feature_type>" placeholder, so a caller's `||` fallback (feature type, then ID) can run. The word "undefined" alone is a placeholder, and so is "undefined" followed by one word that is the row's own feature type or an INSDC feature key (`placeholderFeatureKeys`). Any other product that starts with "Undefined" ("Undefined function", "undefined hypothetical protein") is kept.
  */
 export function cleanFeatureProduct(
   product: unknown,
@@ -28,8 +100,7 @@ export function cleanFeatureProduct(
   if (rest === "") return "";
   const type =
     typeof featureType === "string" ? featureType.trim().toLowerCase() : "";
-  if (type !== "") return rest === type ? "" : value;
-  return /\s/.test(rest) ? value : "";
+  return rest === type || placeholderFeatureKeys.has(rest) ? "" : value;
 }
 
 /** BV-BRC's Feature View lines under the breadcrumb: BRC ID, RefSeq locus tag, gene, product; `name` is the heading, `details` the non-blank rest (a placeholder product counts as blank). */

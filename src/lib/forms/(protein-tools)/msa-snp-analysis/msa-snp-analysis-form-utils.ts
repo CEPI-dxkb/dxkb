@@ -1,6 +1,8 @@
 import type { MsaSnpAnalysisFormData, FastaFileItem } from "./msa-snp-analysis-form-schema";
 import * as MsaSnpAnalysisSchema from "./msa-snp-analysis-form-schema";
 import { validateFasta, type FastaValidationResult } from "@/lib/fasta-validation";
+import { cleanFeatureProduct } from "@/lib/feature-view/display";
+import type { FeatureSummary } from "@/lib/services/feature";
 
 export const msaSNPAnalysisAligners = [
   { value: "Mafft", label: "Mafft" },
@@ -21,6 +23,18 @@ export function getDisplayName(name: string): string {
   return `${name.slice(0, maxName / 2 - 2)}...${name.slice(
     name.length - (maxName / 2) + 2,
   )}`;
+}
+
+/** The feature picker's option text: `patric_id --- product`, the bare `patric_id` when the product is blank or the Data API's "undefined <feature_type>" placeholder, and the `feature_id` when there is no `patric_id`. */
+export function featureOptionLabel(
+  feature: Pick<
+    FeatureSummary,
+    "feature_id" | "patric_id" | "product" | "feature_type"
+  >,
+): string {
+  if (!feature.patric_id) return feature.feature_id;
+  const product = cleanFeatureProduct(feature.product, feature.feature_type);
+  return product ? `${feature.patric_id} --- ${product}` : feature.patric_id;
 }
 
 export function checkDuplicateFastaFile(

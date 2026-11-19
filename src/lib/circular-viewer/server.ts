@@ -10,6 +10,7 @@ import { DataApiError, type ServerDataRepository } from "@/lib/data-api/reposito
 import { DataApiValidationError } from "@/lib/data-api/resources";
 import { keywordClauses } from "@/lib/data-api/rql";
 import { maxSelectedRows } from "@/lib/data-api/validation";
+import { cleanFeatureProduct } from "@/lib/feature-view/display";
 import { isGenomeId } from "@/lib/genome-view/schema";
 import {
   customFeatureTypes,
@@ -233,7 +234,7 @@ export function toCircularFeature(row: Record<string, unknown>): CircularFeature
   };
   const optional = {
     patricId: text(row.patric_id),
-    product: text(row.product),
+    product: cleanFeatureProduct(row.product, row.feature_type) || undefined,
     gene: text(row.gene),
     refseqLocusTag: text(row.refseq_locus_tag),
     proteinId: text(row.protein_id),

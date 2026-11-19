@@ -56,6 +56,27 @@ describe("Domains and Motifs view contracts", () => {
     ).toBe("/feature/PATRIC.1%2F2");
   });
 
+  it("shows a lone dash InterPro ID as a blank cell, leaving the other columns on the stored value", () => {
+    const columns = proteinFeatureCollectionProfile.columns;
+    const interproId = columns.find((column) => column.id === "interpro_id");
+    expect(interproId).toEqual(expect.objectContaining({ sortable: true }));
+    expect(interproId?.displayValue?.({ id: "pf1", interpro_id: "-" })).toBe(
+      "",
+    );
+    expect(interproId?.displayValue?.({ id: "pf1", interpro_id: " - " })).toBe(
+      "",
+    );
+    expect(
+      interproId?.displayValue?.({ id: "pf2", interpro_id: "IPR001364" }),
+    ).toBe("IPR001364");
+    expect(interproId?.displayValue?.({ id: "pf3" })).toBe("");
+    for (const id of ["description", "interpro_description", "e_value"]) {
+      expect(columns.find((column) => column.id === id)?.displayValue).toBe(
+        undefined,
+      );
+    }
+  });
+
   it("exposes the established facets and canonical backend fields", () => {
     expect(
       proteinFeatureCollectionProfile.facets?.map((facet) => facet.field),

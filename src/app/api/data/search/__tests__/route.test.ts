@@ -104,16 +104,44 @@ describe("POST /api/data/search", () => {
     expect(seen[0].body.taxonomy).toEqual({
       dataType: "taxonomy",
       accept: "application/solr+json",
-      query: "keyword(influenza)&gt(genomes,1)&limit(10)&sort(-genomes)",
+      query:
+        "or(keyword(influenza),eq(other_names,%22influenza%22))&gt(genomes,1)&limit(10)&sort(-genomes)",
     });
     expect(seen[0].body.genome).toEqual({
       dataType: "genome",
       accept: "application/solr+json",
       query:
-        "keyword(influenza)&ne(genome_status,Deprecated)&limit(10)&sort(-score)",
+        "keyword(influenza)&ne(genome_status,Deprecated)&limit(10)&sort(+genome_status,+genome_quality,-score)",
     });
     expect(seen[0].authorization).toBeNull();
   });
+
+  it.each([
+    [
+      "SARS-CoV-2",
+      "or(and(keyword(SARS),keyword(CoV),keyword(2)),eq(other_names,%22SARS%20CoV%202%22))&gt(genomes,1)&limit(10)&sort(-genomes)",
+    ],
+    // What the search page posts: its legacy normalization quotes a final digit.
+    [
+      'SARS CoV "2"',
+      "or(and(keyword(SARS),keyword(CoV),keyword(%222%22)),eq(other_names,%22SARS%20CoV%202%22))&gt(genomes,1)&limit(10)&sort(-genomes)",
+    ],
+  ])(
+    "also matches taxa whose other names hold %s",
+    async (keyword, query) => {
+      const seen = captureUpstream(() => HttpResponse.json({}));
+
+      const response = await search({ keyword });
+
+      expect(response.status).toBe(200);
+      expect(seen[0].body.taxonomy).toEqual({
+        dataType: "taxonomy",
+        accept: "application/solr+json",
+        query,
+      });
+      expect(seen[0].body.genome.query).not.toContain("other_names");
+    },
+  );
 
   it("searches with the signed-in user's token, as the lists it links to do", async () => {
     setTestSession({ token: "secret", userId: "alice" });

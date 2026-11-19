@@ -2,6 +2,8 @@ import { queryOptions } from "@tanstack/react-query";
 
 import { allTermSearchTypes, searchHref } from "@/constants/search-info";
 import { DataRepositoryError } from "@/lib/data-api/client";
+import { cleanFeatureProduct } from "@/lib/feature-view/display";
+import { cleanProteinFeatureValue } from "@/lib/protein-feature-view/display";
 import { isTaxonId, taxonViewHeader } from "@/lib/taxonomy-view";
 import {
   epitopeHref,
@@ -298,16 +300,21 @@ function describe(
     case "genome_feature": {
       // A Feature doc has no `id`, and the top features can share a genome.
       const featureId = featureIdFromRow(doc);
+      const featureType = text(doc.feature_type);
       return {
         ...base,
         key: featureId ?? base.key,
+        // The Data API stores "undefined <feature_type>" as the product of many PATRIC features (a gap reads "undefined gap"), which would defeat this `||`.
         title: join(
-          [text(doc.product) || text(doc.feature_type), text(doc.gene)],
+          [
+            cleanFeatureProduct(doc.product, featureType) || featureType,
+            text(doc.gene),
+          ],
           " | ",
         ),
         context: text(doc.genome_name),
         facts: facts([
-          ["Type", text(doc.feature_type)],
+          ["Type", featureType],
           ["Source", text(doc.annotation)],
           ["Length", measured(doc.na_length, "nt")],
         ]),
@@ -320,7 +327,11 @@ function describe(
       return {
         ...base,
         key: text(doc.id) || base.key,
-        title: text(doc.interpro_description) || text(doc.description),
+        // The Data API writes a lone "-" for a missing InterPro entry, which would defeat this `||` chain; `source source_id` (always real) is the last resort.
+        title:
+          cleanProteinFeatureValue(doc.interpro_description) ||
+          cleanProteinFeatureValue(doc.description) ||
+          join([text(doc.source), text(doc.source_id)], " "),
         context: join([text(doc.product), text(doc.genome_name)]),
         facts: facts([
           ["Source", join([text(doc.source), text(doc.source_id)], " ")],
@@ -328,9 +339,9 @@ function describe(
             "Position",
             doc.start != null ? `${text(doc.start)}–${text(doc.end)}` : "",
           ],
-          ["E-value", text(doc.e_value)],
+          ["E-value", cleanProteinFeatureValue(doc.e_value)],
         ]),
-        id: text(doc.interpro_id) || text(doc.source_id),
+        id: cleanProteinFeatureValue(doc.interpro_id) || text(doc.source_id),
         href: featureId ? featureHref(featureId) : null,
       };
     }
@@ -467,6 +478,44 @@ export function describeRows(
   });
 }
 
+/** Names compare by their words, so `SARS CoV "2"` (the normalized keyword), `SARS-CoV-2` and `sars-cov-2` are one key. A text with no words has an empty key, which matches nothing. */
+function nameKey(value: string): string {
+  return value
+    .toLowerCase()
+    .split(/[^\p{L}\p{N}]+/u)
+    .filter(Boolean)
+    .join(" ");
+}
+
+function otherNamesOf(doc: SearchDoc): string[] {
+  const value = doc.other_names;
+  if (typeof value === "string") return [value];
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === "string")
+    : [];
+}
+
+/**
+ * The taxon the Best Match card shows: the one named as the keyword, else one with the keyword among its other names ("SARS-CoV-2", "HIV-1"), else the first row (the most genomes). Rows are sorted by genome count, so without this a taxon that merely lists the keyword as an other name ("Zaire ebolavirus" for "Ebola virus") would outrank the taxon of that name.
+ * Only the docs the search returned are considered (the top `expandedRowCount` by genome count): there is no second query, so a match beyond them is not found.
+ */
+function bestTaxonDoc(
+  docs: SearchDoc[] | undefined,
+  keyword: string,
+): SearchDoc | undefined {
+  // A wildcard or `|` keyword is not a name: `nameKey` would drop those characters and read `Ebola virus*` as the name "Ebola virus". The Taxa query skips its other-names branch for them too.
+  const key = /[*?|]/.test(keyword) ? "" : nameKey(keyword);
+  if (key) {
+    const byName = docs?.find((doc) => nameKey(text(doc.taxon_name)) === key);
+    if (byName) return byName;
+    const byOtherName = docs?.find((doc) =>
+      otherNamesOf(doc).some((name) => nameKey(name) === key),
+    );
+    if (byOtherName) return byOtherName;
+  }
+  return docs?.at(0);
+}
+
 function taxonMatchOf(
   doc: SearchDoc | undefined,
   taxonGenomeCounts: TaxonGenomeCounts,
@@ -505,7 +554,7 @@ export function toAllTypesResults(
     types,
     total: types.reduce((sum, type) => sum + type.count, 0),
     bestMatch: taxonMatchOf(
-      matches?.taxonomy?.result?.response?.docs?.at(0),
+      bestTaxonDoc(matches?.taxonomy?.result?.response?.docs, keyword),
       taxonGenomeCounts,
     ),
   };

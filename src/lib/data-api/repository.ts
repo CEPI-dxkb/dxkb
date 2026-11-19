@@ -32,6 +32,7 @@ import {
   keywordClauses,
   serializeInClause,
   serializeRql,
+  taxonomyKeywordClause,
   upstreamRql,
 } from "./rql";
 import type {
@@ -123,21 +124,40 @@ function appendQuery(url: URL, clause: string): void {
   url.search = url.search ? `${url.search.slice(1)}&${upstream}` : upstream;
 }
 
-function predicateClause(request: DownloadQuery): string | undefined {
+/** A taxonomy keyword also matches `other_names`, as the Taxa search card's does (`taxonomyKeywordClause`). */
+function keywordPredicate(
+  resource: DataResource,
+  keyword: string,
+  mode: DownloadQuery["keywordMode"],
+): string | undefined {
+  if (resource === "taxonomy") return taxonomyKeywordClause(keyword, mode);
+  const expressions = keywordClauses(keyword, mode);
+  if (expressions.length === 0) return undefined;
+  return expressions.length === 1
+    ? expressions[0]
+    : `and(${expressions.join(",")})`;
+}
+
+function predicateClause(
+  resource: DataResource,
+  request: DownloadQuery,
+): string | undefined {
   const clauses: string[] = [];
   if (request.rql) clauses.push(request.rql);
-  if (request.keyword) {
-    const expressions = keywordClauses(request.keyword, request.keywordMode);
-    if (expressions.length === 1) clauses.push(expressions[0]);
-    else if (expressions.length > 1)
-      clauses.push(`and(${expressions.join(",")})`);
-  }
+  const keyword = request.keyword
+    ? keywordPredicate(resource, request.keyword, request.keywordMode)
+    : undefined;
+  if (keyword) clauses.push(keyword);
   if (clauses.length === 0) return undefined;
   return clauses.length === 1 ? clauses[0] : `and(${clauses.join(",")})`;
 }
 
-function addPredicate(url: URL, request: DownloadQuery): void {
-  const clause = predicateClause(request);
+function addPredicate(
+  url: URL,
+  resource: DataResource,
+  request: DownloadQuery,
+): void {
+  const clause = predicateClause(resource, request);
   if (clause) appendQuery(url, clause);
 }
 
@@ -386,7 +406,7 @@ export class ServerDataRepository {
     const start = (page - 1) * size;
     const endpoint = this.endpoint(resource);
     const { url } = endpoint;
-    addPredicate(url, request);
+    addPredicate(url, resource, request);
     const projectLocally = addFields(url, request.fields, definition.idField);
     addSort(url, request.sort, definition.idField);
     if (request.facets?.length)
@@ -495,7 +515,7 @@ export class ServerDataRepository {
     const definition = getResourceDefinition(resource);
     const endpoint = this.endpoint(resource);
     const { url } = endpoint;
-    addPredicate(url, request);
+    addPredicate(url, resource, request);
     const projectLocally = addFields(url, request.fields, definition.idField);
     addSort(url, request.sort, definition.idField);
     const offset = request.offset ?? 0;
@@ -711,7 +731,8 @@ export class ServerDataRepository {
               request.scope.ids,
               maxSelectionDownloadRows,
             )
-          : (predicateClause(request.scope) ?? `eq(${definition.idField},*)`),
+          : (predicateClause(resource, request.scope) ??
+              `eq(${definition.idField},*)`),
       );
       // Exactly the visible columns: the primary key JSON reads add would be an
       // extra column in a streamed file.

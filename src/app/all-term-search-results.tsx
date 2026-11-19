@@ -59,15 +59,24 @@ function HeaderFillet({ side }: { side: "left" | "right" }) {
 
 interface SearchResultsProps {
   query: string;
+  /**
+   * What the user typed, shown in the heading and the no-match card. `query` is
+   * normalized for the search (`SARS-CoV-2` becomes `SARS CoV "2"`), which is
+   * not how the user wrote it. Without it, the normalized keyword is shown.
+   */
+  displayQuery?: string;
   /** With `false` the header scrolls away; the Data types rail stays pinned either way. */
   pinnedHeader?: boolean;
 }
 
 export function SearchResults({
   query,
+  displayQuery,
   pinnedHeader = true,
 }: SearchResultsProps) {
   const keyword = normalizeLegacyKeyword(query);
+  // Display only: the query key, request and list links stay on `keyword`.
+  const label = displayQuery?.trim() ? displayQuery : keyword;
   const { user } = useAuth();
   const search = useQuery(
     allTypesSearchQueryOptions(keyword, user?.id ?? "anonymous"),
@@ -155,7 +164,7 @@ export function SearchResults({
 
   const header = (
     <SearchResultsHeader
-      keyword={keyword}
+      keyword={label}
       summary={
         isLoading
           ? "Searching every DXKB data type…"
@@ -206,7 +215,7 @@ export function SearchResults({
       <div className="text-center">
         <h2 className="text-lg font-semibold">No results found</h2>
         <p className="text-sm text-muted-foreground">
-          No DXKB data type matches &ldquo;{keyword}&rdquo;. Try different
+          No DXKB data type matches &ldquo;{label}&rdquo;. Try different
           search terms.
         </p>
       </div>

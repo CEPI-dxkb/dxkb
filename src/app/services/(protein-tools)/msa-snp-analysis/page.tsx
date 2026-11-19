@@ -892,9 +892,10 @@ function useMSAandSNPAnalysisPage() {
                             ) : (
                               <SelectGroup>
                                 {featureOptions.map((feature) => {
-                                  const displayLabel = feature.patric_id
-                                    ? `${feature.patric_id}${feature.product ? ` --- ${feature.product}` : ""}`
-                                    : feature.feature_id;
+                                  const displayLabel =
+                                    MsaSnpAnalysisUtils.featureOptionLabel(
+                                      feature,
+                                    );
                                   return (
                                     <SelectItem
                                       key={feature.feature_id}

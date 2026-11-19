@@ -10,6 +10,7 @@ import {
   typeSearchQuery,
 } from "../all-types-search";
 import { taxonGenomeCountQueries } from "../all-types-query";
+import { allTermSearchTypes } from "@/constants/search-info";
 import { DataRepositoryError } from "@/lib/data-api/client";
 import { keywordClauses } from "@/lib/data-api/rql";
 import { genomeBaseRql, parseGenomeCollectionState } from "@/lib/genome-view";
@@ -17,27 +18,107 @@ import { nonDeprecatedGenomeClause } from "@/lib/services/organisms/genome-scope
 import { toSearchParamsRecord } from "@/lib/views/collection-state";
 import { rqlAnd } from "@/lib/views/rql";
 import { isUpstreamOutage } from "@/lib/api/query-retry";
-import { taxonViewHeader } from "@/lib/taxonomy-view";
+import {
+  parseTaxonomyCollectionState,
+  taxonomyCollectionProfile,
+  taxonViewHeader,
+} from "@/lib/taxonomy-view";
+import { ServerDataRepository } from "@/lib/data-api/repository";
 import { server } from "@/test-helpers/msw-server";
 
 const searchRoute = `*${allTypesSearchPath}`;
 
 describe("typeSearchQuery", () => {
   it.each([
-    ["taxonomy", "keyword(influenza)&gt(genomes,1)&limit(5)&sort(-genomes)"],
+    [
+      "taxonomy",
+      "or(keyword(influenza),eq(other_names,%22influenza%22))&gt(genomes,1)&limit(5)&sort(-genomes)",
+    ],
     [
       "genome_feature",
       "keyword(influenza)&ne(annotation,brc1)&ne(feature_type,source)&limit(5)&sort(+annotation,-score)",
     ],
     ["epitope", "keyword(influenza)&limit(5)&sort(-score)"],
+    ["strain", "keyword(influenza)&limit(5)&sort(-score)"],
   ])("builds the %s query", (id, expected) => {
     expect(typeSearchQuery(id, "influenza", 5)).toBe(expected);
   });
 
+  it.each([
+    [
+      "SARS-CoV-2",
+      "or(and(keyword(SARS),keyword(CoV),keyword(2)),eq(other_names,%22SARS%20CoV%202%22))&gt(genomes,1)&limit(5)&sort(-genomes)",
+    ],
+    [
+      'SARS CoV "2"',
+      "or(and(keyword(SARS),keyword(CoV),keyword(%222%22)),eq(other_names,%22SARS%20CoV%202%22))&gt(genomes,1)&limit(5)&sort(-genomes)",
+    ],
+    [
+      "HIV-1",
+      "or(and(keyword(HIV),keyword(1)),eq(other_names,%22HIV%201%22))&gt(genomes,1)&limit(5)&sort(-genomes)",
+    ],
+    [
+      'HIV "1"',
+      "or(and(keyword(HIV),keyword(%221%22)),eq(other_names,%22HIV%201%22))&gt(genomes,1)&limit(5)&sort(-genomes)",
+    ],
+  ])(
+    "also matches the Taxa card's %s against other names, where abbreviations live",
+    (keyword, expected) => {
+      expect(typeSearchQuery("taxonomy", keyword, 5)).toBe(expected);
+    },
+  );
+
+  it.each([
+    ["coli -Salmonella", "and(keyword(coli),not(keyword(Salmonella)))"],
+    ['"quoted phrase"', "keyword(%22quoted%20phrase%22)"],
+    ["a OR b", "or(keyword(a),keyword(b))"],
+    ["E*", "keyword(E%2A)"],
+  ])(
+    "keeps the Taxa card's keyword clause alone for %s",
+    (keyword, clause) => {
+      expect(typeSearchQuery("taxonomy", keyword, 5)).toBe(
+        `${clause}&gt(genomes,1)&limit(5)&sort(-genomes)`,
+      );
+    },
+  );
+
+  it.each(["genome", "genome_feature", "strain", "epitope", "serology"])(
+    "leaves the %s query without an other_names branch",
+    (id) => {
+      const query = typeSearchQuery(id, "SARS-CoV-2", 5);
+      expect(query).not.toContain("other_names");
+      expect(
+        query.startsWith("and(keyword(SARS),keyword(CoV),keyword(2))&"),
+      ).toBe(true);
+    },
+  );
+
   it("leaves Deprecated genomes out of the Genomes count, as the list it links to does", () => {
     expect(typeSearchQuery("genome", "Coronaviridae", 10)).toBe(
-      "keyword(Coronaviridae)&ne(genome_status,Deprecated)&limit(10)&sort(-score)",
+      "keyword(Coronaviridae)&ne(genome_status,Deprecated)&limit(10)&sort(+genome_status,+genome_quality,-score)",
     );
+  });
+
+  it("builds the Genomes card's query for SARS-CoV-2: its keywords, no Deprecated genomes, complete good-quality genomes first", () => {
+    expect(typeSearchQuery("genome", "SARS-CoV-2", 10)).toBe(
+      "and(keyword(SARS),keyword(CoV),keyword(2))&ne(genome_status,Deprecated)&limit(10)&sort(+genome_status,+genome_quality,-score)",
+    );
+    expect(typeSearchQuery("genome", 'SARS CoV "2"', 10)).toBe(
+      "and(keyword(SARS),keyword(CoV),keyword(%222%22))&ne(genome_status,Deprecated)&limit(10)&sort(+genome_status,+genome_quality,-score)",
+    );
+  });
+
+  it("changes only the Genomes card's sort: the other cards keep theirs", () => {
+    const sortOf = (id: string) =>
+      /&sort\((.*)\)$/.exec(typeSearchQuery(id, "coli", 10))?.[1];
+    expect(sortOf("genome")).toBe("+genome_status,+genome_quality,-score");
+    expect(sortOf("genome_feature")).toBe("+annotation,-score");
+    expect(sortOf("taxonomy")).toBe("-genomes");
+    const others = allTermSearchTypes
+      .map((type) => type.id)
+      .filter((id) => !["genome", "genome_feature", "taxonomy"].includes(id));
+    expect(others).toContain("strain");
+    for (const id of others) expect(sortOf(id)).toBe("-score");
   });
 
   it.each(["Coronaviridae", "coli Salmonella"])(
@@ -60,6 +141,49 @@ describe("typeSearchQuery", () => {
         rqlAnd(...keywordClauses(listState.keyword ?? "", "exact")),
         listBase,
       ]);
+    },
+  );
+
+  it.each([
+    'SARS CoV "2"',
+    'HIV "1"',
+    "influenza",
+    "kinase NOT hypothetical",
+    '"Ebola virus"',
+  ])(
+    "matches taxa with the predicate the `/taxonomy?keyword=` list it links to sends (%s)",
+    async (keyword) => {
+      const card = toAllTypesResults(undefined, keyword).types.find(
+        (type) => type.id === "taxonomy",
+      );
+      const href = new URL(card?.listHref ?? "", "https://dxkb.test");
+      expect(href.pathname).toBe("/taxonomy");
+      const listState = parseTaxonomyCollectionState(
+        toSearchParamsRecord(href.searchParams),
+      );
+      const requested: string[] = [];
+      server.use(
+        http.get("https://data.test/taxonomy/", ({ request }) => {
+          requested.push(new URL(request.url).search);
+          return HttpResponse.json({ response: { numFound: 0, docs: [] } });
+        }),
+      );
+      // The list's server read, as `/api/data/taxonomy` runs it.
+      await new ServerDataRepository({ baseUrl: "https://data.test" }).collection(
+        "taxonomy",
+        {
+          operation: "collection",
+          keyword: listState.keyword,
+          keywordMode: taxonomyCollectionProfile.serverKeywordMode,
+        },
+      );
+      const [cardPredicate] = typeSearchQuery("taxonomy", keyword, 10).split(
+        "&",
+      );
+      expect(requested).toHaveLength(1);
+      // The URL carries the predicate's own `"`-free text as written.
+      const [listPredicate] = requested[0].slice(1).split("&");
+      expect(listPredicate).toBe(cardPredicate);
     },
   );
 });
@@ -209,6 +333,52 @@ describe("describeRows", () => {
     });
   });
 
+  it("titles a Domain or Motif by its description when InterPro's is a lone dash", () => {
+    // The Data API writes "-" for a missing InterPro entry (34% of the docs); the SARS-CoV-2 ORF7b hits still carry a real `description`.
+    const [row] = describeRows("protein_feature", [
+      {
+        id: "pf1",
+        interpro_description: "-",
+        interpro_id: "-",
+        description: "ORF7b_SARS-CoV-2",
+        source: "CDD",
+        source_id: "cd21623",
+      },
+    ]);
+    expect(row).toMatchObject({
+      title: "ORF7b_SARS-CoV-2",
+      id: "cd21623",
+    });
+  });
+
+  it("titles a Domain or Motif by its source and source ID when both descriptions are a lone dash", () => {
+    const [row] = describeRows("protein_feature", [
+      {
+        id: "pf1",
+        interpro_description: "-",
+        interpro_id: "-",
+        description: "-",
+        source: "PANTHER",
+        source_id: "PTHR44846",
+      },
+    ]);
+    expect(row).toMatchObject({
+      title: "PANTHER PTHR44846",
+      id: "PTHR44846",
+    });
+  });
+
+  it("leaves a Domain or Motif's E-value out when it is a lone dash", () => {
+    const [dash] = describeRows("protein_feature", [
+      { id: "pf1", source: "CDD", source_id: "cd1", e_value: "-" },
+    ]);
+    expect(dash.facts.map((fact) => fact.label)).not.toContain("E-value");
+    const [real] = describeRows("protein_feature", [
+      { id: "pf2", source: "CDD", source_id: "cd1", e_value: "7.9E-34" },
+    ]);
+    expect(real.facts).toContainEqual({ label: "E-value", value: "7.9E-34" });
+  });
+
   it("links a Domain or Motif by its PATRIC ID when it has no feature ID", () => {
     const [row] = describeRows("protein_feature", [
       { id: "pf1", patric_id: "fig|11320.1.peg.1" },
@@ -219,6 +389,73 @@ describe("describeRows", () => {
   it("leaves a Domain or Motif without a feature unlinked", () => {
     const [row] = describeRows("protein_feature", [{ id: "pf1" }]);
     expect(row).toMatchObject({ key: "pf1", href: null });
+  });
+
+  it("titles a Feature by its product and gene, linking its record", () => {
+    const [row] = describeRows("genome_feature", [
+      {
+        feature_id: "PATRIC.2697049.1.NC_045512.CDS.28274.29533.fwd",
+        patric_id: "fig|2697049.1.peg.10",
+        product: "nucleocapsid phosphoprotein",
+        gene: "N",
+        feature_type: "CDS",
+        annotation: "PATRIC",
+        genome_name: "SARS-CoV-2",
+      },
+    ]);
+    expect(row).toMatchObject({
+      title: "nucleocapsid phosphoprotein | N",
+      id: "fig|2697049.1.peg.10",
+      href: "/feature/PATRIC.2697049.1.NC_045512.CDS.28274.29533.fwd",
+    });
+  });
+
+  it("falls back to the feature type when the Data API's product is 'undefined gap'", () => {
+    const [row] = describeRows("genome_feature", [
+      {
+        feature_id: "PATRIC.2697049.10377022.PX491150.gap.4410.4603.fwd",
+        patric_id: "fig|2697049.10377022.gap.2",
+        product: "undefined gap",
+        feature_type: "gap",
+        annotation: "PATRIC",
+        na_length: 194,
+      },
+    ]);
+    expect(row.title).toBe("gap");
+    expect(row.title).not.toContain("undefined");
+    expect(row.id).toBe("fig|2697049.10377022.gap.2");
+  });
+
+  it("treats the 'undefind' typo placeholder the same way", () => {
+    const [row] = describeRows("genome_feature", [
+      {
+        feature_id: "f1",
+        product: "undefind assembly_gap",
+        feature_type: "assembly_gap",
+      },
+    ]);
+    expect(row.title).toBe("assembly_gap");
+  });
+
+  it("falls back to the feature type when a Feature has no product", () => {
+    const [row] = describeRows("genome_feature", [
+      { feature_id: "f2", feature_type: "gene", gene: "S" },
+    ]);
+    expect(row.title).toBe("gene | S");
+  });
+
+  it("keeps the gene beside the feature type when the product is a placeholder", () => {
+    const [row] = describeRows("genome_feature", [
+      { feature_id: "f4", product: "undefined gap", feature_type: "gap", gene: "x" },
+    ]);
+    expect(row.title).toBe("gap | x");
+  });
+
+  it("falls back to the BRC ID when a Feature has neither a usable product nor a type", () => {
+    const [row] = describeRows("genome_feature", [
+      { feature_id: "f3", patric_id: "fig|1.1.peg.1", product: "undefined" },
+    ]);
+    expect(row.title).toBe("fig|1.1.peg.1");
   });
 
   it("shows an Epitope's sequence in mono and links it", () => {
@@ -404,6 +641,190 @@ describe("toAllTypesResults", () => {
         "Betacoronavirus",
         "Betacoronavirus pandemicum",
       ],
+    });
+  });
+
+  describe("picks the best match among the returned taxa", () => {
+    function taxa(
+      keyword: string,
+      docs: Record<string, unknown>[],
+      counts: Record<string, number> = {},
+    ) {
+      return toAllTypesResults(
+        {
+          taxonomy: {
+            result: { response: { numFound: docs.length, docs } },
+          },
+          ...Object.fromEntries(
+            Object.entries(counts).map(([taxonId, numFound]) => [
+              `taxonGenomes:${taxonId}`,
+              { result: { response: { numFound, docs: [] } } },
+            ]),
+          ),
+        },
+        keyword,
+      ).bestMatch;
+    }
+
+    const sarsCov2 = {
+      taxon_id: 2697049,
+      taxon_name: "Severe acute respiratory syndrome coronavirus 2",
+      taxon_rank: "no rank",
+      other_names: [
+        "2019-nCoV",
+        "COVID-19 virus",
+        "HCoV-19",
+        "SARS-2",
+        "SARS2",
+        "SARS-CoV-2",
+        "SARS-CoV2",
+      ],
+    };
+    const hivGroupM = {
+      taxon_id: 11676001,
+      taxon_name: "HIV-1 group M",
+      taxon_rank: "no rank",
+      other_names: ["Human immunodeficiency virus 1 group M"],
+    };
+    const hiv1 = {
+      taxon_id: 11676,
+      taxon_name: "Human immunodeficiency virus 1",
+      taxon_rank: "species",
+      other_names: ["HIV-1", "HIV1"],
+    };
+    const zaire = {
+      taxon_id: 186538,
+      taxon_name: "Zaire ebolavirus",
+      taxon_rank: "species",
+      other_names: ["Ebola virus", "EBOV"],
+    };
+    const ebola = {
+      taxon_id: 1570291,
+      taxon_name: "Ebola virus",
+      taxon_rank: "no rank",
+    };
+    const sudan = {
+      taxon_id: 186540,
+      taxon_name: "Sudan ebolavirus",
+      taxon_rank: "species",
+    };
+
+    it("takes a taxon whose other names hold the keyword, when it is the only row", () => {
+      expect(
+        taxa('SARS CoV "2"', [sarsCov2], { "2697049": 8_900_000 }),
+      ).toMatchObject({
+        name: "Severe acute respiratory syndrome coronavirus 2",
+        taxonId: "2697049",
+        href: "/taxonomy/2697049",
+        genomes: 8_900_000,
+        rank: "No rank",
+      });
+    });
+
+    it("takes the taxon whose other names hold the keyword over a row with more genomes", () => {
+      expect(taxa('HIV "1"', [hivGroupM, hiv1])?.name).toBe(
+        "Human immunodeficiency virus 1",
+      );
+    });
+
+    it("counts the chosen taxon's genomes, not the first row's", () => {
+      expect(
+        taxa('HIV "1"', [hivGroupM, hiv1], {
+          "11676001": 4_925,
+          "11676": 1_099_453,
+        }),
+      ).toMatchObject({ taxonId: "11676", genomes: 1_099_453 });
+    });
+
+    it("takes the taxon named as the keyword over a taxon with more genomes that has it as an other name", () => {
+      expect(taxa("Ebola virus", [zaire, ebola, sudan])).toMatchObject({
+        name: "Ebola virus",
+        taxonId: "1570291",
+      });
+    });
+
+    it("prefers an exact name over an other-names hit whatever their order", () => {
+      expect(taxa("Ebola virus", [ebola, zaire])?.name).toBe("Ebola virus");
+    });
+
+    it("takes the first row when no taxon has the keyword as a name or other name", () => {
+      expect(taxa("ebolavirus", [zaire, ebola, sudan])?.name).toBe(
+        "Zaire ebolavirus",
+      );
+    });
+
+    it.each(["SARS-CoV-2", "sars-cov-2", "SARS CoV 2", 'sars cov "2"'])(
+      "matches the keyword %s across case, hyphens and spaces",
+      (keyword) => {
+        expect(taxa(keyword, [hivGroupM, sarsCov2])?.name).toBe(
+          "Severe acute respiratory syndrome coronavirus 2",
+        );
+      },
+    );
+
+    it("matches the name across case and hyphens too", () => {
+      expect(taxa("hiv 1 GROUP m", [hiv1, hivGroupM])?.name).toBe(
+        "HIV-1 group M",
+      );
+    });
+
+    it("takes the first row for a keyword with operators, negation or wildcards", () => {
+      for (const keyword of ["Ebola virus OR Zika", "ebola -Sudan", "Ebola*"])
+        expect(taxa(keyword, [zaire, ebola])?.name).toBe("Zaire ebolavirus");
+    });
+
+    // `nameKey` drops `*`, `?` and `|`, so these keys would equal the name "Ebola virus"; the Taxa query skips its other-names branch for them too.
+    it.each(["Ebola virus*", "Ebola virus?", "Ebola virus|"])(
+      "takes the first row for the wildcard or pipe keyword %s, though its words equal a taxon's name",
+      (keyword) => {
+        expect(taxa(keyword, [zaire, ebola])?.name).toBe("Zaire ebolavirus");
+      },
+    );
+
+    it("matches a quoted phrase that is a taxon's name", () => {
+      expect(taxa('"Ebola virus"', [zaire, ebola])?.name).toBe("Ebola virus");
+    });
+
+    it("does not let a keyword with no words match a taxon", () => {
+      expect(
+        taxa("---", [
+          { taxon_id: 2, taxon_name: "Other", other_names: ["--", ""] },
+          { taxon_id: 1, taxon_name: "---" },
+        ])?.taxonId,
+      ).toBe("2");
+    });
+
+    it("tolerates other names that are missing, a single string, or mixed with other values", () => {
+      const noOtherNames = { taxon_id: 1, taxon_name: "Alpha virus" };
+      expect(
+        taxa("Beta", [
+          noOtherNames,
+          { taxon_id: 2, taxon_name: "Beta virus", other_names: "Beta" },
+        ])?.taxonId,
+      ).toBe("2");
+      expect(
+        taxa("Beta", [
+          noOtherNames,
+          { taxon_id: 3, taxon_name: "Gamma", other_names: [null, 7, {}, "Beta"] },
+        ])?.taxonId,
+      ).toBe("3");
+      expect(
+        taxa("Beta", [
+          noOtherNames,
+          { taxon_id: 4, taxon_name: "Delta", other_names: [null, 7, {}] },
+          { taxon_id: 5, taxon_name: "Epsilon", other_names: 7 },
+        ])?.taxonId,
+      ).toBe("1");
+    });
+
+    it("tolerates a doc without a name among the candidates", () => {
+      expect(
+        taxa("Ebola virus", [{ taxon_id: 9 }, ebola])?.taxonId,
+      ).toBe("1570291");
+    });
+
+    it("has no best match when the chosen doc has no name", () => {
+      expect(taxa("Ebola virus", [{ taxon_id: 9 }])).toBeNull();
     });
   });
 

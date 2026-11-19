@@ -158,6 +158,28 @@ describe("circular viewer reads", () => {
     expect(toCircularFeature({ feature_id: "F2", accession: "A", start: 0, end: 5 })).toBeNull();
   });
 
+  it("omits the Data API's placeholder product, so the tooltip has no Product row", () => {
+    const placeholder = toCircularFeature({
+      ...row("F3", 10),
+      feature_type: "gap",
+      product: "undefined gap",
+    });
+    expect(placeholder).toEqual(expect.objectContaining({ featureId: "F3", featureType: "gap" }));
+    expect(placeholder).not.toHaveProperty("product");
+    expect(
+      toCircularFeature({ ...row("F4", 10), feature_type: "gap", product: "undefind gap" }),
+    ).not.toHaveProperty("product");
+  });
+
+  it("keeps a real product, even one that starts with 'Undefined'", () => {
+    expect(toCircularFeature({ ...row("F5", 10), product: "Replication initiator" })).toEqual(
+      expect.objectContaining({ product: "Replication initiator" }),
+    );
+    expect(toCircularFeature({ ...row("F6", 10), product: "Undefined protein" })).toEqual(
+      expect.objectContaining({ product: "Undefined protein" }),
+    );
+  });
+
   it("marks more than 1,000 sequences as truncated", async () => {
     const rows = Array.from({ length: maxContigs + 1 }, (_, index) => ({
       sequence_id: `s${String(index)}`,

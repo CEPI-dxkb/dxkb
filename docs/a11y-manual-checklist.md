@@ -20,6 +20,7 @@ Tooltips, hover cards, and popover content that appears on hover or focus must b
 - Chart legend pills in the Metadata Distributions section of organism pages
 - Column header sort indicators in the data table
 - Job status badges in the jobs list
+- Virus-family info popover on the Viruses landing cards ("Major human pathogens in <Family>"): the pointer can cross from the button onto the list (safe polygon), Escape dismisses it, it stays open while the pointer or focus is inside, and it opens on tap and on Enter/Space
 
 ---
 

@@ -19,7 +19,7 @@ export interface InteractionsGraphUrlState {
   view: InteractionsSubview;
   /** Shared by both subviews; the selection only means something against the same dataset. */
   keyword: string;
-  /** One node or edge; a bulk selection (Sub-Graph, Hub) is not kept. */
+  /** One node or edge; a multi-item selection (Sub-Graph, Hub, Cmd/Ctrl-built) is not kept. */
   selected: GraphSelectionRef | null;
   layout: LayoutName;
   /** Means something only for this layout and dataset, so either changing drops it. */

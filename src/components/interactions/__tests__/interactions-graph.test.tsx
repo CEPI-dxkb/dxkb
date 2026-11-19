@@ -44,12 +44,16 @@ vi.mock("@/lib/interactions/layout-client", () => ({
   requestGraphLayout: vi.fn(),
 }));
 
-const canvasInputs = vi.hoisted(() => ({ nodes: [] as unknown[] }));
+const canvasInputs = vi.hoisted(() => ({
+  nodes: [] as unknown[],
+  incidence: [] as unknown[],
+}));
 
 vi.mock("../sigma/sigma-canvas", () => ({
   SigmaCanvas: ({
     onReady,
     nodes,
+    incidence,
     positions,
     selection,
     camera,
@@ -57,12 +61,14 @@ vi.mock("../sigma/sigma-canvas", () => ({
   }: {
     onReady: () => void;
     nodes: unknown;
+    incidence: unknown;
     positions: Float64Array | null;
     selection: GraphSelection;
     camera?: GraphCameraView | null;
     onCameraChange?: (camera: GraphCameraView | null) => void;
   }) => {
     canvasInputs.nodes.push(nodes);
+    canvasInputs.incidence.push(incidence);
     return (
     <button
       type="button"
@@ -595,7 +601,7 @@ describe("InteractionsGraph selection from the URL", () => {
     await user.click(screen.getByRole("button", { name: "Largest Subgraph" }));
 
     expect(onSelectedChange).toHaveBeenLastCalledWith(null);
-    expect(detailsPane().getByText("Bulk selection")).toBeInTheDocument();
+    expect(detailsPane().getByText("Multiple selection")).toBeInTheDocument();
     expect(screen.getByTestId("sigma-canvas")).toHaveAttribute(
       "data-selection",
       "node-a,node-b,edge-1",
@@ -695,6 +701,27 @@ describe("InteractionsGraph camera", () => {
 
     expect(canvasInputs.nodes.length).toBeGreaterThan(0);
     for (const nodes of canvasInputs.nodes) expect(nodes).toBe(initialNodes);
+  });
+
+  it("hands the canvas the same incidence index across a selection and a camera write", async () => {
+    const user = userEvent.setup();
+    resolved({ rows: graphRows, isTruncated: false });
+    const props = { rql: "", keywordValue: "", onKeywordChange: vi.fn() };
+    canvasInputs.incidence.length = 0;
+    const { rerender } = renderGraph(<GraphHarness {...props} />);
+    await screen.findByTestId("sigma-canvas");
+    const initialIndex = canvasInputs.incidence.at(-1);
+    expect(initialIndex).toBeDefined();
+    canvasInputs.incidence.length = 0;
+
+    await user.click(screen.getByText("geneA"));
+    rerender(
+      <GraphHarness {...props} camera={{ ratio: 0.5, x: 0.1, y: 0.2 }} />,
+    );
+
+    // A new index would give the canvas a new focus set and reinstall its reducers each time.
+    expect(canvasInputs.incidence.length).toBeGreaterThan(0);
+    for (const index of canvasInputs.incidence) expect(index).toBe(initialIndex);
   });
 
   it("hands the owner's camera to the canvas and reports the canvas's moves", () => {
@@ -812,5 +839,153 @@ describe("InteractionsGraph layout", () => {
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     expect(requestGraphLayout).toHaveBeenCalledTimes(2);
     expect(screen.getByRole("button", { name: "Export" })).toBeEnabled();
+  });
+});
+
+describe("InteractionsGraph multi-selection", () => {
+  it("adds a node on a Cmd-click in the node list and replaces on a plain click", () => {
+    resolved({ rows: graphRows, isTruncated: false });
+    renderGraph(
+      <GraphHarness rql="" keywordValue="" onKeywordChange={vi.fn()} />,
+    );
+    const details = screen.getByLabelText("Selection details");
+
+    fireEvent.click(screen.getByRole("option", { name: "geneA" }));
+    expect(within(details).getByText("Interactions (1)")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("option", { name: "geneB" }), {
+      metaKey: true,
+    });
+    expect(within(details).getByText("Multiple selection")).toBeInTheDocument();
+    expect(
+      within(details).getByText("2 proteins and 0 interactions selected."),
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("option", { name: "geneB" }));
+    expect(within(details).queryByText("Multiple selection")).toBeNull();
+    expect(within(details).getByText("Interactions (1)")).toBeInTheDocument();
+    // Both genes show "Interactions (1)", so the BRC ID is what says the click kept geneB only.
+    expect(within(details).getByText("node-b")).toBeInTheDocument();
+    expect(within(details).queryByText("node-a")).toBeNull();
+  });
+
+  // Next renders the URL write behind `selected` in a transition, so a quick Cmd/Ctrl-click can land
+  // before the prop has caught up with the plain click before it.
+  it("builds on a pick whose URL write the owner has not rendered yet", () => {
+    resolved({ rows: graphRows, isTruncated: false });
+    const onSelectedChange = vi.fn();
+    const props = {
+      rql: "",
+      keywordValue: "",
+      onKeywordChange: vi.fn(),
+      layout: defaultLayout,
+      onLayoutChange: vi.fn(),
+      onSelectedChange,
+      camera: null,
+      onCameraChange: vi.fn(),
+    };
+    const { rerender } = renderGraph(
+      <InteractionsGraph {...props} selected={null} />,
+    );
+
+    fireEvent.click(screen.getByRole("option", { name: "geneA" }));
+    expect(onSelectedChange).toHaveBeenLastCalledWith({
+      kind: "node",
+      id: "node-a",
+    });
+    expect(detailsPane().getByText("node-a")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("option", { name: "geneB" }), {
+      metaKey: true,
+    });
+    expect(onSelectedChange).toHaveBeenLastCalledWith(null);
+    expect(
+      detailsPane().getByText("2 proteins and 0 interactions selected."),
+    ).toBeInTheDocument();
+
+    // The first write lands after the second click; the local multi-item pick still wins.
+    rerender(
+      <InteractionsGraph {...props} selected={{ kind: "node", id: "node-a" }} />,
+    );
+    expect(
+      detailsPane().getByText("2 proteins and 0 interactions selected."),
+    ).toBeInTheDocument();
+  });
+
+  // The held pick must not outlive the owner catching up, or a later change to `selected` from
+  // outside (Back, a shared link) would keep showing the old pick.
+  it("stops holding a pick once the owner renders it, so a later outside change shows", () => {
+    resolved({ rows: graphRows, isTruncated: false });
+    const props = {
+      rql: "",
+      keywordValue: "",
+      onKeywordChange: vi.fn(),
+      layout: defaultLayout,
+      onLayoutChange: vi.fn(),
+      onSelectedChange: vi.fn(),
+      camera: null,
+      onCameraChange: vi.fn(),
+    };
+    const { rerender } = renderGraph(
+      <InteractionsGraph {...props} selected={null} />,
+    );
+
+    fireEvent.click(screen.getByRole("option", { name: "geneA" }));
+    rerender(
+      <InteractionsGraph {...props} selected={{ kind: "node", id: "node-a" }} />,
+    );
+    expect(detailsPane().getByText("node-a")).toBeInTheDocument();
+
+    // The owner has not rendered this pick yet, so the pane shows it from the held copy.
+    fireEvent.click(screen.getByRole("option", { name: "geneB" }));
+    expect(detailsPane().getByText("node-b")).toBeInTheDocument();
+    expect(detailsPane().queryByText("node-a")).toBeNull();
+
+    rerender(
+      <InteractionsGraph {...props} selected={{ kind: "node", id: "node-b" }} />,
+    );
+    expect(detailsPane().getByText("node-b")).toBeInTheDocument();
+
+    // A change nobody here made: with the held copy gone, the pane follows the prop again.
+    rerender(
+      <InteractionsGraph {...props} selected={{ kind: "node", id: "node-a" }} />,
+    );
+    expect(detailsPane().getByText("node-a")).toBeInTheDocument();
+    expect(detailsPane().queryByText("node-b")).toBeNull();
+  });
+
+  it("writes a multi-item pick as no id and a toggle back to one item as its id", () => {
+    resolved({ rows: graphRows, isTruncated: false });
+    const onSelectedChange = vi.fn();
+    renderGraph(
+      <GraphHarness
+        rql=""
+        keywordValue=""
+        onKeywordChange={vi.fn()}
+        onSelectedChange={onSelectedChange}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("option", { name: "geneA" }));
+    fireEvent.click(screen.getByRole("option", { name: "geneB" }), {
+      metaKey: true,
+    });
+    expect(onSelectedChange).toHaveBeenLastCalledWith(null);
+    expect(screen.getByTestId("sigma-canvas")).toHaveAttribute(
+      "data-selection",
+      "node-a,node-b",
+    );
+
+    fireEvent.click(screen.getByRole("option", { name: "geneA" }), {
+      metaKey: true,
+    });
+    expect(onSelectedChange).toHaveBeenLastCalledWith({
+      kind: "node",
+      id: "node-b",
+    });
+    expect(screen.getByTestId("sigma-canvas")).toHaveAttribute(
+      "data-selection",
+      "node-b",
+    );
   });
 });

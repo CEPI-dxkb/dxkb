@@ -18,6 +18,7 @@ function SearchPrompt() {
   );
 }
 
+/** `keyword` is what the user typed: the link carries it and the search page normalizes it itself. */
 function UnsupportedSearchType({
   searchtype,
   keyword,
@@ -49,8 +50,9 @@ export default async function GlobalSearch({
   searchParams: Promise<SearchParamsRecord>;
 }) {
   const params = await searchParams;
-  const keyword = firstSearchParamValue(params.q);
-  const query = normalizeLegacyKeyword(keyword);
+  // What the user typed, shown as the label; `query` is what is searched.
+  const typed = firstSearchParamValue(params.q).trim();
+  const query = normalizeLegacyKeyword(typed);
   if (keywordQuery(query).length === 0) return <SearchPrompt />;
 
   const target = resolveLegacySearch(params, query);
@@ -58,15 +60,17 @@ export default async function GlobalSearch({
     case "redirect":
       return redirect(target.href);
     case "allTypes":
-      // Keyed by the search, so a new one starts unfolded and scrolled up.
-      return <SearchResults key={query} query={query} />;
+      // Keyed by the search, so a new one starts unfolded and scrolled up. Two
+      // spellings that normalize alike share a search and so a key; the label
+      // still follows `displayQuery`.
+      return <SearchResults key={query} query={query} displayQuery={typed} />;
     case "prompt":
       return <SearchPrompt />;
     case "unsupported":
       return (
         <UnsupportedSearchType
           searchtype={target.searchtype}
-          keyword={query}
+          keyword={typed}
         />
       );
     default: {

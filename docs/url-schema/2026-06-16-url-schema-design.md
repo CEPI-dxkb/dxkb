@@ -176,7 +176,9 @@ dxkb.org/strain?keyword=H1N1                                           # strain 
     (`kinase OR phosphatase human` as one OR of three; here `human` stays ANDed); it sends a
     NOT inside an OR as `or(not(keyword(coli)),keyword(Salmonella))`, which the Data API
     reads as Lucene does, Salmonella AND NOT coli (61,384 genomes; here not coli, or
-    Salmonella: 16,901,125); and its query of only NOTs lists nothing.
+    Salmonella: 16,901,125); and its query of only NOTs lists nothing. What an All Data Types
+    card matches or shows also differs from legacy's in two places, below (Taxa's
+    `other_names`, the Genomes card's row order).
   - **Syntax characters** `! ~ ' ( ) [ ] { } : ^ \ & < > = % , + - /` split a word into
     parts, which are ANDed inside the term (`coli OR Salmonella-enterica` sends
     `or(keyword(coli),and(keyword(Salmonella),keyword(enterica)))`, 193,964 genomes, as Solr
@@ -221,7 +223,47 @@ dxkb.org/strain?keyword=H1N1                                           # strain 
     and the All Data Types counts, built from the same text with exact `keywordClauses`, are
     the totals of the lists they link to, except where a list adds its own default (the
     Features count covers every annotation, the Feature list opens on PATRIC, as alpha's
-    do: `Rv0001` counts 4 and lists 1).
+    do: `Rv0001` counts 4 and lists 1). `/search`'s heading, no-match card and unsupported-type link text show the text
+    as typed (`SARS-CoV-2`), not the normalized keyword (`SARS CoV "2"`); the query key, the
+    POST body and the list links stay normalized (`displayQuery` on `SearchResults`), so
+    `normalizeLegacyKeyword` itself is unchanged, for legacy parity.
+  - **Taxa also match `other_names`.** Taxonomy's `keyword()` text field holds `taxon_name`
+    but not `other_names` or `lineage_names`, and a stored name often omits the abbreviation
+    people search by: taxon 2697049 is "Severe acute respiratory syndrome coronavirus 2", and
+    "SARS-CoV-2" is only among its other names, so the keyword clauses alone find 0 taxa for
+    `SARS-CoV-2`. `taxonomyKeywordClause` (`src/lib/data-api/rql.ts`) sends
+    `or(<keyword clauses>,eq(other_names,%22SARS%20CoV%202%22))` for plain words: one phrase
+    of the words, which Solr tokenizes and matches in any case. A quoted single word counts as
+    a word, because the search bar's normalization quotes a trailing digit (`SARS CoV "2"`).
+    Text with an operator word, a negation, a multi-word quoted phrase, `*`, `?` or `|` keeps
+    its keyword clause alone, since one phrase of its words would not mean what was typed.
+    The phrase's quotes travel as `%22`, as a keyword phrase's do: the Data API rejects a raw
+    `"` in a POSTed query. The All Data Types Taxa card and the `/taxonomy?keyword=` list
+    (rows, facets, export and download, through `predicateClause(resource, ...)` in
+    `src/lib/data-api/repository.ts`, which uses the helper for `taxonomy` only) both build
+    it, so they match the same taxa. Legacy has no such clause (its all-types Taxa query is
+    the keyword clauses plus `gt(genomes,1)`), so this finds taxa legacy does not. The hyphen
+    is not preserved on purpose: Solr tokenizes `SARS-CoV-2` into sars, cov and 2 whatever is
+    sent, and keeping it changes no results (hyphen kept, quoted, escaped and bare all find 0
+    taxa without the `other_names` branch, against the live Data API).
+    - **Best Match** is the first of the taxonomy rows the search returns (the top 10 by
+      genome count) whose `taxon_name` equals the keyword, else the first whose `other_names`
+      contains it, else the first row. Names compare as lowercase alphanumeric tokens joined
+      by single spaces, so `SARS CoV "2"`, `SARS-CoV-2` and `sars-cov-2` match alike. Without
+      the preference the `other_names` branch would let genome count decide: for "Ebola
+      virus", Zaire ebolavirus (3,742 genomes, other name "Ebola virus") would outrank the
+      taxon named "Ebola virus" (236).
+    - **Known limits.** The card also filters `gt(genomes,1)` and the list does not, so
+      their counts can differ by that filter (the keyword predicate itself is shared). The
+      `/taxonomy` page's own search box (`keywordMode` `refine`, built in the browser with
+      `rqlKeyword`) does not match `other_names`.
+  - **The Genomes card's preview rows** sort `+genome_status,+genome_quality,-score`, where
+    legacy's `AdvancedSearch.js` sorts every non-feature card `-score`: Complete before
+    Partial, Plasmid and WGS (alphabetical), Good before Poor, blank last, then relevance, so
+    full-length genomes lead instead of 668 bp partials (`SARS-CoV-2`). Only the row order
+    changes: the filter and count are as before, so the card count still equals the
+    `/genome?keyword=` list's. The card's first rows no longer equal that list's first rows,
+    a deliberate departure from legacy.
   - **A list's own keyword box** sends its text through the same reading, without the
     search bar's normalization: legacy's list boxes send `keyword(word)` per space-separated
     word, so an ID typed there stays a token search (`Rv0001`, 341,190 features) on both.
@@ -321,7 +363,8 @@ Each is a single loop over `viewRegistry`:
   send `keyword(influenza)`, the exact form legacy BV-BRC and the All Data Types search
   send (`coli` matches 134,274 genomes exactly and 137,836 as a prefix; §5.6; §2.8 for the
   words a prefix misses). Nested tables (member-page tabs) and the `/search` legacy-type
-  lists' keyword boxes keep the token-prefix search.
+  lists' keyword boxes keep the token-prefix search. A `/taxonomy?keyword=` also matches
+  `other_names` for plain words (§2.8).
 - **Multi-value facets** use repeated parameters. Values for one field are ORed and separate
   fields are ANDed.
 - **Raw escape hatch**: `?rql=` is accepted after validation/sanitization.

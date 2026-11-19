@@ -329,6 +329,60 @@ describe("ServerDataRepository", () => {
     expect(requested[0].url).not.toContain("%2A");
   });
 
+  it("also matches a taxonomy keyword against other names, beside the scope", async () => {
+    const requested = captureGets("taxonomy");
+
+    await new ServerDataRepository({
+      baseUrl: "https://data.test",
+    }).collection("taxonomy", {
+      operation: "collection",
+      rql: "eq(taxon_rank,species)",
+      keyword: "SARS-CoV-2",
+      keywordMode: "exact",
+    });
+
+    expect(requested).toHaveLength(1);
+    expect(new URL(requested[0].url).search).toBe(
+      "?and(eq(taxon_rank,species),or(and(keyword(SARS),keyword(CoV),keyword(2)),eq(other_names,%22SARS%20CoV%202%22)))",
+    );
+  });
+
+  it("exports taxonomy rows with the other names predicate the list reads", async () => {
+    const requested = captureGets("taxonomy", []);
+
+    await new ServerDataRepository({
+      baseUrl: "https://data.test",
+    }).export("taxonomy", {
+      operation: "export",
+      keyword: "HIV-1",
+      keywordMode: "exact",
+      fields: ["taxon_id"],
+      limit: 10,
+    });
+
+    expect(requested).toHaveLength(1);
+    expect(new URL(requested[0].url).search).toContain(
+      "?or(and(keyword(HIV),keyword(1)),eq(other_names,%22HIV%201%22))&",
+    );
+  });
+
+  it("keeps every other resource's keyword predicate to its keyword clauses", async () => {
+    const requested = captureGets("genome");
+
+    await new ServerDataRepository({
+      baseUrl: "https://data.test",
+    }).collection("genome", {
+      operation: "collection",
+      keyword: "SARS-CoV-2",
+      keywordMode: "exact",
+    });
+
+    expect(requested).toHaveLength(1);
+    expect(new URL(requested[0].url).search).toBe(
+      "?and(keyword(SARS),keyword(CoV),keyword(2))",
+    );
+  });
+
   it("forwards auth and returns null for a missing member", async () => {
     const requested = captureGets("epitope", []);
 

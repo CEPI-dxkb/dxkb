@@ -467,6 +467,43 @@ export function describeRows(
   });
 }
 
+/** Names compare by their words, so `SARS CoV "2"` (the normalized keyword), `SARS-CoV-2` and `sars-cov-2` are one key. A text with no words has an empty key, which matches nothing. */
+function nameKey(value: string): string {
+  return value
+    .toLowerCase()
+    .split(/[^\p{L}\p{N}]+/u)
+    .filter(Boolean)
+    .join(" ");
+}
+
+function otherNamesOf(doc: SearchDoc): string[] {
+  const value = doc.other_names;
+  if (typeof value === "string") return [value];
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === "string")
+    : [];
+}
+
+/**
+ * The taxon the Best Match card shows: the one named as the keyword, else one with the keyword among its other names ("SARS-CoV-2", "HIV-1"), else the first row (the most genomes). Rows are sorted by genome count, so without this a taxon that merely lists the keyword as an other name ("Zaire ebolavirus" for "Ebola virus") would outrank the taxon of that name.
+ * Only the docs the search returned are considered (the top `expandedRowCount` by genome count): there is no second query, so a match beyond them is not found.
+ */
+function bestTaxonDoc(
+  docs: SearchDoc[] | undefined,
+  keyword: string,
+): SearchDoc | undefined {
+  const key = nameKey(keyword);
+  if (key) {
+    const byName = docs?.find((doc) => nameKey(text(doc.taxon_name)) === key);
+    if (byName) return byName;
+    const byOtherName = docs?.find((doc) =>
+      otherNamesOf(doc).some((name) => nameKey(name) === key),
+    );
+    if (byOtherName) return byOtherName;
+  }
+  return docs?.at(0);
+}
+
 function taxonMatchOf(
   doc: SearchDoc | undefined,
   taxonGenomeCounts: TaxonGenomeCounts,
@@ -505,7 +542,7 @@ export function toAllTypesResults(
     types,
     total: types.reduce((sum, type) => sum + type.count, 0),
     bestMatch: taxonMatchOf(
-      matches?.taxonomy?.result?.response?.docs?.at(0),
+      bestTaxonDoc(matches?.taxonomy?.result?.response?.docs, keyword),
       taxonGenomeCounts,
     ),
   };

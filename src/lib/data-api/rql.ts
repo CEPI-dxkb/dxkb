@@ -1,4 +1,8 @@
-import { keywordQuery, keywordQueryClauses } from "./keyword-terms";
+import {
+  keywordQuery,
+  keywordQueryClauses,
+  keywordTerms,
+} from "./keyword-terms";
 import { DataApiValidationError, getResourceDefinition } from "./resources";
 import type {
   DataResource,
@@ -422,6 +426,54 @@ export function keywordClauses(
   return keywordQueryClauses(keywordQuery(keyword), (term) =>
     percentEncode(mode === "exact" || term.startsWith('"') ? term : `${term}*`),
   );
+}
+
+const operatorTerms: ReadonlySet<string> = new Set(["AND", "OR", "NOT", "||"]);
+
+/**
+ * The keyword's words as one phrase, or undefined when the text is not plain
+ * words. A quoted single word counts as a word: the search page's legacy
+ * normalization quotes a final digit (`SARS CoV "2"`).
+ */
+function otherNamesPhrase(keyword: string): string | undefined {
+  if (/[*?|]/.test(keyword)) return undefined;
+  if (keywordTerms(keyword).some((term) => operatorTerms.has(term)))
+    return undefined;
+  const terms = keywordQuery(keyword).flat();
+  if (terms.some((term) => term.negated)) return undefined;
+  const parts = terms.flatMap((term) => term.parts);
+  // Only a quoted phrase leaves a part with a space in it.
+  if (parts.length === 0 || parts.some((part) => /\s/.test(part)))
+    return undefined;
+  return parts.map((part) => part.replaceAll('"', "")).join(" ");
+}
+
+/**
+ * Taxonomy's `keyword()` text field holds `taxon_name` but not `other_names`,
+ * and a stored name often omits the abbreviation people search by: taxon
+ * 2697049 is "Severe acute respiratory syndrome coronavirus 2", and
+ * "SARS-CoV-2" is only among its other names. So plain words also match as one
+ * phrase in `other_names` (tokenized and case-insensitive, so `SARS CoV 2`
+ * finds "SARS-CoV-2"). Text with an operator, a negation, a quoted phrase, a
+ * wildcard or a `|` keeps its keyword clause alone, since one phrase of its
+ * words would not mean what was typed.
+ * The phrase's quotes travel as `%22`, as a keyword phrase's do: the Data API
+ * rejects a raw `"` in a POSTed query and misreads one in a GET.
+ * The Taxa search card and the `/taxonomy?keyword=` list both build their
+ * predicate here, so the card counts the list's rows.
+ */
+export function taxonomyKeywordClause(
+  keyword: string,
+  mode: "exact" | "prefix" = "prefix",
+): string | undefined {
+  const clauses = keywordClauses(keyword, mode);
+  if (clauses.length === 0) return undefined;
+  const keywordClause =
+    clauses.length === 1 ? clauses[0] : `and(${clauses.join(",")})`;
+  const phrase = otherNamesPhrase(keyword);
+  return phrase === undefined
+    ? keywordClause
+    : `or(${keywordClause},eq(other_names,${percentEncode(`"${phrase}"`)}))`;
 }
 
 export function validateRql(resource: DataResource, rql: string): string {

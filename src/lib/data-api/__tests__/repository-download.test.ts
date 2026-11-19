@@ -273,6 +273,23 @@ describe("ServerDataRepository.download", () => {
     );
   });
 
+  it("downloads taxa with the other names predicate the table counted", async () => {
+    const counts = countUpstream("taxonomy", 1);
+    const seen = captureUpstream("taxonomy");
+
+    await repository().download("taxonomy", {
+      format: "tsv",
+      scope: { kind: "query", keyword: "SARS-CoV-2", keywordMode: "exact" },
+      fileNameBase: "taxonomy",
+      total: 1,
+    });
+
+    const predicate =
+      "or(and(keyword(SARS),keyword(CoV),keyword(2)),eq(other_names,%22SARS%20CoV%202%22))";
+    expect(counts[0].url.search).toBe(`?${predicate}&select(taxon_id)`);
+    expect(seen[0].body).toBe(`${predicate}&sort(+taxon_id)&limit(2500000)`);
+  });
+
   it("matches every row when the query has no predicate", async () => {
     countUpstream("genome", 7);
     const seen = captureUpstream("genome");

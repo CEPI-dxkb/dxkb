@@ -2,12 +2,43 @@ import { GeneraCard } from "@/components/organisms/genera-grid/genera-card";
 import { taxonomyHref as familyHref } from "@/lib/views/hrefs";
 import { cn } from "@/lib/utils";
 
-import { type VirusFamiliesColumn, virusFamilies } from "./virus-families-data";
+import { FamilyPathogensPopover } from "./family-pathogens-popover";
+import {
+  type VirusFamiliesColumn,
+  type VirusFamily,
+  virusFamilies,
+} from "./virus-families-data";
 
 type VirusFamilySubGroup = Extract<
   VirusFamiliesColumn,
   { group: null }
 >["subGroups"][number];
+
+function FamilyCard({
+  family,
+  viewLabel,
+}: {
+  family: VirusFamily;
+  viewLabel?: string;
+}) {
+  return (
+    <GeneraCard
+      name={family.name}
+      href={familyHref(family.taxonId)}
+      viewLabel={viewLabel}
+      action={
+        <FamilyPathogensPopover
+          familyName={family.name}
+          pathogens={family.pathogens.map((pathogen) => ({
+            name: pathogen.name,
+            href: familyHref(pathogen.taxonId),
+          }))}
+          note={family.pathogenNote}
+        />
+      }
+    />
+  );
+}
 
 function SubGroups({ subGroups }: { subGroups: VirusFamilySubGroup[] }) {
   return (
@@ -19,10 +50,9 @@ function SubGroups({ subGroups }: { subGroups: VirusFamilySubGroup[] }) {
           </h3>
           <div className="flex flex-col gap-2">
             {subGroup.families.map((family) => (
-              <GeneraCard
+              <FamilyCard
                 key={family.name}
-                name={family.name}
-                href={familyHref(family.taxonId)}
+                family={family}
                 viewLabel="overview"
               />
             ))}
@@ -68,11 +98,7 @@ export function VirusFamiliesSection() {
                 </h3>
                 <div className="flex flex-col gap-2">
                   {column.families.map((family) => (
-                    <GeneraCard
-                      key={family.name}
-                      name={family.name}
-                      href={familyHref(family.taxonId)}
-                    />
+                    <FamilyCard key={family.name} family={family} />
                   ))}
                 </div>
                 {index === 2 && col3.group === null && (

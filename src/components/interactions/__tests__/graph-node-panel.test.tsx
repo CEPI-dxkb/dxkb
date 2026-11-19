@@ -52,34 +52,44 @@ interface Setup {
   onFocusNode?: (node: GNode) => void;
 }
 
-function renderPanel({
-  node = center,
-  partners = [],
-  edges,
-  onSelectEdge = vi.fn(),
-  onSelectNode = vi.fn(),
-  onFocusNode,
-}: Setup = {}) {
+function renderPanel(setup: Setup = {}) {
+  const node = setup.node ?? center;
+  const partners = setup.partners ?? [];
   const all =
-    edges ?? partners.map((p, i) => edgeBetween(`e${String(i)}`, node, p));
+    setup.edges ??
+    partners.map((p, i) => edgeBetween(`e${String(i)}`, node, p));
+  const { rerender } = render(renderedPanel(setup));
+  return {
+    all,
+    /** The same panel over other partners, as a data refresh would give it. */
+    rerenderWith: (next: Setup) => {
+      rerender(renderedPanel(next));
+    },
+  };
+}
+
+function renderedPanel(setup: Setup) {
+  const node = setup.node ?? center;
+  const partners = setup.partners ?? [];
+  const all =
+    setup.edges ??
+    partners.map((p, i) => edgeBetween(`e${String(i)}`, node, p));
   const incidence = new Map<string, GEdge[]>();
   for (const e of all) {
     for (const id of [e.source, e.target]) {
       incidence.set(id, [...(incidence.get(id) ?? []), e]);
     }
   }
-  const nodesById = new Map([node, ...partners].map((n) => [n.id, n]));
-  render(
+  return (
     <GraphNodePanel
       node={node}
       incidence={incidence}
-      nodesById={nodesById}
-      onSelectEdge={onSelectEdge}
-      onSelectNode={onSelectNode}
-      onFocusNode={onFocusNode}
-    />,
+      nodesById={new Map([node, ...partners].map((n) => [n.id, n]))}
+      onSelectEdge={setup.onSelectEdge ?? vi.fn()}
+      onSelectNode={setup.onSelectNode ?? vi.fn()}
+      onFocusNode={setup.onFocusNode}
+    />
   );
-  return { all };
 }
 
 const manyPartners = (count: number) =>
@@ -94,7 +104,28 @@ describe("GraphNodePanel", () => {
         screen.getByRole("heading", { level: 2, name: "hisD" }),
       ).toBeInTheDocument();
       expect(screen.getByText("microbial")).toBeInTheDocument();
-      expect(screen.getByText("Histidinol dehydrogenase")).toBeInTheDocument();
+      // In the header, and whole under Identifiers.
+      expect(screen.getAllByText("Histidinol dehydrogenase")).toHaveLength(2);
+    });
+
+    it("gives the whole product under Identifiers, where the header clamps it", () => {
+      const longProduct =
+        "Bifunctional protein with a very long annotation that the two-line header clamp would cut off before its end";
+      renderPanel({ node: { ...center, interactorDesc: ` ${longProduct} ` } });
+
+      const identifiers = screen.getByText("Identifiers").closest("details");
+      expect(identifiers).not.toBeNull();
+      const product = within(identifiers as HTMLElement).getByText("Product");
+      expect(product.nextElementSibling).toHaveTextContent(longProduct);
+    });
+
+    it("has no Product field under Identifiers when there is no annotation", () => {
+      renderPanel({ node: { ...center, interactorDesc: undefined } });
+
+      const identifiers = screen.getByText("Identifiers").closest("details");
+      expect(
+        within(identifiers as HTMLElement).queryByText("Product"),
+      ).not.toBeInTheDocument();
     });
 
     it("falls back to the locus tag, then the short BRC id, for the name", () => {
@@ -379,6 +410,27 @@ describe("GraphNodePanel", () => {
       const rows = within(screen.getByRole("list")).getAllByRole("listitem");
       expect(rows).toHaveLength(1);
       expect(rows[0]).toHaveTextContent("p3");
+    });
+
+    it("stays while it holds text, so a refresh to fewer partners cannot strand the filter", async () => {
+      const user = userEvent.setup();
+      const { rerenderWith } = renderPanel({ partners: manyPartners(12) });
+      const filter = screen.getByRole("searchbox", { name: "Filter partners" });
+      await user.type(filter, "p11");
+
+      // The same protein, now with eight partners, none of which matches "p11".
+      rerenderWith({ partners: manyPartners(8) });
+
+      expect(screen.getByText("No partners match.")).toBeInTheDocument();
+      const kept = screen.getByRole("searchbox", { name: "Filter partners" });
+      expect(kept).toHaveValue("p11");
+
+      await user.clear(kept);
+      expect(within(screen.getByRole("list")).getAllByRole("listitem")).toHaveLength(8);
+      // Emptied, it goes again: eight partners need no filter.
+      expect(
+        screen.queryByRole("searchbox", { name: "Filter partners" }),
+      ).not.toBeInTheDocument();
     });
 
     it("says when nothing matches", async () => {

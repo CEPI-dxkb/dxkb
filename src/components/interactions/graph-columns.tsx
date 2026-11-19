@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useState, type ReactNode } from "react";
+import { useId, useRef, useState, type ReactNode } from "react";
 import { usePanelRef } from "react-resizable-panels";
 
 import {
@@ -39,19 +39,40 @@ export function GraphColumns({ list, canvas, details }: GraphColumnsProps) {
   const listPanel = usePanelRef();
   const detailsPanel = usePanelRef();
 
+  // Both column widths as drawn right now, saved as the device preference.
+  function saveWidths() {
+    const listWidth = listPanel.current?.getSize().inPixels;
+    const detailsWidth = detailsPanel.current?.getSize().inPixels;
+    if (listWidth === undefined || detailsWidth === undefined) return;
+    setSaved({
+      list: Math.round(listWidth),
+      details: Math.round(detailsWidth),
+    });
+  }
+
+  // Set by a double-click, so the layout that follows it is saved though it is not the user's drag.
+  const savingReset = useRef(false);
+  function resetColumn(panel: typeof listPanel, width: number) {
+    savingReset.current = true;
+    panel.current?.resize(width);
+  }
+
   return (
     <ResizablePanelGroup
       orientation="horizontal"
       className="min-h-0 flex-1"
       onLayoutChanged={(_layout, meta) => {
-        if (!meta.isUserInteraction) return;
-        const listWidth = listPanel.current?.getSize().inPixels;
-        const detailsWidth = detailsPanel.current?.getSize().inPixels;
-        if (listWidth === undefined || detailsWidth === undefined) return;
-        setSaved({
-          list: Math.round(listWidth),
-          details: Math.round(detailsWidth),
-        });
+        if (meta.isUserInteraction) {
+          saveWidths();
+          return;
+        }
+        // A programmatic resize is not reported as the user's, but a reset's is saved too: both
+        // widths, because a column that cannot take its default (the other would drop under its
+        // minimum) is moved by the library together with its neighbour. The widths the callback
+        // reads are still the old ones, so they are read on the next frame, once drawn.
+        if (!savingReset.current) return;
+        savingReset.current = false;
+        requestAnimationFrame(saveWidths);
       }}
     >
       <ResizablePanel
@@ -69,9 +90,7 @@ export function GraphColumns({ list, canvas, details }: GraphColumnsProps) {
         withHandle
         aria-label="Resize the protein list"
         onDoubleClick={() => {
-          listPanel.current?.resize(graphColumnDefaults.list);
-          // A programmatic resize is not reported as the user's, so save the reset here.
-          setSaved({ ...saved, list: graphColumnDefaults.list });
+          resetColumn(listPanel, graphColumnDefaults.list);
         }}
       />
       <ResizablePanel
@@ -85,8 +104,7 @@ export function GraphColumns({ list, canvas, details }: GraphColumnsProps) {
         withHandle
         aria-label="Resize the selection details"
         onDoubleClick={() => {
-          detailsPanel.current?.resize(graphColumnDefaults.details);
-          setSaved({ ...saved, details: graphColumnDefaults.details });
+          resetColumn(detailsPanel, graphColumnDefaults.details);
         }}
       />
       <ResizablePanel

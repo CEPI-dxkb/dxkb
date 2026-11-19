@@ -112,6 +112,13 @@ export function GraphNodePanel({
           />
         </summary>
         <dl className="flex flex-col gap-2 px-3 pb-3 text-xs">
+          {/* The header clamps a long product to two lines; this is the whole of it. */}
+          {product && (
+            <div>
+              <dt className="text-muted-foreground">Product</dt>
+              <dd className="wrap-break-word">{product}</dd>
+            </div>
+          )}
           <div>
             <dt className="text-muted-foreground">Genome</dt>
             <dd className="wrap-break-word">
@@ -252,7 +259,9 @@ export function GraphNodePanel({
             <EvidenceSwatch verified={false} /> predicted
           </span>
         </div>
-        {partners.length > 8 && (
+        {/* Kept while it holds text: a refresh can leave a selected protein with fewer partners, and the
+            hidden box would strand a filter nothing matches. */}
+        {(partners.length > 8 || query !== "") && (
           <input
             type="search"
             value={query}

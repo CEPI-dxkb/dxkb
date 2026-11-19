@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import type { MockInstance } from "vitest";
 
 import {
@@ -85,15 +85,70 @@ describe("GraphColumns", () => {
     });
   });
 
-  it("restores a column's default width on a double-click and saves it", () => {
-    const cookieSpy = renderColumns({ list: 300, details: 400 });
+  it("restores a column's default width on a double-click", () => {
+    renderColumns({ list: 300, details: 400 });
 
     fireEvent.doubleClick(
       screen.getByRole("separator", { name: "Resize the protein list" }),
     );
 
-    expect(savedColumns(cookieSpy)).toEqual({ list: 240, details: 400 });
     const [list, , details] = panelShares().map(Number);
     expect(list / details).toBeCloseTo(240 / 400);
+  });
+
+  describe("saving a reset", () => {
+    const original = Object.getOwnPropertyDescriptor(
+      HTMLElement.prototype,
+      "offsetWidth",
+    );
+
+    // jsdom has no layout, so the widths the panels report once drawn are staged here: the library
+    // has moved the details column too (it would have dropped under its minimum), so the details
+    // are not the 400 they had been given.
+    function stageDrawnWidths(widths: { list: number; details: number }) {
+      Object.defineProperty(HTMLElement.prototype, "offsetWidth", {
+        configurable: true,
+        get(this: HTMLElement) {
+          if (this.id.endsWith("list")) return widths.list;
+          if (this.id.endsWith("details")) return widths.details;
+          return 1000;
+        },
+      });
+    }
+
+    afterEach(() => {
+      if (original)
+        Object.defineProperty(HTMLElement.prototype, "offsetWidth", original);
+    });
+
+    it("saves both widths as drawn once the layout has settled, not the default it asked for", async () => {
+      const cookieSpy = renderColumns({ list: 300, details: 400 });
+      cookieSpy.mockClear();
+      stageDrawnWidths({ list: 240, details: 360 });
+
+      fireEvent.doubleClick(
+        screen.getByRole("separator", { name: "Resize the protein list" }),
+      );
+      await act(async () => {
+        await new Promise((resolve) => requestAnimationFrame(resolve));
+      });
+
+      expect(savedColumns(cookieSpy)).toEqual({ list: 240, details: 360 });
+    });
+
+    it("saves a details reset the same way", async () => {
+      const cookieSpy = renderColumns({ list: 300, details: 500 });
+      cookieSpy.mockClear();
+      stageDrawnWidths({ list: 280, details: 256 });
+
+      fireEvent.doubleClick(
+        screen.getByRole("separator", { name: "Resize the selection details" }),
+      );
+      await act(async () => {
+        await new Promise((resolve) => requestAnimationFrame(resolve));
+      });
+
+      expect(savedColumns(cookieSpy)).toEqual({ list: 280, details: 256 });
+    });
   });
 });

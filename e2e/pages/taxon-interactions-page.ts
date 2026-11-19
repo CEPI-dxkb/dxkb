@@ -113,18 +113,24 @@ export class TaxonInteractionsPage {
     await this.page.getByRole("option", { name: label }).click();
   }
 
+  /**
+   * A protein's row in the list, found by searching for it: the list draws only its top-ranked rows
+   * (a Graph can hold thousands of proteins), and its search reaches every protein.
+   */
+  private async listRow(label: string, exact: boolean): Promise<Locator> {
+    const graphPanel = this.page.getByRole("tabpanel", { name: "Graph" });
+    await graphPanel.getByPlaceholder("Search proteins…").fill(label);
+    return graphPanel.getByRole("option", { name: label, exact });
+  }
+
   async selectNodeInList(label: string, exact = false): Promise<void> {
-    await this.page
-      .getByRole("tabpanel", { name: "Graph" })
-      .getByRole("option", { name: label, exact })
-      .click();
+    await (await this.listRow(label, exact)).click();
   }
 
   async addNodeToSelectionInList(label: string): Promise<void> {
-    await this.page
-      .getByRole("tabpanel", { name: "Graph" })
-      .getByRole("option", { name: label })
-      .click({ modifiers: ["ControlOrMeta"] });
+    await (await this.listRow(label, false)).click({
+      modifiers: ["ControlOrMeta"],
+    });
   }
 
   private detailPanel() {

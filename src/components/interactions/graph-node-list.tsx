@@ -1,7 +1,14 @@
 "use client";
 
-import { useEffect, useMemo, useRef, type CSSProperties } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+} from "react";
 
+import { Button } from "@/components/ui/button";
 import {
   Command,
   CommandEmpty,
@@ -34,11 +41,11 @@ interface GraphNodeListProps {
   onSelectRange: (nodes: GNode[]) => void;
 }
 
-// A substring match over name, product, locus tag, genome and BRC ID. cmdk's own fuzzy scoring would
-// match "rpsL" inside a long product name, and it re-sorts by score, which would undo the ranking.
-function filterNodes(value: string, search: string): number {
-  return value.includes(search.trim().toLowerCase()) ? 1 : 0;
-}
+// Rows drawn before "Show all". A row is about ten elements and a Graph can hold ten thousand
+// proteins, so drawing every one made each redraw of the graph (a filter, a focus) lay out, scroll
+// and walk (an assistive technology, a test's locators) a list nobody reads past its first screens.
+// Search reaches every protein regardless, and a selected one is always drawn.
+const rowLimit = 200;
 
 // Sigma wires only pointer events, so this list is the keyboard path to a node (and, via the detail
 // panel, its edges). Proteins are ranked by how many interactions they take part in, and the bar
@@ -58,6 +65,8 @@ export function GraphNodeList({
   // so they are set before cmdk's own click/Enter handlers run) and read when a row is chosen. Only
   // a click ranges: as in the table, Shift with the keyboard does something else.
   const modifiersRef = useRef({ additive: false, range: false });
+  const [search, setSearch] = useState("");
+  const [showAll, setShowAll] = useState(false);
   // The protein a Shift-click ranges from: the last one chosen with a plain or Cmd/Ctrl click.
   const anchorRef = useRef<string | null>(null);
 
@@ -80,6 +89,24 @@ export function GraphNodeList({
     [nodes],
   );
 
+  // A substring match over name, product, locus tag, genome and BRC ID, in rank order. cmdk's own
+  // fuzzy scoring (`shouldFilter` is off) would match "rpsL" inside a long product name, and it
+  // re-sorts by score, which would undo the ranking.
+  const query = search.trim().toLowerCase();
+  const matches = useMemo(
+    () => rows.filter((row) => row.searchText.includes(query)),
+    [rows, query],
+  );
+  const shown = useMemo(
+    () =>
+      showAll
+        ? matches
+        : matches.filter(
+            (row, index) => index < rowLimit || selectedIds.has(row.node.id),
+          ),
+    [matches, showAll, selectedIds],
+  );
+
   // The anchor must still be selected: a selection made on the canvas leaves the last list click
   // behind, and a lone selected protein is the natural start of a range whoever chose it.
   function rangeAnchor(): string | null {
@@ -88,23 +115,21 @@ export function GraphNodeList({
     return selectedIds.size === 1 ? ([...selectedIds][0] ?? null) : null;
   }
 
-  // The rows on screen, in order: cmdk renders only those matching the search, so the DOM is the
-  // list a range runs through.
-  function visibleRows(): { id: string }[] {
-    const rowsInView =
-      listRef.current?.querySelectorAll<HTMLElement>("[data-node-id]") ?? [];
-    return [...rowsInView].map((row) => ({ id: row.dataset.nodeId ?? "" }));
-  }
-
   function chooseNode(node: GNode) {
     const { additive, range } = modifiersRef.current;
     const anchor = rangeAnchor();
     if (range && anchor !== null) {
-      const inRange = computeShiftRangeIds(visibleRows(), anchor, node.id)
+      // The range runs through the rows on screen, in order.
+      const onScreen = shown.map((row) => ({ id: row.node.id }));
+      const inRange = computeShiftRangeIds(onScreen, anchor, node.id)
         .map((id) => nodesById.get(id))
         .filter((member) => member !== undefined);
-      // An anchor the search has filtered out gives no range, and the click is a plain one.
+      // An anchor that is not on screen (filtered out by the search) gives no range, and the click
+      // is a plain one.
       if (inRange.length > 0) {
+        // Keep the start of the range: one made from a canvas pick has no list click to remember,
+        // and the next Shift-click must range from the same protein.
+        anchorRef.current = anchor;
         onSelectRange(inRange);
         return;
       }
@@ -125,7 +150,7 @@ export function GraphNodeList({
     <Command
       label="Interaction network nodes"
       className="h-full"
-      filter={filterNodes}
+      shouldFilter={false}
       disablePointerSelection
       onClickCapture={(event) => {
         modifiersRef.current = {
@@ -144,7 +169,11 @@ export function GraphNodeList({
         if (event.shiftKey) event.preventDefault();
       }}
     >
-      <CommandInput placeholder="Search proteins…" />
+      <CommandInput
+        placeholder="Search proteins…"
+        value={search}
+        onValueChange={setSearch}
+      />
       <p
         className="px-3 py-1.5 text-2xs text-muted-foreground"
         title="The bar behind each row splits its interactions into verified (indigo) and predicted (grey), as in the legend."
@@ -157,7 +186,7 @@ export function GraphNodeList({
         aria-multiselectable
       >
         <CommandEmpty>No proteins match.</CommandEmpty>
-        {rows.map(({ node, rank, searchText }) => {
+        {shown.map(({ node, rank, searchText }) => {
           const isSelected = selectedIds.has(node.id);
           const { degree, experimental } = statsOf(stats, node);
           const label = nodeLabel(node);
@@ -231,6 +260,23 @@ export function GraphNodeList({
           );
         })}
       </CommandList>
+      {shown.length < matches.length && (
+        <div className="flex items-center justify-between gap-2 border-t px-3 py-1.5 text-2xs text-muted-foreground">
+          <span>
+            Showing {shown.length.toLocaleString()} of{" "}
+            {matches.length.toLocaleString()}
+          </span>
+          <Button
+            variant="outline"
+            size="xs"
+            onClick={() => {
+              setShowAll(true);
+            }}
+          >
+            Show all
+          </Button>
+        </div>
+      )}
     </Command>
   );
 }

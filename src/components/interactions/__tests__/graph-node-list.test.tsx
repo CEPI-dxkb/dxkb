@@ -672,6 +672,17 @@ describe("GraphNodeList Shift-click range", () => {
     expectSelected(["beta", "delta"]);
   });
 
+  it("keeps the start of a range made from a canvas pick for the next Shift-click", () => {
+    render(<Harness initial={ids(["beta"])} />);
+
+    fireEvent.click(screen.getByText("delta"), { shiftKey: true });
+    expectSelected(["beta", "delta"]);
+
+    // The selection now holds two proteins, so only the remembered start can anchor this one.
+    fireEvent.click(screen.getByText("gamma"), { shiftKey: true });
+    expectSelected(["beta", "delta", "epsilon", "gamma"]);
+  });
+
   it("drops an old anchor once the selection has moved on without it", () => {
     const onSelectNode = vi.fn();
     const onSelectRange = vi.fn();
@@ -727,5 +738,97 @@ describe("GraphNodeList Shift-click range", () => {
       fireEvent.mouseDown(screen.getByText("beta"), { shiftKey: true }),
     ).toBe(false);
     expect(fireEvent.mouseDown(screen.getByText("beta"))).toBe(true);
+  });
+});
+
+describe("GraphNodeList with many proteins", () => {
+  // No interactions, so the ranking falls back to name: p000, p001, … p249.
+  const many: GNode[] = Array.from({ length: 250 }, (_, index) => ({
+    id: `fig|${String(index).padStart(3, "0")}`,
+    gene: `p${String(index).padStart(3, "0")}`,
+    kind: "microbial",
+  }));
+
+  function renderMany(selectedIds: ReadonlySet<string> = new Set()) {
+    render(
+      <GraphNodeList
+        nodes={many}
+        incidence={noIncidence}
+        selectedIds={selectedIds}
+        onSelectNode={vi.fn()}
+        onSelectRange={vi.fn()}
+      />,
+    );
+  }
+
+  const optionCount = () => screen.getAllByRole("option").length;
+
+  it("draws the top 200 and says how many there are", () => {
+    renderMany();
+
+    expect(optionCount()).toBe(200);
+    expect(screen.getByRole("option", { name: "p000" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "p199" })).toBeInTheDocument();
+    expect(
+      screen.queryByRole("option", { name: "p200" }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText(/Showing 200 of\s+250/)).toBeInTheDocument();
+  });
+
+  it("draws every protein on request", async () => {
+    const user = userEvent.setup();
+    renderMany();
+
+    await user.click(screen.getByRole("button", { name: "Show all" }));
+
+    expect(optionCount()).toBe(250);
+    expect(screen.queryByText(/Showing/)).not.toBeInTheDocument();
+  });
+
+  it("draws no footer when every protein fits", () => {
+    render(
+      <GraphNodeList
+        nodes={many.slice(0, 200)}
+        incidence={noIncidence}
+        selectedIds={new Set()}
+        onSelectNode={vi.fn()}
+        onSelectRange={vi.fn()}
+      />,
+    );
+
+    expect(optionCount()).toBe(200);
+    expect(
+      screen.queryByRole("button", { name: "Show all" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("searches every protein, not only the ones drawn", async () => {
+    const user = userEvent.setup();
+    renderMany();
+
+    await user.type(screen.getByPlaceholderText("Search proteins…"), "p24");
+
+    // p240–p249, none of them among the first 200.
+    expect(optionCount()).toBe(10);
+    expect(screen.getByRole("option", { name: "p249" })).toBeInTheDocument();
+    expect(screen.queryByText(/Showing/)).not.toBeInTheDocument();
+  });
+
+  it("always draws a selected protein, wherever it ranks", () => {
+    renderMany(new Set(["fig|230"]));
+
+    expect(optionCount()).toBe(201);
+    const row = screen.getByRole("option", { name: "p230" });
+    expect(row).toHaveAttribute("data-app-selected", "true");
+    expect(screen.getByText(/Showing 201 of\s+250/)).toBeInTheDocument();
+  });
+
+  it("keeps each row's overall rank", () => {
+    renderMany(new Set(["fig|230"]));
+
+    const rank = screen
+      .getByRole("option", { name: "p230" })
+      .querySelector<HTMLElement>('[data-slot="graph-node-rank"]');
+    expect(rank?.dataset.rank).toBe("231");
   });
 });

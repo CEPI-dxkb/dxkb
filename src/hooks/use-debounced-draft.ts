@@ -51,7 +51,9 @@ export function useDebouncedDraft(
   }, [committed]);
   const flushPendingDraft = useEffectEvent(() => {
     if (!flushOnUnmount) return;
-    if (nextCommit === committed || nextCommit === sentRef.current) return;
+    // What the owner holds or is about to: a draft back at `committed` while another write is
+    // still in flight is a revert, and has to supersede that write.
+    if (nextCommit === (sentRef.current ?? committed)) return;
     sentRef.current = nextCommit;
     commit(nextCommit);
   });

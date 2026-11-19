@@ -284,6 +284,31 @@ describe("useDebouncedDraft", () => {
       expect(commit).not.toHaveBeenCalled();
     });
 
+    it("commits a clear on unmount that reverts to the rendered value while its own write is still pending", () => {
+      const commit = vi.fn();
+      const { result, unmount } = renderHook(() =>
+        useDebouncedDraft("", commit, { flushOnUnmount: true }),
+      );
+
+      act(() => {
+        result.current[1]("eco");
+      });
+      act(() => {
+        vi.advanceTimersByTime(keywordDebounceMs);
+      });
+      expect(commit).toHaveBeenCalledExactlyOnceWith("eco");
+
+      // The owner has not rendered "eco" yet, so `committed` is still "": the clear equals it, but
+      // the write in flight would otherwise become the value.
+      act(() => {
+        result.current[1]("");
+      });
+      unmount();
+
+      expect(commit).toHaveBeenCalledTimes(2);
+      expect(commit).toHaveBeenLastCalledWith("");
+    });
+
     it("flushes a draft once, however often its owner is hidden and shown before the commit lands", () => {
       const commit = vi.fn();
       let setDraft: (value: string) => void = () => undefined;

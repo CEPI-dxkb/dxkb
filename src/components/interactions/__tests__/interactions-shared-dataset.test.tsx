@@ -563,9 +563,10 @@ describe("Interactions Table and Graph share the Evidence facet, which has no de
     ).not.toBeInTheDocument();
   });
 
-  it("treats a literal `*` filter value as ordinary: valid RQL, and a pill that clears", async () => {
-    // A literal `*` is an ordinary filter value: the rql escapes it (`%2A`), so the clause is
-    // valid, nothing crashes, and the pill names it so a click restores the bare scope.
+  it("sends a hand-edited `*` filter value as a valid clause, with a pill that clears", async () => {
+    // `%2A` is not a literal `*`: the Data API decodes it to Solr's wildcard, so this clause matches
+    // every row that has an evidence value, as the same URL does on any other collection. It is
+    // valid RQL, nothing crashes, and the pill names it so a click restores the bare scope.
     const user = userEvent.setup();
     window.history.replaceState(null, "", "/genome/1.1?interactions.evidence=*");
     render(<InteractionsSubviewShell rql={scopeRql} />, {

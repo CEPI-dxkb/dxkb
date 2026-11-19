@@ -231,7 +231,11 @@ describe("useInteractions with a row selection", () => {
       expect(body).not.toHaveProperty("rql");
       expect(body).not.toHaveProperty("keyword");
     }
-    expect(bodies.flatMap((body) => body.ids)).toStrictEqual(ids);
+    // The two batches are sent together, so their arrival order is not guaranteed; the rows below
+    // carry the `ids` order.
+    expect(bodies.flatMap((body) => body.ids).sort()).toStrictEqual(
+      [...ids].sort(),
+    );
     expect(result.current.data?.rows.map((entry) => entry.id)).toStrictEqual(ids);
     expect(result.current.data?.isTruncated).toBe(false);
   });

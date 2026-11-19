@@ -310,10 +310,10 @@ describe("interaction evidence facet (no default)", () => {
     }
   });
 
-  it("reads a literal `*` filter value as an ordinary value, in a valid clause", () => {
-    // A literal `*` is an ordinary filter value: the rql escapes it (`%2A`), so the clause is
-    // valid RQL that names a literal `*` (no row has one) and shows as an Evidence pill the user
-    // can clear.
+  it("reads a hand-edited `*` filter value as a filter value, in a valid clause", () => {
+    // The value is kept as given and encoded as `%2A`, which the Data API decodes to Solr's
+    // wildcard: the clause matches every row with an evidence value, as the same URL does on any
+    // other collection. It is valid RQL and shows as an Evidence pill the user can clear.
     const state = parse({ "interactions.evidence": "*" });
 
     expect(state.filters).toEqual({ evidence: ["*"] });

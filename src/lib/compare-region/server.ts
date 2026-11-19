@@ -6,6 +6,7 @@ import {
   upstreamServices,
   upstreamTimeoutMs,
 } from "@/lib/api/upstream-failure";
+import { cleanFeatureProduct } from "@/lib/feature-view/display";
 import { isPatricFeatureId } from "@/lib/feature-view/schema";
 import { JsonRpcClient, JsonRpcError } from "@/lib/jsonrpc-client";
 import { noop } from "@/lib/utils";
@@ -128,7 +129,7 @@ function toFeature(raw: RawFeature, method: CompareRegionMethod): CompareRegionF
     start: raw.beg,
     end: raw.end,
     strand: raw.strand ?? null,
-    product: raw.function ?? "",
+    product: cleanFeatureProduct(raw.function),
     family: raw.set_number ?? null,
     familyId: typeof familyId === "string" ? familyId : null,
     identity: raw.blast_identity ?? null,

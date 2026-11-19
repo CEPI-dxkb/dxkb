@@ -492,7 +492,8 @@ function bestTaxonDoc(
   docs: SearchDoc[] | undefined,
   keyword: string,
 ): SearchDoc | undefined {
-  const key = nameKey(keyword);
+  // A wildcard or `|` keyword is not a name: `nameKey` would drop those characters and read `Ebola virus*` as the name "Ebola virus". The Taxa query skips its other-names branch for them too.
+  const key = /[*?|]/.test(keyword) ? "" : nameKey(keyword);
   if (key) {
     const byName = docs?.find((doc) => nameKey(text(doc.taxon_name)) === key);
     if (byName) return byName;

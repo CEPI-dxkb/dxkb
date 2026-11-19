@@ -660,6 +660,14 @@ describe("toAllTypesResults", () => {
         expect(taxa(keyword, [zaire, ebola])?.name).toBe("Zaire ebolavirus");
     });
 
+    // `nameKey` drops `*`, `?` and `|`, so these keys would equal the name "Ebola virus"; the Taxa query skips its other-names branch for them too.
+    it.each(["Ebola virus*", "Ebola virus?", "Ebola virus|"])(
+      "takes the first row for the wildcard or pipe keyword %s, though its words equal a taxon's name",
+      (keyword) => {
+        expect(taxa(keyword, [zaire, ebola])?.name).toBe("Zaire ebolavirus");
+      },
+    );
+
     it("matches a quoted phrase that is a taxon's name", () => {
       expect(taxa('"Ebola virus"', [zaire, ebola])?.name).toBe("Ebola virus");
     });

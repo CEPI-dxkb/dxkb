@@ -53,6 +53,15 @@ export interface ResourceCollectionProfile<Row extends DataTableRow> {
   basePredicate?: string;
   buildStructuralRql?: (state: CollectionState) => string | undefined;
   facets?: readonly ResourceCollectionFacet[];
+  /**
+   * URL filters that are not facets: `buildStructuralRql` reads them from
+   * `state.filters`, but nothing counts them and the filter menu has no entry of
+   * its own for one. A child table feeds them to `childCollectionOptions`, so
+   * they survive a write by the table.
+   */
+  extraFilters?: readonly string[];
+  /** Pill and menu labels for a filter in `state.filters` that `facets` does not define. */
+  filterLabels?: Readonly<Record<string, string>>;
   rowHref?: (row: Row) => string | undefined;
   rowLinkField?: string;
   rowLinkFields?: readonly string[];
@@ -115,6 +124,11 @@ export interface ResourceCollectionProps<Row extends DataTableRow> {
   onLoadedKeywordChange?: (value: string) => void;
   keywordPlaceholder?: string;
   prefetchNextPage?: boolean;
+  /**
+   * Offers SHOW IN GRAPH on an Interactions table with a Graph beside it (the
+   * taxon Interactions tab); called with the selected row ids.
+   */
+  onShowInGraph?: (ids: string[]) => void;
 }
 
 export function ResourceCollection<Row extends DataTableRow>({
@@ -131,6 +145,7 @@ export function ResourceCollection<Row extends DataTableRow>({
   onLoadedKeywordChange,
   keywordPlaceholder,
   prefetchNextPage = true,
+  onShowInGraph,
 }: ResourceCollectionProps<Row>) {
   const [actionError, setActionError] = useState<string | null>(null);
   const [internalLoadedKeyword, setInternalLoadedKeyword] = useState("");
@@ -378,6 +393,7 @@ export function ResourceCollection<Row extends DataTableRow>({
       queryLabel: downloadQueryLabel,
     },
     onError: setActionError,
+    onShowInGraph,
   });
 
   const detailContent = (
@@ -463,6 +479,7 @@ export function ResourceCollection<Row extends DataTableRow>({
         updateTableLayout({ visibility: undefined, order: undefined });
       }}
       definitions={profile.facets ?? []}
+      filterLabels={profile.filterLabels}
       explicitRql={explicitRql}
       filtersBesideRql={filtersBesideRql}
       keywordPlaceholder={keywordPlaceholder}

@@ -1,6 +1,16 @@
 import type { ReactNode } from "react";
+import { Info } from "lucide-react";
 
 import { MetadataLink } from "@/components/detail-panel/metadata-link";
+import { Button } from "@/components/ui/button";
+import {
+  Popover,
+  PopoverContent,
+  PopoverDescription,
+  PopoverHeader,
+  PopoverTitle,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { isGenomeId } from "@/lib/genome-view/schema";
 import type { GEdge, GNode, GraphSelection } from "@/lib/interactions/types";
 import { featureHref, genomeHref } from "@/lib/views/hrefs";
@@ -14,6 +24,8 @@ interface GraphDetailPanelProps {
   incidentEdgesByNode: ReadonlyMap<string, readonly GEdge[]>;
   nodesById: Map<string, GNode>;
   onSelectEdge: (edge: GEdge) => void;
+  /** Offers "Focus on this protein" for a single selected node; omitted, no button is drawn. */
+  onFocusNode?: (node: GNode) => void;
 }
 
 function endpointLabel(nodesById: Map<string, GNode>, id: string): string {
@@ -114,7 +126,7 @@ function plural(count: number, singular: string, pluralForm: string): string {
   return `${String(count)} ${count === 1 ? singular : pluralForm}`;
 }
 
-export function GraphDetailPanel({ selection, incidentEdgesByNode, nodesById, onSelectEdge }: GraphDetailPanelProps) {
+export function GraphDetailPanel({ selection, incidentEdgesByNode, nodesById, onSelectEdge, onFocusNode }: GraphDetailPanelProps) {
   if (selection.nodes.length === 0 && selection.edges.length === 0) {
     return (
       <p className="p-3 text-sm text-muted-foreground">
@@ -184,6 +196,41 @@ export function GraphDetailPanel({ selection, incidentEdgesByNode, nodesById, on
         return (
           <div key={node.id} className="flex flex-col gap-2">
             <NodeFields node={node} />
+            {onFocusNode && (
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="default"
+                  size="sm"
+                  onClick={() => {
+                    onFocusNode(node);
+                  }}
+                >
+                  Focus on this protein
+                </Button>
+                <Popover>
+                  <PopoverTrigger
+                    render={
+                      <Button
+                        type="button"
+                        variant="ghost-accent"
+                        size="icon-sm"
+                        aria-label="About focusing"
+                      />
+                    }
+                  >
+                    <Info />
+                  </PopoverTrigger>
+                  <PopoverContent side="bottom" align="start">
+                    <PopoverHeader>
+                      <PopoverTitle>Focusing on a protein</PopoverTitle>
+                      <PopoverDescription>
+                        Shows only this protein&apos;s interactions; remove the Protein filter in the Filters menu to undo.
+                      </PopoverDescription>
+                    </PopoverHeader>
+                  </PopoverContent>
+                </Popover>
+              </div>
+            )}
             {incidentEdges.length > 0 && (
               <div className="flex flex-col gap-1">
                 <p className="font-medium text-foreground">

@@ -19,7 +19,7 @@ import type {
 } from "./collection-filters/types";
 import type { ResourceCollectionFacet } from "./resource-collection";
 
-interface ResourceFilterBarProps extends CollectionColumnControls {
+export interface ResourceFilterBarProps extends CollectionColumnControls {
   layoutKey: string;
   keyword?: string;
   filters: CollectionState["filters"];
@@ -32,9 +32,13 @@ interface ResourceFilterBarProps extends CollectionColumnControls {
   onFacetsWanted: () => void;
   onPrefetchFacets: () => void;
   definitions: readonly ResourceCollectionFacet[];
+  /** Labels for a filter `definitions` does not define (a pill reads "Protein", not `interactor`). */
+  filterLabels?: Readonly<Record<string, string>>;
   explicitRql?: ExplicitRqlView;
   filtersBesideRql?: readonly string[];
   keywordPlaceholder?: string;
+  /** Commit a keyword still in its debounce when the bar unmounts (a bar in a tab that unmounts when hidden). */
+  flushKeywordOnUnmount?: boolean;
   onChange: (update: {
     keyword?: string;
     filters: CollectionState["filters"];
@@ -56,9 +60,11 @@ export function ResourceFilterBar({
   onFacetsWanted,
   onPrefetchFacets,
   definitions,
+  filterLabels,
   explicitRql,
   filtersBesideRql = [],
   keywordPlaceholder,
+  flushKeywordOnUnmount = false,
   onChange,
   columns,
   setColumns,
@@ -88,7 +94,10 @@ export function ResourceFilterBar({
         clearRql: pending?.clearRql,
       });
     },
-    { normalize: (value) => value.trim() },
+    {
+      normalize: (value) => value.trim(),
+      flushOnUnmount: flushKeywordOnUnmount,
+    },
   );
   const [layout, updateLayout] = useTableLayout(layoutKey);
   const { defaults: noFavorites, favorites: favoriteState } =
@@ -123,6 +132,7 @@ export function ResourceFilterBar({
       onKeywordChange={setKeywordDraft}
       keywordPlaceholder={keywordPlaceholder}
       definitions={definitions}
+      filterLabels={filterLabels}
       favoriteFields={favoriteFields}
       setFieldFavorite={(field, favorite) => {
         updateLayout({

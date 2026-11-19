@@ -102,6 +102,47 @@ describe("visibleSearchActions", () => {
     expect(multiple.filter(byId("group"))).toHaveLength(1);
   });
 
+  it("offers the opt-in SHOW IN GRAPH only to a ppi consumer that enables it", () => {
+    const ids = (
+      searchType: string,
+      enabledActions?: readonly SearchActionId[],
+    ) =>
+      visibleSearchActions({
+        searchType,
+        selectedCount: 2,
+        hasGuideUrl: true,
+        enabledActions,
+      }).map((action) => action.id);
+
+    expect(ids("ppi")).not.toContain("showInGraph");
+    expect(ids("ppi", ["copyRows", "services", "ppiFeatures", "group"])).not.toContain(
+      "showInGraph",
+    );
+    expect(ids("ppi", ["showInGraph"])).toStrictEqual([
+      "guide",
+      "copyRows",
+      "services",
+      "ppiFeatures",
+      "showInGraph",
+      "fasta",
+      "group",
+    ]);
+    for (const searchType of searchTypes.filter((type) => type !== "ppi")) {
+      expect(ids(searchType, ["showInGraph"])).not.toContain("showInGraph");
+    }
+  });
+
+  it("drops SHOW IN GRAPH until a row is selected, even when enabled", () => {
+    expect(
+      visibleSearchActions({
+        searchType: "ppi",
+        selectedCount: 0,
+        hasGuideUrl: false,
+        enabledActions: ["showInGraph"],
+      }),
+    ).toStrictEqual([]);
+  });
+
   it("has no DWNLD entry: every collection downloads from its own Download tile", () => {
     expect(
       searchActionConfig.filter((action) => action.label === "DWNLD"),
@@ -195,6 +236,8 @@ describe("SearchActionBar / test-fake parity", () => {
         searchType,
         selectedCount,
         hasGuideUrl: true,
+        enabledActions: (props as { enabledActions?: SearchActionId[] })
+          .enabledActions,
       });
 
       render(<SearchActionBar {...shared} />);

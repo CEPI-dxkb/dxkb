@@ -295,6 +295,54 @@ describe("SearchActionBar (taxonomy)", () => {
       expectActionButtons(expectedActions);
     });
 
+    it("adds SHOW IN GRAPH after FEATURES only for a consumer that enables it", async () => {
+      const onAction = vi.fn();
+      render(
+        <SearchActionBar
+          selectedCount={2}
+          searchType="ppi"
+          guideUrl="https://example.test/guide"
+          enabledActions={[
+            "copyRows",
+            "services",
+            "ppiFeatures",
+            "group",
+            "showInGraph",
+          ]}
+          onAction={onAction}
+        />,
+      );
+
+      expectActionButtons([
+        { name: /guide/i, enabled: true },
+        { name: /^copy$/i, enabled: true },
+        { name: /services/i, enabled: true },
+        { name: /^ffeatures$/i, enabled: true },
+        { name: /^show in\s*graph$/i, enabled: true },
+        { name: /fasta/i, enabled: false },
+        { name: /group/i, enabled: true },
+      ]);
+
+      await userEvent.click(
+        screen.getByRole("button", { name: /^show in\s*graph$/i }),
+      );
+      expect(onAction).toHaveBeenCalledWith("showInGraph");
+    });
+
+    it("offers no SHOW IN GRAPH without a selection, even when enabled", () => {
+      render(
+        <SearchActionBar
+          selectedCount={0}
+          searchType="ppi"
+          enabledActions={["showInGraph"]}
+        />,
+      );
+
+      expect(
+        screen.queryByRole("button", { name: /show in\s*graph/i }),
+      ).not.toBeInTheDocument();
+    });
+
     it("does not fire onAction for the disabled interaction FASTA button", async () => {
       const onAction = vi.fn();
       render(
@@ -499,6 +547,26 @@ describe("SearchActionBar (taxonomy)", () => {
       ).not.toBeInTheDocument();
       expect(
         screen.queryByRole("button", { name: /^features$/i }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("keeps the opt-in SHOW IN GRAPH off the ppi bar unless it is enabled", () => {
+      render(<SearchActionBar selectedCount={2} searchType="ppi" />);
+      expect(
+        screen.queryByRole("button", { name: /show in\s*graph/i }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("does not leak SHOW IN GRAPH into another search type that enables it", () => {
+      render(
+        <SearchActionBar
+          selectedCount={1}
+          searchType="epitope"
+          enabledActions={["showInGraph"]}
+        />,
+      );
+      expect(
+        screen.queryByRole("button", { name: /show in\s*graph/i }),
       ).not.toBeInTheDocument();
     });
   });

@@ -4,8 +4,10 @@ import { sequenceFeatureFields } from "@/constants/datafields/sequence_feature";
 import type { ResourceCollectionProfile } from "@/components/views/resource-collection";
 import { eq } from "@/lib/data-api";
 import type { CollectionDownloadSpec } from "@/lib/data-api/downloads";
+import { childCollectionOptions } from "./child-collection-state";
 import type { CollectionState } from "./collection-state";
 import { deriveFieldMetadata } from "./field-metadata";
+import { rqlAnd, rqlAnyOf } from "./rql";
 import { structuralFilterRql } from "./structural-rql";
 
 /**
@@ -41,10 +43,87 @@ export const genomeSequenceCollectionProfile: ResourceCollectionProfile<
   guideUrl:
     "https://www.bv-brc.org/docs/quick_references/organisms_taxon/sequences.html",
 };
-export const interactionColumns = deriveFieldMetadata(ppiFields, {
+/**
+ * The ppi fields' `link` templates become `valueHref`, so the Interactor, Gene,
+ * Feature ID, Genome Name and Genome ID cells link to their feature or genome
+ * page (an empty id leaves the cell as plain text).
+ */
+const interactionMetadata = deriveFieldMetadata(ppiFields, {
   resource: "ppi",
   adaptColumn: (column, field) => ({ ...column, valueHref: field.link }),
-}).columns;
+});
+export const interactionColumns = interactionMetadata.columns;
+
+export const interactionFacets = interactionMetadata.facets;
+
+/**
+ * The Interactions "focus on this protein" filter: a URL filter, not a facet
+ * (no counts, no menu entry of its own), so it is named here and in
+ * `filterLabels`, never in `interactionFacets`.
+ */
+export const interactionExtraFilters = ["interactor"] as const;
+
+/**
+ * `interactor` is not a PPI field, so it never reaches `structuralFilterRql`
+ * (which would send it as `eq(interactor,…)`). It matches the protein on either
+ * side of the interaction, as a row files it A- or B-side.
+ */
+export function interactionStructuralRql(
+  state: CollectionState,
+): string | undefined {
+  const { interactor = [], ...facetFilters } = state.filters;
+  const focus = interactor
+    .filter((id) => id !== "")
+    .map(
+      (id) =>
+        `or(${eq("ppi", "interactor_a", id)},${eq("ppi", "interactor_b", id)})`,
+    );
+  const clauses = [
+    focus.length > 0 ? rqlAnyOf(focus) : undefined,
+    structuralFilterRql("ppi", { ...state, filters: facetFilters }),
+  ].filter((clause): clause is string => clause !== undefined);
+  return clauses.length === 0 ? undefined : rqlAnd(...clauses);
+}
+
+/**
+ * Opt-in (pass as `ResourceChildCollection`'s `profile`) for the taxon
+ * Interactions Table + Graph. Genome and Feature Interactions tabs keep the
+ * plain columns-only table. No `detailFields`: the detail fetch stays what the
+ * generic child branch uses (the columns).
+ */
+export const interactionCollectionProfile: ResourceCollectionProfile<
+  Record<string, unknown>
+> = {
+  resource: "ppi",
+  label: "Interactions",
+  idField: "id",
+  columns: interactionColumns,
+  basePredicate: "eq(id,*)",
+  buildStructuralRql: interactionStructuralRql,
+  facets: interactionFacets,
+  extraFilters: interactionExtraFilters,
+  filterLabels: { interactor: "Protein" },
+};
+
+/**
+ * One expression for both writers of the `interactions.*` params: the shell
+ * (which reads the filters for the Graph) and `ResourceChildCollection` (which
+ * builds the same from the profile and the shell's `defaultSort` prop, taken
+ * from here). Built apart, one could drop the other's param on a write.
+ *
+ * No default filters: Evidence is a facet like the rest, so the unfiltered tab
+ * lists experimental and computational interactions alike and a user picks one
+ * in the Filters menu. (A default would have to be passed to the Table too, or
+ * the two would parse the URL differently.)
+ */
+export const interactionCollectionOptions = childCollectionOptions(
+  interactionCollectionProfile.columns,
+  interactionCollectionProfile.facets,
+  "id:asc",
+  undefined,
+  interactionCollectionProfile.extraFilters,
+);
+
 export const sequenceFeatureColumns = deriveFieldMetadata(
   sequenceFeatureFields,
   { resource: "sequence_feature" },
@@ -131,7 +210,11 @@ export function genomeInteractionsRql(genomeId: string): string {
 /**
  * Stays A-side only: the Data API RQL contract accepts only `to(genome_id_a)`
  * for `ppi` (locked by `rql.test.ts`), so there is no B-side join to `or` with.
+ * Pins no evidence: the Interactions tab offers it as the Evidence facet, so a
+ * clause here would hold computational interactions out whatever the user
+ * picks. (The Genome and Feature scopes above have no such facet and pin
+ * `eq(evidence,experimental)`.)
  */
 export function taxonomyInteractionsRql(lineageClause: string): string {
-  return `and(eq(genome_id_a,*),genome(to(genome_id_a),and(${lineageClause},ne(genome_status,Deprecated))),eq(evidence,experimental))`;
+  return `and(eq(genome_id_a,*),genome(to(genome_id_a),and(${lineageClause},ne(genome_status,Deprecated))))`;
 }

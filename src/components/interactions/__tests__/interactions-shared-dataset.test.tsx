@@ -3,9 +3,12 @@ import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 
 import { server } from "@/test-helpers/msw-server";
+import { stubMenuLayout } from "@/test-helpers/menu-layout";
 import { createQueryClientWrapper } from "@/test-helpers/react";
+import { settleBackgroundWork } from "@/test-helpers/settle";
 import { resourceCollectionPageSize } from "@/hooks/views/collection-state";
 import { requestGraphLayout } from "@/lib/interactions/layout-client";
+import { interactionsGraphFields } from "@/lib/interactions/use-interactions";
 
 import { InteractionsSubviewShell } from "../interactions-subview-shell";
 
@@ -36,11 +39,13 @@ vi.mock("@/components/shared/data-table", () => ({
     columns,
     pageIndex,
     onPageChange,
+    onRowSelectionChange,
   }: {
     data: Record<string, unknown>[];
     columns: { id: string }[];
     pageIndex: number;
     onPageChange: (next: number) => void;
+    onRowSelectionChange: (selection: Record<string, boolean>) => void;
   }) => (
     <div>
       <p>{`Showing page ${String(pageIndex + 1)}`}</p>
@@ -51,6 +56,19 @@ vi.mock("@/components/shared/data-table", () => ({
         }}
       >
         Next page
+      </button>
+      {/* One button rather than a checkbox a row: the full dataset is a page of 200 rows. */}
+      <button
+        type="button"
+        onClick={() => {
+          onRowSelectionChange(
+            Object.fromEntries(
+              data.slice(0, 2).map((row) => [String(row.id), true]),
+            ),
+          );
+        }}
+      >
+        Select the first two rows
       </button>
       <table>
         <tbody>
@@ -74,42 +92,68 @@ vi.mock("@/components/shared/data-table", () => ({
 vi.mock("@/components/views/resource-workspace", () => ({
   ResourceWorkspace: ({
     toolbar,
+    actionBar,
     children,
   }: {
     toolbar?: React.ReactNode;
+    actionBar?: React.ReactNode;
     children: React.ReactNode;
   }) => (
     <>
       {toolbar}
+      {actionBar}
       {children}
     </>
   ),
 }));
+// The selection actions' own dialogs need auth and the workspace, so the bar is the real
+// `SearchActionBar` (its visibility policy included) and hands back only the actions the shell
+// supplies (Show in Graph).
 vi.mock("@/components/views/collection-selection-actions", async (
   importOriginal,
-) => ({
-  ...(await importOriginal<
+) => {
+  const actual = await importOriginal<
     typeof import("@/components/views/collection-selection-actions")
-  >()),
-  CollectionSelectionActions: () => null,
-}));
+  >();
+  const { SearchActionBar } = await import(
+    "@/components/search/search-action-bar"
+  );
+  return {
+    ...actual,
+    CollectionSelectionActions: ({
+      searchType,
+      selectedCount,
+      actionIds,
+      extraEnabledActionIds = [],
+      disabledActions,
+      onOtherAction,
+    }: Parameters<typeof actual.CollectionSelectionActions>[0]) => (
+      <SearchActionBar
+        searchType={searchType}
+        selectedCount={selectedCount}
+        enabledActions={[...actionIds, ...extraEnabledActionIds]}
+        disabledActions={disabledActions}
+        onAction={(actionId) => {
+          if (!actionIds.includes(actionId)) onOtherAction?.(actionId);
+        }}
+      />
+    ),
+  };
+});
 
-class ResizeObserverStub {
-  observe = vi.fn();
-  unobserve = vi.fn();
-  disconnect = vi.fn();
-}
-
-vi.stubGlobal("ResizeObserver", ResizeObserverStub);
+stubMenuLayout();
 vi.stubGlobal("scrollTo", vi.fn());
-Element.prototype.scrollIntoView = vi.fn();
 
 // The first Graph render loads graphology on demand; paid here outside any test, with a wider
 // per-test budget.
 vi.setConfig({ testTimeout: 15_000, hookTimeout: 15_000 });
 beforeAll(() => import("@/lib/interactions/layout-positions"));
 
-const scopeRql = "eq(evidence,experimental)";
+// A stand-in for the taxon scope, which pins no evidence, and the shell adds none: the unfiltered
+// Interactions tab lists experimental and computational interactions alike.
+const scopeRql = "eq(genome_id_a,*)";
+const experimentalClause = "eq(evidence,experimental)";
+const computationalClause = "eq(evidence,computational)";
 const beyondFirstPageIndex = resourceCollectionPageSize + 49;
 
 const allRows = Array.from(
@@ -123,6 +167,39 @@ const allRows = Array.from(
 );
 const beyondFirstPageInteractor = allRows[beyondFirstPageIndex].interactor_a;
 
+// A handful of rows with real-shaped ids (a pipe, a dot): role queries over the full node list are
+// slow in jsdom, and the focus tests need an id that must be escaped on the way to the RQL.
+const focusRows = [
+  {
+    id: "ppi-f1",
+    interactor_a: "fig|1.1.peg.1",
+    interactor_b: "fig|1.1.peg.2",
+    gene_a: "geneA",
+    gene_b: "geneB",
+    evidence: "experimental",
+  },
+  {
+    id: "ppi-f2",
+    interactor_a: "fig|1.1.peg.1",
+    interactor_b: "fig|1.1.peg.3",
+    gene_a: "geneA",
+    gene_b: "geneC",
+    evidence: "experimental",
+  },
+];
+const facetBuckets: Record<string, { value: string; count: number }[]> = {
+  interaction_type: [
+    { value: "association", count: 100 },
+    { value: "physical association", count: 50 },
+  ],
+  evidence: [
+    { value: "experimental", count: 120 },
+    { value: "computational", count: 30 },
+  ],
+};
+/** What the handlers below serve; a test swaps in `focusRows`, `beforeEach` restores it. */
+let datasetRows: Record<string, string>[] = allRows;
+
 interface Predicate {
   rql?: string;
   keyword?: string;
@@ -132,13 +209,17 @@ interface Predicate {
 
 const tablePredicates: Predicate[] = [];
 const graphPredicates: Predicate[] = [];
+/** Facet-count reads (a GET with `facet` params), kept apart from the Table's row reads. */
+const facetPredicates: (Predicate & { facets: string[] })[] = [];
 /** Kept out of `Predicate` because the Graph fetches its whole dataset and has no page. */
 const tablePages: number[] = [];
+/** The Graph's reads by id (Show in Graph), kept apart from its predicate reads. */
+const selectedReads: Record<string, unknown>[] = [];
 
 function matching(keyword: string | undefined) {
   const terms = (keyword ?? "").trim().split(/\s+/).filter(Boolean);
-  if (terms.length === 0) return allRows;
-  return allRows.filter((row) =>
+  if (terms.length === 0) return datasetRows;
+  return datasetRows.filter((row) =>
     terms.every((term) => JSON.stringify(row).includes(term)),
   );
 }
@@ -148,13 +229,34 @@ beforeEach(() => {
     Promise.resolve(new Float64Array(2 * request.nodeCount)),
   );
   window.history.replaceState(null, "", "/genome/1.1");
+  datasetRows = allRows;
   tablePredicates.length = 0;
   graphPredicates.length = 0;
+  facetPredicates.length = 0;
   tablePages.length = 0;
+  selectedReads.length = 0;
   server.use(
     http.get("/api/data/ppi", ({ request }) => {
       const params = new URL(request.url).searchParams;
       const keyword = params.get("keyword") ?? undefined;
+      const facets = params.getAll("facet");
+      if (facets.length > 0) {
+        facetPredicates.push({
+          rql: params.get("rql") ?? undefined,
+          keyword,
+          keywordMode: params.get("keywordMode") ?? undefined,
+          facets,
+        });
+        return HttpResponse.json({
+          rows: [],
+          total: allRows.length,
+          facets: Object.fromEntries(
+            facets.map((field) => [field, facetBuckets[field] ?? []]),
+          ),
+          page: 1,
+          pageSize: 1,
+        });
+      }
       tablePredicates.push({
         rql: params.get("rql") ?? undefined,
         keyword,
@@ -174,11 +276,21 @@ beforeEach(() => {
     }),
     http.post("/api/data/ppi", async ({ request }) => {
       const body = (await request.json()) as {
+        operation: string;
+        ids?: string[];
+        fields?: string[];
         rql?: string;
         keyword?: string;
         keywordMode?: string;
         limit: number;
       };
+      if (body.operation === "selected") {
+        selectedReads.push(body);
+        const ids = new Set(body.ids);
+        return HttpResponse.json({
+          rows: datasetRows.filter((row) => ids.has(row.id)),
+        });
+      }
       graphPredicates.push({
         rql: body.rql,
         keyword: body.keyword,
@@ -293,6 +405,705 @@ describe("Interactions Table and Graph share one dataset", () => {
       ).toBeInTheDocument();
     });
     expect(graphPredicates.at(-1)?.keyword).toBe(beyondFirstPageInteractor);
+  });
+});
+
+async function pickAssociation(
+  user: ReturnType<typeof userEvent.setup>,
+  panel: ReturnType<typeof tablePanel>,
+) {
+  await user.click(panel.getByRole("button", { name: /^Filters/ }));
+  await user.click(
+    within(await screen.findByRole("listbox", { name: "Filters" })).getByRole(
+      "option",
+      { name: /^Interaction Type/ },
+    ),
+  );
+  await user.click(
+    await within(
+      screen.getByRole("listbox", { name: "Interaction Type values" }),
+    ).findByRole("option", { name: /^association/ }),
+  );
+  await user.keyboard("{Escape}");
+}
+
+const associationRql = `and(${scopeRql},eq(interaction_type,association))`;
+
+describe("Interactions Table and Graph share one set of filters", () => {
+  it("narrows both views alike from a pick in the Graph's Filters menu", async () => {
+    const user = userEvent.setup();
+    render(<InteractionsSubviewShell rql={scopeRql} />, {
+      wrapper: createQueryClientWrapper(),
+    });
+    await waitFor(() => {
+      expect(tablePredicates).toHaveLength(1);
+    });
+    await user.click(screen.getByRole("tab", { name: "Graph" }));
+    await waitFor(() => {
+      expect(graphPredicates).toHaveLength(1);
+    });
+
+    await pickAssociation(user, graphPanel());
+
+    await waitFor(() => {
+      expect(graphPredicates.at(-1)?.rql).toBe(associationRql);
+    });
+    await waitFor(() => {
+      expect(tablePredicates.at(-1)?.rql).toBe(associationRql);
+    });
+    expect(tablePredicates.at(-1)).toEqual(graphPredicates.at(-1));
+    expect(window.location.search).toBe(
+      "?interactionsGraph.view=graph&interactions.interaction_type=association",
+    );
+    // The other facets count within the pick; Interaction Type is counted without its own filter
+    // (the scope's cached counts), so a second value stays pickable.
+    await waitFor(() => {
+      expect(facetPredicates).toContainEqual(
+        expect.objectContaining({ rql: associationRql }),
+      );
+    });
+    expect(
+      facetPredicates.filter(
+        (request) =>
+          request.rql === associationRql &&
+          request.facets.includes("interaction_type"),
+      ),
+    ).toEqual([]);
+  });
+
+  it("narrows the Graph from a pick in the Table's Filters menu", async () => {
+    const user = userEvent.setup();
+    render(<InteractionsSubviewShell rql={scopeRql} />, {
+      wrapper: createQueryClientWrapper(),
+    });
+    await waitFor(() => {
+      expect(tablePredicates).toHaveLength(1);
+    });
+
+    await pickAssociation(user, tablePanel());
+    await waitFor(() => {
+      expect(tablePredicates.at(-1)?.rql).toBe(associationRql);
+    });
+
+    await user.click(screen.getByRole("tab", { name: "Graph" }));
+    await waitFor(() => {
+      expect(graphPredicates).toHaveLength(1);
+    });
+    expect(graphPredicates.at(-1)).toEqual(tablePredicates.at(-1));
+  });
+
+  it("drops the Table's page when the Graph picks a filter", async () => {
+    const user = userEvent.setup();
+    render(<InteractionsSubviewShell rql={scopeRql} />, {
+      wrapper: createQueryClientWrapper(),
+    });
+    await waitFor(() => {
+      expect(tablePredicates).toHaveLength(1);
+    });
+    await user.click(tablePanel().getByRole("button", { name: "Next page" }));
+    await waitFor(() => {
+      expect(tablePages.at(-1)).toBe(2);
+    });
+
+    await user.click(screen.getByRole("tab", { name: "Graph" }));
+    await pickAssociation(user, graphPanel());
+
+    await waitFor(() => {
+      expect(tablePredicates.at(-1)?.rql).toBe(associationRql);
+    });
+    // The narrowed read starts at page 1; a later page-2 read of it is the next-page prefetch.
+    expect(
+      tablePages[
+        tablePredicates.findIndex((request) => request.rql === associationRql)
+      ],
+    ).toBe(1);
+    expect(window.location.search).not.toContain("interactions.page");
+  });
+});
+
+/** Opens the panel's Filters menu on Evidence and returns its value list. */
+async function openEvidenceValues(
+  user: ReturnType<typeof userEvent.setup>,
+  panel: ReturnType<typeof tablePanel>,
+) {
+  await user.click(panel.getByRole("button", { name: /^Filters/ }));
+  await user.click(
+    within(await screen.findByRole("listbox", { name: "Filters" })).getByRole(
+      "option",
+      { name: /^Evidence/ },
+    ),
+  );
+  return within(screen.getByRole("listbox", { name: "Evidence values" }));
+}
+
+describe("Interactions Table and Graph share the Evidence facet, which has no default", () => {
+  it("sends the bare scope from both views while the URL carries no evidence param", async () => {
+    const user = userEvent.setup();
+    render(<InteractionsSubviewShell rql={scopeRql} />, {
+      wrapper: createQueryClientWrapper(),
+    });
+    await waitFor(() => {
+      expect(tablePredicates).toHaveLength(1);
+    });
+    // The Table's panel is inert once the Graph tab is up, so it is read first.
+    expect(
+      tablePanel().queryByRole("button", { name: /^Evidence:/ }),
+    ).not.toBeInTheDocument();
+    await user.click(screen.getByRole("tab", { name: "Graph" }));
+    await waitFor(() => {
+      expect(graphPredicates).toHaveLength(1);
+    });
+
+    // Experimental and computational rows alike: no evidence term at all.
+    expect(tablePredicates.at(-1)?.rql).toBe(scopeRql);
+    expect(graphPredicates.at(-1)).toEqual(tablePredicates.at(-1));
+    expect(window.location.search).toBe("?interactionsGraph.view=graph");
+    expect(
+      graphPanel().queryByRole("button", { name: /^Evidence:/ }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("sends a hand-edited `*` filter value as a valid clause, with a pill that clears", async () => {
+    // `%2A` is not a literal `*`: the Data API decodes it to Solr's wildcard, so this clause matches
+    // every row that has an evidence value, as the same URL does on any other collection. It is
+    // valid RQL, nothing crashes, and the pill names it so a click restores the bare scope.
+    const user = userEvent.setup();
+    window.history.replaceState(null, "", "/genome/1.1?interactions.evidence=*");
+    render(<InteractionsSubviewShell rql={scopeRql} />, {
+      wrapper: createQueryClientWrapper(),
+    });
+    await waitFor(() => {
+      expect(tablePredicates).toHaveLength(1);
+    });
+    expect(tablePredicates.at(-1)?.rql).toBe(`and(${scopeRql},eq(evidence,%2A))`);
+    expect(
+      tablePanel().getByRole("button", { name: "Evidence: *. Edit filter" }),
+    ).toBeInTheDocument();
+
+    await user.click(
+      tablePanel().getByRole("button", { name: "Clear Evidence filter" }),
+    );
+
+    await waitFor(() => {
+      expect(tablePredicates.at(-1)?.rql).toBe(scopeRql);
+    });
+    expect(window.location.search).toBe("");
+  });
+
+  it("widens both views when the Graph's Evidence pill is removed", async () => {
+    const user = userEvent.setup();
+    window.history.replaceState(
+      null,
+      "",
+      "/genome/1.1?interactions.evidence=experimental",
+    );
+    render(<InteractionsSubviewShell rql={scopeRql} />, {
+      wrapper: createQueryClientWrapper(),
+    });
+    await waitFor(() => {
+      expect(tablePredicates.at(-1)?.rql).toBe(
+        `and(${scopeRql},${experimentalClause})`,
+      );
+    });
+    await user.click(screen.getByRole("tab", { name: "Graph" }));
+    await waitFor(() => {
+      expect(graphPredicates).toHaveLength(1);
+    });
+
+    await user.click(
+      graphPanel().getByRole("button", { name: "Clear Evidence filter" }),
+    );
+
+    await waitFor(() => {
+      expect(graphPredicates.at(-1)?.rql).toBe(scopeRql);
+    });
+    await waitFor(() => {
+      expect(tablePredicates.at(-1)?.rql).toBe(scopeRql);
+    });
+    expect(tablePredicates.at(-1)).toEqual(graphPredicates.at(-1));
+    // The cleared state is the empty state, so no param is written.
+    expect(window.location.search).toBe("?interactionsGraph.view=graph");
+  });
+
+  it.each([
+    { pick: "experimental", clause: experimentalClause },
+    { pick: "computational", clause: computationalClause },
+  ])(
+    "narrows both views to $pick picked from the Graph's Filters menu",
+    async ({ pick, clause }) => {
+      const user = userEvent.setup();
+      render(<InteractionsSubviewShell rql={scopeRql} />, {
+        wrapper: createQueryClientWrapper(),
+      });
+      await waitFor(() => {
+        expect(tablePredicates).toHaveLength(1);
+      });
+      await user.click(screen.getByRole("tab", { name: "Graph" }));
+      await waitFor(() => {
+        expect(graphPredicates).toHaveLength(1);
+      });
+
+      const values = await openEvidenceValues(user, graphPanel());
+      // The menu lists both values, neither one selected.
+      expect(
+        await values.findByRole("option", { name: /^experimental/ }),
+      ).toHaveAttribute("aria-selected", "false");
+      expect(
+        values.getByRole("option", { name: /^computational/ }),
+      ).toHaveAttribute("aria-selected", "false");
+      await user.click(values.getByRole("option", { name: new RegExp(`^${pick}`) }));
+      await user.keyboard("{Escape}");
+
+      const pickedRql = `and(${scopeRql},${clause})`;
+      await waitFor(() => {
+        expect(graphPredicates.at(-1)?.rql).toBe(pickedRql);
+      });
+      await waitFor(() => {
+        expect(tablePredicates.at(-1)?.rql).toBe(pickedRql);
+      });
+      expect(tablePredicates.at(-1)).toEqual(graphPredicates.at(-1));
+      expect(window.location.search).toBe(
+        `?interactionsGraph.view=graph&interactions.evidence=${pick}`,
+      );
+
+      await user.click(screen.getByRole("tab", { name: "Table" }));
+      expect(
+        tablePanel().getByRole("button", {
+          name: `Evidence: ${pick}. Edit filter`,
+        }),
+      ).toBeInTheDocument();
+    },
+  );
+
+  it("lists both evidence values in either menu, counted over the whole scope", async () => {
+    const user = userEvent.setup();
+    render(<InteractionsSubviewShell rql={scopeRql} />, {
+      wrapper: createQueryClientWrapper(),
+    });
+    await waitFor(() => {
+      expect(tablePredicates).toHaveLength(1);
+    });
+
+    const tableValues = await openEvidenceValues(user, tablePanel());
+    expect(
+      await tableValues.findByRole("option", { name: /^computational/ }),
+    ).toBeInTheDocument();
+    expect(
+      tableValues.getByRole("option", { name: /^experimental/ }),
+    ).toBeInTheDocument();
+    await user.keyboard("{Escape}");
+    await user.click(screen.getByRole("tab", { name: "Graph" }));
+    await waitFor(() => {
+      expect(graphPredicates).toHaveLength(1);
+    });
+    const graphValues = await openEvidenceValues(user, graphPanel());
+    expect(
+      await graphValues.findByRole("option", { name: /^computational/ }),
+    ).toBeInTheDocument();
+    expect(
+      graphValues.getByRole("option", { name: /^experimental/ }),
+    ).toBeInTheDocument();
+
+    // Evidence is counted without its own filter, by both views, so both values show.
+    const evidenceCounts = facetPredicates.filter((request) =>
+      request.facets.includes("evidence"),
+    );
+    expect(evidenceCounts.length).toBeGreaterThan(0);
+    expect(evidenceCounts.map((request) => request.rql)).toEqual(
+      evidenceCounts.map(() => scopeRql),
+    );
+  });
+});
+
+const countedFacetFields = [
+  "category",
+  "detection_method",
+  "evidence",
+  "interaction_type",
+];
+
+/**
+ * Renders the shell on a fresh cache (so one view's counts cannot serve the other's), opens
+ * `view`'s Filters menu, and returns the rql each facet's counts were requested over. A shared
+ * cache would hide a difference: equal requests are fetched once, so a Graph that agrees with the
+ * Table sends nothing at all.
+ */
+async function facetCountRqls(
+  user: ReturnType<typeof userEvent.setup>,
+  view: "Table" | "Graph",
+) {
+  tablePredicates.length = 0;
+  graphPredicates.length = 0;
+  facetPredicates.length = 0;
+  const { unmount } = render(<InteractionsSubviewShell rql={scopeRql} />, {
+    wrapper: createQueryClientWrapper(),
+  });
+  await waitFor(() => {
+    expect(tablePredicates).toHaveLength(1);
+  });
+  if (view === "Graph") {
+    await user.click(screen.getByRole("tab", { name: "Graph" }));
+    await waitFor(() => {
+      expect(graphPredicates).toHaveLength(1);
+    });
+  }
+  const panel = view === "Table" ? tablePanel() : graphPanel();
+  await user.click(panel.getByRole("button", { name: /^Filters/ }));
+  await waitFor(() => {
+    expect(
+      [...new Set(facetPredicates.flatMap((request) => request.facets))].sort(),
+    ).toEqual(countedFacetFields);
+  });
+  const rqls = Object.fromEntries(
+    facetPredicates.flatMap((request) =>
+      request.facets.map((field) => [field, request.rql]),
+    ),
+  );
+  unmount();
+  return rqls;
+}
+
+describe("Interactions Table and Graph count every facet over the same scope", () => {
+  const experimental = `and(${scopeRql},${experimentalClause})`;
+  const computational = `and(${scopeRql},${computationalClause})`;
+  it.each([
+    {
+      state: "the URL carries no evidence param",
+      search: "",
+      expected: {
+        category: scopeRql,
+        detection_method: scopeRql,
+        evidence: scopeRql,
+        interaction_type: scopeRql,
+      },
+    },
+    {
+      state: "experimental is picked",
+      search: "?interactions.evidence=experimental",
+      expected: {
+        category: experimental,
+        detection_method: experimental,
+        evidence: scopeRql,
+        interaction_type: experimental,
+      },
+    },
+    {
+      state: "computational is picked",
+      search: "?interactions.evidence=computational",
+      expected: {
+        category: computational,
+        detection_method: computational,
+        evidence: scopeRql,
+        interaction_type: computational,
+      },
+    },
+  ])("when $state", async ({ search, expected }) => {
+    const user = userEvent.setup();
+    window.history.replaceState(null, "", `/genome/1.1${search}`);
+
+    const tableRqls = await facetCountRqls(user, "Table");
+    const graphRqls = await facetCountRqls(user, "Graph");
+
+    expect(tableRqls).toEqual(expected);
+    expect(graphRqls).toEqual(tableRqls);
+  });
+});
+
+const focusedProteinId = "fig|1.1.peg.1";
+const focusClause =
+  "or(eq(interactor_a,fig%7C1.1.peg.1),eq(interactor_b,fig%7C1.1.peg.1))";
+const focusedRql = `and(${scopeRql},${focusClause})`;
+const focusUrlParam = "interactions.interactor=fig%7C1.1.peg.1";
+
+/** Picks the node in the Graph's list, then its detail panel's focus button. */
+async function focusFromGraph(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(await graphPanel().findByText("geneA"));
+  await user.click(
+    graphPanel().getByRole("button", { name: "Focus on this protein" }),
+  );
+}
+
+describe("Interactions Table and Graph share a protein focus", () => {
+  beforeEach(() => {
+    datasetRows = focusRows;
+  });
+
+  it("narrows both views to the protein from the Graph's detail panel", async () => {
+    const user = userEvent.setup();
+    render(<InteractionsSubviewShell rql={scopeRql} />, {
+      wrapper: createQueryClientWrapper(),
+    });
+    await waitFor(() => {
+      expect(tablePredicates).toHaveLength(1);
+    });
+    await user.click(screen.getByRole("tab", { name: "Graph" }));
+    await waitFor(() => {
+      expect(graphPredicates).toHaveLength(1);
+    });
+
+    await focusFromGraph(user);
+
+    await waitFor(() => {
+      expect(graphPredicates.at(-1)?.rql).toBe(focusedRql);
+    });
+    await waitFor(() => {
+      expect(tablePredicates.at(-1)?.rql).toBe(focusedRql);
+    });
+    expect(tablePredicates.at(-1)).toEqual(graphPredicates.at(-1));
+    expect(window.location.search).toBe(
+      "?interactionsGraph.view=graph&interactionsGraph.node=fig%7C1.1.peg.1&interactions.interactor=fig%7C1.1.peg.1",
+    );
+    // The focus is a filter like the rest: the bar names it, and the counts stay inside it.
+    expect(
+      graphPanel().getByRole("button", {
+        name: `Protein: ${focusedProteinId}. Edit filter`,
+      }),
+    ).toBeInTheDocument();
+    // The rows come back with the protein in them, so the Graph selects it again.
+    await waitFor(() => {
+      expect(
+        graphPanel().getByRole("button", { name: "Focus on this protein" }),
+      ).toBeInTheDocument();
+    });
+    expect(
+      within(graphPanel().getByLabelText("Selection details")).getByText(
+        focusedProteinId,
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("keeps the focus when the Table picks a facet afterwards", async () => {
+    const user = userEvent.setup();
+    render(<InteractionsSubviewShell rql={scopeRql} />, {
+      wrapper: createQueryClientWrapper(),
+    });
+    await waitFor(() => {
+      expect(tablePredicates).toHaveLength(1);
+    });
+    await user.click(screen.getByRole("tab", { name: "Graph" }));
+    await waitFor(() => {
+      expect(graphPredicates).toHaveLength(1);
+    });
+    await focusFromGraph(user);
+    await waitFor(() => {
+      expect(tablePredicates.at(-1)?.rql).toBe(focusedRql);
+    });
+
+    await user.click(screen.getByRole("tab", { name: "Table" }));
+    // The Table's own bar names the focus too: its profile carries the label.
+    expect(
+      tablePanel().getByRole("button", {
+        name: `Protein: ${focusedProteinId}. Edit filter`,
+      }),
+    ).toBeInTheDocument();
+    await pickAssociation(user, tablePanel());
+
+    const bothRql = `and(${scopeRql},and(${focusClause},eq(interaction_type,association)))`;
+    await waitFor(() => {
+      expect(tablePredicates.at(-1)?.rql).toBe(bothRql);
+    });
+    expect(window.location.search).toContain(focusUrlParam);
+    expect(window.location.search).toContain(
+      "interactions.interaction_type=association",
+    );
+
+    await user.click(screen.getByRole("tab", { name: "Graph" }));
+    await waitFor(() => {
+      expect(graphPredicates.at(-1)?.rql).toBe(bothRql);
+    });
+    expect(tablePredicates.at(-1)).toEqual(graphPredicates.at(-1));
+  });
+
+  it("keeps a facet the Table picked when the Graph focuses afterwards", async () => {
+    const user = userEvent.setup();
+    render(<InteractionsSubviewShell rql={scopeRql} />, {
+      wrapper: createQueryClientWrapper(),
+    });
+    await waitFor(() => {
+      expect(tablePredicates).toHaveLength(1);
+    });
+    await pickAssociation(user, tablePanel());
+    await waitFor(() => {
+      expect(tablePredicates.at(-1)?.rql).toBe(associationRql);
+    });
+
+    await user.click(screen.getByRole("tab", { name: "Graph" }));
+    await waitFor(() => {
+      expect(graphPredicates.at(-1)?.rql).toBe(associationRql);
+    });
+    await focusFromGraph(user);
+
+    const bothRql = `and(${scopeRql},and(${focusClause},eq(interaction_type,association)))`;
+    await waitFor(() => {
+      expect(graphPredicates.at(-1)?.rql).toBe(bothRql);
+    });
+    await waitFor(() => {
+      expect(tablePredicates.at(-1)?.rql).toBe(bothRql);
+    });
+    expect(tablePredicates.at(-1)).toEqual(graphPredicates.at(-1));
+    expect(window.location.search).toContain(focusUrlParam);
+    expect(window.location.search).toContain(
+      "interactions.interaction_type=association",
+    );
+  });
+
+  it("drops the Table's page when the Graph focuses", async () => {
+    const user = userEvent.setup();
+    render(<InteractionsSubviewShell rql={scopeRql} />, {
+      wrapper: createQueryClientWrapper(),
+    });
+    await waitFor(() => {
+      expect(tablePredicates).toHaveLength(1);
+    });
+    await user.click(tablePanel().getByRole("button", { name: "Next page" }));
+    await waitFor(() => {
+      expect(tablePages.at(-1)).toBe(2);
+    });
+    await user.click(screen.getByRole("tab", { name: "Graph" }));
+    await waitFor(() => {
+      expect(graphPredicates).toHaveLength(1);
+    });
+
+    await focusFromGraph(user);
+
+    await waitFor(() => {
+      expect(tablePredicates.at(-1)?.rql).toBe(focusedRql);
+    });
+    expect(
+      tablePages[
+        tablePredicates.findIndex((request) => request.rql === focusedRql)
+      ],
+    ).toBe(1);
+    expect(window.location.search).not.toContain("interactions.page");
+  });
+
+  it("widens both views again when the Protein pill is removed", async () => {
+    const user = userEvent.setup();
+    window.history.replaceState(null, "", `/genome/1.1?${focusUrlParam}`);
+    render(<InteractionsSubviewShell rql={scopeRql} />, {
+      wrapper: createQueryClientWrapper(),
+    });
+    await waitFor(() => {
+      expect(tablePredicates.at(-1)?.rql).toBe(focusedRql);
+    });
+    await user.click(screen.getByRole("tab", { name: "Graph" }));
+    await waitFor(() => {
+      expect(graphPredicates.at(-1)?.rql).toBe(focusedRql);
+    });
+
+    await user.click(
+      graphPanel().getByRole("button", { name: "Clear Protein filter" }),
+    );
+
+    await waitFor(() => {
+      expect(graphPredicates.at(-1)?.rql).toBe(scopeRql);
+    });
+    await waitFor(() => {
+      expect(tablePredicates.at(-1)?.rql).toBe(scopeRql);
+    });
+    expect(window.location.search).toBe("?interactionsGraph.view=graph");
+  });
+});
+
+/** Back, as the browser does it: the entry changes, then `popstate` fires. */
+async function goBack() {
+  await act(async () => {
+    const popped = new Promise((resolve) => {
+      window.addEventListener("popstate", resolve, { once: true });
+    });
+    window.history.back();
+    await popped;
+  });
+}
+
+describe("Interactions Back and leaving the page keep each URL its own", () => {
+  beforeEach(() => {
+    datasetRows = focusRows;
+  });
+
+  it("keeps the node selected before a focus after Back undoes the focus", async () => {
+    const user = userEvent.setup();
+    window.history.replaceState(null, "", "/genome/1.1?tab=interactions");
+    render(<InteractionsSubviewShell rql={scopeRql} />, {
+      wrapper: createQueryClientWrapper(),
+    });
+    await waitFor(() => {
+      expect(tablePredicates).toHaveLength(1);
+    });
+    await user.click(screen.getByRole("tab", { name: "Graph" }));
+    await waitFor(() => {
+      expect(graphPredicates).toHaveLength(1);
+    });
+    await focusFromGraph(user);
+    await waitFor(() => {
+      expect(graphPredicates.at(-1)?.rql).toBe(focusedRql);
+    });
+    expect(window.location.search).toContain(focusUrlParam);
+
+    await goBack();
+
+    const beforeFocus =
+      "?tab=interactions&interactionsGraph.view=graph&interactionsGraph.node=fig%7C1.1.peg.1";
+    await waitFor(() => {
+      expect(
+        graphPanel().queryByRole("button", { name: /^Protein:/ }),
+      ).not.toBeInTheDocument();
+    });
+    await settleBackgroundWork();
+    expect(window.location.search).toBe(beforeFocus);
+    expect(
+      within(graphPanel().getByLabelText("Selection details")).getByText(
+        focusedProteinId,
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("does not write a keyword still in its debounce onto the next page's URL", async () => {
+    const user = userEvent.setup({ delay: null });
+    window.history.replaceState(null, "", "/genome/1.1?tab=interactions");
+    const { unmount } = render(<InteractionsSubviewShell rql={scopeRql} />, {
+      wrapper: createQueryClientWrapper(),
+    });
+    await user.click(screen.getByRole("tab", { name: "Graph" }));
+    await waitFor(() => {
+      expect(graphPredicates).toHaveLength(1);
+    });
+    await user.type(
+      graphPanel().getByPlaceholderText("Search interaction results..."),
+      "geneA",
+    );
+
+    // A details-pane link: Next pushes the feature page's URL before the tab's cleanups run.
+    window.history.pushState(null, "", "/feature/fig%7C1.1.peg.1");
+    unmount();
+
+    expect(window.location.pathname).toBe("/feature/fig%7C1.1.peg.1");
+    expect(window.location.search).toBe("");
+  });
+
+  it("still commits a keyword in its debounce on a switch to the Table subview", async () => {
+    const user = userEvent.setup({ delay: null });
+    window.history.replaceState(null, "", "/genome/1.1?tab=interactions");
+    render(<InteractionsSubviewShell rql={scopeRql} />, {
+      wrapper: createQueryClientWrapper(),
+    });
+    await user.click(screen.getByRole("tab", { name: "Graph" }));
+    await waitFor(() => {
+      expect(graphPredicates).toHaveLength(1);
+    });
+    await user.type(
+      graphPanel().getByPlaceholderText("Search interaction results..."),
+      "geneA",
+    );
+
+    await user.click(screen.getByRole("tab", { name: "Table" }));
+
+    expect(window.location.search).toBe(
+      "?tab=interactions&interactionsGraph.q=geneA",
+    );
+    await waitFor(() => {
+      expect(tablePredicates.at(-1)?.keyword).toBe("geneA");
+    });
   });
 });
 
@@ -502,6 +1313,74 @@ describe("Interactions Graph layout across tab switches", () => {
     );
     expect(graphPanel().queryByRole("status")).not.toBeInTheDocument();
     expect(requestGraphLayout).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("Interactions Show in Graph from the Table's selection", () => {
+  const selectionRows = [
+    ...focusRows,
+    {
+      id: "ppi-f3",
+      interactor_a: "fig|1.1.peg.4",
+      interactor_b: "fig|1.1.peg.5",
+      gene_a: "geneD",
+      gene_b: "geneE",
+      evidence: "experimental",
+    },
+  ];
+
+  beforeEach(() => {
+    datasetRows = selectionRows;
+  });
+
+  it("draws exactly the selected rows, read by id, and leaves the Table's request alone", async () => {
+    const user = userEvent.setup();
+    render(<InteractionsSubviewShell rql={scopeRql} />, {
+      wrapper: createQueryClientWrapper(),
+    });
+    await waitFor(() => {
+      expect(tablePanel().getByText("geneD")).toBeInTheDocument();
+    });
+    const tableRequests = [...tablePredicates];
+
+    await user.click(
+      tablePanel().getByRole("button", { name: "Select the first two rows" }),
+    );
+    await user.click(
+      await tablePanel().findByRole("button", { name: /^show in\s*graph$/i }),
+    );
+
+    expect(screen.getByRole("tab", { name: "Graph" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    await waitFor(() => {
+      expect(graphPanel().getByText("geneA")).toBeInTheDocument();
+    });
+    expect(selectedReads).toStrictEqual([
+      {
+        operation: "selected",
+        ids: ["ppi-f1", "ppi-f2"],
+        fields: [...interactionsGraphFields],
+      },
+    ]);
+    expect(graphPredicates).toStrictEqual([]);
+    expect(graphPanel().getByText("geneB")).toBeInTheDocument();
+    expect(graphPanel().getByText("geneC")).toBeInTheDocument();
+    expect(graphPanel().queryByText("geneD")).not.toBeInTheDocument();
+    expect(
+      graphPanel().getByText("Showing 2 selected interactions"),
+    ).toBeInTheDocument();
+    expect(tablePredicates).toStrictEqual(tableRequests);
+
+    // Show all goes back to the Graph's own predicate read.
+    await user.click(graphPanel().getByRole("button", { name: "Show all" }));
+    await waitFor(() => {
+      expect(graphPanel().getByText("geneD")).toBeInTheDocument();
+    });
+    expect(graphPredicates).toStrictEqual([
+      { rql: scopeRql, keyword: undefined, keywordMode: undefined },
+    ]);
   });
 });
 

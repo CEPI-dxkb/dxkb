@@ -98,6 +98,21 @@ describe("toGraph", () => {
     expect(edges[0]).toEqual(expect.objectContaining({ experimental: true }));
   });
 
+  it("styles a computational-only edge as predicted, the legend's grey, not experimental", () => {
+    // `evidence=computational` rows reach the Graph on the taxon tab, whose scope pins no evidence.
+    const { edges } = toGraph([
+      makeRow({ id: "scalar", evidence: "computational" }),
+      makeRow({ id: "list", evidence: ["computational"] }),
+      makeRow({ id: "both", evidence: ["computational", "experimental"] }),
+    ]);
+
+    expect(edges.map((edge) => [edge.id, edge.experimental])).toEqual([
+      ["scalar", false],
+      ["list", false],
+      ["both", true],
+    ]);
+  });
+
   it("returns empty nodes and edges for empty input", () => {
     expect(toGraph([])).toEqual({ nodes: [], edges: [] });
   });

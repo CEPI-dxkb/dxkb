@@ -50,3 +50,76 @@ describe("CollectionToolbar advanced query chip", () => {
     ).not.toBeInTheDocument();
   });
 });
+
+describe("CollectionToolbar filter labels", () => {
+  // A filter with no definition (the Interactions Graph's focus) has no menu
+  // entry to take a label from, so the caller names it.
+  const filterLabels = { interactor: "Protein" };
+  const focus = { interactor: ["fig|224914.16.peg.635"] };
+
+  it("labels the pill of an undefined filter from filterLabels", () => {
+    renderToolbar({ filters: focus, overrides: { filterLabels } });
+
+    expect(
+      screen.getByRole("button", {
+        name: "Protein: fig|224914.16.peg.635. Edit filter",
+      }),
+    ).toHaveTextContent("Protein fig|224914.16.peg.635");
+    expect(
+      screen.queryByRole("button", { name: /^interactor/ }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("falls back to the field name without a label", () => {
+    renderToolbar({ filters: focus });
+
+    expect(
+      screen.getByRole("button", {
+        name: "interactor: fig|224914.16.peg.635. Edit filter",
+      }),
+    ).toBeInTheDocument();
+  });
+
+  it("prefers a definition's own label", () => {
+    renderToolbar({
+      filters: { genome_status: ["WGS"] },
+      overrides: { filterLabels: { genome_status: "Not this" } },
+    });
+
+    expect(
+      screen.getByRole("button", { name: "Genome Status: WGS. Edit filter" }),
+    ).toBeInTheDocument();
+  });
+
+  it("clears the field from the pill's ×", async () => {
+    const user = userEvent.setup();
+    const { spies } = renderToolbar({
+      filters: focus,
+      overrides: { filterLabels },
+    });
+
+    await user.click(
+      screen.getByRole("button", { name: "Clear Protein filter" }),
+    );
+
+    expect(spies.setFieldValues).toHaveBeenCalledWith("interactor", []);
+    expect(
+      screen.queryByRole("button", { name: /Edit filter$/ }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("removes the pill with Clear all", async () => {
+    const user = userEvent.setup();
+    const { spies } = renderToolbar({
+      filters: focus,
+      overrides: { filterLabels },
+    });
+
+    await user.click(screen.getByRole("button", { name: "Clear all" }));
+
+    expect(spies.clearAll).toHaveBeenCalledTimes(1);
+    expect(
+      screen.queryByRole("button", { name: /Edit filter$/ }),
+    ).not.toBeInTheDocument();
+  });
+});

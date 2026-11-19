@@ -258,6 +258,168 @@ describe("GraphDetailPanel", () => {
     });
   });
 
+  describe("focus on a protein", () => {
+    const focusButton = () =>
+      screen.queryByRole("button", { name: "Focus on this protein" });
+
+    it("offers the button for a single selected node when a handler is given", async () => {
+      const user = userEvent.setup();
+      const onFocusNode = vi.fn();
+      renderPanel({ selection: { nodes: [nodeA], edges: [] }, onFocusNode });
+
+      await user.click(screen.getByRole("button", { name: "Focus on this protein" }));
+
+      expect(onFocusNode).toHaveBeenCalledTimes(1);
+      expect(onFocusNode).toHaveBeenCalledWith(nodeA);
+      expect(onFocusNode.mock.calls[0][0]).toHaveProperty("id", "fig|1.1");
+    });
+
+    describe("what it does and how to undo it", () => {
+      const hint =
+        "Shows only this protein's interactions; remove the Protein filter in the Filters menu to undo.";
+      const infoButton = () =>
+        screen.queryByRole("button", { name: "About focusing" });
+
+      it("keeps the explanation out of the panel until the info button is opened", () => {
+        renderPanel({
+          selection: { nodes: [nodeA], edges: [] },
+          onFocusNode: vi.fn(),
+        });
+
+        expect(screen.queryByText(hint)).not.toBeInTheDocument();
+        expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+        expect(infoButton()).toBeInTheDocument();
+      });
+
+      it("opens the explanation from the info button", async () => {
+        const user = userEvent.setup();
+        renderPanel({
+          selection: { nodes: [nodeA], edges: [] },
+          onFocusNode: vi.fn(),
+        });
+
+        await user.click(screen.getByRole("button", { name: "About focusing" }));
+
+        expect(await screen.findByText(hint)).toBeVisible();
+      });
+
+      it("names the opened dialog, with the explanation inside it", async () => {
+        const user = userEvent.setup();
+        renderPanel({
+          selection: { nodes: [nodeA], edges: [] },
+          onFocusNode: vi.fn(),
+        });
+
+        await user.click(screen.getByRole("button", { name: "About focusing" }));
+
+        const dialog = await screen.findByRole("dialog", {
+          name: "Focusing on a protein",
+        });
+        expect(dialog).toHaveTextContent(hint);
+        expect(dialog).toBeVisible();
+      });
+
+      it("keeps the dialog's title from matching the Focus button's name", async () => {
+        const user = userEvent.setup();
+        renderPanel({
+          selection: { nodes: [nodeA], edges: [] },
+          onFocusNode: vi.fn(),
+        });
+
+        await user.click(screen.getByRole("button", { name: "About focusing" }));
+        await screen.findByRole("dialog", { name: "Focusing on a protein" });
+
+        expect(
+          screen.getAllByRole("button", { name: /Focus on this protein/ }),
+        ).toHaveLength(1);
+        expect(
+          screen.queryByRole("dialog", { name: /Focus on this protein/ }),
+        ).not.toBeInTheDocument();
+      });
+
+      it("opens from the keyboard, with the info button right after the Focus button", async () => {
+        const user = userEvent.setup();
+        renderPanel({
+          selection: { nodes: [nodeA], edges: [] },
+          onFocusNode: vi.fn(),
+        });
+
+        screen.getByRole("button", { name: "Focus on this protein" }).focus();
+        await user.tab();
+        expect(infoButton()).toHaveFocus();
+
+        await user.keyboard("{Enter}");
+        expect(await screen.findByText(hint)).toBeVisible();
+      });
+
+      it("does not run the focus when the info button is used", async () => {
+        const user = userEvent.setup();
+        const onFocusNode = vi.fn();
+        renderPanel({
+          selection: { nodes: [nodeA], edges: [] },
+          onFocusNode,
+        });
+
+        await user.click(screen.getByRole("button", { name: "About focusing" }));
+        await screen.findByText(hint);
+
+        expect(onFocusNode).not.toHaveBeenCalled();
+      });
+
+      it("names the info button so it never matches the Focus button's name", () => {
+        renderPanel({
+          selection: { nodes: [nodeA], edges: [] },
+          onFocusNode: vi.fn(),
+        });
+
+        expect(
+          screen.getAllByRole("button", { name: /Focus on this protein/ }),
+        ).toHaveLength(1);
+        expect(
+          screen.getByRole("button", { name: "Focus on this protein" }),
+        ).not.toBe(screen.getByRole("button", { name: "About focusing" }));
+      });
+    });
+
+    it("is absent without a handler, so the panel renders as before", () => {
+      renderPanel({ selection: { nodes: [nodeA], edges: [] } });
+
+      expect(focusButton()).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: "About focusing" }),
+      ).not.toBeInTheDocument();
+      expect(screen.queryByText(/remove the Protein filter/)).not.toBeInTheDocument();
+    });
+
+    it("is absent for a bulk selection and for an edge", () => {
+      const { unmount } = renderPanel({
+        selection: { nodes: [nodeA, nodeB], edges: [] },
+        onFocusNode: vi.fn(),
+      });
+      expect(focusButton()).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: "About focusing" }),
+      ).not.toBeInTheDocument();
+      unmount();
+
+      renderPanel({ selection: { nodes: [], edges: [edge] }, onFocusNode: vi.fn() });
+      expect(focusButton()).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: "About focusing" }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("keeps the em-dash count for a bare node", () => {
+      const bare: GNode = { id: "fig|3.3", kind: "microbial" };
+      renderPanel({
+        selection: { nodes: [bare], edges: [] },
+        onFocusNode: vi.fn(),
+      });
+
+      expect(screen.getAllByText("—")).toHaveLength(4);
+    });
+  });
+
   describe("edge selected", () => {
     it("renders the Interaction header and every edge field", () => {
       renderPanel({ selection: { nodes: [], edges: [edge] } });

@@ -115,3 +115,10 @@ export function singleSelectionRef(
   }
   return null;
 }
+
+/** The focused protein as the single selection: a focus is the one thing a new result set selects. */
+export function focusSelectionRef(
+  focusId: string | undefined,
+): GraphSelectionRef | null {
+  return focusId ? { kind: "node", id: focusId } : null;
+}

@@ -209,6 +209,33 @@ describe("ResourceFilterBar keyword", () => {
     });
   });
 
+  it("drops an uncommitted keyword draft on unmount unless asked to flush it", () => {
+    const onChange = vi.fn();
+    const plain = render(<ResourceFilterBar {...filterBarProps({ onChange })} />);
+    fireEvent.change(screen.getByRole("searchbox"), {
+      target: { value: "half-typed" },
+    });
+    plain.unmount();
+    act(() => {
+      vi.advanceTimersByTime(900);
+    });
+    expect(onChange).not.toHaveBeenCalled();
+
+    const flushing = render(
+      <ResourceFilterBar
+        {...filterBarProps({ onChange, flushKeywordOnUnmount: true })}
+      />,
+    );
+    fireEvent.change(screen.getByRole("searchbox"), {
+      target: { value: "half-typed " },
+    });
+    flushing.unmount();
+    expect(onChange).toHaveBeenCalledExactlyOnceWith({
+      keyword: "half-typed",
+      filters: {},
+    });
+  });
+
   it("keeps a trailing space once the trimmed keyword lands", () => {
     const onChange = vi.fn();
     const props = filterBarProps({ onChange });
@@ -860,5 +887,34 @@ describe("ResourceFilterBar favorite facets", () => {
         facets: { b: true },
       });
     });
+  });
+});
+
+describe("ResourceFilterBar filter labels", () => {
+  it("names the pill of a filter with no definition from filterLabels", () => {
+    render(
+      <ResourceFilterBar
+        {...filterBarProps({
+          filters: { interactor: ["fig|1.1"] },
+          filterLabels: { interactor: "Protein" },
+        })}
+      />,
+    );
+
+    expect(
+      screen.getByRole("button", { name: "Protein: fig|1.1. Edit filter" }),
+    ).toBeInTheDocument();
+  });
+
+  it("names it after the field when no label is given", () => {
+    render(
+      <ResourceFilterBar
+        {...filterBarProps({ filters: { interactor: ["fig|1.1"] } })}
+      />,
+    );
+
+    expect(
+      screen.getByRole("button", { name: "interactor: fig|1.1. Edit filter" }),
+    ).toBeInTheDocument();
   });
 });

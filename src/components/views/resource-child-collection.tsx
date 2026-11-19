@@ -27,6 +27,7 @@ import {
   type CollectionState,
   type CollectionStateOptions,
 } from "@/lib/views/collection-state";
+import { scopedStructuralRql } from "@/lib/views/scoped-structural-rql";
 import {
   ResourceCollection,
   type ResourceCollectionProfile,
@@ -34,21 +35,6 @@ import {
 
 const repository = new DataRepository();
 type ChildRow = Record<string, unknown>;
-
-/**
- * `ResourceCollection` uses `buildStructuralRql` instead of `basePredicate`
- * whenever it returns a clause, so each branch must `and` the parent rql back
- * in or a facet click widens the tab.
- */
-function scopedStructuralRql(
-  rql: string,
-  buildStructuralRql?: (state: CollectionState) => string | undefined,
-) {
-  return (state: CollectionState) => {
-    const structuralRql = buildStructuralRql?.(state);
-    return structuralRql ? `and(${rql},${structuralRql})` : rql;
-  };
-}
 
 function scopedProfile<Row extends DataTableRow>(
   { rowHref, ...canonical }: ResourceCollectionProfile<Row>,
@@ -101,8 +87,11 @@ interface ResourceChildCollectionProps {
   unsortedOrder?: DataSort;
   defaultFilters?: CollectionStateOptions["defaultFilters"];
   /**
-   * Retained for the export-contract tests, which pin exact bytes against a
-   * two-column profile; no production caller sets it.
+   * Opt-in profile for a child table that needs facets without a canonical
+   * entry (the taxon Interactions tab). The supplied profile's `columns`,
+   * `guideUrl` and `idField` win over the props, so a caller sets them on the
+   * profile. Its `extraFilters` are URL filters beside the facets: they join the
+   * table's collection options, so a write by the table keeps them.
    */
   profile?: ResourceCollectionProfile<ChildRow>;
   download?: CollectionDownloadSpec;
@@ -119,6 +108,8 @@ interface ResourceChildCollectionProps {
   keywordValue?: string;
   onKeywordChange?: (value: string) => void;
   keywordPlaceholder?: string;
+  /** Passed to the collection's action bar: offers SHOW IN GRAPH (Interactions only). */
+  onShowInGraph?: (ids: string[]) => void;
 }
 
 export function ResourceChildCollection(props: ResourceChildCollectionProps) {
@@ -148,6 +139,7 @@ function ScopedResourceChildCollection({
   keywordValue,
   onKeywordChange,
   keywordPlaceholder,
+  onShowInGraph,
 }: ResourceChildCollectionProps) {
   const exportFileName = label.toLowerCase();
   const canonicalProfile = canonicalProfiles[resource];
@@ -190,6 +182,7 @@ function ScopedResourceChildCollection({
     profile.facets,
     defaultSort,
     defaultFilters,
+    profile.extraFilters,
   );
   const [state, setState] = useChildCollectionUrlState(
     urlKey,
@@ -229,6 +222,7 @@ function ScopedResourceChildCollection({
         keywordMode === "loaded" ? onKeywordChange : undefined
       }
       keywordPlaceholder={keywordPlaceholder}
+      onShowInGraph={onShowInGraph}
     />
   );
 }

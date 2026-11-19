@@ -1,24 +1,21 @@
 "use client";
 
-import { useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import type { RowSelectionState, SortingState } from "@tanstack/react-table";
 import { dataSort, type CollectionState } from "@/lib/views/collection-state";
 import {
   collectionQueryOptions,
   type DataRepository,
-  facetCountQueryOptions,
   type DataResource,
   type DataSort,
-  type FacetBucket,
   memberQueryOptions,
 } from "@/lib/data-api";
 import { noop } from "@/lib/utils";
 import { resourceCollectionPageSize } from "./collection-state";
+import { useFacetCounts } from "./use-facet-counts";
+export type { FacetStatus, ResourceFacets } from "./use-facet-counts";
 export type ResourceRow = Record<string, unknown>;
-export type ResourceFacets = Partial<Record<string, FacetBucket[]>>;
-/** `stale`: the previous scope's counts while this one's load. */
-export type FacetStatus = "loading" | "stale" | "ready";
 
 export interface UseResourceCollectionOptions {
   repository: DataRepository;
@@ -36,20 +33,6 @@ export interface UseResourceCollectionOptions {
   unsortedOrder?: DataSort;
   state: CollectionState;
   onStateChange: (state: CollectionState) => void;
-}
-
-const emptyFacets: ResourceFacets = {};
-// One instance so a field with no buckets keeps its identity across renders.
-const noBuckets: FacetBucket[] = [];
-
-function facetStatusOf(
-  fresh: boolean,
-  shown: boolean,
-  pending: boolean,
-): FacetStatus {
-  if (fresh) return "ready";
-  if (shown) return "stale";
-  return pending ? "loading" : "ready";
 }
 
 function combineRql(...parts: (string | undefined)[]) {
@@ -112,62 +95,21 @@ export function useResourceCollection<Row extends ResourceRow>({
       unsortedOrder,
     ],
   );
-  // Facet counts are the slow part of a collection read, so each field has its own query; paging and sorting fetch rows only.
-  const facetQueryOptions = (field: string) => ({
-    ...facetCountQueryOptions(
-      repository,
-      resource,
-      {
-        rql: combineRql(
-          facetStructuralRql ? facetStructuralRql(field) : structuralRql,
-          state.rql,
-        ),
-        keyword: state.keyword,
-        keywordMode: serverKeywordMode,
-        pageSize: 1,
-        fields: [idField],
-      },
-      field,
-    ),
-    // A new scope is a new observer per field, which `keepPreviousData` never sees; `shownFacets` keeps the previous counts on screen.
-    staleTime: 30_000,
-  });
-
   const query = useQuery(
     collectionQueryOptions<Row>(repository, resource, request),
   );
-  const facetQueries = useQueries({
-    queries: facetFields.map((field) => facetQueryOptions(field)),
-  });
-  const freshFacets: ResourceFacets = {};
-  facetFields.forEach((field, index) => {
-    const data = facetQueries[index]?.data;
-    if (data) freshFacets[field] = data.facets[field] ?? noBuckets;
-  });
-  // Pending fields keep the previous scope's counts; a failed read drops them.
-  const [shownFacets, setShownFacets] = useState<ResourceFacets>(emptyFacets);
-  const facets: ResourceFacets = {};
-  facetFields.forEach((field, index) => {
-    const buckets =
-      freshFacets[field] ??
-      (facetQueries[index]?.isPending ? shownFacets[field] : undefined);
-    if (buckets) facets[field] = buckets;
-  });
-  const facetKeys = Object.keys(facets);
-  const facetsChanged =
-    facetKeys.length !== Object.keys(shownFacets).length ||
-    facetKeys.some((field) => facets[field] !== shownFacets[field]);
-  if (facetsChanged)
-    setShownFacets(facetKeys.length === 0 ? emptyFacets : facets);
-  const facetsError =
-    facetQueries.find((facetQuery) => facetQuery.error)?.error ?? null;
-  const facetStatuses: Partial<Record<string, FacetStatus>> = {};
-  facetFields.forEach((field, index) => {
-    facetStatuses[field] = facetStatusOf(
-      Object.hasOwn(freshFacets, field),
-      Object.hasOwn(facets, field),
-      facetQueries[index]?.isPending ?? false,
-    );
+  const facetCounts = useFacetCounts({
+    repository,
+    resource,
+    idField,
+    facetFields,
+    rqlFor: (field) =>
+      combineRql(
+        facetStructuralRql ? facetStructuralRql(field) : structuralRql,
+        state.rql,
+      ),
+    keyword: state.keyword,
+    keywordMode: serverKeywordMode,
   });
   const total = query.data?.total ?? 0;
   useEffect(() => {
@@ -214,6 +156,7 @@ export function useResourceCollection<Row extends ResourceRow>({
     : [];
 
   return {
+    ...facetCounts,
     activeId,
     /** Rejects with `CancelledError` when the query is replaced before the read lands. */
     currentTotal: async () =>
@@ -225,17 +168,8 @@ export function useResourceCollection<Row extends ResourceRow>({
       ).total,
     detail: detailQuery.data?.row ?? pageRow ?? null,
     detailError: detailQuery.error,
-    facets: facetsChanged ? facets : shownFacets,
-    facetsError,
-    facetStatuses,
     isAllPagesSelected,
     isDetailLoading: detailQuery.isLoading && pageRow === undefined,
-    isFacetsLoading: facetFields.some(
-      (field) => facetStatuses[field] === "loading",
-    ),
-    isFacetsRefreshing: facetFields.some(
-      (field) => facetStatuses[field] === "stale",
-    ),
     isInitialLoading: query.isLoading,
     isRefreshing: query.isFetching && !query.isLoading,
     isPlaceholderData: query.isPlaceholderData,
@@ -243,18 +177,6 @@ export function useResourceCollection<Row extends ResourceRow>({
     isPageLoading: query.isPlaceholderData && query.data.page !== state.page,
     error: query.error,
     refetch: query.refetch,
-    refetchFacets: async () => {
-      const failed = facetQueries.filter((facetQuery) => facetQuery.error);
-      await Promise.all(
-        (failed.length > 0 ? failed : facetQueries).map((facetQuery) =>
-          facetQuery.refetch(),
-        ),
-      );
-    },
-    prefetchFacets: (fields: readonly string[]) => {
-      for (const field of fields)
-        void queryClient.query(facetQueryOptions(field)).catch(noop);
-    },
     rows: visibleRows,
     selection,
     selectedIds,

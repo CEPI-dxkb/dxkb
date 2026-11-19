@@ -64,6 +64,7 @@ export function SearchActionBar({
     searchType,
     selectedCount,
     hasGuideUrl: Boolean(guideUrl),
+    enabledActions,
   });
 
   // The button's `disabled` covers all three rules, but the structure around it

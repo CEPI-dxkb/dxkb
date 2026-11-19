@@ -108,7 +108,6 @@ vi.mock("lucide-react", () => {
     Contrast: icon("contrast"),
     Mail: icon("mail"),
     ShieldUser: icon("shield-user"),
-    LogIn: icon("log-in"),
     ShieldX: icon("shield-x"),
   };
 });

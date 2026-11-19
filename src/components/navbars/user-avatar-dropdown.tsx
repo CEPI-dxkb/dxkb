@@ -36,7 +36,6 @@ import {
   Contrast,
   Mail,
   ShieldUser,
-  LogIn,
   ShieldX,
 } from "lucide-react";
 
@@ -148,7 +147,7 @@ export function UserAvatarDropdown() {
                         setSuDialogOpen(true);
                       }}
                     >
-                      <LogIn className="size-4 text-foreground" />
+                      <ShieldUser className="size-4 text-foreground" />
                       SU Login
                     </DropdownMenuItem>
                   </>

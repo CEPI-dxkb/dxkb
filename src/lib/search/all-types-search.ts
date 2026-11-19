@@ -2,6 +2,7 @@ import { queryOptions } from "@tanstack/react-query";
 
 import { allTermSearchTypes, searchHref } from "@/constants/search-info";
 import { DataRepositoryError } from "@/lib/data-api/client";
+import { cleanFeatureProduct } from "@/lib/feature-view/display";
 import { isTaxonId, taxonViewHeader } from "@/lib/taxonomy-view";
 import {
   epitopeHref,
@@ -298,16 +299,21 @@ function describe(
     case "genome_feature": {
       // A Feature doc has no `id`, and the top features can share a genome.
       const featureId = featureIdFromRow(doc);
+      const featureType = text(doc.feature_type);
       return {
         ...base,
         key: featureId ?? base.key,
+        // The Data API stores "undefined <feature_type>" as the product of many PATRIC features (a gap reads "undefined gap"), which would defeat this `||`.
         title: join(
-          [text(doc.product) || text(doc.feature_type), text(doc.gene)],
+          [
+            cleanFeatureProduct(doc.product, featureType) || featureType,
+            text(doc.gene),
+          ],
           " | ",
         ),
         context: text(doc.genome_name),
         facts: facts([
-          ["Type", text(doc.feature_type)],
+          ["Type", featureType],
           ["Source", text(doc.annotation)],
           ["Length", measured(doc.na_length, "nt")],
         ]),

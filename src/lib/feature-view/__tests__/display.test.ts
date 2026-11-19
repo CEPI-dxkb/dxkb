@@ -1,4 +1,5 @@
 import {
+  cleanFeatureProduct,
   featureDisplayName,
   featureFastaTypes,
   featureHeaderParts,
@@ -108,5 +109,56 @@ describe("featureHeaderParts", () => {
         product: "hypothetical protein",
       }),
     ).toEqual({ name: "BME_RS00080", details: ["hypothetical protein"] });
+  });
+});
+
+describe("cleanFeatureProduct", () => {
+  it("keeps a real product, trimmed", () => {
+    expect(cleanFeatureProduct("  nucleocapsid phosphoprotein ", "CDS")).toBe(
+      "nucleocapsid phosphoprotein",
+    );
+  });
+
+  it("drops the Data API's 'undefined <feature_type>' placeholder", () => {
+    expect(cleanFeatureProduct("undefined gap", "gap")).toBe("");
+    expect(cleanFeatureProduct("undefined 5'UTR", "5'UTR")).toBe("");
+    expect(cleanFeatureProduct("undefined assembly_gap", "assembly_gap")).toBe(
+      "",
+    );
+  });
+
+  it("drops the typo spelling and ignores case and spacing", () => {
+    expect(cleanFeatureProduct("undefind gap", "gap")).toBe("");
+    expect(cleanFeatureProduct("  Undefined   GAP ", "gap")).toBe("");
+  });
+
+  it("drops a bare 'undefined'", () => {
+    expect(cleanFeatureProduct("undefined", "gap")).toBe("");
+    expect(cleanFeatureProduct("undefined")).toBe("");
+  });
+
+  it("keeps a real product that only starts with 'Undefined'", () => {
+    expect(cleanFeatureProduct("Undefined protein", "CDS")).toBe(
+      "Undefined protein",
+    );
+    expect(cleanFeatureProduct("undefinedX gap", "gap")).toBe(
+      "undefinedX gap",
+    );
+    expect(cleanFeatureProduct("undefined hypothetical protein")).toBe(
+      "undefined hypothetical protein",
+    );
+  });
+
+  it("drops 'undefined <one word>' when the caller has no feature type", () => {
+    expect(cleanFeatureProduct("undefined gap")).toBe("");
+    expect(cleanFeatureProduct("undefind 5'UTR", undefined)).toBe("");
+    expect(cleanFeatureProduct("undefined repeat_region", "")).toBe("");
+  });
+
+  it("returns an empty string for a missing, blank or non-string product", () => {
+    expect(cleanFeatureProduct(undefined, "gap")).toBe("");
+    expect(cleanFeatureProduct(null, "gap")).toBe("");
+    expect(cleanFeatureProduct("   ", "gap")).toBe("");
+    expect(cleanFeatureProduct(42, "gap")).toBe("");
   });
 });

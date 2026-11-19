@@ -10,6 +10,28 @@ export function featureDisplayName(feature: FeatureViewRecord): string {
   );
 }
 
+/** The PATRIC annotation pipeline wrote `"undefined " + feature_type` (and a typo, `"undefind "`) into `product` for millions of non-CDS features, e.g. "undefined gap". */
+const placeholderProduct = /^\s*undefine?d\b\s*(.*?)\s*$/i;
+
+/**
+ * The feature's product, or `""` when it is absent or the Data API's "undefined <feature_type>" placeholder, so a caller's `||` fallback (feature type, then ID) can run. The placeholder is the word alone, or followed by exactly the row's own feature type; a caller without the type gets the looser rule that one following word is enough, since feature types are single tokens. A real product that merely starts with "Undefined" is kept whenever the type is known.
+ */
+export function cleanFeatureProduct(
+  product: unknown,
+  featureType?: unknown,
+): string {
+  if (typeof product !== "string") return "";
+  const value = product.trim();
+  const match = placeholderProduct.exec(value);
+  if (!match) return value;
+  const rest = match[1].toLowerCase();
+  if (rest === "") return "";
+  const type =
+    typeof featureType === "string" ? featureType.trim().toLowerCase() : "";
+  if (type !== "") return rest === type ? "" : value;
+  return /\s/.test(rest) ? value : "";
+}
+
 /** BV-BRC's Feature View lines under the breadcrumb: BRC ID, RefSeq locus tag, gene, product; `name` is the heading, `details` the non-blank rest. */
 export function featureHeaderParts(feature: FeatureViewRecord): {
   name: string;

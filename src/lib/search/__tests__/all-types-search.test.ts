@@ -345,6 +345,66 @@ describe("describeRows", () => {
     expect(row).toMatchObject({ key: "pf1", href: null });
   });
 
+  it("titles a Feature by its product and gene, linking its record", () => {
+    const [row] = describeRows("genome_feature", [
+      {
+        feature_id: "PATRIC.2697049.1.NC_045512.CDS.28274.29533.fwd",
+        patric_id: "fig|2697049.1.peg.10",
+        product: "nucleocapsid phosphoprotein",
+        gene: "N",
+        feature_type: "CDS",
+        annotation: "PATRIC",
+        genome_name: "SARS-CoV-2",
+      },
+    ]);
+    expect(row).toMatchObject({
+      title: "nucleocapsid phosphoprotein | N",
+      id: "fig|2697049.1.peg.10",
+      href: "/feature/PATRIC.2697049.1.NC_045512.CDS.28274.29533.fwd",
+    });
+  });
+
+  it("falls back to the feature type when the Data API's product is 'undefined gap'", () => {
+    const [row] = describeRows("genome_feature", [
+      {
+        feature_id: "PATRIC.2697049.10377022.PX491150.gap.4410.4603.fwd",
+        patric_id: "fig|2697049.10377022.gap.2",
+        product: "undefined gap",
+        feature_type: "gap",
+        annotation: "PATRIC",
+        na_length: 194,
+      },
+    ]);
+    expect(row.title).toBe("gap");
+    expect(row.title).not.toContain("undefined");
+    expect(row.id).toBe("fig|2697049.10377022.gap.2");
+  });
+
+  it("treats the 'undefind' typo placeholder the same way", () => {
+    const [row] = describeRows("genome_feature", [
+      {
+        feature_id: "f1",
+        product: "undefind assembly_gap",
+        feature_type: "assembly_gap",
+      },
+    ]);
+    expect(row.title).toBe("assembly_gap");
+  });
+
+  it("falls back to the feature type when a Feature has no product", () => {
+    const [row] = describeRows("genome_feature", [
+      { feature_id: "f2", feature_type: "gene", gene: "S" },
+    ]);
+    expect(row.title).toBe("gene | S");
+  });
+
+  it("falls back to the BRC ID when a Feature has neither a usable product nor a type", () => {
+    const [row] = describeRows("genome_feature", [
+      { feature_id: "f3", patric_id: "fig|1.1.peg.1", product: "undefined" },
+    ]);
+    expect(row.title).toBe("fig|1.1.peg.1");
+  });
+
   it("shows an Epitope's sequence in mono and links it", () => {
     const [row] = describeRows("epitope", [
       { epitope_id: 12345, epitope_sequence: "GILGFVFTL", host_name: ["Human"] },

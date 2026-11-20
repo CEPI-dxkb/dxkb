@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { http, HttpResponse } from "msw";
 import { Suspense } from "react";
 
@@ -6,6 +6,7 @@ import { DataSummary } from "../data-summary";
 import { server } from "@/test-helpers/msw-server";
 
 const baseUrl = "https://bvbrc.test/api-for-website";
+const pathname = "/organisms/bacteria";
 
 beforeEach(() => {
   process.env.BVBRC_WEBSITE_API_URL = baseUrl;
@@ -75,16 +76,65 @@ describe("DataSummary", () => {
     answerStructures({ 2: 68_899 });
     serveGenomeCounts({ 2: 1_300_000 });
 
-    await renderServer(DataSummary({ taxonIds: [2] }));
+    await renderServer(DataSummary({ taxonIds: [2], pathname }));
 
     expect(screen.getByText("Families")).toBeInTheDocument();
     expect(screen.getByText("482,001,224")).toBeInTheDocument();
     // The experimental count, not the payload's PDB (9,821).
     expect(screen.getByTestId("organism-kpi-pdb")).toHaveTextContent("68,899");
-    expect(screen.getByTestId("organism-kpi-pdb")).toHaveAttribute(
-      "title",
+    const pdb = screen.getByTestId("organism-kpi-pdb");
+    expect(within(pdb).getByRole("link")).toHaveAttribute(
+      "href",
+      "/organisms/bacteria?tab=protein-structures&rql=ne(method,Predicted)",
+    );
+    expect(within(pdb).getByRole("link")).toHaveAccessibleDescription(
       "Experimentally determined structures (AlphaFold predictions excluded)",
     );
+  });
+
+  it("links Genomes, CDS, Mature Peptides and PDB Structures to their tab and leaves the taxonomy counts unlinked", async () => {
+    server.use(
+      http.get(`${baseUrl}/data/summary_by_taxon/2`, () =>
+        HttpResponse.json(summaryBody(1337420)),
+      ),
+    );
+    answerStructures({ 2: 68_899 });
+    serveGenomeCounts({ 2: 1_300_000 });
+
+    await renderServer(DataSummary({ taxonIds: [2], pathname }));
+
+    const hrefOf = (key: string) =>
+      within(screen.getByTestId(`organism-kpi-${key}`))
+        .getByRole("link")
+        .getAttribute("href");
+    expect(hrefOf("count")).toBe("/organisms/bacteria?tab=genomes");
+    expect(hrefOf("cds")).toBe(
+      "/organisms/bacteria?tab=features&feature_type=CDS",
+    );
+    expect(hrefOf("matPeptide")).toBe(
+      "/organisms/bacteria?tab=features&feature_type=mat_peptide",
+    );
+    for (const key of ["uniqueFamily", "uniqueGenus", "uniqueSpecies"]) {
+      expect(
+        within(screen.getByTestId(`organism-kpi-${key}`)).queryByRole("link"),
+      ).not.toBeInTheDocument();
+    }
+  });
+
+  it("uses no native title tooltip on any tile", async () => {
+    server.use(
+      http.get(`${baseUrl}/data/summary_by_taxon/2`, () =>
+        HttpResponse.json(summaryBody(1337420)),
+      ),
+    );
+    answerStructures({ 2: 68_899 });
+    serveGenomeCounts({ 2: 1_300_000 });
+
+    const { container } = await renderServer(
+      DataSummary({ taxonIds: [2], pathname }),
+    );
+
+    expect(container.querySelector("[title]")).toBeNull();
   });
 
   it("shows the Taxonomy header's genome count in the Genomes tile, not the summary's", async () => {
@@ -96,7 +146,7 @@ describe("DataSummary", () => {
     answerStructures({ 2: 68_899 });
     const requests = serveGenomeCounts({ 2: 1_300_000 });
 
-    await renderServer(DataSummary({ taxonIds: [2] }));
+    await renderServer(DataSummary({ taxonIds: [2], pathname }));
 
     expect(screen.getByTestId("organism-kpi-count")).toHaveTextContent(
       "1,300,000",
@@ -132,7 +182,7 @@ describe("DataSummary", () => {
     );
     const requests = serveGenomeCounts({ 131567: 1_400_000, 10239: 14_900_000 });
 
-    await renderServer(DataSummary({ taxonIds: [131567, 10239] }));
+    await renderServer(DataSummary({ taxonIds: [131567, 10239], pathname }));
 
     expect(screen.getByTestId("organism-kpi-count")).toHaveTextContent(
       "16,300,000",
@@ -154,7 +204,7 @@ describe("DataSummary", () => {
       ),
     );
 
-    await expect(DataSummary({ taxonIds: [2] })).rejects.toThrow(/count down/);
+    await expect(DataSummary({ taxonIds: [2], pathname })).rejects.toThrow(/count down/);
   });
 
   it("rejects when the summary fails", async () => {
@@ -166,6 +216,6 @@ describe("DataSummary", () => {
     answerStructures({ 2: 68_899 });
     serveGenomeCounts({ 2: 1_300_000 });
 
-    await expect(DataSummary({ taxonIds: [2] })).rejects.toThrow();
+    await expect(DataSummary({ taxonIds: [2], pathname })).rejects.toThrow();
   });
 });

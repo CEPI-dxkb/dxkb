@@ -1,15 +1,23 @@
-import { Card } from "@/components/ui/card";
+import { StatTile } from "@/components/organisms/stat-tile/stat-tile";
 import { fetchTaxonGenomeCount } from "@/lib/services/organisms/genome-count";
 import { fetchCombinedOrganismSummary } from "@/lib/services/organisms/summary";
 import type { OrganismSummary } from "@/lib/services/organisms/types";
 import { numberFormatter } from "@/lib/services/organisms/utils";
+import { overviewTabHref } from "@/lib/views/hrefs";
 
 const summaryMetrics: {
   key: keyof OrganismSummary;
   label: string;
   description: string;
+  /** The tab (and its filters) the tile links to; a tile without one is not a link. */
+  tab?: { name: string; params?: Record<string, string> };
 }[] = [
-  { key: "count", label: "Genomes", description: "Assembled genome records" },
+  {
+    key: "count",
+    label: "Genomes",
+    description: "Assembled genome records",
+    tab: { name: "genomes" },
+  },
   {
     key: "uniqueFamily",
     label: "Families",
@@ -25,17 +33,24 @@ const summaryMetrics: {
     label: "Species",
     description: "Unique taxonomy species",
   },
-  { key: "cds", label: "CDS", description: "Coding sequences" },
+  {
+    key: "cds",
+    label: "CDS",
+    description: "Coding sequences",
+    tab: { name: "features", params: { feature_type: "CDS" } },
+  },
   {
     key: "matPeptide",
     label: "Mature Peptides",
     description: "Annotated mature peptides",
+    tab: { name: "features", params: { feature_type: "mat_peptide" } },
   },
   {
     key: "pdb",
     label: "PDB Structures",
     description:
       "Experimentally determined structures (AlphaFold predictions excluded)",
+    tab: { name: "protein-structures", params: { rql: "ne(method,Predicted)" } },
   },
 ];
 
@@ -45,8 +60,11 @@ function formatCount(value: number | null): string {
 
 export async function DataSummary({
   taxonIds,
+  pathname,
 }: {
   taxonIds: readonly number[];
+  /** The landing page the tiles' tab links belong to, e.g. `/organisms/bacteria`. */
+  pathname: string;
 }) {
   // The Genomes tile counts like the Taxonomy header, not like the summary's
   // `count`. A landing page is public, so the counts are anonymous (and
@@ -60,31 +78,25 @@ export async function DataSummary({
 
   return (
     <div className="grid grid-cols-[repeat(auto-fit,minmax(8rem,1fr))] gap-1.5">
-      {summaryMetrics.map((metric) => {
-        const formattedValue = formatCount(
-          metric.key === "count" ? genomeCount : summary[metric.key],
-        );
-
-        return (
-          <Card
-            key={metric.key}
-            data-testid={`organism-kpi-${metric.key}`}
-            variant="tile"
-            className="min-w-0 gap-0 px-2.5 py-1.5"
-            title={metric.description}
-          >
-            <p className="text-2xs font-bold tracking-wider text-muted-foreground uppercase">
-              {metric.label}
-            </p>
-            <p
-              className="text-lg leading-tight font-bold tracking-tight whitespace-nowrap"
-              title={formattedValue}
-            >
-              {formattedValue}
-            </p>
-          </Card>
-        );
-      })}
+      {summaryMetrics.map((metric) => (
+        <StatTile
+          key={metric.key}
+          id={metric.key}
+          testId={`organism-kpi-${metric.key}`}
+          label={metric.label}
+          value={formatCount(
+            metric.key === "count" ? genomeCount : summary[metric.key],
+          )}
+          description={metric.description}
+          href={
+            metric.tab
+              ? overviewTabHref(pathname, metric.tab.name, metric.tab.params)
+              : undefined
+          }
+          className="min-w-0"
+          valueClassName="whitespace-nowrap"
+        />
+      ))}
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { http, HttpResponse } from "msw";
 import { Suspense } from "react";
 import { vi } from "vitest";
@@ -141,6 +141,22 @@ describe("All Organisms Overview", () => {
       const structures = screen.getByTestId("organism-kpi-pdb");
       expect(structures).toHaveTextContent("97,181");
       expect(structures).not.toHaveTextContent("32,157,475");
+    });
+
+    it("links the linked tiles into the All Organisms landing page's tabs", async () => {
+      serveSummaries();
+      serveGenomeCounts();
+
+      await renderServer(DataSummaryBoundary());
+
+      const hrefOf = (key: string) =>
+        within(screen.getByTestId(`organism-kpi-${key}`))
+          .getByRole("link")
+          .getAttribute("href");
+      expect(hrefOf("count")).toBe("/organisms/all?tab=genomes");
+      expect(hrefOf("pdb")).toBe(
+        "/organisms/all?tab=protein-structures&rql=ne(method,Predicted)",
+      );
     });
 
     it("fails the whole section, with the original message and no partial total, when one root is down", async () => {

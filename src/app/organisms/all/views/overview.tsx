@@ -11,6 +11,9 @@ import { taxonIdsGenomesClause } from "@/components/organisms/taxon-views/scope"
 
 import { allOrganismRootIds, allOrganismsLandingConfig as config } from "../_config";
 
+/** The landing page the summary tiles and the charts link into. */
+const landingPathname = "/organisms/all";
+
 /**
  * Both roots' genomes, less Deprecated: what the Genomes tab the charts link to
  * lists. It scopes Host Group, Isolation Country and the taxonomic (genus and
@@ -23,7 +26,7 @@ const allOrganismGenomeQuery = {
 
 export async function DataSummaryBoundary() {
   return withSectionError("Data summary", () =>
-    DataSummary({ taxonIds: allOrganismRootIds }),
+    DataSummary({ taxonIds: allOrganismRootIds, pathname: landingPathname }),
   );
 }
 
@@ -33,7 +36,7 @@ export async function MetadataDistributionsBoundary() {
       genomeQuery: allOrganismGenomeQuery,
       fields: config.metadataFields,
       genomeList: {
-        pathname: "/organisms/all",
+        pathname: landingPathname,
         params: { tab: "genomes" },
       },
     }),

@@ -11,9 +11,12 @@ import { VirusFamiliesSection } from "@/components/organisms/virus-families/viru
 
 import { virusesLandingConfig as config } from "../_config";
 
+/** The landing page the summary tiles and the charts link into. */
+const landingPathname = "/organisms/viruses";
+
 async function DataSummaryBoundary() {
   return withSectionError("Data summary", () =>
-    DataSummary({ taxonIds: [config.taxonId] }),
+    DataSummary({ taxonIds: [config.taxonId], pathname: landingPathname }),
   );
 }
 
@@ -23,7 +26,7 @@ async function MetadataDistributionsBoundary() {
       taxonId: config.taxonId,
       fields: config.metadataFields,
       genomeList: {
-        pathname: "/organisms/viruses",
+        pathname: landingPathname,
         params: { tab: "genomes" },
       },
     }),

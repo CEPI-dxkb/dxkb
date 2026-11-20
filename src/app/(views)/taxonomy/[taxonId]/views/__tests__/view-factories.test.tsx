@@ -359,12 +359,10 @@ describe("makeFeaturesView", () => {
       "data-q",
       "and(eq(genome_id,*),genome(and(eq(taxon_lineage_ids,1234),ne(genome_status,Deprecated))))",
     );
-    // Legacy's taxon Features tab lists PATRIC features until the user removes
-    // the default.
-    expect(panel).toHaveAttribute(
-      "data-default-filters",
-      JSON.stringify({ annotation: ["PATRIC"] }),
-    );
+    // Every annotation source: the tab has no annotation default, so it lists
+    // what the overview's CDS tile counts (DXKBCORE-362). Legacy opened on
+    // PATRIC; `taxonFeaturesCollectionOptions` says how to restore that.
+    expect(panel).not.toHaveAttribute("data-default-filters");
     expect(panel).toHaveAttribute("data-row-links", "false");
     expect(panel).toHaveAttribute("data-keyword-mode", "loaded");
   });

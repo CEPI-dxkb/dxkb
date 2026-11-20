@@ -46,6 +46,22 @@ export const featureListCollectionOptions: CollectionStateOptions = {
   defaultFilters: featureListDefaultFilters,
 };
 
+/**
+ * The taxon page's and the organism landings' Features tab: every annotation
+ * source, with no `annotation` default.
+ *
+ * TEMPORARY (DXKBCORE-362). The overview's CDS tile counts every annotation
+ * source (`summary_by_taxon`), so a tab that opened on PATRIC alone listed
+ * about half as many rows as the tile it linked from. To bring legacy's PATRIC
+ * default back on these tabs, add `defaultFilters: featureListDefaultFilters`
+ * here; `/feature` and the Genome list's and Genome page's Features tabs never
+ * left it. A PATRIC pick stays available as the Annotation facet and as
+ * `annotation=PATRIC` in the URL.
+ */
+export const taxonFeaturesCollectionOptions: CollectionStateOptions = {
+  ...featureCollectionOptions,
+};
+
 export function parseFeatureCollectionState(
   params: SearchParamsRecord,
   options: CollectionStateOptions = featureCollectionOptions,

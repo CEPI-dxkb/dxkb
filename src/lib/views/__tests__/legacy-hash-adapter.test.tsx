@@ -127,14 +127,15 @@ it("maps a Genome page Features tab's removed default to features.annotation=*",
   );
 });
 
-it("maps a Taxonomy page Features tab's removed default to annotation=*", () => {
+// The Taxonomy Features tab has no PATRIC default for now (DXKBCORE-362), so
+// there is nothing for a legacy `filter=false` to remove. Restore the old
+// expectation (`annotation=*`) with the default.
+it("adds no annotation marker to a Taxonomy page Features tab, which has no default", () => {
   window.history.replaceState(null, "", "/taxonomy/1763");
   window.location.hash = "#view_tab=features&filter=false";
   render(<LegacyHashAdapter />);
 
-  expect(mockReplace).toHaveBeenCalledWith(
-    "/taxonomy/1763?tab=features&annotation=*",
-  );
+  expect(mockReplace).toHaveBeenCalledWith("/taxonomy/1763?tab=features");
 });
 
 it("adds no marker for another Genome or Taxonomy page tab", () => {

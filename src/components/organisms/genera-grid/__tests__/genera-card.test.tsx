@@ -43,4 +43,26 @@ describe("GeneraCard", () => {
       screen.getByRole("link", { name: "View Escherichia genomes" }),
     ).toHaveAttribute("href", "/genome?rql=eq(genus,Escherichia)");
   });
+
+  it("renders an action beside the link, never inside it", () => {
+    render(
+      <GeneraCard
+        name="Coronaviridae"
+        href="/taxonomy/11118"
+        viewLabel="overview"
+        action={<button type="button">Extra</button>}
+      />,
+    );
+
+    const link = screen.getByRole("link", { name: "View Coronaviridae overview" });
+    const action = screen.getByRole("button", { name: "Extra" });
+    expect(link).not.toContainElement(action);
+    expect(link.parentElement).toContainElement(action);
+  });
+
+  it("renders no button when there is no action", () => {
+    render(<GeneraCard name="Escherichia" href="/taxonomy/561" viewLabel="overview" />);
+
+    expect(screen.queryByRole("button")).not.toBeInTheDocument();
+  });
 });

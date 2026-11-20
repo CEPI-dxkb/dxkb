@@ -63,7 +63,7 @@ export function StateCountiesLayer({
               key={String(feature.id ?? key)}
               pathD={path ?? ""}
               fill={colorScale(count)}
-              strokeWidth={0.5}
+              strokeWidth={1}
               isDraggingRef={isDraggingRef}
               payload={{
                 view: "state",

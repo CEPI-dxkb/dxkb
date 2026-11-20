@@ -314,6 +314,14 @@ describe("Protein Structure view contracts", () => {
     ).toThrow("Transport operator");
   });
 
+  it("keeps the experimental-only `ne(method,Predicted)` clause the taxon overview PDB tile links with", () => {
+    const state = parseProteinStructureCollectionState({
+      tab: "protein-structures",
+      rql: "ne(method,Predicted)",
+    });
+    expect(state.rql).toBe("ne(method,Predicted)");
+  });
+
   it.each([
     "taxon_id",
     "gene",

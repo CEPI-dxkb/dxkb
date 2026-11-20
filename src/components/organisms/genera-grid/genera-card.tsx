@@ -1,9 +1,13 @@
 import Avatar from "boring-avatars";
 import Link from "next/link";
+import type { ReactNode } from "react";
 
 import { facetDisplayLabel } from "@/components/organisms/facet-label";
 import { Card } from "@/components/ui/card";
 import { numberFormatter } from "@/lib/services/organisms/utils";
+import { cn } from "@/lib/utils";
+
+import { organismAvatarColors } from "./avatar-colors";
 
 interface GeneraCardProps {
   name: string;
@@ -11,23 +15,37 @@ interface GeneraCardProps {
   count?: number;
   /** Suffix for the link's aria-label, e.g. "genomes" or "overview". */
   viewLabel?: string;
+  /** A control rendered beside the link (never inside it: no nested interactives). */
+  action?: ReactNode;
 }
 
-export function GeneraCard({ name, href, count, viewLabel = "genomes" }: GeneraCardProps) {
+export function GeneraCard({
+  name,
+  href,
+  count,
+  viewLabel = "genomes",
+  action,
+}: GeneraCardProps) {
   const displayName = facetDisplayLabel(name);
 
   return (
-    <Card variant="tile" className="gap-0 py-0">
+    <Card
+      variant="tile"
+      className={cn("gap-0 py-0", action && "flex-row items-center")}
+    >
       <Link
         href={href}
         aria-label={`View ${displayName} ${viewLabel}`}
-        className="flex min-h-12 items-center gap-2.5 px-2.5 py-1.5 transition-colors hover:bg-muted/40"
+        className={cn(
+          "flex min-h-12 items-center gap-2.5 px-2.5 py-1.5 transition-colors hover:bg-muted/40",
+          action && "min-w-0 flex-1 self-stretch",
+        )}
       >
         <Avatar
           size={28}
           name={displayName}
           variant="beam"
-          colors={["#264653", "#2a9d8f", "#e9c46a", "#f4a261", "#e76f51"]}
+          colors={organismAvatarColors}
         />
         <div className="min-w-0 flex-1 space-y-0.5">
           <h3
@@ -43,6 +61,7 @@ export function GeneraCard({ name, href, count, viewLabel = "genomes" }: GeneraC
           )}
         </div>
       </Link>
+      {action}
     </Card>
   );
 }

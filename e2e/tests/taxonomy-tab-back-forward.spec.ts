@@ -1,3 +1,5 @@
+import type { Page } from "@playwright/test";
+
 import { applyBackendMocks, expect, test } from "../mocks/backends";
 import {
   emptyBackendFallbackOverrides,
@@ -16,20 +18,25 @@ import {
 
 test.use({ storageState: { cookies: [], origins: [] } });
 
+const taxonId = "11974";
+
+async function mockTaxonBackends(page: Page): Promise<void> {
+  await applyBackendMocks(page, {
+    overrides: [
+      ...taxonGenomesScenarioOverrides,
+      ...genomeScenarioOverrides,
+      ...emptyBackendFallbackOverrides,
+    ],
+  });
+}
+
 test.describe("Back and Forward from a filtered taxon tab", () => {
-  const taxonId = "11974";
   const filteredGenomes = `/taxonomy/${taxonId}?tab=genomes&collection_year=2025`;
   const isFiltered = (read: URL) =>
     read.searchParams.get("rql")?.includes("eq(collection_year,2025)") === true;
 
   test.beforeEach(async ({ page }) => {
-    await applyBackendMocks(page, {
-      overrides: [
-        ...taxonGenomesScenarioOverrides,
-        ...genomeScenarioOverrides,
-        ...emptyBackendFallbackOverrides,
-      ],
-    });
+    await mockTaxonBackends(page);
   });
 
   test("the Genomes tab keeps its filter while Back returns to the Overview", async ({
@@ -76,5 +83,29 @@ test.describe("Back and Forward from a filtered taxon tab", () => {
     expect(
       forwardReads.filter((read) => !isFiltered(read)).map(String),
     ).toEqual([]);
+  });
+});
+
+test.describe("Overview stat tiles", () => {
+  test.beforeEach(async ({ page }) => {
+    await mockTaxonBackends(page);
+  });
+
+  test("the Genomes / Segments tile opens the Genomes tab", async ({ page }) => {
+    const taxon = new TaxonPage(page);
+    await taxon.goto(taxonId);
+    await taxon.viewNav.waitForHydration();
+    await expect(taxon.tabButton("Overview")).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+
+    await taxon.statTile("Genomes / Segments").click();
+
+    await expect(page).toHaveURL(`/taxonomy/${taxonId}?tab=genomes`);
+    await expect(taxon.tabButton("Genomes")).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
   });
 });

@@ -1,5 +1,9 @@
 import { maxRqlInValues } from "@/lib/data-api/rql";
-import { encodePathSegment, encodeQueryComponent } from "@/lib/url";
+import {
+  encodePathSegment,
+  encodeQueryComponent,
+  toQueryString,
+} from "@/lib/url";
 import { escapeRqlValue } from "./rql";
 
 /**
@@ -21,6 +25,15 @@ export function taxonomyHref(taxonId: number | string): string {
   const id = String(taxonId);
   if (!/^(?=.*[1-9])\d+$/.test(id)) throw new Error(`Invalid Taxon ID: ${id}`);
   return `/taxonomy/${encodePathSegment(id)}`;
+}
+
+/** A tab of a taxon or organism-landing page: `<pathname>?tab=<tab>` plus any collection filters, serialized like every browser-visible URL. */
+export function overviewTabHref(
+  pathname: string,
+  tab: string,
+  params: Record<string, string> = {},
+): string {
+  return `${pathname}?${toQueryString(new URLSearchParams({ tab, ...params }))}`;
 }
 
 export function genomeIdFromRow(

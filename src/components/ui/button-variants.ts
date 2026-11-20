@@ -73,6 +73,8 @@ export const buttonVariants = cva(
         "icon-sm":
           "size-7 rounded-[min(var(--radius-md),12px)] in-data-[slot=button-group]:rounded-lg",
         "icon-lg": "size-9",
+        // A pill that holds an avatar pile (+N) or a single icon.
+        pile: "h-8 gap-1.5 rounded-full pr-2 pl-1.5 [&_svg:not([class*='size-'])]:size-4",
         toolbar:
           "h-8 gap-1.5 rounded px-2 py-1 text-xs has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2",
         // Folds to a square icon button below @3xl; the label goes in `<span

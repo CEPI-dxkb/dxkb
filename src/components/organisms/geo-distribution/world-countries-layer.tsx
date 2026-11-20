@@ -65,7 +65,7 @@ export function WorldCountriesLayer({
               key={String(feature.id ?? name)}
               pathD={path ?? ""}
               fill={colorScale(count)}
-              strokeWidth={0.6}
+              strokeWidth={1}
               cursor={interactable ? "pointer" : "default"}
               isDraggingRef={isDraggingRef}
               payload={{

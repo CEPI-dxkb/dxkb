@@ -1,4 +1,5 @@
 import { delay, http, HttpResponse } from "msw";
+import type { MockInstance } from "vitest";
 
 import { fetchOrganismGenera } from "@/lib/services/organisms/genera";
 import { fetchReferenceGenomes } from "@/lib/services/organisms/reference-genomes";
@@ -8,6 +9,7 @@ import {
   fetchOrganismSolrJson,
   fetchOrganismSolrJsonPost,
   organismFetchTimeoutMs,
+  organismJoinFetchTimeoutMs,
   readJsonObject,
 } from "@/lib/services/organisms/utils";
 import { UpstreamError } from "@/lib/api/upstream-failure";
@@ -19,6 +21,7 @@ import {
 
 const baseUrl = "https://bvbrc.test/api-for-website";
 const realTimeout = AbortSignal.timeout.bind(AbortSignal);
+let timeoutSpy: MockInstance<typeof AbortSignal.timeout>;
 
 function timeoutMessage(label?: string): string {
   const message = `The BV-BRC data service did not respond (timed out after ${String(organismFetchTimeoutMs / 1000)} s).`;
@@ -40,7 +43,9 @@ function stallEveryRequest() {
 beforeEach(() => {
   process.env.BVBRC_WEBSITE_API_URL = baseUrl;
   // Keeps the production budget in the message but lets the signal fire fast.
-  vi.spyOn(AbortSignal, "timeout").mockImplementation(() => realTimeout(20));
+  timeoutSpy = vi
+    .spyOn(AbortSignal, "timeout")
+    .mockImplementation(() => realTimeout(20));
 });
 
 afterEach(() => {
@@ -70,6 +75,24 @@ describe("organism fetch timeout", () => {
     },
   );
 
+  it("gives a request its own budget and names that one when it runs out", async () => {
+    stallEveryRequest();
+
+    await expect(
+      fetchOrganismSolrJson(
+        `${baseUrl}/genome/`,
+        genusFacet,
+        undefined,
+        undefined,
+        organismJoinFetchTimeoutMs,
+      ),
+    ).rejects.toMatchObject({
+      message: `Genus: The BV-BRC data service did not respond (timed out after ${String(organismJoinFetchTimeoutMs / 1000)} s).`,
+      source: genusFacet.source,
+    });
+    expect(timeoutSpy).toHaveBeenCalledWith(organismJoinFetchTimeoutMs);
+  });
+
   // MSW does not tie the request signal to a mocked body, so error the stream
   // with the signal reason as undici does on a mid-body abort.
   function abortedBody(error: Error): Response {
@@ -91,6 +114,40 @@ describe("organism fetch timeout", () => {
     );
   });
 
+  it("names the request's own budget when a body times out under it", async () => {
+    const timeout = new DOMException("The operation was aborted due to timeout", "TimeoutError");
+
+    await expect(
+      readJsonObject(abortedBody(timeout), genusFacet, organismJoinFetchTimeoutMs),
+    ).rejects.toMatchObject({
+      message: `Genus: The BV-BRC data service did not respond (timed out after ${String(organismJoinFetchTimeoutMs / 1000)} s).`,
+      source: genusFacet.source,
+    });
+  });
+
+  it("resolves the summary and carries the structure join's timeout, naming its 60 s budget, in pdb", async () => {
+    server.use(
+      http.get(`${baseUrl}/protein_structure/`, async () => {
+        await delay("infinite");
+        return HttpResponse.json({});
+      }),
+      http.get(`${baseUrl}/data/summary_by_taxon/10239`, () =>
+        HttpResponse.json({ count: 3, unique_species: 2, CDS: 9 }),
+      ),
+    );
+
+    const summary = await fetchOrganismSummary(10239);
+
+    expect(summary).toMatchObject({ count: 3, uniqueSpecies: 2, cds: 9 });
+    await expect(summary.pdb).resolves.toEqual({
+      status: "rejected",
+      reason: expect.objectContaining({
+        message: `PDB structures: The BV-BRC data service did not respond (timed out after ${String(organismJoinFetchTimeoutMs / 1000)} s).`,
+        source: "protein_structure count",
+      }) as unknown,
+    });
+  });
+
   it("passes a caller abort during the body through untouched", async () => {
     const abort = new DOMException("caller cancelled", "AbortError");
 
@@ -98,7 +155,7 @@ describe("organism fetch timeout", () => {
   });
 
   it("still lets the caller's signal cancel a request in flight", async () => {
-    vi.spyOn(AbortSignal, "timeout").mockImplementation(() => realTimeout(60_000));
+    timeoutSpy.mockImplementation(() => realTimeout(60_000));
     stallEveryRequest();
     const controller = new AbortController();
 

@@ -12,9 +12,12 @@ import { withSectionError } from "@/components/organisms/shared/with-section-err
 
 import { bacteriaLandingConfig as config } from "../_config";
 
+/** The landing page the summary tiles and the charts link into. */
+const landingPathname = "/organisms/bacteria";
+
 async function DataSummaryBoundary() {
   return withSectionError("Data summary", () =>
-    DataSummary({ taxonIds: [config.taxonId] }),
+    DataSummary({ taxonIds: [config.taxonId], pathname: landingPathname }),
   );
 }
 
@@ -30,7 +33,7 @@ async function MetadataDistributionsBoundary() {
       taxonId: config.taxonId,
       fields: config.metadataFields,
       genomeList: {
-        pathname: "/organisms/bacteria",
+        pathname: landingPathname,
         params: { tab: "genomes" },
       },
     }),

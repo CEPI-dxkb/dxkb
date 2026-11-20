@@ -27,6 +27,9 @@ const badgeVariants = cva(
         default: "",
         xs: "h-4 px-1.5 py-0 text-3xs leading-none font-normal",
         sm: "text-2xs",
+        // A link chip with a leading avatar (wrap the avatar in a span: the
+        // base forces a direct-child svg to 12px). Long names truncate.
+        chip: "h-6 max-w-full gap-1.5 pr-2.5 pl-1",
       },
     },
     defaultVariants: {

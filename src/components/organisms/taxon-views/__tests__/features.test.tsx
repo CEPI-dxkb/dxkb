@@ -1,5 +1,5 @@
 import { render, waitFor } from "@testing-library/react";
-import { featureListCollectionOptions } from "@/lib/feature-view";
+import { taxonFeaturesCollectionOptions } from "@/lib/feature-view";
 import { makeFeaturesView } from "../features";
 
 const { featureProps } = vi.hoisted(() => ({
@@ -34,7 +34,7 @@ describe("taxon Features tab", () => {
     // The tab loads its collection through lazy-tab-roots, so wait for it.
     await waitFor(() => {
       expect(featureProps.current).toMatchObject({
-        collectionOptions: featureListCollectionOptions,
+        collectionOptions: taxonFeaturesCollectionOptions,
         unsortedOrder: {
           field: "genome_name",
           direction: "asc",

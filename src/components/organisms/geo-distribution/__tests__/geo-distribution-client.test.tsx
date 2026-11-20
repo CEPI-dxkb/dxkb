@@ -5,11 +5,19 @@ import type { OrganismGeoDistribution } from "@/lib/services/organisms/types";
 import { GeoDistributionClient } from "../geo-distribution-client";
 import { MapTooltip } from "../map-tooltip";
 
-const useQueryMock = vi.fn((_options: unknown) => ({
-  data: null,
-  error: null,
-  isLoading: false,
-}));
+interface QueryState {
+  data: null;
+  error: Error | null;
+  isLoading: boolean;
+}
+
+const useQueryMock = vi.fn(
+  (_options: unknown): QueryState => ({
+    data: null,
+    error: null,
+    isLoading: false,
+  }),
+);
 
 vi.mock("@tanstack/react-query", () => ({
   useQuery: (options: unknown) => useQueryMock(options),
@@ -54,6 +62,16 @@ function distribution({
 }
 
 describe("GeoDistributionClient", () => {
+  // `clearMocks` only clears call history, so a test that overrides the query
+  // mock must not leak its implementation into later tests.
+  afterEach(() => {
+    useQueryMock.mockImplementation(() => ({
+      data: null,
+      error: null,
+      isLoading: false,
+    }));
+  });
+
   it("describes an empty map region as having no data", () => {
     render(
       <MapTooltip
@@ -204,5 +222,83 @@ describe("GeoDistributionClient", () => {
         name: "Genomes per country: No data: no genomes.",
       }),
     ).toHaveTextContent("No data");
+  });
+
+  it("explains an all-grey state that has genomes but no counties", () => {
+    render(
+      <GeoDistributionClient
+        data={distribution({
+          stateData: { Illinois: 420 },
+          // County rows exist, but only for another state.
+          countyData: { "Texas|Harris": 9 },
+        })}
+        accent="bacteria"
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "State" }));
+
+    const status = screen.getByRole("status");
+    expect(status).toHaveTextContent("No county-level data for this taxon.");
+    expect(status).toHaveTextContent(
+      "Illinois has 420 genomes, but county-level data is unavailable.",
+    );
+  });
+
+  it("says nothing in a state that has county data", () => {
+    render(
+      <GeoDistributionClient
+        data={distribution({
+          stateData: { Illinois: 60 },
+          countyData: { "Illinois|Cook": 50 },
+        })}
+        accent="bacteria"
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "State" }));
+
+    expect(screen.getByRole("status")).toBeEmptyDOMElement();
+  });
+
+  it("holds the message back while the county map is loading", () => {
+    useQueryMock.mockImplementation((options: unknown) => ({
+      data: null,
+      error: null,
+      isLoading:
+        (options as { queryKey: string[] }).queryKey[1] === "counties-topo",
+    }));
+    render(
+      <GeoDistributionClient
+        data={distribution({ stateData: { Illinois: 420 } })}
+        accent="bacteria"
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "State" }));
+
+    expect(screen.getByRole("status")).toBeEmptyDOMElement();
+  });
+
+  it("holds the message back when the county map failed to load", () => {
+    useQueryMock.mockImplementation((options: unknown) => {
+      const failed =
+        (options as { queryKey: string[] }).queryKey[1] === "counties-topo";
+      return {
+        data: null,
+        error: failed ? new Error("Could not load county map") : null,
+        isLoading: false,
+      };
+    });
+    render(
+      <GeoDistributionClient
+        data={distribution({ stateData: { Illinois: 420 } })}
+        accent="bacteria"
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "State" }));
+
+    expect(screen.getByRole("status")).toBeEmptyDOMElement();
   });
 });

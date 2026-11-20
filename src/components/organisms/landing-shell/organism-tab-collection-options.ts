@@ -1,6 +1,6 @@
 import { epitopeCollectionOptions } from "@/lib/epitope-view";
 import { experimentCollectionOptions } from "@/lib/experiment-view";
-import { featureListCollectionOptions } from "@/lib/feature-view";
+import { taxonFeaturesCollectionOptions } from "@/lib/feature-view";
 import { genomeCollectionOptions } from "@/lib/genome-view";
 import { proteinFeatureCollectionOptions } from "@/lib/protein-feature-view";
 import { proteinStructureCollectionOptions } from "@/lib/protein-structure-view";
@@ -21,7 +21,7 @@ export const organismTabCollectionOptionsByView: Record<
   genomes: genomeCollectionOptions,
   "amr-phenotypes": null,
   sequences: null,
-  features: featureListCollectionOptions,
+  features: taxonFeaturesCollectionOptions,
   "protein-structures": proteinStructureCollectionOptions,
   "domains-and-motifs": proteinFeatureCollectionOptions,
   epitopes: epitopeCollectionOptions,

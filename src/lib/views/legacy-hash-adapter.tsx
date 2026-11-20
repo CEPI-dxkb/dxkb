@@ -7,8 +7,8 @@ import { clearedFilterValue, rqlNamesField } from "./collection-state";
 
 /**
  * Records a removed PATRIC default (legacy `#filter=false`): `annotation` on
- * the Feature list and the Taxonomy Features tab, `features.annotation` on
- * Genome tabs.
+ * the Feature list, `features.annotation` on Genome tabs (the Taxonomy
+ * Features tab has none for now, see below).
  * Keys are literals rather than imports so this layout-wide component does not
  * pull Feature field metadata into every bundle. Undefined where DXKB has no
  * such default.
@@ -30,7 +30,10 @@ function removedDefaultParam(
   if (pathname === "/genome" || /^\/genome\/[^/]+$/.test(pathname)) {
     return "features.annotation";
   }
-  if (/^\/taxonomy\/[^/]+$/.test(pathname)) return "annotation";
+  // TEMPORARY (DXKBCORE-362): the Taxonomy Features tab has no PATRIC default
+  // now (`taxonFeaturesCollectionOptions`), so a legacy removal marks nothing
+  // and `annotation=*` would read as a literal pick. If that default comes
+  // back, restore: `if (/^\/taxonomy\/[^/]+$/.test(pathname)) return "annotation";`
   return undefined;
 }
 

@@ -595,12 +595,18 @@ export function SigmaCanvas({
       </SigmaContainer>
       {tooltip && (
         <div
-          className="pointer-events-none absolute z-10 max-w-xs rounded-md bg-primary px-2 py-1 text-xs text-background shadow-md"
-          style={{
-            left: tooltip.placement.left,
-            top: tooltip.placement.top,
-            transform: tooltip.placement.transform,
-          }}
+          // `w-max` gives the box its own width: an absolutely positioned box with `width: auto`
+          // shrinks to the room right of `left`, so a flipped tooltip would wrap into a narrow,
+          // tall column. The cap keeps it inside a box narrower than the tooltip.
+          className="pointer-events-none absolute z-10 w-max max-w-(--tooltip-max-width) rounded-md bg-primary px-2 py-1 text-xs text-background shadow-md"
+          style={
+            {
+              left: tooltip.placement.left,
+              top: tooltip.placement.top,
+              transform: tooltip.placement.transform,
+              "--tooltip-max-width": `${String(tooltip.placement.maxWidth)}px`,
+            } as CSSProperties
+          }
         >
           {tooltip.node && (
             <>

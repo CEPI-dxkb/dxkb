@@ -135,6 +135,14 @@ function fakeSigma(graph: Graph) {
     },
     /** Items written one at a time (a batch counts once). */
     singleWrites: () => writes.filter((w) => w.kind === "node" || w.kind === "edge").length,
+    /** Drops the item state and the write history that Sigma loses when its graph is reloaded. */
+    forgetItemState: () => {
+      states.clear();
+      writes.length = 0;
+      for (const write of [sigma.setNodeState, sigma.setEdgeState, sigma.setNodesState, sigma.setEdgesState]) {
+        write.mockClear();
+      }
+    },
   };
 }
 
@@ -288,9 +296,11 @@ describe("syncRenderState", () => {
     const fake = fakeSigma(graph);
     syncRenderState(fake.sigma, selectNode(graph, "h"));
     nextFrameAndTask();
-    fake.writes.length = 0;
+    // Sigma drops every item's state when its graph is reloaded, so none of the first sync's
+    // state or calls may stand in for what the reload writes.
+    fake.forgetItemState();
 
-    // The same selection over a reloaded graph: Sigma dropped every item's state.
+    // The same selection over the reloaded graph.
     syncRenderState(fake.sigma, selectNode(graph, "h"), { reloaded: true });
 
     expect(fake.node("h")).toMatchObject({ isSelected: true, isPill: true });

@@ -802,6 +802,19 @@ describe("SigmaCanvas tooltip", () => {
     expect(tooltip().style.transform).toBe("translate(-100%, -100%)");
   });
 
+  it("has its own width, capped to the room on its side, so a flipped tooltip does not wrap into a narrow column", () => {
+    renderBox();
+    // An absolutely positioned box with `width: auto` shrinks to the space right of `left`.
+    const tip = hoverNode(395, 50);
+
+    expect(tip).toHaveClass("w-max", "max-w-(--tooltip-max-width)");
+    expect(tip.style.getPropertyValue("--tooltip-max-width")).toBe("320px");
+    // Right of this pointer a 400px box has 288px left, and 150px is too far in to flip.
+    expect(
+      hoverNode(100, 50).style.getPropertyValue("--tooltip-max-width"),
+    ).toBe("288px");
+  });
+
   it("is placed against the box's size at the time of the hover", () => {
     renderBox();
     sigmaStub.dimensions = { width: 1200, height: 800 };

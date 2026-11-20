@@ -876,6 +876,52 @@ describe("InteractionsGraph data changes", () => {
     });
     expect(screen.queryByText("node-a")).not.toBeInTheDocument();
   });
+
+  it("keeps the layout and a Hub pick through a refetch that changes only the total", async () => {
+    // Structural sharing keeps the `rows` array of a refetch that returns the same rows, but a new
+    // total (the upstream index grew) still makes a new `data` object around it.
+    const user = userEvent.setup();
+    resolved({ rows: graphRows, isTruncated: true, total: 20_000 });
+    const props = { rql: "", keywordValue: "", onKeywordChange: vi.fn() };
+    const { rerender } = renderGraph(<GraphHarness {...props} />);
+    await waitFor(() => {
+      expect(screen.getByTestId("sigma-canvas")).not.toHaveAttribute(
+        "data-positions",
+        "none",
+      );
+    });
+    await user.click(screen.getByRole("button", { name: "Hub Protein" }));
+    await user.click(
+      screen.getByRole("button", { name: "Most Connected Hub" }),
+    );
+    const selectionBefore = screen
+      .getByTestId("sigma-canvas")
+      .getAttribute("data-selection");
+    expect(selectionBefore).not.toBe("");
+
+    resolved({ rows: graphRows, isTruncated: true, total: 20_001 });
+    rerender(<GraphHarness {...props} />);
+    await settleBackgroundWork();
+
+    // The notice reads the new total, while the picture, the pick and its menu label stay.
+    expect(
+      screen.getByText(
+        `Showing the first ${interactionsGraphRowLimit.toLocaleString()} of 20,001 interactions`,
+      ),
+    ).toBeInTheDocument();
+    expect(requestGraphLayout).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId("sigma-canvas")).not.toHaveAttribute(
+      "data-positions",
+      "none",
+    );
+    expect(screen.getByTestId("sigma-canvas")).toHaveAttribute(
+      "data-selection",
+      selectionBefore,
+    );
+    expect(
+      screen.getByRole("button", { name: "Most Connected Hub" }),
+    ).toBeInTheDocument();
+  });
 });
 
 describe("InteractionsGraph narrowed scope", () => {

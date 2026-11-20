@@ -223,22 +223,26 @@ export function InteractionsGraph({
   const [activeHub, setActiveHub] = useState<HubSelection | null>(null);
   const [canvasReady, setCanvasReady] = useState(false);
   const canvasHandleRef = useRef<GraphCanvasHandle | null>(null);
+  // Keyed on the rows array, not the whole `data`: a refetch that changes only `total` keeps its
+  // rows under structural sharing, and must keep the picture and any pick (the notice still reads
+  // the new count from `data`).
+  const loadedRows = data?.rows;
   const [graphSource, setGraphSource] = useState({
     rql,
     keywordValue,
     selectionVersion,
-    data,
+    rows: loadedRows,
   });
   if (
     graphSource.rql !== rql ||
     graphSource.keywordValue !== keywordValue ||
     graphSource.selectionVersion !== selectionVersion ||
-    graphSource.data !== data
+    graphSource.rows !== loadedRows
   ) {
     // The single selection is the owner's, so the first data arrival (a restore from the URL) keeps
     // it; the owner replaces it on a new keyword, filter, focus or Show in Graph, and the scope
     // effect below on a new scope.
-    setGraphSource({ rql, keywordValue, selectionVersion, data });
+    setGraphSource({ rql, keywordValue, selectionVersion, rows: loadedRows });
     setBulkSelection(null);
     setPendingSelected(null);
     setActiveSubgraph(null);
@@ -255,7 +259,7 @@ export function InteractionsGraph({
   // Memoized on the rows by hand: `SigmaCanvas` reloads its graph and re-fits the camera when the
   // node arrays change identity, and the compiler re-ran these on every URL write (a selection or
   // camera move), which threw away a restored or chosen zoom.
-  const rows = data?.rows ?? emptyRows;
+  const rows = loadedRows ?? emptyRows;
   const graph = useMemo(() => toGraph(rows), [rows]);
   const selectionIndex = useMemo(
     () => buildGraphSelectionIndex(graph.nodes, graph.edges),
@@ -301,7 +305,7 @@ export function InteractionsGraph({
   const layoutQuery = useGraphLayout({
     rql,
     keywordValue,
-    data,
+    rows: loadedRows,
     nodes: graph.nodes,
     edges: graph.edges,
     layout,

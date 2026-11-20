@@ -292,8 +292,9 @@ test.describe("taxon interactions tab: narrowing a graph", () => {
     browserName,
   }) => {
     test.skip(browserName === "firefox", sigmaSkip);
-    // Every pick re-reads and redraws the 10,000 rows (the mock ignores `rql`), and CI runners
-    // (2 workers, software WebGL) were still mid-test at the default 30 s even at 5,000.
+    // Every pick re-reads the 10,000 rows (the mock ignores `rql`) and starts a new layout, which the
+    // next step does not wait for; CI runners (2 workers, software WebGL) were still mid-test at the
+    // default 30 s even at 5,000, so the headroom stays.
     test.slow();
 
     // One row past the Graph's 10,000 (`interactionsGraphRowLimit`): the mock answers the export

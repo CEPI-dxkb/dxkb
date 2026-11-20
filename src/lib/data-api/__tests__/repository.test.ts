@@ -317,9 +317,17 @@ describe("ServerDataRepository", () => {
     });
 
     it("counts the rows before an offset as part of the total", async () => {
+      // Offset 9,999 and one row served, in the Data API's exclusive-end range form.
       await expect(
-        exportPpi("items 10000-10001/10001", [ppiRows[0]], 9_999),
+        exportPpi("items 9999-10000/10001", [ppiRows[0]], 9_999),
       ).resolves.toStrictEqual({ rows: [ppiRows[0]], total: 10_001 });
+    });
+
+    it("leaves out a total that covers the rows served but not the offset before them", async () => {
+      // 9,999 is at least the one row served, so only the offset shows it cannot count them.
+      await expect(
+        exportPpi("items 9999-10000/9999", [ppiRows[0]], 9_999),
+      ).resolves.toStrictEqual({ rows: [ppiRows[0]] });
     });
 
     it("leaves the total out when the header is missing, rather than guessing one", async () => {

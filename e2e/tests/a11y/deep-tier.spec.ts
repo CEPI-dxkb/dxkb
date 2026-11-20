@@ -594,13 +594,14 @@ test.describe("a11y deep tier: taxon interactions graph", () => {
     page,
     browserName,
   }) => {
-    // The deep tier's Graph scan is Chromium-only by choice: the a11y deep tier runs Chromium
-    // only, and the WebKit and Firefox tripwire projects skip it. It is not a rendering limit
-    // for WebKit (the Graph's pixel specs in organisms/interactions.spec.ts run there); headless
-    // Firefox has no WebGL 2 and shows the Graph's "needs WebGL 2" notice instead of a canvas.
+    // Chromium-only by choice: this skip is what keeps the Graph scan out of the
+    // `a11y-webkit-tripwire` and `a11y-firefox-tripwire` projects, which match every a11y spec;
+    // `a11y-chromium` and `a11y-mobile-chromium` run it. WebKit can draw the Graph, and its canvas
+    // coverage lives in e2e/tests/organisms/interactions.spec.ts; headless Firefox has no WebGL 2
+    // and shows the Graph's "needs WebGL 2" notice instead of a canvas.
     test.skip(
       browserName !== "chromium",
-      "Headless non-Chromium browsers cannot render the Sigma.js WebGL canvas",
+      "Graph scan is Chromium-only by choice (WebKit's canvas coverage is in organisms/interactions.spec.ts; headless Firefox has no WebGL 2)",
     );
 
     const rows = buildPpiRows(1);

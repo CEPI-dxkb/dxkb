@@ -39,7 +39,7 @@ function useLayout({ layout, data }: Props) {
   return useGraphLayout({
     rql: "eq(evidence,experimental)",
     keywordValue: "",
-    data,
+    rows: data,
     nodes,
     edges,
     layout,
@@ -157,7 +157,7 @@ describe("useGraphLayout", () => {
         useGraphLayout({
           rql: "",
           keywordValue: "",
-          data: undefined,
+          rows: undefined,
           nodes: [],
           edges: [],
           layout: "forceatlas2",
@@ -171,6 +171,7 @@ describe("useGraphLayout", () => {
 
   describe("across a refetch of the rows", () => {
     let serverRows: { id: string }[] = [];
+    let serverTotal = 0;
     let rowFetches = 0;
 
     // The rows come from a real query, so TanStack's structural sharing decides whether a refetch
@@ -180,13 +181,16 @@ describe("useGraphLayout", () => {
         queryKey: ["rows"],
         queryFn: () => {
           rowFetches += 1;
-          return Promise.resolve({ rows: serverRows.map((row) => ({ ...row })) });
+          return Promise.resolve({
+            rows: serverRows.map((row) => ({ ...row })),
+            total: serverTotal,
+          });
         },
       });
       const layout = useGraphLayout({
         rql: "",
         keywordValue: "",
-        data: rows.data,
+        rows: rows.data?.rows,
         nodes: rows.data ? nodes : [],
         edges,
         layout: "forceatlas2",
@@ -206,6 +210,7 @@ describe("useGraphLayout", () => {
 
     beforeEach(() => {
       serverRows = [{ id: "ppi-1" }];
+      serverTotal = 1;
       rowFetches = 0;
     });
 
@@ -224,6 +229,25 @@ describe("useGraphLayout", () => {
 
       expect(rowFetches).toBe(2);
       expect(result.current.rows.data).toBe(rowsBefore);
+      expect(result.current.layout.data).toBe(positions);
+      expect(result.current.layout.isFetching).toBe(false);
+      expect(requestGraphLayout).toHaveBeenCalledTimes(1);
+    });
+
+    it("keeps the positions when a refetch changes only the total", async () => {
+      // The upstream index grew: a new `data` object, but structural sharing keeps its `rows`.
+      const { result } = await settledHook();
+      const positions = result.current.layout.data;
+      const dataBefore = result.current.rows.data;
+
+      serverTotal = 2;
+      await act(() => result.current.rows.refetch());
+      await waitFor(() => {
+        expect(result.current.rows.data?.total).toBe(2);
+      });
+
+      expect(result.current.rows.data).not.toBe(dataBefore);
+      expect(result.current.rows.data?.rows).toBe(dataBefore?.rows);
       expect(result.current.layout.data).toBe(positions);
       expect(result.current.layout.isFetching).toBe(false);
       expect(requestGraphLayout).toHaveBeenCalledTimes(1);

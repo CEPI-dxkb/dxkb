@@ -12,17 +12,15 @@ import {
   SigmaContainer,
   useLoadGraph,
   useRegisterEvents,
-  useSetSettings,
   useSigma,
 } from "@react-sigma/core";
 import "@react-sigma/core/lib/style.css";
 import Graph, { MultiGraph } from "graphology";
-import { drawDiscNodeHover, EdgeRectangleProgram } from "sigma/rendering";
-import type { NodeHoverDrawingFunction } from "sigma/rendering";
 import type {
   SigmaEdgeEventPayload,
   SigmaEventPayload,
   SigmaNodeEventPayload,
+  SigmaOptions,
   SigmaStageEventPayload,
 } from "sigma/types";
 import { downloadAsImage } from "@sigma/export-image";
@@ -83,15 +81,60 @@ function buildGraph(
   return g;
 }
 
-// Sigma's hover pill is hardcoded white, so force a dark label to stay readable in every theme.
-// Module scope keeps its identity stable: SigmaContainer deep-diffs settings and resets pan/zoom if
-// it changes.
-const drawNodeHover: NodeHoverDrawingFunction = (context, data, settings) => {
-  drawDiscNodeHover(context, data, {
-    ...settings,
-    labelColor: { color: "#000" },
-  });
-};
+// Sigma 4 fixes `nodeReducer`/`edgeReducer` at construction (`setSettings` no longer takes them), and
+// `SigmaContainer` rebuilds the whole instance when `options` changes. So the reducers are installed
+// once and read what is selected, hovered and focused from this ref, which `GraphEvents` updates
+// before asking Sigma to refresh. (A closure store, not a ref: the React Compiler lint rejects
+// passing a ref into the `options` builder and writing `.current` of a prop.)
+interface HighlightInputs {
+  selectedNodeIds: ReadonlySet<string>;
+  selectedEdgeIds: ReadonlySet<string>;
+  hoveredEdge: string | null;
+  focus: SelectionFocus | null;
+  labelColor: string;
+}
+
+function createHighlightStore() {
+  let inputs: HighlightInputs = {
+    selectedNodeIds: new Set(),
+    selectedEdgeIds: new Set(),
+    hoveredEdge: null,
+    focus: null,
+    labelColor: "#000",
+  };
+  return {
+    get: () => inputs,
+    set: (patch: Partial<HighlightInputs>) => {
+      inputs = { ...inputs, ...patch };
+    },
+  };
+}
+
+type HighlightStore = ReturnType<typeof createHighlightStore>;
+
+// Sigma's hover backdrop is white, so a hovered label is forced dark to stay readable in every theme.
+const hoverLabelColor = "#000";
+
+function buildSigmaOptions(inputs: HighlightStore): Partial<SigmaOptions> {
+  return {
+    settings: { renderEdgeLabels: false, enableEdgeEvents: true },
+    nodeReducer: (node, data, _attrs, state) => {
+      const { selectedNodeIds, focus, labelColor } = inputs.get();
+      return {
+        ...nodeHighlightReducer(selectedNodeIds, focus)(node, data),
+        labelColor: state.isHovered ? hoverLabelColor : labelColor,
+      };
+    },
+    edgeReducer: (edge, data, attrs) => {
+      const { selectedEdgeIds, hoveredEdge, focus } = inputs.get();
+      return edgeHighlightReducer(
+        selectedEdgeIds,
+        hoveredEdge,
+        focus,
+      )(edge, { ...data, experimental: attrs.experimental as boolean });
+    },
+  };
+}
 
 interface GraphLoaderProps {
   nodes: GNode[];
@@ -172,7 +215,7 @@ function GraphLoader({ nodes, edges, positions, camera }: GraphLoaderProps) {
     sigma.refresh();
     // Sigma auto-frames only on initial load; reset the camera so a layout switch re-fits the new
     // extent.
-    void sigma.getCamera().animatedReset();
+    void sigma.getCamera().reset();
   }, [nodes, edges, positions, loadGraph, sigma]);
   return null;
 }
@@ -302,6 +345,7 @@ function additiveDoubleClick<P extends SigmaEventPayload>(
 }
 
 interface GraphEventsProps {
+  highlight: HighlightStore;
   onSelect: (sel: GraphSelection) => void;
   onHover: (tooltip: TooltipState | null) => void;
   selection: GraphSelection;
@@ -311,6 +355,7 @@ interface GraphEventsProps {
 }
 
 function GraphEvents({
+  highlight,
   onSelect,
   onHover,
   selection,
@@ -320,7 +365,6 @@ function GraphEvents({
 }: GraphEventsProps) {
   const sigma = useSigma();
   const registerEvents = useRegisterEvents();
-  const setSettings = useSetSettings();
   const [hoveredEdge, setHoveredEdge] = useState<string | null>(null);
   // An Effect Event reads the latest selection, so the handlers registered once below toggle
   // against what is selected now.
@@ -384,11 +428,9 @@ function GraphEvents({
   }, [registerEvents, sigma]);
 
   useEffect(() => {
-    setSettings({
-      nodeReducer: nodeHighlightReducer(selectedNodeIds, focus),
-      edgeReducer: edgeHighlightReducer(selectedEdgeIds, hoveredEdge, focus),
-    });
-  }, [setSettings, selectedNodeIds, selectedEdgeIds, hoveredEdge, focus]);
+    highlight.set({ selectedNodeIds, selectedEdgeIds, hoveredEdge, focus });
+    sigma.scheduleRefresh();
+  }, [sigma, highlight, selectedNodeIds, selectedEdgeIds, hoveredEdge, focus]);
 
   // Flat labels default to #000, invisible on the dark canvas. Canvas 2D can't parse var(), so
   // resolve --foreground and re-resolve on data-theme changes (observe the attribute: this effect
@@ -398,7 +440,10 @@ function GraphEvents({
       const color = getComputedStyle(document.documentElement)
         .getPropertyValue("--foreground")
         .trim();
-      if (color) setSettings({ labelColor: { color } });
+      if (color) {
+        highlight.set({ labelColor: color });
+        sigma.scheduleRefresh();
+      }
     };
     apply();
     const observer = new MutationObserver(apply);
@@ -409,7 +454,7 @@ function GraphEvents({
     return () => {
       observer.disconnect();
     };
-  }, [setSettings]);
+  }, [sigma, highlight]);
 
   return null;
 }
@@ -455,6 +500,8 @@ export function SigmaCanvas({
   onCameraChange,
 }: GraphCanvasProps) {
   const [tooltip, setTooltip] = useState<TooltipState | null>(null);
+  const [highlight] = useState(createHighlightStore);
+  const [sigmaOptions] = useState(() => buildSigmaOptions(highlight));
   const selectedNodeIds = new Set(selection.nodes.map((node) => node.id));
   const selectedEdgeIds = new Set(selection.edges.map((edge) => edge.id));
   const focus = computeSelectionFocus(incidence, selection);
@@ -474,18 +521,7 @@ export function SigmaCanvas({
             "--sigma-background-color": "var(--graph-surface)",
           } as CSSProperties
         }
-        settings={{
-          renderEdgeLabels: false,
-          // Sort draw order by zIndex so the selected element paints above the mesh (off by
-          // default).
-          zIndex: true,
-          // Sigma ships only "line" and "arrow"; register the "rectangle" program or loadGraph
-          // throws "could not find a suitable program for edge type rectangle".
-          defaultEdgeType: "rectangle",
-          edgeProgramClasses: { rectangle: EdgeRectangleProgram },
-          enableEdgeEvents: true,
-          defaultDrawNodeHover: drawNodeHover,
-        }}
+        options={sigmaOptions}
       >
         <ContainerResizeSync />
         <CameraReporter onCameraChange={onCameraChange} />
@@ -496,6 +532,7 @@ export function SigmaCanvas({
           camera={camera}
         />
         <GraphEvents
+          highlight={highlight}
           onSelect={onSelect}
           onHover={setTooltip}
           selection={selection}

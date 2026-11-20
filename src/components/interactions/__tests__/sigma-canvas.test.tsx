@@ -1,6 +1,7 @@
 import { act, render } from "@testing-library/react";
 import Graph from "graphology";
 import { useState, type ReactNode } from "react";
+import type { SigmaOptions } from "sigma/types";
 
 import { SigmaCanvas } from "../sigma/sigma-canvas";
 import type { GEdge, GNode, GraphCanvasProps } from "@/lib/interactions/types";
@@ -19,10 +20,11 @@ const sigmaStub = vi.hoisted(() => ({
   refresh: vi.fn(),
   scheduleRefresh: vi.fn(),
   container: null as HTMLElement | null,
-  animatedReset: vi.fn(() => Promise.resolve()),
+  reset: vi.fn(() => Promise.resolve()),
   loadGraph: vi.fn(),
   registerEvents: vi.fn(),
-  setSettings: vi.fn(),
+  // The `options` the container was built with: Sigma 4 takes its reducers there, once.
+  options: null as SigmaOptions | null,
 }));
 
 // Sigma's camera: `setState` emits "updated" synchronously, as the real one does.
@@ -56,7 +58,7 @@ vi.mock("@react-sigma/core", () => {
     scheduleRefresh: sigmaStub.scheduleRefresh,
     getContainer: () => sigmaStub.container,
     getCamera: () =>
-      Object.assign(cameraStub, { animatedReset: sigmaStub.animatedReset }),
+      Object.assign(cameraStub, { reset: sigmaStub.reset }),
   };
   return {
     // The real container builds its graph from the `graph` prop (a constructor), else a plain
@@ -64,27 +66,25 @@ vi.mock("@react-sigma/core", () => {
     SigmaContainer: ({
       children,
       graph,
+      options,
     }: {
       children: ReactNode;
       graph?: new () => Graph;
+      options?: SigmaOptions;
     }) => {
       useState(() => {
         sigmaStub.graph = graph ? new graph() : new Graph();
+        sigmaStub.options = options ?? null;
       });
       return <>{children}</>;
     },
     useSigma: () => sigma,
     useLoadGraph: () => sigmaStub.loadGraph,
     useRegisterEvents: () => sigmaStub.registerEvents,
-    useSetSettings: () => sigmaStub.setSettings,
   };
 });
 vi.mock("../sigma/zoom-control", () => ({ ZoomControl: () => null }));
 vi.mock("@sigma/export-image", () => ({ downloadAsImage: vi.fn() }));
-vi.mock("sigma/rendering", () => ({
-  drawDiscNodeHover: vi.fn(),
-  EdgeRectangleProgram: vi.fn(),
-}));
 
 function loadedGraph(): Graph {
   return sigmaStub.graph as Graph;
@@ -175,6 +175,14 @@ describe("SigmaCanvas container size", () => {
     });
   }
 
+  // Mounting asks Sigma to refresh once, to apply the highlight reducers; these tests count only
+  // the refreshes the container's size causes.
+  function renderCanvas() {
+    const result = render(canvas({}));
+    sigmaStub.scheduleRefresh.mockClear();
+    return result;
+  }
+
   // Sigma's synchronous redraw: an empty partial graph with indexation skipped.
   const redraw = {
     partialGraph: { nodes: [], edges: [] },
@@ -182,7 +190,7 @@ describe("SigmaCanvas container size", () => {
   };
 
   it("redraws at once when its container changes size, without re-indexing the graph", () => {
-    render(canvas({}));
+    renderCanvas();
     sizeContainer(400, 300);
 
     observed?.();
@@ -197,7 +205,7 @@ describe("SigmaCanvas container size", () => {
   it("rebuilds the label grid once, after the size has settled", () => {
     vi.useFakeTimers();
     try {
-      render(canvas({}));
+      renderCanvas();
       sizeContainer(400, 300);
 
       observed?.();
@@ -216,7 +224,7 @@ describe("SigmaCanvas container size", () => {
   });
 
   it("leaves a container with no size alone, because Sigma throws measuring one", () => {
-    render(canvas({}));
+    renderCanvas();
     sizeContainer(0, 0);
 
     observed?.();
@@ -228,7 +236,7 @@ describe("SigmaCanvas container size", () => {
   it("drops a pending label-grid rebuild when the canvas unmounts", () => {
     vi.useFakeTimers();
     try {
-      const { unmount } = render(canvas({}));
+      const { unmount } = renderCanvas();
       sizeContainer(400, 300);
       observed?.();
 
@@ -299,7 +307,7 @@ describe("SigmaCanvas graph loading", () => {
     expect(position(graph, "a")).toEqual([10, 20]);
     expect(position(graph, "b")).toEqual([30, 40]);
     expect(sigmaStub.refresh).toHaveBeenCalledTimes(1);
-    expect(sigmaStub.animatedReset).toHaveBeenCalledTimes(1);
+    expect(sigmaStub.reset).toHaveBeenCalledTimes(1);
   });
 
   it("does nothing when a re-render brings the same positions", () => {
@@ -310,7 +318,7 @@ describe("SigmaCanvas graph loading", () => {
 
     expect(sigmaStub.loadGraph).toHaveBeenCalledTimes(1);
     expect(sigmaStub.refresh).not.toHaveBeenCalled();
-    expect(sigmaStub.animatedReset).not.toHaveBeenCalled();
+    expect(sigmaStub.reset).not.toHaveBeenCalled();
   });
 
   it("loads a new graph for new nodes", () => {
@@ -330,7 +338,7 @@ describe("SigmaCanvas graph loading", () => {
     expect(sigmaStub.loadGraph).toHaveBeenCalledTimes(2);
     expect(loadedGraph().nodes()).toEqual(["c"]);
     expect(position(loadedGraph(), "c")).toEqual([5, 6]);
-    expect(sigmaStub.animatedReset).not.toHaveBeenCalled();
+    expect(sigmaStub.reset).not.toHaveBeenCalled();
   });
 
   it("clears the previous graph while new nodes wait for their positions", () => {
@@ -379,17 +387,35 @@ function handlers(): Record<string, Handler> {
 }
 
 interface Reducers {
-  nodeReducer: (id: string, data: object) => object;
-  edgeReducer: (id: string, data: object) => object;
+  nodeReducer: (id: string, data: object, hovered?: boolean) => object;
+  edgeReducer: (
+    id: string,
+    data: object,
+    attrs?: { experimental?: boolean },
+  ) => object;
 }
 
+// Sigma 4 takes the reducers once, in the container's `options`, and calls them with
+// `(key, display data, attributes, state, graph state, graph)`.
 function latestReducers(): Reducers {
-  const withReducers = sigmaStub.setSettings.mock.calls
-    .map(([settings]) => settings as Partial<Reducers>)
-    .filter((settings) => settings.nodeReducer !== undefined);
-  const last = withReducers.at(-1);
-  if (!last) throw new Error("no reducers were installed");
-  return last as Reducers;
+  const options = sigmaStub.options;
+  if (!options?.nodeReducer || !options.edgeReducer) {
+    throw new Error("no reducers were installed");
+  }
+  const { nodeReducer, edgeReducer } = options;
+  return {
+    nodeReducer: (id, data, hovered = false) =>
+      nodeReducer(
+        id,
+        data as never,
+        {},
+        { isHovered: hovered } as never,
+        {} as never,
+        {} as never,
+      ),
+    edgeReducer: (id, data, attrs = {}) =>
+      edgeReducer(id, data as never, attrs, {} as never, {} as never, {} as never),
+  };
 }
 
 function nodeClick(
@@ -628,21 +654,37 @@ describe("SigmaCanvas selection focus", () => {
   it("dims nothing while the selection is empty", () => {
     renderQuad();
     const data = { color: "x" };
-    expect(latestReducers().nodeReducer("c", data)).toBe(data);
+    expect(latestReducers().nodeReducer("c", data)).toEqual({
+      color: "x",
+      labelColor: "#000",
+    });
+  });
+
+  it("keeps a hovered label dark, because Sigma's hover backdrop is white", () => {
+    renderQuad();
+    expect(latestReducers().nodeReducer("c", { color: "x" }, true)).toEqual({
+      color: "x",
+      labelColor: "#000",
+    });
   });
 
   it("keeps a selected node's neighbours and edges lit and dims the rest", () => {
     renderQuad({ selection: { nodes: [quad[0]], edges: [] } });
     const { nodeReducer, edgeReducer } = latestReducers();
 
-    expect(nodeReducer("b", { color: "x" })).toEqual({ color: "x", zIndex: 1 });
+    expect(nodeReducer("b", { color: "x" })).toEqual({
+      color: "x",
+      zIndex: 1,
+      labelColor: "#000",
+    });
     expect(nodeReducer("c", { color: "x" })).toEqual({
       color: renderNodeDim,
       label: null,
       zIndex: 0,
+      labelColor: "#000",
     });
     expect(
-      edgeReducer("a-b", { color: renderEdge, size: 1, experimental: false }),
+      edgeReducer("a-b", { color: renderEdge, size: 1 }, { experimental: false }),
     ).toEqual({
       color: renderEdgeFocus,
       size: 1.5,
@@ -653,6 +695,7 @@ describe("SigmaCanvas selection focus", () => {
       color: renderEdgeDim,
       size: 1,
       zIndex: 0,
+      experimental: undefined,
     });
   });
 });
@@ -675,7 +718,7 @@ describe("SigmaCanvas camera from the URL", () => {
 
     expect(cameraStub.getBoundedRatio).toHaveBeenCalledWith(0.25);
     expect(cameraStub.state).toMatchObject(restored);
-    expect(sigmaStub.animatedReset).not.toHaveBeenCalled();
+    expect(sigmaStub.reset).not.toHaveBeenCalled();
   });
 
   it("clamps the restored ratio to Sigma's bounds", () => {

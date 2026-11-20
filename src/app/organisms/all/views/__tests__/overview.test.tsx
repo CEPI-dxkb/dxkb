@@ -1,4 +1,4 @@
-import { act, render, screen, within } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import { http, HttpResponse } from "msw";
 import { Suspense } from "react";
 import { vi } from "vitest";
@@ -155,12 +155,11 @@ describe("All Organisms Overview", () => {
 
       await renderServer(DataSummaryBoundary());
 
-      const hrefOf = (key: string) =>
-        within(screen.getByTestId(`organism-kpi-${key}`))
-          .getByRole("link")
-          .getAttribute("href");
-      expect(hrefOf("count")).toBe("/organisms/all?tab=genomes");
-      expect(hrefOf("pdb")).toBe(
+      // By accessible name, so a tile whose link lost its label fails here.
+      const hrefOf = (name: RegExp) =>
+        screen.getByRole("link", { name }).getAttribute("href");
+      expect(hrefOf(/^Genomes\b/)).toBe("/organisms/all?tab=genomes");
+      expect(hrefOf(/^PDB Structures\b/)).toBe(
         "/organisms/all?tab=protein-structures&rql=ne(method,Predicted)",
       );
     });

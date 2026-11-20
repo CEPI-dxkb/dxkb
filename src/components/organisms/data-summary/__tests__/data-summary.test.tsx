@@ -98,12 +98,12 @@ describe("DataSummary", () => {
     expect(screen.getByText("482,001,224")).toBeInTheDocument();
     // The experimental count, not the payload's PDB (9,821).
     expect(screen.getByTestId("organism-kpi-pdb")).toHaveTextContent("68,899");
-    const pdb = screen.getByTestId("organism-kpi-pdb");
-    expect(within(pdb).getByRole("link")).toHaveAttribute(
+    const pdb = screen.getByRole("link", { name: /^PDB Structures\b/ });
+    expect(pdb).toHaveAttribute(
       "href",
       "/organisms/bacteria?tab=protein-structures&rql=ne(method,Predicted)",
     );
-    expect(within(pdb).getByRole("link")).toHaveAccessibleDescription(
+    expect(pdb).toHaveAccessibleDescription(
       "Experimentally determined structures (AlphaFold predictions excluded)",
     );
   });
@@ -119,17 +119,17 @@ describe("DataSummary", () => {
 
     await renderServer(DataSummary({ taxonIds: [2], pathname }));
 
-    const hrefOf = (key: string) =>
-      within(screen.getByTestId(`organism-kpi-${key}`))
-        .getByRole("link")
-        .getAttribute("href");
-    expect(hrefOf("count")).toBe("/organisms/bacteria?tab=genomes");
-    expect(hrefOf("cds")).toBe(
+    // By accessible name, so a tile whose link lost its label fails here.
+    const hrefOf = (name: RegExp) =>
+      screen.getByRole("link", { name }).getAttribute("href");
+    expect(hrefOf(/^Genomes\b/)).toBe("/organisms/bacteria?tab=genomes");
+    expect(hrefOf(/^CDS\b/)).toBe(
       "/organisms/bacteria?tab=features&feature_type=CDS",
     );
-    expect(hrefOf("matPeptide")).toBe(
+    expect(hrefOf(/^Mature Peptides\b/)).toBe(
       "/organisms/bacteria?tab=features&feature_type=mat_peptide",
     );
+    expect(screen.getAllByRole("link")).toHaveLength(4);
     for (const key of ["uniqueFamily", "uniqueGenus", "uniqueSpecies"]) {
       expect(
         within(screen.getByTestId(`organism-kpi-${key}`)).queryByRole("link"),

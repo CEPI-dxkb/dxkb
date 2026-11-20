@@ -84,18 +84,20 @@ describe("TaxonomySummary", () => {
     await renderServer(TaxonomySummary({ taxonId: 234, taxon: brucellaTaxon }));
 
     const base = "/taxonomy/234";
+    // By accessible name, so a tile whose link lost its label fails here.
     expect(
-      within(screen.getByTestId("taxon-stat-genomes")).getByRole("link"),
+      screen.getByRole("link", { name: /^Genomes \/ Segments\b/ }),
     ).toHaveAttribute("href", `${base}?tab=genomes`);
     expect(
-      within(screen.getByTestId("taxon-stat-cds")).getByRole("link"),
+      screen.getByRole("link", { name: /^Protein Coding Genes \(CDS\)/ }),
     ).toHaveAttribute("href", `${base}?tab=features&feature_type=CDS`);
     expect(
-      within(screen.getByTestId("taxon-stat-pdb")).getByRole("link"),
+      screen.getByRole("link", { name: /^3D Protein Structures \(PDB\)/ }),
     ).toHaveAttribute(
       "href",
       `${base}?tab=protein-structures&rql=ne(method,Predicted)`,
     );
+    expect(screen.getAllByRole("link")).toHaveLength(3);
     for (const id of ["taxon-id", "taxon-name", "taxon-rank", "species"]) {
       expect(
         within(screen.getByTestId(`taxon-stat-${id}`)).queryByRole("link"),

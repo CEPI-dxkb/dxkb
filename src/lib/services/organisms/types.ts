@@ -10,8 +10,13 @@ export interface OrganismSummary {
   uniqueSpecies: number | null;
   cds: number | null;
   matPeptide: number | null;
-  /** Settled on its own: a slow or failed structure join must not take the other counts down. */
-  pdb: CountResult;
+  /**
+   * Not awaited with the rest: the structure join takes about 23 s cold for
+   * Bacteria, so the summary resolves without it and the page streams the PDB
+   * tile on its own. The promise never rejects: a failed join is a `rejected`
+   * `CountResult`, so it cannot take the other counts down.
+   */
+  pdb: Promise<CountResult>;
 }
 
 export interface OrganismTaxonomy {

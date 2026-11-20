@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { act, render, screen, within } from "@testing-library/react";
 import { http, HttpResponse } from "msw";
 import { Suspense } from "react";
 import { vi } from "vitest";
@@ -64,9 +64,15 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
+// The PDB tile's `use` retries after its promise settles, so render in an async act.
 async function renderServer(node: Promise<React.ReactElement>) {
   const resolved = await node;
-  return render(<Suspense fallback={null}>{resolved}</Suspense>);
+  let rendered!: ReturnType<typeof render>;
+  await act(async () => {
+    rendered = render(<Suspense fallback={null}>{resolved}</Suspense>);
+    await Promise.resolve();
+  });
+  return rendered;
 }
 
 function serveStructureCounts() {

@@ -46,7 +46,9 @@ describe("fetchOrganismSummary", () => {
     );
     answerStructures({ 2: 70 });
 
-    await expect(fetchOrganismSummary(2)).resolves.toEqual({
+    const summary = await fetchOrganismSummary(2);
+
+    expect({ ...summary, pdb: await summary.pdb }).toEqual({
       count: 10,
       uniqueFamily: 2,
       uniqueGenus: 3,
@@ -54,6 +56,31 @@ describe("fetchOrganismSummary", () => {
       cds: 50,
       matPeptide: 6,
       pdb: { status: "fulfilled", value: 70 },
+    });
+  });
+
+  it("resolves with the summary without waiting for the structure join", async () => {
+    server.use(
+      http.get(`${baseUrl}/data/summary_by_taxon/9000103`, () =>
+        HttpResponse.json({ count: 3, unique_species: 4, CDS: 50 }),
+      ),
+    );
+    const gate = Promise.withResolvers<undefined>();
+    server.use(
+      http.get(`${baseUrl}/protein_structure/`, async () => {
+        await gate.promise;
+        return HttpResponse.json({ response: { numFound: 12, docs: [] } });
+      }),
+    );
+
+    const summary = await fetchOrganismSummary(9000103);
+
+    // The call returned while the join is still running.
+    expect(summary).toMatchObject({ count: 3, uniqueSpecies: 4, cds: 50 });
+    gate.resolve(undefined);
+    await expect(summary.pdb).resolves.toEqual({
+      status: "fulfilled",
+      value: 12,
     });
   });
 
@@ -67,7 +94,10 @@ describe("fetchOrganismSummary", () => {
 
     const summary = await fetchOrganismSummary(2);
 
-    expect(summary.pdb).toEqual({ status: "fulfilled", value: 68_899 });
+    await expect(summary.pdb).resolves.toEqual({
+      status: "fulfilled",
+      value: 68_899,
+    });
   });
 
   it("reads pdb through the shared cache, so a second summary does not recount", async () => {
@@ -84,11 +114,15 @@ describe("fetchOrganismSummary", () => {
       }),
     );
 
-    await expect(fetchOrganismSummary(9000101)).resolves.toMatchObject({
-      pdb: { status: "fulfilled", value: 257 },
+    const first = await fetchOrganismSummary(9000101);
+    await expect(first.pdb).resolves.toEqual({
+      status: "fulfilled",
+      value: 257,
     });
-    await expect(fetchOrganismSummary(9000101)).resolves.toMatchObject({
-      pdb: { status: "fulfilled", value: 257 },
+    const second = await fetchOrganismSummary(9000101);
+    await expect(second.pdb).resolves.toEqual({
+      status: "fulfilled",
+      value: 257,
     });
 
     expect(structureRequests).toBe(1);
@@ -110,18 +144,21 @@ describe("fetchOrganismSummary", () => {
       ),
     );
 
-    await expect(fetchOrganismSummary(2)).resolves.toMatchObject({
+    const summary = await fetchOrganismSummary(2);
+
+    expect(summary).toMatchObject({
       uniqueSpecies: 4,
       cds: 50,
       matPeptide: 6,
-      pdb: {
-        status: "rejected",
-        reason: expect.objectContaining({
-          message:
-            "PDB structures: The BV-BRC data service is unavailable (HTTP 503 Service Unavailable: BV-BRC overloaded).",
-          source: "protein_structure count",
-        }) as unknown,
-      },
+    });
+    // The failure rides in `pdb`, which resolves (never rejects).
+    await expect(summary.pdb).resolves.toEqual({
+      status: "rejected",
+      reason: expect.objectContaining({
+        message:
+          "PDB structures: The BV-BRC data service is unavailable (HTTP 503 Service Unavailable: BV-BRC overloaded).",
+        source: "protein_structure count",
+      }) as unknown,
     });
   });
 
@@ -217,9 +254,9 @@ describe("fetchCombinedOrganismSummary", () => {
     answerSummaries(cellularPayload, virusesPayload);
     answerStructures(rootStructureCounts);
 
-    await expect(
-      fetchCombinedOrganismSummary([131567, 10239]),
-    ).resolves.toEqual({
+    const combined = await fetchCombinedOrganismSummary([131567, 10239]);
+
+    expect({ ...combined, pdb: await combined.pdb }).toEqual({
       count: 17_815_990,
       uniqueFamily: 1428,
       uniqueGenus: 8384,
@@ -321,7 +358,7 @@ describe("fetchCombinedOrganismSummary", () => {
 
     const combined = await fetchCombinedOrganismSummary([131567, 10239]);
 
-    expect(combined.pdb).toEqual({
+    await expect(combined.pdb).resolves.toEqual({
       status: "rejected",
       reason: expect.objectContaining({
         message:

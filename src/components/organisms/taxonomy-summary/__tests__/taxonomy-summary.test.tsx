@@ -1,4 +1,11 @@
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { vi } from "vitest";
 
 const { refresh } = vi.hoisted(() => ({ refresh: vi.fn() }));
@@ -29,8 +36,15 @@ const brucellaTaxon = {
   genomes: 1909,
 };
 
+// The PDB tile's `use` retries after its promise settles, so render in an async act.
 async function renderServer(node: Promise<React.ReactElement>) {
-  return render(await node);
+  const resolved = await node;
+  let rendered!: ReturnType<typeof render>;
+  await act(async () => {
+    rendered = render(resolved);
+    await Promise.resolve();
+  });
+  return rendered;
 }
 
 describe("TaxonomySummary", () => {
@@ -42,7 +56,7 @@ describe("TaxonomySummary", () => {
       uniqueSpecies: 5,
       cds: 1_000_000,
       matPeptide: null,
-      pdb: { status: "fulfilled", value: 50 },
+      pdb: Promise.resolve({ status: "fulfilled", value: 50 }),
     });
     vi.mocked(getTaxonGenomeCount).mockResolvedValueOnce(1909);
 
@@ -63,7 +77,7 @@ describe("TaxonomySummary", () => {
       uniqueSpecies: 5,
       cds: 1_000_000,
       matPeptide: null,
-      pdb: { status: "fulfilled", value: 50 },
+      pdb: Promise.resolve({ status: "fulfilled", value: 50 }),
     });
     vi.mocked(getTaxonGenomeCount).mockResolvedValueOnce(1909);
 
@@ -97,7 +111,7 @@ describe("TaxonomySummary", () => {
       uniqueSpecies: 5,
       cds: 1_000_000,
       matPeptide: null,
-      pdb: { status: "fulfilled", value: 50 },
+      pdb: Promise.resolve({ status: "fulfilled", value: 50 }),
     });
     vi.mocked(getTaxonGenomeCount).mockResolvedValueOnce(1909);
 
@@ -158,7 +172,7 @@ describe("TaxonomySummary", () => {
       uniqueSpecies: 1_449,
       cds: 1,
       matPeptide: null,
-      pdb: { status: "fulfilled", value: 1 },
+      pdb: Promise.resolve({ status: "fulfilled", value: 1 }),
     });
     vi.mocked(getTaxonGenomeCount).mockResolvedValueOnce(9_471_991);
 
@@ -185,7 +199,7 @@ describe("TaxonomySummary", () => {
       uniqueSpecies: 1,
       cds: null,
       matPeptide: null,
-      pdb: { status: "fulfilled", value: 0 },
+      pdb: Promise.resolve({ status: "fulfilled", value: 0 }),
     });
     vi.mocked(getTaxonGenomeCount).mockResolvedValueOnce(1906);
 
@@ -202,7 +216,7 @@ describe("TaxonomySummary", () => {
       uniqueSpecies: 5,
       cds: 7,
       matPeptide: null,
-      pdb: { status: "fulfilled", value: 9 },
+      pdb: Promise.resolve({ status: "fulfilled", value: 9 }),
     });
     vi.mocked(getTaxonGenomeCount).mockRejectedValueOnce(
       new Error("count service did not respond"),
@@ -226,7 +240,7 @@ describe("TaxonomySummary", () => {
       uniqueSpecies: 4,
       cds: 7,
       matPeptide: null,
-      pdb: {
+      pdb: Promise.resolve({
         status: "rejected",
         reason: new UpstreamError({
           status: 504,
@@ -235,14 +249,16 @@ describe("TaxonomySummary", () => {
             "PDB structures: The BV-BRC data service did not respond (timed out after 60 s).",
           source: "protein_structure count",
         }),
-      },
+      }),
     });
     vi.mocked(getTaxonGenomeCount).mockResolvedValueOnce(1909);
 
     await renderServer(TaxonomySummary({ taxonId: 234, taxon: brucellaTaxon }));
 
     expect(
-      within(screen.getByTestId("taxon-stat-pdb")).getByText("Unavailable"),
+      await within(screen.getByTestId("taxon-stat-pdb")).findByText(
+        "Unavailable",
+      ),
     ).toBeInTheDocument();
     expect(screen.getAllByText("Unavailable")).toHaveLength(1);
     expect(
@@ -254,10 +270,36 @@ describe("TaxonomySummary", () => {
     expect(
       within(screen.getByTestId("taxon-stat-genomes")).getByText("1,909"),
     ).toBeInTheDocument();
-    expect(screen.getByRole("alert")).toHaveTextContent(
+    expect(await screen.findByRole("alert")).toHaveTextContent(
       "Taxon counts could not be loaded: PDB structures: The BV-BRC data service did not respond (timed out after 60 s).",
     );
     expect(screen.getByRole("button", { name: "Retry" })).toBeInTheDocument();
+  });
+
+  it("renders every other tile while the PDB count is still pending, with no alert", async () => {
+    vi.mocked(fetchOrganismSummary).mockResolvedValueOnce({
+      count: 5,
+      uniqueFamily: null,
+      uniqueGenus: null,
+      uniqueSpecies: 4,
+      cds: 7,
+      matPeptide: null,
+      pdb: new Promise(() => undefined),
+    });
+    vi.mocked(getTaxonGenomeCount).mockResolvedValueOnce(1909);
+
+    await renderServer(TaxonomySummary({ taxonId: 234, taxon: brucellaTaxon }));
+
+    const pdb = screen.getByTestId("taxon-stat-pdb");
+    expect(within(pdb).getByText("Loading")).toBeInTheDocument();
+    expect(within(pdb).queryByText("Unavailable")).toBeNull();
+    expect(
+      within(screen.getByTestId("taxon-stat-cds")).getByText("7"),
+    ).toBeInTheDocument();
+    expect(
+      within(screen.getByTestId("taxon-stat-genomes")).getByText("1,909"),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).toBeNull();
   });
 
   it("renders summary metrics and '-' for taxon fields when taxon prop is null", async () => {
@@ -268,7 +310,7 @@ describe("TaxonomySummary", () => {
       uniqueSpecies: 5,
       cds: null,
       matPeptide: null,
-      pdb: { status: "fulfilled", value: 0 },
+      pdb: Promise.resolve({ status: "fulfilled", value: 0 }),
     });
     vi.mocked(getTaxonGenomeCount).mockResolvedValueOnce(1909);
 

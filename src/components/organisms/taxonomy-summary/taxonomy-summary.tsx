@@ -1,3 +1,8 @@
+import {
+  PdbCountAlert,
+  PdbCountValue,
+  unavailableCount,
+} from "@/components/organisms/shared/pdb-count";
 import { SectionRetryButton } from "@/components/organisms/shared/section-retry-button";
 import { StatTile, type StatTileProps } from "@/components/organisms/stat-tile/stat-tile";
 import { readSession } from "@/lib/auth/server/session";
@@ -7,9 +12,6 @@ import type { OrganismTaxonomy } from "@/lib/services/organisms/types";
 import { numberFormatter } from "@/lib/services/organisms/utils";
 import { formatUserFacingErrorMessage } from "@/lib/utils";
 import { overviewTabHref, taxonomyHref } from "@/lib/views/hrefs";
-
-/** What a tile shows for a count whose load failed. */
-const unavailableCount = "Unavailable";
 
 /** `formatUserFacingErrorMessage` fallback for a failure that says nothing. */
 const genericSummaryErrorMessage = "the summary service did not answer.";
@@ -51,14 +53,14 @@ export async function TaxonomySummary({
     throw summaryResult.reason;
   }
 
+  // The PDB count is not awaited (a slow cross-collection join): its tile and
+  // its own alert stream in after the rest.
   const failure =
     summaryResult.status === "rejected"
       ? summaryResult
       : genomeCountResult.status === "rejected"
         ? genomeCountResult
-        : summary?.pdb.status === "rejected"
-          ? summary.pdb
-          : null;
+        : null;
   // A failed count reads as Unavailable with a reason, not as "no data".
   const summaryError = failure
     ? formatUserFacingErrorMessage(failure.reason, genericSummaryErrorMessage)
@@ -96,10 +98,7 @@ export async function TaxonomySummary({
     {
       id: "pdb",
       label: "3D Protein Structures (PDB)",
-      value:
-        summary?.pdb.status === "fulfilled"
-          ? formatCount(summary.pdb.value)
-          : unavailableCount,
+      value: summary ? <PdbCountValue pdb={summary.pdb} /> : unavailableCount,
       description: "Experimentally determined structures (AlphaFold predictions excluded)",
       href: overviewTabHref(base, "protein-structures", {
         rql: "ne(method,Predicted)",
@@ -121,17 +120,27 @@ export async function TaxonomySummary({
     </div>
   );
 
-  if (!summaryError) return tiles;
   return (
     <div className="flex flex-col gap-1.5">
       {tiles}
-      <div
-        role="alert"
-        className="flex flex-wrap items-center gap-2 text-xs text-destructive"
-      >
-        <p>Taxon counts could not be loaded: {summaryError}</p>
-        <SectionRetryButton />
-      </div>
+      {summaryError ? (
+        <div
+          role="alert"
+          className="flex flex-wrap items-center gap-2 text-xs text-destructive"
+        >
+          <p>Taxon counts could not be loaded: {summaryError}</p>
+          <SectionRetryButton />
+        </div>
+      ) : null}
+      {summary ? (
+        <PdbCountAlert
+          pdb={summary.pdb}
+          lead="Taxon counts could not be loaded"
+          formatReason={(reason) =>
+            formatUserFacingErrorMessage(reason, genericSummaryErrorMessage)
+          }
+        />
+      ) : null}
     </div>
   );
 }

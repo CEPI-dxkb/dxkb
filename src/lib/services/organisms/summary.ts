@@ -43,9 +43,11 @@ function settleCount(promise: Promise<number>): Promise<CountResult> {
  * `summary_by_taxon` supplies everything but `pdb`; `pdb` is the
  * experimental-structure count the Protein Structures tab shows (a genome
  * join, see `structure-count.ts`), read through the shared cache because the
- * join takes about 23 s for Bacteria. Only a failed summary request rejects:
- * `pdb` is settled on its own and carries its own failure, with its original
- * message, so a slow or failed join leaves only the PDB tile Unavailable.
+ * join takes about 23 s for Bacteria. The call resolves as soon as the summary
+ * request does and does not wait for the join: `pdb` is a promise the caller
+ * hands to the PDB tile, which streams in on its own. It never rejects (a
+ * failed or slow join is a `rejected` `CountResult` with its original
+ * message), and only a failed summary request rejects the call.
  * `options.signal` cancels only the summary request: the shared count load
  * serves every visitor, so one caller's cancellation cannot stop it.
  */
@@ -53,10 +55,9 @@ export async function fetchOrganismSummary(
   taxonId: number,
   options: OrganismFetchOptions = {},
 ): Promise<OrganismSummary> {
-  const [payload, pdb] = await Promise.all([
-    fetchSummaryPayload(taxonId, options),
-    settleCount(getSharedExperimentalStructureCount(taxonId)),
-  ]);
+  // Started first so the join runs beside the summary request, not after it.
+  const pdb = settleCount(getSharedExperimentalStructureCount(taxonId));
+  const payload = await fetchSummaryPayload(taxonId, options);
 
   return {
     count: numberOrNull(payload.count, "count"),
@@ -100,7 +101,8 @@ function sumCountResults(results: CountResult[]): CountResult {
  * is fetched on its own. A root whose summary fails rejects the whole call
  * with its original error: a partial sum would pass for the real count. A
  * root whose structure count fails makes `pdb` that root's failure, for the
- * same reason, while the other fields still sum.
+ * same reason, while the other fields still sum; `pdb` settles once every
+ * root's count has, and the call does not wait for it.
  *
  * The roots' genome sets are disjoint, so the counts add. The unique-name
  * fields overcount by about 2: the placeholder names `""` and `"null"` appear
@@ -130,6 +132,8 @@ export async function fetchCombinedOrganismSummary(
     uniqueSpecies: sumNullable(summaries.map((summary) => summary.uniqueSpecies)),
     cds: sumNullable(summaries.map((summary) => summary.cds)),
     matPeptide: sumNullable(summaries.map((summary) => summary.matPeptide)),
-    pdb: sumCountResults(summaries.map((summary) => summary.pdb)),
+    pdb: Promise.all(summaries.map((summary) => summary.pdb)).then(
+      sumCountResults,
+    ),
   };
 }

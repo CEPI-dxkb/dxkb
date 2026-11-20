@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import type { ReactNode } from "react";
 import { Card } from "@/components/ui/card";
 import {
   Tooltip,
@@ -12,7 +13,8 @@ import { cn } from "@/lib/utils";
 export interface StatTileProps {
   id: string;
   label: string;
-  value: string;
+  /** A string, or a node that streams in (the PDB tile's `Suspense` boundary). */
+  value: ReactNode;
   description: string;
   href?: string;
   testId?: string;
@@ -40,14 +42,14 @@ export function StatTile({
       <p className="text-2xs font-bold tracking-wider text-muted-foreground uppercase">
         {label}
       </p>
-      <p
+      <div
         className={cn(
           "text-lg leading-tight font-bold tracking-tight",
           valueClassName,
         )}
       >
         {value}
-      </p>
+      </div>
     </>
   );
 

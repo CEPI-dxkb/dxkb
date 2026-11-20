@@ -139,7 +139,7 @@ describe("organism fetch timeout", () => {
     const summary = await fetchOrganismSummary(10239);
 
     expect(summary).toMatchObject({ count: 3, uniqueSpecies: 2, cds: 9 });
-    expect(summary.pdb).toEqual({
+    await expect(summary.pdb).resolves.toEqual({
       status: "rejected",
       reason: expect.objectContaining({
         message: `PDB structures: The BV-BRC data service did not respond (timed out after ${String(organismJoinFetchTimeoutMs / 1000)} s).`,

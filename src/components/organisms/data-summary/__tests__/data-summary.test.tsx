@@ -1,4 +1,11 @@
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { http, HttpResponse } from "msw";
 import { Suspense } from "react";
 
@@ -64,9 +71,15 @@ function serveGenomeCounts(counts: Record<string, number>) {
   return requests;
 }
 
+// The PDB tile's `use` retries after its promise settles, so render in an async act.
 async function renderServer(node: Promise<React.ReactElement>) {
   const resolved = await node;
-  return render(<Suspense fallback={null}>{resolved}</Suspense>);
+  let rendered!: ReturnType<typeof render>;
+  await act(async () => {
+    rendered = render(<Suspense fallback={null}>{resolved}</Suspense>);
+    await Promise.resolve();
+  });
+  return rendered;
 }
 
 describe("DataSummary", () => {

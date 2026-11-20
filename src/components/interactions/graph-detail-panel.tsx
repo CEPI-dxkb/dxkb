@@ -1,19 +1,13 @@
-import type { ReactNode } from "react";
-import { Info } from "lucide-react";
-
-import { MetadataLink } from "@/components/detail-panel/metadata-link";
-import { Button } from "@/components/ui/button";
-import {
-  Popover,
-  PopoverContent,
-  PopoverDescription,
-  PopoverHeader,
-  PopoverTitle,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { isGenomeId } from "@/lib/genome-view/schema";
+import { plural } from "@/lib/interactions/node-insight";
 import type { GEdge, GNode, GraphSelection } from "@/lib/interactions/types";
-import { featureHref, genomeHref } from "@/lib/views/hrefs";
+
+import { GraphEdgePanel } from "./graph-edge-panel";
+import {
+  MaybeLink,
+  featureLinkHref,
+  genomeLinkHref,
+} from "./graph-detail-parts";
+import { GraphNodePanel } from "./graph-node-panel";
 
 // Hub and sub-graph presets can select thousands of nodes; render a bounded number of cards per
 // kind and say how many are left out.
@@ -24,6 +18,8 @@ interface GraphDetailPanelProps {
   incidentEdgesByNode: ReadonlyMap<string, readonly GEdge[]>;
   nodesById: Map<string, GNode>;
   onSelectEdge: (edge: GEdge) => void;
+  /** Moves the selection to one protein (a partner, or one end of an interaction). */
+  onSelectNode: (node: GNode, additive: boolean) => void;
   /** Offers "Focus on this protein" for a single selected node; omitted, no button is drawn. */
   onFocusNode?: (node: GNode) => void;
 }
@@ -31,22 +27,6 @@ interface GraphDetailPanelProps {
 function endpointLabel(nodesById: Map<string, GNode>, id: string): string {
   const n = nodesById.get(id);
   return n?.gene || id;
-}
-
-function featureLinkHref(node: GNode | undefined): string | null {
-  if (!node?.featureId || node.kind === "host") return null;
-  return featureHref(node.featureId);
-}
-
-function genomeLinkHref(node: GNode | undefined): string | null {
-  if (!node?.genomeId || node.kind === "host" || !isGenomeId(node.genomeId)) {
-    return null;
-  }
-  return genomeHref(node.genomeId);
-}
-
-function MaybeLink({ href, children }: { href: string | null; children: ReactNode }) {
-  return href ? <MetadataLink href={href}>{children}</MetadataLink> : children;
 }
 
 // `omit` drops the row a card heading already shows (the gene, or the id when there is no gene).
@@ -122,11 +102,14 @@ function EdgeFields({
   );
 }
 
-function plural(count: number, singular: string, pluralForm: string): string {
-  return `${String(count)} ${count === 1 ? singular : pluralForm}`;
-}
-
-export function GraphDetailPanel({ selection, incidentEdgesByNode, nodesById, onSelectEdge, onFocusNode }: GraphDetailPanelProps) {
+export function GraphDetailPanel({
+  selection,
+  incidentEdgesByNode,
+  nodesById,
+  onSelectEdge,
+  onSelectNode,
+  onFocusNode,
+}: GraphDetailPanelProps) {
   if (selection.nodes.length === 0 && selection.edges.length === 0) {
     return (
       <p className="p-3 text-sm text-muted-foreground">
@@ -189,81 +172,31 @@ export function GraphDetailPanel({ selection, incidentEdgesByNode, nodesById, on
     );
   }
 
+  // One item: the protein panel or the interaction panel. Keyed so a new selection starts with a
+  // closed Identifiers row and an empty partner filter.
+  if (selection.nodes.length === 1) {
+    const node = selection.nodes[0];
+    return (
+      <GraphNodePanel
+        key={node.id}
+        node={node}
+        incidence={incidentEdgesByNode}
+        nodesById={nodesById}
+        onSelectEdge={onSelectEdge}
+        onSelectNode={onSelectNode}
+        onFocusNode={onFocusNode}
+      />
+    );
+  }
+  const edge = selection.edges[0];
   return (
-    <div className="flex flex-col gap-3 overflow-y-auto p-3 text-sm">
-      {selection.nodes.map((node) => {
-        const incidentEdges = incidentEdgesByNode.get(node.id) ?? [];
-        return (
-          <div key={node.id} className="flex flex-col gap-2">
-            <NodeFields node={node} />
-            {onFocusNode && (
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="default"
-                  size="sm"
-                  onClick={() => {
-                    onFocusNode(node);
-                  }}
-                >
-                  Focus on this protein
-                </Button>
-                <Popover>
-                  <PopoverTrigger
-                    render={
-                      <Button
-                        type="button"
-                        variant="ghost-accent"
-                        size="icon-sm"
-                        aria-label="About focusing"
-                      />
-                    }
-                  >
-                    <Info />
-                  </PopoverTrigger>
-                  <PopoverContent side="bottom" align="start">
-                    <PopoverHeader>
-                      <PopoverTitle>Focusing on a protein</PopoverTitle>
-                      <PopoverDescription>
-                        Shows only this protein&apos;s interactions; remove the Protein filter in the Filters menu to undo.
-                      </PopoverDescription>
-                    </PopoverHeader>
-                  </PopoverContent>
-                </Popover>
-              </div>
-            )}
-            {incidentEdges.length > 0 && (
-              <div className="flex flex-col gap-1">
-                <p className="font-medium text-foreground">
-                  Interactions ({incidentEdges.length})
-                </p>
-                <ul className="flex flex-col gap-0.5">
-                  {incidentEdges.map((edge) => {
-                    const otherId = edge.source === node.id ? edge.target : edge.source;
-                    return (
-                      <li key={edge.id}>
-                        <button
-                          type="button"
-                          onClick={() => { onSelectEdge(edge); }}
-                          className="w-full rounded px-2 py-1 text-left break-all text-muted-foreground hover:bg-accent focus-visible:bg-accent focus-visible:outline-none"
-                        >
-                          {endpointLabel(nodesById, otherId)}
-                          {edge.interactionType ? ` · ${edge.interactionType}` : ""}
-                        </button>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </div>
-            )}
-          </div>
-        );
-      })}
-      {selection.edges.map((edge) => (
-        <div key={edge.id} className="flex flex-col gap-2">
-          <p className="font-medium text-foreground">Interaction</p>
-          <EdgeFields edge={edge} nodesById={nodesById} />
-        </div>
-      ))}
-    </div>
+    <GraphEdgePanel
+      key={edge.id}
+      edge={edge}
+      incidence={incidentEdgesByNode}
+      nodesById={nodesById}
+      onSelectEdge={onSelectEdge}
+      onSelectNode={onSelectNode}
+    />
   );
 }

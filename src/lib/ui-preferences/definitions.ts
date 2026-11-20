@@ -1,6 +1,7 @@
 import { jobsPanelIds } from "@/constants/jobs-panels";
 import { workspacePanelIds } from "@/constants/workspace-panels";
 import type { CompareRegionDensity } from "@/lib/compare-region/density-options";
+import { graphColumnDefaults } from "@/lib/interactions/graph-columns";
 import type { WorkspaceSortConfig } from "@/types/workspace-browser";
 
 /** Device-local UI preferences, one cookie each; no "use client" or zod here, as server code needs real constants and the provider ships on every route. */
@@ -16,6 +17,8 @@ export interface UiPreferences {
   jobsPanelLayout: Record<JobsPanelId, number>;
   /** Resource-collection detail panel width, in percent, side-by-side layout only. */
   resourceDetailPanelSize: number;
+  /** Interactions graph side columns (protein list, selection details), in pixels. */
+  interactionsGraphColumns: { list: number; details: number };
   workspaceShowHiddenFiles: boolean;
   workspaceSort: WorkspaceSortConfig;
   compareRegionDensity: CompareRegionDensity;
@@ -74,6 +77,10 @@ export const uiPreferenceDefinitions: {
   resourceDetailPanelSize: {
     cookieName: "dxkb-resource-detail-panel-size",
     defaultValue: 30,
+  },
+  interactionsGraphColumns: {
+    cookieName: "dxkb-interactions-graph-columns",
+    defaultValue: { ...graphColumnDefaults },
   },
   workspaceShowHiddenFiles: {
     cookieName: "dxkb-workspace-show-hidden",

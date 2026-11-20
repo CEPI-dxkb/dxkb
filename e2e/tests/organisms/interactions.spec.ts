@@ -10,6 +10,12 @@ test.use({ storageState: { cookies: [], origins: [] } });
 
 const INTERACTIONS_TAXON_ID = "234";
 
+// The Graph names a protein by its gene, else its locus tag. The fixture rows have no gene and give
+// the interactor `fig|224914.16.peg.<600 + n>` the locus tag `BAWG_<1000 + n>`.
+const peg600Label = "BAWG_1000";
+const peg601Label = "BAWG_1001";
+const peg602Label = "BAWG_1002";
+
 async function setupInteractionsPage(
   page: Parameters<typeof applyBackendMocks>[0],
   rows = buildPpiRows(3),
@@ -118,7 +124,8 @@ test.describe("taxon interactions tab", () => {
     const interactionsPage = await setupInteractionsPage(page);
     await interactionsPage.switchToGraph();
 
-    await interactionsPage.selectNodeInList("fig|224914.16.peg.600");
+    await interactionsPage.selectNodeInList(peg600Label);
+    await interactionsPage.openIdentifiers();
     await interactionsPage.expectDetailText("BRC ID");
     await interactionsPage.expectDetailText("Interactions (1)");
     await interactionsPage.expectDetailLink(
@@ -143,8 +150,8 @@ test.describe("taxon interactions tab", () => {
     const interactionsPage = await setupInteractionsPage(page);
     await interactionsPage.switchToGraph();
 
-    await interactionsPage.selectNodeInList("fig|224914.16.peg.600");
-    await interactionsPage.addNodeToSelectionInList("fig|224914.16.peg.601");
+    await interactionsPage.selectNodeInList(peg600Label);
+    await interactionsPage.addNodeToSelectionInList(peg601Label);
 
     await interactionsPage.expectDetailText("Multiple selection");
     await interactionsPage.expectDetailText(
@@ -169,8 +176,8 @@ test.describe("taxon interactions tab: Back from a linked page", () => {
     await interactionsPage.waitForLayout();
     const zoomPercent = await interactionsPage.zoomIn();
     expect(zoomPercent).not.toBe("100");
-    await interactionsPage.selectNodeInList("fig|224914.16.peg.600");
-    await interactionsPage.expectNodeSelected("fig|224914.16.peg.600");
+    await interactionsPage.selectNodeInList(peg600Label);
+    await interactionsPage.expectNodeSelected(peg600Label);
 
     await interactionsPage.followDetailLink(
       "fig|224914.16.peg.600",
@@ -180,7 +187,7 @@ test.describe("taxon interactions tab: Back from a linked page", () => {
 
     await expect(page).toHaveURL(/interactionsGraph\.view=graph/);
     await interactionsPage.expectGraphActive();
-    await interactionsPage.expectNodeSelected("fig|224914.16.peg.600");
+    await interactionsPage.expectNodeSelected(peg600Label);
     await interactionsPage.expectZoomPercent(zoomPercent);
   });
 });
@@ -219,10 +226,8 @@ test.describe("taxon interactions tab: filter sync between Table and Graph", () 
     await interactionsPage.expectCanvasVisible();
 
     const graphPanel = page.getByRole("tabpanel", { name: "Graph" });
-    await expect(graphPanel.getByText("fig|224914.16.peg.600")).toBeVisible();
-    await expect(
-      graphPanel.getByText("fig|224914.16.peg.601"),
-    ).not.toBeVisible();
+    await expect(graphPanel.getByText(peg600Label)).toBeVisible();
+    await expect(graphPanel.getByText(peg601Label)).not.toBeVisible();
   });
 
   test("switching Table to Graph and back keeps the table filter applied (bug #3)", async ({
@@ -263,15 +268,13 @@ test.describe("taxon interactions tab: filter sync between Table and Graph", () 
     await interactionsPage.expectCanvasVisible();
 
     const graphPanel = page.getByRole("tabpanel", { name: "Graph" });
-    await expect(graphPanel.getByText("fig|224914.16.peg.600")).toBeVisible();
-    await expect(graphPanel.getByText("fig|224914.16.peg.601")).toBeVisible();
+    await expect(graphPanel.getByText(peg600Label)).toBeVisible();
+    await expect(graphPanel.getByText(peg601Label)).toBeVisible();
 
     await interactionsPage.filterGraphByKeyword("peg.600");
 
-    await expect(graphPanel.getByText("fig|224914.16.peg.600")).toBeVisible();
-    await expect(
-      graphPanel.getByText("fig|224914.16.peg.601"),
-    ).not.toBeVisible();
+    await expect(graphPanel.getByText(peg600Label)).toBeVisible();
+    await expect(graphPanel.getByText(peg601Label)).not.toBeVisible();
 
     await interactionsPage.switchToTable();
     await interactionsPage.expectTableKeywordValue("peg.600");
@@ -298,7 +301,8 @@ test.describe("taxon interactions tab: narrowing a graph", () => {
       buildPpiRows(5001),
     );
     await interactionsPage.switchToGraph();
-    await interactionsPage.expectTruncatedBanner(5001);
+    await interactionsPage.expectTruncationNotice(5001);
+    await interactionsPage.expectTruncationReason();
 
     // The mock ignores `rql`, so the picks are asserted as shared state (URL, pills), not as
     // fewer rows.
@@ -310,7 +314,7 @@ test.describe("taxon interactions tab: narrowing a graph", () => {
     await interactionsPage.expectFilterActive("Interaction Type");
 
     const focusId = "fig|224914.16.peg.600";
-    await interactionsPage.selectNodeInList(focusId, true);
+    await interactionsPage.selectNodeInList(peg600Label, true);
     await interactionsPage.focusSelectedNode();
     await interactionsPage.expectUrlFilter("interactor", focusId);
     await interactionsPage.expectFilterActive("Protein");
@@ -336,12 +340,12 @@ test.describe("taxon interactions tab: narrowing a graph", () => {
     // The mock serves the `selected` read by id, so this one can show the narrowing.
     await interactionsPage.expectSelectionChip(2);
     await interactionsPage.expectGraphFilterBar(false);
-    await interactionsPage.expectGraphNode("fig|224914.16.peg.601", true);
-    await interactionsPage.expectGraphNode("fig|224914.16.peg.602", false);
+    await interactionsPage.expectGraphNode(peg601Label, true);
+    await interactionsPage.expectGraphNode(peg602Label, false);
 
     await interactionsPage.showAll();
 
     await interactionsPage.expectGraphFilterBar(true);
-    await interactionsPage.expectGraphNode("fig|224914.16.peg.602", true);
+    await interactionsPage.expectGraphNode(peg602Label, true);
   });
 });

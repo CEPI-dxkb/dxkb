@@ -71,7 +71,7 @@ export class TaxonInteractionsPage {
     await expect(graphPanel.getByText("No Interactions", { exact: true })).toBeVisible();
     await expect(graphPanel.getByRole("combobox", { name: "Layout" })).toBeVisible();
     await expect(graphPanel.getByRole("button", { name: "Export" })).toBeDisabled();
-    await expect(graphPanel.getByLabel("Selection details")).toBeVisible();
+    await expect(graphPanel.getByLabel("Selection details", { exact: true })).toBeVisible();
   }
 
   async filterByKeyword(text: string): Promise<void> {
@@ -113,26 +113,44 @@ export class TaxonInteractionsPage {
     await this.page.getByRole("option", { name: label }).click();
   }
 
+  /**
+   * A protein's row in the list, found by searching for it: the list draws only its top-ranked rows
+   * (a Graph can hold thousands of proteins), and its search reaches every protein.
+   */
+  private async listRow(label: string, exact: boolean): Promise<Locator> {
+    const graphPanel = this.page.getByRole("tabpanel", { name: "Graph" });
+    await graphPanel.getByPlaceholder("Search proteins…").fill(label);
+    return graphPanel.getByRole("option", { name: label, exact });
+  }
+
   async selectNodeInList(label: string, exact = false): Promise<void> {
-    await this.page
-      .getByRole("tabpanel", { name: "Graph" })
-      .getByRole("option", { name: label, exact })
-      .click();
+    await (await this.listRow(label, exact)).click();
   }
 
   async addNodeToSelectionInList(label: string): Promise<void> {
-    await this.page
-      .getByRole("tabpanel", { name: "Graph" })
-      .getByRole("option", { name: label })
-      .click({ modifiers: ["ControlOrMeta"] });
+    await (await this.listRow(label, false)).click({
+      modifiers: ["ControlOrMeta"],
+    });
   }
 
   private detailPanel() {
-    return this.page.getByRole("tabpanel", { name: "Graph" }).getByLabel("Selection details");
+    return this.page.getByRole("tabpanel", { name: "Graph" }).getByLabel("Selection details", { exact: true });
   }
 
   async expectDetailText(text: string): Promise<void> {
     await expect(this.detailPanel().getByText(text, { exact: false }).first()).toBeVisible();
+  }
+
+  /**
+   * Opens the details pane's "Identifiers" row. A selected protein starts with it closed, so its
+   * genome, locus tag and BRC ID (and their links) can only be read once it is open.
+   */
+  async openIdentifiers(): Promise<void> {
+    const identifiers = this.detailPanel().locator("details").first();
+    if ((await identifiers.getAttribute("open")) === null) {
+      await identifiers.getByText("Identifiers", { exact: true }).click();
+    }
+    await expect(identifiers).toHaveAttribute("open", "");
   }
 
   /** A link in the Graph sub-tab's "Selection details" pane, named `name`, that points at `href`. */
@@ -161,6 +179,7 @@ export class TaxonInteractionsPage {
 
   /** Follows a details-pane link in this tab and waits for the destination's URL. */
   async followDetailLink(name: string, href: string): Promise<void> {
+    await this.openIdentifiers();
     await this.detailPanel().getByRole("link", { name, exact: true }).click();
     await expect(this.page).toHaveURL((url) => url.pathname === href);
   }
@@ -175,18 +194,17 @@ export class TaxonInteractionsPage {
     await expect(this.page.getByRole("tab", { name: "Graph" })).toHaveAttribute("aria-selected", "true");
   }
 
-  /** The node is highlighted in the node list and its BRC ID fills the details pane. */
+  /** The node is highlighted in the node list and the details pane is headed by its name. */
   async expectNodeSelected(label: string): Promise<void> {
     await expect(
       this.page.getByRole("tabpanel", { name: "Graph" }).getByRole("option", { name: label }),
     ).toHaveAttribute("data-app-selected", "true");
-    await expect(this.detailPanel().getByText("BRC ID")).toBeVisible();
-    await expect(this.detailPanel().getByRole("link", { name: label, exact: true })).toBeVisible();
+    await expect(this.detailPanel().getByRole("heading", { level: 2, name: label })).toBeVisible();
   }
 
   async selectFirstIncidentEdge(): Promise<void> {
-    // The incident edges are the panel's only list; the panel's first button is "Focus on this
-    // protein".
+    // The partners are the panel's only list; its first button opens the interaction with the
+    // first partner (the panel's own first button is "Focus on this protein").
     await this.detailPanel().getByRole("list").getByRole("button").first().click();
   }
 
@@ -195,32 +213,41 @@ export class TaxonInteractionsPage {
   }
 
   /**
-   * The Graph's "first 5,000" banner, found by its title: Next's route announcer is an alert too.
+   * The Graph's "first 5,000" notice: a polite status over the canvas's top-left, found by its
+   * title because the "Laying out…" veil is a status too.
    */
-  private truncatedBanner(): Locator {
+  private truncationNotice(): Locator {
     return this.graphPanel()
-      .getByRole("alert")
-      .filter({ hasText: "Showing the first" });
+      .getByRole("status")
+      .filter({ hasText: /^Showing the first/ });
   }
 
   /**
-   * The banner for a result past the row limit: the title names `total`, and the text sends the
-   * user to each control that narrows it, as that control is labelled.
+   * The notice for a result past the row limit: its title names `total`. Without a `total` it only
+   * checks that the notice names the limit (the count read can lag the rows).
    */
-  async expectTruncatedBanner(total: number): Promise<void> {
-    const banner = this.truncatedBanner();
-    await expect(banner).toBeVisible({ timeout: 15_000 });
-    await expect(banner).toContainText(
-      `Showing the first ${graphRowLimit} of ${total.toLocaleString("en-US")} interactions`,
+  async expectTruncationNotice(total?: number): Promise<void> {
+    const notice = this.truncationNotice();
+    await expect(notice).toBeVisible({ timeout: 15_000 });
+    await expect(notice).toContainText(
+      total === undefined
+        ? `Showing the first ${graphRowLimit}`
+        : `Showing the first ${graphRowLimit} of ${total.toLocaleString("en-US")} interactions`,
     );
-    for (const text of [
-      "Filters menu",
-      "Focus on this protein",
-      "Show in Graph",
-      "Table subview",
-    ]) {
-      await expect(banner).toContainText(text);
-    }
+  }
+
+  /**
+   * Opens the notice's "Why?" popover, checks its one-sentence reason, and closes it again so it
+   * does not sit over the canvas for the picks that follow.
+   */
+  async expectTruncationReason(): Promise<void> {
+    await this.truncationNotice().getByRole("button", { name: /Why/ }).click();
+    const reason = this.page.getByRole("dialog", { name: /^Showing the first/ });
+    await expect(reason).toContainText(
+      "The graph can't draw them all. Narrow with search or Filters, or use the Table to see every interaction.",
+    );
+    await this.page.keyboard.press("Escape");
+    await expect(reason).toBeHidden();
   }
 
   /** Picks `value` under the facet `field` ("Interaction Type") and closes the menu. */

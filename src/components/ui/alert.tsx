@@ -11,6 +11,11 @@ const alertVariants = cva(
         default: "bg-card text-card-foreground",
         destructive:
           "bg-card text-destructive *:data-[slot=alert-description]:text-destructive/90 [&>svg]:text-current",
+        // A fact about the data shown over content (a blank map), so the body
+        // reads at full foreground contrast instead of the muted default. Its
+        // title wraps rather than clipping to one line on a narrow screen.
+        notice:
+          "bg-card text-card-foreground *:data-[slot=alert-description]:text-foreground *:data-[slot=alert-title]:line-clamp-none",
       },
       size: {
         default: "",

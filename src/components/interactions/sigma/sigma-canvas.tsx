@@ -24,6 +24,7 @@ import type {
 } from "sigma/types";
 import { downloadAsImage } from "@sigma/export-image";
 
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { resolveCssColor } from "@/lib/css-color";
 import {
   buildSigmaOptions,
@@ -59,6 +60,7 @@ import type {
   GraphSelection,
 } from "@/lib/interactions/types";
 import { cameraUrlView, liveTabScope } from "@/lib/interactions/url-state";
+import { supportsWebGl2 } from "@/lib/interactions/webgl-support";
 
 import { ZoomControl } from "./zoom-control";
 
@@ -496,7 +498,7 @@ function HandleBridge({
   return null;
 }
 
-export function SigmaCanvas({
+function SigmaCanvasInner({
   nodes,
   edges,
   incidence,
@@ -596,4 +598,26 @@ export function SigmaCanvas({
       )}
     </div>
   );
+}
+
+/**
+ * Sigma 4 throws when it cannot create a WebGL 2 context (v3 fell back to WebGL 1), and a throw in
+ * its effects would blank the whole Interactions view. The check sits in this wrapper so
+ * `SigmaCanvasInner`'s hooks never run conditionally. `onReady` is never called without a canvas,
+ * which keeps the PNG export disabled.
+ */
+export function SigmaCanvas(props: GraphCanvasProps) {
+  if (!supportsWebGl2()) {
+    return (
+      <Alert variant="destructive">
+        <AlertTitle>The graph needs WebGL 2</AlertTitle>
+        <AlertDescription>
+          This browser or device does not support WebGL 2, which the Graph view
+          requires. Use the Table view, or open this page in a current version
+          of Chrome, Firefox, Safari or Edge.
+        </AlertDescription>
+      </Alert>
+    );
+  }
+  return <SigmaCanvasInner {...props} />;
 }

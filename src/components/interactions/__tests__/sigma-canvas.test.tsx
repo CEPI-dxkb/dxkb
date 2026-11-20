@@ -14,7 +14,7 @@ vi.hoisted(() => {
   } as never;
 });
 
-import { act, render, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import Graph from "graphology";
 import { useState, type ReactNode } from "react";
 
@@ -102,6 +102,13 @@ vi.mock("@react-sigma/core", () => {
 vi.mock("../sigma/zoom-control", () => ({ ZoomControl: () => null }));
 vi.mock("@sigma/export-image", () => ({ downloadAsImage: vi.fn() }));
 
+// jsdom's `getContext` returns null, so the capability probe would answer "no WebGL 2" and every
+// case below would render the notice instead of the canvas.
+const webgl2Stub = vi.hoisted(() => ({ supported: true }));
+vi.mock("@/lib/interactions/webgl-support", () => ({
+  supportsWebGl2: () => webgl2Stub.supported,
+}));
+
 function loadedGraph(): Graph {
   return sigmaStub.graph as Graph;
 }
@@ -146,6 +153,7 @@ function position(graph: Graph, id: string): number[] {
 }
 
 beforeEach(() => {
+  webgl2Stub.supported = true;
   cameraStub.state = { x: 0.5, y: 0.5, ratio: 1, angle: 0 };
   cameraStub.listeners.clear();
   cameraStub.getBoundedRatio.mockImplementation((ratio: number) => ratio);
@@ -671,6 +679,32 @@ describe("SigmaCanvas Sigma options", () => {
     });
     expect(sigmaStub.options?.nodeReducer).toBeUndefined();
     expect(sigmaStub.options?.edgeReducer).toBeUndefined();
+  });
+});
+
+describe("SigmaCanvas without WebGL 2", () => {
+  beforeEach(() => {
+    webgl2Stub.supported = false;
+  });
+
+  it("shows a destructive notice in place of the canvas", () => {
+    render(canvas({ nodes: quad, edges: quadEdges, positions: quadPositions }));
+
+    const alert = screen.getByRole("alert");
+    expect(alert).toHaveTextContent("The graph needs WebGL 2");
+    expect(alert).toHaveTextContent("Use the Table view");
+    expect(sigmaStub.optionsSeen).toEqual([]);
+    expect(sigmaStub.graph).toBeNull();
+    expect(sigmaStub.registerEvents).not.toHaveBeenCalled();
+  });
+
+  it("never reports ready, so the PNG export stays disabled", () => {
+    const onReady = vi.fn();
+    const handleRef: GraphCanvasProps["handleRef"] = { current: null };
+    render(canvas({ nodes: quad, edges: quadEdges, onReady, handleRef }));
+
+    expect(onReady).not.toHaveBeenCalled();
+    expect(handleRef.current).toBeNull();
   });
 });
 

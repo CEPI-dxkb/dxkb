@@ -400,6 +400,7 @@ test.describe("taxon interactions tab: canvas pixels", () => {
   }) => {
     const interactionsPage = await openDrawnGraph(page);
     expect(await interactionsPage.canvasColorCount(selectedOrange)).toBe(0);
+    const blueBefore = await interactionsPage.canvasColorCount(microbialBlue);
 
     await interactionsPage.selectNodeInList(selectedLabel);
     await interactionsPage.expectNodeSelected(selectedLabel);
@@ -411,6 +412,10 @@ test.describe("taxon interactions tab: canvas pixels", () => {
     await expect
       .poll(() => interactionsPage.canvasColorCount(selectedOrange), pixelPoll)
       .toBe(0);
+    // "No orange" alone would also hold for a blank canvas: the nodes are back in their blue.
+    await expect
+      .poll(() => interactionsPage.canvasColorCount(microbialBlue), pixelPoll)
+      .toBeGreaterThanOrEqual(Math.floor(blueBefore * 0.9));
   });
 
   test("selecting a protein dims the nodes that are not its neighbors", async ({
@@ -423,9 +428,15 @@ test.describe("taxon interactions tab: canvas pixels", () => {
     await interactionsPage.expectNodeSelected(selectedLabel);
 
     // The selected node turns orange and its one partner keeps its blue; the other two pairs go
-    // translucent grey.
+    // translucent grey. Five of the six nodes lose their blue, so the count falls well under half
+    // (Chromium 67 -> ~12 pixels, WebKit 245 -> ~41). Merely "fewer" would also pass when only the
+    // selected node turned orange and nothing dimmed, and the partner's remaining blue rules out a
+    // blank canvas.
     await expect
       .poll(() => interactionsPage.canvasColorCount(microbialBlue), pixelPoll)
-      .toBeLessThan(blueBefore);
+      .toBeLessThan(Math.floor(blueBefore / 2));
+    expect(await interactionsPage.canvasColorCount(microbialBlue)).toBeGreaterThan(
+      0,
+    );
   });
 });

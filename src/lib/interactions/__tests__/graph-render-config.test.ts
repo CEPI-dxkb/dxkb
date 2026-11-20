@@ -113,12 +113,13 @@ function edge(
 }
 
 describe("buildSigmaOptions settings", () => {
-  it("sizes items in screen pixels, keeps edges at their own width and turns rotation off", () => {
+  it("sizes items in screen pixels, keeps edges at their own width and turns mouse and touch rotation off", () => {
     expect(options.settings).toMatchObject({
       itemSizesReference: "screen",
       minEdgeThickness: 1,
       renderEdgeLabels: false,
       enableEdgeEvents: true,
+      enableCameraRotation: false,
       enableCameraMouseRotation: false,
     });
   });

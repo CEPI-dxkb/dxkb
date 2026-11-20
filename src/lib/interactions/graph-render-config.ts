@@ -98,6 +98,9 @@ export function buildSigmaOptions(): GraphSigmaOptions {
       itemSizesReference: "screen",
       // Sigma 4's default (1.7) would draw the 1px mesh and the 1.5px focus edges alike.
       minEdgeThickness: 1,
+      // No camera rotation: the `cam=` URL stores no angle. Right-drag is `enableCameraMouseRotation`;
+      // `enableCameraRotation` (default true) is what lets a two-finger twist turn the camera.
+      enableCameraRotation: false,
       enableCameraMouseRotation: false,
     },
     primitives,

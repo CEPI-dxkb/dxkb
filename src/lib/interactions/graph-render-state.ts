@@ -13,9 +13,9 @@ export interface RenderInputs {
 }
 
 /**
- * A node's highlight state. Precedence (selected > hover > focus > dim) lives in the style rules'
- * order; this only says which flags hold. A selected node is never dimmed, even when it is absent
- * from the focus (an isolated selected node).
+ * A node's highlight state. Which flag wins lives in the style rules' order (see
+ * `buildSigmaOptions`); this only says which flags hold. A selected node is never dimmed, even
+ * when it is absent from the focus (an isolated selected node).
  */
 export function nodeStateFor(id: string, inputs: RenderInputs): GraphNodeState {
   const isSelected = inputs.selectedNodeIds.has(id);

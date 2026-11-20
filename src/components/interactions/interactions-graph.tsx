@@ -270,7 +270,7 @@ export function InteractionsGraph({
     [graph],
   );
   // Memoized on the graph, not left to the compiler: a new index each render gives the canvas a new
-  // focus set and re-installs its reducers on every selection or camera write.
+  // focus set and re-syncs every item's highlight state on every selection or camera write.
   const incidenceIndex = useMemo(
     () => buildIncidenceIndex(graph.edges),
     [graph],

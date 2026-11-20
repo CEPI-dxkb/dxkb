@@ -68,8 +68,8 @@ export interface GraphCanvasProps {
   // share it.
   incidence: IncidenceIndex;
   positions: Float64Array | null;
-  // Controlled selection: the highlight reducer reads this so keyboard selection highlights what a
-  // canvas click would.
+  // Controlled selection: the canvas syncs every item's highlight state from this so keyboard
+  // selection highlights what a canvas click would.
   selection: GraphSelection;
   onSelect: (sel: GraphSelection) => void;
   handleRef: RefObject<GraphCanvasHandle | null>;

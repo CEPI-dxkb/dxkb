@@ -1364,7 +1364,7 @@ describe("InteractionsGraph camera", () => {
       <GraphHarness {...props} camera={{ ratio: 0.5, x: 0.1, y: 0.2 }} />,
     );
 
-    // A new index would give the canvas a new focus set and reinstall its reducers each time.
+    // A new index would give the canvas a new focus set and re-sync every item's highlight state each time.
     expect(canvasInputs.incidence.length).toBeGreaterThan(0);
     for (const index of canvasInputs.incidence) expect(index).toBe(initialIndex);
   });

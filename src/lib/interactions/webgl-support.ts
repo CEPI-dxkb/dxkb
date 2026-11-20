@@ -2,9 +2,13 @@ let cached: boolean | undefined;
 
 function probe(): boolean {
   try {
-    const gl = document.createElement("canvas").getContext("webgl2");
+    const canvas = document.createElement("canvas");
+    const gl = canvas.getContext("webgl2");
     if (!gl) return false;
     gl.getExtension("WEBGL_lose_context")?.loseContext();
+    // Not every browser offers `WEBGL_lose_context`, and a context otherwise lives until the
+    // canvas is collected: a 0x0 canvas lets the browser free its drawing buffer now.
+    canvas.width = canvas.height = 0;
     return true;
   } catch {
     return false;

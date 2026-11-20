@@ -675,10 +675,16 @@ describe("SigmaCanvas Sigma options", () => {
     renderQuad();
     expect(sigmaStub.options?.settings).toMatchObject({
       itemSizesReference: "screen",
+      enableCameraRotation: false,
       enableCameraMouseRotation: false,
     });
     expect(sigmaStub.options?.nodeReducer).toBeUndefined();
     expect(sigmaStub.options?.edgeReducer).toBeUndefined();
+  });
+
+  it("clips its tooltip to its own box, so a hover near the right edge cannot make a scroll container flip a scrollbar and resize the canvas", () => {
+    const { container } = renderQuad();
+    expect(container.firstElementChild).toHaveClass("overflow-hidden");
   });
 });
 

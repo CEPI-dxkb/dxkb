@@ -46,8 +46,6 @@ const fallbackColors: ThemeColors = {
   chart2: "#357089",
 };
 
-export { rgbToHex } from "@/lib/css-color";
-
 export function readThemeColors(): ThemeColors {
   const styles = getComputedStyle(document.documentElement);
   const colors = { ...fallbackColors };

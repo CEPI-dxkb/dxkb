@@ -535,7 +535,9 @@ function SigmaCanvasInner({
   }, []);
 
   return (
-    <div className="relative size-full">
+    // `overflow-hidden`: a tooltip near the right edge would otherwise overflow the box, and the
+    // scroll container around it would flip a scrollbar, resizing the canvas under the pointer.
+    <div className="relative size-full overflow-hidden">
       <SigmaContainer
         // `loadGraph` imports into the container's own graph, which defaults to a non-multi
         // `new Graph()` and throws on a second edge between the same pair (two experimental PPI
@@ -608,15 +610,21 @@ function SigmaCanvasInner({
  */
 export function SigmaCanvas(props: GraphCanvasProps) {
   if (!supportsWebGl2()) {
+    // Centered in the canvas box, clear of the truncation and layout column along its top; the
+    // inner box sits above the "Laying out…" veil, which the layout query still shows meanwhile.
     return (
-      <Alert variant="destructive">
-        <AlertTitle>The graph needs WebGL 2</AlertTitle>
-        <AlertDescription>
-          This browser or device does not support WebGL 2, which the Graph view
-          requires. Use the Table view, or open this page in a current version
-          of Chrome, Firefox, Safari or Edge.
-        </AlertDescription>
-      </Alert>
+      <div className="flex size-full items-center justify-center p-6">
+        <div className="relative z-20 w-full max-w-md">
+          <Alert variant="destructive">
+            <AlertTitle>The graph needs WebGL 2</AlertTitle>
+            <AlertDescription>
+              This browser or device does not support WebGL 2, which the Graph
+              view requires. Use the Table view, or open this page in a current
+              version of Chrome, Firefox, Safari or Edge.
+            </AlertDescription>
+          </Alert>
+        </div>
+      </div>
     );
   }
   return <SigmaCanvasInner {...props} />;

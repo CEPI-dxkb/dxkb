@@ -1,7 +1,11 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
-import { oklchContrast } from "@/test-helpers/oklch-contrast";
+import { geoStepFills } from "@/components/organisms/geo-distribution/color-scale";
+import {
+  isOklchInSrgbGamut,
+  oklchContrast,
+} from "@/test-helpers/oklch-contrast";
 
 const accents = ["bacteria", "viruses", "fungi", "all"] as const;
 
@@ -9,20 +13,20 @@ const accents = ["bacteria", "viruses", "fungi", "all"] as const;
 const minimumContrast = 3;
 
 const globalsFile = "src/app/globals.css";
-const violetFile = "src/styles/themes/violet-theme.css";
-const bvbrcFile = "src/styles/themes/bvbrc-theme.css";
 
-const themes = [
-  { name: "dxkb-light", file: globalsFile, selector: '[data-theme="dxkb-light"]', dark: false },
-  { name: "dxkb-dark", file: globalsFile, selector: '[data-theme="dxkb-dark"]', dark: true },
-  { name: "violet-light", file: violetFile, selector: "[data-theme='violet-light']", dark: false },
-  { name: "violet-dark", file: violetFile, selector: "[data-theme='violet-dark']", dark: true },
-  { name: "bvbrc-light", file: bvbrcFile, selector: "[data-theme='bvbrc-light']", dark: false },
-  { name: "bvbrc-dark", file: bvbrcFile, selector: "[data-theme='bvbrc-dark']", dark: true },
-];
-
-const lightMode = "[data-geo-accent]";
-const darkMode = '[data-theme$="-dark"] [data-geo-accent]';
+const modes = [
+  {
+    name: "light",
+    accentSelector: (accent: string) => `[data-geo-accent="${accent}"]`,
+    sharedSelector: "[data-geo-accent]",
+  },
+  {
+    name: "dark",
+    accentSelector: (accent: string) =>
+      `[data-theme$="-dark"] [data-geo-accent="${accent}"]`,
+    sharedSelector: '[data-theme$="-dark"] [data-geo-accent]',
+  },
+] as const;
 
 function read(file: string): string {
   return readFileSync(join(process.cwd(), file), "utf8");
@@ -51,51 +55,82 @@ function declared(block: string, name: string): string {
   return match[1].trim();
 }
 
-const globals = read(globalsFile);
-
-function fills(accent: string, dark: boolean): string[] {
-  const selector = dark
-    ? `[data-theme$="-dark"] [data-geo-accent="${accent}"]`
-    : `[data-geo-accent="${accent}"]`;
-  return [...blockAt(globals, selector).matchAll(/--geo-step-\d: (oklch\([^)]+\));/g)].map(
-    ([, value]) => value,
-  );
+/** The `oklch()` values of `--<prefix>-1`, `--<prefix>-2`, … in a block. */
+function numbered(block: string, prefix: string): string[] {
+  return [
+    ...block.matchAll(
+      new RegExp(`(?<![\\w-])--${prefix}-\\d: (oklch\\([^)]+\\));`, "g"),
+    ),
+  ].map(([, value]) => value);
 }
+
+function lightnessOf(value: string): number {
+  const match = /^oklch\(\s*([\d.]+)/.exec(value);
+  if (!match) throw new Error(`Not an oklch() literal: ${value}`);
+  return Number(match[1]);
+}
+
+const globals = read(globalsFile);
 
 describe("the map's region borders", () => {
   it("measures a known contrast", () => {
     expect(oklchContrast("oklch(1 0 0)", "oklch(0 0 0)")).toBeCloseTo(21, 0);
   });
 
-  it("declares a core line per mode and a card-colored halo", () => {
-    expect(declared(blockAt(globals, lightMode), "--geo-border")).toMatch(/^oklch\(/);
-    expect(declared(blockAt(globals, darkMode), "--geo-border")).toMatch(/^oklch\(/);
-    expect(declared(blockAt(globals, lightMode), "--geo-border-halo")).toBe("var(--card)");
-    // The contrast check below reads the halo from each theme's --card, so
-    // dark mode must inherit var(--card) instead of redeclaring it.
-    expect(blockAt(globals, darkMode)).not.toMatch(/--geo-border-halo/);
+  it("no longer declares the two-layer black and white border", () => {
+    expect(globals).not.toMatch(/--geo-border:/);
+    expect(globals).not.toMatch(/--geo-border-halo/);
   });
 
-  it.each(themes)(
-    "$name: every fill contrasts with the border core or its halo",
-    (theme) => {
-      const mode = blockAt(globals, theme.dark ? darkMode : lightMode);
-      const core = declared(mode, "--geo-border");
-      const halo = declared(blockAt(read(theme.file), theme.selector), "--card");
-      const noData = declared(mode, "--geo-no-data");
-      for (const accent of accents) {
-        const steps = fills(accent, theme.dark);
-        expect(steps).toHaveLength(7);
-        for (const fill of [...steps, noData]) {
-          const best = Math.max(
-            oklchContrast(core, fill),
-            oklchContrast(halo, fill),
-          );
-          expect(best, `${theme.name} ${accent} ${fill}`).toBeGreaterThanOrEqual(
-            minimumContrast,
-          );
+  describe.each(modes)("in $name mode", (mode) => {
+    it.each(accents)(
+      "%s: every border has 3:1 against the fill it outlines",
+      (accent) => {
+        const block = blockAt(globals, mode.accentSelector(accent));
+        const steps = numbered(block, "geo-step");
+        const borders = numbered(block, "geo-border");
+        expect(steps).toHaveLength(geoStepFills.length);
+        expect(borders).toHaveLength(geoStepFills.length);
+
+        for (const [index, fill] of steps.entries()) {
+          const border = borders[index];
+          expect(
+            oklchContrast(border, fill),
+            `${mode.name} ${accent} step ${String(index + 1)}: ${border} on ${fill}`,
+          ).toBeGreaterThanOrEqual(minimumContrast);
         }
-      }
-    },
-  );
+      },
+    );
+
+    it.each(accents)(
+      "%s: every fill and border is inside the sRGB gamut, so the browser paints what is measured",
+      (accent) => {
+        const block = blockAt(globals, mode.accentSelector(accent));
+        const colors = [
+          ...numbered(block, "geo-step"),
+          ...numbered(block, "geo-border"),
+        ];
+        expect(colors).toHaveLength(geoStepFills.length * 2);
+        for (const color of colors) {
+          expect(
+            isOklchInSrgbGamut(color),
+            `${mode.name} ${accent}: ${color}`,
+          ).toBe(true);
+        }
+      },
+    );
+
+    it("outlines no data with a darker line that has 3:1 against its fill", () => {
+      const block = blockAt(globals, mode.sharedSelector);
+      const fill = declared(block, "--geo-no-data");
+      const border = declared(block, "--geo-border-no-data");
+
+      expect(oklchContrast(border, fill)).toBeGreaterThanOrEqual(
+        minimumContrast,
+      );
+      expect(lightnessOf(border)).toBeLessThan(lightnessOf(fill));
+      expect(isOklchInSrgbGamut(fill)).toBe(true);
+      expect(isOklchInSrgbGamut(border)).toBe(true);
+    });
+  });
 });

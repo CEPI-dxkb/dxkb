@@ -1,15 +1,21 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { http, HttpResponse } from "msw";
 import {
   makeRouteContext,
   mockNextRequest,
 } from "@/test-helpers/api-route-helpers";
+import { server } from "@/test-helpers/msw-server";
 import { genomeDownloadTsv } from "@/lib/e2e-fixtures/downloads";
 import {
   brucellaPpiTotal,
   findOrganismSummaryRecord,
   findTaxonGenomeCount,
 } from "@/lib/e2e-fixtures/records";
+import {
+  experimentalStructureRql,
+  fetchExperimentalStructureCount,
+} from "@/lib/services/organisms/structure-count";
 import { DELETE, GET, POST, PUT } from "../route";
 
 interface RouteContext {
@@ -446,13 +452,18 @@ describe("api/e2e-mock catch-all — enabled", () => {
     expect(resp.status).toBe(400);
   });
 
+  // The count the product sends, built from the product's own scope so a change
+  // to `experimentalStructureRql` shows up here instead of as a fail-closed 400
+  // in an e2e run: the tab's genome join, then `limit(1)` and `select(pdb_id)`.
+  function structureCountUrl(taxonId: string): string {
+    return `http://localhost:3020/api/e2e-mock/bvbrc-website/protein_structure/?${experimentalStructureRql(Number(taxonId))}&limit(1)&select(pdb_id)`;
+  }
+
   it.each(["2", "234", "10239", "131567"])(
     "GET answers the experimental structure count for taxon %s from its summary fixture",
     async (taxonId) => {
       const resp = await GET(
-        mockNextRequest({
-          url: `http://localhost:3020/api/e2e-mock/bvbrc-website/protein_structure/?and(eq(taxon_lineage_ids,${taxonId}),ne(method,Predicted))&limit(1)`,
-        }),
+        mockNextRequest({ url: structureCountUrl(taxonId) }),
         ctx(["bvbrc-website", "protein_structure"]),
       );
 
@@ -469,7 +480,7 @@ describe("api/e2e-mock catch-all — enabled", () => {
   it("GET answers the structure count whatever the clause order", async () => {
     const resp = await GET(
       mockNextRequest({
-        url: "http://localhost:3020/api/e2e-mock/bvbrc-website/protein_structure/?limit(1)&and(eq(taxon_lineage_ids,2),ne(method,Predicted))",
+        url: `http://localhost:3020/api/e2e-mock/bvbrc-website/protein_structure/?select(pdb_id)&limit(1)&${experimentalStructureRql(2)}`,
       }),
       ctx(["bvbrc-website", "protein_structure"]),
     );
@@ -482,9 +493,7 @@ describe("api/e2e-mock catch-all — enabled", () => {
 
   it("GET answers the bacteria structure count with the summary's PDB value", async () => {
     const resp = await GET(
-      mockNextRequest({
-        url: "http://localhost:3020/api/e2e-mock/bvbrc-website/protein_structure/?and(eq(taxon_lineage_ids,2),ne(method,Predicted))&limit(1)",
-      }),
+      mockNextRequest({ url: structureCountUrl("2") }),
       ctx(["bvbrc-website", "protein_structure"]),
     );
 
@@ -493,11 +502,56 @@ describe("api/e2e-mock catch-all — enabled", () => {
     });
   });
 
+  it("GET accepts the request fetchExperimentalStructureCount really sends", async () => {
+    // The loopback is called by server-side fetches that no `page.route()` can
+    // see, so feed it the URL the product builds, not a copy of it.
+    process.env.BVBRC_WEBSITE_API_URL = "https://bvbrc.test/api-for-website";
+    let sentSearch = "";
+    server.use(
+      http.get(
+        "https://bvbrc.test/api-for-website/protein_structure/",
+        ({ request }) => {
+          sentSearch = new URL(request.url).search;
+          return HttpResponse.json({ response: { numFound: 1, docs: [] } });
+        },
+      ),
+    );
+
+    try {
+      await fetchExperimentalStructureCount(2);
+    } finally {
+      delete process.env.BVBRC_WEBSITE_API_URL;
+    }
+    expect(sentSearch).not.toBe("");
+
+    const resp = await GET(
+      mockNextRequest({
+        url: `http://localhost:3020/api/e2e-mock/bvbrc-website/protein_structure/${sentSearch}`,
+      }),
+      ctx(["bvbrc-website", "protein_structure"]),
+    );
+
+    expect(resp.status).toBe(200);
+    expect((await resp.json()) as unknown).toMatchObject({
+      response: { numFound: 9821 },
+    });
+  });
+
   it.each([
+    [
+      "uses the structures' own lineage instead of the genome join",
+      "?and(eq(taxon_lineage_ids,2),ne(method,Predicted))&limit(1)&select(pdb_id)",
+      "is not the Protein Structures tab's join",
+    ],
     [
       "does not leave out predicted models",
       "?eq(taxon_lineage_ids,2)&limit(1)",
-      "does not leave out predicted models",
+      "is not the Protein Structures tab's join",
+    ],
+    [
+      "joins genomes without leaving out Deprecated ones",
+      "?and(ne(method,Predicted),eq(genome_id,*),genome(eq(taxon_lineage_ids,2)))&limit(1)&select(pdb_id)",
+      "is not the Protein Structures tab's join",
     ],
     [
       "has no taxon",
@@ -506,23 +560,28 @@ describe("api/e2e-mock catch-all — enabled", () => {
     ],
     [
       "names a taxon without a fixture",
-      "?and(eq(taxon_lineage_ids,999999),ne(method,Predicted))&limit(1)",
+      `?${experimentalStructureRql(999999)}&limit(1)&select(pdb_id)`,
       "no structure count fixture for taxon 999999",
     ],
     [
       "adds a filter beside the scope",
-      "?and(eq(taxon_lineage_ids,2),ne(method,Predicted))&eq(pdb_id,missing)&limit(1)",
+      `?${experimentalStructureRql(2)}&eq(pdb_id,missing)&limit(1)&select(pdb_id)`,
       "unexpected clauses: eq(pdb_id,missing)",
     ],
     [
       "sends the scope without limit(1)",
-      "?and(eq(taxon_lineage_ids,2),ne(method,Predicted))",
-      "expected exactly the clauses and(eq(taxon_lineage_ids,2),ne(method,Predicted)) and limit(1)",
+      `?${experimentalStructureRql(2)}&select(pdb_id)`,
+      "expected exactly the clauses",
+    ],
+    [
+      "sends the scope without select(pdb_id)",
+      `?${experimentalStructureRql(2)}&limit(1)`,
+      "expected exactly the clauses",
     ],
     [
       "repeats the scope in place of limit(1)",
-      "?and(eq(taxon_lineage_ids,2),ne(method,Predicted))&and(eq(taxon_lineage_ids,2),ne(method,Predicted))",
-      "expected exactly the clauses and(eq(taxon_lineage_ids,2),ne(method,Predicted)) and limit(1)",
+      `?${experimentalStructureRql(2)}&${experimentalStructureRql(2)}&select(pdb_id)`,
+      "expected exactly the clauses",
     ],
   ])(
     "GET fails closed on a structure count that %s",

@@ -979,7 +979,8 @@ function maybeBvBrcWebsite(
 
     // Organism PDB tile: a taxon's experimental structures, answered with the
     // summary fixture's `PDB` so the tile value stays what it was. Answered
-    // only for a request that leaves out predicted (AlphaFold) models; the
+    // only for the count the Protein Structures tab's join makes (non-predicted
+    // structures linked to a non-Deprecated genome of the taxon's lineage); the
     // scope is spelled out, not imported, so a product regression cannot drag
     // the mock along.
     const rawTaxonId = equalsValue(query, "taxon_lineage_ids");
@@ -993,16 +994,17 @@ function maybeBvBrcWebsite(
         reason: `no structure count fixture for taxon ${rawTaxonId ?? "(none)"} — add a summary to organismSummaryRecords in src/lib/e2e-fixtures/records.ts`,
       };
     }
-    const structureScope = `and(eq(taxon_lineage_ids,${rawTaxonId}),ne(method,Predicted))`;
+    const structureScope = `and(ne(method,Predicted),eq(genome_id,*),genome(and(eq(taxon_lineage_ids,${rawTaxonId}),ne(genome_status,Deprecated))))`;
     if (!hasClause(query, structureScope)) {
       return {
         kind: "unhandled",
-        reason: `structure count for taxon ${rawTaxonId} does not leave out predicted models — expected the clause ${structureScope}`,
+        reason: `structure count for taxon ${rawTaxonId} is not the Protein Structures tab's join (non-predicted structures of a non-Deprecated genome of the lineage) — expected the clause ${structureScope}`,
       };
     }
-    // Only the exact count the product sends (scope and limit(1), in any
-    // order): an extra filter would otherwise still read as the fixture count.
-    const expectedClauses = [structureScope, "limit(1)"];
+    // Only the exact count the product sends (scope, limit(1) and
+    // select(pdb_id), in any order): an extra filter would otherwise still read
+    // as the fixture count.
+    const expectedClauses = [structureScope, "limit(1)", "select(pdb_id)"];
     const unexpected = query.clauses.filter(
       (clause) => !expectedClauses.includes(clause),
     );
@@ -1016,7 +1018,7 @@ function maybeBvBrcWebsite(
     ) {
       return {
         kind: "unhandled",
-        reason: `structure count for taxon ${rawTaxonId}: expected exactly the clauses ${structureScope} and limit(1), got ${query.clauses.join("&")}${unexpected.length > 0 ? ` (unexpected clauses: ${unexpected.join(", ")})` : ""}`,
+        reason: `structure count for taxon ${rawTaxonId}: expected exactly the clauses ${structureScope}, limit(1) and select(pdb_id), got ${query.clauses.join("&")}${unexpected.length > 0 ? ` (unexpected clauses: ${unexpected.join(", ")})` : ""}`,
       };
     }
     return {

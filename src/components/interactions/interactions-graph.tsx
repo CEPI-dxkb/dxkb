@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
-import dynamic from "next/dynamic";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -38,7 +37,6 @@ import type {
   GNode,
   GraphCameraView,
   GraphCanvasHandle,
-  GraphCanvasProps,
   GraphSelection,
   GraphSelectionRef,
   HubSelection,
@@ -50,24 +48,13 @@ import type {
 import { GraphFilterBar } from "./graph-filter-bar";
 import { GraphActionBar } from "./graph-action-bar";
 import { GraphLegend } from "./graph-legend";
+import { GraphCanvas } from "./graph-canvas";
 import { GraphColumns } from "./graph-columns";
 import { GraphControls } from "./graph-controls";
 import { GraphDetailPanel } from "./graph-detail-panel";
 import { GraphNodeList } from "./graph-node-list";
 import { GraphTruncationNotice } from "./graph-truncation-notice";
 import { InteractionsGraphSkeleton } from "./interactions-graph-skeleton";
-
-const SigmaCanvas = dynamic<GraphCanvasProps>(
-  () => import("./sigma/sigma-canvas").then((mod) => mod.SigmaCanvas),
-  {
-    ssr: false,
-    loading: () => (
-      <div className="flex size-full items-center justify-center text-sm text-muted-foreground">
-        Loading graph…
-      </div>
-    ),
-  },
-);
 
 const emptyRows: PpiRecord[] = [];
 
@@ -499,7 +486,7 @@ export function InteractionsGraph({
                   No Interactions
                 </div>
               ) : (
-                <SigmaCanvas
+                <GraphCanvas
                   nodes={nodes}
                   edges={edges}
                   incidence={incidenceIndex}

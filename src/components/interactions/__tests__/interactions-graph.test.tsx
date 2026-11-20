@@ -45,6 +45,12 @@ vi.mock("@/lib/interactions/use-interactions", async (importOriginal) => ({
   })),
 }));
 
+// jsdom's `getContext` returns null, so the real probe would answer "no WebGL 2" and the canvas
+// stand-in below would be replaced by the notice.
+vi.mock("@/lib/interactions/webgl-support", () => ({
+  supportsWebGl2: () => true,
+}));
+
 vi.mock("@/lib/interactions/layout-client", () => ({
   requestGraphLayout: vi.fn(),
 }));

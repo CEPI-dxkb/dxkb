@@ -24,7 +24,6 @@ import type {
 } from "sigma/types";
 import { downloadAsImage } from "@sigma/export-image";
 
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { resolveCssColor } from "@/lib/css-color";
 import {
   buildSigmaOptions,
@@ -54,6 +53,10 @@ import {
   isAdditiveClick,
   type SelectionTarget,
 } from "@/lib/interactions/selection-focus";
+import {
+  placeTooltip,
+  type TooltipPlacement,
+} from "@/lib/interactions/tooltip-placement";
 import type {
   GEdge,
   GNode,
@@ -62,7 +65,6 @@ import type {
   GraphSelection,
 } from "@/lib/interactions/types";
 import { cameraUrlView, liveTabScope } from "@/lib/interactions/url-state";
-import { supportsWebGl2 } from "@/lib/interactions/webgl-support";
 
 import { ZoomControl } from "./zoom-control";
 
@@ -341,8 +343,7 @@ function CameraReporter({
 }
 
 interface TooltipState {
-  x: number;
-  y: number;
+  placement: TooltipPlacement;
   node?: GNode;
   edge?: GEdge;
 }
@@ -430,6 +431,10 @@ function GraphEvents({
     const clickStage = ({ event }: SigmaStageEventPayload) => {
       click(null, event.original);
     };
+    // The canvas box clips the tooltip, so it opens up or to the left when the pointer is near
+    // the right or bottom edge.
+    const placeAt = ({ x, y }: { x: number; y: number }) =>
+      placeTooltip({ x, y }, sigma.getDimensions());
     let pressed: PressPoint | null = null;
     const press = ({ event }: SigmaEventPayload) => {
       pressed = { x: event.x, y: event.y };
@@ -447,7 +452,7 @@ function GraphEvents({
       doubleClickStage: additiveDoubleClick(clickStage, pressedAt),
       enterNode: ({ node, event }) => {
         const data = sigma.getGraph().getNodeAttributes(node) as GNode;
-        hover({ x: event.x, y: event.y, node: data });
+        hover({ placement: placeAt(event), node: data });
       },
       leaveNode: () => {
         hover(null);
@@ -455,7 +460,7 @@ function GraphEvents({
       // A hovered edge is tinted by Sigma's own `isHovered` state; these only feed the tooltip.
       enterEdge: ({ edge, event }) => {
         const data = sigma.getGraph().getEdgeAttributes(edge) as GEdge;
-        hover({ x: event.x, y: event.y, edge: data });
+        hover({ placement: placeAt(event), edge: data });
       },
       leaveEdge: () => {
         hover(null);
@@ -511,7 +516,7 @@ function HandleBridge({
   return null;
 }
 
-function SigmaCanvasInner({
+export function SigmaCanvas({
   nodes,
   edges,
   incidence,
@@ -591,7 +596,11 @@ function SigmaCanvasInner({
       {tooltip && (
         <div
           className="pointer-events-none absolute z-10 max-w-xs rounded-md bg-primary px-2 py-1 text-xs text-background shadow-md"
-          style={{ left: tooltip.x + 12, top: tooltip.y + 12 }}
+          style={{
+            left: tooltip.placement.left,
+            top: tooltip.placement.top,
+            transform: tooltip.placement.transform,
+          }}
         >
           {tooltip.node && (
             <>
@@ -613,32 +622,4 @@ function SigmaCanvasInner({
       )}
     </div>
   );
-}
-
-/**
- * Sigma 4 throws when it cannot create a WebGL 2 context (v3 fell back to WebGL 1), and a throw in
- * its effects would blank the whole Interactions view. The check sits in this wrapper so
- * `SigmaCanvasInner`'s hooks never run conditionally. `onReady` is never called without a canvas,
- * which keeps the PNG export disabled.
- */
-export function SigmaCanvas(props: GraphCanvasProps) {
-  if (!supportsWebGl2()) {
-    // Centered in the canvas box, clear of the truncation and layout column along its top; the
-    // inner box sits above the "Laying out…" veil, which the layout query still shows meanwhile.
-    return (
-      <div className="flex size-full items-center justify-center p-6">
-        <div className="relative z-20 w-full max-w-md">
-          <Alert variant="destructive">
-            <AlertTitle>The graph needs WebGL 2</AlertTitle>
-            <AlertDescription>
-              This browser or device does not support WebGL 2, which the Graph
-              view requires. Use the Table view, or open this page in a current
-              version of Chrome, Firefox, Safari or Edge.
-            </AlertDescription>
-          </Alert>
-        </div>
-      </div>
-    );
-  }
-  return <SigmaCanvasInner {...props} />;
 }

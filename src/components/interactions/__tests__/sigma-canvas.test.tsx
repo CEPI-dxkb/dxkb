@@ -14,7 +14,7 @@ vi.hoisted(() => {
   } as never;
 });
 
-import { act, render, screen, waitFor } from "@testing-library/react";
+import { act, render, waitFor } from "@testing-library/react";
 import Graph from "graphology";
 import { useState, type ReactNode } from "react";
 
@@ -37,6 +37,7 @@ const sigmaStub = vi.hoisted(() => ({
   reset: vi.fn(() => Promise.resolve()),
   loadGraph: vi.fn(),
   registerEvents: vi.fn(),
+  dimensions: { width: 400, height: 300 },
   // The `options` the container was built with, and those it was given on every render.
   options: null as GraphSigmaOptions | null,
   optionsSeen: [] as (GraphSigmaOptions | undefined)[],
@@ -76,6 +77,7 @@ vi.mock("@react-sigma/core", () => {
     setNodesState: sigmaStub.setNodesState,
     setEdgesState: sigmaStub.setEdgesState,
     getContainer: () => sigmaStub.container,
+    getDimensions: () => sigmaStub.dimensions,
     getCamera: () =>
       Object.assign(cameraStub, { reset: sigmaStub.reset }),
   };
@@ -105,13 +107,6 @@ vi.mock("@react-sigma/core", () => {
 });
 vi.mock("../sigma/zoom-control", () => ({ ZoomControl: () => null }));
 vi.mock("@sigma/export-image", () => ({ downloadAsImage: vi.fn() }));
-
-// jsdom's `getContext` returns null, so the capability probe would answer "no WebGL 2" and every
-// case below would render the notice instead of the canvas.
-const webgl2Stub = vi.hoisted(() => ({ supported: true }));
-vi.mock("@/lib/interactions/webgl-support", () => ({
-  supportsWebGl2: () => webgl2Stub.supported,
-}));
 
 function loadedGraph(): Graph {
   return sigmaStub.graph as Graph;
@@ -157,7 +152,7 @@ function position(graph: Graph, id: string): number[] {
 }
 
 beforeEach(() => {
-  webgl2Stub.supported = true;
+  sigmaStub.dimensions = { width: 400, height: 300 };
   cameraStub.state = { x: 0.5, y: 0.5, ratio: 1, angle: 0 };
   cameraStub.listeners.clear();
   cameraStub.getBoundedRatio.mockImplementation((ratio: number) => ratio);
@@ -750,29 +745,71 @@ describe("SigmaCanvas Sigma options", () => {
   });
 });
 
-describe("SigmaCanvas without WebGL 2", () => {
-  beforeEach(() => {
-    webgl2Stub.supported = false;
+describe("SigmaCanvas tooltip", () => {
+  let box: HTMLElement;
+
+  function renderBox() {
+    box = renderQuad().container;
+  }
+
+  function tooltip(): HTMLElement {
+    const tip = box.querySelector<HTMLElement>(".pointer-events-none");
+    if (!tip) throw new Error("no tooltip rendered");
+    return tip;
+  }
+
+  function hoverNode(x: number, y: number) {
+    act(() => {
+      handlers().enterNode({ node: "a", event: { x, y } });
+    });
+    return tooltip();
+  }
+
+  it("sits at the pointer's lower right where it fits", () => {
+    renderBox();
+    const tip = hoverNode(100, 50);
+
+    expect(tip.style.left).toBe("112px");
+    expect(tip.style.top).toBe("62px");
+    expect(tip.style.transform).toBe("");
   });
 
-  it("shows a destructive notice in place of the canvas", () => {
-    render(canvas({ nodes: quad, edges: quadEdges, positions: quadPositions }));
+  it("opens to the left of a pointer near the right edge, so the clipped box still shows it", () => {
+    renderBox();
+    // 395 + 12 would start outside a 400px box and `overflow-hidden` would hide all of it.
+    const tip = hoverNode(395, 50);
 
-    const alert = screen.getByRole("alert");
-    expect(alert).toHaveTextContent("The graph needs WebGL 2");
-    expect(alert).toHaveTextContent("Use the Table view");
-    expect(sigmaStub.optionsSeen).toEqual([]);
-    expect(sigmaStub.graph).toBeNull();
-    expect(sigmaStub.registerEvents).not.toHaveBeenCalled();
+    expect(tip.style.left).toBe("383px");
+    expect(tip.style.top).toBe("62px");
+    expect(tip.style.transform).toBe("translate(-100%, 0)");
   });
 
-  it("never reports ready, so the PNG export stays disabled", () => {
-    const onReady = vi.fn();
-    const handleRef: GraphCanvasProps["handleRef"] = { current: null };
-    render(canvas({ nodes: quad, edges: quadEdges, onReady, handleRef }));
+  it("opens above a pointer near the bottom edge", () => {
+    renderBox();
+    const tip = hoverNode(100, 295);
 
-    expect(onReady).not.toHaveBeenCalled();
-    expect(handleRef.current).toBeNull();
+    expect(tip.style.left).toBe("112px");
+    expect(tip.style.top).toBe("283px");
+    expect(tip.style.transform).toBe("translate(0, -100%)");
+  });
+
+  it("flips both ways in the bottom right corner, for an edge tooltip too", () => {
+    renderBox();
+    act(() => {
+      handlers().enterEdge({ edge: "a-b", event: { x: 390, y: 290 } });
+    });
+
+    expect(tooltip().style.transform).toBe("translate(-100%, -100%)");
+  });
+
+  it("is placed against the box's size at the time of the hover", () => {
+    renderBox();
+    sigmaStub.dimensions = { width: 1200, height: 800 };
+    // The same pointer that flipped in a 400px box has room here.
+    const tip = hoverNode(395, 50);
+
+    expect(tip.style.left).toBe("407px");
+    expect(tip.style.transform).toBe("");
   });
 });
 

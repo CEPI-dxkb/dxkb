@@ -1,3 +1,4 @@
+import { resolveCssColor } from "@/lib/css-color";
 import type { GenomeBrowserAnnotation } from "@/lib/genome-browser/contract";
 import type { ThemeMode } from "@/styles/themes";
 
@@ -45,35 +46,15 @@ const fallbackColors: ThemeColors = {
   chart2: "#357089",
 };
 
-/** A fill no theme token uses, to tell an invalid color from black. */
-const sentinelColor = "#010203";
-
-export function rgbToHex(red: number, green: number, blue: number): string {
-  return `#${[red, green, blue]
-    .map((channel) => channel.toString(16).padStart(2, "0"))
-    .join("")}`;
-}
+export { rgbToHex } from "@/lib/css-color";
 
 export function readThemeColors(): ThemeColors {
   const styles = getComputedStyle(document.documentElement);
-  const canvas = document.createElement("canvas");
-  canvas.width = 1;
-  canvas.height = 1;
-  const context = canvas.getContext("2d", { willReadFrequently: true });
-  const resolve = (value: string): string | undefined => {
-    if (!context || value === "") return undefined;
-    context.fillStyle = sentinelColor;
-    context.fillStyle = value;
-    if (context.fillStyle === sentinelColor) return undefined;
-    context.clearRect(0, 0, 1, 1);
-    context.fillRect(0, 0, 1, 1);
-    const [red = 0, green = 0, blue = 0] = context.getImageData(0, 0, 1, 1).data;
-    return rgbToHex(red, green, blue);
-  };
   const colors = { ...fallbackColors };
   for (const key of Object.keys(tokenNames) as (keyof ThemeColors)[]) {
     colors[key] =
-      resolve(styles.getPropertyValue(tokenNames[key]).trim()) ?? colors[key];
+      resolveCssColor(styles.getPropertyValue(tokenNames[key]).trim()) ??
+      colors[key];
   }
   return colors;
 }

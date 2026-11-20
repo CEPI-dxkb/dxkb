@@ -6,8 +6,9 @@ export type SelectionTarget =
 
 /**
  * What stays lit while something is selected; everything else is dimmed. The sets cover the
- * lit surroundings, not the selection itself: the reducers test `selectedIds` before `focus`, so
- * callers must not rely on these sets to contain a selected item.
+ * lit surroundings, not the selection itself: selection takes precedence over focus in
+ * `nodeStateFor`/`edgeStateFor` and in the order of the style rules in `graph-render-config.ts`,
+ * so callers must not rely on these sets to contain a selected item.
  */
 export interface SelectionFocus {
   /**

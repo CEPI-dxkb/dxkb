@@ -1,16 +1,26 @@
-import { act, render } from "@testing-library/react";
+// jsdom has no WebGL2, and Sigma 4 reads `WebGL2RenderingContext` constants when its modules load
+// (the canvas imports its style rules from them).
+vi.hoisted(() => {
+  globalThis.WebGL2RenderingContext = {
+    BOOL: 0x8b56,
+    BYTE: 0x1400,
+    UNSIGNED_BYTE: 0x1401,
+    SHORT: 0x1402,
+    UNSIGNED_SHORT: 0x1403,
+    INT: 0x1404,
+    UNSIGNED_INT: 0x1405,
+    FLOAT: 0x1406,
+    HALF_FLOAT: 0x140b,
+  } as never;
+});
+
+import { act, render, waitFor } from "@testing-library/react";
 import Graph from "graphology";
 import { useState, type ReactNode } from "react";
-import type { SigmaOptions } from "sigma/types";
 
 import { SigmaCanvas } from "../sigma/sigma-canvas";
 import type { GEdge, GNode, GraphCanvasProps } from "@/lib/interactions/types";
-import {
-  renderEdge,
-  renderEdgeDim,
-  renderEdgeFocus,
-  renderNodeDim,
-} from "@/lib/interactions/graph-theme";
+import type { GraphSigmaOptions } from "@/lib/interactions/graph-render-config";
 import { buildIncidenceIndex } from "@/lib/interactions/selection-focus";
 
 // Sigma needs WebGL; its React bindings are stubbed over a real graphology graph so GraphLoader's
@@ -19,12 +29,15 @@ const sigmaStub = vi.hoisted(() => ({
   graph: null as Graph | null,
   refresh: vi.fn(),
   scheduleRefresh: vi.fn(),
+  setNodeState: vi.fn(),
+  setEdgeState: vi.fn(),
   container: null as HTMLElement | null,
   reset: vi.fn(() => Promise.resolve()),
   loadGraph: vi.fn(),
   registerEvents: vi.fn(),
-  // The `options` the container was built with: Sigma 4 takes its reducers there, once.
-  options: null as SigmaOptions | null,
+  // The `options` the container was built with, and those it was given on every render.
+  options: null as GraphSigmaOptions | null,
+  optionsSeen: [] as (GraphSigmaOptions | undefined)[],
 }));
 
 // Sigma's camera: `setState` emits "updated" synchronously, as the real one does.
@@ -56,6 +69,8 @@ vi.mock("@react-sigma/core", () => {
     getGraph: () => sigmaStub.graph,
     refresh: sigmaStub.refresh,
     scheduleRefresh: sigmaStub.scheduleRefresh,
+    setNodeState: sigmaStub.setNodeState,
+    setEdgeState: sigmaStub.setEdgeState,
     getContainer: () => sigmaStub.container,
     getCamera: () =>
       Object.assign(cameraStub, { reset: sigmaStub.reset }),
@@ -70,12 +85,13 @@ vi.mock("@react-sigma/core", () => {
     }: {
       children: ReactNode;
       graph?: new () => Graph;
-      options?: SigmaOptions;
+      options?: GraphSigmaOptions;
     }) => {
       useState(() => {
         sigmaStub.graph = graph ? new graph() : new Graph();
         sigmaStub.options = options ?? null;
       });
+      sigmaStub.optionsSeen.push(options);
       return <>{children}</>;
     },
     useSigma: () => sigma,
@@ -134,11 +150,18 @@ beforeEach(() => {
   cameraStub.listeners.clear();
   cameraStub.getBoundedRatio.mockImplementation((ratio: number) => ratio);
   sigmaStub.graph = null;
+  sigmaStub.optionsSeen = [];
   sigmaStub.container = document.createElement("div");
   sigmaStub.loadGraph.mockImplementation((graph: Graph) => {
     loadedGraph().clear();
     loadedGraph().import(graph);
   });
+  // jsdom has no 2D canvas either; the label color then falls back to a fixed hex.
+  vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(null);
+});
+
+afterEach(() => {
+  vi.restoreAllMocks();
 });
 
 describe("SigmaCanvas container size", () => {
@@ -175,8 +198,7 @@ describe("SigmaCanvas container size", () => {
     });
   }
 
-  // Mounting asks Sigma to refresh once, to apply the highlight reducers; these tests count only
-  // the refreshes the container's size causes.
+  // These tests count only the refreshes the container's size causes.
   function renderCanvas() {
     const result = render(canvas({}));
     sigmaStub.scheduleRefresh.mockClear();
@@ -386,36 +408,10 @@ function handlers(): Record<string, Handler> {
   return call[0] as Record<string, Handler>;
 }
 
-interface Reducers {
-  nodeReducer: (id: string, data: object, hovered?: boolean) => object;
-  edgeReducer: (
-    id: string,
-    data: object,
-    attrs?: { experimental?: boolean },
-  ) => object;
-}
-
-// Sigma 4 takes the reducers once, in the container's `options`, and calls them with
-// `(key, display data, attributes, state, graph state, graph)`.
-function latestReducers(): Reducers {
-  const options = sigmaStub.options;
-  if (!options?.nodeReducer || !options.edgeReducer) {
-    throw new Error("no reducers were installed");
-  }
-  const { nodeReducer, edgeReducer } = options;
-  return {
-    nodeReducer: (id, data, hovered = false) =>
-      nodeReducer(
-        id,
-        data as never,
-        {},
-        { isHovered: hovered } as never,
-        {} as never,
-        {} as never,
-      ),
-    edgeReducer: (id, data, attrs = {}) =>
-      edgeReducer(id, data as never, attrs, {} as never, {} as never, {} as never),
-  };
+/** The state the canvas last set on a node or edge (Sigma merges partial states; ours are full). */
+function lastState(stub: typeof sigmaStub.setNodeState, id: string): unknown {
+  const calls = stub.mock.calls.filter(([key]) => key === id);
+  return calls.at(-1)?.[1];
 }
 
 function nodeClick(
@@ -650,53 +646,233 @@ describe("SigmaCanvas selection clicks", () => {
   });
 });
 
+describe("SigmaCanvas Sigma options", () => {
+  it("hands the container the same options object on every render, so Sigma is never rebuilt", () => {
+    const { rerender } = renderQuad();
+    rerender(
+      canvas({
+        nodes: quad,
+        edges: quadEdges,
+        positions: quadPositions,
+        selection: { nodes: [quad[0]], edges: [] },
+      }),
+    );
+
+    expect(sigmaStub.optionsSeen.length).toBeGreaterThan(1);
+    expect(new Set(sigmaStub.optionsSeen).size).toBe(1);
+    expect(sigmaStub.optionsSeen[0]).toBeDefined();
+  });
+
+  it("sizes items in screen pixels and turns camera rotation off", () => {
+    renderQuad();
+    expect(sigmaStub.options?.settings).toMatchObject({
+      itemSizesReference: "screen",
+      enableCameraMouseRotation: false,
+    });
+    expect(sigmaStub.options?.nodeReducer).toBeUndefined();
+    expect(sigmaStub.options?.edgeReducer).toBeUndefined();
+  });
+});
+
 describe("SigmaCanvas selection focus", () => {
-  it("dims nothing while the selection is empty", () => {
+  it("sets no highlight while the selection is empty", () => {
     renderQuad();
-    const data = { color: "x" };
-    expect(latestReducers().nodeReducer("c", data)).toEqual({
-      color: "x",
-      labelColor: "#000",
+    expect(lastState(sigmaStub.setNodeState, "c")).toEqual({
+      isSelected: false,
+      isPill: false,
+      isFocus: false,
+      isDimmed: false,
     });
   });
 
-  it("keeps a hovered label dark, because Sigma's hover backdrop is white", () => {
-    renderQuad();
-    expect(latestReducers().nodeReducer("c", { color: "x" }, true)).toEqual({
-      color: "x",
-      labelColor: "#000",
-    });
-  });
-
-  it("keeps a selected node's neighbours and edges lit and dims the rest", () => {
+  it("pills a lone selected node, keeps its neighbours and edges lit and dims the rest", () => {
     renderQuad({ selection: { nodes: [quad[0]], edges: [] } });
-    const { nodeReducer, edgeReducer } = latestReducers();
 
-    expect(nodeReducer("b", { color: "x" })).toEqual({
-      color: "x",
-      zIndex: 1,
-      labelColor: "#000",
+    expect(lastState(sigmaStub.setNodeState, "a")).toMatchObject({
+      isSelected: true,
+      isPill: true,
+      isDimmed: false,
     });
-    expect(nodeReducer("c", { color: "x" })).toEqual({
-      color: renderNodeDim,
-      label: null,
-      zIndex: 0,
-      labelColor: "#000",
+    expect(lastState(sigmaStub.setNodeState, "b")).toMatchObject({
+      isFocus: true,
+      isDimmed: false,
     });
-    expect(
-      edgeReducer("a-b", { color: renderEdge, size: 1 }, { experimental: false }),
-    ).toEqual({
-      color: renderEdgeFocus,
-      size: 1.5,
-      zIndex: 1,
-      experimental: false,
+    expect(lastState(sigmaStub.setNodeState, "c")).toMatchObject({
+      isFocus: false,
+      isDimmed: true,
     });
-    expect(edgeReducer("c-d", { color: renderEdge, size: 1 })).toEqual({
-      color: renderEdgeDim,
-      size: 1,
-      zIndex: 0,
-      experimental: undefined,
+    expect(lastState(sigmaStub.setEdgeState, "a-b")).toMatchObject({
+      isFocus: true,
+      isDimmed: false,
     });
+    expect(lastState(sigmaStub.setEdgeState, "c-d")).toMatchObject({
+      isFocus: false,
+      isDimmed: true,
+    });
+  });
+
+  it("gives no pill to a multi-selection", () => {
+    renderQuad({ selection: { nodes: [quad[0], quad[2]], edges: [] } });
+    expect(lastState(sigmaStub.setNodeState, "a")).toMatchObject({
+      isSelected: true,
+      isPill: false,
+    });
+  });
+
+  it("flags a selected edge", () => {
+    renderQuad({ selection: { nodes: [], edges: [quadEdges[1]] } });
+    expect(lastState(sigmaStub.setEdgeState, "c-d")).toMatchObject({
+      isSelected: true,
+    });
+  });
+
+  it("leaves the refresh to Sigma, which re-evaluates only the items whose state changed", () => {
+    const { rerender } = renderQuad();
+    sigmaStub.refresh.mockClear();
+    sigmaStub.scheduleRefresh.mockClear();
+    sigmaStub.setNodeState.mockClear();
+
+    rerender(
+      canvas({
+        nodes: quad,
+        edges: quadEdges,
+        positions: quadPositions,
+        selection: { nodes: [quad[0]], edges: [] },
+      }),
+    );
+
+    expect(sigmaStub.setNodeState).toHaveBeenCalled();
+    expect(sigmaStub.refresh).not.toHaveBeenCalled();
+    expect(sigmaStub.scheduleRefresh).not.toHaveBeenCalled();
+  });
+
+  it("sets state only on nodes the graph holds, because Sigma throws on an unknown key", () => {
+    // A selection restored from the URL can name a protein before (or without) its graph loading.
+    render(
+      canvas({
+        positions: null,
+        selection: { nodes: [{ id: "zz", kind: "host" }], edges: [] },
+      }),
+    );
+
+    expect(sigmaStub.setNodeState).not.toHaveBeenCalled();
+    expect(sigmaStub.setEdgeState).not.toHaveBeenCalled();
+  });
+
+  it("re-applies the highlights to a reloaded graph, whose state Sigma cleared", () => {
+    const selection = { nodes: [quad[0]], edges: [] };
+    const { rerender } = renderQuad({ selection });
+    sigmaStub.setNodeState.mockClear();
+    cameraStub.setState.mockClear();
+
+    // New rows holding the same protein: GraphLoader clears and re-imports the graph.
+    const reloaded: GNode[] = [quad[0], { id: "e", kind: "host" }];
+    rerender(
+      canvas({
+        nodes: reloaded,
+        edges: [],
+        positions: new Float64Array([1, 2, 3, 4]),
+        selection,
+      }),
+    );
+
+    expect(sigmaStub.loadGraph).toHaveBeenCalledTimes(2);
+    expect(lastState(sigmaStub.setNodeState, "a")).toMatchObject({
+      isSelected: true,
+      isPill: true,
+    });
+    expect(lastState(sigmaStub.setNodeState, "e")).toMatchObject({
+      isDimmed: true,
+    });
+
+    // GraphLoader must sync on its own, between the load and the re-fit it does right after:
+    // with the React Compiler, an unchanged selection keeps its memoized Sets, so GraphEvents'
+    // sync effect does not re-run on a reload (Vitest, uncompiled, re-runs it on every render).
+    const loadedAt = sigmaStub.loadGraph.mock.invocationCallOrder.at(-1) ?? 0;
+    const refitAt = cameraStub.setState.mock.invocationCallOrder.at(0) ?? 0;
+    const syncedA = sigmaStub.setNodeState.mock.calls
+      .map(([key], i) => ({
+        key: key as string,
+        at: sigmaStub.setNodeState.mock.invocationCallOrder[i],
+      }))
+      .filter(({ key, at }) => key === "a" && at > loadedAt && at < refitAt);
+    expect(refitAt).toBeGreaterThan(loadedAt);
+    expect(syncedA).toHaveLength(1);
+  });
+});
+
+describe("SigmaCanvas label color", () => {
+  const hexColor = /^#[0-9a-f]{6}$/;
+
+  // A 2D context whose pixel reads back the given bytes, standing in for the browser resolving an
+  // `oklch()` token (jsdom's canvas has no 2D context at all).
+  function fakeContext(pixel: () => number[]) {
+    return {
+      fillStyle: "",
+      clearRect: vi.fn(),
+      fillRect: vi.fn(),
+      getImageData: () => ({ data: new Uint8ClampedArray(pixel()) }),
+    } as unknown as CanvasRenderingContext2D;
+  }
+
+  afterEach(() => {
+    document.documentElement.style.removeProperty("--foreground");
+    document.documentElement.removeAttribute("data-theme");
+  });
+
+  function labelColors(): unknown[] {
+    return loadedGraph()
+      .nodes()
+      .map((id): unknown => loadedGraph().getNodeAttribute(id, "labelColor"));
+  }
+
+  it("resolves the theme's --foreground to a hex label color, and re-resolves on a theme change", async () => {
+    let pixel = [229, 229, 229, 255];
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockImplementation(
+      (() => fakeContext(() => pixel)) as never,
+    );
+    document.documentElement.style.setProperty(
+      "--foreground",
+      "oklch(0.922 0 0)",
+    );
+
+    renderQuad();
+    expect(labelColors()).toEqual(["#e5e5e5", "#e5e5e5", "#e5e5e5", "#e5e5e5"]);
+    const updateHints: unknown[] = [];
+    loadedGraph().on("eachNodeAttributesUpdated", (payload: { hints: unknown }) => {
+      updateHints.push(payload.hints);
+    });
+
+    pixel = [10, 10, 10, 255];
+    act(() => {
+      document.documentElement.setAttribute("data-theme", "dxkb-light");
+    });
+
+    await waitFor(() => {
+      expect(labelColors()).toEqual([
+        "#0a0a0a",
+        "#0a0a0a",
+        "#0a0a0a",
+        "#0a0a0a",
+      ]);
+    });
+    expect(sigmaStub.loadGraph).toHaveBeenCalledTimes(1);
+    // No `attributes` hint: with one, Sigma redraws every node with indexation skipped and throws
+    // ("can't be repaint") for nodes it has not drawn yet, as right after a load.
+    expect(updateHints).toEqual([null]);
+  });
+
+  it("falls back to a hex, never the raw oklch() token, when there is no 2D context", () => {
+    document.documentElement.style.setProperty(
+      "--foreground",
+      "oklch(0.922 0 0)",
+    );
+
+    renderQuad();
+
+    for (const color of labelColors()) {
+      expect(color).toMatch(hexColor);
+    }
   });
 });
 

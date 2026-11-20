@@ -20,23 +20,35 @@ import type {
   SigmaEdgeEventPayload,
   SigmaEventPayload,
   SigmaNodeEventPayload,
-  SigmaOptions,
   SigmaStageEventPayload,
 } from "sigma/types";
 import { downloadAsImage } from "@sigma/export-image";
 
+import { resolveCssColor } from "@/lib/css-color";
+import {
+  buildSigmaOptions,
+  type Attrs,
+  type GraphEdgeState,
+  type GraphLevelState,
+  type GraphNodeState,
+  type GraphPrimitives,
+  type GraphSigma,
+} from "@/lib/interactions/graph-render-config";
+import {
+  syncRenderState,
+  type RenderInputs,
+} from "@/lib/interactions/graph-render-state";
 import {
   colors,
-  edgeHighlightReducer,
-  nodeHighlightReducer,
-  renderEdge,
-  renderEdgeExperimental,
+  edgeColor,
+  edgeExperimentalColor,
+  edgeFocusColor,
+  edgeFocusExperimentalColor,
 } from "@/lib/interactions/graph-theme";
 import {
   applySelectionClick,
   computeSelectionFocus,
   isAdditiveClick,
-  type SelectionFocus,
   type SelectionTarget,
 } from "@/lib/interactions/selection-focus";
 import type {
@@ -54,12 +66,14 @@ function buildGraph(
   nodes: GNode[],
   edges: GEdge[],
   positions: Float64Array,
+  labelColor: string,
 ): Graph {
   const g = new Graph({ multi: true });
   nodes.forEach((n, i) => {
     g.addNode(n.id, {
       ...n,
       label: n.gene || n.id,
+      labelColor,
       // Small nodes so ~1,900 points don't overlap and tight clusters keep their edges visible.
       size: 2.5,
       color: n.kind === "host" ? colors.host : colors.microbial,
@@ -72,68 +86,43 @@ function buildGraph(
       g.addEdgeWithKey(e.id, e.source, e.target, {
         ...e,
         size: 1,
-        // Translucent (premultiplied) edges accumulate into a density gradient; wider rectangles
-        // give pointer events a usable hit target.
-        color: e.experimental ? renderEdgeExperimental : renderEdge,
+        // Translucent edges accumulate into a density gradient.
+        color: e.experimental ? edgeExperimentalColor : edgeColor,
+        // What the focus style paints an edge touching the selection.
+        focusColor: e.experimental
+          ? edgeFocusExperimentalColor
+          : edgeFocusColor,
       });
     }
   }
   return g;
 }
 
-// Sigma 4 fixes `nodeReducer`/`edgeReducer` at construction (`setSettings` no longer takes them), and
-// `SigmaContainer` rebuilds the whole instance when `options` changes. So the reducers are installed
-// once and read what is selected, hovered and focused from this ref, which `GraphEvents` updates
-// before asking Sigma to refresh. (A closure store, not a ref: the React Compiler lint rejects
-// passing a ref into the `options` builder and writing `.current` of a prop.)
-interface HighlightInputs {
-  selectedNodeIds: ReadonlySet<string>;
-  selectedEdgeIds: ReadonlySet<string>;
-  hoveredEdge: string | null;
-  focus: SelectionFocus | null;
-  labelColor: string;
+/** The canvas's Sigma, typed with the Graph's state flags and depth layers. */
+function useGraphSigma(): GraphSigma {
+  return useSigma<
+    Attrs,
+    Attrs,
+    Attrs,
+    GraphNodeState,
+    GraphEdgeState,
+    GraphLevelState,
+    GraphPrimitives
+  >();
 }
 
-function createHighlightStore() {
-  let inputs: HighlightInputs = {
-    selectedNodeIds: new Set(),
-    selectedEdgeIds: new Set(),
-    hoveredEdge: null,
-    focus: null,
-    labelColor: "#000",
-  };
-  return {
-    get: () => inputs,
-    set: (patch: Partial<HighlightInputs>) => {
-      inputs = { ...inputs, ...patch };
-    },
-  };
-}
+// A label color for when the theme's cannot be resolved: a mid-grey reads on light and dark.
+const fallbackLabelColor = "#808080";
 
-type HighlightStore = ReturnType<typeof createHighlightStore>;
-
-// Sigma's hover backdrop is white, so a hovered label is forced dark to stay readable in every theme.
-const hoverLabelColor = "#000";
-
-function buildSigmaOptions(inputs: HighlightStore): Partial<SigmaOptions> {
-  return {
-    settings: { renderEdgeLabels: false, enableEdgeEvents: true },
-    nodeReducer: (node, data, _attrs, state) => {
-      const { selectedNodeIds, focus, labelColor } = inputs.get();
-      return {
-        ...nodeHighlightReducer(selectedNodeIds, focus)(node, data),
-        labelColor: state.isHovered ? hoverLabelColor : labelColor,
-      };
-    },
-    edgeReducer: (edge, data, attrs) => {
-      const { selectedEdgeIds, hoveredEdge, focus } = inputs.get();
-      return edgeHighlightReducer(
-        selectedEdgeIds,
-        hoveredEdge,
-        focus,
-      )(edge, { ...data, experimental: attrs.experimental as boolean });
-    },
-  };
+/**
+ * The theme's `--foreground` as `#rrggbb`. Sigma cannot parse the `oklch()` tokens (it draws them
+ * black, invisible on dark themes), so the browser resolves the color.
+ */
+function readForegroundHex(): string {
+  const value = getComputedStyle(document.documentElement)
+    .getPropertyValue("--foreground")
+    .trim();
+  return resolveCssColor(value) ?? fallbackLabelColor;
 }
 
 interface GraphLoaderProps {
@@ -141,11 +130,16 @@ interface GraphLoaderProps {
   edges: GEdge[];
   positions: Float64Array | null;
   camera: GraphCameraView | null;
+  labelColor: string;
+  renderInputs: RenderInputs;
 }
 
-type Sigma = ReturnType<typeof useSigma>;
+type Sigma = GraphSigma;
 
-interface LoadedGraph extends Omit<GraphLoaderProps, "camera"> {
+interface LoadedGraph extends Pick<
+  GraphLoaderProps,
+  "nodes" | "edges" | "positions"
+> {
   sigma: Sigma;
 }
 
@@ -155,7 +149,7 @@ const defaultCameraState = { x: 0.5, y: 0.5, ratio: 1, angle: 0 };
  * A Sigma instance's first load takes the URL's camera (Back or a reload); a later load into the
  * same instance is new rows, for which an old camera means nothing, so it re-fits. Keyed by
  * instance because `SigmaContainer` copies the previous instance's camera onto a recreated one
- * (Strict Mode, a settings change); the URL's camera is applied over that copy, and a first load
+ * (Strict Mode, an `options` change); the URL's camera is applied over that copy, and a first load
  * with none resets it to the default.
  */
 function frameLoadedGraph(
@@ -177,8 +171,15 @@ function frameLoadedGraph(
 // Positions arrive after nodes; new nodes clear the previous graph until their positions exist (so
 // a failed layout never leaves a stale clickable graph), and new positions for the same nodes move
 // them in place.
-function GraphLoader({ nodes, edges, positions, camera }: GraphLoaderProps) {
-  const sigma = useSigma();
+function GraphLoader({
+  nodes,
+  edges,
+  positions,
+  camera,
+  labelColor,
+  renderInputs,
+}: GraphLoaderProps) {
+  const sigma = useGraphSigma();
   const loadGraph = useLoadGraph();
   const loaded = useRef<LoadedGraph | null>(null);
   const framedSigmaRef = useRef<Sigma | null>(null);
@@ -186,6 +187,13 @@ function GraphLoader({ nodes, edges, positions, camera }: GraphLoaderProps) {
   const restoreCamera = useEffectEvent(() =>
     framedSigmaRef.current === sigma ? null : camera,
   );
+  // A new theme recolors the loaded labels in place (`LabelColorSync`); it never reloads the graph.
+  const currentLabelColor = useEffectEvent(() => labelColor);
+  // Sigma drops every item's state when the graph is cleared, so a reload (new rows) re-applies
+  // the current selection's highlights to the nodes and edges it just imported.
+  const syncHighlights = useEffectEvent(() => {
+    syncRenderState(sigma, renderInputs);
+  });
   useEffect(() => {
     const previous = loaded.current;
     const sameGraph =
@@ -201,7 +209,8 @@ function GraphLoader({ nodes, edges, positions, camera }: GraphLoaderProps) {
     }
     loaded.current = { nodes, edges, positions, sigma };
     if (!sameGraph) {
-      loadGraph(buildGraph(nodes, edges, positions));
+      loadGraph(buildGraph(nodes, edges, positions, currentLabelColor()));
+      syncHighlights();
       frameLoadedGraph(sigma, restoreCamera());
       framedSigmaRef.current = sigma;
       return;
@@ -212,11 +221,33 @@ function GraphLoader({ nodes, edges, positions, camera }: GraphLoaderProps) {
       graph.setNodeAttribute(node.id, "x", positions[2 * i]);
       graph.setNodeAttribute(node.id, "y", positions[2 * i + 1]);
     });
+    syncHighlights();
     sigma.refresh();
     // Sigma auto-frames only on initial load; reset the camera so a layout switch re-fits the new
     // extent.
     void sigma.getCamera().reset();
   }, [nodes, edges, positions, loadGraph, sigma]);
+  return null;
+}
+
+/**
+ * Recolors the loaded labels when the theme changes. A graph already in the color (the one
+ * `GraphLoader` just built, or an empty one) is left alone.
+ *
+ * No `{ attributes: ["labelColor"] }` hint: with it Sigma redraws every node with indexation
+ * skipped, which throws synchronously ("can't be repaint") for nodes it has not drawn yet, from a
+ * load until its next frame. Without it Sigma re-indexes the nodes once, a cost a theme switch can
+ * afford.
+ */
+function LabelColorSync({ labelColor }: { labelColor: string }) {
+  const sigma = useGraphSigma();
+  useEffect(() => {
+    const graph = sigma.getGraph();
+    if (!graph.someNode((_node, attrs) => attrs.labelColor !== labelColor)) {
+      return;
+    }
+    graph.updateEachNodeAttributes((_node, attrs) => ({ ...attrs, labelColor }));
+  }, [labelColor, sigma]);
   return null;
 }
 
@@ -244,7 +275,7 @@ const redrawOptions = {
  * label grid, which a plain redraw leaves for the old size, is rebuilt, once the size has settled.
  */
 function ContainerResizeSync() {
-  const sigma = useSigma();
+  const sigma = useGraphSigma();
   useEffect(() => {
     if (typeof ResizeObserver === "undefined") return;
     const container = sigma.getContainer();
@@ -281,7 +312,7 @@ function CameraReporter({
 }: {
   onCameraChange?: (camera: GraphCameraView | null) => void;
 }) {
-  const sigma = useSigma();
+  const sigma = useGraphSigma();
   const report = useEffectEvent((camera: GraphCameraView | null) => {
     onCameraChange?.(camera);
   });
@@ -344,18 +375,13 @@ function additiveDoubleClick<P extends SigmaEventPayload>(
   };
 }
 
-interface GraphEventsProps {
-  highlight: HighlightStore;
+interface GraphEventsProps extends RenderInputs {
   onSelect: (sel: GraphSelection) => void;
   onHover: (tooltip: TooltipState | null) => void;
   selection: GraphSelection;
-  selectedNodeIds: ReadonlySet<string>;
-  selectedEdgeIds: ReadonlySet<string>;
-  focus: SelectionFocus | null;
 }
 
 function GraphEvents({
-  highlight,
   onSelect,
   onHover,
   selection,
@@ -363,9 +389,16 @@ function GraphEvents({
   selectedEdgeIds,
   focus,
 }: GraphEventsProps) {
-  const sigma = useSigma();
-  const registerEvents = useRegisterEvents();
-  const [hoveredEdge, setHoveredEdge] = useState<string | null>(null);
+  const sigma = useGraphSigma();
+  const registerEvents = useRegisterEvents<
+    Attrs,
+    Attrs,
+    Attrs,
+    GraphNodeState,
+    GraphEdgeState,
+    GraphLevelState,
+    GraphPrimitives
+  >();
   // An Effect Event reads the latest selection, so the handlers registered once below toggle
   // against what is selected now.
   const click = useEffectEvent(
@@ -415,46 +448,20 @@ function GraphEvents({
       leaveNode: () => {
         hover(null);
       },
+      // A hovered edge is tinted by Sigma's own `isHovered` state; these only feed the tooltip.
       enterEdge: ({ edge, event }) => {
         const data = sigma.getGraph().getEdgeAttributes(edge) as GEdge;
         hover({ x: event.x, y: event.y, edge: data });
-        setHoveredEdge(edge);
       },
       leaveEdge: () => {
         hover(null);
-        setHoveredEdge(null);
       },
     });
   }, [registerEvents, sigma]);
 
   useEffect(() => {
-    highlight.set({ selectedNodeIds, selectedEdgeIds, hoveredEdge, focus });
-    sigma.scheduleRefresh();
-  }, [sigma, highlight, selectedNodeIds, selectedEdgeIds, hoveredEdge, focus]);
-
-  // Flat labels default to #000, invisible on the dark canvas. Canvas 2D can't parse var(), so
-  // resolve --foreground and re-resolve on data-theme changes (observe the attribute: this effect
-  // commits before next-themes' provider effect).
-  useEffect(() => {
-    const apply = () => {
-      const color = getComputedStyle(document.documentElement)
-        .getPropertyValue("--foreground")
-        .trim();
-      if (color) {
-        highlight.set({ labelColor: color });
-        sigma.scheduleRefresh();
-      }
-    };
-    apply();
-    const observer = new MutationObserver(apply);
-    observer.observe(document.documentElement, {
-      attributes: true,
-      attributeFilter: ["data-theme"],
-    });
-    return () => {
-      observer.disconnect();
-    };
-  }, [sigma, highlight]);
+    syncRenderState(sigma, { selectedNodeIds, selectedEdgeIds, focus });
+  }, [sigma, selectedNodeIds, selectedEdgeIds, focus]);
 
   return null;
 }
@@ -466,6 +473,8 @@ function HandleBridge({
   handleRef: GraphCanvasProps["handleRef"];
   onReady?: () => void;
 }) {
+  // Untyped: `downloadAsImage` takes Sigma with its default state types. It copies every item's
+  // state onto its offscreen renderer, so the highlights are in the PNG.
   const sigma = useSigma();
 
   useImperativeHandle(
@@ -500,11 +509,28 @@ export function SigmaCanvas({
   onCameraChange,
 }: GraphCanvasProps) {
   const [tooltip, setTooltip] = useState<TooltipState | null>(null);
-  const [highlight] = useState(createHighlightStore);
-  const [sigmaOptions] = useState(() => buildSigmaOptions(highlight));
+  // One options object for the canvas's life: `SigmaContainer` rebuilds Sigma (dropping every
+  // item's highlight state) whenever its `options` differ.
+  const [sigmaOptions] = useState(buildSigmaOptions);
+  const [labelColor, setLabelColor] = useState(readForegroundHex);
   const selectedNodeIds = new Set(selection.nodes.map((node) => node.id));
   const selectedEdgeIds = new Set(selection.edges.map((edge) => edge.id));
   const focus = computeSelectionFocus(incidence, selection);
+
+  // Re-resolve the label color when the theme changes. It observes the attribute rather than
+  // reading next-themes, whose provider effect commits after this one.
+  useEffect(() => {
+    const observer = new MutationObserver(() => {
+      setLabelColor(readForegroundHex());
+    });
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["data-theme"],
+    });
+    return () => {
+      observer.disconnect();
+    };
+  }, []);
 
   return (
     <div className="relative size-full">
@@ -525,14 +551,16 @@ export function SigmaCanvas({
       >
         <ContainerResizeSync />
         <CameraReporter onCameraChange={onCameraChange} />
+        <LabelColorSync labelColor={labelColor} />
         <GraphLoader
           nodes={nodes}
           edges={edges}
           positions={positions}
           camera={camera}
+          labelColor={labelColor}
+          renderInputs={{ selectedNodeIds, selectedEdgeIds, focus }}
         />
         <GraphEvents
-          highlight={highlight}
           onSelect={onSelect}
           onHover={setTooltip}
           selection={selection}

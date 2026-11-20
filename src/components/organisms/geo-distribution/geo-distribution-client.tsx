@@ -17,6 +17,7 @@ import {
 import { ColorLegend } from "./color-legend";
 import { makeGeoColorScale } from "./color-scale";
 import { MapControls } from "./map-controls";
+import { describeEmptyView, MapEmptyState } from "./map-empty-state";
 import { MapTooltip } from "./map-tooltip";
 import type { GeoDistributionAccent, GeoMapState, GeoMapView } from "./types";
 
@@ -143,13 +144,12 @@ export function GeoDistributionClient({
     stateOptions.sort((a, b) => a.name.localeCompare(b.name));
   }
 
-  const colorScale = makeGeoColorScale(
-    visibleCounts(
-      data,
-      mapState,
-      stateOptions.map((option) => option.name),
-    ),
+  const counts = visibleCounts(
+    data,
+    mapState,
+    stateOptions.map((option) => option.name),
   );
+  const colorScale = makeGeoColorScale(counts);
 
   const {
     tooltipOpen,
@@ -209,21 +209,19 @@ export function GeoDistributionClient({
     showTooltip({ tooltipData: payload, tooltipLeft: left, tooltipTop: top });
   };
 
-  let helperMessage: string | null = null;
-  if (mapState.view === "world" && Object.keys(data.countryData).length === 0) {
-    helperMessage = "No country-level data for this taxon.";
-  } else if (
-    mapState.view === "us" &&
-    Object.keys(data.stateData).length === 0
-  ) {
-    helperMessage = "No US state-level data for this taxon.";
-  } else if (
-    mapState.view === "state" &&
-    mapState.selectedStateFips &&
-    Object.keys(data.countyData).length === 0
-  ) {
-    helperMessage = "No county-level data for this taxon.";
-  }
+  // The overlay waits for the view's outline so it never stacks on "Loading…"
+  // or on a map error, and it asks about this view's regions, not the taxon's.
+  const viewQuery =
+    mapState.view === "world"
+      ? worldQuery
+      : mapState.view === "us"
+        ? statesQuery
+        : countiesQuery;
+  const viewSettled = !viewQuery.isLoading && !viewQuery.error;
+  const emptyMessage =
+    viewSettled && !counts.some((count) => count > 0)
+      ? describeEmptyView(mapState, data)
+      : null;
 
   return (
     <Card variant="panel" className="h-full" size="sm">
@@ -263,6 +261,7 @@ export function GeoDistributionClient({
             onHoverChange={handleHoverChange}
             onLeaveMap={hideTooltip}
           />
+          <MapEmptyState message={emptyMessage} />
           {tooltipOpen && tooltipData && (
             <TooltipWithBounds
               left={tooltipLeft}
@@ -274,8 +273,7 @@ export function GeoDistributionClient({
             </TooltipWithBounds>
           )}
         </div>
-        <div className="mt-3 flex flex-wrap items-start justify-between gap-x-4 gap-y-3">
-          <span className="text-xs text-muted-foreground">{helperMessage}</span>
+        <div className="mt-3 flex flex-wrap items-start justify-end gap-x-4 gap-y-3">
           <ColorLegend scale={colorScale} unit={legendUnits[mapState.view]} />
         </div>
       </CardContent>

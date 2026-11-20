@@ -3,6 +3,7 @@ import { join } from "node:path";
 
 import {
   type GeoColorScale,
+  geoBorderFor,
   geoNoDataFill,
   geoStepFills,
   isUsaTopoName,
@@ -142,6 +143,25 @@ describe("makeGeoColorScale", () => {
         for (const c of values.slice(i + j)) expectEveryStepInUse([a, b, c]);
       }
     }
+  });
+});
+
+describe("geoBorderFor", () => {
+  it.each(geoStepFills.map((fill, index) => ({ fill, step: index + 1 })))(
+    "draws $fill with the border of its own step",
+    ({ fill, step }) => {
+      expect(geoBorderFor(fill)).toBe(`var(--geo-border-${String(step)})`);
+    },
+  );
+
+  it("draws the no-data fill with the no-data border", () => {
+    expect(geoBorderFor(geoNoDataFill)).toBe("var(--geo-border-no-data)");
+  });
+
+  it("falls back to the no-data border for a fill it does not know", () => {
+    expect(geoBorderFor("var(--geo-step-8)")).toBe("var(--geo-border-no-data)");
+    expect(geoBorderFor("#ffffff")).toBe("var(--geo-border-no-data)");
+    expect(geoBorderFor("")).toBe("var(--geo-border-no-data)");
   });
 });
 

@@ -4,6 +4,7 @@ import type { PointerEvent as ReactPointerEvent, RefObject } from "react";
 
 import { cn } from "@/lib/utils";
 
+import { geoBorderFor } from "./color-scale";
 import type { GeoMapView } from "./types";
 
 export interface HoverPayload {
@@ -23,6 +24,7 @@ export type HoverLeave = () => void;
 interface ChoroplethPathProps {
   pathD: string;
   fill: string;
+  /** The visible border line in screen pixels; it does not scale with zoom. */
   strokeWidth: number;
   cursor?: "pointer" | "default";
   isDraggingRef: RefObject<boolean>;
@@ -47,10 +49,11 @@ export function ChoroplethPath({
     <path
       d={pathD}
       fill={fill}
-      stroke="currentColor"
+      stroke={geoBorderFor(fill)}
       strokeWidth={strokeWidth}
+      strokeLinejoin="round"
+      vectorEffect="non-scaling-stroke"
       className={cn(
-        "text-muted-foreground",
         cursor === "pointer" && "cursor-pointer",
         cursor === "default" && "cursor-default",
       )}

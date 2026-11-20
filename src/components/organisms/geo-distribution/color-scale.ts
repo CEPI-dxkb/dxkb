@@ -15,6 +15,18 @@ export const geoStepFills = [
 ] as const;
 export const geoNoDataFill = "var(--geo-no-data)";
 
+const geoNoDataBorder = "var(--geo-border-no-data)";
+
+/**
+ * The border of a region filled with `fill`: a shade of that fill's own color
+ * with 3:1 against it, defined beside the fill in `globals.css`. A fill that is
+ * not one of the map's gets the no-data border.
+ */
+export function geoBorderFor(fill: string): string {
+  const step = geoStepFills.indexOf(fill as (typeof geoStepFills)[number]);
+  return step < 0 ? geoNoDataBorder : `var(--geo-border-${String(step + 1)})`;
+}
+
 export interface GeoColorStep {
   fill: string;
   /** The fewest genomes a region in this step has. */

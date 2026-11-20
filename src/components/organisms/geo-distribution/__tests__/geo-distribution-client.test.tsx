@@ -241,7 +241,7 @@ describe("GeoDistributionClient", () => {
     const status = screen.getByRole("status");
     expect(status).toHaveTextContent("No county-level data for this taxon.");
     expect(status).toHaveTextContent(
-      "Illinois has 420 genomes, but none record a county.",
+      "Illinois has 420 genomes, but county-level data is unavailable.",
     );
   });
 

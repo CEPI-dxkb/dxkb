@@ -28,15 +28,12 @@ export function describeEmptyView(
   if (genomes === 0) {
     return {
       title: `No data for ${name}.`,
-      description: `No genomes are recorded for ${name}.`,
+      description: `No genome count is available for ${name}.`,
     };
   }
   return {
     title: "No county-level data for this taxon.",
-    description:
-      genomes === 1
-        ? `${name} has 1 genome, but it records no county.`
-        : `${name} has ${countFormatter.format(genomes)} genomes, but none record a county.`,
+    description: `${name} has ${countFormatter.format(genomes)} ${genomes === 1 ? "genome" : "genomes"}, but county-level data is unavailable.`,
   };
 }
 

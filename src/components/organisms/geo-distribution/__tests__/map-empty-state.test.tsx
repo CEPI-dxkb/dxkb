@@ -40,24 +40,24 @@ describe("describeEmptyView", () => {
     ).toEqual({ title: "No US state-level data for this taxon.", description: null });
   });
 
-  it("says how many genomes the state has when none record a county", () => {
+  it("says how many genomes the state has when county data is unavailable", () => {
     expect(describeEmptyView(illinois, distribution({ Illinois: 420 }))).toEqual({
       title: "No county-level data for this taxon.",
-      description: "Illinois has 420 genomes, but none record a county.",
+      description: "Illinois has 420 genomes, but county-level data is unavailable.",
     });
     expect(describeEmptyView(illinois, distribution({ Illinois: 1 }))).toEqual({
       title: "No county-level data for this taxon.",
-      description: "Illinois has 1 genome, but it records no county.",
+      description: "Illinois has 1 genome, but county-level data is unavailable.",
     });
     expect(describeEmptyView(illinois, distribution({ Illinois: 4647 })).description).toBe(
-      "Illinois has 4,647 genomes, but none record a county.",
+      "Illinois has 4,647 genomes, but county-level data is unavailable.",
     );
   });
 
   it("says so when the taxon has no genomes in the state", () => {
     expect(describeEmptyView(illinois, distribution({ Texas: 9 }))).toEqual({
       title: "No data for Illinois.",
-      description: "No genomes are recorded for Illinois.",
+      description: "No genome count is available for Illinois.",
     });
   });
 });
@@ -74,14 +74,14 @@ describe("MapEmptyState", () => {
       <MapEmptyState
         message={{
           title: "No county-level data for this taxon.",
-          description: "Illinois has 420 genomes, but none record a county.",
+          description: "Illinois has 420 genomes, but county-level data is unavailable.",
         }}
       />,
     );
 
     const status = screen.getByRole("status");
     expect(status).toHaveTextContent("No county-level data for this taxon.");
-    expect(status).toHaveTextContent("Illinois has 420 genomes, but none record a county.");
+    expect(status).toHaveTextContent("Illinois has 420 genomes, but county-level data is unavailable.");
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 

@@ -1,3 +1,12 @@
+import "server-only";
+
+import {
+  describeUpstreamFailure,
+  upstreamServices,
+} from "@/lib/api/upstream-failure";
+import { isUpstreamDown } from "@/lib/api/upstream-outage";
+import { createSharedCache } from "@/lib/shared-cache";
+
 import { genomeScopeRql } from "./genome-scope";
 import type { OrganismFetchOptions } from "./types";
 import {
@@ -46,4 +55,54 @@ export async function fetchExperimentalStructureCount(
     throw new Error("Unexpected SOLR response shape — missing response.numFound");
   }
   return numFound;
+}
+
+/**
+ * Whether a failed count is the data service being down (a 5xx, a timeout, an
+ * unreachable host), not a configuration error or bug.
+ */
+function isStructureCountOutage(error: unknown): boolean {
+  const failure = describeUpstreamFailure(error, upstreamServices.dataApi);
+  return failure !== null && failure.status >= 500;
+}
+
+/** Logs an outage once per failed load; a cached failure is served unlogged. */
+async function loadExperimentalStructureCount(taxonId: number): Promise<number> {
+  try {
+    return await fetchExperimentalStructureCount(taxonId);
+  } catch (error) {
+    if (isStructureCountOutage(error)) {
+      console.error(`protein-structure-count/${String(taxonId)}: count failed`, error);
+    }
+    throw error;
+  }
+}
+
+// The count is public data that changes with the nightly loads, so one join
+// per taxon a day is enough. An outage (including the 60 s budget running out)
+// is cached for the retry window so visitors do not each wait for the join
+// again; a malformed payload or a missing env var is not cached.
+const experimentalStructureCountCache = createSharedCache<number, number>({
+  name: "organism-experimental-structure-count",
+  load: (taxonId) => loadExperimentalStructureCount(taxonId),
+  freshMs: 24 * 60 * 60 * 1000,
+  retryMs: 60_000,
+  maxEntries: 2000,
+  cacheError: isStructureCountOutage,
+  breaker: {
+    trips: (error, elapsedMs) =>
+      isUpstreamDown(error, upstreamServices.dataApi, {
+        elapsedMs,
+        budgetMs: organismJoinFetchTimeoutMs,
+      }),
+  },
+});
+
+/**
+ * `fetchExperimentalStructureCount` through the process-wide cache, sent
+ * without a token or a request signal. A cached failure is the same error
+ * object for every visitor, so callers must not mutate it.
+ */
+export function getSharedExperimentalStructureCount(taxonId: number): Promise<number> {
+  return experimentalStructureCountCache.get(taxonId);
 }

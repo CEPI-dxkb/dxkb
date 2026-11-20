@@ -1,4 +1,4 @@
-import { fetchExperimentalStructureCount } from "./structure-count";
+import { getSharedExperimentalStructureCount } from "./structure-count";
 import type { OrganismFetchOptions, OrganismSummary } from "./types";
 import {
   fetchOrganism,
@@ -28,10 +28,13 @@ async function fetchSummaryPayload(
 }
 
 /**
- * `summary_by_taxon` supplies everything but `pdb`: its `PDB` is every
- * `protein_structure` document under the taxon, AlphaFold models included
- * (~99.7%), so `pdb` is the experimental count from `protein_structure`
- * instead. Either request failing rejects with its own message.
+ * `summary_by_taxon` supplies everything but `pdb`; `pdb` is the
+ * experimental-structure count the Protein Structures tab shows (a genome
+ * join, see `structure-count.ts`), read through the shared cache because the
+ * join takes about 23 s for Bacteria; either request failing rejects with its
+ * own message. `options.signal` cancels only the summary request: the shared
+ * count load serves every visitor, so one caller's cancellation cannot stop
+ * it.
  */
 export async function fetchOrganismSummary(
   taxonId: number,
@@ -39,7 +42,7 @@ export async function fetchOrganismSummary(
 ): Promise<OrganismSummary> {
   const [payload, pdb] = await Promise.all([
     fetchSummaryPayload(taxonId, options),
-    fetchExperimentalStructureCount(taxonId, options),
+    getSharedExperimentalStructureCount(taxonId),
   ]);
 
   return {

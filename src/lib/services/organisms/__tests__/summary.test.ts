@@ -70,6 +70,26 @@ describe("fetchOrganismSummary", () => {
     expect(summary.pdb).toBe(68_899);
   });
 
+  it("reads pdb through the shared cache, so a second summary does not recount", async () => {
+    server.use(
+      http.get(`${baseUrl}/data/summary_by_taxon/9000101`, () =>
+        HttpResponse.json({ count: 1, PDB: 5 }),
+      ),
+    );
+    let structureRequests = 0;
+    server.use(
+      http.get(`${baseUrl}/protein_structure/`, () => {
+        structureRequests += 1;
+        return HttpResponse.json({ response: { numFound: 257, docs: [] } });
+      }),
+    );
+
+    await expect(fetchOrganismSummary(9000101)).resolves.toMatchObject({ pdb: 257 });
+    await expect(fetchOrganismSummary(9000101)).resolves.toMatchObject({ pdb: 257 });
+
+    expect(structureRequests).toBe(1);
+  });
+
   it("rejects with the structure count's own message when it fails", async () => {
     server.use(
       http.get(`${baseUrl}/data/summary_by_taxon/2`, () =>

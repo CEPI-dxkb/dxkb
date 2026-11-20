@@ -329,16 +329,23 @@
   --graph-surface: color-mix(in oklab, var(--input) 30%, var(--card));
 }
 
-/* Light to dark on a light theme, flipped on a dark one, with lightness steps
-   0.09 apart (checked by `color-scale.test.ts`). */
+/* The border is a thin core over a wider halo in the card colour, so an edge
+   shows on every fill: the dark core on light fills, the halo beside it on
+   dark ones. No single stroke colour reaches 3:1 on all seven steps
+   (`geo-border-contrast.test.ts` checks both layers against every fill). */
 [data-geo-accent] {
   --geo-no-data: oklch(0.785 0 0);
+  --geo-border: oklch(0.3 0 0);
+  --geo-border-halo: var(--card);
 }
 
 [data-theme$="-dark"] [data-geo-accent] {
   --geo-no-data: oklch(0.515 0 0);
+  --geo-border: oklch(0.9 0 0);
 }
 
+/* Light to dark on a light theme, flipped on a dark one, with lightness steps
+   0.09 apart (checked by `color-scale.test.ts`). */
 [data-geo-accent="bacteria"] {
   --geo-step-1: oklch(0.92 0.035 264);
   --geo-step-2: oklch(0.83 0.077 264);

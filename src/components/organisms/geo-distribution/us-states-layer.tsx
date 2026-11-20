@@ -58,7 +58,7 @@ export function UsStatesLayer({
               key={String(feature.id ?? name)}
               pathD={path ?? ""}
               fill={colorScale(count)}
-              strokeWidth={0.75}
+              strokeWidth={1}
               cursor="pointer"
               isDraggingRef={isDraggingRef}
               payload={{

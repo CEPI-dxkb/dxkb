@@ -4,6 +4,7 @@ import {
   experimentalStructureRql,
   fetchExperimentalStructureCount,
 } from "@/lib/services/organisms/structure-count";
+import { organismJoinFetchTimeoutMs } from "@/lib/services/organisms/utils";
 import { server } from "@/test-helpers/msw-server";
 
 const baseUrl = "https://bvbrc.test/api-for-website";
@@ -14,13 +15,15 @@ beforeEach(() => {
 
 afterEach(() => {
   delete process.env.BVBRC_WEBSITE_API_URL;
+  vi.restoreAllMocks();
 });
 
+const experimentalStructureQuery =
+  "and(ne(method,Predicted),eq(genome_id,*),genome(and(eq(taxon_lineage_ids,2),ne(genome_status,Deprecated))))";
+
 describe("experimentalStructureRql", () => {
-  it("scopes to the taxon lineage and leaves out predicted models", () => {
-    expect(experimentalStructureRql(2)).toBe(
-      "and(eq(taxon_lineage_ids,2),ne(method,Predicted))",
-    );
+  it("counts structures linked to a non-Deprecated genome of the taxon's lineage, like the Protein Structures tab", () => {
+    expect(experimentalStructureRql(2)).toBe(experimentalStructureQuery);
   });
 });
 
@@ -35,8 +38,23 @@ describe("fetchExperimentalStructureCount", () => {
     );
 
     await expect(fetchExperimentalStructureCount(2)).resolves.toBe(68_899);
-    expect(seenQuery).toContain("and(eq(taxon_lineage_ids,2),ne(method,Predicted))");
+    expect(seenQuery).toContain(experimentalStructureQuery);
     expect(seenQuery).toContain("limit(1)");
+    expect(seenQuery).toContain("select(pdb_id)");
+  });
+
+  it("gives the cross-collection join the long fetch budget", async () => {
+    const timeoutSpy = vi.spyOn(AbortSignal, "timeout");
+    server.use(
+      http.get(`${baseUrl}/protein_structure/`, () =>
+        HttpResponse.json({ response: { numFound: 257, docs: [] } }),
+      ),
+    );
+
+    await fetchExperimentalStructureCount(2);
+
+    expect(timeoutSpy).toHaveBeenCalledWith(60_000);
+    expect(timeoutSpy).toHaveBeenCalledWith(organismJoinFetchTimeoutMs);
   });
 
   it("throws on a response without numFound", async () => {

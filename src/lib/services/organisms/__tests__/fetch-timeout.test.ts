@@ -8,6 +8,7 @@ import {
   fetchOrganismSolrJson,
   fetchOrganismSolrJsonPost,
   organismFetchTimeoutMs,
+  organismJoinFetchTimeoutMs,
   readJsonObject,
 } from "@/lib/services/organisms/utils";
 import { UpstreamError } from "@/lib/api/upstream-failure";
@@ -69,6 +70,25 @@ describe("organism fetch timeout", () => {
       });
     },
   );
+
+  it("gives a request its own budget and names that one when it runs out", async () => {
+    const timeoutSpy = vi.spyOn(AbortSignal, "timeout");
+    stallEveryRequest();
+
+    await expect(
+      fetchOrganismSolrJson(
+        `${baseUrl}/genome/`,
+        genusFacet,
+        undefined,
+        undefined,
+        organismJoinFetchTimeoutMs,
+      ),
+    ).rejects.toMatchObject({
+      message: `Genus: The BV-BRC data service did not respond (timed out after ${String(organismJoinFetchTimeoutMs / 1000)} s).`,
+      source: genusFacet.source,
+    });
+    expect(timeoutSpy).toHaveBeenCalledWith(organismJoinFetchTimeoutMs);
+  });
 
   // MSW does not tie the request signal to a mocked body, so error the stream
   // with the signal reason as undici does on a mid-body abort.

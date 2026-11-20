@@ -39,8 +39,9 @@ test.describe("taxon interactions tab", () => {
   });
 
   test("Graph subtab renders a canvas", async ({ page, browserName }) => {
-    // Headless Firefox in CI cannot create a WebGL context, so Sigma throws and the
-    // canvas never mounts; Chromium and WebKit ship software GL.
+    // Headless Firefox in CI cannot create a WebGL 2 context, so the Graph shows its
+    // "needs WebGL 2" notice (`supportsWebGl2()`) and the canvas never mounts; Chromium
+    // and WebKit ship software GL.
     test.skip(
       browserName === "firefox",
       "Headless Firefox has no WebGL for Sigma.js to render into",
@@ -234,8 +235,9 @@ test.describe("taxon interactions tab: filter sync between Table and Graph", () 
     page,
     browserName,
   }) => {
-    // Switching to Graph mounts SigmaCanvas, which headless Firefox cannot give a WebGL
-    // context; Chromium and WebKit cover this.
+    // Switching to Graph mounts SigmaCanvas, which headless Firefox cannot give a WebGL 2
+    // context, so it shows the "needs WebGL 2" notice instead; Chromium and WebKit cover
+    // this.
     test.skip(
       browserName === "firefox",
       "Headless Firefox has no WebGL for Sigma.js to render into",
@@ -347,5 +349,83 @@ test.describe("taxon interactions tab: narrowing a graph", () => {
 
     await interactionsPage.expectGraphFilterBar(true);
     await interactionsPage.expectGraphNode(peg602Label, true);
+  });
+});
+
+// The only checks that read what the canvas painted. Highlighting can vanish without an error, a
+// unit test or any DOM assertion noticing (the list still marks the row selected and the details
+// pane still opens), so these count pixels of the colors `graph-theme.ts` gives a node. Each is an
+// exact, opaque swatch that a dimmed (translucent grey) node or an anti-aliased edge cannot reach.
+test.describe("taxon interactions tab: canvas pixels", () => {
+  // `colors.microbial` (#90CAF9) and `colors.selected` (#FFAB00).
+  const microbialBlue = [144, 202, 249] as const;
+  const selectedOrange = [255, 171, 0] as const;
+  // Each read is a screenshot, and a node is only a few pixels across, so the poll gets room on a
+  // slow runner.
+  const pixelPoll = { timeout: 15_000 };
+
+  test.skip(
+    ({ browserName }) => browserName === "firefox",
+    "Headless Firefox has no WebGL for Sigma.js to render into",
+  );
+
+  // Three rows are three disjoint pairs of microbial nodes (`fig|...peg.600` with `peg.2400`, and
+  // so on), so selecting one node leaves two pairs that are not its neighbors. The layout is
+  // seeded, so the pairs land in the same places on every run: peg.601's pair sits in the top-left,
+  // well clear of the Controls button and the zoom control that the screenshots mask.
+  const selectedLabel = peg601Label;
+
+  async function openDrawnGraph(page: Parameters<typeof applyBackendMocks>[0]) {
+    const interactionsPage = await setupInteractionsPage(page, buildPpiRows(3));
+    await interactionsPage.switchToGraph();
+    await interactionsPage.expectCanvasVisible();
+    // The canvas is drawn once the nodes' blue is on it, so a later "no orange" is not just an
+    // empty canvas.
+    await expect
+      .poll(() => interactionsPage.canvasColorCount(microbialBlue), pixelPoll)
+      .toBeGreaterThan(0);
+    return interactionsPage;
+  }
+
+  test("the default graph draws its nodes, none of them selected", async ({
+    page,
+  }) => {
+    const interactionsPage = await openDrawnGraph(page);
+
+    expect(await interactionsPage.canvasColorCount(selectedOrange)).toBe(0);
+  });
+
+  test("selecting a protein paints it in the selection color, and clearing the selection takes it back", async ({
+    page,
+  }) => {
+    const interactionsPage = await openDrawnGraph(page);
+    expect(await interactionsPage.canvasColorCount(selectedOrange)).toBe(0);
+
+    await interactionsPage.selectNodeInList(selectedLabel);
+    await interactionsPage.expectNodeSelected(selectedLabel);
+    await expect
+      .poll(() => interactionsPage.canvasColorCount(selectedOrange), pixelPoll)
+      .toBeGreaterThan(0);
+
+    await interactionsPage.removeNodeFromSelectionInList(selectedLabel);
+    await expect
+      .poll(() => interactionsPage.canvasColorCount(selectedOrange), pixelPoll)
+      .toBe(0);
+  });
+
+  test("selecting a protein dims the nodes that are not its neighbors", async ({
+    page,
+  }) => {
+    const interactionsPage = await openDrawnGraph(page);
+    const blueBefore = await interactionsPage.canvasColorCount(microbialBlue);
+
+    await interactionsPage.selectNodeInList(selectedLabel);
+    await interactionsPage.expectNodeSelected(selectedLabel);
+
+    // The selected node turns orange and its one partner keeps its blue; the other two pairs go
+    // translucent grey.
+    await expect
+      .poll(() => interactionsPage.canvasColorCount(microbialBlue), pixelPoll)
+      .toBeLessThan(blueBefore);
   });
 });

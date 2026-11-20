@@ -594,7 +594,8 @@ test.describe("a11y deep tier: taxon interactions graph", () => {
     page,
     browserName,
   }) => {
-    // Sigma needs WebGL, which headless Firefox and WebKit cannot render reliably, so
+    // Sigma 4 needs WebGL 2, which headless Firefox and WebKit cannot render reliably
+    // (headless Firefox gets the Graph's "needs WebGL 2" notice instead of a canvas), so
     // Chromium carries this coverage.
     test.skip(
       browserName !== "chromium",

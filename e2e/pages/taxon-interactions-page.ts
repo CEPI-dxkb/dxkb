@@ -62,8 +62,73 @@ export class TaxonInteractionsPage {
     ).toHaveCount(0);
   }
 
+  /** The Graph's WebGL canvas: Sigma 4 draws everything into one, `.sigma-stage`, the panel's first. */
+  private graphCanvas(): Locator {
+    return this.page.getByRole("tabpanel", { name: "Graph" }).locator("canvas").first();
+  }
+
   async expectCanvasVisible(): Promise<void> {
-    await expect(this.page.getByRole("tabpanel", { name: "Graph" }).locator("canvas").first()).toBeVisible();
+    await expect(this.graphCanvas()).toBeVisible();
+  }
+
+  /**
+   * What is painted over the canvas box: the Controls button, the zoom control, and any notice
+   * (the truncation and layout-error notices, the WebGL 2 alert, the "Laying out…" veil). An element
+   * screenshot includes them, so a pixel read masks them to read only what the canvas drew.
+   */
+  private overlayControls(): Locator[] {
+    const graphPanel = this.graphPanel();
+    return [
+      graphPanel.getByRole("button", { name: "Controls", exact: true }),
+      graphPanel.getByRole("form", { name: "Graph zoom" }),
+      graphPanel.getByRole("status"),
+      graphPanel.getByRole("alert"),
+    ];
+  }
+
+  /**
+   * How many pixels of the canvas are within `tolerance` of `rgb` on every channel. A screenshot is
+   * the only thing that proves what the canvas drew: highlighting can be lost without an error, a
+   * unit test or any DOM assertion noticing. It waits for the layout veil to clear, moves the mouse
+   * off the canvas (a hover pill would add pixels) and decodes the PNG in the page, so it needs no
+   * PNG library. A node is only a few pixels across at the default zoom, so pass an exact opaque
+   * color, and poll rather than read once.
+   */
+  async canvasColorCount(
+    rgb: readonly [number, number, number],
+    tolerance = 24,
+  ): Promise<number> {
+    await this.waitForLayout();
+    await this.page.mouse.move(0, 0);
+    const png = await this.graphCanvas().screenshot({
+      mask: this.overlayControls(),
+    });
+    return this.page.evaluate(
+      async ({ b64, target, tol }) => {
+        const img = new Image();
+        img.src = `data:image/png;base64,${b64}`;
+        await img.decode();
+        const canvas = document.createElement("canvas");
+        canvas.width = img.width;
+        canvas.height = img.height;
+        const context = canvas.getContext("2d");
+        if (!context) throw new Error("2d context unavailable");
+        context.drawImage(img, 0, 0);
+        const { data } = context.getImageData(0, 0, img.width, img.height);
+        let count = 0;
+        for (let i = 0; i < data.length; i += 4) {
+          if (
+            Math.abs(data[i] - target[0]) <= tol &&
+            Math.abs(data[i + 1] - target[1]) <= tol &&
+            Math.abs(data[i + 2] - target[2]) <= tol
+          ) {
+            count += 1;
+          }
+        }
+        return count;
+      },
+      { b64: png.toString("base64"), target: [...rgb], tol: tolerance },
+    );
   }
 
   async expectEmptyGraphWorkspace(): Promise<void> {
@@ -131,6 +196,11 @@ export class TaxonInteractionsPage {
     await (await this.listRow(label, false)).click({
       modifiers: ["ControlOrMeta"],
     });
+  }
+
+  /** Cmd/Ctrl-click toggles, so on a selected node it takes the node back out of the selection. */
+  async removeNodeFromSelectionInList(label: string): Promise<void> {
+    await this.addNodeToSelectionInList(label);
   }
 
   private detailPanel() {

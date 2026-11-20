@@ -1,24 +1,36 @@
 import { type FocusEvent, useEffect, useRef, useState } from "react";
 
 /**
- * Open/close state for a panel attached to a card. A pointer opens it after a
- * short intent delay and focus inside opens it at once; leaving, focus moving
- * out, or Escape closes it. `toggle` pins it open, which is the touch and
- * keyboard path (a tap does not hover): a pinned panel stays through pointer
- * leave and closes on the next press outside it.
+ * Open/close state for a panel attached to a card. The panel is open while the
+ * pointer is inside (after a short intent delay), while focus is inside, or
+ * while it is pinned, so neither input can close what the other still holds
+ * open. `toggle` pins it, which is the touch and keyboard path (a tap does not
+ * hover): a pinned panel stays through pointer leave and closes on the next
+ * press outside it, on Tab out, or on Escape.
+ *
+ * Escape closes it wherever focus is. When focus was inside the panel, the
+ * panel is about to unmount, so focus moves to the toggle first; a hover-only
+ * panel has no focus to move, and focus elsewhere is left alone.
  */
 export function useHoverDisclosure(openDelayMs = 120) {
   const ref = useRef<HTMLDivElement>(null);
+  const toggleRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-  const [open, setOpen] = useState(false);
+  const pointerInside = useRef(false);
+  const ignoreFocus = useRef(false);
+  const [hovered, setHovered] = useState(false);
+  const [focused, setFocused] = useState(false);
   const [pinned, setPinned] = useState(false);
+  const open = hovered || focused || pinned;
 
   useEffect(() => {
     if (!pinned) return;
     function onPointerDown(event: PointerEvent) {
       if (ref.current && !ref.current.contains(event.target as Node)) {
+        setHovered(false);
+        setFocused(false);
         setPinned(false);
-        setOpen(false);
       }
     }
     document.addEventListener("pointerdown", onPointerDown);
@@ -27,15 +39,22 @@ export function useHoverDisclosure(openDelayMs = 120) {
     };
   }, [pinned]);
 
-  // Escape dismisses the panel wherever focus is: a hover-opened panel has no
-  // focus inside it, so a keydown handler on the wrapper would never see it.
   useEffect(() => {
     if (!open) return;
     function onKeyDown(event: KeyboardEvent) {
       if (event.key !== "Escape") return;
+      const active = document.activeElement;
+      const toggle = toggleRef.current;
+      if (toggle && active && active !== toggle && panelRef.current?.contains(active)) {
+        // The toggle's own onFocus would reopen the panel we are closing.
+        ignoreFocus.current = true;
+        toggle.focus();
+        ignoreFocus.current = false;
+      }
       clearTimeout(timer.current);
+      setHovered(false);
+      setFocused(false);
       setPinned(false);
-      setOpen(false);
     }
     document.addEventListener("keydown", onKeyDown);
     return () => {
@@ -43,37 +62,40 @@ export function useHoverDisclosure(openDelayMs = 120) {
     };
   }, [open]);
 
-  function close() {
-    clearTimeout(timer.current);
-    setPinned(false);
-    setOpen(false);
-  }
-
   function toggle() {
     clearTimeout(timer.current);
-    setPinned(!pinned);
-    setOpen(!pinned);
+    if (pinned) {
+      setHovered(false);
+      setFocused(false);
+      setPinned(false);
+    } else {
+      setPinned(true);
+    }
   }
 
   const handlers = {
     onMouseEnter() {
+      pointerInside.current = true;
       clearTimeout(timer.current);
       timer.current = setTimeout(() => {
-        setOpen(true);
+        setHovered(true);
       }, openDelayMs);
     },
     onMouseLeave() {
+      pointerInside.current = false;
       clearTimeout(timer.current);
-      if (!pinned) setOpen(false);
+      setHovered(false);
     },
     onFocus() {
-      clearTimeout(timer.current);
-      setOpen(true);
+      if (!ignoreFocus.current) setFocused(true);
     },
     onBlur(event: FocusEvent<HTMLDivElement>) {
-      if (!event.currentTarget.contains(event.relatedTarget)) close();
+      if (event.currentTarget.contains(event.relatedTarget)) return;
+      setFocused(false);
+      // Tabbing away unpins, unless the pointer is still on the card.
+      if (!pointerInside.current) setPinned(false);
     },
   };
 
-  return { ref, open, toggle, handlers };
+  return { ref, toggleRef, panelRef, open, toggle, handlers };
 }

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import Link from "next/link";
 
@@ -29,15 +29,18 @@ function renderCard({
   note?: string;
 } = {}) {
   return render(
-    <FamilyPathogensDisclosure>
-      <Link href="/taxonomy/11118">View {familyName} genomes</Link>
-      <FamilyPathogensToggle familyName={familyName} pathogens={list} />
-      <FamilyPathogensDrawer
-        familyName={familyName}
-        pathogens={list}
-        note={note}
-      />
-    </FamilyPathogensDisclosure>,
+    <>
+      <FamilyPathogensDisclosure>
+        <Link href="/taxonomy/11118">View {familyName} genomes</Link>
+        <FamilyPathogensToggle familyName={familyName} pathogens={list} />
+        <FamilyPathogensDrawer
+          familyName={familyName}
+          pathogens={list}
+          note={note}
+        />
+      </FamilyPathogensDisclosure>
+      <button type="button">outside</button>
+    </>,
   );
 }
 
@@ -142,6 +145,66 @@ describe("FamilyPathogensDisclosure", () => {
     expect(document.body).toHaveFocus();
 
     await user.keyboard("{Escape}");
+
+    expect(panel()).not.toBeInTheDocument();
+  });
+
+  it("returns focus to the toggle when Escape closes a panel with focus on a pathogen link, and does not reopen it", async () => {
+    const user = userEvent.setup();
+    renderCard();
+    const toggle = screen.getByRole("button", { name: label });
+
+    await user.click(toggle);
+    await user.tab();
+    expect(screen.getByRole("link", { name: "SARS-CoV-2" })).toHaveFocus();
+
+    await user.keyboard("{Escape}");
+
+    expect(panel()).not.toBeInTheDocument();
+    expect(toggle).toHaveFocus();
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+  });
+
+  it("leaves focus on the card link when Escape closes a panel opened by that focus", async () => {
+    const user = userEvent.setup();
+    renderCard();
+
+    await user.tab();
+    const link = screen.getByRole("link", { name: "View Coronaviridae genomes" });
+    expect(panel()).toBeInTheDocument();
+
+    await user.keyboard("{Escape}");
+
+    expect(panel()).not.toBeInTheDocument();
+    expect(link).toHaveFocus();
+  });
+
+  it("keeps a focus-opened panel open when the pointer enters and leaves", async () => {
+    const user = userEvent.setup();
+    renderCard();
+    const link = screen.getByRole("link", { name: "View Coronaviridae genomes" });
+
+    await user.tab();
+    await user.hover(link);
+    await user.unhover(link);
+
+    expect(panel()).toBeInTheDocument();
+    expect(link).toHaveFocus();
+  });
+
+  it("keeps a hover-opened panel open when focus moves away while the pointer stays", async () => {
+    const user = userEvent.setup();
+    renderCard();
+    const link = screen.getByRole("link", { name: "View Coronaviridae genomes" });
+
+    await user.hover(link);
+    expect(await screen.findByRole("group", { name: label })).toBeInTheDocument();
+    act(() => { link.focus(); });
+    act(() => { screen.getByRole("button", { name: "outside" }).focus(); });
+
+    expect(panel()).toBeInTheDocument();
+
+    await user.unhover(link);
 
     expect(panel()).not.toBeInTheDocument();
   });

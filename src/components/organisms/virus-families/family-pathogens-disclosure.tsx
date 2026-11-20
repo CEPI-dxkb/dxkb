@@ -3,7 +3,13 @@
 import Avatar from "boring-avatars";
 import { ChevronDown } from "lucide-react";
 import Link from "next/link";
-import { createContext, type ReactNode, useContext, useId } from "react";
+import {
+  createContext,
+  type ReactNode,
+  type RefObject,
+  useContext,
+  useId,
+} from "react";
 
 import { organismAvatarColors } from "@/components/organisms/genera-grid/avatar-colors";
 import { Badge } from "@/components/ui/badge";
@@ -23,6 +29,8 @@ interface DisclosureState {
   open: boolean;
   toggle: () => void;
   panelId: string;
+  toggleRef: RefObject<HTMLButtonElement | null>;
+  panelRef: RefObject<HTMLDivElement | null>;
 }
 
 const disclosureContext = createContext<DisclosureState | null>(null);
@@ -49,11 +57,14 @@ export function FamilyPathogensDisclosure({
 }: {
   children: ReactNode;
 }) {
-  const { ref, open, toggle, handlers } = useHoverDisclosure();
+  const { ref, toggleRef, panelRef, open, toggle, handlers } =
+    useHoverDisclosure();
   const panelId = useId();
 
   return (
-    <disclosureContext.Provider value={{ open, toggle, panelId }}>
+    <disclosureContext.Provider
+      value={{ open, toggle, panelId, toggleRef, panelRef }}
+    >
       <div
         ref={ref}
         data-open={open}
@@ -78,7 +89,7 @@ export function FamilyPathogensToggle({
   familyName: string;
   pathogens: FamilyPathogenLink[];
 }) {
-  const { open, toggle, panelId } = useDisclosure();
+  const { open, toggle, panelId, toggleRef } = useDisclosure();
   const shown = pathogens.slice(0, pileSize);
   const rest = pathogens.length - shown.length;
   // The visible "+N" must be part of the name (WCAG 2.5.3 Label in Name), so a
@@ -91,6 +102,7 @@ export function FamilyPathogensToggle({
   return (
     <div className="flex shrink-0 items-center pr-1.5">
       <Button
+        ref={toggleRef}
         type="button"
         variant="ghost"
         size="pile"
@@ -148,11 +160,12 @@ export function FamilyPathogensDrawer({
   /** Shown in place of the chips when `pathogens` is empty. */
   note?: string;
 }) {
-  const { open, panelId } = useDisclosure();
+  const { open, panelId, panelRef } = useDisclosure();
   if (!open) return null;
 
   return (
     <div
+      ref={panelRef}
       id={panelId}
       role="group"
       aria-label={`Major human pathogens in ${familyName}`}

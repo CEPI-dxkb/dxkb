@@ -76,6 +76,9 @@ test.describe("viruses organism landing page", () => {
     await panel.getByRole("link", { name: "MERS-CoV" }).hover();
     await expect(panel).toBeVisible();
 
+    // Back on the toggle before Escape: closing the panel under a pointer that
+    // is over a chip would let the card beneath it open, which is not the test.
+    await toggle.hover();
     await page.keyboard.press("Escape");
     await expect(panel).toBeHidden();
     await expect(otherCard).toHaveCSS("opacity", "1");
@@ -87,6 +90,16 @@ test.describe("viruses organism landing page", () => {
     await page.keyboard.press("Enter");
     await expect(toggle).toHaveAttribute("aria-expanded", "true");
 
+    await page.keyboard.press("Escape");
+    await expect(panel).toBeHidden();
+    await expect(toggle).toBeFocused();
+
+    // Escape from inside the panel hands focus back to the toggle, not <body>.
+    await page.keyboard.press("Enter");
+    // Focus the chip directly: WebKit's Tab skips links unless full keyboard
+    // access is on, which is not what this step is about.
+    await panel.getByRole("link").first().focus();
+    await expect(panel.getByRole("link").first()).toBeFocused();
     await page.keyboard.press("Escape");
     await expect(panel).toBeHidden();
     await expect(toggle).toBeFocused();

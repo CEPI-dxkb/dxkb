@@ -20,7 +20,7 @@ Tooltips, hover cards, and popover content that appears on hover or focus must b
 - Chart legend pills in the Metadata Distributions section of organism pages
 - Column header sort indicators in the data table
 - Job status badges in the jobs list
-- Virus-family pathogens panel on the Viruses landing cards (toggle "Major human pathogens in <Family>"): the pointer can move from the card onto the panel without closing it, Escape dismisses it and leaves focus on the toggle, it stays open while the pointer or focus is inside, and it opens on hover, on focus, and on tap or Enter/Space (the toggle pins it; a press outside closes it). The other cards fade to 50% while one is open, so check their text stays readable in the dark themes
+- Virus-family pathogens panel on the Viruses landing cards (toggle "Major human pathogens in <Family>"): the pointer can move from the card onto the panel without closing it, Escape dismisses it and leaves focus on the toggle (also when focus was on a pathogen link), it stays open while the pointer or focus is inside (leaving with one input does not close it while the other is still there), and it opens on hover, on focus, and on tap or Enter/Space (the toggle pins it; a press outside closes it). The other cards fade to 50% while one is open, so check their text stays readable in the dark themes
 
 ---
 

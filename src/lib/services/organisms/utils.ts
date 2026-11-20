@@ -124,6 +124,16 @@ export function throwOrganismFetchError(
 }
 
 /**
+ * Whether a failed organism read is the data service being down (a 5xx, a
+ * timeout, an unreachable host), not a configuration error or bug, which must
+ * keep reaching the error boundary.
+ */
+export function isOrganismDataOutage(error: unknown): boolean {
+  const failure = describeUpstreamFailure(error, organismService);
+  return failure !== null && failure.status >= 500;
+}
+
+/**
  * fetch() for BV-BRC organism endpoints with the shared cache policy and
  * timeout. A `token` makes it the signed-in user's request: never cached,
  * redirects and plain HTTP refused.

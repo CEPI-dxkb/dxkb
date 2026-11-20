@@ -1,3 +1,8 @@
+/** A count that loaded, or the error it failed with; never a stand-in number. */
+export type CountResult =
+  | { status: "fulfilled"; value: number }
+  | { status: "rejected"; reason: unknown };
+
 export interface OrganismSummary {
   count: number | null;
   uniqueFamily: number | null;
@@ -5,7 +10,8 @@ export interface OrganismSummary {
   uniqueSpecies: number | null;
   cds: number | null;
   matPeptide: number | null;
-  pdb: number | null;
+  /** Settled on its own: a slow or failed structure join must not take the other counts down. */
+  pdb: CountResult;
 }
 
 export interface OrganismTaxonomy {

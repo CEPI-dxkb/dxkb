@@ -56,7 +56,9 @@ export async function TaxonomySummary({
       ? summaryResult
       : genomeCountResult.status === "rejected"
         ? genomeCountResult
-        : null;
+        : summary?.pdb.status === "rejected"
+          ? summary.pdb
+          : null;
   // A failed count reads as Unavailable with a reason, not as "no data".
   const summaryError = failure
     ? formatUserFacingErrorMessage(failure.reason, genericSummaryErrorMessage)
@@ -94,7 +96,10 @@ export async function TaxonomySummary({
     {
       id: "pdb",
       label: "3D Protein Structures (PDB)",
-      value: summaryCount(summary?.pdb),
+      value:
+        summary?.pdb.status === "fulfilled"
+          ? formatCount(summary.pdb.value)
+          : unavailableCount,
       description: "Experimentally determined structures (AlphaFold predictions excluded)",
       href: overviewTabHref(base, "protein-structures", {
         rql: "ne(method,Predicted)",

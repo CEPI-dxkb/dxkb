@@ -53,7 +53,7 @@ describe("fetchOrganismSummary", () => {
       uniqueSpecies: 4,
       cds: 50,
       matPeptide: 6,
-      pdb: 70,
+      pdb: { status: "fulfilled", value: 70 },
     });
   });
 
@@ -67,7 +67,7 @@ describe("fetchOrganismSummary", () => {
 
     const summary = await fetchOrganismSummary(2);
 
-    expect(summary.pdb).toBe(68_899);
+    expect(summary.pdb).toEqual({ status: "fulfilled", value: 68_899 });
   });
 
   it("reads pdb through the shared cache, so a second summary does not recount", async () => {
@@ -84,26 +84,44 @@ describe("fetchOrganismSummary", () => {
       }),
     );
 
-    await expect(fetchOrganismSummary(9000101)).resolves.toMatchObject({ pdb: 257 });
-    await expect(fetchOrganismSummary(9000101)).resolves.toMatchObject({ pdb: 257 });
+    await expect(fetchOrganismSummary(9000101)).resolves.toMatchObject({
+      pdb: { status: "fulfilled", value: 257 },
+    });
+    await expect(fetchOrganismSummary(9000101)).resolves.toMatchObject({
+      pdb: { status: "fulfilled", value: 257 },
+    });
 
     expect(structureRequests).toBe(1);
   });
 
-  it("rejects with the structure count's own message when it fails", async () => {
+  it("keeps the other counts and carries the structure count's own failure in pdb", async () => {
     server.use(
       http.get(`${baseUrl}/data/summary_by_taxon/2`, () =>
-        HttpResponse.json({ count: 1, PDB: 5 }),
+        HttpResponse.json({
+          count: 1,
+          unique_species: 4,
+          CDS: 50,
+          mat_peptide: 6,
+          PDB: 5,
+        }),
       ),
       http.get(`${baseUrl}/protein_structure/`, () =>
         HttpResponse.text("BV-BRC overloaded", { status: 503 }),
       ),
     );
 
-    await expect(fetchOrganismSummary(2)).rejects.toMatchObject({
-      message:
-        "The BV-BRC data service is unavailable (HTTP 503 Service Unavailable: BV-BRC overloaded).",
-      source: "protein_structure count",
+    await expect(fetchOrganismSummary(2)).resolves.toMatchObject({
+      uniqueSpecies: 4,
+      cds: 50,
+      matPeptide: 6,
+      pdb: {
+        status: "rejected",
+        reason: expect.objectContaining({
+          message:
+            "PDB structures: The BV-BRC data service is unavailable (HTTP 503 Service Unavailable: BV-BRC overloaded).",
+          source: "protein_structure count",
+        }) as unknown,
+      },
     });
   });
 
@@ -208,7 +226,7 @@ describe("fetchCombinedOrganismSummary", () => {
       uniqueSpecies: 158_487,
       cds: 7_836_769_744,
       matPeptide: 220_815_725,
-      pdb: 97_181,
+      pdb: { status: "fulfilled", value: 97_181 },
     });
   });
 
@@ -288,6 +306,30 @@ describe("fetchCombinedOrganismSummary", () => {
         "The BV-BRC data service is unavailable (HTTP 503 Service Unavailable: BV-BRC overloaded).",
       source: "summary_by_taxon",
     });
+  });
+
+  it("reports a root's failed structure count in pdb, not the other root's count, while the other fields still sum", async () => {
+    answerSummaries(cellularPayload, virusesPayload);
+    server.use(
+      http.get(`${baseUrl}/protein_structure/`, ({ request }) => {
+        const search = decodeURIComponent(new URL(request.url).search);
+        return search.includes("eq(taxon_lineage_ids,10239)")
+          ? HttpResponse.text("BV-BRC overloaded", { status: 503 })
+          : HttpResponse.json({ response: { numFound: 100, docs: [] } });
+      }),
+    );
+
+    const combined = await fetchCombinedOrganismSummary([131567, 10239]);
+
+    expect(combined.pdb).toEqual({
+      status: "rejected",
+      reason: expect.objectContaining({
+        message:
+          "PDB structures: The BV-BRC data service is unavailable (HTTP 503 Service Unavailable: BV-BRC overloaded).",
+      }) as unknown,
+    });
+    expect(combined.count).toBe(17_815_990);
+    expect(combined.cds).toBe(7_836_769_744);
   });
 
   it("does not swallow abort errors", async () => {

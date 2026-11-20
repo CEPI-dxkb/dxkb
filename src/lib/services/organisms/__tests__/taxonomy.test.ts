@@ -6,9 +6,9 @@ import {
   fetchLandingRootTaxonomy,
   fetchOrganismTaxonomy,
   getSharedOrganismTaxonomy,
-  isTaxonomyOutage,
   staticLandingRootTaxonomy,
 } from "@/lib/services/organisms/taxonomy";
+import { isOrganismDataOutage } from "@/lib/services/organisms/utils";
 import { UpstreamError } from "@/lib/api/upstream-failure";
 import { server } from "@/test-helpers/msw-server";
 import { settleBackgroundWork } from "@/test-helpers/settle";
@@ -342,8 +342,8 @@ describe("fetchOrganismTaxonomy", () => {
       message: `The BV-BRC data service is unavailable (HTTP 503 Service Unavailable: ${maintenanceSummary}).`,
       source: "taxonomy/2",
     });
-    expect(isTaxonomyOutage(error)).toBe(true);
-    expect(isTaxonomyOutage(new Error("Missing required environment variable: X"))).toBe(false);
+    expect(isOrganismDataOutage(error)).toBe(true);
+    expect(isOrganismDataOutage(new Error("Missing required environment variable: X"))).toBe(false);
   });
 
   it("throws TaxonomyNotFoundError on 404", async () => {

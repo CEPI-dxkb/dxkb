@@ -1,5 +1,9 @@
 import { getSharedExperimentalStructureCount } from "./structure-count";
-import type { OrganismFetchOptions, OrganismSummary } from "./types";
+import type {
+  CountResult,
+  OrganismFetchOptions,
+  OrganismSummary,
+} from "./types";
 import {
   fetchOrganism,
   getBvBrcWebsiteApiBaseUrl,
@@ -27,14 +31,23 @@ async function fetchSummaryPayload(
   return readJsonObject(response, summaryRequest);
 }
 
+/** Settles a count into a `CountResult`, so its failure travels beside the other counts instead of rejecting them. */
+function settleCount(promise: Promise<number>): Promise<CountResult> {
+  return promise.then(
+    (value): CountResult => ({ status: "fulfilled", value }),
+    (reason: unknown): CountResult => ({ status: "rejected", reason }),
+  );
+}
+
 /**
  * `summary_by_taxon` supplies everything but `pdb`; `pdb` is the
  * experimental-structure count the Protein Structures tab shows (a genome
  * join, see `structure-count.ts`), read through the shared cache because the
- * join takes about 23 s for Bacteria; either request failing rejects with its
- * own message. `options.signal` cancels only the summary request: the shared
- * count load serves every visitor, so one caller's cancellation cannot stop
- * it.
+ * join takes about 23 s for Bacteria. Only a failed summary request rejects:
+ * `pdb` is settled on its own and carries its own failure, with its original
+ * message, so a slow or failed join leaves only the PDB tile Unavailable.
+ * `options.signal` cancels only the summary request: the shared count load
+ * serves every visitor, so one caller's cancellation cannot stop it.
  */
 export async function fetchOrganismSummary(
   taxonId: number,
@@ -42,7 +55,7 @@ export async function fetchOrganismSummary(
 ): Promise<OrganismSummary> {
   const [payload, pdb] = await Promise.all([
     fetchSummaryPayload(taxonId, options),
-    getSharedExperimentalStructureCount(taxonId),
+    settleCount(getSharedExperimentalStructureCount(taxonId)),
   ]);
 
   return {
@@ -70,12 +83,24 @@ function sumStrict(values: (number | null)[]): number | null {
   return numbers.reduce((total, value) => total + value, 0);
 }
 
+/** The sum, or the first failed root's result: a partial sum would pass for the real count. */
+function sumCountResults(results: CountResult[]): CountResult {
+  let total = 0;
+  for (const result of results) {
+    if (result.status === "rejected") return result;
+    total += result.value;
+  }
+  return { status: "fulfilled", value: total };
+}
+
 /**
  * The summary of several taxon roots added together, for a landing page that
  * spans roots no single taxon id covers (All Organisms: cellular organisms and
  * Viruses). `summary_by_taxon` takes one id and no OR expression, so each root
- * is fetched on its own. A root that fails rejects the whole call with its
- * original error: a partial sum would pass for the real count.
+ * is fetched on its own. A root whose summary fails rejects the whole call
+ * with its original error: a partial sum would pass for the real count. A
+ * root whose structure count fails makes `pdb` that root's failure, for the
+ * same reason, while the other fields still sum.
  *
  * The roots' genome sets are disjoint, so the counts add. The unique-name
  * fields overcount by about 2: the placeholder names `""` and `"null"` appear
@@ -105,6 +130,6 @@ export async function fetchCombinedOrganismSummary(
     uniqueSpecies: sumNullable(summaries.map((summary) => summary.uniqueSpecies)),
     cds: sumNullable(summaries.map((summary) => summary.cds)),
     matPeptide: sumNullable(summaries.map((summary) => summary.matPeptide)),
-    pdb: sumNullable(summaries.map((summary) => summary.pdb)),
+    pdb: sumCountResults(summaries.map((summary) => summary.pdb)),
   };
 }

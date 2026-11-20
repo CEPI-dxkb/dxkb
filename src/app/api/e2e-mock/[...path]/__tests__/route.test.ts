@@ -41,12 +41,18 @@ interface SolrFacetBody {
 }
 
 const originalMockEnabled = process.env.E2E_MOCK_ENABLED;
+const originalWebsiteApiUrl = process.env.BVBRC_WEBSITE_API_URL;
 
 afterEach(() => {
   if (originalMockEnabled === undefined) {
     delete process.env.E2E_MOCK_ENABLED;
   } else {
     process.env.E2E_MOCK_ENABLED = originalMockEnabled;
+  }
+  if (originalWebsiteApiUrl === undefined) {
+    delete process.env.BVBRC_WEBSITE_API_URL;
+  } else {
+    process.env.BVBRC_WEBSITE_API_URL = originalWebsiteApiUrl;
   }
 });
 
@@ -517,11 +523,7 @@ describe("api/e2e-mock catch-all — enabled", () => {
       ),
     );
 
-    try {
-      await fetchExperimentalStructureCount(2);
-    } finally {
-      delete process.env.BVBRC_WEBSITE_API_URL;
-    }
+    await fetchExperimentalStructureCount(2);
     expect(sentSearch).not.toBe("");
 
     const resp = await GET(

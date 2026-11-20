@@ -82,7 +82,7 @@ describe("fetchExperimentalStructureCount", () => {
 
     await expect(fetchExperimentalStructureCount(2)).rejects.toMatchObject({
       message:
-        "The BV-BRC data service is unavailable (HTTP 503 Service Unavailable: BV-BRC overloaded).",
+        "PDB structures: The BV-BRC data service is unavailable (HTTP 503 Service Unavailable: BV-BRC overloaded).",
       source: "protein_structure count",
     });
   });
@@ -174,7 +174,7 @@ describe("getSharedExperimentalStructureCount", () => {
 
     expect(first).toMatchObject({
       message:
-        "The BV-BRC data service is unavailable (HTTP 503 Service Unavailable: BV-BRC overloaded).",
+        "PDB structures: The BV-BRC data service is unavailable (HTTP 503 Service Unavailable: BV-BRC overloaded).",
       source: "protein_structure count",
     });
     expect(second).toBe(first);
@@ -241,6 +241,9 @@ describe("getSharedExperimentalStructureCount", () => {
     const fastFail = await caught(getSharedExperimentalStructureCount(9000009));
     await settleBackgroundWork();
 
+    expect(opener).toMatchObject({
+      message: expect.stringContaining("structures unavailable") as unknown,
+    });
     expect(fastFail).toBe(opener);
     expect(requested).not.toContain(9000009);
   });

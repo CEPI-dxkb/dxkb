@@ -1,9 +1,6 @@
 import "server-only";
 
-import {
-  describeUpstreamFailure,
-  upstreamServices,
-} from "@/lib/api/upstream-failure";
+import { upstreamServices } from "@/lib/api/upstream-failure";
 import { isUpstreamDown } from "@/lib/api/upstream-outage";
 import { createSharedCache } from "@/lib/shared-cache";
 
@@ -12,12 +9,14 @@ import type { OrganismFetchOptions } from "./types";
 import {
   fetchOrganismSolrJson,
   getBvBrcWebsiteApiBaseUrl,
+  isOrganismDataOutage,
   organismJoinFetchTimeoutMs,
   type OrganismRequest,
 } from "./utils";
 
 const structureCountRequest: OrganismRequest = {
   source: "protein_structure count",
+  label: "PDB structures",
 };
 
 /**
@@ -57,21 +56,12 @@ export async function fetchExperimentalStructureCount(
   return numFound;
 }
 
-/**
- * Whether a failed count is the data service being down (a 5xx, a timeout, an
- * unreachable host), not a configuration error or bug.
- */
-function isStructureCountOutage(error: unknown): boolean {
-  const failure = describeUpstreamFailure(error, upstreamServices.dataApi);
-  return failure !== null && failure.status >= 500;
-}
-
 /** Logs an outage once per failed load; a cached failure is served unlogged. */
 async function loadExperimentalStructureCount(taxonId: number): Promise<number> {
   try {
     return await fetchExperimentalStructureCount(taxonId);
   } catch (error) {
-    if (isStructureCountOutage(error)) {
+    if (isOrganismDataOutage(error)) {
       console.error(`protein-structure-count/${String(taxonId)}: count failed`, error);
     }
     throw error;
@@ -79,16 +69,25 @@ async function loadExperimentalStructureCount(taxonId: number): Promise<number> 
 }
 
 // The count is public data that changes with the nightly loads, so one join
-// per taxon a day is enough. An outage (including the 60 s budget running out)
-// is cached for the retry window so visitors do not each wait for the join
-// again; a malformed payload or a missing env var is not cached.
+// per taxon a day is enough. Its fetch also goes through Next's data cache
+// (`fetchOrganism`, revalidated every 86400 s), so a refresh at 24 h can read
+// a data-cache entry that is itself about a day old and store it as fresh:
+// the tile can lag the live tab by up to about two days of new structures.
+// An outage (including the 60 s budget running out) is cached for the retry
+// window so visitors do not each wait for the join again; a malformed payload
+// or a missing env var is not cached.
 const experimentalStructureCountCache = createSharedCache<number, number>({
   name: "organism-experimental-structure-count",
   load: (taxonId) => loadExperimentalStructureCount(taxonId),
   freshMs: 24 * 60 * 60 * 1000,
   retryMs: 60_000,
   maxEntries: 2000,
-  cacheError: isStructureCountOutage,
+  cacheError: isOrganismDataOutage,
+  // One pair of cold timeouts can open the breaker for every uncached taxon:
+  // All Organisms starts two root joins at once, and two cold timeouts within
+  // 60 s open it for 30 s (cached values keep serving). Only the PDB tiles
+  // are affected, because the summary settles this count on its own, so
+  // timeouts stay in `trips`.
   breaker: {
     trips: (error, elapsedMs) =>
       isUpstreamDown(error, upstreamServices.dataApi, {

@@ -539,9 +539,10 @@ Genome Phase 1 replaces both scaffold handlers with explicit routes:
   by export and select-all). Any friendly filter, `public` scope or `rql` keeps the
   `genome(<effective predicate>)` join, because legacy's pass-through sends those genome
   fields to the child collection and gets HTTP 400. A quoted phrase is one clause on every
-  tab (`keyword("DNA polymerase")`: 17 genomes, 16,199 sequences, as on legacy). The Features tab carries `/feature`'s
-  removable `annotation=PATRIC` default (`features.annotation=*` once removed), and
-  Features and Proteins rows stay in backend order. The unscoped Genomes tab keeps the
+  tab (`keyword("DNA polymerase")`: 17 genomes, 16,199 sequences, as on legacy). The taxon page's Features tab
+  has no `annotation` default for now (DXKBCORE-362: every annotation source, so it lists what the
+  overview's CDS tile counts; `taxonFeaturesCollectionOptions` says how to bring legacy's removable
+  `annotation=PATRIC` back), and Features and Proteins rows stay in backend order. The unscoped Genomes tab keeps the
   recent scope, where legacy loads no rows.
   Strains join through their multi-valued `genome_ids`
   (`and(eq(genome_ids,*),genome(to(genome_ids),<effective predicate>))`; a bare
@@ -698,8 +699,8 @@ So the redirect is two stages:
   that default: on `/feature` it becomes `annotation=*` (not beside an `rql` that filters on
   `annotation`, nor on the Proteins search, `filter=protein`); with `#view_tab=features` it
   becomes `features.annotation=*` on `/genome` and `/genome/{id}` (the Features tab's child
-  URL key) and `annotation=*` on `/taxonomy/{id}`: the PATRIC default, removed (§2.8,
-  §5.6).
+  URL key): the PATRIC default, removed (§2.8, §5.6). On `/taxonomy/{id}` it adds nothing for
+  now, because that tab has no default (DXKBCORE-362); it was `annotation=*`.
 - Known gap (pre-existing): a legacy `#filter=<rql>` (a filter picked in legacy's panel,
   e.g. `#filter=eq(annotation,RefSeq)`) is not carried over. The adapter copies it to
   `?filter=`, but the Feature list accepts only a plain feature type there

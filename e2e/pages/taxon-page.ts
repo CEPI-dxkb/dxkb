@@ -14,7 +14,11 @@ export class TaxonPage {
     this.page = page;
     this.viewNav = new ViewNavRail(page);
     this.toolbar = new CollectionToolbar(page);
-    this.taxonomyLinks = page.locator('a[href^="/taxonomy/"]');
+    // The stat tiles' links are `prefetch={false}`: a prefetch-settle helper
+    // waits for an `_rsc` request per link it is given, which they never send.
+    this.taxonomyLinks = page.locator(
+      'a[href^="/taxonomy/"]:not([data-slot="stat-tile-link"])',
+    );
   }
 
   async goto(taxonId: string, tab?: string): Promise<void> {
@@ -28,6 +32,11 @@ export class TaxonPage {
 
   unavailable(taxonId: string): ErrorAlert {
     return new ErrorAlert(this.page, `Taxon ${taxonId} could not be loaded`);
+  }
+
+  /** An overview stat tile that links to its tab (Genomes / Segments, CDS, PDB); an unlinked tile is not a link. */
+  statTile(label: string): Locator {
+    return this.page.getByRole("link", { name: label });
   }
 
   tabButton(name: string): Locator {

@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import { http, HttpResponse } from "msw";
 import { Suspense } from "react";
 import { vi } from "vitest";
@@ -64,9 +64,15 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
+// The PDB tile's `use` retries after its promise settles, so render in an async act.
 async function renderServer(node: Promise<React.ReactElement>) {
   const resolved = await node;
-  return render(<Suspense fallback={null}>{resolved}</Suspense>);
+  let rendered!: ReturnType<typeof render>;
+  await act(async () => {
+    rendered = render(<Suspense fallback={null}>{resolved}</Suspense>);
+    await Promise.resolve();
+  });
+  return rendered;
 }
 
 function serveStructureCounts() {
@@ -141,6 +147,21 @@ describe("All Organisms Overview", () => {
       const structures = screen.getByTestId("organism-kpi-pdb");
       expect(structures).toHaveTextContent("97,181");
       expect(structures).not.toHaveTextContent("32,157,475");
+    });
+
+    it("links the linked tiles into the All Organisms landing page's tabs", async () => {
+      serveSummaries();
+      serveGenomeCounts();
+
+      await renderServer(DataSummaryBoundary());
+
+      // By accessible name, so a tile whose link lost its label fails here.
+      const hrefOf = (name: RegExp) =>
+        screen.getByRole("link", { name }).getAttribute("href");
+      expect(hrefOf(/^Genomes\b/)).toBe("/organisms/all?tab=genomes");
+      expect(hrefOf(/^PDB Structures\b/)).toBe(
+        "/organisms/all?tab=protein-structures&rql=ne(method,Predicted)",
+      );
     });
 
     it("fails the whole section, with the original message and no partial total, when one root is down", async () => {

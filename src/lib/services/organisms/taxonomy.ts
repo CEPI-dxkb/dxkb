@@ -1,9 +1,6 @@
 import "server-only";
 
-import {
-  describeUpstreamFailure,
-  upstreamServices,
-} from "@/lib/api/upstream-failure";
+import { upstreamServices } from "@/lib/api/upstream-failure";
 import { isUpstreamDown } from "@/lib/api/upstream-outage";
 import { createSharedCache } from "@/lib/shared-cache";
 
@@ -11,6 +8,7 @@ import type { OrganismFetchOptions, OrganismTaxonomy } from "./types";
 import {
   fetchOrganism,
   getBvBrcWebsiteApiBaseUrl,
+  isOrganismDataOutage,
   numberOrNull,
   organismFetchTimeoutMs,
   organismResponseError,
@@ -58,15 +56,6 @@ export class TaxonomyNotFoundError extends Error {
   }
 }
 
-/**
- * Whether a failed taxonomy lookup is the service being down, not a
- * configuration error or bug, which must keep reaching the error boundary.
- */
-export function isTaxonomyOutage(error: unknown): boolean {
-  const failure = describeUpstreamFailure(error, upstreamServices.dataApi);
-  return failure !== null && failure.status >= 500;
-}
-
 export async function fetchOrganismTaxonomy(
   taxonId: number,
   options: OrganismFetchOptions = {},
@@ -103,7 +92,7 @@ async function loadOrganismTaxonomy(taxonId: number): Promise<OrganismTaxonomy> 
   try {
     return await fetchOrganismTaxonomy(taxonId);
   } catch (error) {
-    if (isTaxonomyOutage(error)) {
+    if (isOrganismDataOutage(error)) {
       console.error(`taxonomy/${String(taxonId)}: taxonomy lookup failed`, error);
     }
     throw error;
@@ -120,7 +109,7 @@ const organismTaxonomyCache = createSharedCache<number, OrganismTaxonomy>({
   retryMs: 60_000,
   maxEntries: 2000,
   cacheError: (error) =>
-    error instanceof TaxonomyNotFoundError || isTaxonomyOutage(error),
+    error instanceof TaxonomyNotFoundError || isOrganismDataOutage(error),
   replacesValue: (error) => error instanceof TaxonomyNotFoundError,
   breaker: {
     trips: (error, elapsedMs) =>
@@ -210,7 +199,7 @@ export async function fetchLandingRootTaxonomy(
   } catch (error) {
     const fallback = staticLandingRootTaxonomy(taxonId);
     const unavailable =
-      error instanceof TaxonomyNotFoundError || isTaxonomyOutage(error);
+      error instanceof TaxonomyNotFoundError || isOrganismDataOutage(error);
     if (!fallback || !unavailable) throw error;
     return fallback;
   }

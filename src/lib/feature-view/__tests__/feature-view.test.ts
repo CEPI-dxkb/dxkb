@@ -16,6 +16,7 @@ import {
   isPatricFeatureId,
   parseFeatureCollectionState,
   parseFeatureListState,
+  taxonFeaturesCollectionOptions,
   type CompareRegionAvailability,
 } from "@/lib/feature-view";
 import {
@@ -256,6 +257,50 @@ describe("Feature list URL schema", () => {
     expect(
       serializeCollectionState(state, featureListCollectionOptions).toString(),
     ).toBe("keyword=Dnak&annotation=*");
+  });
+
+  // DXKBCORE-362: the taxon and organism Features tabs list every annotation and carry no PATRIC default.
+  describe("taxon Features tab (no annotation default)", () => {
+    it("selects no annotation and writes no marker", () => {
+      const state = parseFeatureCollectionState(
+        { feature_type: "CDS" },
+        taxonFeaturesCollectionOptions,
+      );
+      expect(state.filters).toEqual({ feature_type: ["CDS"] });
+      expect(featureStructuralRql(state)).toBe("eq(feature_type,CDS)");
+      expect(
+        serializeCollectionState(state, taxonFeaturesCollectionOptions).toString(),
+      ).toBe("feature_type=CDS");
+    });
+
+    it("reads a bookmarked annotation=* as every annotation, not as a literal value", () => {
+      const state = parseFeatureCollectionState(
+        { feature_type: "CDS", annotation: "*" },
+        taxonFeaturesCollectionOptions,
+      );
+      expect(state.filters).toEqual({ feature_type: ["CDS"] });
+      expect(featureStructuralRql(state)).toBe("eq(feature_type,CDS)");
+      expect(
+        serializeCollectionState(state, taxonFeaturesCollectionOptions).toString(),
+      ).toBe("feature_type=CDS");
+    });
+
+    it("keeps a PATRIC pick in the URL and the query", () => {
+      const state = parseFeatureCollectionState(
+        { feature_type: "CDS", annotation: "PATRIC" },
+        taxonFeaturesCollectionOptions,
+      );
+      expect(state.filters).toEqual({
+        feature_type: ["CDS"],
+        annotation: ["PATRIC"],
+      });
+      expect(featureStructuralRql(state)).toBe(
+        "and(eq(annotation,PATRIC),eq(feature_type,CDS))",
+      );
+      expect(
+        serializeCollectionState(state, taxonFeaturesCollectionOptions).toString(),
+      ).toBe("annotation=PATRIC&feature_type=CDS");
+    });
   });
 
   it("counts facets over the scope filter alone while the default is untouched", () => {

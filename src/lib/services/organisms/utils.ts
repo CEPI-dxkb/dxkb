@@ -21,6 +21,9 @@ export const organismBvBrcRevalidateSeconds = 86400;
 // visitor.
 export const organismFetchTimeoutMs = 30_000;
 
+/** For a read Solr answers slowly by design: a cross-collection join over a whole domain takes about 23 s for Bacteria, so the 30 s default leaves no margin. */
+export const organismJoinFetchTimeoutMs = 60_000;
+
 export function organismFetchCacheInit(
   revalidateSeconds: number,
 ): { cache: "no-store" } | { next: { revalidate: number } } {
@@ -94,15 +97,17 @@ export async function organismResponseError(
 /**
  * Rethrows a failed organism request: a spent budget or network failure becomes
  * an `UpstreamError` naming the service; a caller's own abort and anything else
- * is rethrown untouched.
+ * is rethrown untouched. `timeoutMs` is the budget the request ran under, which
+ * a timeout message names.
  */
 export function throwOrganismFetchError(
   error: unknown,
   request: OrganismRequest,
   url?: string,
+  timeoutMs: number = organismFetchTimeoutMs,
 ): never {
   const failure = describeUpstreamFailure(error, organismService, {
-    timeoutMs: organismFetchTimeoutMs,
+    timeoutMs,
     host: url ? hostOf(url) : undefined,
   });
   if (failure) {
@@ -119,6 +124,16 @@ export function throwOrganismFetchError(
 }
 
 /**
+ * Whether a failed organism read is the data service being down (a 5xx, a
+ * timeout, an unreachable host), not a configuration error or bug, which must
+ * keep reaching the error boundary.
+ */
+export function isOrganismDataOutage(error: unknown): boolean {
+  const failure = describeUpstreamFailure(error, organismService);
+  return failure !== null && failure.status >= 500;
+}
+
+/**
  * fetch() for BV-BRC organism endpoints with the shared cache policy and
  * timeout. A `token` makes it the signed-in user's request: never cached,
  * redirects and plain HTTP refused.
@@ -128,13 +143,14 @@ export async function fetchOrganism(
   request: OrganismRequest,
   init: RequestInit = {},
   token?: string,
+  timeoutMs: number = organismFetchTimeoutMs,
 ): Promise<Response> {
   if (token && new URL(url).protocol !== "https:") {
     throw new Error(
       labelled(request, "Authenticated data service requests require HTTPS."),
     );
   }
-  const timeout = AbortSignal.timeout(organismFetchTimeoutMs);
+  const timeout = AbortSignal.timeout(timeoutMs);
   const headers = new Headers(init.headers);
   if (token) headers.set("Authorization", token);
   try {
@@ -149,7 +165,7 @@ export async function fetchOrganism(
   } catch (error) {
     // The caller's own cancellation is theirs, whatever its reason.
     if (init.signal?.aborted) throw error;
-    throwOrganismFetchError(error, request, url);
+    throwOrganismFetchError(error, request, url, timeoutMs);
   }
 }
 
@@ -162,6 +178,7 @@ export async function fetchOrganismSolrJson(
   request: OrganismRequest,
   signal?: AbortSignal,
   token?: string,
+  timeoutMs?: number,
 ): Promise<Record<string, unknown>> {
   const response = await fetchOrganism(
     url,
@@ -172,9 +189,10 @@ export async function fetchOrganismSolrJson(
       signal,
     },
     token,
+    timeoutMs,
   );
   if (!response.ok) throw await organismResponseError(response, request);
-  return readJsonObject(response, request);
+  return readJsonObject(response, request, timeoutMs);
 }
 
 /** POST variant for endpoints (e.g. genome_amr) that require an RQL body. */
@@ -200,13 +218,19 @@ export async function fetchOrganismSolrJsonPost(
 export async function readJsonObject(
   response: Response,
   request: OrganismRequest,
+  timeoutMs?: number,
 ): Promise<Record<string, unknown>> {
   const payload = (await response.json().catch((error: unknown) => {
     // An abort while the body streams is a timeout or cancellation, not a
     // malformed payload.
     const name = errorName(error);
     if (name === "TimeoutError" || name === "AbortError") {
-      throwOrganismFetchError(error, request, response.url || undefined);
+      throwOrganismFetchError(
+        error,
+        request,
+        response.url || undefined,
+        timeoutMs,
+      );
     }
     const message = error instanceof Error ? error.message : String(error);
     throw new Error(labelled(request, `Malformed JSON response: ${message}`));

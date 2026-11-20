@@ -1,3 +1,8 @@
+/** A count that loaded, or the error it failed with; never a stand-in number. */
+export type CountResult =
+  | { status: "fulfilled"; value: number }
+  | { status: "rejected"; reason: unknown };
+
 export interface OrganismSummary {
   count: number | null;
   uniqueFamily: number | null;
@@ -5,7 +10,13 @@ export interface OrganismSummary {
   uniqueSpecies: number | null;
   cds: number | null;
   matPeptide: number | null;
-  pdb: number | null;
+  /**
+   * Not awaited with the rest: the structure join takes about 23 s cold for
+   * Bacteria, so the summary resolves without it and the page streams the PDB
+   * tile on its own. The promise never rejects: a failed join is a `rejected`
+   * `CountResult`, so it cannot take the other counts down.
+   */
+  pdb: Promise<CountResult>;
 }
 
 export interface OrganismTaxonomy {

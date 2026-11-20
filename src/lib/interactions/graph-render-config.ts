@@ -16,7 +16,9 @@ export type Attrs = ReturnType<Graph["getNodeAttributes"]>;
 
 /**
  * No custom graph-level state (react-sigma's default slot type): every highlight is per item, so a
- * pan or zoom re-evaluates nothing.
+ * pan or zoom re-evaluates nothing. Even the dim stays per item: Sigma re-evaluates every item of
+ * a style that reads graph state whenever any graph-state flag changes, and each pan, zoom and
+ * hover flips one (`syncRenderState` keeps the dim's cost to a focus change instead).
  */
 export type GraphLevelState = unknown;
 

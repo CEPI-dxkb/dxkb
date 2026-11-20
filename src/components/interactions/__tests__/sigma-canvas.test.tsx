@@ -31,6 +31,8 @@ const sigmaStub = vi.hoisted(() => ({
   scheduleRefresh: vi.fn(),
   setNodeState: vi.fn(),
   setEdgeState: vi.fn(),
+  setNodesState: vi.fn(),
+  setEdgesState: vi.fn(),
   container: null as HTMLElement | null,
   reset: vi.fn(() => Promise.resolve()),
   loadGraph: vi.fn(),
@@ -71,6 +73,8 @@ vi.mock("@react-sigma/core", () => {
     scheduleRefresh: sigmaStub.scheduleRefresh,
     setNodeState: sigmaStub.setNodeState,
     setEdgeState: sigmaStub.setEdgeState,
+    setNodesState: sigmaStub.setNodesState,
+    setEdgesState: sigmaStub.setEdgesState,
     getContainer: () => sigmaStub.container,
     getCamera: () =>
       Object.assign(cameraStub, { reset: sigmaStub.reset }),
@@ -416,10 +420,68 @@ function handlers(): Record<string, Handler> {
   return call[0] as Record<string, Handler>;
 }
 
-/** The state the canvas last set on a node or edge (Sigma merges partial states; ours are full). */
-function lastState(stub: typeof sigmaStub.setNodeState, id: string): unknown {
-  const calls = stub.mock.calls.filter(([key]) => key === id);
-  return calls.at(-1)?.[1];
+type StateStub = typeof sigmaStub.setNodeState;
+
+/**
+ * The state the canvas has written on a node or edge, merged in call order the way Sigma merges
+ * partial states: single writes (`setNodeState`) and batches (`setNodesState`) alike.
+ */
+function writtenState(
+  single: StateStub,
+  batch: StateStub,
+  id: string,
+): Record<string, boolean> {
+  const writes = [
+    ...single.mock.calls.map(([key, state], i) => ({
+      keys: [key as string],
+      state: state as Record<string, boolean>,
+      at: single.mock.invocationCallOrder[i],
+    })),
+    ...batch.mock.calls.map(([keys, state], i) => ({
+      keys: keys as string[],
+      state: state as Record<string, boolean>,
+      at: batch.mock.invocationCallOrder[i],
+    })),
+  ].sort((a, b) => a.at - b.at);
+  return writes
+    .filter(({ keys }) => keys.includes(id))
+    .reduce((merged, { state }) => ({ ...merged, ...state }), {});
+}
+
+function nodeState(id: string) {
+  return writtenState(sigmaStub.setNodeState, sigmaStub.setNodesState, id);
+}
+
+function edgeState(id: string) {
+  return writtenState(sigmaStub.setEdgeState, sigmaStub.setEdgesState, id);
+}
+
+/** Every key the canvas has written state on, one by one or in a batch. */
+function writtenKeys(): string[] {
+  return [
+    ...sigmaStub.setNodeState.mock.calls.map(([key]) => key as string),
+    ...sigmaStub.setEdgeState.mock.calls.map(([key]) => key as string),
+    ...sigmaStub.setNodesState.mock.calls.flatMap(([keys]) => keys as string[]),
+    ...sigmaStub.setEdgesState.mock.calls.flatMap(([keys]) => keys as string[]),
+  ];
+}
+
+/** Lets the dim batch a selection schedules (after its first frame) land. */
+async function flushDimBatch() {
+  await act(async () => {
+    await new Promise<void>((resolve) => {
+      requestAnimationFrame(() => {
+        setTimeout(resolve, 0);
+      });
+    });
+  });
+}
+
+function clearStateWrites() {
+  sigmaStub.setNodeState.mockClear();
+  sigmaStub.setEdgeState.mockClear();
+  sigmaStub.setNodesState.mockClear();
+  sigmaStub.setEdgesState.mockClear();
 }
 
 function nodeClick(
@@ -715,62 +777,97 @@ describe("SigmaCanvas without WebGL 2", () => {
 });
 
 describe("SigmaCanvas selection focus", () => {
-  it("sets no highlight while the selection is empty", () => {
-    renderQuad();
-    expect(lastState(sigmaStub.setNodeState, "c")).toEqual({
-      isSelected: false,
-      isPill: false,
-      isFocus: false,
-      isDimmed: false,
-    });
+  beforeEach(() => {
+    clearStateWrites();
   });
 
-  it("pills a lone selected node, keeps its neighbours and edges lit and dims the rest", () => {
-    renderQuad({ selection: { nodes: [quad[0]], edges: [] } });
+  it("writes no state while the selection is empty", async () => {
+    renderQuad();
+    await flushDimBatch();
+    expect(writtenKeys()).toEqual([]);
+  });
 
-    expect(lastState(sigmaStub.setNodeState, "a")).toMatchObject({
+  it("pills a lone selected node, keeps its neighbours and edges lit and dims the rest", async () => {
+    renderQuad({ selection: { nodes: [quad[0]], edges: [] } });
+    await flushDimBatch();
+
+    expect(nodeState("a")).toMatchObject({
       isSelected: true,
       isPill: true,
       isDimmed: false,
     });
-    expect(lastState(sigmaStub.setNodeState, "b")).toMatchObject({
-      isFocus: true,
-      isDimmed: false,
-    });
-    expect(lastState(sigmaStub.setNodeState, "c")).toMatchObject({
-      isFocus: false,
+    expect(nodeState("b")).toMatchObject({ isFocus: true, isDimmed: false });
+    expect(nodeState("c")).toMatchObject({ isDimmed: true });
+    expect(nodeState("c").isFocus).not.toBe(true);
+    expect(edgeState("a-b")).toMatchObject({ isFocus: true, isDimmed: false });
+    expect(edgeState("c-d")).toMatchObject({ isDimmed: true });
+    expect(edgeState("c-d").isFocus).not.toBe(true);
+  });
+
+  function selectOnLoadedQuad(selection: GraphCanvasProps["selection"]) {
+    const view = renderQuad();
+    clearStateWrites();
+    view.rerender(
+      canvas({ nodes: quad, edges: quadEdges, positions: quadPositions, selection }),
+    );
+    return view;
+  }
+
+  it("paints the selection before the dim, which lands in one batch after the next frame", async () => {
+    selectOnLoadedQuad({ nodes: [quad[0]], edges: [] });
+
+    expect(nodeState("a")).toMatchObject({ isSelected: true, isPill: true });
+    expect(sigmaStub.setNodesState).not.toHaveBeenCalled();
+
+    await flushDimBatch();
+    expect(sigmaStub.setNodesState).toHaveBeenCalledTimes(1);
+    expect(sigmaStub.setNodesState).toHaveBeenCalledWith(["c", "d"], {
       isDimmed: true,
     });
-    expect(lastState(sigmaStub.setEdgeState, "a-b")).toMatchObject({
-      isFocus: true,
-      isDimmed: false,
+  });
+
+  it("writes only the old and new selection's items when the selection changes, never every item", async () => {
+    // `e` is in neither selection's focus, so nothing about it changes.
+    const withLoner: GNode[] = [...quad, { id: "e", kind: "host" }];
+    const lonerPositions = new Float64Array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+    const { rerender } = renderQuad({
+      nodes: withLoner,
+      positions: lonerPositions,
+      selection: { nodes: [quad[0]], edges: [] },
     });
-    expect(lastState(sigmaStub.setEdgeState, "c-d")).toMatchObject({
-      isFocus: false,
-      isDimmed: true,
-    });
+    await flushDimBatch();
+    clearStateWrites();
+
+    rerender(
+      canvas({
+        nodes: withLoner,
+        edges: quadEdges,
+        positions: lonerPositions,
+        selection: { nodes: [quad[2]], edges: [] },
+      }),
+    );
+    await flushDimBatch();
+
+    expect(writtenKeys().sort()).toEqual(["a", "a-b", "b", "c", "c-d", "d"]);
+    expect(sigmaStub.setNodesState).not.toHaveBeenCalled();
+    expect(nodeState("a")).toMatchObject({ isSelected: false, isDimmed: true });
+    expect(nodeState("c")).toMatchObject({ isSelected: true, isPill: true });
   });
 
   it("gives no pill to a multi-selection", () => {
     renderQuad({ selection: { nodes: [quad[0], quad[2]], edges: [] } });
-    expect(lastState(sigmaStub.setNodeState, "a")).toMatchObject({
-      isSelected: true,
-      isPill: false,
-    });
+    expect(nodeState("a")).toMatchObject({ isSelected: true, isPill: false });
   });
 
   it("flags a selected edge", () => {
     renderQuad({ selection: { nodes: [], edges: [quadEdges[1]] } });
-    expect(lastState(sigmaStub.setEdgeState, "c-d")).toMatchObject({
-      isSelected: true,
-    });
+    expect(edgeState("c-d")).toMatchObject({ isSelected: true });
   });
 
-  it("leaves the refresh to Sigma, which re-evaluates only the items whose state changed", () => {
+  it("leaves the refresh to Sigma, which re-evaluates only the items whose state changed", async () => {
     const { rerender } = renderQuad();
     sigmaStub.refresh.mockClear();
     sigmaStub.scheduleRefresh.mockClear();
-    sigmaStub.setNodeState.mockClear();
 
     rerender(
       canvas({
@@ -780,13 +877,15 @@ describe("SigmaCanvas selection focus", () => {
         selection: { nodes: [quad[0]], edges: [] },
       }),
     );
+    await flushDimBatch();
 
     expect(sigmaStub.setNodeState).toHaveBeenCalled();
+    expect(sigmaStub.setNodesState).toHaveBeenCalled();
     expect(sigmaStub.refresh).not.toHaveBeenCalled();
     expect(sigmaStub.scheduleRefresh).not.toHaveBeenCalled();
   });
 
-  it("sets state only on nodes the graph holds, because Sigma throws on an unknown key", () => {
+  it("sets state only on nodes the graph holds, because Sigma throws on an unknown key", async () => {
     // A selection restored from the URL can name a protein before (or without) its graph loading.
     render(
       canvas({
@@ -794,15 +893,90 @@ describe("SigmaCanvas selection focus", () => {
         selection: { nodes: [{ id: "zz", kind: "host" }], edges: [] },
       }),
     );
+    await flushDimBatch();
 
     expect(sigmaStub.setNodeState).not.toHaveBeenCalled();
     expect(sigmaStub.setEdgeState).not.toHaveBeenCalled();
+    expect(writtenKeys()).not.toContain("zz");
   });
 
-  it("re-applies the highlights to a reloaded graph, whose state Sigma cleared", () => {
+  it("drops a dim batch still waiting for its frame when the canvas unmounts", async () => {
+    const { unmount } = selectOnLoadedQuad({ nodes: [quad[0]], edges: [] });
+    unmount();
+    await flushDimBatch();
+    expect(sigmaStub.setNodesState).not.toHaveBeenCalled();
+  });
+
+  it("leaves the highlights alone on a layout switch, which moves nodes that keep their state", async () => {
     const selection = { nodes: [quad[0]], edges: [] };
     const { rerender } = renderQuad({ selection });
-    sigmaStub.setNodeState.mockClear();
+    await flushDimBatch();
+    clearStateWrites();
+
+    rerender(
+      canvas({
+        nodes: quad,
+        edges: quadEdges,
+        positions: new Float64Array([8, 7, 6, 5, 4, 3, 2, 1]),
+        selection,
+      }),
+    );
+    await flushDimBatch();
+
+    // Sigma clears item state only when the graph is cleared, not on the refresh a move asks for,
+    // so nothing is re-dimmed or reset. Compiled, nothing re-syncs; uncompiled, GraphEvents
+    // re-syncs with equal Sets, which may rewrite members with the values they already hold.
+    expect(sigmaStub.refresh).toHaveBeenCalled();
+    expect(sigmaStub.setNodesState).not.toHaveBeenCalled();
+    expect(sigmaStub.setEdgesState).not.toHaveBeenCalled();
+    expect(
+      writtenKeys().every((key) => ["a", "b", "a-b"].includes(key)),
+    ).toBe(true);
+    for (const id of ["a", "b"]) {
+      if (writtenKeys().includes(id)) {
+        expect(nodeState(id)).toEqual(
+          expect.objectContaining({ isDimmed: false }),
+        );
+      }
+    }
+    if (writtenKeys().includes("a")) {
+      expect(nodeState("a")).toMatchObject({ isSelected: true, isPill: true });
+    }
+  });
+
+  it("writes a dim still waiting for its frame before exporting the PNG, which copies the state as it is", async () => {
+    const { downloadAsImage } = await import("@sigma/export-image");
+    vi.mocked(downloadAsImage).mockClear();
+    const handleRef: GraphCanvasProps["handleRef"] = { current: null };
+    const view = render(canvas({ nodes: quad, edges: quadEdges, positions: quadPositions, handleRef }));
+    clearStateWrites();
+    view.rerender(
+      canvas({
+        nodes: quad,
+        edges: quadEdges,
+        positions: quadPositions,
+        handleRef,
+        selection: { nodes: [quad[0]], edges: [] },
+      }),
+    );
+    expect(sigmaStub.setNodesState).not.toHaveBeenCalled();
+
+    handleRef.current?.exportPng();
+
+    expect(downloadAsImage).toHaveBeenCalledTimes(1);
+    expect(sigmaStub.setNodesState).toHaveBeenCalledWith(["c", "d"], {
+      isDimmed: true,
+    });
+    const dimmedAt = sigmaStub.setNodesState.mock.invocationCallOrder[0];
+    const exportedAt = vi.mocked(downloadAsImage).mock.invocationCallOrder[0];
+    expect(dimmedAt).toBeLessThan(exportedAt);
+  });
+
+  it("re-applies the highlights to a reloaded graph, whose state Sigma cleared", async () => {
+    const selection = { nodes: [quad[0]], edges: [] };
+    const { rerender } = renderQuad({ selection });
+    await flushDimBatch();
+    clearStateWrites();
     cameraStub.setState.mockClear();
 
     // New rows holding the same protein: GraphLoader clears and re-imports the graph.
@@ -817,27 +991,40 @@ describe("SigmaCanvas selection focus", () => {
     );
 
     expect(sigmaStub.loadGraph).toHaveBeenCalledTimes(2);
-    expect(lastState(sigmaStub.setNodeState, "a")).toMatchObject({
-      isSelected: true,
-      isPill: true,
-    });
-    expect(lastState(sigmaStub.setNodeState, "e")).toMatchObject({
-      isDimmed: true,
-    });
+    // At once, with no frame in between: a load is not a click waiting for its answer.
+    expect(nodeState("a")).toMatchObject({ isSelected: true, isPill: true });
+    expect(nodeState("e")).toMatchObject({ isDimmed: true });
 
     // GraphLoader must sync on its own, between the load and the re-fit it does right after:
     // with the React Compiler, an unchanged selection keeps its memoized Sets, so GraphEvents'
     // sync effect does not re-run on a reload (Vitest, uncompiled, re-runs it on every render).
     const loadedAt = sigmaStub.loadGraph.mock.invocationCallOrder.at(-1) ?? 0;
     const refitAt = cameraStub.setState.mock.invocationCallOrder.at(0) ?? 0;
-    const syncedA = sigmaStub.setNodeState.mock.calls
-      .map(([key], i) => ({
-        key: key as string,
-        at: sigmaStub.setNodeState.mock.invocationCallOrder[i],
-      }))
-      .filter(({ key, at }) => key === "a" && at > loadedAt && at < refitAt);
+    const between = (calls: unknown[][], order: number[], id: string) =>
+      calls
+        .map((call, i) => ({ call, at: order[i] }))
+        .filter(
+          ({ call, at }) =>
+            (call[0] === id ||
+              (Array.isArray(call[0]) && call[0].includes(id))) &&
+            at > loadedAt &&
+            at < refitAt,
+        );
     expect(refitAt).toBeGreaterThan(loadedAt);
-    expect(syncedA).toHaveLength(1);
+    expect(
+      between(
+        sigmaStub.setNodeState.mock.calls,
+        sigmaStub.setNodeState.mock.invocationCallOrder,
+        "a",
+      ),
+    ).toHaveLength(1);
+    expect(
+      between(
+        sigmaStub.setNodesState.mock.calls,
+        sigmaStub.setNodesState.mock.invocationCallOrder,
+        "e",
+      ),
+    ).toHaveLength(1);
   });
 });
 

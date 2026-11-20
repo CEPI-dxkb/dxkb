@@ -36,6 +36,8 @@ import {
   type GraphSigma,
 } from "@/lib/interactions/graph-render-config";
 import {
+  cancelRenderSync,
+  flushRenderSync,
   syncRenderState,
   type RenderInputs,
 } from "@/lib/interactions/graph-render-state";
@@ -192,9 +194,10 @@ function GraphLoader({
   // A new theme recolors the loaded labels in place (`LabelColorSync`); it never reloads the graph.
   const currentLabelColor = useEffectEvent(() => labelColor);
   // Sigma drops every item's state when the graph is cleared, so a reload (new rows) re-applies
-  // the current selection's highlights to the nodes and edges it just imported.
+  // the current selection's highlights to the nodes and edges it just imported. A layout switch
+  // only moves the nodes, which keep their state.
   const syncHighlights = useEffectEvent(() => {
-    syncRenderState(sigma, renderInputs);
+    syncRenderState(sigma, renderInputs, { reloaded: true });
   });
   useEffect(() => {
     const previous = loaded.current;
@@ -223,7 +226,6 @@ function GraphLoader({
       graph.setNodeAttribute(node.id, "x", positions[2 * i]);
       graph.setNodeAttribute(node.id, "y", positions[2 * i + 1]);
     });
-    syncHighlights();
     sigma.refresh();
     // Sigma auto-frames only on initial load; reset the camera so a layout switch re-fits the new
     // extent.
@@ -465,6 +467,14 @@ function GraphEvents({
     syncRenderState(sigma, { selectedNodeIds, selectedEdgeIds, focus });
   }, [sigma, selectedNodeIds, selectedEdgeIds, focus]);
 
+  // A dim batch still waiting for its frame must not land on a Sigma that is going away.
+  useEffect(
+    () => () => {
+      cancelRenderSync(sigma);
+    },
+    [sigma],
+  );
+
   return null;
 }
 
@@ -476,17 +486,20 @@ function HandleBridge({
   onReady?: () => void;
 }) {
   // Untyped: `downloadAsImage` takes Sigma with its default state types. It copies every item's
-  // state onto its offscreen renderer, so the highlights are in the PNG.
+  // state onto its offscreen renderer when called, so the highlights are in the PNG; a dim batch
+  // still waiting for its frame is written first, or the PNG would miss it.
   const sigma = useSigma();
+  const graphSigma = useGraphSigma();
 
   useImperativeHandle(
     handleRef,
     () => ({
       exportPng: () => {
+        flushRenderSync(graphSigma);
         void downloadAsImage(sigma, { fileName: "BVBRC_interaction" });
       },
     }),
-    [sigma],
+    [sigma, graphSigma],
   );
 
   // Runs after useImperativeHandle commits handleRef.current, so "ready" means the handle is

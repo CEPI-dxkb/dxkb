@@ -10,14 +10,14 @@ function Card({
   ...props
 }: React.ComponentProps<"div"> & {
   size?: "default" | "sm"
-  variant?: "default" | "panel" | "tile" | "panel-error" | "raised"
+  variant?: "default" | "panel" | "tile" | "tile-link" | "panel-error" | "raised"
 }) {
   return (
     <div
       data-slot="card"
       data-size={size}
       data-variant={variant}
-      className={cn("group/card flex flex-col gap-4 overflow-hidden rounded-xl bg-card py-4 text-sm text-card-foreground ring-1 ring-foreground/10 has-data-[slot=card-footer]:pb-0 has-[>img:first-child]:pt-0 data-[size=sm]:gap-3 data-[size=sm]:py-3 data-[size=sm]:has-data-[slot=card-footer]:pb-0 data-[variant=panel]:rounded-lg data-[variant=panel-error]:rounded-lg data-[variant=panel-error]:bg-destructive/5 data-[variant=raised]:rounded-lg data-[variant=raised]:border data-[variant=raised]:shadow-sm data-[variant=tile]:rounded-md *:[img:first-child]:rounded-t-xl *:[img:last-child]:rounded-b-xl", className)}
+      className={cn("group/card flex flex-col gap-4 overflow-hidden rounded-xl bg-card py-4 text-sm text-card-foreground ring-1 ring-foreground/10 has-data-[slot=card-footer]:pb-0 has-[>img:first-child]:pt-0 data-[size=sm]:gap-3 data-[size=sm]:py-3 data-[size=sm]:has-data-[slot=card-footer]:pb-0 data-[variant=panel]:rounded-lg data-[variant=panel-error]:rounded-lg data-[variant=panel-error]:bg-destructive/5 data-[variant=raised]:rounded-lg data-[variant=raised]:border data-[variant=raised]:shadow-sm data-[variant=tile]:rounded-md data-[variant=tile-link]:rounded-md data-[variant=tile-link]:transition-colors data-[variant=tile-link]:hover:bg-muted/40 data-[variant=tile-link]:has-focus-visible:ring-3 data-[variant=tile-link]:has-focus-visible:ring-ring/50 *:[img:first-child]:rounded-t-xl *:[img:last-child]:rounded-b-xl", className)}
       {...props}
     />
   )

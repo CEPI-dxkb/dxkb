@@ -12,6 +12,9 @@ function Card({
   size?: "default" | "sm"
   variant?: "default" | "panel" | "tile" | "tile-link" | "panel-error" | "raised"
 }) {
+  // The `tile-link` variant's transparent focus outline is not dead code: forced-colors mode drops the
+  // box-shadow ring and paints the outline in the system colour. It sits on the Card because the Card's
+  // overflow-hidden clips the link's own outline.
   return (
     <div
       data-slot="card"

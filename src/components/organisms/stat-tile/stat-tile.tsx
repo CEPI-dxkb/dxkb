@@ -20,7 +20,9 @@ export interface StatTileProps {
   valueClassName?: string;
 }
 
-const bodyClassName = "block min-w-0 px-2.5 py-1.5 focus-visible:outline-hidden";
+// `grow` fills the Card (a flex column that stretches to its row's tallest tile), so the clickable area covers the whole tile.
+const bodyClassName =
+  "block min-w-0 grow px-2.5 py-1.5 focus-visible:outline-hidden";
 
 export function StatTile({
   id,

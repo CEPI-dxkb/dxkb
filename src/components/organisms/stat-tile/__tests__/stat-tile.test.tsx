@@ -23,6 +23,8 @@ describe("StatTile", () => {
     const link = screen.getByRole("link", { name: /Genomes \/ Segments\s*82,094/ });
     expect(link).toHaveAttribute("href", "/taxonomy/1?tab=genomes");
     expect(link).toHaveAccessibleDescription("Assembled genome records");
+    // The e2e page object selects linked tiles by this slot.
+    expect(link).toHaveAttribute("data-slot", "stat-tile-link");
   });
 
   it("is not a link without an href", () => {

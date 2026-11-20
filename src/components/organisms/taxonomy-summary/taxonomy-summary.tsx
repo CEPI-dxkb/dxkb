@@ -69,7 +69,10 @@ export async function TaxonomySummary({
       : unavailableCount;
 
   const base = taxonomyHref(taxonId);
-  const metrics: Omit<StatTileProps, "className" | "valueClassName">[] = [
+  const metrics: Omit<
+    StatTileProps,
+    "className" | "valueClassName" | "testId"
+  >[] = [
     { id: "taxon-id", label: "Taxon ID", value: taxon ? String(taxon.taxonId) : String(taxonId), description: "NCBI taxonomy identifier" },
     { id: "taxon-name", label: "Taxon Name", value: taxon?.taxonName ?? "-", description: "Scientific name of the taxon" },
     { id: "taxon-rank", label: "Taxon Rank", value: taxon?.taxonRank ? taxon.taxonRank.charAt(0).toUpperCase() + taxon.taxonRank.slice(1) : "-", description: "Taxonomic rank" },

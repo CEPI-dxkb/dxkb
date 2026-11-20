@@ -1,13 +1,56 @@
 import { GeneraCard } from "@/components/organisms/genera-grid/genera-card";
-import { taxonomyHref as familyHref } from "@/lib/views/hrefs";
+import { taxonomyHref } from "@/lib/views/hrefs";
 import { cn } from "@/lib/utils";
 
-import { type VirusFamiliesColumn, virusFamilies } from "./virus-families-data";
+import {
+  FamilyPathogensDisclosure,
+  FamilyPathogensDrawer,
+  FamilyPathogensToggle,
+} from "./family-pathogens-disclosure";
+import {
+  type VirusFamiliesColumn,
+  type VirusFamily,
+  virusFamilies,
+} from "./virus-families-data";
 
 type VirusFamilySubGroup = Extract<
   VirusFamiliesColumn,
   { group: null }
 >["subGroups"][number];
+
+function FamilyCard({
+  family,
+  viewLabel,
+}: {
+  family: VirusFamily;
+  viewLabel?: string;
+}) {
+  const pathogens = family.pathogens.map((pathogen) => ({
+    name: pathogen.name,
+    href: taxonomyHref(pathogen.taxonId),
+  }));
+
+  return (
+    <FamilyPathogensDisclosure>
+      <GeneraCard
+        name={family.name}
+        href={taxonomyHref(family.taxonId)}
+        viewLabel={viewLabel}
+        action={
+          <FamilyPathogensToggle
+            familyName={family.name}
+            pathogens={pathogens}
+          />
+        }
+      />
+      <FamilyPathogensDrawer
+        familyName={family.name}
+        pathogens={pathogens}
+        note={family.pathogenNote}
+      />
+    </FamilyPathogensDisclosure>
+  );
+}
 
 function SubGroups({ subGroups }: { subGroups: VirusFamilySubGroup[] }) {
   return (
@@ -19,10 +62,9 @@ function SubGroups({ subGroups }: { subGroups: VirusFamilySubGroup[] }) {
           </h3>
           <div className="flex flex-col gap-2">
             {subGroup.families.map((family) => (
-              <GeneraCard
+              <FamilyCard
                 key={family.name}
-                name={family.name}
-                href={familyHref(family.taxonId)}
+                family={family}
                 viewLabel="overview"
               />
             ))}
@@ -47,7 +89,7 @@ export function VirusFamiliesSection() {
           Common viral family groupings organized by genome type.
         </p>
       </div>
-      <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      <div className="group/grid grid gap-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {virusFamilies.map((column, index) => (
           <div
             key={
@@ -68,11 +110,7 @@ export function VirusFamiliesSection() {
                 </h3>
                 <div className="flex flex-col gap-2">
                   {column.families.map((family) => (
-                    <GeneraCard
-                      key={family.name}
-                      name={family.name}
-                      href={familyHref(family.taxonId)}
-                    />
+                    <FamilyCard key={family.name} family={family} />
                   ))}
                 </div>
                 {index === 2 && col3.group === null && (

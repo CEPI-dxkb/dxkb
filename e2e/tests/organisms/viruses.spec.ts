@@ -53,6 +53,86 @@ test.describe("viruses organism landing page", () => {
     await expect(page).toHaveURL(/\/organisms\/viruses$/);
   });
 
+  test("family card unfolds its major human pathogens", async ({ page }) => {
+    const landing = new OrganismLandingPage(page);
+
+    await landing.goto("viruses");
+    await page.waitForLoadState("networkidle");
+
+    const toggle = landing.getPathogensToggle("Coronaviridae");
+    const panel = landing.getPathogensPanel("Coronaviridae");
+    const otherCard = landing.getFamilyCardWrapper("Caliciviridae");
+
+    await expect(panel).toBeHidden();
+    await expect(otherCard).toHaveCSS("opacity", "1");
+
+    await toggle.hover();
+    await expect(
+      panel.getByRole("link", { name: "SARS-CoV-2" }),
+    ).toHaveAttribute("href", "/taxonomy/2697049");
+    await expect(otherCard).toHaveCSS("opacity", "0.5");
+
+    // The panel is hoverable: the pointer can move onto it without closing it.
+    await panel.getByRole("link", { name: "MERS-CoV" }).hover();
+    await expect(panel).toBeVisible();
+
+    // Back on the toggle before Escape: closing the panel under a pointer that
+    // is over a chip would let the card beneath it open, which is not the test.
+    await toggle.hover();
+    await page.keyboard.press("Escape");
+    await expect(panel).toBeHidden();
+    await expect(otherCard).toHaveCSS("opacity", "1");
+
+    // Keyboard parity: hover is not the only way in.
+    await page.mouse.move(0, 0);
+    await toggle.focus();
+    await expect(panel).toBeVisible();
+    await page.keyboard.press("Enter");
+    await expect(toggle).toHaveAttribute("aria-expanded", "true");
+
+    await page.keyboard.press("Escape");
+    await expect(panel).toBeHidden();
+    await expect(toggle).toBeFocused();
+
+    // Escape from inside the panel hands focus back to the toggle, not <body>.
+    await page.keyboard.press("Enter");
+    // Focus the chip directly: WebKit's Tab skips links unless full keyboard
+    // access is on, which is not what this step is about.
+    await panel.getByRole("link").first().focus();
+    await expect(panel.getByRole("link").first()).toBeFocused();
+    await page.keyboard.press("Escape");
+    await expect(panel).toBeHidden();
+    await expect(toggle).toBeFocused();
+  });
+
+  test("a clicked toggle stays open until a press outside", async ({ page }) => {
+    const landing = new OrganismLandingPage(page);
+
+    await landing.goto("viruses");
+    await page.waitForLoadState("networkidle");
+
+    const panel = landing.getPathogensPanel("Flaviviridae");
+
+    await landing.getPathogensToggle("Flaviviridae").click();
+    await page.mouse.move(0, 0);
+    await expect(panel).toBeVisible();
+
+    await page.getByRole("heading", { level: 1, name: "Viruses" }).click();
+    await expect(panel).toBeHidden();
+  });
+
+  test("a family with no human pathogens says so", async ({ page }) => {
+    const landing = new OrganismLandingPage(page);
+
+    await landing.goto("viruses");
+    await page.waitForLoadState("networkidle");
+
+    await landing.getPathogensToggle("Asfarviridae").click();
+    await expect(landing.getPathogensPanel("Asfarviridae")).toContainText(
+      "No known human pathogens",
+    );
+  });
+
   test("matches the visual snapshot", async ({ page }) => {
     const landing = new OrganismLandingPage(page);
 

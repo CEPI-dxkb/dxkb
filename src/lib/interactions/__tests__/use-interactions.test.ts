@@ -3,21 +3,26 @@ import { renderHook, waitFor } from "@testing-library/react";
 import { http, HttpResponse } from "msw";
 import { createElement } from "react";
 
+import { POST as dataGatewayPost } from "@/app/api/data/[resource]/route";
 import { DataRepositoryError } from "@/lib/data-api";
+import { validateDataApiRequest } from "@/lib/data-api/validation";
 
+import {
+  makeRouteContext,
+  mockNextRequest,
+} from "@/test-helpers/api-route-helpers";
 import { server } from "@/test-helpers/msw-server";
 import { createQueryClientWrapper } from "@/test-helpers/react";
-import { settleBackgroundWork } from "@/test-helpers/settle";
 
 import {
   interactionsGraphFields,
   interactionsGraphRequest,
   interactionsGraphRowLimit,
   useInteractions,
-  useInteractionsTotal,
 } from "../use-interactions";
 
 const scopeRql = "eq(evidence,experimental)";
+const dataApiOrigin = "https://data.test";
 
 function row(index: number) {
   return {
@@ -27,11 +32,57 @@ function row(index: number) {
   };
 }
 
-function rowsHandler(rows: unknown[], captured?: { body?: unknown }) {
-  return http.post("/api/data/ppi", async ({ request }) => {
-    if (captured) captured.body = await request.json();
-    return HttpResponse.json({ rows });
-  });
+function rowRange(count: number) {
+  return Array.from({ length: count }, (_, index) => row(index));
+}
+
+// Each gateway call gets its own client IP so the route's rate-limit bucket does not fill up.
+let nextIpOctet = 0;
+function freshIp(): string {
+  nextIpOctet = (nextIpOctet % 250) + 1;
+  return `198.51.100.${String(nextIpOctet)}`;
+}
+
+interface Upstream {
+  rows: unknown[];
+  /** The upstream `Content-Range` header; `null` sends none. */
+  contentRange: string | null;
+}
+
+/**
+ * Serves `/api/data/ppi` through the real gateway route, so the graph's request meets the real
+ * validator (a request past `maxExportRows` is a 400, not a pass) and the upstream `Content-Range`
+ * reaches the hook through the real server repository. `upstream` plays the Data API.
+ */
+function serveThroughGateway(upstream: Upstream) {
+  const seen: { body?: unknown; upstreamRange?: string | null } = {};
+  server.use(
+    http.post("/api/data/ppi", async ({ request }) => {
+      seen.body = await request.json();
+      return dataGatewayPost(
+        mockNextRequest({
+          method: "POST",
+          url: "http://localhost:3019/api/data/ppi",
+          headers: {
+            "Content-Type": "application/json",
+            "x-forwarded-for": freshIp(),
+          },
+          body: seen.body,
+        }),
+        makeRouteContext({ resource: "ppi" }),
+      );
+    }),
+    http.get(`${dataApiOrigin}/ppi/`, ({ request }) => {
+      seen.upstreamRange = request.headers.get("Range");
+      return HttpResponse.json(
+        upstream.rows as Parameters<typeof HttpResponse.json>[0],
+        upstream.contentRange === null
+          ? undefined
+          : { headers: { "Content-Range": upstream.contentRange } },
+      );
+    }),
+  );
+  return seen;
 }
 
 function render(rql = scopeRql, keyword = "") {
@@ -41,31 +92,66 @@ function render(rql = scopeRql, keyword = "") {
 }
 
 describe("useInteractions", () => {
-  // Leaving NEXT_PUBLIC_DATA_API unset proves the dataset travels through the same-origin gateway.
+  const savedEnv: Record<string, string | undefined> = {};
+  const envNames = ["DATA_API_URL", "NEXT_PUBLIC_DATA_API", "E2E_MOCK_ENABLED"];
+
+  // Leaving NEXT_PUBLIC_DATA_API unset proves the dataset travels through the same-origin gateway;
+  // DATA_API_URL is the gateway's own upstream.
   beforeEach(() => {
+    for (const name of envNames) savedEnv[name] = process.env[name];
+    process.env.DATA_API_URL = dataApiOrigin;
     delete process.env.NEXT_PUBLIC_DATA_API;
+    delete process.env.E2E_MOCK_ENABLED;
   });
 
-  it("asks the gateway for the shared predicate and the graph's own row bound", async () => {
-    const captured: { body?: unknown } = {};
-    server.use(rowsHandler([row(1)], captured));
+  afterEach(() => {
+    for (const name of envNames) {
+      if (savedEnv[name] === undefined) Reflect.deleteProperty(process.env, name);
+      else process.env[name] = savedEnv[name];
+    }
+  });
+
+  it("draws at most 10,000 interactions", () => {
+    // The measured cap (docs/architecture.md, Interactions): load and selection stay within budget
+    // at 4x CPU throttle on real BV-BRC data. It is also `maxExportRows`, the most one export may ask
+    // for, so the overflow cannot be read from one extra row and comes from the total instead.
+    expect(interactionsGraphRowLimit).toBe(10_000);
+  });
+
+  it("asks the gateway for the shared predicate and exactly the graph's row bound", async () => {
+    const seen = serveThroughGateway({
+      rows: [row(1)],
+      contentRange: "items 0-1/1",
+    });
 
     const { result } = render(scopeRql, "groEL dnaK");
 
     await waitFor(() => { expect(result.current.isSuccess).toBe(true); });
 
-    expect(captured.body).toEqual({
+    expect(seen.body).toEqual({
       operation: "export",
       rql: scopeRql,
       keyword: "groEL dnaK",
       fields: [...interactionsGraphFields],
-      limit: interactionsGraphRowLimit + 1,
+      limit: 10_000,
       sort: { field: "id", direction: "asc" },
     });
+    // The Data API's range end is exclusive: exactly the bound, not one row past it.
+    expect(seen.upstreamRange).toBe("items=0-10000");
     expect(result.current.data).toEqual({
       rows: [row(1)],
       isTruncated: false,
+      total: 1,
     });
+  });
+
+  it("sends a request the gateway's validator accepts", () => {
+    expect(() =>
+      validateDataApiRequest("ppi", {
+        operation: "export",
+        ...interactionsGraphRequest(scopeRql, "groEL"),
+      }),
+    ).not.toThrow();
   });
 
   it("omits an empty predicate instead of sending a blank one", () => {
@@ -73,49 +159,102 @@ describe("useInteractions", () => {
       rql: undefined,
       keyword: undefined,
       fields: [...interactionsGraphFields],
-      limit: interactionsGraphRowLimit + 1,
+      limit: interactionsGraphRowLimit,
       sort: { field: "id", direction: "asc" },
     });
   });
 
   it("returns no rows for an empty result", async () => {
-    server.use(rowsHandler([]));
+    serveThroughGateway({ rows: [], contentRange: "items 0-0/0" });
 
     const { result } = render();
 
     await waitFor(() => { expect(result.current.isSuccess).toBe(true); });
-    expect(result.current.data).toEqual({ rows: [], isTruncated: false });
+    expect(result.current.data).toEqual({
+      rows: [],
+      isTruncated: false,
+      total: 0,
+    });
   });
 
-  it("caps the graph at its row bound and reports the truncation", async () => {
-    server.use(
-      rowsHandler(
-        Array.from({ length: interactionsGraphRowLimit + 1 }, (_, index) =>
-          row(index),
-        ),
-      ),
-    );
+  it("reports the truncation when the Data API counts more matches than the bound", async () => {
+    serveThroughGateway({
+      rows: rowRange(interactionsGraphRowLimit),
+      contentRange: "items 0-10000/10001",
+    });
 
     const { result } = render();
 
     await waitFor(() => { expect(result.current.isSuccess).toBe(true); });
     expect(result.current.data?.rows).toHaveLength(interactionsGraphRowLimit);
     expect(result.current.data?.isTruncated).toBe(true);
+    expect(result.current.data?.total).toBe(interactionsGraphRowLimit + 1);
   });
 
-  it("treats a result that exactly fills the bound as complete", async () => {
-    server.use(
-      rowsHandler(
-        Array.from({ length: interactionsGraphRowLimit }, (_, index) =>
-          row(index),
-        ),
-      ),
-    );
+  it("treats a result whose total equals the rows it returned as complete, even at the bound", async () => {
+    serveThroughGateway({
+      rows: rowRange(interactionsGraphRowLimit),
+      contentRange: "items 0-10000/10000",
+    });
 
     const { result } = render();
 
     await waitFor(() => { expect(result.current.isSuccess).toBe(true); });
     expect(result.current.data?.isTruncated).toBe(false);
+    expect(result.current.data?.total).toBe(interactionsGraphRowLimit);
+  });
+
+  describe("without a usable total", () => {
+    it("counts a result that fills the bound as truncated", async () => {
+      // Exactly 10,000 matches and more than 10,000 look the same then; claiming a cut graph is
+      // complete would hide rows, while a needless notice only suggests narrowing.
+      serveThroughGateway({
+        rows: rowRange(interactionsGraphRowLimit),
+        contentRange: null,
+      });
+
+      const { result } = render();
+
+      await waitFor(() => { expect(result.current.isSuccess).toBe(true); });
+      expect(result.current.data?.rows).toHaveLength(interactionsGraphRowLimit);
+      expect(result.current.data?.isTruncated).toBe(true);
+      expect(result.current.data?.total).toBeUndefined();
+    });
+
+    it("counts a result under the bound as complete", async () => {
+      serveThroughGateway({
+        rows: rowRange(interactionsGraphRowLimit - 1),
+        contentRange: "items 0-9999/*",
+      });
+
+      const { result } = render();
+
+      await waitFor(() => { expect(result.current.isSuccess).toBe(true); });
+      expect(result.current.data?.isTruncated).toBe(false);
+      expect(result.current.data?.total).toBeUndefined();
+    });
+
+    it.each([
+      ["a string", "10001"],
+      ["a negative number", -1],
+      ["a fraction", 10_000.5],
+      ["null", null],
+    ])("ignores a gateway total that is %s", async (_name, total) => {
+      server.use(
+        http.post("/api/data/ppi", () =>
+          HttpResponse.json({ rows: rowRange(3), total }),
+        ),
+      );
+
+      const { result } = render();
+
+      await waitFor(() => { expect(result.current.isSuccess).toBe(true); });
+      expect(result.current.data).toEqual({
+        rows: rowRange(3),
+        isTruncated: false,
+        total: undefined,
+      });
+    });
   });
 
   it("surfaces the gateway's malformed-envelope error verbatim", async () => {
@@ -137,12 +276,11 @@ describe("useInteractions", () => {
   });
 
   it("rejects a row that cannot be an edge as a malformed response", async () => {
-    server.use(
-      rowsHandler([
-        row(1),
-        { id: "ppi-2", interactor_a: "node-a-2" },
-      ]),
-    );
+    // The gateway's ppi schema needs only an id, so this row reaches the graph's own edge schema.
+    serveThroughGateway({
+      rows: [row(1), { id: "ppi-2", interactor_a: "node-a-2" }],
+      contentRange: "items 0-2/2",
+    });
 
     const { result } = render();
 
@@ -271,163 +409,5 @@ describe("useInteractions with a row selection", () => {
     expect(result.current.error?.message).toBe(
       exported.result.current.error?.message,
     );
-  });
-});
-
-describe("useInteractionsTotal", () => {
-  beforeEach(() => {
-    delete process.env.NEXT_PUBLIC_DATA_API;
-  });
-
-  interface TotalRequest {
-    operation: string | null;
-    rql: string | null;
-    keyword: string | null;
-    keywordMode: string | null;
-    page: string | null;
-    pageSize: string | null;
-    fields: string[];
-  }
-
-  function serveTotal(respond: (rql: string | null) => Response) {
-    const requests: TotalRequest[] = [];
-    server.use(
-      http.get("/api/data/ppi", ({ request }) => {
-        const params = new URL(request.url).searchParams;
-        requests.push({
-          operation: params.get("operation"),
-          rql: params.get("rql"),
-          keyword: params.get("keyword"),
-          keywordMode: params.get("keywordMode"),
-          page: params.get("page"),
-          pageSize: params.get("pageSize"),
-          fields: params.getAll("field"),
-        });
-        return respond(params.get("rql"));
-      }),
-    );
-    return requests;
-  }
-
-  const totalResponse = (total: number) =>
-    HttpResponse.json({
-      rows: [{ id: "ppi-1" }],
-      total,
-      facets: {},
-      page: 1,
-      pageSize: 1,
-    });
-
-  function renderTotal(enabled: boolean, rql = scopeRql, keyword = "") {
-    return renderHook(
-      ({ currentRql }) => useInteractionsTotal(currentRql, keyword, enabled),
-      {
-        initialProps: { currentRql: rql },
-        wrapper: createQueryClientWrapper(),
-      },
-    );
-  }
-
-  it("reads the matching row count through a one-row page under the graph's predicate", async () => {
-    const requests = serveTotal(() => totalResponse(124_566));
-
-    const { result } = renderTotal(true, scopeRql, "groEL dnaK");
-
-    await waitFor(() => { expect(result.current.isSuccess).toBe(true); });
-    expect(result.current.data).toBe(124_566);
-    expect(requests).toStrictEqual([
-      {
-        operation: "collection",
-        rql: scopeRql,
-        keyword: "groEL dnaK",
-        // The graph's export sends no keyword mode, so neither does its count.
-        keywordMode: null,
-        page: "1",
-        pageSize: "1",
-        fields: ["id"],
-      },
-    ]);
-  });
-
-  it("omits an empty predicate and keyword, as the graph's own request does", async () => {
-    const requests = serveTotal(() => totalResponse(124_566));
-
-    const { result } = renderTotal(true, "", "");
-
-    await waitFor(() => { expect(result.current.isSuccess).toBe(true); });
-    expect(requests).toStrictEqual([
-      expect.objectContaining({ rql: null, keyword: null }),
-    ]);
-  });
-
-  it("sends nothing while disabled", async () => {
-    const requests = serveTotal(() => totalResponse(10));
-
-    const { result } = renderTotal(false);
-    await settleBackgroundWork();
-
-    expect(requests).toHaveLength(0);
-    expect(result.current.fetchStatus).toBe("idle");
-    expect(result.current.data).toBeUndefined();
-  });
-
-  it("starts reading once it is enabled", async () => {
-    const requests = serveTotal(() => totalResponse(7));
-
-    const { result, rerender } = renderHook(
-      ({ enabled }) => useInteractionsTotal(scopeRql, "", enabled),
-      {
-        initialProps: { enabled: false },
-        wrapper: createQueryClientWrapper(),
-      },
-    );
-    await settleBackgroundWork();
-    expect(requests).toHaveLength(0);
-
-    rerender({ enabled: true });
-
-    await waitFor(() => { expect(result.current.data).toBe(7); });
-    expect(requests).toHaveLength(1);
-  });
-
-  it("offers no count for a predicate whose own count has not landed, never the previous one's", async () => {
-    let release: () => void = () => undefined;
-    const gate = new Promise<void>((resolve) => {
-      release = resolve;
-    });
-    server.use(
-      http.get("/api/data/ppi", async ({ request }) => {
-        const rql = new URL(request.url).searchParams.get("rql");
-        if (rql === "eq(evidence,narrowed)") {
-          await gate;
-          return totalResponse(42);
-        }
-        return totalResponse(124_566);
-      }),
-    );
-
-    const { result, rerender } = renderTotal(true);
-    await waitFor(() => { expect(result.current.data).toBe(124_566); });
-
-    rerender({ currentRql: "eq(evidence,narrowed)" });
-
-    expect(result.current.data).toBeUndefined();
-    release();
-    await waitFor(() => { expect(result.current.data).toBe(42); });
-  });
-
-  it("reports a failed read as an error with no count", async () => {
-    serveTotal(() =>
-      HttpResponse.json(
-        { error: "Data service is unavailable.", code: "upstream_unavailable" },
-        { status: 503 },
-      ),
-    );
-
-    const { result } = renderTotal(true);
-
-    await waitFor(() => { expect(result.current.isError).toBe(true); });
-    expect(result.current.data).toBeUndefined();
-    expect(result.current.error?.message).toBe("Data service is unavailable.");
   });
 });

@@ -14,7 +14,6 @@ import { DataRepository } from "@/lib/data-api";
 import {
   interactionsGraphRowLimit,
   useInteractions,
-  useInteractionsTotal,
   type InteractionsSelection,
 } from "@/lib/interactions/use-interactions";
 import { toGraph } from "@/lib/interactions/to-graph";
@@ -199,13 +198,6 @@ export function InteractionsGraph({
   );
   const interactions = useInteractions(rql, keywordValue, rowSelection);
   const { data } = interactions;
-  // Only a truncated scope result has a count worth a second read; a selection is never truncated.
-  // A count that is loading or failed leaves the notice title without it: the graph itself loaded.
-  const interactionsTotal = useInteractionsTotal(
-    rql,
-    keywordValue,
-    Boolean(data?.isTruncated) && !rowSelection,
-  );
   const selectionVersion = rowSelection?.version;
   const loadRetry = useRetryKeepingError(
     interactions,
@@ -446,13 +438,12 @@ export function InteractionsGraph({
     onSelectedChange(null);
   }
 
-  // The count and the export are separate reads, so a count that is not past the row limit cannot
-  // describe a truncated result (a stale one would read "first 5,000 of 4,990"): the title goes
-  // without it.
+  // The count rides on the rows' own response, so it cannot lag them; it is named only past the row
+  // limit, so the title never reads "first 10,000 of 9,990". Without a count (the Data API sent none)
+  // the title goes without it.
   const totalShown =
-    interactionsTotal.data !== undefined &&
-    interactionsTotal.data > interactionsGraphRowLimit
-      ? interactionsTotal.data
+    data.total !== undefined && data.total > interactionsGraphRowLimit
+      ? data.total
       : undefined;
   // Defensive: `useInteractions` already reports a Show in Graph selection (read by id) as never
   // truncated, so this guard only keeps the notice off if that ever changes.

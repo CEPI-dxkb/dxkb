@@ -292,18 +292,19 @@ test.describe("taxon interactions tab: narrowing a graph", () => {
     browserName,
   }) => {
     test.skip(browserName === "firefox", sigmaSkip);
-    // Every pick re-reads and redraws all 5,001 rows (the mock ignores `rql`): ~10-15 s locally,
-    // but CI runners (2 workers, software WebGL) were still mid-test at the default 30 s.
+    // Every pick re-reads and redraws the 10,000 rows (the mock ignores `rql`), and CI runners
+    // (2 workers, software WebGL) were still mid-test at the default 30 s even at 5,000.
     test.slow();
 
-    // One row past the Graph's 5,000: the mock serves every row to the export, so the Graph
-    // slices and flags it, and answers the one-row count read with the full total.
+    // One row past the Graph's 10,000 (`interactionsGraphRowLimit`): the mock answers the export
+    // with the 10,000 rows it asked for and the full count of 10,001, as the gateway passes on the
+    // Data API's `Content-Range` total, so the Graph flags the cut and names the count.
     const interactionsPage = await setupInteractionsPage(
       page,
-      buildPpiRows(5001),
+      buildPpiRows(10_001),
     );
     await interactionsPage.switchToGraph();
-    await interactionsPage.expectTruncationNotice(5001);
+    await interactionsPage.expectTruncationNotice(10_001);
     await interactionsPage.expectTruncationReason();
 
     // The mock ignores `rql`, so the picks are asserted as shared state (URL, pills), not as

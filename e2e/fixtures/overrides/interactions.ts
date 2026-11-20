@@ -4,6 +4,7 @@ import {
 } from "@/lib/e2e-fixtures/records";
 import {
   buildGatewayCollectionEnvelope,
+  buildGatewayExportEnvelope,
   buildGatewayRowsEnvelope,
   buildLoopbackSolrEnvelope,
   type FacetCount,
@@ -87,8 +88,8 @@ function facetBuckets(rows: MockPpiRow[], field: string): FacetCount[] {
 
 /**
  * The gateway's collection read (`GET /api/data/ppi`): one page of the rows matching the keyword,
- * the count of all of them (the truncation notice's count and every Filters menu count read
- * `pageSize=1` for it) and a bucket list per `facet=` param. Like the rest of this mock it ignores
+ * the count of all of them (every Filters menu count reads `pageSize=1` for it; the Graph's
+ * truncation count rides on its export instead) and a bucket list per `facet=` param. Like the rest of this mock it ignores
  * `rql`, so a filter pick narrows nothing and the counts are the keyword's.
  */
 export function buildPpiCollectionEnvelope(
@@ -114,6 +115,29 @@ export function buildPpiCollectionEnvelope(
   );
 }
 
+/**
+ * The gateway's bulk-row POST (`/api/data/ppi`). An `export` gets the window it asked for and the
+ * count of every matching row (the real gateway's `Content-Range` total), which is how the Graph
+ * tells a truncated result; a `selected` read is rows-only.
+ */
+export function buildPpiPostEnvelope(
+  rows: MockPpiRow[],
+  context: JsonOverrideBodyContext,
+): { rows: MockPpiRow[]; total?: number } {
+  const matching = selectPpiRows(rows, context);
+  const body = context.parsedBody as {
+    operation?: string;
+    limit?: unknown;
+    offset?: unknown;
+  } | null;
+  return body?.operation === "export" && typeof body.limit === "number"
+    ? buildGatewayExportEnvelope(matching, {
+        limit: body.limit,
+        offset: typeof body.offset === "number" ? body.offset : undefined,
+      })
+    : buildGatewayRowsEnvelope(matching);
+}
+
 export function buildPpiOverrides(rows: MockPpiRow[]): JsonOverride[] {
   return [
     // Narrowest first (first match wins): the count URL also satisfies both
@@ -131,12 +155,11 @@ export function buildPpiOverrides(rows: MockPpiRow[]): JsonOverride[] {
       method: "GET",
       body: (context) => buildPpiCollectionEnvelope(rows, context),
     },
-    // The Graph reads through the gateway's bulk-row POST, whose envelope is
-    // rows-only.
+    // The Graph reads through the gateway's bulk-row POST.
     {
       url: /api\/data\/ppi/,
       method: "POST",
-      body: (context) => buildGatewayRowsEnvelope(selectPpiRows(rows, context)),
+      body: (context) => buildPpiPostEnvelope(rows, context),
     },
     {
       url: ppiRequest,

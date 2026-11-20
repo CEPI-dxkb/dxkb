@@ -105,7 +105,7 @@ export function InteractionsSubviewShell({
   const focusId = focusIdOf(tableState.filters);
   // Table rows shown in the Graph by id (Show in Graph). The Table keeps its own selection and
   // scope; a new scope drops this one, whose rows belong to the old scope. Component state, not
-  // URL state: up to `interactionsGraphRowLimit` ids do not fit in an address.
+  // URL state: up to `interactionsGraphRowLimit` (10,000) ids do not fit in an address.
   const [graphSelection, setGraphSelection] =
     useState<InteractionsSelection | null>(null);
   const [selectionScope, setSelectionScope] = useState(scopedRql);

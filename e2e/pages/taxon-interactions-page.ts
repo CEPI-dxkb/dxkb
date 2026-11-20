@@ -2,7 +2,7 @@ import { expect, type Locator, type Page } from "@playwright/test";
 import { CollectionToolbar } from "./collection-toolbar";
 
 /** The Graph draws at most this many interactions (`interactionsGraphRowLimit`). */
-const graphRowLimit = "5,000";
+const graphRowLimit = "10,000";
 
 export class TaxonInteractionsPage {
   readonly page: Page;
@@ -283,7 +283,7 @@ export class TaxonInteractionsPage {
   }
 
   /**
-   * The Graph's "first 5,000" notice: a polite status over the canvas's top-left, found by its
+   * The Graph's "first 10,000" notice: a polite status over the canvas's top-left, found by its
    * title because the "Laying out…" veil is a status too.
    */
   private truncationNotice(): Locator {
@@ -294,7 +294,7 @@ export class TaxonInteractionsPage {
 
   /**
    * The notice for a result past the row limit: its title names `total`. Without a `total` it only
-   * checks that the notice names the limit (the count read can lag the rows).
+   * checks that the notice names the limit (the count is left out when the Data API sends none).
    */
   async expectTruncationNotice(total?: number): Promise<void> {
     const notice = this.truncationNotice();

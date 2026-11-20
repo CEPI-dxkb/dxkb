@@ -1,11 +1,12 @@
 import { SectionRetryButton } from "@/components/organisms/shared/section-retry-button";
-import { Card } from "@/components/ui/card";
+import { StatTile, type StatTileProps } from "@/components/organisms/stat-tile/stat-tile";
 import { readSession } from "@/lib/auth/server/session";
 import { getTaxonGenomeCount } from "@/lib/services/organisms/genome-count";
 import { fetchOrganismSummary } from "@/lib/services/organisms/summary";
 import type { OrganismTaxonomy } from "@/lib/services/organisms/types";
 import { numberFormatter } from "@/lib/services/organisms/utils";
 import { formatUserFacingErrorMessage } from "@/lib/utils";
+import { overviewTabHref, taxonomyHref } from "@/lib/views/hrefs";
 
 /** What a tile shows for a count whose load failed. */
 const unavailableCount = "Unavailable";
@@ -67,39 +68,47 @@ export async function TaxonomySummary({
       ? formatCount(genomeCountResult.value)
       : unavailableCount;
 
-  const metrics: { label: string; value: string; description: string }[] = [
-    { label: "Taxon ID", value: taxon ? String(taxon.taxonId) : String(taxonId), description: "NCBI taxonomy identifier" },
-    { label: "Taxon Name", value: taxon?.taxonName ?? "-", description: "Scientific name of the taxon" },
-    { label: "Taxon Rank", value: taxon?.taxonRank ? taxon.taxonRank.charAt(0).toUpperCase() + taxon.taxonRank.slice(1) : "-", description: "Taxonomic rank" },
-    { label: "Species", value: summaryCount(summary?.uniqueSpecies), description: "Unique taxonomy species" },
+  const base = taxonomyHref(taxonId);
+  const metrics: Omit<StatTileProps, "className" | "valueClassName">[] = [
+    { id: "taxon-id", label: "Taxon ID", value: taxon ? String(taxon.taxonId) : String(taxonId), description: "NCBI taxonomy identifier" },
+    { id: "taxon-name", label: "Taxon Name", value: taxon?.taxonName ?? "-", description: "Scientific name of the taxon" },
+    { id: "taxon-rank", label: "Taxon Rank", value: taxon?.taxonRank ? taxon.taxonRank.charAt(0).toUpperCase() + taxon.taxonRank.slice(1) : "-", description: "Taxonomic rank" },
+    { id: "species", label: "Species", value: summaryCount(summary?.uniqueSpecies), description: "Unique taxonomy species" },
     {
+      id: "genomes",
       label: "Genomes / Segments",
       value: genomeCount,
       description: "Assembled genome records",
+      href: overviewTabHref(base, "genomes"),
     },
-    { label: "Protein Coding Genes (CDS)", value: summaryCount(summary?.cds), description: "Coding sequences" },
-    { label: "3D Protein Structures (PDB)", value: summaryCount(summary?.pdb), description: "Experimentally determined structures (AlphaFold predictions excluded)" },
+    {
+      id: "cds",
+      label: "Protein Coding Genes (CDS)",
+      value: summaryCount(summary?.cds),
+      description: "Coding sequences",
+      href: overviewTabHref(base, "features", { feature_type: "CDS" }),
+    },
+    {
+      id: "pdb",
+      label: "3D Protein Structures (PDB)",
+      value: summaryCount(summary?.pdb),
+      description: "Experimentally determined structures (AlphaFold predictions excluded)",
+      href: overviewTabHref(base, "protein-structures", {
+        rql: "ne(method,Predicted)",
+      }),
+    },
   ];
 
   const tiles = (
-    <div className="grid grid-cols-[repeat(auto-fit,minmax(8rem,1fr))] gap-1.5">
+    <div className="flex flex-wrap gap-1.5">
       {metrics.map((metric) => (
-        <Card
-          key={metric.label}
-          variant="tile"
-          className="min-w-0 gap-0 px-2.5 py-1.5"
-          title={metric.description}
-        >
-          <p className="text-2xs font-bold tracking-wider text-muted-foreground uppercase">
-            {metric.label}
-          </p>
-          <p
-            className="text-lg leading-tight font-bold tracking-tight wrap-break-word"
-            title={metric.value}
-          >
-            {metric.value}
-          </p>
-        </Card>
+        <StatTile
+          key={metric.id}
+          {...metric}
+          testId={`taxon-stat-${metric.id}`}
+          className="min-w-min grow basis-32"
+          valueClassName="wrap-break-word"
+        />
       ))}
     </div>
   );

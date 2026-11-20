@@ -55,6 +55,59 @@ describe("TaxonomySummary", () => {
     expect(screen.getByText("50")).toBeInTheDocument();
   });
 
+  it("links each count tile to its tab and leaves the rest unlinked", async () => {
+    vi.mocked(fetchOrganismSummary).mockResolvedValueOnce({
+      count: 1909,
+      uniqueFamily: 1,
+      uniqueGenus: 1,
+      uniqueSpecies: 5,
+      cds: 1_000_000,
+      matPeptide: null,
+      pdb: 50,
+    });
+    vi.mocked(getTaxonGenomeCount).mockResolvedValueOnce(1909);
+
+    await renderServer(TaxonomySummary({ taxonId: 234, taxon: brucellaTaxon }));
+
+    const base = "/taxonomy/234";
+    expect(
+      within(screen.getByTestId("taxon-stat-genomes")).getByRole("link"),
+    ).toHaveAttribute("href", `${base}?tab=genomes`);
+    expect(
+      within(screen.getByTestId("taxon-stat-cds")).getByRole("link"),
+    ).toHaveAttribute("href", `${base}?tab=features&feature_type=CDS`);
+    expect(
+      within(screen.getByTestId("taxon-stat-pdb")).getByRole("link"),
+    ).toHaveAttribute(
+      "href",
+      `${base}?tab=protein-structures&rql=ne(method,Predicted)`,
+    );
+    for (const id of ["taxon-id", "taxon-name", "taxon-rank", "species"]) {
+      expect(
+        within(screen.getByTestId(`taxon-stat-${id}`)).queryByRole("link"),
+      ).toBeNull();
+    }
+  });
+
+  it("uses no native title tooltip on any tile", async () => {
+    vi.mocked(fetchOrganismSummary).mockResolvedValueOnce({
+      count: 1909,
+      uniqueFamily: 1,
+      uniqueGenus: 1,
+      uniqueSpecies: 5,
+      cds: 1_000_000,
+      matPeptide: null,
+      pdb: 50,
+    });
+    vi.mocked(getTaxonGenomeCount).mockResolvedValueOnce(1909);
+
+    const { container } = await renderServer(
+      TaxonomySummary({ taxonId: 234, taxon: brucellaTaxon }),
+    );
+
+    expect(container.querySelector("[title]")).toBeNull();
+  });
+
   it("says the summary counts are unavailable, and why, when the summary fetch fails", async () => {
     vi.mocked(fetchOrganismSummary).mockRejectedValueOnce(
       new UpstreamError({
@@ -72,7 +125,7 @@ describe("TaxonomySummary", () => {
     expect(screen.getByText("Brucella")).toBeInTheDocument();
     expect(screen.getAllByText("Unavailable")).toHaveLength(3);
     expect(screen.queryByText("-")).toBeNull();
-    const genomes = screen.getByTitle("Assembled genome records");
+    const genomes = screen.getByTestId("taxon-stat-genomes");
     expect(within(genomes).getByText("1,909")).toBeInTheDocument();
     expect(screen.getByRole("alert")).toHaveTextContent(
       "Taxon counts could not be loaded: The BV-BRC data service is unavailable (HTTP 503 Service Unavailable: Site Maintenance — We’ll be back soon!).",
@@ -92,7 +145,7 @@ describe("TaxonomySummary", () => {
     await renderServer(TaxonomySummary({ taxonId: 234, taxon: brucellaTaxon }));
 
     expect(screen.getAllByText("Unavailable")).toHaveLength(4);
-    const genomes = screen.getByTitle("Assembled genome records");
+    const genomes = screen.getByTestId("taxon-stat-genomes");
     expect(within(genomes).getByText("Unavailable")).toBeInTheDocument();
     expect(screen.getByRole("alert")).toHaveTextContent("summary down");
   });
@@ -116,7 +169,7 @@ describe("TaxonomySummary", () => {
       }),
     );
 
-    const genomes = screen.getByTitle("Assembled genome records");
+    const genomes = screen.getByTestId("taxon-stat-genomes");
     expect(within(genomes).getByText("9,471,991")).toBeInTheDocument();
     expect(screen.queryByText("9,571,230")).toBeNull();
     expect(screen.queryByText("9,500,742")).toBeNull();
@@ -157,7 +210,7 @@ describe("TaxonomySummary", () => {
 
     await renderServer(TaxonomySummary({ taxonId: 234, taxon: brucellaTaxon }));
 
-    const genomes = screen.getByTitle("Assembled genome records");
+    const genomes = screen.getByTestId("taxon-stat-genomes");
     expect(within(genomes).getByText("Unavailable")).toBeInTheDocument();
     expect(screen.getByText("7")).toBeInTheDocument();
     expect(screen.getByRole("alert")).toHaveTextContent(

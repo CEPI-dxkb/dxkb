@@ -13,6 +13,7 @@ import {
   genomeListHref,
   featuresHrefFromIds,
   genomesHrefFromIds,
+  overviewTabHref,
   proteinStructureHref,
   serologyHref,
   serologyIdFromRow,
@@ -31,6 +32,30 @@ describe("taxonomyHref", () => {
   it("accepts a string id and rejects a non-positive id", () => {
     expect(taxonomyHref("2697049")).toBe("/taxonomy/2697049");
     expect(() => taxonomyHref("0")).toThrow("Invalid Taxon ID");
+  });
+});
+
+describe("overviewTabHref", () => {
+  it("puts the tab first on a taxon path", () => {
+    expect(overviewTabHref("/taxonomy/3151693", "genomes")).toBe(
+      "/taxonomy/3151693?tab=genomes",
+    );
+  });
+
+  it("appends filters after the tab", () => {
+    expect(
+      overviewTabHref("/taxonomy/3151693", "features", { feature_type: "CDS" }),
+    ).toBe("/taxonomy/3151693?tab=features&feature_type=CDS");
+  });
+
+  it("keeps RQL readable", () => {
+    expect(
+      overviewTabHref("/organisms/bacteria", "protein-structures", {
+        rql: "ne(method,Predicted)",
+      }),
+    ).toBe(
+      "/organisms/bacteria?tab=protein-structures&rql=ne(method,Predicted)",
+    );
   });
 });
 

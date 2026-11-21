@@ -2,6 +2,7 @@ import {
   buildBrowserRpcError,
   buildBrowserRpcSuccess,
   buildGatewayCollectionEnvelope,
+  buildGatewayExportEnvelope,
   buildGatewayRowsEnvelope,
   buildLoopbackRpcError,
   buildLoopbackRpcSuccess,
@@ -43,6 +44,30 @@ describe("buildGatewayRowsEnvelope", () => {
   it("wraps rows with no other fields", () => {
     const rows = [{ id: "a" }];
     expect(buildGatewayRowsEnvelope(rows)).toEqual({ rows });
+  });
+});
+
+describe("buildGatewayExportEnvelope", () => {
+  const matching = [{ id: "a" }, { id: "b" }, { id: "c" }];
+
+  it("serves the requested window and counts every matching row, as the gateway's Content-Range total does", () => {
+    expect(buildGatewayExportEnvelope(matching, { limit: 2 })).toStrictEqual({
+      rows: [{ id: "a" }, { id: "b" }],
+      total: 3,
+    });
+  });
+
+  it("starts the window at the offset", () => {
+    expect(
+      buildGatewayExportEnvelope(matching, { limit: 2, offset: 2 }),
+    ).toStrictEqual({ rows: [{ id: "c" }], total: 3 });
+  });
+
+  it("serves every row when the limit covers them", () => {
+    expect(buildGatewayExportEnvelope(matching, { limit: 10 })).toStrictEqual({
+      rows: matching,
+      total: 3,
+    });
   });
 });
 

@@ -126,6 +126,16 @@ export interface RowsResult<T extends Record<string, unknown>> {
   rows: T[];
 }
 
+/**
+ * `total` is how many rows the query matches, from the Data API's `Content-Range`
+ * (`items 0-N/TOTAL`). It is absent, not zero, when the upstream sent no usable count, so a
+ * caller cannot mistake a missing header for an empty or complete result.
+ */
+export interface ExportResult<T extends Record<string, unknown>>
+  extends RowsResult<T> {
+  total?: number;
+}
+
 export interface TaxonChildrenResult {
   rows: Record<string, unknown>[];
 }

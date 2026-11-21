@@ -277,6 +277,84 @@ describe("ServerDataRepository", () => {
     expect(requested[0].headers.get("Range")).toBe("items=10000-20000");
   });
 
+  describe("export total from Content-Range", () => {
+    const ppiRows = [
+      { id: "ppi-1", interactor_a: "a-1", interactor_b: "b-1" },
+      { id: "ppi-2", interactor_a: "a-2", interactor_b: "b-2" },
+    ];
+
+    function exportPpi(
+      contentRange: string | null,
+      rows: unknown[] = ppiRows,
+      offset?: number,
+    ) {
+      captureGets(
+        "ppi",
+        rows as JsonBodyType,
+        contentRange === null
+          ? undefined
+          : { headers: { "Content-Range": contentRange } },
+      );
+      return new ServerDataRepository({ baseUrl: "https://data.test" }).export(
+        "ppi",
+        { operation: "export", fields: ["id"], limit: 10_000, offset },
+      );
+    }
+
+    it("returns the matching row count the Data API reports beside the rows", async () => {
+      // The live Data API's own form: the range it served, then the full count.
+      await expect(exportPpi("items 0-10000/170814")).resolves.toStrictEqual({
+        rows: ppiRows,
+        total: 170_814,
+      });
+    });
+
+    it("reads a total that equals the rows served", async () => {
+      await expect(exportPpi("items 0-2/2")).resolves.toStrictEqual({
+        rows: ppiRows,
+        total: 2,
+      });
+    });
+
+    it("counts the rows before an offset as part of the total", async () => {
+      // Offset 9,999 and one row served, in the Data API's exclusive-end range form.
+      await expect(
+        exportPpi("items 9999-10000/10001", [ppiRows[0]], 9_999),
+      ).resolves.toStrictEqual({ rows: [ppiRows[0]], total: 10_001 });
+    });
+
+    it("leaves out a total that covers the rows served but not the offset before them", async () => {
+      // 9,999 is at least the one row served, so only the offset shows it cannot count them.
+      await expect(
+        exportPpi("items 9999-10000/9999", [ppiRows[0]], 9_999),
+      ).resolves.toStrictEqual({ rows: [ppiRows[0]] });
+    });
+
+    it("leaves the total out when the header is missing, rather than guessing one", async () => {
+      const result = await exportPpi(null);
+
+      expect(result).toStrictEqual({ rows: ppiRows });
+      expect(result).not.toHaveProperty("total");
+    });
+
+    it.each([
+      ["no total", "items 0-2", 0],
+      ["an unknown total", "items 0-2/*", 0],
+      ["a non-numeric total", "items 0-2/many", 0],
+      ["a negative total", "items 0-2/-5", 0],
+      ["a fractional total", "items 0-2/2.5", 0],
+      ["another unit", "bytes 0-2/2", 0],
+      ["an empty value", "", 0],
+      // Not a count of these rows, so neither "complete" nor "truncated" can be read from it.
+      ["a total below the rows served", "items 0-2/1", 0],
+      ["a total below the offset and the rows", "items 5-7/6", 5],
+    ])("leaves the total out for %s", async (_name, header, offset) => {
+      const result = await exportPpi(header, ppiRows, offset);
+
+      expect(result).toStrictEqual({ rows: ppiRows });
+    });
+  });
+
   it("uses tokenized prefix matching for keywords", async () => {
     const requested = captureGets("genome");
 

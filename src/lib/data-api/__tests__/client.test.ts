@@ -134,6 +134,20 @@ describe("DataRepository", () => {
     );
   });
 
+  it("passes on the export's matching row count beside its rows", async () => {
+    captureGateway("post", "/api/data/ppi", () =>
+      HttpResponse.json({ rows: [{ id: "ppi-1" }], total: 170_814 }),
+    );
+
+    const result = await new DataRepository().export("ppi", {
+      fields: ["id"],
+      limit: 10_000,
+    });
+
+    expect(result.total).toBe(170_814);
+    expect(result.rows).toStrictEqual([{ id: "ppi-1" }]);
+  });
+
   it("retries the bounded export after the gateway rate limit resets", async () => {
     vi.useFakeTimers();
     const requested = captureGateway("post", "/api/data/genome", (hit) =>

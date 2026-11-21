@@ -1477,8 +1477,10 @@ describe("useResourceCollectionActions SHOW IN GRAPH limits", () => {
         "Interactions",
         selectedIds.length,
       ),
+      // The Graph's 10,000-row bound (`interactionsGraphRowLimit`), spelled out so the message's
+      // formatting is checked too.
       showInGraph:
-        "Show in Graph supports at most 5,000 interactions. Narrow the selection.",
+        "Show in Graph supports at most 10,000 interactions. Narrow the selection.",
     });
     expect(
       screen.getByRole("button", { name: "Show in Graph action" }),

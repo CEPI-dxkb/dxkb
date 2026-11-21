@@ -15,7 +15,6 @@ import { CollectionToolbarLayoutProvider } from "@/components/views/collection-f
 import {
   interactionsGraphRowLimit,
   useInteractions,
-  useInteractionsTotal,
   type InteractionsGraphData,
 } from "@/lib/interactions/use-interactions";
 import { requestGraphLayout } from "@/lib/interactions/layout-client";
@@ -44,8 +43,12 @@ vi.mock("@/lib/interactions/use-interactions", async (importOriginal) => ({
     isError: false,
     error: null,
   })),
-  // The real hook would send a count read through MSW's strict mode.
-  useInteractionsTotal: vi.fn(() => ({ data: undefined })),
+}));
+
+// jsdom's `getContext` returns null, so the real probe would answer "no WebGL 2" and the canvas
+// stand-in below would be replaced by the notice.
+vi.mock("@/lib/interactions/webgl-support", () => ({
+  supportsWebGl2: () => true,
 }));
 
 vi.mock("@/lib/interactions/layout-client", () => ({
@@ -103,9 +106,6 @@ beforeEach(() => {
   );
   // `clearMocks` keeps a return value, so each test starts from the pending query again.
   pending();
-  vi.mocked(useInteractionsTotal).mockReturnValue({
-    data: undefined,
-  } as ReturnType<typeof useInteractionsTotal>);
 });
 
 function deferredLayout() {
@@ -716,15 +716,8 @@ describe("InteractionsGraph row ceiling", () => {
   describe("total count", () => {
     const scope = "eq(evidence,experimental)";
 
-    function total(data: number | undefined) {
-      vi.mocked(useInteractionsTotal).mockReturnValue({
-        data,
-      } as ReturnType<typeof useInteractionsTotal>);
-    }
-
-    it("names how many interactions match once the count is known", () => {
-      resolved({ rows: graphRows, isTruncated: true });
-      total(124_566);
+    it("names how many interactions match from the export's own total", () => {
+      resolved({ rows: graphRows, isTruncated: true, total: 124_566 });
 
       renderGraph(<GraphHarness rql="" keywordValue="" onKeywordChange={vi.fn()} />);
 
@@ -735,9 +728,8 @@ describe("InteractionsGraph row ceiling", () => {
       ).toBeInTheDocument();
     });
 
-    it("keeps the title without a count while the count is not known", () => {
-      resolved({ rows: graphRows, isTruncated: true });
-      total(undefined);
+    it("keeps the title without a count when the Data API reported none", () => {
+      resolved({ rows: graphRows, isTruncated: true, total: undefined });
 
       renderGraph(<GraphHarness rql="" keywordValue="" onKeywordChange={vi.fn()} />);
 
@@ -752,12 +744,11 @@ describe("InteractionsGraph row ceiling", () => {
     });
 
     it.each([
-      // The count and the export are separate reads, so a count can lag a changed result set.
+      // A total at or under the limit cannot describe a graph cut at the limit, so it is not named.
       ["below the row limit", interactionsGraphRowLimit - 10],
       ["exactly the row limit", interactionsGraphRowLimit],
-    ])("keeps the plain title for a count %s", (_name, count) => {
-      resolved({ rows: graphRows, isTruncated: true });
-      total(count);
+    ])("keeps the plain title for a total %s", (_name, count) => {
+      resolved({ rows: graphRows, isTruncated: true, total: count });
 
       renderGraph(<GraphHarness rql="" keywordValue="" onKeywordChange={vi.fn()} />);
 
@@ -773,8 +764,11 @@ describe("InteractionsGraph row ceiling", () => {
     });
 
     it("names the total once it exceeds the row limit by one", () => {
-      resolved({ rows: graphRows, isTruncated: true });
-      total(interactionsGraphRowLimit + 1);
+      resolved({
+        rows: graphRows,
+        isTruncated: true,
+        total: interactionsGraphRowLimit + 1,
+      });
 
       renderGraph(<GraphHarness rql="" keywordValue="" onKeywordChange={vi.fn()} />);
 
@@ -785,47 +779,33 @@ describe("InteractionsGraph row ceiling", () => {
       ).toBeInTheDocument();
     });
 
-    it("asks for the count of the graph's own scope and keyword once the graph is truncated", () => {
-      resolved({ rows: graphRows, isTruncated: true });
+    it("sends no separate count read: the total rides on the rows", async () => {
+      const countReads: string[] = [];
+      server.use(
+        http.get("/api/data/ppi", ({ request }) => {
+          countReads.push(request.url);
+          return HttpResponse.json({
+            rows: [],
+            total: 124_566,
+            facets: {},
+            page: 1,
+            pageSize: 1,
+          });
+        }),
+      );
+      resolved({ rows: graphRows, isTruncated: true, total: 124_566 });
 
       renderGraph(
         <GraphHarness rql={scope} keywordValue="groEL" onKeywordChange={vi.fn()} />,
       );
+      await settleBackgroundWork();
 
-      expect(useInteractionsTotal).toHaveBeenLastCalledWith(scope, "groEL", true);
-    });
-
-    it("does not ask for a count when every matching interaction is drawn", () => {
-      resolved({ rows: graphRows, isTruncated: false });
-
-      renderGraph(
-        <GraphHarness rql={scope} keywordValue="" onKeywordChange={vi.fn()} />,
-      );
-
-      expect(useInteractionsTotal).toHaveBeenLastCalledWith(scope, "", false);
-    });
-
-    it("does not ask for a count before the rows have loaded", () => {
-      renderGraph(
-        <GraphHarness rql={scope} keywordValue="" onKeywordChange={vi.fn()} />,
-      );
-
-      expect(useInteractionsTotal).toHaveBeenLastCalledWith(scope, "", false);
-    });
-
-    it("does not ask for a count while a Table selection is shown", () => {
-      resolved({ rows: graphRows, isTruncated: true });
-
-      renderGraph(
-        <GraphHarness
-          rql={scope}
-          keywordValue=""
-          onKeywordChange={vi.fn()}
-          selection={{ ids: ["edge-1"], version: 1, onClear: vi.fn() }}
-        />,
-      );
-
-      expect(useInteractionsTotal).toHaveBeenLastCalledWith(scope, "", false);
+      expect(countReads).toStrictEqual([]);
+      expect(
+        screen.getByText(
+          `Showing the first ${interactionsGraphRowLimit.toLocaleString()} of 124,566 interactions`,
+        ),
+      ).toBeInTheDocument();
     });
   });
 });
@@ -901,6 +881,52 @@ describe("InteractionsGraph data changes", () => {
       ).toBeInTheDocument();
     });
     expect(screen.queryByText("node-a")).not.toBeInTheDocument();
+  });
+
+  it("keeps the layout and a Hub pick through a refetch that changes only the total", async () => {
+    // Structural sharing keeps the `rows` array of a refetch that returns the same rows, but a new
+    // total (the upstream index grew) still makes a new `data` object around it.
+    const user = userEvent.setup();
+    resolved({ rows: graphRows, isTruncated: true, total: 20_000 });
+    const props = { rql: "", keywordValue: "", onKeywordChange: vi.fn() };
+    const { rerender } = renderGraph(<GraphHarness {...props} />);
+    await waitFor(() => {
+      expect(screen.getByTestId("sigma-canvas")).not.toHaveAttribute(
+        "data-positions",
+        "none",
+      );
+    });
+    await user.click(screen.getByRole("button", { name: "Hub Protein" }));
+    await user.click(
+      screen.getByRole("button", { name: "Most Connected Hub" }),
+    );
+    const selectionBefore = screen
+      .getByTestId("sigma-canvas")
+      .getAttribute("data-selection");
+    expect(selectionBefore).not.toBe("");
+
+    resolved({ rows: graphRows, isTruncated: true, total: 20_001 });
+    rerender(<GraphHarness {...props} />);
+    await settleBackgroundWork();
+
+    // The notice reads the new total, while the picture, the pick and its menu label stay.
+    expect(
+      screen.getByText(
+        `Showing the first ${interactionsGraphRowLimit.toLocaleString()} of 20,001 interactions`,
+      ),
+    ).toBeInTheDocument();
+    expect(requestGraphLayout).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId("sigma-canvas")).not.toHaveAttribute(
+      "data-positions",
+      "none",
+    );
+    expect(screen.getByTestId("sigma-canvas")).toHaveAttribute(
+      "data-selection",
+      selectionBefore,
+    );
+    expect(
+      screen.getByRole("button", { name: "Most Connected Hub" }),
+    ).toBeInTheDocument();
   });
 });
 
@@ -1364,7 +1390,7 @@ describe("InteractionsGraph camera", () => {
       <GraphHarness {...props} camera={{ ratio: 0.5, x: 0.1, y: 0.2 }} />,
     );
 
-    // A new index would give the canvas a new focus set and reinstall its reducers each time.
+    // A new index would give the canvas a new focus set and re-sync every item's highlight state each time.
     expect(canvasInputs.incidence.length).toBeGreaterThan(0);
     for (const index of canvasInputs.incidence) expect(index).toBe(initialIndex);
   });
@@ -1652,10 +1678,11 @@ describe("InteractionsGraph row selection", () => {
 
   it("draws no truncation notice for a selection, even one the row limit would cut", () => {
     // A selection is read by id, so the graph never holds more than it was asked for.
-    resolved({ rows: graphRows, isTruncated: true });
-    vi.mocked(useInteractionsTotal).mockReturnValue({
-      data: interactionsGraphRowLimit + 1,
-    } as ReturnType<typeof useInteractionsTotal>);
+    resolved({
+      rows: graphRows,
+      isTruncated: true,
+      total: interactionsGraphRowLimit + 1,
+    });
     renderGraph(
       <GraphHarness
         rql={scope}

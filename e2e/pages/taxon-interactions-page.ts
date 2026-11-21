@@ -93,6 +93,12 @@ export class TaxonInteractionsPage {
    * off the canvas (a hover pill would add pixels) and decodes the PNG in the page, so it needs no
    * PNG library. A node is only a few pixels across at the default zoom, so pass an exact opaque
    * color, and poll rather than read once.
+   *
+   * Headless WebKit on Linux shows a WebGL canvas one draw behind: Sigma's state is current, but a
+   * screenshot after a selection change still holds the frame before the last draw, and no DOM
+   * change brings the new one up (the CI run showed the selected node orange but its neighbours
+   * undimmed, and after clearing the neighbours still dim). Only another Sigma draw does, so a
+   * window `resize` makes it draw once more and the screenshot waits two frames for that.
    */
   async canvasColorCount(
     rgb: readonly [number, number, number],
@@ -100,6 +106,17 @@ export class TaxonInteractionsPage {
   ): Promise<number> {
     await this.waitForLayout();
     await this.page.mouse.move(0, 0);
+    await this.page.evaluate(
+      () =>
+        new Promise<void>((resolve) => {
+          window.dispatchEvent(new Event("resize"));
+          requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+              resolve();
+            });
+          });
+        }),
+    );
     const png = await this.graphCanvas().screenshot({
       mask: this.overlayControls(),
     });

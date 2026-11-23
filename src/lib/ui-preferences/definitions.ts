@@ -2,6 +2,10 @@ import { jobsPanelIds } from "@/constants/jobs-panels";
 import { workspacePanelIds } from "@/constants/workspace-panels";
 import type { CompareRegionDensity } from "@/lib/compare-region/density-options";
 import { graphColumnDefaults } from "@/lib/interactions/graph-columns";
+import {
+  emptyOverviewHiddenCharts,
+  type OverviewHiddenCharts,
+} from "@/lib/overview-charts";
 import type { WorkspaceSortConfig } from "@/types/workspace-browser";
 
 /** Device-local UI preferences, one cookie each; no "use client" or zod here, as server code needs real constants and the provider ships on every route. */
@@ -22,6 +26,8 @@ export interface UiPreferences {
   workspaceShowHiddenFiles: boolean;
   workspaceSort: WorkspaceSortConfig;
   compareRegionDensity: CompareRegionDensity;
+  /** Overview charts the user hid, per view type; only hidden ids are stored. */
+  overviewHiddenCharts: OverviewHiddenCharts;
   copilotSurface: CopilotSurface;
   copilotFloatingRect: CopilotFloatingRect;
   copilotTab: CopilotTabPlacement;
@@ -93,6 +99,10 @@ export const uiPreferenceDefinitions: {
   compareRegionDensity: {
     cookieName: "dxkb-compare-region-density",
     defaultValue: "comfortable",
+  },
+  overviewHiddenCharts: {
+    cookieName: "dxkb-overview-hidden-charts",
+    defaultValue: emptyOverviewHiddenCharts(),
   },
   copilotSurface: {
     cookieName: "dxkb-copilot-surface",

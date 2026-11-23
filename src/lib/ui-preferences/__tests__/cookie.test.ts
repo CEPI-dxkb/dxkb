@@ -5,6 +5,7 @@ import {
   uiPreferenceSchemas,
 } from "../schemas";
 import { defaultUiPreferences, uiPreferenceDefinitions } from "../definitions";
+import { overviewHiddenChartsLimit } from "@/lib/overview-charts";
 
 describe("parseUiPreference", () => {
   it("returns the default when the cookie is absent", () => {
@@ -158,5 +159,69 @@ describe("serializeUiPreferenceCookie", () => {
     expect(
       parseUiPreference("workspacePanelLayout", decodeURIComponent(encodedValue)),
     ).toStrictEqual(layout);
+  });
+});
+
+describe("overviewHiddenCharts", () => {
+  const { cookieName, defaultValue } =
+    uiPreferenceDefinitions.overviewHiddenCharts;
+  const schema = uiPreferenceSchemas.overviewHiddenCharts;
+
+  it("is its own cookie, nothing hidden unless chosen", () => {
+    expect(cookieName).toBe("dxkb-overview-hidden-charts");
+    expect(defaultValue).toStrictEqual({ genome: [], taxon: [] });
+    expect(parseUiPreference("overviewHiddenCharts", undefined)).toStrictEqual({
+      genome: [],
+      taxon: [],
+    });
+  });
+
+  it("accepts a hidden list per view type and drops unknown view types", () => {
+    expect(
+      parseUiPreference(
+        "overviewHiddenCharts",
+        '{"genome":["host_group"],"taxon":[],"organism":["x"]}',
+      ),
+    ).toStrictEqual({ genome: ["host_group"], taxon: [] });
+  });
+
+  it("keeps one view type when the other is missing or malformed", () => {
+    expect(
+      parseUiPreference(
+        "overviewHiddenCharts",
+        '{"taxon":["collection_year"],"genome":"bad"}',
+      ),
+    ).toStrictEqual({ genome: [], taxon: ["collection_year"] });
+    expect(
+      parseUiPreference("overviewHiddenCharts", '{"taxon":["collection_year"]}'),
+    ).toStrictEqual({ genome: [], taxon: ["collection_year"] });
+  });
+
+  it("keeps a list of exactly the limit, and resets only the list one past it", () => {
+    const atLimit = Array.from(
+      { length: overviewHiddenChartsLimit },
+      (_, index) => `f${String(index)}`,
+    );
+    const pastLimit = [...atLimit, "one_more"];
+    expect(overviewHiddenChartsLimit).toBe(16);
+    expect(schema.parse({ genome: atLimit, taxon: ["host_group"] })).toStrictEqual(
+      { genome: atLimit, taxon: ["host_group"] },
+    );
+    expect(
+      schema.parse({ genome: pastLimit, taxon: atLimit }),
+    ).toStrictEqual({ genome: [], taxon: atLimit });
+  });
+
+  it("resets a list past the limit or with an empty or oversized id, and a non-object value entirely", () => {
+    const tooMany = Array.from({ length: 17 }, (_, index) => `f${String(index)}`);
+    expect(
+      schema.parse({ genome: tooMany, taxon: ["host_group"] }),
+    ).toStrictEqual({ genome: [], taxon: ["host_group"] });
+    expect(
+      schema.parse({ genome: [""], taxon: ["x".repeat(41)] }),
+    ).toStrictEqual({ genome: [], taxon: [] });
+    expect(parseUiPreference("overviewHiddenCharts", '["host_group"]')).toStrictEqual(
+      { genome: [], taxon: [] },
+    );
   });
 });

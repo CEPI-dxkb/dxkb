@@ -188,6 +188,7 @@ describe("StateCountiesLayer", () => {
       expect.stringContaining("county names in Layerland match no county on the map"),
     );
     expect(warn).toHaveBeenCalledWith(expect.stringContaining("Alfa"));
+    expect(warn).toHaveBeenCalledWith(expect.stringMatching(/: Alfa$/));
     warn.mockRestore();
   });
 });

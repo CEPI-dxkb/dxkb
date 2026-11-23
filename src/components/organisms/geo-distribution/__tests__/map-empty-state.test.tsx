@@ -134,6 +134,7 @@ describe("MapEmptyState", () => {
     const status = screen.getByRole("status");
     expect(status).toHaveTextContent("County data could not be loaded.");
     expect(status).toHaveTextContent("county failed");
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     const retry = within(status).getByRole("button", { name: "Retry" });
     expect(retry.closest(".pointer-events-auto")).not.toBeNull();
 

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 
 import type { OrganismGeoDistribution } from "@/lib/services/organisms/types";
 
@@ -33,6 +33,10 @@ vi.mock("@visx/tooltip", () => ({
     showTooltip: vi.fn(),
     hideTooltip: vi.fn(),
   }),
+}));
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ refresh: vi.fn() }),
 }));
 
 vi.mock("../choropleth-svg", () => ({
@@ -243,6 +247,50 @@ describe("GeoDistributionClient", () => {
     expect(status).toHaveTextContent(
       "Illinois has 420 genomes, but county-level data is unavailable.",
     );
+  });
+
+  it("says the county query failed instead of that the state has no counties", () => {
+    render(
+      <GeoDistributionClient
+        data={{
+          ...distribution({ stateData: { Illinois: 420 } }),
+          countyError: "The BV-BRC data service is unavailable (HTTP 503 Service Unavailable: busy).",
+        }}
+        accent="bacteria"
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "State" }));
+
+    const status = screen.getByRole("status");
+    expect(status).toHaveTextContent("County data could not be loaded.");
+    expect(status).toHaveTextContent(
+      "The BV-BRC data service is unavailable (HTTP 503 Service Unavailable: busy).",
+    );
+    expect(status).not.toHaveTextContent("No county-level data");
+    expect(within(status).getByRole("button", { name: "Retry" })).toBeInTheDocument();
+  });
+
+  it("holds the county failure back while the county map is loading", () => {
+    useQueryMock.mockImplementation((options: unknown) => ({
+      data: null,
+      error: null,
+      isLoading:
+        (options as { queryKey: string[] }).queryKey[1] === "counties-topo",
+    }));
+    render(
+      <GeoDistributionClient
+        data={{
+          ...distribution({ stateData: { Illinois: 420 } }),
+          countyError: "county failed",
+        }}
+        accent="bacteria"
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "State" }));
+
+    expect(screen.getByRole("status")).toBeEmptyDOMElement();
   });
 
   it("says nothing in a state that has county data", () => {

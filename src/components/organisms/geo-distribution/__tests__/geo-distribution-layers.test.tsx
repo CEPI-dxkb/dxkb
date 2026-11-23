@@ -163,6 +163,33 @@ describe("StateCountiesLayer", () => {
       payload: { genera: {}, hosts: {} },
     });
   });
+
+  it("warns about data counties that match no map county", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    const feature = makeFeature("Alpha");
+    render(
+      <StateCountiesLayer
+        countyFeatures={[feature]}
+        fitBoundsFeatures={[feature]}
+        fitExtent={fitExtent}
+        data={{
+          ...emptyGeoData,
+          countyData: { "Layerland|Alpha": 2, "Layerland|Alfa": 1 },
+        }}
+        colorScale={colorScale}
+        isDraggingRef={makeRef(false)}
+        onHoverEnter={noop as never}
+        onHoverLeave={noop}
+        selectedStateName="Layerland"
+      />,
+    );
+
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining("county names in Layerland match no county on the map"),
+    );
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining("Alfa"));
+    warn.mockRestore();
+  });
 });
 
 describe("WorldCountriesLayer", () => {

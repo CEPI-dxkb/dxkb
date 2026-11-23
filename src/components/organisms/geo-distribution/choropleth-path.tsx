@@ -27,6 +27,8 @@ interface ChoroplethPathProps {
   /** The visible border line in screen pixels; it does not scale with zoom. */
   strokeWidth: number;
   cursor?: "pointer" | "default";
+  /** The region's name, as `data-region` (a stable hook for tests). */
+  dataRegion?: string;
   isDraggingRef: RefObject<boolean>;
   payload: HoverPayload;
   onHoverEnter: HoverEnter;
@@ -39,6 +41,7 @@ export function ChoroplethPath({
   fill,
   strokeWidth,
   cursor,
+  dataRegion,
   isDraggingRef,
   payload,
   onHoverEnter,
@@ -53,6 +56,7 @@ export function ChoroplethPath({
       strokeWidth={strokeWidth}
       strokeLinejoin="round"
       vectorEffect="non-scaling-stroke"
+      data-region={dataRegion}
       className={cn(
         cursor === "pointer" && "cursor-pointer",
         cursor === "default" && "cursor-default",

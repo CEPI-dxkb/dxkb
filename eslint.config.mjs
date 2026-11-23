@@ -263,6 +263,7 @@ export default defineConfig(
       "src/components/workspace/file-viewer/viewers/csv-viewer.tsx",
       "src/components/organisms/reference-genomes/reference-genomes-client.tsx",
       "src/components/taxonomy/taxonomy-tree.tsx",
+      "src/components/interactions/graph-node-list.tsx",
     ],
     rules: {
       "react-hooks/incompatible-library": "off",

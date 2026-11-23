@@ -196,8 +196,8 @@ export class TaxonInteractionsPage {
   }
 
   /**
-   * A protein's row in the list, found by searching for it: the list draws only its top-ranked rows
-   * (a Graph can hold thousands of proteins), and its search reaches every protein.
+   * A protein's row in the list, found by searching for it: the list is virtualized, so only the
+   * rows in view are in the DOM, and its search reaches every protein.
    */
   private async listRow(label: string, exact: boolean): Promise<Locator> {
     const graphPanel = this.page.getByRole("tabpanel", { name: "Graph" });

@@ -28,6 +28,7 @@ import type {
 } from "@/lib/interactions/types";
 import { server } from "@/test-helpers/msw-server";
 import { stubMenuLayout } from "@/test-helpers/menu-layout";
+import { stubVirtualListLayout } from "@/test-helpers/virtual-list-layout";
 import { createQueryClientWrapper } from "@/test-helpers/react";
 import { settleBackgroundWork } from "@/test-helpers/settle";
 
@@ -226,6 +227,8 @@ function detailsPane() {
 }
 
 stubMenuLayout();
+// The protein list is virtualized, and jsdom gives it no height to draw rows into.
+stubVirtualListLayout();
 
 // The real columns are covered in graph-columns.test.tsx. In jsdom every pointer press lands at
 // (0, 0), where the panel library sees a drag on a handle and swallows it, so a click or a typed

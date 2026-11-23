@@ -3,6 +3,7 @@
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { SearchIcon } from "lucide-react";
 import {
+  useCallback,
   useEffect,
   useEffectEvent,
   useId,
@@ -121,12 +122,18 @@ export function GraphNodeList({
   // The nodes can change under the cursor (a filter), so it is held inside the list.
   const activeIndex = matches.length === 0 ? -1 : Math.min(cursor, matches.length - 1);
 
+  // Held stable: the virtualizer lays out every row again whenever this function changes, and the
+  // list re-renders on each scroll frame.
+  const getItemKey = useCallback(
+    (index: number) => matches[index]?.node.id ?? index,
+    [matches],
+  );
   const virtualizer = useVirtualizer({
     count: matches.length,
     getScrollElement: () => scrollRef.current,
     estimateSize: () => rowHeight,
     overscan: rowOverscan,
-    getItemKey: (index) => matches[index]?.node.id ?? index,
+    getItemKey,
   });
   const virtualRows = virtualizer.getVirtualItems();
 

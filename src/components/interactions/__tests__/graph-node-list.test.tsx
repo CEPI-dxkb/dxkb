@@ -774,6 +774,33 @@ describe("GraphNodeList with many proteins", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("does not measure every row again when only the scroll position changes", () => {
+    // Reading a protein's id is how the list keys a row, so counting the reads counts the rows the
+    // virtualizer walked. A key function that is new on every render makes it lay out every row on
+    // every scroll frame.
+    let reads = 0;
+    const counted = named(2000).map((node) => {
+      const { id } = node;
+      return Object.defineProperty<GNode>({ ...node }, "id", {
+        enumerable: true,
+        get: () => {
+          reads += 1;
+          return id;
+        },
+      });
+    });
+    renderMany(new Set(), {}, counted);
+    const afterMount = reads;
+
+    scrollToRow(100);
+    reads = 0;
+    scrollToRow(300);
+
+    expect(afterMount).toBeGreaterThan(0);
+    // The rows now in view and their overscan, not the 2,000 in the list.
+    expect(reads).toBeLessThan(200);
+  });
+
   it("keeps each row's overall rank when it is scrolled to", () => {
     renderMany();
 

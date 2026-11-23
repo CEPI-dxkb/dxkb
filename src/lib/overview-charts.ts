@@ -3,16 +3,15 @@
 export const overviewChartViewTypes = ["genome", "taxon"] as const;
 export type OverviewChartViewType = (typeof overviewChartViewTypes)[number];
 
-/** Ids of the charts a user hid, per overview. Only hidden ids are stored, so the default is empty and writes no cookie. Read-only: the default object is shared by `defaultValue`, `defaultUiPreferences` and every parse fallback. */
-export type OverviewHiddenCharts = Record<
-  OverviewChartViewType,
-  readonly string[]
+/** Ids of the charts a user hid, per overview. Only hidden ids are stored, so the default is empty and writes no cookie. Read-only, object and lists alike: the default object is shared by `defaultValue`, `defaultUiPreferences` and every parse fallback. */
+export type OverviewHiddenCharts = Readonly<
+  Record<OverviewChartViewType, readonly string[]>
 >;
 
 /** The AMR profile chart has no metadata field, so it gets its own id. Metadata charts use their field name; the taxonomic donut uses `taxonomicDistributionSentinel`. */
 export const amrChartId = "amr_profile";
 
-/** Keeps the cookie small: it rides on every request. */
+/** Keeps the cookie small: it rides on every request. Chart ids must also stay within the schema's 1 to 40 character cap (`hiddenChartIds` in `ui-preferences/schemas.ts`), or a hidden over-long id would make its whole list fail to parse. */
 export const overviewHiddenChartsLimit = 16;
 
 export function emptyOverviewHiddenCharts(): OverviewHiddenCharts {

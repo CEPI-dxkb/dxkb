@@ -113,6 +113,66 @@ describe("ChartVisibilityGrid", () => {
   });
 });
 
+describe("ChartVisibilityGrid when every chart is hidden", () => {
+  const hiddenEverywhere = {
+    genome: ["host_group", "collection_year", "amr_profile"],
+    taxon: [],
+  };
+  const emptyText = "All charts are hidden for this view.";
+
+  it("says so, offers the charts back, and draws none, as the menu counts them", () => {
+    renderWithPreference(<Overview viewType="genome" />, hiddenEverywhere);
+
+    expect(screen.getByText(emptyText)).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Show all charts" }),
+    ).toBeEnabled();
+    expectShown();
+    expect(
+      screen.getByRole("button", { name: "Charts 0/3 shown, customised" }),
+    ).toBeInTheDocument();
+  });
+
+  it("restores every chart from its button and remembers it", async () => {
+    const user = userEvent.setup();
+    renderWithPreference(<Overview viewType="genome" />, hiddenEverywhere);
+
+    await user.click(screen.getByRole("button", { name: "Show all charts" }));
+
+    expectShown("host_group", "collection_year", "amr_profile");
+    expect(screen.queryByText(emptyText)).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Show all charts" }),
+    ).not.toBeInTheDocument();
+    expect(decodeURIComponent(document.cookie)).toContain(
+      `${hiddenChartsCookie}={"genome":[],"taxon":[]}`,
+    );
+  });
+
+  it("is not shown for an empty chart list, or without a view type", () => {
+    const { unmount } = renderWithPreference(
+      <ChartVisibilityGrid viewType="genome" items={[]} />,
+      hiddenEverywhere,
+    );
+    expect(screen.queryByText(emptyText)).not.toBeInTheDocument();
+    unmount();
+
+    renderWithPreference(<ChartVisibilityGrid items={items} />, hiddenEverywhere);
+    expect(screen.queryByText(emptyText)).not.toBeInTheDocument();
+    expectShown("host_group", "collection_year", "amr_profile");
+  });
+
+  it("is not shown while a chart of the page is still visible", () => {
+    renderWithPreference(
+      <ChartVisibilityGrid viewType="genome" items={items.slice(0, 1)} />,
+      { genome: ["collection_year", "amr_profile"], taxon: [] },
+    );
+
+    expect(screen.queryByText(emptyText)).not.toBeInTheDocument();
+    expect(screen.getByTestId("chart-host_group")).toBeInTheDocument();
+  });
+});
+
 describe("ChartVisibilityMenu", () => {
   it("lists a checked item per chart, under a name that starts with its visible text", async () => {
     renderWithPreference(<Overview viewType="genome" />);

@@ -1,4 +1,7 @@
+import { buildTaxonomyConfig } from "@/app/(views)/taxonomy/[taxonId]/_config";
+import { taxonomicDistributionSentinel } from "@/components/organisms/types";
 import {
+  amrChartId,
   emptyOverviewHiddenCharts,
   overviewHiddenChartsLimit,
   withChartHidden,
@@ -34,5 +37,27 @@ describe("withChartHidden", () => {
       (_, index) => `field_${String(index)}`,
     );
     expect(withChartHidden(full, "one_more", true)).toBe(full);
+  });
+});
+
+describe("chart ids", () => {
+  // The preference schema accepts ids of 1 to 40 characters (`hiddenChartIds`), and one that
+  // does not fit makes its whole list fail to parse once hidden.
+  const maxIdLength = 40;
+  const overviewFieldIds = buildTaxonomyConfig(234, null).metadataFields;
+
+  it("fit the schema's id cap", () => {
+    const ids = [amrChartId, taxonomicDistributionSentinel, ...overviewFieldIds];
+
+    expect(ids.length).toBeGreaterThan(2);
+    for (const id of ids) {
+      expect(id.length).toBeGreaterThanOrEqual(1);
+      expect(id.length).toBeLessThanOrEqual(maxIdLength);
+    }
+  });
+
+  it("are unique, so one hidden id never hides two charts", () => {
+    const ids = [amrChartId, ...overviewFieldIds];
+    expect(new Set(ids).size).toBe(ids.length);
   });
 });

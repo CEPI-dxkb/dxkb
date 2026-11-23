@@ -68,7 +68,10 @@ export class TaxonPage {
     // A server-rendered button clicked before React attaches its handler loses the click.
     await expectHydrated(this.chartsMenu, "onClick", "charts menu hydrated");
     await this.chartsMenu.click();
-    const item = this.page.getByRole("menuitemcheckbox", { name: title });
+    const item = this.page.getByRole("menuitemcheckbox", {
+      name: title,
+      exact: true,
+    });
     await expect(item).toBeVisible();
     if ((await item.getAttribute("aria-checked")) !== String(shown)) {
       await item.click();

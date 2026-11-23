@@ -25,7 +25,7 @@ const panelShare = z.number().gt(0).max(100);
 const hiddenChartIds = z
   .array(z.string().min(1).max(40))
   .max(overviewHiddenChartsLimit)
-  .catch([]);
+  .catch(() => []);
 
 export const uiPreferenceSchemas: {
   [K in UiPreferenceKey]: z.ZodType<UiPreferences[K]>;

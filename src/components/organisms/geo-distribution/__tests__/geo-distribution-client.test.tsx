@@ -422,6 +422,83 @@ describe("GeoDistributionClient", () => {
     expect(screen.getByTestId("map-view")).toHaveTextContent("state");
   });
 
+  it.each<{
+    name: string;
+    stateData: Record<string, number>;
+    fallbackView: string;
+    fallbackPill: string;
+  }>([
+    {
+      name: "the United States view when a state has genomes",
+      stateData: { Illinois: 420 },
+      fallbackView: "us",
+      fallbackPill: "United States",
+    },
+    {
+      name: "the World view when no state has genomes",
+      stateData: {},
+      fallbackView: "world",
+      fallbackPill: "World",
+    },
+  ])(
+    "leaves the State view for $name when a refresh drops the county data",
+    ({ stateData, fallbackView, fallbackPill }) => {
+      const { rerender } = render(
+        <GeoDistributionClient
+          data={distribution({
+            stateData: { Illinois: 420 },
+            countyData: { "Texas|Harris": 9 },
+          })}
+          accent="bacteria"
+        />,
+      );
+      fireEvent.click(screen.getByRole("button", { name: "State" }));
+      expect(screen.getByTestId("map-view")).toHaveTextContent("state");
+
+      // Same scope, same mounted instance: a retry re-renders the server
+      // component, and a county pivot that failed is swallowed as `{}`.
+      rerender(
+        <GeoDistributionClient
+          data={distribution({ stateData, countyData: {} })}
+          accent="bacteria"
+        />,
+      );
+
+      expect(screen.getByTestId("map-view")).toHaveTextContent(
+        new RegExp(`^${fallbackView}$`),
+      );
+      expect(screen.getByRole("button", { name: fallbackPill })).toHaveAttribute(
+        "aria-pressed",
+        "true",
+      );
+      const statePill = screen.getByRole("button", { name: "State" });
+      expect(statePill).toBeDisabled();
+      expect(statePill).toHaveAttribute("aria-pressed", "false");
+    },
+  );
+
+  it("shows the State view again when the county data returns", () => {
+    const withCounties = distribution({
+      stateData: { Illinois: 420 },
+      countyData: { "Texas|Harris": 9 },
+    });
+    const { rerender } = render(
+      <GeoDistributionClient data={withCounties} accent="bacteria" />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "State" }));
+
+    rerender(
+      <GeoDistributionClient
+        data={distribution({ stateData: { Illinois: 420 } })}
+        accent="bacteria"
+      />,
+    );
+    expect(screen.getByTestId("map-view")).toHaveTextContent(/^us$/);
+
+    rerender(<GeoDistributionClient data={withCounties} accent="bacteria" />);
+    expect(screen.getByTestId("map-view")).toHaveTextContent(/^state$/);
+  });
+
   it("lets a state be drilled into once any county has genomes", () => {
     render(
       <GeoDistributionClient

@@ -4,6 +4,7 @@ import {
   amrChartId,
   emptyOverviewHiddenCharts,
   overviewChartViewTypes,
+  overviewChartViewTypeScopes,
   overviewHiddenChartsLimit,
   taxonOverviewChartViewType,
   withChartHidden,
@@ -30,6 +31,19 @@ describe("emptyOverviewHiddenCharts", () => {
     expect(Object.keys(emptyOverviewHiddenCharts())).toStrictEqual([
       ...overviewChartViewTypes,
     ]);
+  });
+});
+
+describe("overviewChartViewTypeScopes", () => {
+  it("names the group each view type's hidden list covers, once per view type", () => {
+    const scopes = overviewChartViewTypes.map(
+      (viewType) => overviewChartViewTypeScopes[viewType],
+    );
+
+    for (const scope of scopes) {
+      expect(scope.length).toBeGreaterThan(0);
+    }
+    expect(new Set(scopes).size).toBe(overviewChartViewTypes.length);
   });
 });
 

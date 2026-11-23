@@ -8,6 +8,15 @@ export const overviewChartViewTypes = [
 ] as const;
 export type OverviewChartViewType = (typeof overviewChartViewTypes)[number];
 
+/** The group of pages each view type's hidden list covers, used in the menu heading so a user who sees other charts hidden on another page knows each group keeps its own list. */
+export const overviewChartViewTypeScopes: Record<OverviewChartViewType, string> =
+  {
+    genome: "all genome lists",
+    bacteria: "all bacteria",
+    viruses: "all viruses",
+    otherTaxa: "all other taxa",
+  };
+
 /** The lineage group of a Taxonomy page, so hiding a chart for bacteria leaves viruses alone. `accent` is `OrganismLandingConfig["accent"]` (typed `string` here because this module is import-free): fungi and every other lineage share `"otherTaxa"`. */
 export function taxonOverviewChartViewType(
   accent: string,

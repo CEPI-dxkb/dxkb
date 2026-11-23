@@ -200,6 +200,25 @@ describe("ChartVisibilityMenu", () => {
     }
   });
 
+  it.each([
+    ["genome", "Show charts for all genome lists"],
+    ["bacteria", "Show charts for all bacteria"],
+    ["viruses", "Show charts for all viruses"],
+    ["otherTaxa", "Show charts for all other taxa"],
+  ] as const)(
+    "names the group the %s list covers in the menu heading",
+    async (viewType, heading) => {
+      renderWithPreference(<Overview viewType={viewType} />);
+      const { menu } = await openMenu();
+
+      expect(within(menu).getByText(heading)).toBeInTheDocument();
+      // The trigger keeps its name and visible text: the heading is the only change.
+      expect(
+        screen.getByRole("button", { name: "Charts 3/3 shown" }),
+      ).toHaveTextContent("Charts 3/3");
+    },
+  );
+
   it("hides a chart, says so in the trigger, and remembers it in the cookie", async () => {
     renderWithPreference(<Overview viewType="bacteria" />);
     const { user, menu } = await openMenu();

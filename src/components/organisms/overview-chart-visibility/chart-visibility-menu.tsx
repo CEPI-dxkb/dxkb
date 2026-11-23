@@ -14,7 +14,10 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useHiddenOverviewCharts } from "@/hooks/views/use-hidden-overview-charts";
-import type { OverviewChartViewType } from "@/lib/overview-charts";
+import {
+  overviewChartViewTypeScopes,
+  type OverviewChartViewType,
+} from "@/lib/overview-charts";
 
 interface ChartVisibilityMenuProps {
   viewType: OverviewChartViewType;
@@ -49,7 +52,9 @@ export function ChartVisibilityMenu({
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-64">
         <DropdownMenuGroup>
-          <DropdownMenuLabel>Show charts</DropdownMenuLabel>
+          <DropdownMenuLabel>
+            {`Show charts for ${overviewChartViewTypeScopes[viewType]}`}
+          </DropdownMenuLabel>
           {charts.map((chart) => {
             const checked = !hidden.includes(chart.id);
             return (

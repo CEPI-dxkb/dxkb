@@ -149,8 +149,8 @@ export const ChoroplethSvg = forwardRef<ChoroplethHandle, ChoroplethSvgProps>(
     const containerRef = useRef<HTMLDivElement | null>(null);
     const isDraggingRef = useRef(false);
     const zoomImperativeRef = useRef<ZoomHandle | null>(null);
-    // Cancels the running country/Reset animation; null when none has started since the
-    // last cancel.
+    // The cancel function of the last country/Reset animation (a no-op once that animation
+    // has finished); null before any animation has started and after a cancel.
     const cancelZoomRef = useRef<(() => void) | null>(null);
 
     useEffect(() => {

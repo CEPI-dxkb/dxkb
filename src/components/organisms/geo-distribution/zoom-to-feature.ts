@@ -65,7 +65,7 @@ const noop = (): void => undefined;
 
 // The rings d3 actually draws: after its antimeridian clip, so Chukotka and east Fiji are
 // rings of their own instead of a box that spans the map.
-export function projectedRingBoxes(
+function projectedRingBoxes(
   projection: GeoProjection,
   feature: GeoJSON.Feature,
 ): RingBox[] {

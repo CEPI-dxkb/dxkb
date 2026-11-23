@@ -202,6 +202,8 @@ test.describe("taxonomy geographic distribution map", () => {
     await settleFrame(page);
 
     // Panned (the translate follows the pointer) and not zoomed (the scale is still 1).
+    // The poll only waits for the pan to commit; the real guard against a zoom is the
+    // `scale === 1` assertion below.
     await expect.poll(async () => matrixOf(await mapGroup.getAttribute("transform")).translateX).toBeGreaterThan(0);
     const { scale, translateX, translateY } = matrixOf(await mapGroup.getAttribute("transform"));
     expect(scale).toBe(1);

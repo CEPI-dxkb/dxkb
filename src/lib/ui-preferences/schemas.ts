@@ -5,6 +5,7 @@ import { jobsPanelIds } from "@/constants/jobs-panels";
 import { workspaceSortFields } from "@/constants/workspace-sort";
 import { compareRegionDensities } from "@/lib/compare-region/density-options";
 import { graphColumnLimits } from "@/lib/interactions/graph-columns";
+import { overviewHiddenChartsLimit } from "@/lib/overview-charts";
 import { tabTopMax, tabTopMin } from "@/lib/copilot/edge-tab";
 import {
   copilotSurfaces,
@@ -19,6 +20,12 @@ import {
 
 // Strictly positive: a hand-edited 0 would make Show a no-op and {0, 0} makes the library compute a NaN width.
 const panelShare = z.number().gt(0).max(100);
+
+// One bad or oversized list resets only itself, and an unknown view type is dropped, so a later build can add a view type without wiping the others.
+const hiddenChartIds = z
+  .array(z.string().min(1).max(40))
+  .max(overviewHiddenChartsLimit)
+  .catch(() => []);
 
 export const uiPreferenceSchemas: {
   [K in UiPreferenceKey]: z.ZodType<UiPreferences[K]>;
@@ -46,6 +53,12 @@ export const uiPreferenceSchemas: {
     direction: z.enum(["asc", "desc"]),
   }),
   compareRegionDensity: z.enum(compareRegionDensities),
+  overviewHiddenCharts: z.object({
+    genome: hiddenChartIds,
+    bacteria: hiddenChartIds,
+    viruses: hiddenChartIds,
+    otherTaxa: hiddenChartIds,
+  }),
   copilotSurface: z.enum(copilotSurfaces),
   // A cookie saved on a small viewport can hold less than the minimum; the component restores it.
   copilotFloatingRect: z.strictObject({

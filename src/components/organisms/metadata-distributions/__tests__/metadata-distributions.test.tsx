@@ -51,6 +51,10 @@ import { fetchOrganismMetadataFacets } from "@/lib/services/organisms/metadata-f
 import { fetchTaxonomicDistribution } from "@/lib/services/organisms/taxonomic-distribution";
 import { fetchAmrPhenotypeDistribution } from "@/lib/services/organisms/amr-distribution";
 import { taxonomicDistributionSentinel } from "@/components/organisms/types";
+import { amrChartId, emptyOverviewHiddenCharts } from "@/lib/overview-charts";
+import { stubMenuLayout } from "@/test-helpers/menu-layout";
+import { createUiPreferencesWrapper } from "@/test-helpers/react";
+import userEvent from "@testing-library/user-event";
 
 const emptyTaxonomic = { genus: [], species: [] };
 
@@ -72,9 +76,12 @@ beforeEach(() => {
   vi.mocked(fetchTaxonomicDistribution).mockResolvedValue(emptyTaxonomic);
 });
 
-async function renderServer(node: Promise<React.ReactElement>) {
+async function renderServer(
+  node: Promise<React.ReactElement>,
+  wrapper?: React.JSXElementConstructor<{ children: React.ReactNode }>,
+) {
   const resolved = await node;
-  return render(<Suspense fallback={null}>{resolved}</Suspense>);
+  return render(<Suspense fallback={null}>{resolved}</Suspense>, { wrapper });
 }
 
 describe("MetadataDistributions", () => {
@@ -399,5 +406,171 @@ describe("MetadataDistributions", () => {
     await expect(
       MetadataDistributions({ taxonId: 562, fields: ["genus", "host_name"] }),
     ).rejects.toBe(outage);
+  });
+});
+
+describe("MetadataDistributions chart visibility", () => {
+  stubMenuLayout();
+
+  const amrData = {
+    antibiotics: [
+      {
+        antibiotic: "ciprofloxacin",
+        Resistant: 1,
+        Susceptible: 2,
+        Intermediate: 0,
+        total: 3,
+      },
+    ],
+  };
+
+  const fields = ["host_group", "collection_year", taxonomicDistributionSentinel];
+
+  beforeEach(() => {
+    mockFacets({
+      host_group: [{ name: "Human", count: 30 }],
+      collection_year: [{ name: "2014", count: 7 }],
+    });
+  });
+
+  afterEach(() => {
+    // The shared setup silences console.error, so a React warning (keys, hydration) would pass unseen.
+    expect(console.error).not.toHaveBeenCalled();
+    document.cookie = "dxkb-overview-hidden-charts=; Path=/; Max-Age=0";
+  });
+
+  function section() {
+    return within(screen.getByTestId("metadata-distributions"));
+  }
+
+  it("gives a section with a view type a charts menu, and the landings none", async () => {
+    const { unmount } = await renderServer(
+      MetadataDistributions({ taxonId: 2, fields, viewType: "bacteria" }),
+    );
+    expect(
+      section().getByRole("button", { name: /^Charts \d+\/\d+ shown/ }),
+    ).toHaveTextContent("Charts 3/3");
+    unmount();
+
+    await renderServer(MetadataDistributions({ taxonId: 2, fields }));
+    expect(screen.getByTestId("metadata-distributions")).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { level: 2, name: "Metadata Distributions" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Top metadata buckets for available genome records."),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^Charts/ })).toBeNull();
+  });
+
+  it("leaves out the charts hidden for its own view type only", async () => {
+    const wrapper = createUiPreferencesWrapper({
+      overviewHiddenCharts: {
+        ...emptyOverviewHiddenCharts(),
+        bacteria: ["host_group"],
+      },
+    });
+
+    const { unmount } = await renderServer(
+      MetadataDistributions({ taxonId: 2, fields, viewType: "bacteria" }),
+      wrapper,
+    );
+    expect(
+      screen.queryByRole("img", { name: "Host Group distribution" }),
+    ).toBeNull();
+    expect(screen.getByText("Collection Year")).toBeInTheDocument();
+    expect(screen.getByText("Taxonomic Distribution")).toBeInTheDocument();
+    expect(
+      section().getByRole("button", { name: "Charts 2/3 shown, customised" }),
+    ).toBeInTheDocument();
+    unmount();
+
+    await renderServer(
+      MetadataDistributions({ taxonId: 2, fields, viewType: "genome" }),
+      wrapper,
+    );
+    expect(
+      screen.getByRole("img", { name: "Host Group distribution" }),
+    ).toBeInTheDocument();
+  });
+
+  it("lists the taxonomic and AMR charts in the menu, and hides the AMR chart by its id", async () => {
+    vi.mocked(fetchAmrPhenotypeDistribution).mockResolvedValue(amrData);
+
+    const { unmount } = await renderServer(
+      MetadataDistributions({
+        taxonId: 197,
+        fields: ["host_group"],
+        showAmr: true,
+        viewType: "bacteria",
+      }),
+    );
+    await userEvent.setup().click(
+      section().getByRole("button", { name: /^Charts 3\/3 shown/ }),
+    );
+    const menu = await screen.findByRole("menu");
+    expect(
+      within(menu)
+        .getAllByRole("menuitemcheckbox")
+        .map((box) => box.textContent),
+    ).toEqual([
+      "Host Group",
+      "Taxonomic Distribution",
+      "Antimicrobial Resistance Profile",
+    ]);
+    expect(screen.getByTestId("amr-chart")).toBeInTheDocument();
+    unmount();
+
+    await renderServer(
+      MetadataDistributions({
+        taxonId: 197,
+        fields: ["host_group"],
+        showAmr: true,
+        viewType: "bacteria",
+      }),
+      createUiPreferencesWrapper({
+        overviewHiddenCharts: {
+          ...emptyOverviewHiddenCharts(),
+          bacteria: [amrChartId],
+        },
+      }),
+    );
+    expect(screen.queryByTestId("amr-chart")).toBeNull();
+    expect(screen.getByText("Taxonomic Distribution")).toBeInTheDocument();
+  });
+
+  it("shows every chart without a provider, and fetches every field whatever is hidden", async () => {
+    const { unmount } = await renderServer(
+      MetadataDistributions({ taxonId: 2, fields, viewType: "bacteria" }),
+    );
+    expect(
+      screen.getByRole("img", { name: "Host Group distribution" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Collection Year")).toBeInTheDocument();
+    expect(screen.getByText("Taxonomic Distribution")).toBeInTheDocument();
+    unmount();
+
+    vi.mocked(fetchOrganismMetadataFacets).mockClear();
+    vi.mocked(fetchTaxonomicDistribution).mockClear();
+    await renderServer(
+      MetadataDistributions({ taxonId: 2, fields, viewType: "bacteria" }),
+      createUiPreferencesWrapper({
+        overviewHiddenCharts: {
+          ...emptyOverviewHiddenCharts(),
+          bacteria: ["host_group", taxonomicDistributionSentinel],
+        },
+      }),
+    );
+    expect(
+      screen.queryByRole("img", { name: "Host Group distribution" }),
+    ).toBeNull();
+    expect(screen.queryByText("Taxonomic Distribution")).toBeNull();
+    // Hiding happens in the client grid: the server still asks for every chart.
+    expect(fetchOrganismMetadataFacets).toHaveBeenCalledTimes(2);
+    expect(fetchOrganismMetadataFacets).toHaveBeenCalledWith(2, ["host_group"]);
+    expect(fetchOrganismMetadataFacets).toHaveBeenCalledWith(2, [
+      "collection_year",
+    ]);
+    expect(fetchTaxonomicDistribution).toHaveBeenCalledTimes(1);
   });
 });

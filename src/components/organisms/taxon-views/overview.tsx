@@ -13,6 +13,10 @@ import { TaxonomySummary } from "@/components/organisms/taxonomy-summary/taxonom
 import { TaxonomySummarySkeleton } from "@/components/organisms/taxonomy-summary/taxonomy-summary-skeleton";
 import type { OrganismLandingConfig } from "@/components/organisms/types";
 import type { GenomeListLink } from "@/lib/genome-view";
+import {
+  taxonOverviewChartViewType,
+  type OverviewChartViewType,
+} from "@/lib/overview-charts";
 import type { OrganismTaxonomy } from "@/lib/services/organisms/types";
 
 interface OverviewViewProps {
@@ -31,6 +35,8 @@ interface GenomeOverviewSectionsProps {
   genomeList: GenomeListLink;
   /** Rendered above the map, e.g. the Taxonomy page's taxon summary. */
   summary?: ReactNode;
+  /** Which overview's hidden charts the Metadata Distributions menu reads and writes. */
+  viewType: OverviewChartViewType;
 }
 
 async function MetadataDistributionsBoundary({
@@ -39,9 +45,15 @@ async function MetadataDistributionsBoundary({
   showAmr,
   hideEmptyAmr,
   genomeList,
+  viewType,
 }: Pick<
   GenomeOverviewSectionsProps,
-  "scope" | "metadataFields" | "showAmr" | "hideEmptyAmr" | "genomeList"
+  | "scope"
+  | "metadataFields"
+  | "showAmr"
+  | "hideEmptyAmr"
+  | "genomeList"
+  | "viewType"
 >) {
   return withSectionError("Metadata distributions", () =>
     MetadataDistributions({
@@ -50,6 +62,7 @@ async function MetadataDistributionsBoundary({
       showAmr,
       hideEmptyAmr,
       genomeList,
+      viewType,
     }),
   );
 }
@@ -81,6 +94,7 @@ export function GenomeOverviewSections({
   hideEmptyAmr,
   genomeList,
   summary,
+  viewType,
 }: GenomeOverviewSectionsProps) {
   return (
     <div className="flex flex-col gap-8">
@@ -107,6 +121,7 @@ export function GenomeOverviewSections({
           showAmr={showAmr}
           hideEmptyAmr={hideEmptyAmr}
           genomeList={genomeList}
+          viewType={viewType}
         />
       </Suspense>
     </div>
@@ -127,6 +142,7 @@ export function makeOverviewView({ config, taxon, showAmr }: OverviewViewProps) 
         accent={config.accent}
         metadataFields={config.metadataFields}
         showAmr={showAmr}
+        viewType={taxonOverviewChartViewType(config.accent)}
         genomeList={{
           pathname: `/taxonomy/${String(config.taxonId)}`,
           params: { tab: "genomes" },

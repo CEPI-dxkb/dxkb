@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 
 import { GenomeTable, ReferenceGenomesClient } from "../reference-genomes-client";
 
@@ -73,241 +73,114 @@ describe("ReferenceGenomesClient", () => {
     ).toHaveClass("xl:flex-1");
   });
 
-  it("renders a draggable divider and supports keyboard column resizing", () => {
-    render(<ReferenceGenomesClient {...empty} />);
+  it("shows each genome's type as plain text on the All tab", () => {
+    render(<ReferenceGenomesClient {...complete} />);
 
-    const separator = screen.getByRole("separator", {
-      name: "Resize Type column",
-    });
-    const typeColumn = document.querySelector("col");
-
-    expect(separator).toHaveAttribute("aria-valuenow", "144");
-    expect(typeColumn).toHaveClass("w-(--type-col-width)");
-    expect(typeColumn).toHaveStyle("--type-col-width: 144px");
-    expect(separator.parentElement).toHaveClass(
+    const all = within(screen.getByRole("tabpanel"));
+    expect(all.getByRole("columnheader", { name: "Type" })).toHaveClass(
       "border-r",
       "border-foreground/20",
     );
 
-    fireEvent.keyDown(separator, { key: "ArrowRight" });
-
-    expect(separator).toHaveAttribute("aria-valuenow", "154");
-    expect(typeColumn).toHaveStyle("--type-col-width: 154px");
-  });
-
-  it("caps the Type column width at its configured maximum", () => {
-    const clientWidth = vi
-      .spyOn(HTMLElement.prototype, "clientWidth", "get")
-      .mockReturnValue(1_000);
-    render(<ReferenceGenomesClient {...empty} />);
-
-    const separator = screen.getByRole("separator", {
-      name: "Resize Type column",
-    });
-    const typeColumn = document.querySelector("col");
-
-    expect(separator).toHaveAttribute("aria-valuemax", "480");
-    for (let index = 0; index < 40; index += 1) {
-      fireEvent.keyDown(separator, { key: "ArrowRight" });
-    }
-    expect(separator).toHaveAttribute("aria-valuenow", "480");
-    expect(typeColumn).toHaveStyle("--type-col-width: 480px");
-    clientWidth.mockRestore();
-  });
-
-  it("keeps the Type column resizable on a narrow table, where the accession column is hidden", () => {
-    // jsdom measures every offsetWidth as 0, like the accession header while
-    // the scroll container is narrower than @md.
-    const clientWidth = vi
-      .spyOn(HTMLElement.prototype, "clientWidth", "get")
-      .mockReturnValue(375);
-    try {
-      render(<ReferenceGenomesClient {...empty} />);
-
-      const separator = screen.getByRole("separator", {
-        name: "Resize Type column",
-      });
-      const typeColumn = document.querySelector("col");
-
-      // The attribute is read from the refs on a render after the first.
-      fireEvent.keyDown(separator, { key: "ArrowRight" });
-      expect(separator).toHaveAttribute("aria-valuemax", "215");
-      expect(separator).toHaveAttribute("aria-valuenow", "154");
-      expect(typeColumn).toHaveStyle("--type-col-width: 154px");
-
-      for (let index = 0; index < 10; index += 1) {
-        fireEvent.keyDown(separator, { key: "ArrowRight" });
-      }
-      expect(separator).toHaveAttribute("aria-valuenow", "215");
-
-      fireEvent.doubleClick(separator);
-      expect(separator).toHaveAttribute("aria-valuenow", "144");
-    } finally {
-      clientWidth.mockRestore();
+    const types = all.getAllByText(/^(Reference|Representative)$/);
+    expect(types.map((type) => type.textContent)).toEqual([
+      "Reference",
+      "Reference",
+      "Representative",
+      "Representative",
+    ]);
+    for (const type of types) {
+      // A solid pill reads as a button; this label must not.
+      expect(type.closest('[data-slot="badge"]')).toBeNull();
+      expect(type.closest("a, button")).toBeNull();
     }
   });
 
-  it("keeps the rendered accession column's width out of the Type column's reach", () => {
-    const clientWidth = vi
-      .spyOn(HTMLElement.prototype, "clientWidth", "get")
-      .mockReturnValue(600);
-    const offsetWidth = vi
-      .spyOn(HTMLElement.prototype, "offsetWidth", "get")
-      .mockImplementation(function (this: HTMLElement) {
-        return this.textContent === "GenBank Accession" ? 200 : 0;
-      });
-    try {
-      render(<ReferenceGenomesClient {...empty} />);
+  it("drops the Type column on a type tab, whose trigger already names the type", () => {
+    render(<ReferenceGenomesClient {...complete} />);
 
-      const separator = screen.getByRole("separator", {
-        name: "Resize Type column",
-      });
+    fireEvent.click(screen.getByRole("tab", { name: /Reference \(2\)/ }));
 
-      fireEvent.keyDown(separator, { key: "ArrowRight" });
-      // 600 - 160 (Genome Name keeps) - 200 (accession renders at).
-      expect(separator).toHaveAttribute("aria-valuemax", "240");
-
-      for (let index = 0; index < 10; index += 1) {
-        fireEvent.keyDown(separator, { key: "ArrowRight" });
-      }
-      expect(separator).toHaveAttribute("aria-valuenow", "240");
-    } finally {
-      offsetWidth.mockRestore();
-      clientWidth.mockRestore();
+    const reference = within(screen.getByRole("tabpanel"));
+    expect(
+      reference.queryByRole("columnheader", { name: "Type" }),
+    ).not.toBeInTheDocument();
+    expect(
+      reference.getAllByRole("columnheader").map((header) => header.textContent),
+    ).toEqual(["Genome Name", "GenBank Accession"]);
+    // Genome rows and the filler rows below them alike: a third cell would
+    // overflow the table's two columns.
+    const [, ...bodyRows] = reference.getAllByRole("row");
+    expect(bodyRows.length).toBeGreaterThan(2);
+    for (const row of bodyRows) {
+      expect(within(row).getAllByRole("cell")).toHaveLength(2);
     }
+    expect(reference.queryByText("Reference")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("tab", { name: /Representative \(2\)/ }));
+
+    const representative = within(screen.getByRole("tabpanel"));
+    expect(
+      representative.queryByRole("columnheader", { name: "Type" }),
+    ).not.toBeInTheDocument();
+    expect(representative.queryByText("Representative")).not.toBeInTheDocument();
   });
 
-  describe("when the card resizes", () => {
-    // jsdom has no ResizeObserver, so the table's effect returns early. This
-    // stub records the callback so a test can fire it, with a container width
-    // and an accession header width it controls.
-    function stubTableMeasurements(initial: {
-      containerWidth: number;
-      accessionWidth: number;
-    }) {
-      const measurements = { ...initial };
-      const callbacks: ResizeObserverCallback[] = [];
-      class RecordingResizeObserver {
-        constructor(callback: ResizeObserverCallback) {
-          callbacks.push(callback);
-        }
-        observe = vi.fn();
-        unobserve = vi.fn();
-        disconnect = vi.fn();
-      }
-      const originalResizeObserver = globalThis.ResizeObserver;
-      globalThis.ResizeObserver = RecordingResizeObserver;
-      const clientWidth = vi
-        .spyOn(HTMLElement.prototype, "clientWidth", "get")
-        .mockImplementation(() => measurements.containerWidth);
-      const offsetWidth = vi
-        .spyOn(HTMLElement.prototype, "offsetWidth", "get")
-        .mockImplementation(function (this: HTMLElement) {
-          return this.textContent === "GenBank Accession"
-            ? measurements.accessionWidth
-            : 0;
-        });
-      return {
-        resizeTo(next: { containerWidth: number; accessionWidth: number }) {
-          Object.assign(measurements, next);
-          act(() => {
-            for (const callback of callbacks) {
-              callback(
-                [{ contentRect: { height: 320 } } as ResizeObserverEntry],
-                {} as ResizeObserver,
-              );
-            }
-          });
-        },
-        restore() {
-          offsetWidth.mockRestore();
-          clientWidth.mockRestore();
-          globalThis.ResizeObserver = originalResizeObserver;
-        },
-      };
-    }
+  it("drops the Type column on All when only one type has genomes (Adenoviridae shape)", () => {
+    render(
+      <ReferenceGenomesClient
+        rows={genomes.slice(0, 2)}
+        counts={{ Reference: 355, Representative: 0 }}
+        total={355}
+        hrefs={{ byType: {} }}
+      />,
+    );
 
-    function widenTypeColumn(separator: HTMLElement, steps: number) {
-      for (let index = 0; index < steps; index += 1) {
-        fireEvent.keyDown(separator, { key: "ArrowRight" });
-      }
-    }
+    const all = within(screen.getByRole("tabpanel"));
+    expect(
+      all.queryByRole("columnheader", { name: "Type" }),
+    ).not.toBeInTheDocument();
+    expect(
+      all.getAllByRole("columnheader").map((header) => header.textContent),
+    ).toEqual(["Genome Name", "GenBank Accession"]);
+    // Every row would repeat "Reference"; the zero-count tab already says it.
+    expect(all.queryByText("Reference")).not.toBeInTheDocument();
+    expect(document.querySelectorAll("col")).toHaveLength(2);
+  });
 
-    it("re-clamps a widened Type column when the accession column appears", () => {
-      const table = stubTableMeasurements({
-        containerWidth: 440,
-        accessionWidth: 0,
-      });
-      try {
-        render(<ReferenceGenomesClient {...empty} />);
+  it("drops the Type column on All when only Representative has genomes", () => {
+    render(
+      <ReferenceGenomesClient
+        rows={genomes.slice(2)}
+        counts={{ Reference: 0, Representative: 2 }}
+        total={2}
+        hrefs={{ byType: {} }}
+      />,
+    );
 
-        const separator = screen.getByRole("separator", {
-          name: "Resize Type column",
-        });
-        const typeColumn = document.querySelector("col");
+    const all = within(screen.getByRole("tabpanel"));
+    expect(
+      all.queryByRole("columnheader", { name: "Type" }),
+    ).not.toBeInTheDocument();
+    expect(
+      all.getAllByRole("columnheader").map((header) => header.textContent),
+    ).toEqual(["Genome Name", "GenBank Accession"]);
+    expect(all.queryByText("Representative")).not.toBeInTheDocument();
+    expect(document.querySelectorAll("col")).toHaveLength(2);
+  });
 
-        // 440 - 160 (Genome Name keeps) with no accession column rendered.
-        widenTypeColumn(separator, 20);
-        expect(separator).toHaveAttribute("aria-valuenow", "280");
+  it("still shows the Type column on All when both types have genomes even if one list is partial", () => {
+    render(<ReferenceGenomesClient {...truncated} />);
 
-        // The container reaches @md (448px) and the accession column renders
-        // at 144px: only 448 - 160 - 144 = 144px is left for Type.
-        table.resizeTo({ containerWidth: 448, accessionWidth: 144 });
+    const all = within(screen.getByRole("tabpanel"));
+    expect(all.getByRole("columnheader", { name: "Type" })).toBeInTheDocument();
+    expect(document.querySelectorAll("col")).toHaveLength(3);
+  });
 
-        expect(separator).toHaveAttribute("aria-valuenow", "144");
-        expect(typeColumn).toHaveStyle("--type-col-width: 144px");
-      } finally {
-        table.restore();
-      }
-    });
+  it("has no Type column resize handle", () => {
+    render(<ReferenceGenomesClient {...complete} />);
 
-    it("never shrinks the default Type width below it on a narrow card", () => {
-      // The raw cap here is 96 (244 - 160 leaves less than the minimum), below
-      // the 144px default, which a "Representative" badge needs.
-      const table = stubTableMeasurements({
-        containerWidth: 244,
-        accessionWidth: 0,
-      });
-      try {
-        render(<ReferenceGenomesClient {...empty} />);
-
-        const separator = screen.getByRole("separator", {
-          name: "Resize Type column",
-        });
-        const typeColumn = document.querySelector("col");
-
-        table.resizeTo({ containerWidth: 244, accessionWidth: 0 });
-
-        expect(separator).toHaveAttribute("aria-valuenow", "144");
-        expect(typeColumn).toHaveStyle("--type-col-width: 144px");
-      } finally {
-        table.restore();
-      }
-    });
-
-    it("keeps a widened Type column that still fits when the card resizes", () => {
-      const table = stubTableMeasurements({
-        containerWidth: 440,
-        accessionWidth: 0,
-      });
-      try {
-        render(<ReferenceGenomesClient {...empty} />);
-
-        const separator = screen.getByRole("separator", {
-          name: "Resize Type column",
-        });
-
-        widenTypeColumn(separator, 5);
-        expect(separator).toHaveAttribute("aria-valuenow", "194");
-
-        // The cap is now 600 - 160 - 144 = 296, above the stored 194.
-        table.resizeTo({ containerWidth: 600, accessionWidth: 144 });
-
-        expect(separator).toHaveAttribute("aria-valuenow", "194");
-      } finally {
-        table.restore();
-      }
-    });
+    expect(screen.queryByRole("separator")).not.toBeInTheDocument();
   });
 
   it("renders one tab per reference type plus an All tab", () => {
@@ -459,13 +332,33 @@ describe("ReferenceGenomesClient", () => {
     expect(bare).toHaveAttribute("title", "No accession strain");
   });
 
-  it("gives the table three columns and spans the empty-state row across them", () => {
-    render(<ReferenceGenomesClient {...empty} />);
+  it("gives a table with the Type column three columns and spans the empty-state row across them", () => {
+    render(<GenomeTable genomes={[]} count={0} />);
 
     expect(document.querySelectorAll("col")).toHaveLength(3);
     expect(
       screen.getByText("No genomes in this category.").closest("td"),
     ).toHaveAttribute("colspan", "3");
+  });
+
+  it("gives the All table two columns when no type has genomes, and spans the empty-state row across them", () => {
+    render(<ReferenceGenomesClient {...empty} />);
+
+    expect(document.querySelectorAll("col")).toHaveLength(2);
+    expect(
+      screen.getByText("No genomes in this category.").closest("td"),
+    ).toHaveAttribute("colspan", "2");
+  });
+
+  it("gives a type tab's table two columns and spans its empty-state row across them", () => {
+    render(<ReferenceGenomesClient {...empty} />);
+
+    fireEvent.click(screen.getByRole("tab", { name: /Reference \(0\)/ }));
+
+    expect(document.querySelectorAll("col")).toHaveLength(2);
+    expect(
+      screen.getByText("No genomes in this category.").closest("td"),
+    ).toHaveAttribute("colspan", "2");
   });
 
   it("renders genome rows as same-tab links to the internal genome view", () => {

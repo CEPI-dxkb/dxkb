@@ -262,6 +262,65 @@ describe("fetchOrganismGeoDistribution", () => {
     expect(result.stateMeta.Wyoming).toEqual({ count: 48, genera: {}, hosts: {} });
   });
 
+  it("reports a failed county pivot as countyError instead of an empty result", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    server.use(defaultGenomeRouter({ countyPivotStatus: 503 }));
+    const result = await fetchOrganismGeoDistribution(234);
+
+    expect(result.countyError).toBe(
+      "The BV-BRC data service is unavailable (HTTP 503 Service Unavailable: county failed).",
+    );
+    expect(result.countyData).toEqual({});
+    expect(result.countyMeta).toEqual({});
+    // The facets the failure must not take down.
+    expect(result.countryData).toEqual({ USA: 260, China: 260, Italy: 188 });
+    expect(result.stateData).toEqual({ Wyoming: 48, Idaho: 35, Texas: 24 });
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining("[geo-distribution] county pivot failed"),
+    );
+    warn.mockRestore();
+  });
+
+  it("leaves countyError unset when the county pivot answers, even with no rows", async () => {
+    server.use(defaultGenomeRouter());
+    expect((await fetchOrganismGeoDistribution(234)).countyError).toBeUndefined();
+
+    server.use(
+      http.get(`${baseUrl}/genome/`, () =>
+        HttpResponse.json({
+          response: { numFound: 0 },
+          facet_counts: { facet_fields: { isolation_country: [], state_province: [] }, facet_pivot: { "state_province,county": [] } },
+        }),
+      ),
+    );
+    expect((await fetchOrganismGeoDistribution(234)).countyError).toBeUndefined();
+  });
+
+  it("does not raise countyError when only an enrichment pivot fails", async () => {
+    server.use(defaultGenomeRouter({ pivotStatus: 500 }));
+    const result = await fetchOrganismGeoDistribution(234);
+
+    expect(result.countyError).toBeUndefined();
+    expect(result.countyData).toEqual({ "Wyoming|Park": 30, "Wyoming|Teton": 18, "Idaho|Park": 35 });
+  });
+
+  it("asks for up to 1000 states so a small state is not cut from a broad taxon", async () => {
+    const urls: string[] = [];
+    server.use(
+      http.get(`${baseUrl}/genome/`, ({ request }) => {
+        urls.push(request.url);
+        return HttpResponse.json({
+          response: { numFound: 0 },
+          facet_counts: { facet_fields: { isolation_country: [], state_province: [] }, facet_pivot: {} },
+        });
+      }),
+    );
+    await fetchOrganismGeoDistribution(234);
+
+    const stateFacet = urls.find((url) => url.includes("(field,state_province)"));
+    expect(stateFacet).toContain("(limit,1000)");
+  });
+
   it("re-throws AbortError from a pivot fetch instead of swallowing it", async () => {
     server.use(
       http.get(`${baseUrl}/genome/`, ({ request }) => {

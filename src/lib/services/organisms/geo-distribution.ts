@@ -3,7 +3,8 @@ import type {
   OrganismGeoDistribution,
   OrganismGeoLocationMeta,
 } from "./types";
-import type { GenomeScope } from "./genome-scope";
+import { describeGenomeScope, type GenomeScope } from "./genome-scope";
+import { formatUserFacingErrorMessage } from "@/lib/utils";
 import {
   buildGenomeGeoFacetUrl,
   buildGenomeGeoPivot3Url,
@@ -16,7 +17,7 @@ import {
 } from "./utils";
 
 const countryLimit = 300;
-const stateLimit = 100;
+const stateLimit = 1000;
 const countyLimit = 1000;
 
 async function fetchField(baseUrl: string, scope: GenomeScope, field: string, limit: number | undefined, signal: AbortSignal | undefined): Promise<Record<string, number>> {
@@ -48,6 +49,25 @@ async function fetchPivotOrEmpty(baseUrl: string, scope: GenomeScope, primary: s
     const message = err instanceof Error ? err.message : String(err);
     console.warn(`[geo-distribution] pivot ${primary},${secondary} failed: ${message}`);
     return {};
+  }
+}
+
+interface CountyPivotResult {
+  pivot: Record<string, Record<string, number>>;
+  /** Set when the pivot failed; the map says so instead of claiming there are no counties. */
+  error?: string;
+}
+
+/** The state to county counts. Unlike the tooltip pivots, a failure is reported, not hidden. */
+async function fetchCountyPivot(baseUrl: string, scope: GenomeScope, limit: number, signal: AbortSignal | undefined): Promise<CountyPivotResult> {
+  try {
+    return { pivot: await fetchPivot(baseUrl, scope, "state_province", "county", limit, signal) };
+  } catch (err) {
+    if (err instanceof DOMException && err.name === "AbortError") throw err;
+    if (err instanceof Error && err.name === "AbortError") throw err;
+    const error = formatUserFacingErrorMessage(err, "The county counts could not be loaded.");
+    console.warn(`[geo-distribution] county pivot failed for ${describeGenomeScope(scope)}: ${error}`);
+    return { pivot: {}, error };
   }
 }
 
@@ -91,7 +111,7 @@ export async function fetchOrganismGeoDistribution(
   const [
     countryData,
     stateData,
-    countyPivot,
+    countyResult,
     countryGenera,
     countryHosts,
     stateGenera,
@@ -102,7 +122,7 @@ export async function fetchOrganismGeoDistribution(
     fetchField(baseUrl, scope, "state_province", stateLimit, signal),
     // Pivot on state_province→county; a flat `county` facet would merge
     // same-named counties across states.
-    fetchPivotOrEmpty(baseUrl, scope, "state_province", "county", countyLimit, signal),
+    fetchCountyPivot(baseUrl, scope, countyLimit, signal),
     fetchPivotOrEmpty(baseUrl, scope, "isolation_country", "genus", undefined, signal),
     fetchPivotOrEmpty(baseUrl, scope, "isolation_country", "host_common_name", undefined, signal),
     fetchPivotOrEmpty(baseUrl, scope, "state_province", "genus", undefined, signal),
@@ -112,7 +132,7 @@ export async function fetchOrganismGeoDistribution(
 
   const countyData: Record<string, number> = {};
   const countyMeta: Record<string, OrganismGeoLocationMeta> = {};
-  for (const [stateName, counties] of Object.entries(countyPivot)) {
+  for (const [stateName, counties] of Object.entries(countyResult.pivot)) {
     for (const [countyName, count] of Object.entries(counties)) {
       const key = `${stateName}|${countyName}`;
       countyData[key] = count;
@@ -135,5 +155,6 @@ export async function fetchOrganismGeoDistribution(
     stateMeta: buildMeta(stateData, stateGenera, stateHosts),
     countyData,
     countyMeta,
+    ...(countyResult.error ? { countyError: countyResult.error } : {}),
   };
 }

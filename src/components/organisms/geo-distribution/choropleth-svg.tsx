@@ -1,6 +1,6 @@
 "use client";
 
-import { Zoom } from "@visx/zoom";
+import { identityMatrix, Zoom, type TransformMatrix } from "@visx/zoom";
 import { Minus, Plus, RotateCcw } from "lucide-react";
 import {
   forwardRef,
@@ -9,6 +9,7 @@ import {
   useRef,
   useState,
   type PointerEvent as ReactPointerEvent,
+  type RefObject,
 } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -17,7 +18,14 @@ import { cn } from "@/lib/utils";
 
 import type { HoverEnter, HoverLeave, HoverPayload } from "./choropleth-path";
 import type { ColorScale } from "./color-scale";
-import { countyPadding, mapHeight } from "./map-constants";
+import {
+  countryFitPadding,
+  countryZoomMs,
+  countyPadding,
+  mapHeight,
+  mapScaleMax,
+  mapScaleMin,
+} from "./map-constants";
 import { StateCountiesLayer } from "./state-counties-layer";
 import {
   crossesAntimeridian,
@@ -30,6 +38,14 @@ import {
 import { UsStatesLayer } from "./us-states-layer";
 import { WorldCountriesLayer } from "./world-countries-layer";
 import type { GeoMapState } from "./types";
+import {
+  animateTransform,
+  fitTransform,
+  prefersReducedMotion,
+  type Bounds,
+  type Viewport,
+  type ZoomLimits,
+} from "./zoom-to-feature";
 
 export type { HoverPayload } from "./choropleth-path";
 
@@ -56,6 +72,42 @@ interface ChoroplethSvgProps {
     event: ReactPointerEvent<SVGPathElement>,
   ) => void;
   onLeaveMap: () => void;
+}
+
+interface ZoomHandle {
+  reset: () => void;
+  setTransformMatrix: (matrix: TransformMatrix) => void;
+  transformMatrix: TransformMatrix;
+}
+
+type CancelZoomRef = RefObject<(() => void) | null>;
+
+// The same limits bound <Zoom> and the country fit: Zoom drops a matrix outside them.
+const mapZoomLimits: ZoomLimits = { minScale: mapScaleMin, maxScale: mapScaleMax };
+
+function stopZoomAnimation(cancelRef: CancelZoomRef) {
+  cancelRef.current?.();
+  cancelRef.current = null;
+}
+
+// Animates from the matrix Zoom last rendered, so a second click (or a Reset) mid-flight
+// starts from where the map is. Reduced motion applies the target at once.
+function animateZoomTo(
+  cancelRef: CancelZoomRef,
+  zoom: ZoomHandle | null,
+  target: TransformMatrix,
+  viewport: Viewport,
+) {
+  stopZoomAnimation(cancelRef);
+  if (!zoom) return;
+  cancelRef.current = animateTransform({
+    from: zoom.transformMatrix,
+    to: target,
+    viewport,
+    limits: mapZoomLimits,
+    durationMs: prefersReducedMotion() ? 0 : countryZoomMs,
+    apply: zoom.setTransformMatrix,
+  });
 }
 
 // Zoom's own wheel handler applies this (and cancels the browser's page zoom).
@@ -96,10 +148,10 @@ export const ChoroplethSvg = forwardRef<ChoroplethHandle, ChoroplethSvgProps>(
     const [height, setHeight] = useState(mapHeight);
     const containerRef = useRef<HTMLDivElement | null>(null);
     const isDraggingRef = useRef(false);
-    const zoomImperativeRef = useRef<{
-      reset: () => void;
-      scale: (args: { scaleX: number; scaleY: number }) => void;
-    } | null>(null);
+    const zoomImperativeRef = useRef<ZoomHandle | null>(null);
+    // The cancel function of the last country/Reset animation (a no-op once that animation
+    // has finished); null before any animation has started and after a cancel.
+    const cancelZoomRef = useRef<(() => void) | null>(null);
 
     useEffect(() => {
       const node = containerRef.current;
@@ -134,28 +186,69 @@ export const ChoroplethSvg = forwardRef<ChoroplethHandle, ChoroplethSvgProps>(
 
     // A plain wheel scrolls the page; Ctrl/⌘ + wheel (and a trackpad pinch) zooms.
     // Stopping a plain wheel in the capture phase keeps Zoom's non-passive
-    // listener from cancelling the scroll.
+    // listener from cancelling the scroll. Any gesture of the user's own (a press,
+    // which also starts a drag; a zooming wheel; Safari's pinch) stops a running
+    // country zoom, so its later frames cannot overwrite the gesture.
     useEffect(() => {
       const node = containerRef.current;
       if (!node) return;
-      const passPlainWheelToPage = (event: WheelEvent) => {
-        if (!event.ctrlKey && !event.metaKey) event.stopPropagation();
+      const stopAnimation = () => {
+        stopZoomAnimation(cancelZoomRef);
       };
-      node.addEventListener("wheel", passPlainWheelToPage, { capture: true });
+      const onWheel = (event: WheelEvent) => {
+        if (event.ctrlKey || event.metaKey) stopAnimation();
+        else event.stopPropagation();
+      };
+      node.addEventListener("wheel", onWheel, { capture: true });
+      node.addEventListener("pointerdown", stopAnimation, { capture: true });
+      node.addEventListener("gesturestart", stopAnimation, { capture: true });
       return () => {
-        node.removeEventListener("wheel", passPlainWheelToPage, {
+        node.removeEventListener("wheel", onWheel, { capture: true });
+        node.removeEventListener("pointerdown", stopAnimation, {
+          capture: true,
+        });
+        node.removeEventListener("gesturestart", stopAnimation, {
           capture: true,
         });
       };
     }, []);
 
+    // A resize changes the viewport the target was fitted to, and an unmount must not
+    // leave frames writing to a gone Zoom: both stop the animation (this cleanup runs
+    // on each width/height change and on unmount).
+    useEffect(
+      () => () => {
+        stopZoomAnimation(cancelZoomRef);
+      },
+      [width, height],
+    );
+
+    // The parent calls reset() on a view switch: it stays instant, and it stops a running
+    // country zoom first so its frames cannot keep writing that country onto the new view.
     useImperativeHandle(
       ref,
       () => ({
-        reset: () => zoomImperativeRef.current?.reset(),
+        reset: () => {
+          stopZoomAnimation(cancelZoomRef);
+          zoomImperativeRef.current?.reset();
+        },
       }),
       [],
     );
+
+    const zoomToBounds = (bounds: Bounds) => {
+      onLeaveMap();
+      const viewport = { width, height };
+      animateZoomTo(
+        cancelZoomRef,
+        zoomImperativeRef.current,
+        fitTransform(bounds, viewport, {
+          padding: countryFitPadding,
+          ...mapZoomLimits,
+        }),
+        viewport,
+      );
+    };
 
     const stateFeatures: StateFeature[] = stateTopo
       ? extractFeatures(stateTopo, "states")
@@ -200,17 +293,18 @@ export const ChoroplethSvg = forwardRef<ChoroplethHandle, ChoroplethSvgProps>(
         <Zoom<SVGSVGElement>
           width={width}
           height={height}
-          scaleXMin={0.6}
-          scaleXMax={10}
-          scaleYMin={0.6}
-          scaleYMax={10}
+          scaleXMin={mapScaleMin}
+          scaleXMax={mapScaleMax}
+          scaleYMin={mapScaleMin}
+          scaleYMax={mapScaleMax}
           wheelDelta={mapWheelDelta}
         >
           {(zoom) => {
             isDraggingRef.current = zoom.isDragging;
             zoomImperativeRef.current = {
               reset: zoom.reset,
-              scale: zoom.scale,
+              setTransformMatrix: zoom.setTransformMatrix,
+              transformMatrix: zoom.transformMatrix,
             };
 
             return (
@@ -241,6 +335,7 @@ export const ChoroplethSvg = forwardRef<ChoroplethHandle, ChoroplethSvgProps>(
                           onHoverEnter={hoverEnter}
                           onHoverLeave={hoverLeave}
                           onSwitchToUs={onSwitchToUs}
+                          onZoomToBounds={zoomToBounds}
                         />
                       ) : null)}
 
@@ -323,6 +418,7 @@ export const ChoroplethSvg = forwardRef<ChoroplethHandle, ChoroplethSvgProps>(
                     aria-label="Zoom in"
                     className="shadow-sm"
                     onClick={() => {
+                      stopZoomAnimation(cancelZoomRef);
                       zoom.scale({ scaleX: 1.4, scaleY: 1.4 });
                     }}
                   >
@@ -335,6 +431,7 @@ export const ChoroplethSvg = forwardRef<ChoroplethHandle, ChoroplethSvgProps>(
                     aria-label="Zoom out"
                     className="shadow-sm"
                     onClick={() => {
+                      stopZoomAnimation(cancelZoomRef);
                       zoom.scale({ scaleX: 1 / 1.4, scaleY: 1 / 1.4 });
                     }}
                   >
@@ -347,7 +444,10 @@ export const ChoroplethSvg = forwardRef<ChoroplethHandle, ChoroplethSvgProps>(
                     aria-label="Reset zoom"
                     className="shadow-sm"
                     onClick={() => {
-                      zoom.reset();
+                      animateZoomTo(cancelZoomRef, zoom, identityMatrix(), {
+                        width,
+                        height,
+                      });
                     }}
                   >
                     <RotateCcw />

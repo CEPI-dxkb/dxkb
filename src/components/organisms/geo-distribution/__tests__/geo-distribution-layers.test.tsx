@@ -22,8 +22,15 @@ vi.mock("@visx/geo", () => ({
     children,
   }: {
     data: unknown[];
-    children: (arg: { features: { feature: unknown; path: string }[] }) => unknown;
-  }) => children({ features: data.map((feature) => ({ feature, path: "M0,0" })) }),
+    children: (arg: {
+      features: { feature: unknown; path: string }[];
+      projection: unknown;
+    }) => unknown;
+  }) =>
+    children({
+      features: data.map((feature) => ({ feature, path: "M0,0" })),
+      projection: {},
+    }),
   CustomProjection: ({
     data,
     children,
@@ -35,6 +42,13 @@ vi.mock("@visx/geo", () => ({
 
 vi.mock("../choropleth-path", () => ({
   ChoroplethPath: vi.fn(() => null),
+}));
+
+vi.mock("../zoom-to-feature", () => ({
+  countryBounds: vi.fn(() => [
+    [0, 0],
+    [10, 10],
+  ]),
 }));
 
 const mockChoroplethPath = vi.mocked(ChoroplethPath);
@@ -166,6 +180,7 @@ describe("WorldCountriesLayer", () => {
           onHoverEnter={noop as never}
           onHoverLeave={noop}
           onSwitchToUs={noop}
+          onZoomToBounds={noop}
         />,
       ),
     ).not.toThrow();
@@ -184,11 +199,51 @@ describe("WorldCountriesLayer", () => {
         onHoverEnter={noop as never}
         onHoverLeave={noop}
         onSwitchToUs={noop}
+        onZoomToBounds={noop}
       />,
     );
 
     expect(mockChoroplethPath.mock.calls[0][0]).toMatchObject({
       payload: { genera: {}, hosts: {} },
     });
+  });
+
+  it("zooms to a country's bounds on click, but still switches to the US view for the USA", () => {
+    const onZoomToBounds = vi.fn();
+    const onSwitchToUs = vi.fn();
+    render(
+      <WorldCountriesLayer
+        countryFeatures={[
+          { ...makeFeature("Germany"), id: "276" },
+          { ...makeFeature("United States of America"), id: "840" },
+        ]}
+        scale={800}
+        width={960}
+        height={560}
+        data={emptyGeoData}
+        colorScale={colorScale}
+        isDraggingRef={makeRef(false)}
+        onHoverEnter={noop as never}
+        onHoverLeave={noop}
+        onSwitchToUs={onSwitchToUs}
+        onZoomToBounds={onZoomToBounds}
+      />,
+    );
+
+    const calls = mockChoroplethPath.mock.calls.map(([props]) => props);
+    const germany = calls.find((props) => props.payload.name === "Germany");
+    const usa = calls.find(
+      (props) => props.payload.name === "United States of America",
+    );
+    expect(germany).toMatchObject({ cursor: "pointer", dataRegion: "Germany" });
+    expect(usa).toMatchObject({ cursor: "pointer" });
+    germany?.onClick?.();
+    expect(onZoomToBounds).toHaveBeenCalledWith([
+      [0, 0],
+      [10, 10],
+    ]);
+    usa?.onClick?.();
+    expect(onSwitchToUs).toHaveBeenCalledTimes(1);
+    expect(onZoomToBounds).toHaveBeenCalledTimes(1);
   });
 });

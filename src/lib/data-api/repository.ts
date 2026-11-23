@@ -41,6 +41,7 @@ import type {
   DataApiRequest,
   DataResource,
   DataSort,
+  ExportResult,
   FacetBucket,
   MemberRequest,
   MemberResult,
@@ -321,6 +322,26 @@ function normalizeRows(payload: unknown): unknown[] {
   );
 }
 
+/**
+ * The query's full match count from the Data API's `Content-Range: items <start>-<end>/<total>`
+ * (sent on every JSON read), or `undefined` when the header is missing, names no count (`/*`), or
+ * cannot count the rows it came with (below `offset + rowCount`). Stricter than
+ * `parseContentRangeTotal` in `./taxonomy-tree`: the Interactions Graph decides from this count
+ * whether it left rows out, so a header it cannot trust must read as "unknown", never as a number.
+ */
+function contentRangeTotal(
+  header: string | null,
+  offset: number,
+  rowCount: number,
+): number | undefined {
+  const match = header ? /^items\s+\S+\/(\d+)$/i.exec(header.trim()) : null;
+  if (!match) return undefined;
+  const total = Number(match[1]);
+  return Number.isSafeInteger(total) && total >= offset + rowCount
+    ? total
+    : undefined;
+}
+
 export class ServerDataRepository {
   private readonly fetcher: typeof fetch;
 
@@ -336,6 +357,7 @@ export class ServerDataRepository {
     | CollectionResult<Record<string, unknown>>
     | MemberResult<Record<string, unknown>>
     | RowsResult<Record<string, unknown>>
+    | ExportResult<Record<string, unknown>>
   > {
     if (request.operation === "collection")
       return this.collection(resource, request, signal);
@@ -507,11 +529,16 @@ export class ServerDataRepository {
     return { row: rows[0] ?? null };
   }
 
+  /**
+   * `total` rides along only when the upstream's `Content-Range` gives a usable count
+   * (`contentRangeTotal`), so a caller can tell "more rows match" from the response itself rather
+   * than by asking for one row past its limit, which `maxExportRows` would refuse at the cap.
+   */
   async export(
     resource: DataResource,
     request: Extract<DataApiRequest, { operation: "export" }>,
     signal?: AbortSignal,
-  ): Promise<RowsResult<Record<string, unknown>>> {
+  ): Promise<ExportResult<Record<string, unknown>>> {
     const definition = getResourceDefinition(resource);
     const endpoint = this.endpoint(resource);
     const { url } = endpoint;
@@ -519,7 +546,7 @@ export class ServerDataRepository {
     const projectLocally = addFields(url, request.fields, definition.idField);
     addSort(url, request.sort, definition.idField);
     const offset = request.offset ?? 0;
-    const payload = await this.request(
+    const { payload, headers } = await this.requestWithHeaders(
       endpoint,
       offset,
       offset + request.limit,
@@ -527,6 +554,11 @@ export class ServerDataRepository {
       "application/json",
     );
     const rows = this.parseRows(resource, normalizeRows(payload));
+    const total = contentRangeTotal(
+      headers.get("Content-Range"),
+      offset,
+      rows.length,
+    );
     return {
       rows: projectRows(
         rows,
@@ -534,6 +566,7 @@ export class ServerDataRepository {
         definition.idField,
         projectLocally,
       ),
+      ...(total === undefined ? {} : { total }),
     };
   }
 

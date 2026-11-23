@@ -12,6 +12,7 @@ const optOutFiles = [
   "src/components/workspace/file-viewer/viewers/csv-viewer.tsx",
   "src/components/organisms/reference-genomes/reference-genomes-client.tsx",
   "src/components/taxonomy/taxonomy-tree.tsx",
+  "src/components/interactions/graph-node-list.tsx",
 ] as const;
 
 // Opt-outs inside a file whose other functions opt out too, which the file-level check would miss; the unit suite does not run the compiler.

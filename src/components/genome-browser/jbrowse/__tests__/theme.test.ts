@@ -1,4 +1,4 @@
-import { buildJBrowseTheme, rgbToHex, trackColorsFrom, type ThemeColors } from "../theme";
+import { buildJBrowseTheme, trackColorsFrom, type ThemeColors } from "../theme";
 
 const colors: ThemeColors = {
   primary: "#1f3a8a",
@@ -12,11 +12,6 @@ const colors: ThemeColors = {
 };
 
 describe("genome browser theme", () => {
-  it("formats canvas pixels as hex", () => {
-    expect(rgbToHex(23, 72, 125)).toBe("#17487d");
-    expect(rgbToHex(0, 0, 0)).toBe("#000000");
-  });
-
   it("maps light theme tokens onto JBrowse's palette", () => {
     expect(buildJBrowseTheme(colors, "light", "Inter")).toEqual({
       palette: {

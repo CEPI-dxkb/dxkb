@@ -4,6 +4,7 @@ import { http, HttpResponse } from "msw";
 
 import { server } from "@/test-helpers/msw-server";
 import { stubMenuLayout } from "@/test-helpers/menu-layout";
+import { stubVirtualListLayout } from "@/test-helpers/virtual-list-layout";
 import { createQueryClientWrapper } from "@/test-helpers/react";
 import { settleBackgroundWork } from "@/test-helpers/settle";
 import { resourceCollectionPageSize } from "@/hooks/views/collection-state";
@@ -20,6 +21,11 @@ vi.mock("next/navigation", async () =>
     pathname: "/genome/1.1",
   }),
 );
+// jsdom's `getContext` returns null, so the real probe would answer "no WebGL 2" and the canvas
+// stand-in below would be replaced by the notice.
+vi.mock("@/lib/interactions/webgl-support", () => ({
+  supportsWebGl2: () => true,
+}));
 vi.mock("../sigma/sigma-canvas", () => ({
   SigmaCanvas: ({ positions }: { positions: Float64Array | null }) => (
     <div
@@ -142,6 +148,8 @@ vi.mock("@/components/views/collection-selection-actions", async (
 });
 
 stubMenuLayout();
+// The protein list is virtualized, and jsdom gives it no height to draw rows into.
+stubVirtualListLayout();
 
 // The real columns are covered in graph-columns.test.tsx. In jsdom every pointer press lands at
 // (0, 0), where the panel library sees a drag on a handle and swallows it, so a click or a typed

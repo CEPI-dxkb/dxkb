@@ -525,18 +525,6 @@
 }
 
 /*
- * The Graph's protein list holds a row for every protein (thousands), and dragging a column's handle
- * changes the list's width, which would re-lay out all of them on every pointer move. While a handle
- * is being dragged, rows out of view skip layout and paint, and hold a one-line height (2rem) until
- * they are rendered. It is only for the drag: left on, `content-visibility` makes every style check
- * on the rows (an accessibility scan, Playwright's role locators) several times slower.
- */
-[data-slot="resizable-panel-group"]:has([data-separator="active"]) [data-node-id] {
-  content-visibility: auto;
-  contain-intrinsic-size: auto 2rem;
-}
-
-/*
  * The Graph protein list's rank and interaction count are drawn from data attributes rather than
  * written as text, so a row's visible text is its name alone: an accessible name must contain the
  * visible text (WCAG 2.5.3, axe's label-content-name-mismatch), and the name is the protein's

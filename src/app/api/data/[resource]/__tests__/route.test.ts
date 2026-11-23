@@ -341,6 +341,39 @@ describe("data gateway POST", () => {
     ]);
   });
 
+  it("answers an export with the matching row count the Data API's Content-Range reports", async () => {
+    captureUpstream("ppi", () =>
+      HttpResponse.json([{ id: "ppi-1" }], {
+        headers: { "Content-Range": "items 0-1/170814" },
+      }),
+    );
+
+    const response = await post({
+      resource: "ppi",
+      body: { operation: "export", fields: ["id"], limit: 10_000 },
+    });
+
+    expect(response.status).toBe(200);
+    await expect(json(response)).resolves.toStrictEqual({
+      rows: [{ id: "ppi-1" }],
+      total: 170_814,
+    });
+  });
+
+  it("answers an export without a total when the Data API sends no Content-Range", async () => {
+    captureUpstream("ppi", () => HttpResponse.json([{ id: "ppi-1" }]));
+
+    const response = await post({
+      resource: "ppi",
+      body: { operation: "export", fields: ["id"], limit: 10_000 },
+    });
+
+    expect(response.status).toBe(200);
+    await expect(json(response)).resolves.toStrictEqual({
+      rows: [{ id: "ppi-1" }],
+    });
+  });
+
   it("rejects an unsupported POST operation", async () => {
     const response = await post({ body: { operation: "collection" } });
 

@@ -2,7 +2,7 @@ import { expect, type Locator, type Page } from "@playwright/test";
 import { CollectionToolbar } from "./collection-toolbar";
 
 /** The Graph draws at most this many interactions (`interactionsGraphRowLimit`). */
-const graphRowLimit = "5,000";
+const graphRowLimit = "10,000";
 
 export class TaxonInteractionsPage {
   readonly page: Page;
@@ -62,8 +62,90 @@ export class TaxonInteractionsPage {
     ).toHaveCount(0);
   }
 
+  /** The Graph's WebGL canvas: Sigma 4 draws everything into one, `.sigma-stage`, the panel's first. */
+  private graphCanvas(): Locator {
+    return this.page.getByRole("tabpanel", { name: "Graph" }).locator("canvas").first();
+  }
+
   async expectCanvasVisible(): Promise<void> {
-    await expect(this.page.getByRole("tabpanel", { name: "Graph" }).locator("canvas").first()).toBeVisible();
+    await expect(this.graphCanvas()).toBeVisible();
+  }
+
+  /**
+   * What is painted over the canvas box: the Controls button, the zoom control, and any notice
+   * (the truncation and layout-error notices, the WebGL 2 alert, the "Laying out…" veil). An element
+   * screenshot includes them, so a pixel read masks them to read only what the canvas drew.
+   */
+  private overlayControls(): Locator[] {
+    const graphPanel = this.graphPanel();
+    return [
+      graphPanel.getByRole("button", { name: "Controls", exact: true }),
+      graphPanel.getByRole("form", { name: "Graph zoom" }),
+      graphPanel.getByRole("status"),
+      graphPanel.getByRole("alert"),
+    ];
+  }
+
+  /**
+   * How many pixels of the canvas are within `tolerance` of `rgb` on every channel. A screenshot is
+   * the only thing that proves what the canvas drew: highlighting can be lost without an error, a
+   * unit test or any DOM assertion noticing. It waits for the layout veil to clear, moves the mouse
+   * off the canvas (a hover pill would add pixels) and decodes the PNG in the page, so it needs no
+   * PNG library. A node is only a few pixels across at the default zoom, so pass an exact opaque
+   * color, and poll rather than read once.
+   *
+   * Headless WebKit on Linux shows a WebGL canvas one draw behind: Sigma's state is current, but a
+   * screenshot after a selection change still holds the frame before the last draw, and no DOM
+   * change brings the new one up (the CI run showed the selected node orange but its neighbours
+   * undimmed, and after clearing the neighbours still dim). Only another Sigma draw does, so a
+   * window `resize` makes it draw once more and the screenshot waits two frames for that.
+   */
+  async canvasColorCount(
+    rgb: readonly [number, number, number],
+    tolerance = 24,
+  ): Promise<number> {
+    await this.waitForLayout();
+    await this.page.mouse.move(0, 0);
+    await this.page.evaluate(
+      () =>
+        new Promise<void>((resolve) => {
+          window.dispatchEvent(new Event("resize"));
+          requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+              resolve();
+            });
+          });
+        }),
+    );
+    const png = await this.graphCanvas().screenshot({
+      mask: this.overlayControls(),
+    });
+    return this.page.evaluate(
+      async ({ b64, target, tol }) => {
+        const img = new Image();
+        img.src = `data:image/png;base64,${b64}`;
+        await img.decode();
+        const canvas = document.createElement("canvas");
+        canvas.width = img.width;
+        canvas.height = img.height;
+        const context = canvas.getContext("2d");
+        if (!context) throw new Error("2d context unavailable");
+        context.drawImage(img, 0, 0);
+        const { data } = context.getImageData(0, 0, img.width, img.height);
+        let count = 0;
+        for (let i = 0; i < data.length; i += 4) {
+          if (
+            Math.abs(data[i] - target[0]) <= tol &&
+            Math.abs(data[i + 1] - target[1]) <= tol &&
+            Math.abs(data[i + 2] - target[2]) <= tol
+          ) {
+            count += 1;
+          }
+        }
+        return count;
+      },
+      { b64: png.toString("base64"), target: [...rgb], tol: tolerance },
+    );
   }
 
   async expectEmptyGraphWorkspace(): Promise<void> {
@@ -114,8 +196,8 @@ export class TaxonInteractionsPage {
   }
 
   /**
-   * A protein's row in the list, found by searching for it: the list draws only its top-ranked rows
-   * (a Graph can hold thousands of proteins), and its search reaches every protein.
+   * A protein's row in the list, found by searching for it: the list is virtualized, so only the
+   * rows in view are in the DOM, and its search reaches every protein.
    */
   private async listRow(label: string, exact: boolean): Promise<Locator> {
     const graphPanel = this.page.getByRole("tabpanel", { name: "Graph" });
@@ -131,6 +213,11 @@ export class TaxonInteractionsPage {
     await (await this.listRow(label, false)).click({
       modifiers: ["ControlOrMeta"],
     });
+  }
+
+  /** Cmd/Ctrl-click toggles, so on a selected node it takes the node back out of the selection. */
+  async removeNodeFromSelectionInList(label: string): Promise<void> {
+    await this.addNodeToSelectionInList(label);
   }
 
   private detailPanel() {
@@ -213,7 +300,7 @@ export class TaxonInteractionsPage {
   }
 
   /**
-   * The Graph's "first 5,000" notice: a polite status over the canvas's top-left, found by its
+   * The Graph's "first 10,000" notice: a polite status over the canvas's top-left, found by its
    * title because the "Laying out…" veil is a status too.
    */
   private truncationNotice(): Locator {
@@ -224,7 +311,7 @@ export class TaxonInteractionsPage {
 
   /**
    * The notice for a result past the row limit: its title names `total`. Without a `total` it only
-   * checks that the notice names the limit (the count read can lag the rows).
+   * checks that the notice names the limit (the count is left out when the Data API sends none).
    */
   async expectTruncationNotice(total?: number): Promise<void> {
     const notice = this.truncationNotice();
@@ -273,19 +360,26 @@ export class TaxonInteractionsPage {
   }
 
   /**
-   * `label`'s filter is active in the toolbar of the subview that is showing: its pill, or, when
-   * the toolbar is too narrow for every pill (a facet pick and a focus), the
-   * "+N more filters: <labels>" button that names it.
+   * `label`'s filter is active in `view`'s toolbar: its pill, or, when the toolbar is too narrow
+   * for every pill (a facet pick and a focus), the "+N more filters: <labels>" button that names
+   * it. The toolbar is looked up inside that view's panel: right after a switch the panel being
+   * left is still on screen, with its own toolbar, which names the filter in another form (a pill
+   * beside the new toolbar's "+N" fold), so a page-wide lookup matches twice.
    */
-  async expectFilterActive(label: string): Promise<void> {
-    const folded = this.toolbar
-      .root()
-      .getByRole("button", {
-        name: new RegExp(
-          `^\\d+ more filters: (?:.*, )?${label}(?:, .*)?\\. Open in the Filters menu$`,
-        ),
-      });
-    await expect(this.toolbar.activeFilterPill(label).or(folded)).toBeVisible();
+  async expectFilterActive(
+    label: string,
+    view: "graph" | "table",
+  ): Promise<void> {
+    const toolbar = new CollectionToolbar(
+      this.page,
+      view === "graph" ? this.graphPanel() : this.tablePanel(),
+    );
+    const folded = toolbar.root().getByRole("button", {
+      name: new RegExp(
+        `^\\d+ more filters: (?:.*, )?${label}(?:, .*)?\\. Open in the Filters menu$`,
+      ),
+    });
+    await expect(toolbar.activeFilterPill(label).or(folded)).toBeVisible();
   }
 
   private tablePanel(): Locator {

@@ -11,9 +11,10 @@ export const selectionGroupMaxRows = 10_000;
 /**
  * The Interactions Graph's row bound (`interactionsGraphRowLimit`, asserted
  * equal in a test): Show in Graph draws every selected row, so a larger
- * selection would be cut off.
+ * selection would be cut off. The rows are read by id in `maxSelectedRows`
+ * batches, so a full selection is 20 reads.
  */
-export const selectionGraphMaxRows = 5_000;
+export const selectionGraphMaxRows = 10_000;
 /** List URLs carry every ID inline; browsers truncate beyond this. */
 export const selectionListMaxUrlLength = 8_000;
 

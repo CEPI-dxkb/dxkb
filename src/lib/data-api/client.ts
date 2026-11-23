@@ -12,6 +12,7 @@ import type {
   CollectionResult,
   DataResource,
   ExportRequest,
+  ExportResult,
   MemberRequest,
   MemberResult,
   RowsResult,
@@ -205,11 +206,12 @@ export class DataRepository {
     return this.post(resource, { operation: "selected", ...request }, signal);
   }
 
+  /** `total` is the query's full match count when the gateway knows it (see `ExportResult`). */
   export<T extends Record<string, unknown> = Record<string, unknown>>(
     resource: DataResource,
     request: Omit<ExportRequest, "operation">,
     signal?: AbortSignal,
-  ): Promise<RowsResult<T>> {
+  ): Promise<ExportResult<T>> {
     return this.post(resource, { operation: "export", ...request }, signal);
   }
 
@@ -219,7 +221,7 @@ export class DataRepository {
     resource: DataResource,
     request: Omit<ExportRequest, "operation" | "limit" | "offset">,
     signal?: AbortSignal,
-  ): Promise<RowsResult<T>> {
+  ): Promise<ExportResult<T>> {
     return retryRateLimited(
       () =>
         this.export<T>(

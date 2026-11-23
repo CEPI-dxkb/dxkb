@@ -4,33 +4,11 @@ import { useState } from "react";
 
 import { GraphNodeList } from "../graph-node-list";
 import { colors } from "@/lib/interactions/graph-theme";
+import { stubVirtualListLayout } from "@/test-helpers/virtual-list-layout";
 import type { GEdge, GNode } from "@/lib/interactions/types";
 
-// cmdk needs scrollIntoView and ResizeObserver, which jsdom omits; stub both so the keyboard flow
-// runs.
-beforeAll(() => {
-  Element.prototype.scrollIntoView = vi.fn();
-  vi.stubGlobal(
-    "ResizeObserver",
-    class {
-      observe() {
-        return undefined;
-      }
-      unobserve() {
-        return undefined;
-      }
-      disconnect() {
-        return undefined;
-      }
-    },
-  );
-});
-
-// Undo the global stubs (clearMocks resets neither stubGlobal nor prototype mutations).
-afterAll(() => {
-  delete (Element.prototype as Partial<Element>).scrollIntoView;
-  vi.unstubAllGlobals();
-});
+// A 320px viewport shows ten 32px rows.
+const { scrollTo } = stubVirtualListLayout(320);
 
 const nodes: GNode[] = [
   { id: "fig|1.1", gene: "dnaA", kind: "microbial" },
@@ -87,7 +65,7 @@ describe("GraphNodeList", () => {
     expect(onSelectNode).toHaveBeenCalledWith(nodes[0], false);
   });
 
-  it("marks the app-selected row without overriding cmdk's listbox semantics", () => {
+  it("marks the app-selected row without marking it as the current item", () => {
     render(
       <GraphNodeList
         nodes={nodes}
@@ -98,8 +76,8 @@ describe("GraphNodeList", () => {
       />,
     );
 
-    const selected = screen.getByText("recA").closest("[cmdk-item]");
-    const other = screen.getByText("dnaA").closest("[cmdk-item]");
+    const selected = screen.getByText("recA").closest('[role="option"]');
+    const other = screen.getByText("dnaA").closest('[role="option"]');
 
     expect(selected).toHaveAttribute("data-app-selected", "true");
     expect(other).toHaveAttribute("data-app-selected", "false");
@@ -107,7 +85,7 @@ describe("GraphNodeList", () => {
     expect(other).not.toHaveAttribute("aria-current");
   });
 
-  it("exposes the app selection to assistive technology apart from cmdk's cursor", () => {
+  it("exposes the app selection to assistive technology", () => {
     render(
       <GraphNodeList
         nodes={nodes}
@@ -122,13 +100,13 @@ describe("GraphNodeList", () => {
       "aria-multiselectable",
       "true",
     );
-    // cmdk's cursor is on one row, but every app-selected row is reported checked.
+    // Every selected row is reported selected, whichever one the keyboard cursor is on.
     for (const option of screen.getAllByRole("option")) {
-      expect(option).toHaveAttribute("aria-checked", "true");
+      expect(option).toHaveAttribute("aria-selected", "true");
     }
   });
 
-  it("reports an unselected row as not checked", () => {
+  it("reports an unselected row as not selected", () => {
     render(
       <GraphNodeList
         nodes={nodes}
@@ -139,11 +117,11 @@ describe("GraphNodeList", () => {
       />,
     );
 
-    const checked = screen
+    const selected = screen
       .getAllByRole("option")
-      .map((option) => option.getAttribute("aria-checked"));
-    expect(checked.filter((value) => value === "true")).toHaveLength(1);
-    expect(checked.filter((value) => value === "false")).toHaveLength(
+      .map((option) => option.getAttribute("aria-selected"));
+    expect(selected.filter((value) => value === "true")).toHaveLength(1);
+    expect(selected.filter((value) => value === "false")).toHaveLength(
       nodes.length - 1,
     );
   });
@@ -161,10 +139,10 @@ describe("GraphNodeList", () => {
 
     const selectedRow = screen
       .getByText("dnaA")
-      .closest("[cmdk-item]") as HTMLElement;
+      .closest('[role="option"]') as HTMLElement;
     const hostRow = screen
       .getByText("recA")
-      .closest("[cmdk-item]") as HTMLElement;
+      .closest('[role="option"]') as HTMLElement;
 
     expect(dotColorOf(selectedRow)).toBe(colors.selected);
     expect(dotColorOf(hostRow)).toBe(colors.host);
@@ -182,7 +160,7 @@ describe("GraphNodeList", () => {
     );
 
     for (const label of ["dnaA", "recA"]) {
-      const row = screen.getByText(label).closest("[cmdk-item]") as HTMLElement;
+      const row = screen.getByText(label).closest('[role="option"]') as HTMLElement;
       expect(row).toHaveAttribute("data-app-selected", "true");
       expect(row).not.toHaveAttribute("aria-current");
       expect(dotColorOf(row)).toBe(colors.selected);
@@ -202,10 +180,10 @@ describe("GraphNodeList", () => {
 
     const microbialRow = screen
       .getByText("dnaA")
-      .closest("[cmdk-item]") as HTMLElement;
+      .closest('[role="option"]') as HTMLElement;
     const hostRow = screen
       .getByText("recA")
-      .closest("[cmdk-item]") as HTMLElement;
+      .closest('[role="option"]') as HTMLElement;
 
     expect(dotColorOf(microbialRow)).toBe(colors.microbial);
     expect(dotColorOf(hostRow)).toBe(colors.host);
@@ -224,48 +202,13 @@ describe("GraphNodeList", () => {
 
     const selectedRow = screen
       .getByText("dnaA")
-      .closest("[cmdk-item]") as HTMLElement;
+      .closest('[role="option"]') as HTMLElement;
     const otherRow = screen
       .getByText("recA")
-      .closest("[cmdk-item]") as HTMLElement;
+      .closest('[role="option"]') as HTMLElement;
 
-    // cmdk's pointer-selection is disabled, so this explicit hover class is the only hover
-    // feedback.
     expect(otherRow).toHaveClass("hover:bg-secondary/15");
-    expect(selectedRow).toHaveClass(
-      "data-[app-selected=true]:bg-secondary/25!",
-    );
-  });
-
-  it("scrolls the newly selected row into view (graph→list sync)", () => {
-    const scrollSpy = vi.fn();
-    Element.prototype.scrollIntoView = scrollSpy;
-
-    const { rerender } = render(
-      <GraphNodeList
-        nodes={nodes}
-        incidence={noIncidence}
-        selectedIds={new Set()}
-        onSelectNode={vi.fn()}
-        onSelectRange={vi.fn()}
-      />,
-    );
-
-    // cmdk scrolls its own cursor into view on mount; clear that so the assertion isolates our
-    // selection effect.
-    scrollSpy.mockClear();
-
-    rerender(
-      <GraphNodeList
-        nodes={nodes}
-        incidence={noIncidence}
-        selectedIds={new Set(["fig|2.2"])}
-        onSelectNode={vi.fn()}
-        onSelectRange={vi.fn()}
-      />,
-    );
-
-    expect(scrollSpy).toHaveBeenCalledWith({ block: "nearest" });
+    expect(selectedRow).toHaveClass("data-[app-selected=true]:bg-secondary/25");
   });
 
   it("reports a plain row click as non-additive and a Cmd/Ctrl-click as additive", () => {
@@ -743,92 +686,302 @@ describe("GraphNodeList Shift-click range", () => {
 
 describe("GraphNodeList with many proteins", () => {
   // No interactions, so the ranking falls back to name: p000, p001, … p249.
-  const many: GNode[] = Array.from({ length: 250 }, (_, index) => ({
-    id: `fig|${String(index).padStart(3, "0")}`,
-    gene: `p${String(index).padStart(3, "0")}`,
-    kind: "microbial",
-  }));
+  const named = (count: number): GNode[] =>
+    Array.from({ length: count }, (_, index) => ({
+      id: `fig|${String(index).padStart(5, "0")}`,
+      gene: `p${String(index).padStart(5, "0")}`,
+      kind: "microbial",
+    }));
+  const many = named(250);
+  const idOf = (index: number) => `fig|${String(index).padStart(5, "0")}`;
+  const nameOf = (index: number) => `p${String(index).padStart(5, "0")}`;
 
-  function renderMany(selectedIds: ReadonlySet<string> = new Set()) {
+  function renderMany(
+    selectedIds: ReadonlySet<string> = new Set(),
+    handlers: {
+      onSelectNode?: (node: GNode, additive: boolean) => void;
+      onSelectRange?: (nodes: GNode[]) => void;
+    } = {},
+    list: GNode[] = many,
+  ) {
     render(
       <GraphNodeList
-        nodes={many}
+        nodes={list}
         incidence={noIncidence}
         selectedIds={selectedIds}
-        onSelectNode={vi.fn()}
-        onSelectRange={vi.fn()}
+        onSelectNode={handlers.onSelectNode ?? vi.fn()}
+        onSelectRange={handlers.onSelectRange ?? vi.fn()}
       />,
     );
   }
 
-  const optionCount = () => screen.getAllByRole("option").length;
+  const optionCount = () => screen.queryAllByRole("option").length;
+  const scrollRegion = () =>
+    screen.getByRole("listbox").parentElement as HTMLElement;
+  const searchBox = () => screen.getByRole("combobox", { name: "Search proteins" });
 
-  it("draws the top 200 and says how many there are", () => {
+  function scrollToRow(index: number) {
+    scrollRegion().scrollTop = index * 32;
+    fireEvent.scroll(scrollRegion());
+  }
+
+  it("draws only the rows in view and a few past each edge", () => {
     renderMany();
 
-    expect(optionCount()).toBe(200);
-    expect(screen.getByRole("option", { name: "p000" })).toBeInTheDocument();
-    expect(screen.getByRole("option", { name: "p199" })).toBeInTheDocument();
+    // Ten rows fit the 320px viewport; ten more are drawn below them.
+    expect(optionCount()).toBe(20);
+    expect(screen.getByRole("option", { name: nameOf(0) })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: nameOf(19) })).toBeInTheDocument();
     expect(
-      screen.queryByRole("option", { name: "p200" }),
+      screen.queryByRole("option", { name: nameOf(20) }),
     ).not.toBeInTheDocument();
-    expect(screen.getByText(/Showing 200 of\s+250/)).toBeInTheDocument();
   });
 
-  it("draws every protein on request", async () => {
-    const user = userEvent.setup();
+  it("draws a few rows of ten thousand proteins, not all of them", () => {
+    renderMany(new Set(), {}, named(10_000));
+
+    expect(optionCount()).toBeLessThan(40);
+    expect(screen.getByRole("listbox").style.getPropertyValue("--list-height")).toBe(
+      `${String(10_000 * 32)}px`,
+    );
+  });
+
+  it("gives each drawn row its place in the whole list", () => {
     renderMany();
 
-    await user.click(screen.getByRole("button", { name: "Show all" }));
-
-    expect(optionCount()).toBe(250);
-    expect(screen.queryByText(/Showing/)).not.toBeInTheDocument();
+    const row = screen.getByRole("option", { name: nameOf(3) });
+    expect(row).toHaveAttribute("aria-posinset", "4");
+    expect(row).toHaveAttribute("aria-setsize", "250");
   });
 
-  it("draws no footer when every protein fits", () => {
-    render(
-      <GraphNodeList
-        nodes={many.slice(0, 200)}
-        incidence={noIncidence}
-        selectedIds={new Set()}
-        onSelectNode={vi.fn()}
-        onSelectRange={vi.fn()}
-      />,
-    );
+  it("has no Show all button or count footer: every protein is a scroll away", () => {
+    renderMany();
 
-    expect(optionCount()).toBe(200);
     expect(
       screen.queryByRole("button", { name: "Show all" }),
     ).not.toBeInTheDocument();
+    expect(screen.queryByText(/Showing/)).not.toBeInTheDocument();
+  });
+
+  it("draws the rows a scroll brings into view, and leaves the ones it passed", () => {
+    renderMany();
+
+    scrollToRow(200);
+
+    expect(screen.getByRole("option", { name: nameOf(205) })).toBeInTheDocument();
+    expect(
+      screen.queryByRole("option", { name: nameOf(0) }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("does not measure every row again when only the scroll position changes", () => {
+    // Reading a protein's id is how the list keys a row, so counting the reads counts the rows the
+    // virtualizer walked. A key function that is new on every render makes it lay out every row on
+    // every scroll frame.
+    let reads = 0;
+    const counted = named(2000).map((node) => {
+      const { id } = node;
+      return Object.defineProperty<GNode>({ ...node }, "id", {
+        enumerable: true,
+        get: () => {
+          reads += 1;
+          return id;
+        },
+      });
+    });
+    renderMany(new Set(), {}, counted);
+    const afterMount = reads;
+
+    scrollToRow(100);
+    reads = 0;
+    scrollToRow(300);
+
+    expect(afterMount).toBeGreaterThan(0);
+    // The rows now in view and their overscan, not the 2,000 in the list.
+    expect(reads).toBeLessThan(200);
+  });
+
+  it("keeps each row's overall rank when it is scrolled to", () => {
+    renderMany();
+
+    scrollToRow(230);
+
+    const rank = screen
+      .getByRole("option", { name: nameOf(230) })
+      .querySelector<HTMLElement>('[data-slot="graph-node-rank"]');
+    expect(rank?.dataset.rank).toBe("231");
   });
 
   it("searches every protein, not only the ones drawn", async () => {
     const user = userEvent.setup();
     renderMany();
 
-    await user.type(screen.getByPlaceholderText("Search proteins…"), "p24");
+    await user.type(screen.getByPlaceholderText("Search proteins…"), "p0024");
 
-    // p240–p249, none of them among the first 200.
+    // p00240–p00249, none of them among the first rows drawn.
     expect(optionCount()).toBe(10);
-    expect(screen.getByRole("option", { name: "p249" })).toBeInTheDocument();
-    expect(screen.queryByText(/Showing/)).not.toBeInTheDocument();
+    expect(screen.getByRole("option", { name: nameOf(249) })).toBeInTheDocument();
   });
 
-  it("always draws a selected protein, wherever it ranks", () => {
-    renderMany(new Set(["fig|230"]));
+  it("returns to the top when the search changes", async () => {
+    const user = userEvent.setup();
+    renderMany();
+    scrollToRow(200);
+    scrollTo.mockClear();
 
-    expect(optionCount()).toBe(201);
-    const row = screen.getByRole("option", { name: "p230" });
+    await user.type(searchBox(), "p0");
+
+    expect(scrollTo).toHaveBeenCalledWith(expect.objectContaining({ top: 0 }));
+  });
+
+  it("brings a protein selected elsewhere into view", () => {
+    renderMany(new Set([idOf(230)]));
+
+    expect(scrollTo).toHaveBeenCalled();
+    const row = screen.getByRole("option", { name: nameOf(230) });
     expect(row).toHaveAttribute("data-app-selected", "true");
-    expect(screen.getByText(/Showing 201 of\s+250/)).toBeInTheDocument();
   });
 
-  it("keeps each row's overall rank", () => {
-    renderMany(new Set(["fig|230"]));
+  it("does not pull the list back to the selection while a search narrows it", async () => {
+    const user = userEvent.setup();
+    // Selected far down the list, so a scroll to it would differ from the scroll back to the top.
+    renderMany(new Set([idOf(230)]));
+    scrollTo.mockClear();
 
-    const rank = screen
-      .getByRole("option", { name: "p230" })
-      .querySelector<HTMLElement>('[data-slot="graph-node-rank"]');
-    expect(rank?.dataset.rank).toBe("231");
+    await user.type(searchBox(), "p002");
+
+    expect(scrollTo).toHaveBeenCalled();
+
+    // Only the reset to the top, never a scroll to the selected row's index.
+    for (const [options] of scrollTo.mock.calls) {
+      expect(options.top).toBe(0);
+    }
+  });
+
+  describe("keyboard cursor", () => {
+    const activeId = () => searchBox().getAttribute("aria-activedescendant");
+    const optionId = (name: string) =>
+      screen.getByRole("option", { name }).getAttribute("id");
+
+    it("starts on the first match and follows the arrow keys", async () => {
+      const user = userEvent.setup();
+      renderMany();
+      await user.click(searchBox());
+
+      expect(activeId()).toBe(optionId(nameOf(0)));
+      await user.keyboard("{ArrowDown}{ArrowDown}");
+      expect(activeId()).toBe(optionId(nameOf(2)));
+      await user.keyboard("{ArrowUp}");
+      expect(activeId()).toBe(optionId(nameOf(1)));
+    });
+
+    it("stops at the first and last rows", async () => {
+      const user = userEvent.setup();
+      renderMany(new Set(), {}, many.slice(0, 3));
+      await user.click(searchBox());
+
+      await user.keyboard("{ArrowUp}");
+      expect(activeId()).toBe(optionId(nameOf(0)));
+      await user.keyboard("{ArrowDown}{ArrowDown}{ArrowDown}{ArrowDown}");
+      expect(activeId()).toBe(optionId(nameOf(2)));
+    });
+
+    it("picks the cursor's row on Enter", async () => {
+      const user = userEvent.setup();
+      const onSelectNode = vi.fn();
+      renderMany(new Set(), { onSelectNode });
+      await user.click(searchBox());
+
+      await user.keyboard("{ArrowDown}{ArrowDown}{Enter}");
+
+      expect(onSelectNode).toHaveBeenCalledWith(many[2], false);
+    });
+
+    it("jumps to the last row with End, drawing it, and back with Home", async () => {
+      const user = userEvent.setup();
+      const onSelectNode = vi.fn();
+      renderMany(new Set(), { onSelectNode });
+      await user.click(searchBox());
+
+      await user.keyboard("{End}");
+      expect(screen.getByRole("option", { name: nameOf(249) })).toBeInTheDocument();
+      expect(activeId()).toBe(optionId(nameOf(249)));
+      await user.keyboard("{Enter}");
+      expect(onSelectNode).toHaveBeenLastCalledWith(many[249], false);
+
+      await user.keyboard("{Home}");
+      expect(activeId()).toBe(optionId(nameOf(0)));
+    });
+
+    it("moves a page at a time with PageDown and PageUp", async () => {
+      const user = userEvent.setup();
+      renderMany();
+      await user.click(searchBox());
+
+      // The 320px viewport holds ten rows, so a page is nine.
+      await user.keyboard("{PageDown}");
+      expect(activeId()).toBe(optionId(nameOf(9)));
+      await user.keyboard("{PageUp}");
+      expect(activeId()).toBe(optionId(nameOf(0)));
+    });
+
+    it("scrolls the cursor into view as it moves past the drawn rows", async () => {
+      const user = userEvent.setup();
+      renderMany();
+      await user.click(searchBox());
+      scrollTo.mockClear();
+
+      await user.keyboard("{End}");
+
+      expect(scrollTo).toHaveBeenCalled();
+    });
+
+    it("shows the cursor row only while the search box has focus", async () => {
+      const user = userEvent.setup();
+      renderMany();
+      const first = () => screen.getByRole("option", { name: nameOf(0) });
+
+      expect(first()).toHaveAttribute("data-cursor", "false");
+      await user.click(searchBox());
+      expect(first()).toHaveAttribute("data-cursor", "true");
+      await user.tab();
+      expect(first()).toHaveAttribute("data-cursor", "false");
+    });
+
+    it("points at no row when the search matches nothing", async () => {
+      const user = userEvent.setup();
+      renderMany();
+
+      await user.type(searchBox(), "zzz");
+
+      expect(searchBox()).not.toHaveAttribute("aria-activedescendant");
+      expect(screen.getByText("No proteins match.")).toBeInTheDocument();
+      expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
+    });
+
+    it("starts the cursor from the row clicked", async () => {
+      const user = userEvent.setup();
+      renderMany();
+
+      await user.click(screen.getByRole("option", { name: nameOf(5) }));
+      await user.click(searchBox());
+
+      expect(activeId()).toBe(optionId(nameOf(5)));
+    });
+  });
+
+  it("ranges across rows that are not drawn", () => {
+    const onSelectRange = vi.fn();
+    renderMany(new Set([idOf(0)]), { onSelectRange });
+
+    scrollToRow(200);
+    fireEvent.click(screen.getByRole("option", { name: nameOf(205) }), {
+      shiftKey: true,
+    });
+
+    const range = onSelectRange.mock.lastCall?.[0] as GNode[];
+    expect(range).toHaveLength(206);
+    expect(range[0]).toEqual(many[0]);
+    expect(range[205]).toEqual(many[205]);
   });
 });

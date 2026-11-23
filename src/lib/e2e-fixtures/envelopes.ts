@@ -37,6 +37,21 @@ export function buildGatewayRowsEnvelope<T>(rows: T[]): { rows: T[] } {
   return { rows };
 }
 
+/**
+ * The gateway's `export` answer: the requested window of the matching rows, and `total`, the count
+ * of all of them, which the real gateway reads from the Data API's `Content-Range`.
+ */
+export function buildGatewayExportEnvelope<T>(
+  matching: T[],
+  window: { limit: number; offset?: number },
+): { rows: T[]; total: number } {
+  const offset = window.offset ?? 0;
+  return {
+    rows: matching.slice(offset, offset + window.limit),
+    total: matching.length,
+  };
+}
+
 export interface SolrFacetFields {
   facet_fields: Record<string, (string | number)[]>;
 }

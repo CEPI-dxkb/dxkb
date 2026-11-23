@@ -43,6 +43,7 @@ export function MapControls({
   onSelectState,
 }: MapControlsProps) {
   const isStateView = mapState.view === "state";
+  const stateSelectShown = isStateView && stateOptions.length > 0;
 
   return (
     <TooltipProvider>
@@ -63,10 +64,15 @@ export function MapControls({
           </PillButton>
         </div>
 
-        <div className={cn(
-          "overflow-hidden transition-[max-width,opacity] duration-200 ease-in-out",
-          isStateView && stateOptions.length > 0 ? "max-w-55 opacity-100" : "pointer-events-none max-w-0 opacity-0",
-        )}>
+        {/* Hidden by max-width and opacity, which leave it in the tab order, so
+            it is inert too: a keyboard user must not pick a state from it. */}
+        <div
+          inert={!stateSelectShown}
+          className={cn(
+            "overflow-hidden transition-[max-width,opacity] duration-200 ease-in-out",
+            stateSelectShown ? "max-w-55 opacity-100" : "pointer-events-none max-w-0 opacity-0",
+          )}
+        >
           <Select
             items={stateOptions.map((option) => ({ value: option.fips, label: option.name }))}
             value={mapState.selectedStateFips ?? ""}
@@ -127,7 +133,9 @@ function PillButton({
   );
   if (unavailableReason === undefined) return button;
   // A disabled button gets no pointer or focus events, so the tooltip hangs off
-  // a wrapper; the sr-only text gives assistive tech the same reason.
+  // a wrapper. The hidden text gives assistive tech the same reason through
+  // aria-describedby, which resolves a hidden node; a visible-to-AT text node
+  // would be read twice in browse mode.
   return (
     <>
       <Tooltip>
@@ -138,7 +146,7 @@ function PillButton({
           <p>{unavailableReason}</p>
         </TooltipContent>
       </Tooltip>
-      <span id={reasonId} className="sr-only">
+      <span id={reasonId} hidden>
         {unavailableReason}
       </span>
     </>

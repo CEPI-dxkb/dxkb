@@ -16,6 +16,7 @@ import {
 } from "./choropleth-svg";
 import { ColorLegend } from "./color-legend";
 import { makeGeoColorScale } from "./color-scale";
+import { hasCountyData } from "./county-availability";
 import { MapControls } from "./map-controls";
 import { describeEmptyView, MapEmptyState } from "./map-empty-state";
 import { MapTooltip } from "./map-tooltip";
@@ -75,6 +76,9 @@ export function GeoDistributionClient({
     selectedStateFips: null,
     selectedStateName: null,
   });
+
+  // The State view only has something to draw when some county has genomes.
+  const stateViewAvailable = hasCountyData(data);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const choroplethRef = useRef<ChoroplethHandle>(null);
@@ -161,6 +165,7 @@ export function GeoDistributionClient({
   } = useTooltip<HoverPayload>();
 
   const handleViewChange = (view: GeoMapView) => {
+    if (view === "state" && !stateViewAvailable) return;
     setMapState((prev) => {
       if (view === "us") {
         return { view: "us", selectedStateFips: null, selectedStateName: null };
@@ -184,6 +189,7 @@ export function GeoDistributionClient({
   };
 
   const handleSelectState = (fips: string, name: string) => {
+    if (!stateViewAvailable) return;
     setMapState({
       view: "state",
       selectedStateFips: fips,
@@ -232,6 +238,7 @@ export function GeoDistributionClient({
         <MapControls
           mapState={mapState}
           stateOptions={stateOptions}
+          stateViewAvailable={stateViewAvailable}
           onViewChange={handleViewChange}
           onSelectState={handleSelectState}
         />
@@ -246,7 +253,7 @@ export function GeoDistributionClient({
             data={data}
             colorScale={colorScale.fill}
             mapState={mapState}
-            onSelectState={handleSelectState}
+            onSelectState={stateViewAvailable ? handleSelectState : undefined}
             onSwitchToUs={() => {
               handleViewChange("us");
             }}

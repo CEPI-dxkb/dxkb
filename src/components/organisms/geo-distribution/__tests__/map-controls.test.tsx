@@ -49,3 +49,42 @@ describe("MapControls State pill", () => {
     expect(onViewChange.mock.calls).toEqual([["world"], ["us"]]);
   });
 });
+
+describe("MapControls state select", () => {
+  const stateOptions = [{ fips: "17", name: "Illinois" }];
+
+  function renderSelect(
+    view: "world" | "us" | "state",
+    options = stateOptions,
+  ) {
+    render(
+      <MapControls
+        mapState={{
+          view,
+          selectedStateFips: view === "state" ? "17" : null,
+          selectedStateName: view === "state" ? "Illinois" : null,
+        }}
+        stateOptions={options}
+        stateViewAvailable
+        onViewChange={vi.fn()}
+        onSelectState={vi.fn()}
+      />,
+    );
+    return screen.getByRole("combobox", { name: "View state" });
+  }
+
+  it.each(["world", "us"] as const)(
+    "is inert in the %s view, so it leaves the tab order",
+    (view) => {
+      expect(renderSelect(view).closest("[inert]")).not.toBeNull();
+    },
+  );
+
+  it("is inert in the State view while there are no state options", () => {
+    expect(renderSelect("state", []).closest("[inert]")).not.toBeNull();
+  });
+
+  it("is reachable in the State view once state options exist", () => {
+    expect(renderSelect("state").closest("[inert]")).toBeNull();
+  });
+});

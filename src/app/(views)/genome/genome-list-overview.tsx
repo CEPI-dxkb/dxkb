@@ -28,6 +28,7 @@ export function GenomeListOverview({
       metadataFields={genomeListMetadataFields}
       showAmr
       hideEmptyAmr
+      viewType="genome"
     />
   );
 }

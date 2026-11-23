@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+
 import { fetchAmrPhenotypeDistribution } from "@/lib/services/organisms/amr-distribution";
 import { fetchOrganismMetadataFacets } from "@/lib/services/organisms/metadata-facets";
 import {
@@ -15,11 +17,14 @@ import {
   genomeScopeFromProps,
   type GenomeScopeProps,
 } from "@/components/organisms/shared/genome-scope-props";
+import { ChartVisibilityGrid } from "@/components/organisms/overview-chart-visibility/chart-visibility-grid";
+import { ChartVisibilityMenu } from "@/components/organisms/overview-chart-visibility/chart-visibility-menu";
 import { taxonomicDistributionSentinel } from "@/components/organisms/types";
 import {
   genomeListValueHref,
   type GenomeListLink,
 } from "@/lib/genome-view";
+import { amrChartId, type OverviewChartViewType } from "@/lib/overview-charts";
 import { describeGenomeScope } from "@/lib/services/organisms/genome-scope";
 import { formatUserFacingErrorMessage } from "@/lib/utils";
 
@@ -36,7 +41,15 @@ type MetadataDistributionsProps = GenomeScopeProps & {
   hideEmptyAmr?: boolean;
   /** The Genomes tab listing the scope's genomes; given one, each bucket links to its genomes there. */
   genomeList?: GenomeListLink;
+  /** Gives the section a menu to hide charts, remembered for this view type. The organism landings pass none and show every chart. */
+  viewType?: OverviewChartViewType;
 };
+
+interface ChartItem {
+  id: string;
+  title: string;
+  node: ReactNode;
+}
 
 const emptyAmrData: AmrDistributionData = { antibiotics: [] };
 
@@ -68,6 +81,7 @@ export async function MetadataDistributions({
   showAmr = false,
   hideEmptyAmr = false,
   genomeList,
+  viewType,
   ...scopeProps
 }: MetadataDistributionsProps) {
   const scope = genomeScopeFromProps(scopeProps);
@@ -141,7 +155,6 @@ export async function MetadataDistributions({
 
   const taxonomicChart = (
     <LazyDonutChart
-      key={taxonomicDistributionSentinel}
       title={taxonomicDistributionTitle}
       tabs={[
         {
@@ -158,60 +171,93 @@ export async function MetadataDistributions({
     />
   );
 
-  return (
-    <section className="@container flex flex-col gap-3" data-testid="metadata-distributions">
-      <div>
-        <h2 className="text-lg font-semibold tracking-normal">
-          Metadata Distributions
-        </h2>
-        <p className="text-sm text-muted-foreground">
-          Top metadata buckets for available genome records.
-        </p>
-      </div>
-      <div className="grid grid-cols-1 gap-3 @[640px]:grid-cols-2 @[1080px]:grid-cols-3 @[1600px]:grid-cols-4">
-        {fields.flatMap((field) => {
-          if (field === taxonomicDistributionSentinel) {
-            return [taxonomicChart];
-          }
+  const taxonomicItem: ChartItem = {
+    id: taxonomicDistributionSentinel,
+    title: taxonomicDistributionTitle,
+    node: taxonomicChart,
+  };
 
-          const title = metadataFieldLabel(field);
-          const chart = facetCharts.get(field);
-          const data = (chart?.data ?? []).map((facet) =>
-            chartDatum(field, facet),
-          );
+  const items: ChartItem[] = [
+    ...fields.flatMap((field): ChartItem[] => {
+      if (field === taxonomicDistributionSentinel) return [taxonomicItem];
 
-          if (field === "collection_year") {
-            return [
+      const title = metadataFieldLabel(field);
+      const chart = facetCharts.get(field);
+      const data = (chart?.data ?? []).map((facet) => chartDatum(field, facet));
+
+      if (field === "collection_year") {
+        return [
+          {
+            id: field,
+            title,
+            node: (
               <LazyBarChart
-                key={`${field}-bar`}
                 title={title}
                 data={data}
                 errorMessage={chart?.errorMessage}
-              />,
-            ];
-          }
+              />
+            ),
+          },
+        ];
+      }
 
-          return [
+      return [
+        {
+          id: field,
+          title,
+          node: (
             <LazyDonutChart
-              key={field}
               title={title}
               data={data}
               layout="side"
               errorMessage={chart?.errorMessage}
-            />,
-          ];
-        })}
-        {!hasTaxonomicSentinel && taxonomicChart}
-        {showAmrChart && (
-          <div className={`flex flex-col${amrHasData ? " @[640px]:col-span-2 @[1080px]:col-span-2" : ""}`}>
-            <LazyAmrBarStackChart
-              title={amrProfileTitle}
-              data={amr.data}
-              errorMessage={amr.errorMessage}
             />
-          </div>
+          ),
+        },
+      ];
+    }),
+    ...(hasTaxonomicSentinel ? [] : [taxonomicItem]),
+    ...(showAmrChart
+      ? [
+          {
+            id: amrChartId,
+            title: amrProfileTitle,
+            node: (
+              <div className={`flex flex-col${amrHasData ? " @[640px]:col-span-2 @[1080px]:col-span-2" : ""}`}>
+                <LazyAmrBarStackChart
+                  title={amrProfileTitle}
+                  data={amr.data}
+                  errorMessage={amr.errorMessage}
+                />
+              </div>
+            ),
+          },
+        ]
+      : []),
+  ];
+
+  return (
+    <section className="@container flex flex-col gap-3" data-testid="metadata-distributions">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 className="text-lg font-semibold tracking-normal">
+            Metadata Distributions
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            Top metadata buckets for available genome records.
+          </p>
+        </div>
+        {viewType && (
+          <ChartVisibilityMenu
+            viewType={viewType}
+            charts={items.map(({ id, title }) => ({ id, title }))}
+          />
         )}
       </div>
+      <ChartVisibilityGrid
+        viewType={viewType}
+        items={items.map(({ id, node }) => ({ id, node }))}
+      />
     </section>
   );
 }

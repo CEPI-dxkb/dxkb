@@ -189,7 +189,7 @@ describe("TaxonomyPage", () => {
     render(node);
 
     expect(metadataSpy).toHaveBeenCalledWith(
-      expect.objectContaining({ showAmr: true }),
+      expect.objectContaining({ showAmr: true, viewType: "taxon" }),
     );
   });
 
@@ -204,7 +204,7 @@ describe("TaxonomyPage", () => {
     render(node);
 
     expect(metadataSpy).toHaveBeenCalledWith(
-      expect.objectContaining({ showAmr: false }),
+      expect.objectContaining({ showAmr: false, viewType: "taxon" }),
     );
   });
 
@@ -222,7 +222,7 @@ describe("TaxonomyPage", () => {
 
       expect(metadataSpy).toHaveBeenCalledTimes(1);
       expect(metadataSpy).toHaveBeenCalledWith(
-        expect.objectContaining({ showAmr: false }),
+        expect.objectContaining({ showAmr: false, viewType: "taxon" }),
       );
       const current = document.querySelectorAll('[aria-current="page"]');
       expect(current.length).toBeGreaterThan(0);

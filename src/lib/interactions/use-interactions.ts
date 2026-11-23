@@ -6,7 +6,6 @@ import { z } from "zod";
 import {
   DataRepository,
   DataRepositoryError,
-  collectionQueryOptions,
   dataQueryKeys,
   type ExportRequest,
 } from "@/lib/data-api";
@@ -15,11 +14,16 @@ import { fetchSelectedRows } from "@/lib/data-api/selected-rows";
 import { ppiGraphRecordSchema, type PpiRecord } from "./schema";
 
 /**
- * Sigma's WebGL renderer and force layouts stop being usable well before the Data API's
- * `maxExportRows`; the query asks for one row past this so it can report overflow instead of hiding
- * it.
+ * The most interactions the Graph draws. The bound is main-thread work (loading and selecting),
+ * not the GPU: measured on real BV-BRC data at 4x CPU throttle, 10,000 rows (~8,000 proteins) load
+ * to paint in ~8.4 s with a typical selection near 130 ms, while 25,000 rows take ~12.5 s with
+ * ~1.8 s main-thread tasks, and a graph past ~25k edges stops being readable anyway. Sigma 4 itself
+ * draws a frame in ~0.7 ms at 5k rows and under 7 ms at 100k (docs/architecture.md, Interactions).
+ *
+ * It is also `maxExportRows`, the most one export may ask for, so overflow is read from the total
+ * the response carries (`ExportResult.total`), not from asking for one row past the bound.
  */
-export const interactionsGraphRowLimit = 5_000;
+export const interactionsGraphRowLimit = 10_000;
 
 export const interactionsGraphFields = [
   "id",
@@ -47,12 +51,15 @@ export const interactionsGraphFields = [
 ] as const;
 
 const graphRowsSchema = z.array(ppiGraphRecordSchema);
+const graphTotalSchema = z.number().int().nonnegative();
 const graphStaleTimeMs = 5 * 60 * 1_000;
 const repository = new DataRepository();
 
 export interface InteractionsGraphData {
   rows: PpiRecord[];
   isTruncated: boolean;
+  /** How many interactions the scope matches, when the Data API reported it (see `isTruncatedExport`). */
+  total?: number;
 }
 
 /**
@@ -67,7 +74,7 @@ export function interactionsGraphRequest(
     rql: rql || undefined,
     keyword: keyword || undefined,
     fields: [...interactionsGraphFields],
-    limit: interactionsGraphRowLimit + 1,
+    limit: interactionsGraphRowLimit,
     // Matches the Table's default sort, so a truncated result is the Table's first rows and a
     // refetch returns the same window.
     sort: { field: "id", direction: "asc" },
@@ -76,12 +83,25 @@ export function interactionsGraphRequest(
 
 /**
  * A Table selection shown in the Graph. `version` is new for every Show in Graph, so the query key
- * stays small (up to 5,000 ids would be hashed on every render) and a repeated pick of the same
- * rows still reads afresh.
+ * stays small (up to `interactionsGraphRowLimit` ids would be hashed on every render) and a
+ * repeated pick of the same rows still reads afresh.
  */
 export interface InteractionsSelection {
   ids: readonly string[];
   version: number;
+}
+
+/**
+ * Whether the export left matching rows out. With the Data API's total it is exact: more matches
+ * than rows returned. Without one (a proxy or mock that drops `Content-Range`, or a malformed
+ * count) a result that fills the bound counts as truncated: exactly `interactionsGraphRowLimit`
+ * matches and more than that look the same then, and calling a cut graph complete would hide rows,
+ * while a needless notice only suggests narrowing.
+ */
+function isTruncatedExport(rowCount: number, total: number | undefined): boolean {
+  return total === undefined
+    ? rowCount >= interactionsGraphRowLimit
+    : total > rowCount;
 }
 
 function parseGraphRows(rows: unknown): PpiRecord[] {
@@ -136,47 +156,16 @@ export function useInteractions(
           queryFn: async ({ signal }) => {
             const result = await repository.export("ppi", request, signal);
             const rows = parseGraphRows(result.rows);
+            // The count is advisory: one that is not a count reads as unknown, not as an error.
+            const parsedTotal = graphTotalSchema.safeParse(result.total);
+            const total = parsedTotal.success ? parsedTotal.data : undefined;
             return {
-              rows: rows.slice(0, interactionsGraphRowLimit),
-              isTruncated: rows.length > interactionsGraphRowLimit,
+              rows,
+              isTruncated: isTruncatedExport(rows.length, total),
+              total,
             };
           },
           staleTime: graphStaleTimeMs,
         },
   );
-}
-
-/**
- * How many ppi rows the scope matches, for the truncation notice: a one-row collection read whose
- * `total` is the full count, under the same `rql` and `keyword` as the graph's own request. Only
- * wanted once the graph is truncated, so `enabled` keeps every other graph from paying for it.
- *
- * No previous predicate's count stands in while a new one loads (`placeholderData`): a stale number
- * beside a narrower search would read as its size. A failed read is just a query error; the notice
- * falls back to the title without a count.
- */
-export function useInteractionsTotal(
-  rql: string,
-  keyword: string,
-  enabled: boolean,
-) {
-  // The graph's own normalization of an empty scope or keyword, so the count asks about the same
-  // predicate as the rows it describes.
-  const { rql: scopeRql, keyword: scopeKeyword } = interactionsGraphRequest(
-    rql,
-    keyword,
-  );
-  return useQuery({
-    ...collectionQueryOptions(repository, "ppi", {
-      rql: scopeRql,
-      keyword: scopeKeyword,
-      page: 1,
-      pageSize: 1,
-      fields: ["id"],
-    }),
-    placeholderData: undefined,
-    enabled,
-    select: (result) => result.total,
-    staleTime: graphStaleTimeMs,
-  });
 }

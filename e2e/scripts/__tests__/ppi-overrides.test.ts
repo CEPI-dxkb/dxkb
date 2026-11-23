@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   buildPpiCollectionEnvelope,
+  buildPpiPostEnvelope,
   buildPpiRows,
   selectPpiRows,
 } from "../../fixtures/overrides/interactions";
@@ -100,5 +101,43 @@ describe("PPI gateway collection envelope", () => {
 
   it("returns no facets unless one is requested", () => {
     expect(collection("&pageSize=1").facets).toEqual({});
+  });
+});
+
+describe("PPI gateway POST envelope", () => {
+  const rows = buildPpiRows(5);
+
+  it("answers an export with the window it asked for and the full matching count", () => {
+    // The truncated-graph e2e relies on this: 10,001 rows, a 10,000-row export, total 10,001.
+    expect(
+      buildPpiPostEnvelope(rows, context({ operation: "export", limit: 2 })),
+    ).toStrictEqual({ rows: rows.slice(0, 2), total: 5 });
+  });
+
+  it("starts an export's window at its offset", () => {
+    expect(
+      buildPpiPostEnvelope(
+        rows,
+        context({ operation: "export", limit: 2, offset: 4 }),
+      ),
+    ).toStrictEqual({ rows: rows.slice(4), total: 5 });
+  });
+
+  it("counts only the keyword's matches in an export's total", () => {
+    expect(
+      buildPpiPostEnvelope(
+        rows,
+        context({ operation: "export", limit: 10, keyword: "peg.601" }),
+      ),
+    ).toStrictEqual({ rows: [rows[1]], total: 1 });
+  });
+
+  it("answers a selected read with its rows alone", () => {
+    expect(
+      buildPpiPostEnvelope(
+        rows,
+        context({ operation: "selected", ids: [rows[3].id] }),
+      ),
+    ).toStrictEqual({ rows: [rows[3]] });
   });
 });

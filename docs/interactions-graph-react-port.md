@@ -1,6 +1,8 @@
 # Porting the BV-BRC "Interactions" Graph to React / Next.js
 
 > Historical build guide. For the current design (filters shared by the Table and the Graph, Focus on this protein, Show in Graph, the truncation notice) see the Interactions bullets in `docs/architecture.md`; the `GraphToolbar` below is gone, replaced by `GraphFilterBar` over `ResourceFilterBar`.
+>
+> The Sigma half was written for sigma 3 / `@react-sigma/core` 5 (the Cytoscape half is an alternative the app does not use), and its sigma code (reducers, `zIndex`, `setSetting`) is kept as the historical record, not a recipe. The live Graph runs sigma 4 / `@react-sigma/core` 6 / `@sigma/export-image` 4: it is described by `docs/architecture.md` and the code (`src/components/interactions/sigma/sigma-canvas.tsx`, `src/lib/interactions/graph-render-config.ts`).
 
 A build guide for recreating the Taxon-View **Interactions** page (protein-protein
 interaction network) in a fresh React + Next.js app. Two parallel implementations

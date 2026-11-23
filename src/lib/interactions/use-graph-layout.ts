@@ -8,7 +8,12 @@ import { interactionsGraphRequest } from "./use-interactions";
 interface UseGraphLayoutOptions {
   rql: string;
   keywordValue: string;
-  data: object | undefined;
+  /**
+   * The loaded rows array (`InteractionsGraphData.rows`), not the whole query `data`: the `data`
+   * object also carries `total` and `isTruncated`, so a refetch that changes only the count would
+   * make a new one around the same rows and re-run the layout.
+   */
+  rows: object | undefined;
   nodes: GNode[];
   edges: GEdge[];
   layout: LayoutName;
@@ -18,17 +23,17 @@ const rowsVersions = new WeakMap<object, number>();
 let lastRowsVersion = 0;
 
 /**
- * TanStack's structural sharing returns the same `data` reference when a refetch yields identical
- * rows, so those keep their cached positions; keying on `dataUpdatedAt` reshuffled the graph on
- * every refetch. A WeakMap entry dies with its rows object.
+ * TanStack's structural sharing returns the same `rows` reference when a refetch yields identical
+ * rows, so those keep their cached positions, even when the count beside them changed; keying on
+ * `dataUpdatedAt` reshuffled the graph on every refetch. A WeakMap entry dies with its rows object.
  */
-function rowsVersion(data: object | undefined): number {
-  if (data === undefined) return 0;
-  let version = rowsVersions.get(data);
+function rowsVersion(rows: object | undefined): number {
+  if (rows === undefined) return 0;
+  let version = rowsVersions.get(rows);
   if (version === undefined) {
     lastRowsVersion += 1;
     version = lastRowsVersion;
-    rowsVersions.set(data, version);
+    rowsVersions.set(rows, version);
   }
   return version;
 }
@@ -70,7 +75,7 @@ async function layOutGraph(
 export function useGraphLayout({
   rql,
   keywordValue,
-  data,
+  rows,
   nodes,
   edges,
   layout,
@@ -78,7 +83,7 @@ export function useGraphLayout({
   const queryKey = [
     "interactions-graph-layout",
     interactionsGraphRequest(rql, keywordValue),
-    rowsVersion(data),
+    rowsVersion(rows),
     layout,
   ] as const;
 

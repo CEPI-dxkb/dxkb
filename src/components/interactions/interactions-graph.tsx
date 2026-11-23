@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
-import dynamic from "next/dynamic";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -14,7 +13,6 @@ import { DataRepository } from "@/lib/data-api";
 import {
   interactionsGraphRowLimit,
   useInteractions,
-  useInteractionsTotal,
   type InteractionsSelection,
 } from "@/lib/interactions/use-interactions";
 import { toGraph } from "@/lib/interactions/to-graph";
@@ -39,7 +37,6 @@ import type {
   GNode,
   GraphCameraView,
   GraphCanvasHandle,
-  GraphCanvasProps,
   GraphSelection,
   GraphSelectionRef,
   HubSelection,
@@ -51,24 +48,13 @@ import type {
 import { GraphFilterBar } from "./graph-filter-bar";
 import { GraphActionBar } from "./graph-action-bar";
 import { GraphLegend } from "./graph-legend";
+import { GraphCanvas } from "./graph-canvas";
 import { GraphColumns } from "./graph-columns";
 import { GraphControls } from "./graph-controls";
 import { GraphDetailPanel } from "./graph-detail-panel";
 import { GraphNodeList } from "./graph-node-list";
 import { GraphTruncationNotice } from "./graph-truncation-notice";
 import { InteractionsGraphSkeleton } from "./interactions-graph-skeleton";
-
-const SigmaCanvas = dynamic<GraphCanvasProps>(
-  () => import("./sigma/sigma-canvas").then((mod) => mod.SigmaCanvas),
-  {
-    ssr: false,
-    loading: () => (
-      <div className="flex size-full items-center justify-center text-sm text-muted-foreground">
-        Loading graph…
-      </div>
-    ),
-  },
-);
 
 const emptyRows: PpiRecord[] = [];
 
@@ -199,13 +185,6 @@ export function InteractionsGraph({
   );
   const interactions = useInteractions(rql, keywordValue, rowSelection);
   const { data } = interactions;
-  // Only a truncated scope result has a count worth a second read; a selection is never truncated.
-  // A count that is loading or failed leaves the notice title without it: the graph itself loaded.
-  const interactionsTotal = useInteractionsTotal(
-    rql,
-    keywordValue,
-    Boolean(data?.isTruncated) && !rowSelection,
-  );
   const selectionVersion = rowSelection?.version;
   const loadRetry = useRetryKeepingError(
     interactions,
@@ -231,22 +210,26 @@ export function InteractionsGraph({
   const [activeHub, setActiveHub] = useState<HubSelection | null>(null);
   const [canvasReady, setCanvasReady] = useState(false);
   const canvasHandleRef = useRef<GraphCanvasHandle | null>(null);
+  // Keyed on the rows array, not the whole `data`: a refetch that changes only `total` keeps its
+  // rows under structural sharing, and must keep the picture and any pick (the notice still reads
+  // the new count from `data`).
+  const loadedRows = data?.rows;
   const [graphSource, setGraphSource] = useState({
     rql,
     keywordValue,
     selectionVersion,
-    data,
+    rows: loadedRows,
   });
   if (
     graphSource.rql !== rql ||
     graphSource.keywordValue !== keywordValue ||
     graphSource.selectionVersion !== selectionVersion ||
-    graphSource.data !== data
+    graphSource.rows !== loadedRows
   ) {
     // The single selection is the owner's, so the first data arrival (a restore from the URL) keeps
     // it; the owner replaces it on a new keyword, filter, focus or Show in Graph, and the scope
     // effect below on a new scope.
-    setGraphSource({ rql, keywordValue, selectionVersion, data });
+    setGraphSource({ rql, keywordValue, selectionVersion, rows: loadedRows });
     setBulkSelection(null);
     setPendingSelected(null);
     setActiveSubgraph(null);
@@ -263,14 +246,14 @@ export function InteractionsGraph({
   // Memoized on the rows by hand: `SigmaCanvas` reloads its graph and re-fits the camera when the
   // node arrays change identity, and the compiler re-ran these on every URL write (a selection or
   // camera move), which threw away a restored or chosen zoom.
-  const rows = data?.rows ?? emptyRows;
+  const rows = loadedRows ?? emptyRows;
   const graph = useMemo(() => toGraph(rows), [rows]);
   const selectionIndex = useMemo(
     () => buildGraphSelectionIndex(graph.nodes, graph.edges),
     [graph],
   );
   // Memoized on the graph, not left to the compiler: a new index each render gives the canvas a new
-  // focus set and re-installs its reducers on every selection or camera write.
+  // focus set and re-syncs every item's highlight state on every selection or camera write.
   const incidenceIndex = useMemo(
     () => buildIncidenceIndex(graph.edges),
     [graph],
@@ -309,7 +292,7 @@ export function InteractionsGraph({
   const layoutQuery = useGraphLayout({
     rql,
     keywordValue,
-    data,
+    rows: loadedRows,
     nodes: graph.nodes,
     edges: graph.edges,
     layout,
@@ -446,13 +429,12 @@ export function InteractionsGraph({
     onSelectedChange(null);
   }
 
-  // The count and the export are separate reads, so a count that is not past the row limit cannot
-  // describe a truncated result (a stale one would read "first 5,000 of 4,990"): the title goes
-  // without it.
+  // The count rides on the rows' own response, so it cannot lag them; it is named only past the row
+  // limit, so the title never reads "first 10,000 of 9,990". Without a count (the Data API sent none)
+  // the title goes without it.
   const totalShown =
-    interactionsTotal.data !== undefined &&
-    interactionsTotal.data > interactionsGraphRowLimit
-      ? interactionsTotal.data
+    data.total !== undefined && data.total > interactionsGraphRowLimit
+      ? data.total
       : undefined;
   // Defensive: `useInteractions` already reports a Show in Graph selection (read by id) as never
   // truncated, so this guard only keeps the notice off if that ever changes.
@@ -504,7 +486,7 @@ export function InteractionsGraph({
                   No Interactions
                 </div>
               ) : (
-                <SigmaCanvas
+                <GraphCanvas
                   nodes={nodes}
                   edges={edges}
                   incidence={incidenceIndex}

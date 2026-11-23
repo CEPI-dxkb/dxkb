@@ -6,13 +6,19 @@ function escapeRegExp(text: string): string {
 
 /**
  * A resource collection's one-row filter toolbar (`role=toolbar` "Filters"),
- * rendered by every collection page.
+ * rendered by every collection page. `within` limits it to one region (a
+ * tab panel) for a page that shows two toolbars at once.
  */
 export class CollectionToolbar {
-  constructor(readonly page: Page) {}
+  constructor(
+    readonly page: Page,
+    private readonly within?: Locator,
+  ) {}
 
   root(): Locator {
-    return this.page.getByRole("toolbar", { name: "Filters" });
+    return (this.within ?? this.page).getByRole("toolbar", {
+      name: "Filters",
+    });
   }
 
   keyword(): Locator {

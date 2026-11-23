@@ -1,7 +1,11 @@
 import { render, screen } from "@testing-library/react";
 
 import { GraphLegend } from "../graph-legend";
-import { colors, edgeAlpha } from "@/lib/interactions/graph-theme";
+import {
+  colors,
+  edgeAlpha,
+  edgeExperimentalAlpha,
+} from "@/lib/interactions/graph-theme";
 
 describe("GraphLegend", () => {
   it("renders all five legend entries", () => {
@@ -20,21 +24,22 @@ describe("GraphLegend", () => {
 
   it("previews the same translucent interaction colors used by Sigma", () => {
     render(<GraphLegend />);
-    const opacity = String(edgeAlpha / 255);
+    const predictedOpacity = String(edgeAlpha / 255);
+    const experimentalOpacity = String(edgeExperimentalAlpha / 255);
     expect(screen.getByTestId("predicted-interaction-swatch")).toHaveAttribute(
       "stroke",
       colors.edge,
     );
     expect(screen.getByTestId("predicted-interaction-swatch")).toHaveAttribute(
       "stroke-opacity",
-      opacity,
+      predictedOpacity,
     );
     expect(
       screen.getByTestId("experimental-interaction-swatch"),
     ).toHaveAttribute("stroke", colors.edgeExperimental);
     expect(
       screen.getByTestId("experimental-interaction-swatch"),
-    ).toHaveAttribute("stroke-opacity", opacity);
+    ).toHaveAttribute("stroke-opacity", experimentalOpacity);
   });
 
   it("exposes the svg as a single labelled image to assistive tech", () => {

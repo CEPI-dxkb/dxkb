@@ -253,14 +253,14 @@ importers:
         specifier: ^1.2.5
         version: 1.2.5
       '@react-sigma/core':
-        specifier: ^5.0.6
-        version: 5.0.6(graphology@0.26.0(graphology-types@0.24.8))(react@19.3.1)(sigma@3.0.3(graphology-types@0.24.8))
+        specifier: ^6.0.0
+        version: 6.0.0(graphology@0.26.0(graphology-types@0.24.8))(react@19.3.1)(sigma@4.0.6(graphology-types@0.24.8))
       '@shadcn/react':
         specifier: 0.3.1
         version: 0.3.1(@types/react@19.3.0)(react@19.3.1)
       '@sigma/export-image':
-        specifier: ^3.0.0
-        version: 3.0.0(sigma@3.0.3(graphology-types@0.24.8))
+        specifier: ^4.0.0
+        version: 4.0.0(sigma@4.0.6(graphology-types@0.24.8))
       '@tanstack/react-form':
         specifier: ^1.33.5
         version: 1.33.5(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
@@ -403,8 +403,8 @@ importers:
         specifier: ^0.0.1
         version: 0.0.1
       sigma:
-        specifier: ^3.0.3
-        version: 3.0.3(graphology-types@0.24.8)
+        specifier: ^4.0.6
+        version: 4.0.6(graphology-types@0.24.8)
       sonner:
         specifier: ^2.0.8
         version: 2.0.8(@types/react@19.3.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
@@ -2923,12 +2923,12 @@ packages:
       '@types/react':
         optional: true
 
-  '@react-sigma/core@5.0.6':
-    resolution: {integrity: sha512-Xu2qXyvDZIhmvGC1n8d7Kcxm5Ntcz4HbPIM7CPDD2e4h3s/oxVpVPX7wtsNreJRRPj9mK+3oqB6SWXNI4mTqVg==}
+  '@react-sigma/core@6.0.0':
+    resolution: {integrity: sha512-0PGdB2b4bjX/FIHshhCLovIQaqhLpb6LccghmxDRaX99R1w3oX3kyPqHeVMFDK21pfreu6rusvciTSjsCbTzew==}
     peerDependencies:
       graphology: ^0.26.0
       react: ^18.0.0 || ^19.0.0
-      sigma: ^3.0.2
+      sigma: ^4.0.0
 
   '@reduxjs/toolkit@1.9.7':
     resolution: {integrity: sha512-t7v8ZPxhhKgOKtU+uyJT13lu4vL7az5aFi4IdoDs/eS548edn2M8Ik9h8fxgvMjGoAUVFSt6ZC1P5cWmQ014QQ==}
@@ -3261,10 +3261,10 @@ packages:
       react:
         optional: true
 
-  '@sigma/export-image@3.0.0':
-    resolution: {integrity: sha512-6JmWle7byUzAOGE3P3ttDqn2PbdnNETyFU13i4R0G3PIZcIiVqPRpRWBkz11E89oxKEzEf1XdwQKa9VxHDMD0w==}
+  '@sigma/export-image@4.0.0':
+    resolution: {integrity: sha512-NFLzgoY+2cVzBkkzzqTYHSKozdQ0i8BunhxZ1iShkCC0jBOYoT6TFHBOujohZntBI5OK+F7ix7VzEm7WHBcYKQ==}
     peerDependencies:
-      sigma: '>=3.0.0-beta.10'
+      sigma: ^4.0.0
 
   '@standard-schema/spec@1.1.0':
     resolution: {integrity: sha512-l2aFy5jALhniG5HgqrD6jXLi/rUWrKvqN/qJx6yoJsgKhblVd+iqqU4RCXavm/jPityDo5TCvKMnpjKnOriy0w==}
@@ -8718,8 +8718,8 @@ packages:
   siginfo@2.0.0:
     resolution: {integrity: sha512-ybx0WO1/8bSBLEWXZvEd7gMW3Sn3JFlW3TvX1nREbDLRNQNaeNN8WK0meBwPdAaOI7TtRRRJn/Es1zhrrCHu7g==}
 
-  sigma@3.0.3:
-    resolution: {integrity: sha512-5H0zFlx6/NTQpqBg4Rm569ZOpnBOXMaS25UQThIWMU3XyzI5AhmorK/gnl87BvJBLhQd0tW4C0LIp3enWzMoNw==}
+  sigma@4.0.6:
+    resolution: {integrity: sha512-3yD7On7NLHGMkBcG2fyhIECxkliqZ+lVcTBS1Lfm/qnndQVGMB+Xp2qL1A/co1qUJAM5bKank3cSrNO5L6J9Zw==}
 
   signal-exit@4.1.0:
     resolution: {integrity: sha512-bzyZ1e88w9O1iNJbKnOlvYTrWPDl46O1bG0D3XInv+9tkPrxrN8jUUTiFlDkkmKWgn1M6CfIA13SuGqOa9Korw==}
@@ -12517,11 +12517,11 @@ snapshots:
     optionalDependencies:
       '@types/react': 19.3.0
 
-  '@react-sigma/core@5.0.6(graphology@0.26.0(graphology-types@0.24.8))(react@19.3.1)(sigma@3.0.3(graphology-types@0.24.8))':
+  '@react-sigma/core@6.0.0(graphology@0.26.0(graphology-types@0.24.8))(react@19.3.1)(sigma@4.0.6(graphology-types@0.24.8))':
     dependencies:
       graphology: 0.26.0(graphology-types@0.24.8)
       react: 19.3.1
-      sigma: 3.0.3(graphology-types@0.24.8)
+      sigma: 4.0.6(graphology-types@0.24.8)
 
   '@reduxjs/toolkit@1.9.7(react-redux@7.2.9(react-dom@16.14.0(react@16.14.0))(react@16.14.0))(react@16.14.0)':
     dependencies:
@@ -12719,10 +12719,10 @@ snapshots:
       '@types/react': 19.3.0
       react: 19.3.1
 
-  '@sigma/export-image@3.0.0(sigma@3.0.3(graphology-types@0.24.8))':
+  '@sigma/export-image@4.0.0(sigma@4.0.6(graphology-types@0.24.8))':
     dependencies:
       file-saver: 2.0.5
-      sigma: 3.0.3(graphology-types@0.24.8)
+      sigma: 4.0.6(graphology-types@0.24.8)
 
   '@standard-schema/spec@1.1.0': {}
 
@@ -19142,7 +19142,7 @@ snapshots:
 
   siginfo@2.0.0: {}
 
-  sigma@3.0.3(graphology-types@0.24.8):
+  sigma@4.0.6(graphology-types@0.24.8):
     dependencies:
       events: 3.3.0
       graphology-utils: 2.5.2(graphology-types@0.24.8)

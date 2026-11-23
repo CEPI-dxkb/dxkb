@@ -1,13 +1,12 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { CSSProperties, PointerEvent as ReactPointerEvent } from "react";
+import type { CSSProperties } from "react";
 
 import { useVirtualizer } from "@tanstack/react-virtual";
 import Link from "next/link";
 import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
 
-import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import {
   Table,
@@ -18,52 +17,29 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { cn } from "@/lib/utils";
 import type { ReferenceGenome } from "@/lib/services/organisms/reference-genomes";
 import { genomeHref } from "@/lib/views/hrefs";
 
-const badgeVariantForType: Record<string, "default" | "secondary" | "outline"> = {
-  Reference: "default",
-  Representative: "secondary",
-};
-
 const rowHeight = 32;
-const defaultTypeColumnWidth = 144;
-const minTypeColumnWidth = 96;
-const maxTypeColumnWidth = 480;
-const minGenomeNameColumnWidth = 160;
-
-// The widest the Type column may grow: what the scroll container has left once
-// Genome Name keeps its minimum and the accession column keeps the width it
-// renders at, which is none while the container is narrower than @md, where
-// that column is hidden.
-function maxTypeColumnWidthFor(
-  container: HTMLElement | null,
-  accessionHeader: HTMLElement | null,
-) {
-  const tableWidth = container?.clientWidth;
-  if (!tableWidth) return maxTypeColumnWidth;
-  const accessionWidth = accessionHeader?.offsetWidth ?? 0;
-  return Math.min(
-    maxTypeColumnWidth,
-    Math.max(
-      minTypeColumnWidth,
-      tableWidth - minGenomeNameColumnWidth - accessionWidth,
-    ),
-  );
-}
 
 // Exported for the test that pins its memoized sort; the card is the only user.
 export function GenomeTable({
   genomes,
   count,
   sortable = true,
+  showType = true,
 }: {
   genomes: ReferenceGenome[];
   /** Genomes the tab has in all; above `genomes.length` when the list is partial. */
   count?: number;
   /** False for a partial list: sorting it client-side would misorder it. */
   sortable?: boolean;
+  /**
+   * False on a type tab (its trigger already names the type) and on All when
+   * fewer than two types have genomes (every row would repeat the one type):
+   * the column would only repeat it and cost Genome Name its width.
+   */
+  showType?: boolean;
 }) {
   "use no memo";
   const [storedSortDir, setSortDir] = useState<"asc" | "desc" | null>(null);
@@ -71,11 +47,7 @@ export function GenomeTable({
   // control to undo an earlier direction.
   const sortDir = sortable ? storedSortDir : null;
   const parentRef = useRef<HTMLDivElement>(null);
-  // Measured for the Type column's maximum width: 0 while it is display:none.
-  const accessionHeaderRef = useRef<HTMLTableCellElement>(null);
   const [containerHeight, setContainerHeight] = useState(320);
-  const [typeColumnWidth, setTypeColumnWidth] = useState(defaultTypeColumnWidth);
-  const [isResizingTypeColumn, setIsResizingTypeColumn] = useState(false);
 
   useEffect(() => {
     const node = parentRef.current;
@@ -84,15 +56,6 @@ export function GenomeTable({
     const ro = new ResizeObserver(([entry]) => {
       const h = entry.contentRect.height;
       if (h && h > 0) setContainerHeight(h);
-      // The cap moves with the card's width and with the accession column
-      // appearing, so pull a widened Type column back to it, but never below
-      // the default width (a narrow card's raw cap is below it, and the
-      // "Representative" badge needs the default).
-      const cap = Math.max(
-        maxTypeColumnWidthFor(node, accessionHeaderRef.current),
-        defaultTypeColumnWidth,
-      );
-      setTypeColumnWidth((width) => Math.min(width, cap));
     });
     ro.observe(node);
     return () => { ro.disconnect(); };
@@ -134,46 +97,6 @@ export function GenomeTable({
     setSortDir((d) => (d === null ? "asc" : d === "asc" ? "desc" : null));
   }
 
-  function maxTypeWidth() {
-    return maxTypeColumnWidthFor(
-      parentRef.current,
-      accessionHeaderRef.current,
-    );
-  }
-
-  function resizeTypeColumn(nextWidth: number) {
-    setTypeColumnWidth(
-      Math.min(Math.max(nextWidth, minTypeColumnWidth), maxTypeWidth()),
-    );
-  }
-
-  function startColumnResize(event: ReactPointerEvent<HTMLDivElement>) {
-    event.preventDefault();
-    event.stopPropagation();
-    const startX = event.clientX;
-    const startWidth = typeColumnWidth;
-    setIsResizingTypeColumn(true);
-    event.currentTarget.setPointerCapture(event.pointerId);
-
-    const handle = event.currentTarget;
-    const onPointerMove = (moveEvent: PointerEvent) => {
-      resizeTypeColumn(startWidth + moveEvent.clientX - startX);
-    };
-    const onPointerUp = (upEvent: PointerEvent) => {
-      setIsResizingTypeColumn(false);
-      if (handle.hasPointerCapture(upEvent.pointerId)) {
-        handle.releasePointerCapture(upEvent.pointerId);
-      }
-      handle.removeEventListener("pointermove", onPointerMove);
-      handle.removeEventListener("pointerup", onPointerUp);
-      handle.removeEventListener("pointercancel", onPointerUp);
-    };
-
-    handle.addEventListener("pointermove", onPointerMove);
-    handle.addEventListener("pointerup", onPointerUp);
-    handle.addEventListener("pointercancel", onPointerUp);
-  }
-
   const virtualItems = rowVirtualizer.getVirtualItems();
   const paddingTop = virtualItems[0]?.start ?? 0;
   const paddingBottom =
@@ -194,65 +117,35 @@ export function GenomeTable({
     >
       <Table disableScrollWrapper className="table-fixed">
         <colgroup>
-          <col
-            className="w-(--type-col-width)"
-            style={{ "--type-col-width": `${String(typeColumnWidth)}px` } as CSSProperties}
-          />
+          {showType && <col className="w-28" />}
           <col />
           {/* The accession column shows only when the scroll container above
               (not the viewport: on desktop the card sits in a narrow column,
               and the container is about 26px narrower than the card) is at
-              least @md (448px) wide, so Genome Name keeps
-              its 160px beside Type (144px) and this column (144px: its header
-              label needs about 138px). Zero-width below that, not
-              display:none: the empty row's colSpan={3} would otherwise make the
-              table grid add an implicit third column that takes half of the
-              Genome Name column's width. The Type column's maximum width reads
-              the header's rendered width, so nothing else repeats the 144px of
-              @md:w-36. */}
-          <col className="w-0 @md:w-36" />
+              least @md (448px) wide, so Genome Name keeps at least 160px beside
+              the Type column (112px, on the All tab only) and this column
+              (144px: its header label needs about 138px). One pixel wide
+              below that, because WebKit treats `width: 0` on a `<col>` as
+              unset under `table-layout: fixed`, and since this column's cells
+              are display:none there, nothing else gives it a width: it takes
+              an auto share and splits the width left over beside the Type
+              column with Genome Name, while 1px is honored; and still not
+              display:none on the col, because the empty row's colSpan would
+              then make the table grid add an implicit extra column that takes
+              half of the Genome Name column's width. */}
+          <col className="w-px @md:w-36" />
         </colgroup>
         <TableHeader variant="muted" className="sticky top-0 z-10">
           <TableRow className="h-8">
-            <TableHead
-              variant="divider-strong"
-              size="xs"
-              className="group relative h-[31.5px]! px-3 py-1 text-center"
-            >
-              Type
-              <div
-                role="separator"
-                aria-orientation="vertical"
-                aria-label="Resize Type column"
-                aria-valuemin={minTypeColumnWidth}
-                aria-valuemax={maxTypeWidth()}
-                aria-valuenow={typeColumnWidth}
-                tabIndex={0}
-                onPointerDown={startColumnResize}
-                onDoubleClick={() => {
-                  resizeTypeColumn(defaultTypeColumnWidth);
-                }}
-                onKeyDown={(event) => {
-                  if (event.key === "ArrowLeft") {
-                    event.preventDefault();
-                    resizeTypeColumn(typeColumnWidth - 10);
-                  } else if (event.key === "ArrowRight") {
-                    event.preventDefault();
-                    resizeTypeColumn(typeColumnWidth + 10);
-                  }
-                }}
-                className="absolute top-0 right-0 z-30 flex h-full w-2 translate-x-1/2 cursor-col-resize touch-none select-none focus-visible:outline-2 focus-visible:outline-primary"
+            {showType && (
+              <TableHead
+                variant="divider-strong"
+                size="xs"
+                className="h-[31.5px]! px-2 py-1 text-center"
               >
-                <div
-                  className={cn(
-                    "mx-auto h-full w-1 transition-opacity",
-                    isResizingTypeColumn
-                      ? "bg-info opacity-100"
-                      : "bg-muted-foreground opacity-0 group-hover:opacity-100",
-                  )}
-                />
-              </div>
-            </TableHead>
+                Type
+              </TableHead>
+            )}
             {sortable ? (
               <TableHead
                 aria-sort={ariaSort}
@@ -275,7 +168,6 @@ export function GenomeTable({
               </TableHead>
             )}
             <TableHead
-              ref={accessionHeaderRef}
               size="xs"
               className="hidden h-[31.5px]! px-3 py-1 @md:table-cell"
             >
@@ -286,7 +178,7 @@ export function GenomeTable({
         <TableBody>
           {sorted.length === 0 && (count ?? 0) === 0 ? (
             <TableRow>
-              <TableCell colSpan={3} className="py-4 text-center">
+              <TableCell colSpan={showType ? 3 : 2} className="py-4 text-center">
                 <span className="text-muted-foreground">
                   No genomes in this category.
                 </span>
@@ -308,16 +200,19 @@ export function GenomeTable({
                     variant={virtualItem.index % 2 === 1 ? "striped" : "default"}
                     className="h-8"
                   >
-                    <TableCell variant="divider-strong" className="px-3 py-1">
-                      <div className="flex items-center justify-center">
-                        <Badge
-                          variant={badgeVariantForType[g.reference_genome] ?? "outline"}
-                          size="sm"
+                    {showType && (
+                      <TableCell
+                        variant="divider-strong"
+                        className="overflow-hidden px-2 py-1 text-center"
+                      >
+                        <span
+                          className="block truncate text-xs text-muted-foreground"
+                          title={g.reference_genome}
                         >
                           {g.reference_genome}
-                        </Badge>
-                      </div>
-                    </TableCell>
+                        </span>
+                      </TableCell>
+                    )}
                     <TableCell className="overflow-hidden px-3 py-1">
                       <Link
                         href={genomeHref(g.genome_id)}
@@ -358,7 +253,9 @@ export function GenomeTable({
                   variant={(sorted.length + i) % 2 === 1 ? "striped" : "default"}
                   className="h-8"
                 >
-                  <TableCell variant="divider-strong" className="px-3 py-1" />
+                  {showType && (
+                    <TableCell variant="divider-strong" className="px-2 py-1" />
+                  )}
                   <TableCell className="px-3 py-1" />
                   <TableCell className="hidden px-3 py-1 @md:table-cell" />
                 </TableRow>
@@ -415,6 +312,9 @@ export function ReferenceGenomesClient({
   hrefs: ReferenceGenomesHrefs;
 }) {
   const types = Object.keys(counts).sort();
+  // `counts` are whole-taxon totals, so a partial list still knows both types
+  // are present; with fewer than two, every All row would repeat the one type.
+  const showType = types.filter((type) => counts[type] > 0).length > 1;
   const byType = Object.fromEntries(
     types.map((t) => [t, rows.filter((g) => g.reference_genome === t)]),
   );
@@ -440,7 +340,12 @@ export function ReferenceGenomesClient({
 
         <CardContent className="p-0 xl:flex xl:min-h-0 xl:flex-1 xl:flex-col">
           <TabsContent value="all" className="mt-0 xl:flex xl:min-h-0 xl:flex-1 xl:flex-col">
-            <GenomeTable genomes={rows} count={total} sortable={rows.length >= total} />
+            <GenomeTable
+              genomes={rows}
+              count={total}
+              sortable={rows.length >= total}
+              showType={showType}
+            />
             <ShowingNote shown={rows.length} count={total} href={hrefs.all} />
           </TabsContent>
 
@@ -450,6 +355,7 @@ export function ReferenceGenomesClient({
                 genomes={byType[type]}
                 count={counts[type]}
                 sortable={byType[type].length >= counts[type]}
+                showType={false}
               />
               <ShowingNote
                 shown={byType[type].length}

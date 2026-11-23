@@ -11,6 +11,7 @@ import {
   brucellaPpiTotal,
   findOrganismSummaryRecord,
   findTaxonGenomeCount,
+  noCountyTaxonId,
 } from "@/lib/e2e-fixtures/records";
 import {
   experimentalStructureRql,
@@ -1257,6 +1258,60 @@ describe("api/e2e-mock catch-all — enabled", () => {
       ([, states]) => states.length > 1,
     );
     expect(crossStateCounty).toBeDefined();
+  });
+
+  describe("a taxon without county data, as the Data API answers today", () => {
+    function geoRequest(encodedFacet: string) {
+      return GET(
+        mockNextRequest({
+          url: `http://localhost:3020/api/e2e-mock/bvbrc-website/genome/?eq(taxon_lineage_ids,${noCountyTaxonId})&${encodedFacet}`,
+        }),
+        ctx(["bvbrc-website", "genome"]),
+      );
+    }
+
+    it.each([
+      [
+        "state_province,county",
+        "facet%28%28pivot%2C%28state_province%2Ccounty%29%29%2C%28mincount%2C1%29%29",
+      ],
+      [
+        "state_province,county,genus",
+        "facet%28%28pivot%2C%28state_province%2Ccounty%2Cgenus%29%29%2C%28mincount%2C1%29%29",
+      ],
+    ])("GET serves an empty %s pivot", async (pivotKey, encoded) => {
+      const resp = await geoRequest(encoded);
+
+      expect(resp.status).toBe(200);
+      expect((await resp.json()) as unknown).toEqual({
+        response: { numFound: 0, docs: [] },
+        facet_counts: { facet_pivot: { [pivotKey]: [] } },
+      });
+    });
+
+    it.each([
+      [
+        "state_province",
+        "facet%28%28field%2Cstate_province%29%2C%28mincount%2C1%29%29",
+        ["Wyoming", 48],
+      ],
+      [
+        "isolation_country",
+        "facet%28%28field%2Cisolation_country%29%2C%28mincount%2C1%29%29",
+        ["United States", 290442],
+      ],
+    ])(
+      "GET still serves the shared %s facet so the US view has data",
+      async (field, encoded, expected) => {
+        const resp = await geoRequest(encoded);
+
+        expect(resp.status).toBe(200);
+        const body = (await resp.json()) as SolrFacetBody;
+        expect(body.facet_counts.facet_fields[field]).toEqual(
+          expect.arrayContaining(expected),
+        );
+      },
+    );
   });
 
   it("GET returns 400 for unhandled bvbrc-website/genome queries", async () => {

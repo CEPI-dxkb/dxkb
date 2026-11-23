@@ -994,6 +994,16 @@ export const taxonGenomeCounts: Record<string, number> = {
   "2955291": 1_875_903,
 };
 
+/**
+ * The one taxon the e2e loopback answers as the Data API does today: empty
+ * `state_province,county` pivots (the genome core carries no county values),
+ * while its country and state facets keep the shared fixtures. Every other
+ * taxon gets the invented county fixtures. Mycobacterium, which has a
+ * taxonomy record, so `/taxonomy/1763` renders the map with its State view
+ * unavailable.
+ */
+export const noCountyTaxonId = "1763";
+
 /** Lookups return `undefined` for an unknown taxon; `table[id]` would type as present because `noUncheckedIndexedAccess` is off. */
 export function findOrganismTaxonomyRecord(
   taxonId: string,

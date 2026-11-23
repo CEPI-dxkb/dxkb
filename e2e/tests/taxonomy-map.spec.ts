@@ -1,7 +1,11 @@
 import type { Locator, Page } from "@playwright/test";
 
 import { test, expect, applyBackendMocks } from "../mocks/backends";
-import { emptyBackendFallbackOverrides, workspaceOverrides } from "../fixtures/overrides";
+import {
+  emptyBackendFallbackOverrides,
+  noCountyTaxonId,
+  workspaceOverrides,
+} from "../fixtures/overrides";
 
 test.use({ storageState: { cookies: [], origins: [] } });
 
@@ -238,6 +242,40 @@ test.describe("taxonomy geographic distribution map", () => {
       () => fetchedTopos.some((url) => url.endsWith("/maps/counties-10m.json")),
       { timeout: 30_000 },
     ).toBe(true);
+  });
+
+  test("disables the State pill and does not drill into a state when the taxon has no county data", async ({ page }) => {
+    // The loopback answers this taxon's county pivots empty, as the Data API does.
+    await page.goto(`/taxonomy/${noCountyTaxonId}`);
+    const mapSection = page
+      .locator("[data-slot='card']")
+      .filter({ has: page.getByRole("heading", { level: 2, name: "Geographic Distribution" }) });
+
+    const statePill = mapSection.getByRole("button", { name: "State", exact: true });
+    await expect(statePill).toBeDisabled();
+    await expect(statePill).toHaveAccessibleDescription(
+      "County-level data is not available for this taxon.",
+    );
+
+    const svg = mapSection.getByRole("img", { name: "Genome distribution map" });
+    const statePaths = svg.locator("path");
+    await expect.poll(async () => statePaths.count(), { timeout: 10_000 }).toBeGreaterThan(50);
+    const baselineCount = await statePaths.count();
+
+    // ChoroplethPath draws `cursor-default` exactly when a state cannot be
+    // drilled into, which holds whether or not the click below lands.
+    const state = statePaths.nth(10);
+    await expect(state).toHaveClass(/cursor-default/);
+
+    // A state click must leave the US view in place. Click a point that
+    // hit-tests to the state itself, so the click cannot miss and pass.
+    const point = await pointOnPath(state);
+    await page.mouse.click(point.x, point.y);
+    await expect(mapSection.getByRole("button", { name: "United States" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    await expect(statePaths).toHaveCount(baselineCount);
   });
 
   test("breadcrumb shows BV-BRC's ranked lineage with /taxonomy/<id> links", async ({ page }) => {

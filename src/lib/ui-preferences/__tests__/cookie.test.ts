@@ -166,35 +166,60 @@ describe("overviewHiddenCharts", () => {
   const { cookieName, defaultValue } =
     uiPreferenceDefinitions.overviewHiddenCharts;
   const schema = uiPreferenceSchemas.overviewHiddenCharts;
+  const nothingHidden = {
+    genome: [],
+    bacteria: [],
+    viruses: [],
+    otherTaxa: [],
+  };
 
   it("is its own cookie, nothing hidden unless chosen", () => {
     expect(cookieName).toBe("dxkb-overview-hidden-charts");
-    expect(defaultValue).toStrictEqual({ genome: [], taxon: [] });
-    expect(parseUiPreference("overviewHiddenCharts", undefined)).toStrictEqual({
-      genome: [],
-      taxon: [],
+    expect(defaultValue).toStrictEqual(nothingHidden);
+    expect(parseUiPreference("overviewHiddenCharts", undefined)).toStrictEqual(
+      nothingHidden,
+    );
+  });
+
+  it("accepts a hidden list per view type", () => {
+    expect(
+      parseUiPreference(
+        "overviewHiddenCharts",
+        '{"genome":["host_group"],"bacteria":["collection_year"],"viruses":["isolation_country"],"otherTaxa":["amr_profile"]}',
+      ),
+    ).toStrictEqual({
+      genome: ["host_group"],
+      bacteria: ["collection_year"],
+      viruses: ["isolation_country"],
+      otherTaxa: ["amr_profile"],
     });
   });
 
-  it("accepts a hidden list per view type and drops unknown view types", () => {
+  it("drops unknown view types, including the single taxon list an earlier build wrote", () => {
     expect(
       parseUiPreference(
         "overviewHiddenCharts",
-        '{"genome":["host_group"],"taxon":[],"organism":["x"]}',
+        '{"genome":["host_group"],"viruses":[],"organism":["x"]}',
       ),
-    ).toStrictEqual({ genome: ["host_group"], taxon: [] });
+    ).toStrictEqual({ ...nothingHidden, genome: ["host_group"] });
+    expect(
+      parseUiPreference("overviewHiddenCharts", '{"taxon":["host_group"]}'),
+    ).toStrictEqual(nothingHidden);
   });
 
-  it("keeps one view type when the other is missing or malformed", () => {
+  it("keeps one view type when another is missing or malformed", () => {
     expect(
       parseUiPreference(
         "overviewHiddenCharts",
-        '{"taxon":["collection_year"],"genome":"bad"}',
+        '{"bacteria":["collection_year"],"genome":"bad"}',
       ),
-    ).toStrictEqual({ genome: [], taxon: ["collection_year"] });
+    ).toStrictEqual({ ...nothingHidden, bacteria: ["collection_year"] });
     expect(
-      parseUiPreference("overviewHiddenCharts", '{"taxon":["collection_year"]}'),
-    ).toStrictEqual({ genome: [], taxon: ["collection_year"] });
+      parseUiPreference(
+        "overviewHiddenCharts",
+        '{"bacteria":["collection_year"]}',
+      ),
+    ).toStrictEqual({ ...nothingHidden, bacteria: ["collection_year"] });
   });
 
   it("keeps a list of exactly the limit, and resets only the list one past it", () => {
@@ -204,24 +229,33 @@ describe("overviewHiddenCharts", () => {
     );
     const pastLimit = [...atLimit, "one_more"];
     expect(overviewHiddenChartsLimit).toBe(16);
-    expect(schema.parse({ genome: atLimit, taxon: ["host_group"] })).toStrictEqual(
-      { genome: atLimit, taxon: ["host_group"] },
-    );
     expect(
-      schema.parse({ genome: pastLimit, taxon: atLimit }),
-    ).toStrictEqual({ genome: [], taxon: atLimit });
+      schema.parse({ ...nothingHidden, bacteria: atLimit, viruses: ["host_group"] }),
+    ).toStrictEqual({
+      ...nothingHidden,
+      bacteria: atLimit,
+      viruses: ["host_group"],
+    });
+    expect(
+      schema.parse({ ...nothingHidden, otherTaxa: pastLimit, bacteria: atLimit }),
+    ).toStrictEqual({ ...nothingHidden, bacteria: atLimit });
   });
 
   it("resets a list past the limit or with an empty or oversized id, and a non-object value entirely", () => {
     const tooMany = Array.from({ length: 17 }, (_, index) => `f${String(index)}`);
     expect(
-      schema.parse({ genome: tooMany, taxon: ["host_group"] }),
-    ).toStrictEqual({ genome: [], taxon: ["host_group"] });
+      schema.parse({ ...nothingHidden, genome: tooMany, bacteria: ["host_group"] }),
+    ).toStrictEqual({ ...nothingHidden, bacteria: ["host_group"] });
     expect(
-      schema.parse({ genome: [""], taxon: ["x".repeat(41)] }),
-    ).toStrictEqual({ genome: [], taxon: [] });
+      schema.parse({
+        ...nothingHidden,
+        genome: [""],
+        viruses: ["x".repeat(41)],
+        otherTaxa: ["host_group"],
+      }),
+    ).toStrictEqual({ ...nothingHidden, otherTaxa: ["host_group"] });
     expect(parseUiPreference("overviewHiddenCharts", '["host_group"]')).toStrictEqual(
-      { genome: [], taxon: [] },
+      nothingHidden,
     );
   });
 });

@@ -1,9 +1,10 @@
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
-import type {
-  OverviewChartViewType,
-  OverviewHiddenCharts,
+import {
+  emptyOverviewHiddenCharts,
+  type OverviewChartViewType,
+  type OverviewHiddenCharts,
 } from "@/lib/overview-charts";
 import { stubMenuLayout } from "@/test-helpers/menu-layout";
 import { createUiPreferencesWrapper } from "@/test-helpers/react";
@@ -13,6 +14,14 @@ import { ChartVisibilityMenu } from "../chart-visibility-menu";
 stubMenuLayout();
 
 const hiddenChartsCookie = "dxkb-overview-hidden-charts";
+const emptyCookieValue = '{"genome":[],"bacteria":[],"viruses":[],"otherTaxa":[]}';
+
+/** The four-key preference with only the given lists filled in. */
+function hiddenCharts(
+  lists: Partial<OverviewHiddenCharts>,
+): OverviewHiddenCharts {
+  return { ...emptyOverviewHiddenCharts(), ...lists };
+}
 
 const charts = [
   { id: "host_group", title: "Host Group" },
@@ -75,18 +84,18 @@ describe("ChartVisibilityGrid", () => {
     expectShown("host_group", "collection_year", "amr_profile");
     unmount();
 
-    renderWithPreference(<ChartVisibilityGrid items={items} />, {
-      genome: ["host_group"],
-      taxon: ["collection_year"],
-    });
+    renderWithPreference(
+      <ChartVisibilityGrid items={items} />,
+      hiddenCharts({ genome: ["host_group"], bacteria: ["collection_year"] }),
+    );
     expectShown("host_group", "collection_year", "amr_profile");
   });
 
   it("omits only the items hidden for its own view type", () => {
-    const seeded = { genome: ["host_group"], taxon: [] };
+    const seeded = hiddenCharts({ genome: ["host_group"] });
 
     const { unmount } = renderWithPreference(
-      <ChartVisibilityGrid viewType="taxon" items={items} />,
+      <ChartVisibilityGrid viewType="bacteria" items={items} />,
       seeded,
     );
     expectShown("host_group", "collection_year", "amr_profile");
@@ -114,10 +123,9 @@ describe("ChartVisibilityGrid", () => {
 });
 
 describe("ChartVisibilityGrid when every chart is hidden", () => {
-  const hiddenEverywhere = {
+  const hiddenEverywhere = hiddenCharts({
     genome: ["host_group", "collection_year", "amr_profile"],
-    taxon: [],
-  };
+  });
   const emptyText = "All charts are hidden for this view.";
 
   it("says so, offers the charts back, and draws none, as the menu counts them", () => {
@@ -145,7 +153,7 @@ describe("ChartVisibilityGrid when every chart is hidden", () => {
       screen.queryByRole("button", { name: "Show all charts" }),
     ).not.toBeInTheDocument();
     expect(decodeURIComponent(document.cookie)).toContain(
-      `${hiddenChartsCookie}={"genome":[],"taxon":[]}`,
+      `${hiddenChartsCookie}=${emptyCookieValue}`,
     );
   });
 
@@ -165,7 +173,7 @@ describe("ChartVisibilityGrid when every chart is hidden", () => {
   it("is not shown while a chart of the page is still visible", () => {
     renderWithPreference(
       <ChartVisibilityGrid viewType="genome" items={items.slice(0, 1)} />,
-      { genome: ["collection_year", "amr_profile"], taxon: [] },
+      hiddenCharts({ genome: ["collection_year", "amr_profile"] }),
     );
 
     expect(screen.queryByText(emptyText)).not.toBeInTheDocument();
@@ -193,7 +201,7 @@ describe("ChartVisibilityMenu", () => {
   });
 
   it("hides a chart, says so in the trigger, and remembers it in the cookie", async () => {
-    renderWithPreference(<Overview viewType="taxon" />);
+    renderWithPreference(<Overview viewType="bacteria" />);
     const { user, menu } = await openMenu();
 
     await user.click(
@@ -205,15 +213,15 @@ describe("ChartVisibilityMenu", () => {
       screen.getByRole("button", { name: "Charts 2/3 shown, customised" }),
     ).toBeInTheDocument();
     expect(decodeURIComponent(document.cookie)).toContain(
-      `${hiddenChartsCookie}={"genome":[],"taxon":["host_group"]}`,
+      `${hiddenChartsCookie}={"genome":[],"bacteria":["host_group"],"viruses":[],"otherTaxa":[]}`,
     );
   });
 
   it("will not hide the last visible chart", async () => {
-    renderWithPreference(<Overview viewType="genome" />, {
-      genome: ["host_group", "collection_year"],
-      taxon: [],
-    });
+    renderWithPreference(
+      <Overview viewType="genome" />,
+      hiddenCharts({ genome: ["host_group", "collection_year"] }),
+    );
     const { menu } = await openMenu();
 
     expect(
@@ -227,7 +235,7 @@ describe("ChartVisibilityMenu", () => {
   });
 
   it("shows all charts again, and only offers to when one is hidden", async () => {
-    renderWithPreference(<Overview viewType="taxon" />);
+    renderWithPreference(<Overview viewType="bacteria" />);
     const { user, menu } = await openMenu();
     const showAll = within(menu).getByRole("menuitem", {
       name: "Show all charts",
@@ -247,44 +255,62 @@ describe("ChartVisibilityMenu", () => {
       screen.getByRole("button", { name: "Charts 3/3 shown" }),
     ).toBeInTheDocument();
     expect(decodeURIComponent(document.cookie)).toContain(
-      `${hiddenChartsCookie}={"genome":[],"taxon":[]}`,
+      `${hiddenChartsCookie}=${emptyCookieValue}`,
     );
   });
 
-  it("leaves the other view type's charts alone", async () => {
+  it("leaves the other view types' charts alone", async () => {
     renderWithPreference(
       <>
         <section aria-label="genome overview">
           <Overview viewType="genome" />
         </section>
-        <section aria-label="taxon overview">
-          <Overview viewType="taxon" />
+        <section aria-label="bacteria overview">
+          <Overview viewType="bacteria" />
+        </section>
+        <section aria-label="viruses overview">
+          <Overview viewType="viruses" />
         </section>
       </>,
     );
     const genome = within(screen.getByRole("region", { name: "genome overview" }));
-    const taxon = within(screen.getByRole("region", { name: "taxon overview" }));
+    const bacteria = within(
+      screen.getByRole("region", { name: "bacteria overview" }),
+    );
+    const viruses = within(
+      screen.getByRole("region", { name: "viruses overview" }),
+    );
     const user = userEvent.setup();
 
-    await user.click(taxon.getByRole("button", { name: /^Charts 3\/3 shown/ }));
+    await user.click(
+      bacteria.getByRole("button", { name: /^Charts 3\/3 shown/ }),
+    );
     await user.click(
       within(await screen.findByRole("menu")).getByRole("menuitemcheckbox", {
         name: "Host Group",
       }),
     );
 
-    expect(taxon.queryByTestId("chart-host_group")).not.toBeInTheDocument();
+    expect(bacteria.queryByTestId("chart-host_group")).not.toBeInTheDocument();
+    expect(viruses.getByTestId("chart-host_group")).toBeInTheDocument();
+    expect(
+      viruses.getByRole("button", { name: "Charts 3/3 shown" }),
+    ).toBeInTheDocument();
     expect(genome.getByTestId("chart-host_group")).toBeInTheDocument();
     expect(
       genome.getByRole("button", { name: "Charts 3/3 shown" }),
     ).toBeInTheDocument();
+    // Only the bacteria list changed: the viruses list stays empty in the cookie.
+    expect(decodeURIComponent(document.cookie)).toContain(
+      `${hiddenChartsCookie}={"genome":[],"bacteria":["host_group"],"viruses":[],"otherTaxa":[]}`,
+    );
   });
 
   it("ignores ids that no longer name a chart", () => {
-    renderWithPreference(<Overview viewType="genome" />, {
-      genome: ["gone_field"],
-      taxon: [],
-    });
+    renderWithPreference(
+      <Overview viewType="genome" />,
+      hiddenCharts({ genome: ["gone_field"] }),
+    );
 
     expectShown("host_group", "collection_year", "amr_profile");
     expect(

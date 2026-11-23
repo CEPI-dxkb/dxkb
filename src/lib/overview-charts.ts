@@ -1,7 +1,21 @@
 /** Import-free: `ui-preferences/definitions.ts` and the client menu both read these. */
 
-export const overviewChartViewTypes = ["genome", "taxon"] as const;
+export const overviewChartViewTypes = [
+  "genome",
+  "bacteria",
+  "viruses",
+  "otherTaxa",
+] as const;
 export type OverviewChartViewType = (typeof overviewChartViewTypes)[number];
+
+/** The lineage group of a Taxonomy page, so hiding a chart for bacteria leaves viruses alone. `accent` is `OrganismLandingConfig["accent"]` (typed `string` here because this module is import-free): fungi and every other lineage share `"otherTaxa"`. */
+export function taxonOverviewChartViewType(
+  accent: string,
+): OverviewChartViewType {
+  if (accent === "bacteria") return "bacteria";
+  if (accent === "viruses") return "viruses";
+  return "otherTaxa";
+}
 
 /** Ids of the charts a user hid, per overview. Only hidden ids are stored, so the default is empty and writes no cookie. Read-only, object and lists alike: the default object is shared by `defaultValue`, `defaultUiPreferences` and every parse fallback. */
 export type OverviewHiddenCharts = Readonly<
@@ -15,7 +29,7 @@ export const amrChartId = "amr_profile";
 export const overviewHiddenChartsLimit = 16;
 
 export function emptyOverviewHiddenCharts(): OverviewHiddenCharts {
-  return { genome: [], taxon: [] };
+  return { genome: [], bacteria: [], viruses: [], otherTaxa: [] };
 }
 
 /** The same array when nothing changes, a new one otherwise. The preference setter skips the cookie write when `Object.is` holds on the whole `OverviewHiddenCharts` object, so a caller must return the previous object when this returns the same array. */

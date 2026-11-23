@@ -13,7 +13,10 @@ import { TaxonomySummary } from "@/components/organisms/taxonomy-summary/taxonom
 import { TaxonomySummarySkeleton } from "@/components/organisms/taxonomy-summary/taxonomy-summary-skeleton";
 import type { OrganismLandingConfig } from "@/components/organisms/types";
 import type { GenomeListLink } from "@/lib/genome-view";
-import type { OverviewChartViewType } from "@/lib/overview-charts";
+import {
+  taxonOverviewChartViewType,
+  type OverviewChartViewType,
+} from "@/lib/overview-charts";
 import type { OrganismTaxonomy } from "@/lib/services/organisms/types";
 
 interface OverviewViewProps {
@@ -139,7 +142,7 @@ export function makeOverviewView({ config, taxon, showAmr }: OverviewViewProps) 
         accent={config.accent}
         metadataFields={config.metadataFields}
         showAmr={showAmr}
-        viewType="taxon"
+        viewType={taxonOverviewChartViewType(config.accent)}
         genomeList={{
           pathname: `/taxonomy/${String(config.taxonId)}`,
           params: { tab: "genomes" },

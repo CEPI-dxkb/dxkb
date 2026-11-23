@@ -55,7 +55,9 @@ export const uiPreferenceSchemas: {
   compareRegionDensity: z.enum(compareRegionDensities),
   overviewHiddenCharts: z.object({
     genome: hiddenChartIds,
-    taxon: hiddenChartIds,
+    bacteria: hiddenChartIds,
+    viruses: hiddenChartIds,
+    otherTaxa: hiddenChartIds,
   }),
   copilotSurface: z.enum(copilotSurfaces),
   // A cookie saved on a small viewport can hold less than the minimum; the component restores it.

@@ -47,6 +47,16 @@ const viralTaxon = {
   genomes: 1834418,
 };
 
+const fungalTaxon = {
+  taxonId: 4751,
+  taxonName: "Fungi",
+  lineageNames: ["cellular organisms", "Eukaryota", "Fungi"],
+  lineageIds: [131567, 2759, 4751],
+  lineageRanks: ["no rank", "domain", "kingdom"],
+  taxonRank: "kingdom",
+  genomes: 612,
+};
+
 beforeEach(() => {
   getSharedOrganismTaxonomyMock.mockResolvedValue(bacterialTaxon);
 });
@@ -189,7 +199,7 @@ describe("TaxonomyPage", () => {
     render(node);
 
     expect(metadataSpy).toHaveBeenCalledWith(
-      expect.objectContaining({ showAmr: true, viewType: "taxon" }),
+      expect.objectContaining({ showAmr: true, viewType: "bacteria" }),
     );
   });
 
@@ -204,7 +214,22 @@ describe("TaxonomyPage", () => {
     render(node);
 
     expect(metadataSpy).toHaveBeenCalledWith(
-      expect.objectContaining({ showAmr: false, viewType: "taxon" }),
+      expect.objectContaining({ showAmr: false, viewType: "viruses" }),
+    );
+  });
+
+  it("passes the otherTaxa view type and showAmr=false for a fungal taxon", async () => {
+    getSharedOrganismTaxonomyMock.mockResolvedValueOnce(fungalTaxon);
+    metadataSpy.mockClear();
+
+    const node = await TaxonomyPage({
+      params: Promise.resolve({ taxonId: "4751" }),
+      searchParams: Promise.resolve({}),
+    });
+    render(node);
+
+    expect(metadataSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ showAmr: false, viewType: "otherTaxa" }),
     );
   });
 
@@ -222,7 +247,7 @@ describe("TaxonomyPage", () => {
 
       expect(metadataSpy).toHaveBeenCalledTimes(1);
       expect(metadataSpy).toHaveBeenCalledWith(
-        expect.objectContaining({ showAmr: false, viewType: "taxon" }),
+        expect.objectContaining({ showAmr: false, viewType: "viruses" }),
       );
       const current = document.querySelectorAll('[aria-current="page"]');
       expect(current.length).toBeGreaterThan(0);

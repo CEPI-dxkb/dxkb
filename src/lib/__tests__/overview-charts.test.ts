@@ -3,14 +3,45 @@ import { taxonomicDistributionSentinel } from "@/components/organisms/types";
 import {
   amrChartId,
   emptyOverviewHiddenCharts,
+  overviewChartViewTypes,
   overviewHiddenChartsLimit,
+  taxonOverviewChartViewType,
   withChartHidden,
 } from "../overview-charts";
 
 describe("emptyOverviewHiddenCharts", () => {
-  it("hides nothing for either view type, in a fresh object each call", () => {
-    expect(emptyOverviewHiddenCharts()).toStrictEqual({ genome: [], taxon: [] });
+  it("hides nothing for any view type, in a fresh object each call", () => {
+    expect(emptyOverviewHiddenCharts()).toStrictEqual({
+      genome: [],
+      bacteria: [],
+      viruses: [],
+      otherTaxa: [],
+    });
     expect(emptyOverviewHiddenCharts()).not.toBe(emptyOverviewHiddenCharts());
+  });
+
+  it("lists the view types in the order the cookie value is serialized", () => {
+    expect(overviewChartViewTypes).toStrictEqual([
+      "genome",
+      "bacteria",
+      "viruses",
+      "otherTaxa",
+    ]);
+    expect(Object.keys(emptyOverviewHiddenCharts())).toStrictEqual([
+      ...overviewChartViewTypes,
+    ]);
+  });
+});
+
+describe("taxonOverviewChartViewType", () => {
+  it("gives bacteria and viruses a view type each", () => {
+    expect(taxonOverviewChartViewType("bacteria")).toBe("bacteria");
+    expect(taxonOverviewChartViewType("viruses")).toBe("viruses");
+  });
+
+  it("puts fungi and every other lineage in one shared view type", () => {
+    expect(taxonOverviewChartViewType("fungi")).toBe("otherTaxa");
+    expect(taxonOverviewChartViewType("all")).toBe("otherTaxa");
   });
 });
 

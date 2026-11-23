@@ -51,7 +51,7 @@ import { fetchOrganismMetadataFacets } from "@/lib/services/organisms/metadata-f
 import { fetchTaxonomicDistribution } from "@/lib/services/organisms/taxonomic-distribution";
 import { fetchAmrPhenotypeDistribution } from "@/lib/services/organisms/amr-distribution";
 import { taxonomicDistributionSentinel } from "@/components/organisms/types";
-import { amrChartId } from "@/lib/overview-charts";
+import { amrChartId, emptyOverviewHiddenCharts } from "@/lib/overview-charts";
 import { stubMenuLayout } from "@/test-helpers/menu-layout";
 import { createUiPreferencesWrapper } from "@/test-helpers/react";
 import userEvent from "@testing-library/user-event";
@@ -445,7 +445,7 @@ describe("MetadataDistributions chart visibility", () => {
 
   it("gives a section with a view type a charts menu, and the landings none", async () => {
     const { unmount } = await renderServer(
-      MetadataDistributions({ taxonId: 2, fields, viewType: "taxon" }),
+      MetadataDistributions({ taxonId: 2, fields, viewType: "bacteria" }),
     );
     expect(
       section().getByRole("button", { name: /^Charts \d+\/\d+ shown/ }),
@@ -465,11 +465,14 @@ describe("MetadataDistributions chart visibility", () => {
 
   it("leaves out the charts hidden for its own view type only", async () => {
     const wrapper = createUiPreferencesWrapper({
-      overviewHiddenCharts: { genome: [], taxon: ["host_group"] },
+      overviewHiddenCharts: {
+        ...emptyOverviewHiddenCharts(),
+        bacteria: ["host_group"],
+      },
     });
 
     const { unmount } = await renderServer(
-      MetadataDistributions({ taxonId: 2, fields, viewType: "taxon" }),
+      MetadataDistributions({ taxonId: 2, fields, viewType: "bacteria" }),
       wrapper,
     );
     expect(
@@ -499,7 +502,7 @@ describe("MetadataDistributions chart visibility", () => {
         taxonId: 197,
         fields: ["host_group"],
         showAmr: true,
-        viewType: "taxon",
+        viewType: "bacteria",
       }),
     );
     await userEvent.setup().click(
@@ -523,10 +526,13 @@ describe("MetadataDistributions chart visibility", () => {
         taxonId: 197,
         fields: ["host_group"],
         showAmr: true,
-        viewType: "taxon",
+        viewType: "bacteria",
       }),
       createUiPreferencesWrapper({
-        overviewHiddenCharts: { genome: [], taxon: [amrChartId] },
+        overviewHiddenCharts: {
+          ...emptyOverviewHiddenCharts(),
+          bacteria: [amrChartId],
+        },
       }),
     );
     expect(screen.queryByTestId("amr-chart")).toBeNull();
@@ -535,7 +541,7 @@ describe("MetadataDistributions chart visibility", () => {
 
   it("shows every chart without a provider, and fetches every field whatever is hidden", async () => {
     const { unmount } = await renderServer(
-      MetadataDistributions({ taxonId: 2, fields, viewType: "taxon" }),
+      MetadataDistributions({ taxonId: 2, fields, viewType: "bacteria" }),
     );
     expect(
       screen.getByRole("img", { name: "Host Group distribution" }),
@@ -547,11 +553,11 @@ describe("MetadataDistributions chart visibility", () => {
     vi.mocked(fetchOrganismMetadataFacets).mockClear();
     vi.mocked(fetchTaxonomicDistribution).mockClear();
     await renderServer(
-      MetadataDistributions({ taxonId: 2, fields, viewType: "taxon" }),
+      MetadataDistributions({ taxonId: 2, fields, viewType: "bacteria" }),
       createUiPreferencesWrapper({
         overviewHiddenCharts: {
-          genome: [],
-          taxon: ["host_group", taxonomicDistributionSentinel],
+          ...emptyOverviewHiddenCharts(),
+          bacteria: ["host_group", taxonomicDistributionSentinel],
         },
       }),
     );

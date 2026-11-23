@@ -41,6 +41,7 @@ The visible label text of interactive elements must be contained in (or match) t
 - [ ] Toolbar buttons whose icon is the visible label: verify the `aria-label` starts with or exactly matches the visible tooltip text.
 - [ ] Command palette search input: the visible placeholder matches the accessible name / label.
 - [ ] Chart legend toggles: the visible pill text matches the button's accessible name (check with axe too — axe covers 2.5.3 via `label-content-name-mismatch`).
+- [ ] Charts menu button in the Metadata Distributions header (taxon overview and Genome list overview): the visible text is "Charts N/M", and the accessible name ("Charts N/M shown", with ", customised" once a chart is hidden) starts with it.
 
 ---
 
@@ -55,6 +56,7 @@ Axe does not verify that announcements are *useful*, only that they exist. Use a
 - [ ] **Toast notifications (sonner)** — toast content must be announced via an `aria-live` region. Verify with VoiceOver by triggering a file upload success or error.
 - [ ] **Data table sort** — after clicking a column header, the sort direction change ("ascending"/"descending") is announced.
 - [ ] **Taxonomy charts (Metadata Distributions)** — chart containers must have an accessible title (or `aria-labelledby`) so screen-reader users know what each chart depicts.
+- [ ] **Charts menu (Metadata Distributions header)** — on the taxon and Genome list overviews, the menu button is announced as "Charts N/M shown" (plus "customised" once a chart is hidden). Each chart is announced as a checkbox menu item with its checked state, and "Show all charts" as a menu item. After hiding or restoring a chart, the button's count and the checked state update, and the last visible chart's item is announced as unavailable (dimmed), so it cannot be hidden. The organism landings have no Charts menu.
 
 ---
 

@@ -360,19 +360,26 @@ export class TaxonInteractionsPage {
   }
 
   /**
-   * `label`'s filter is active in the toolbar of the subview that is showing: its pill, or, when
-   * the toolbar is too narrow for every pill (a facet pick and a focus), the
-   * "+N more filters: <labels>" button that names it.
+   * `label`'s filter is active in `view`'s toolbar: its pill, or, when the toolbar is too narrow
+   * for every pill (a facet pick and a focus), the "+N more filters: <labels>" button that names
+   * it. The toolbar is looked up inside that view's panel: right after a switch the panel being
+   * left is still on screen, with its own toolbar, which names the filter in another form (a pill
+   * beside the new toolbar's "+N" fold), so a page-wide lookup matches twice.
    */
-  async expectFilterActive(label: string): Promise<void> {
-    const folded = this.toolbar
-      .root()
-      .getByRole("button", {
-        name: new RegExp(
-          `^\\d+ more filters: (?:.*, )?${label}(?:, .*)?\\. Open in the Filters menu$`,
-        ),
-      });
-    await expect(this.toolbar.activeFilterPill(label).or(folded)).toBeVisible();
+  async expectFilterActive(
+    label: string,
+    view: "graph" | "table",
+  ): Promise<void> {
+    const toolbar = new CollectionToolbar(
+      this.page,
+      view === "graph" ? this.graphPanel() : this.tablePanel(),
+    );
+    const folded = toolbar.root().getByRole("button", {
+      name: new RegExp(
+        `^\\d+ more filters: (?:.*, )?${label}(?:, .*)?\\. Open in the Filters menu$`,
+      ),
+    });
+    await expect(toolbar.activeFilterPill(label).or(folded)).toBeVisible();
   }
 
   private tablePanel(): Locator {

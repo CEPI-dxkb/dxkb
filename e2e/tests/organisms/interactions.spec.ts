@@ -315,18 +315,18 @@ test.describe("taxon interactions tab: narrowing a graph", () => {
       "interaction_type",
       "predicted interaction",
     );
-    await interactionsPage.expectFilterActive("Interaction Type");
+    await interactionsPage.expectFilterActive("Interaction Type", "graph");
 
     const focusId = "fig|224914.16.peg.600";
     await interactionsPage.selectNodeInList(peg600Label, true);
     await interactionsPage.focusSelectedNode();
     await interactionsPage.expectUrlFilter("interactor", focusId);
-    await interactionsPage.expectFilterActive("Protein");
+    await interactionsPage.expectFilterActive("Protein", "graph");
 
     // The Table reads the same URL state, so both picks are active there too.
     await interactionsPage.switchToTable();
-    await interactionsPage.expectFilterActive("Interaction Type");
-    await interactionsPage.expectFilterActive("Protein");
+    await interactionsPage.expectFilterActive("Interaction Type", "table");
+    await interactionsPage.expectFilterActive("Protein", "table");
   });
 
   test("Show in Graph draws the selected Table rows alone, until Show all", async ({

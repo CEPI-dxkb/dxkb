@@ -1,8 +1,5 @@
-import type { ReactNode } from "react";
-import {
-  PdbCountAlert,
-  PdbCountValue,
-} from "@/components/organisms/shared/pdb-count";
+import { CountRetryScope } from "@/components/organisms/shared/count-retry-scope";
+import { PdbStatTile } from "@/components/organisms/shared/pdb-count";
 import { StatTile } from "@/components/organisms/stat-tile/stat-tile";
 import { fetchTaxonGenomeCount } from "@/lib/services/organisms/genome-count";
 import { fetchCombinedOrganismSummary } from "@/lib/services/organisms/summary";
@@ -64,15 +61,18 @@ function formatCount(value: number | null): string {
   return value === null ? "-" : numberFormatter.format(value);
 }
 
-/** A tile's figure: Genomes is the header's count, and PDB streams in on its own. */
+/** A tile's figure, except PDB's (it streams in on its own): Genomes is the header's count. */
 function tileValue(
-  key: keyof OrganismSummary,
+  key: Exclude<keyof OrganismSummary, "pdb">,
   summary: OrganismSummary,
   genomeCount: number,
-): ReactNode {
+): string {
   if (key === "count") return formatCount(genomeCount);
-  if (key === "pdb") return <PdbCountValue pdb={summary.pdb} />;
   return formatCount(summary[key]);
+}
+
+function formatPdbReason(reason: unknown): string {
+  return formatPrefixedErrorMessage("PDB structures", reason);
 }
 
 export async function DataSummary({
@@ -87,46 +87,48 @@ export async function DataSummary({
   // `count`. A landing page is public, so the counts are anonymous (and
   // cached). The roots' genome sets are disjoint, so their counts add, and a
   // root whose count fails rejects the whole row, as a failed summary does.
-  // The PDB count (a slow cross-collection join) is not awaited: its tile and
-  // its failure alert, with the reason and a Retry, stream in on their own.
+  // The PDB count (a slow cross-collection join) is not awaited: its tile
+  // streams in on its own, and a failure there reads as a retrying
+  // Unavailable that carries the reason.
   const [summary, genomeCounts] = await Promise.all([
     fetchCombinedOrganismSummary(taxonIds),
     Promise.all(taxonIds.map((taxonId) => fetchTaxonGenomeCount(taxonId))),
   ]);
   const genomeCount = genomeCounts.reduce((total, count) => total + count, 0);
 
-  const tiles = (
-    <div className="grid grid-cols-[repeat(auto-fit,minmax(8rem,1fr))] gap-1.5">
-      {summaryMetrics.map((metric) => (
-        <StatTile
-          key={metric.key}
-          id={metric.key}
-          testId={`organism-kpi-${metric.key}`}
-          label={metric.label}
-          value={tileValue(metric.key, summary, genomeCount)}
-          description={metric.description}
-          href={
-            metric.tab
-              ? overviewTabHref(pathname, metric.tab.name, metric.tab.params)
-              : undefined
-          }
-          className="min-w-0"
-          valueClassName="whitespace-nowrap"
-        />
-      ))}
-    </div>
-  );
-
   return (
-    <div className="flex flex-col gap-1.5">
-      {tiles}
-      <PdbCountAlert
-        pdb={summary.pdb}
-        lead="Some counts could not be loaded"
-        formatReason={(reason) =>
-          formatPrefixedErrorMessage("PDB structures", reason)
-        }
-      />
-    </div>
+    <CountRetryScope taxonIds={taxonIds}>
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(8rem,1fr))] gap-1.5">
+        {summaryMetrics.map(({ key, label, description, tab }) => {
+          const tile = {
+            id: key,
+            testId: `organism-kpi-${key}`,
+            label,
+            description,
+            href: tab
+              ? overviewTabHref(pathname, tab.name, tab.params)
+              : undefined,
+          };
+          return key === "pdb" ? (
+            <PdbStatTile
+              key={key}
+              {...tile}
+              pdb={summary.pdb}
+              formatReason={formatPdbReason}
+              className="min-w-0"
+              valueClassName="whitespace-nowrap"
+            />
+          ) : (
+            <StatTile
+              key={key}
+              {...tile}
+              value={tileValue(key, summary, genomeCount)}
+              className="min-w-0"
+              valueClassName="whitespace-nowrap"
+            />
+          );
+        })}
+      </div>
+    </CountRetryScope>
   );
 }

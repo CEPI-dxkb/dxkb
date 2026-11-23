@@ -105,3 +105,12 @@ const experimentalStructureCountCache = createSharedCache<number, number>({
 export function getSharedExperimentalStructureCount(taxonId: number): Promise<number> {
   return experimentalStructureCountCache.get(taxonId);
 }
+
+/**
+ * Drops a taxon's cached failed count so the next read joins it again, for a
+ * user's retry of the PDB tile (at most once per 10 s per taxon; a cached
+ * count and an open breaker are left alone). Returns whether it forgot one.
+ */
+export function forgetFailedExperimentalStructureCount(taxonId: number): boolean {
+  return experimentalStructureCountCache.forgetFailure(taxonId);
+}

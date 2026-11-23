@@ -47,8 +47,20 @@ export interface SharedCacheOptions<K extends string | number, V> {
 
 export interface SharedCache<K extends string | number, V> {
   get(key: K): Promise<V>;
+  /**
+   * Drops `key`'s cached failure so the next `get` loads it again (or joins
+   * the background retry already running), for a user's explicit retry. A
+   * cached value is never dropped, nor is the breaker touched: while it is
+   * open the next `get` still fails fast. A key's failure is forgotten at
+   * most once per {@link forgetFailureIntervalMs}, so retries cannot hammer
+   * the upstream. Returns whether it forgot one.
+   */
+  forgetFailure(key: K): boolean;
   clear(): void;
 }
+
+/** How often one key's cached failure may be forgotten. */
+export const forgetFailureIntervalMs = 10_000;
 
 type Settled = { ok: true; value: unknown } | { ok: false; error: unknown };
 
@@ -66,6 +78,8 @@ interface BreakerState {
 interface CacheState {
   entries: Map<string | number, Entry>;
   breaker: BreakerState;
+  /** When each key's failure was last forgotten. */
+  forgottenAt: Map<string | number, number>;
 }
 
 const defaultMaxEntries = 500;
@@ -75,7 +89,7 @@ const defaultOpenMs = 30_000;
 
 // Route handlers and pages load separate module caches in a production build,
 // so the state lives on `globalThis`; bump the version when its shape changes.
-const sharedCacheStateKey = Symbol.for("dxkb.sharedCache.v1");
+const sharedCacheStateKey = Symbol.for("dxkb.sharedCache.v2");
 
 const registryHolder = globalThis as typeof globalThis & {
   [sharedCacheStateKey]?: Map<string, CacheState>;
@@ -89,7 +103,11 @@ const registry = (registryHolder[sharedCacheStateKey] ??= new Map<
 function stateFor(name: string): CacheState {
   let state = registry.get(name);
   if (!state) {
-    state = { entries: new Map(), breaker: { tripTimes: [] } };
+    state = {
+      entries: new Map(),
+      breaker: { tripTimes: [] },
+      forgottenAt: new Map(),
+    };
     registry.set(name, state);
   }
   return state;
@@ -315,8 +333,29 @@ export function createSharedCache<K extends string | number, V>(
     return loading;
   }
 
+  function forgetFailure(key: K): boolean {
+    const state = stateFor(name);
+    const entry = state.entries.get(key);
+    if (entry?.settled?.ok !== false) return false;
+    const now = Date.now();
+    for (const [forgotten, at] of state.forgottenAt) {
+      if (now - at >= forgetFailureIntervalMs) state.forgottenAt.delete(forgotten);
+    }
+    if (state.forgottenAt.has(key)) return false;
+    state.forgottenAt.set(key, now);
+    if (entry.loading) {
+      // A background retry is running: later callers share it instead of
+      // starting a second load, and it settles the entry as usual.
+      entry.settled = undefined;
+    } else {
+      state.entries.delete(key);
+    }
+    return true;
+  }
+
   return {
     get,
+    forgetFailure,
     clear() {
       registry.delete(name);
     },

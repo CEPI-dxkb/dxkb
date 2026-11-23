@@ -1284,6 +1284,137 @@ describe("createSharedCache circuit breaker", () => {
   });
 });
 
+describe("createSharedCache forgetFailure", () => {
+  it("forgets a fresh cached failure, so the next caller loads the key again", async () => {
+    const error = timedOut();
+    const load = vi
+      .fn<Loader>()
+      .mockRejectedValueOnce(error)
+      .mockResolvedValueOnce("a-value");
+    const cache = plainCache(load);
+
+    await expect(cache.get("a")).rejects.toBe(error);
+    expect(cache.forgetFailure("a")).toBe(true);
+    await expect(cache.get("a")).resolves.toBe("a-value");
+    expect(load).toHaveBeenCalledTimes(2);
+  });
+
+  it("never forgets a cached value", async () => {
+    const load = vi.fn<Loader>().mockResolvedValueOnce("a-value");
+    const cache = plainCache(load);
+
+    await expect(cache.get("a")).resolves.toBe("a-value");
+    expect(cache.forgetFailure("a")).toBe(false);
+    await expect(cache.get("a")).resolves.toBe("a-value");
+    expect(load).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps a stale value whose background refresh failed", async () => {
+    const load = vi
+      .fn<Loader>()
+      .mockResolvedValueOnce("a-value")
+      .mockRejectedValueOnce(timedOut());
+    const cache = plainCache(load);
+
+    await expect(cache.get("a")).resolves.toBe("a-value");
+    advance(freshMs);
+    await expect(cache.get("a")).resolves.toBe("a-value");
+    await settle();
+    expect(cache.forgetFailure("a")).toBe(false);
+    await expect(cache.get("a")).resolves.toBe("a-value");
+    expect(load).toHaveBeenCalledTimes(2);
+  });
+
+  it("does nothing for a key never loaded or still loading", async () => {
+    const pending = deferred<string>();
+    const load = vi.fn<Loader>(() => pending.promise);
+    const cache = plainCache(load);
+
+    expect(cache.forgetFailure("never")).toBe(false);
+    const first = cache.get("a");
+    expect(cache.forgetFailure("a")).toBe(false);
+    pending.resolve("a-value");
+    await expect(first).resolves.toBe("a-value");
+    expect(load).toHaveBeenCalledTimes(1);
+  });
+
+  it("forgets a key's failure at most once per 10 s, and keeps keys apart", async () => {
+    const first = timedOut("first");
+    const second = timedOut("second");
+    const load = vi
+      .fn<Loader>()
+      .mockRejectedValueOnce(first)
+      .mockRejectedValueOnce(second)
+      .mockRejectedValueOnce(maintenance())
+      .mockResolvedValueOnce("b-value")
+      .mockResolvedValueOnce("a-value");
+    const cache = plainCache(load);
+
+    await expect(cache.get("a")).rejects.toBe(first);
+    expect(cache.forgetFailure("a")).toBe(true);
+    await expect(cache.get("a")).rejects.toBe(second);
+
+    advance(9_999);
+    expect(cache.forgetFailure("a")).toBe(false);
+    // Still the cached failure: the forget was refused, and retryMs (10 s)
+    // has not run out either.
+    await expect(cache.get("a")).rejects.toBe(second);
+    expect(load).toHaveBeenCalledTimes(2);
+
+    await expect(cache.get("b")).rejects.toThrow("HTTP 503");
+    expect(cache.forgetFailure("b")).toBe(true);
+    await expect(cache.get("b")).resolves.toBe("b-value");
+
+    advance(1);
+    expect(cache.forgetFailure("a")).toBe(true);
+    await expect(cache.get("a")).resolves.toBe("a-value");
+  });
+
+  it("lets the next caller share a stale failure's running background retry", async () => {
+    const error = timedOut();
+    const retry = deferred<string>();
+    const load = vi
+      .fn<Loader>()
+      .mockRejectedValueOnce(error)
+      .mockImplementationOnce(() => retry.promise);
+    const cache = plainCache(load);
+
+    await expect(cache.get("a")).rejects.toBe(error);
+    advance(retryMs);
+    await expect(cache.get("a")).rejects.toBe(error);
+    expect(cache.forgetFailure("a")).toBe(true);
+    const joined = cache.get("a");
+    retry.resolve("a-value");
+
+    await expect(joined).resolves.toBe("a-value");
+    expect(load).toHaveBeenCalledTimes(2);
+  });
+
+  it("leaves the breaker alone: a forgotten key still fails fast while it is open", async () => {
+    const load = vi.fn<Loader>();
+    const cache = breakerCache(load);
+    const opener = await openBreaker(cache, load);
+
+    expect(cache.forgetFailure("down-1")).toBe(true);
+    await expect(cache.get("down-1")).rejects.toBe(opener);
+    expect(load).toHaveBeenCalledTimes(2);
+  });
+
+  it("starts afresh after clear()", async () => {
+    const load = vi
+      .fn<Loader>()
+      .mockRejectedValueOnce(timedOut())
+      .mockRejectedValueOnce(timedOut());
+    const cache = plainCache(load);
+
+    await expect(cache.get("a")).rejects.toThrow();
+    expect(cache.forgetFailure("a")).toBe(true);
+    cache.clear();
+    await expect(cache.get("a")).rejects.toThrow();
+    expect(cache.forgetFailure("a")).toBe(true);
+  });
+});
+
 describe("createSharedCache shared state", () => {
   it("shares entries and breaker between caches created with the same name", async () => {
     const firstLoad = vi.fn<Loader>().mockResolvedValueOnce("first-value");
@@ -1319,7 +1450,7 @@ describe("createSharedCache shared state", () => {
   it("keeps its state on globalThis under a registered symbol", async () => {
     await plainCache(() => Promise.resolve("value"), "registered").get("a");
     const registry = (globalThis as unknown as Record<symbol, unknown>)[
-      Symbol.for("dxkb.sharedCache.v1")
+      Symbol.for("dxkb.sharedCache.v2")
     ];
     expect(registry).toBeInstanceOf(Map);
     expect((registry as Map<string, unknown>).has("registered")).toBe(true);

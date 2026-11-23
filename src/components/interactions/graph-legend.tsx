@@ -1,6 +1,11 @@
-import { colors, edgeAlpha } from "@/lib/interactions/graph-theme";
+import {
+  colors,
+  edgeAlpha,
+  edgeExperimentalAlpha,
+} from "@/lib/interactions/graph-theme";
 
 const edgeOpacity = edgeAlpha / 255;
+const experimentalEdgeOpacity = edgeExperimentalAlpha / 255;
 
 export function GraphLegend() {
   return (
@@ -44,7 +49,7 @@ export function GraphLegend() {
         y2={123}
         strokeWidth={3}
         stroke={colors.edgeExperimental}
-        strokeOpacity={edgeOpacity}
+        strokeOpacity={experimentalEdgeOpacity}
       />
       <text x={30} y={128}>
         Experimentally verified

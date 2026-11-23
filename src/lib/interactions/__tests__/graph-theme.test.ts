@@ -3,6 +3,7 @@ import {
   edgeAlpha,
   edgeColor,
   edgeDimColor,
+  edgeExperimentalAlpha,
   edgeExperimentalColor,
   edgeFocusColor,
   edgeFocusExperimentalColor,
@@ -19,7 +20,12 @@ function alphaByte(alpha: number): string {
 describe("graph-theme render colors", () => {
   it.each([
     ["edgeColor", edgeColor, colors.edge, edgeAlpha],
-    ["edgeExperimentalColor", edgeExperimentalColor, colors.edgeExperimental, edgeAlpha],
+    [
+      "edgeExperimentalColor",
+      edgeExperimentalColor,
+      colors.edgeExperimental,
+      edgeExperimentalAlpha,
+    ],
     ["edgeHoverColor", edgeHoverColor, colors.edgeSelected, 0x99],
     ["nodeDimColor", nodeDimColor, colors.dim, 0x66],
     ["edgeDimColor", edgeDimColor, colors.dim, 0x14],
@@ -36,8 +42,13 @@ describe("graph-theme render colors", () => {
     expect(color.slice(7)).toBe(alphaByte(alpha));
   });
 
-  it("keeps both interaction types at the low mesh alpha", () => {
+  it("draws predicted interactions at the low mesh alpha", () => {
     expect(edgeAlpha).toBe(0x28);
-    expect(edgeColor.slice(7)).toBe(edgeExperimentalColor.slice(7));
+  });
+
+  it("draws verified interactions denser than the predicted mesh, so the two can be told apart", () => {
+    expect(edgeExperimentalAlpha).toBeGreaterThanOrEqual(edgeAlpha * 3);
+    expect(edgeExperimentalAlpha).toBeLessThan(0xff);
+    expect(edgeExperimentalColor.slice(7)).not.toBe(edgeColor.slice(7));
   });
 });

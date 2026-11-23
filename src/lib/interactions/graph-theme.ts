@@ -11,6 +11,9 @@ export const colors = {
 
 // Low alpha keeps thousands of overlapping edges from becoming a solid fill (0x28 = 40/255, ~16%).
 export const edgeAlpha = 0x28;
+// Verified edges are the rarer, more trustworthy kind (about 1-19% of a Graph's edges), so they are drawn denser than the predicted
+// mesh (0x99 = 153/255, 60%): at the mesh's alpha the two kinds could not be told apart on the canvas or in the legend.
+export const edgeExperimentalAlpha = 0x99;
 
 // Straight (not premultiplied) `#rrggbbaa`: Sigma 4's shaders premultiply on their own, so the
 // translucent edges stack towards the theme swatch and dense regions match the legend.
@@ -21,7 +24,7 @@ function withAlpha(hex: string, alpha: number): string {
 export const edgeColor = withAlpha(colors.edge, edgeAlpha);
 export const edgeExperimentalColor = withAlpha(
   colors.edgeExperimental,
-  edgeAlpha,
+  edgeExperimentalAlpha,
 );
 
 // Translucent pink (0x99 = 60%) so a hovered edge stays distinct from the opaque selected edge.

@@ -33,30 +33,34 @@ const resourcesItems: {
   },
 ];
 
-const organismItems: {
+interface OrganismLink {
   title: string;
   href: string;
-  description: string;
-  target: "_self" | "_blank";
-}[] = [
-  {
-    title: "Viruses",
-    href: "/organisms/viruses",
-    description: "Webpage for all viruses.",
-    target: "_self",
-  },
-  {
-    title: "Bacteria",
-    href: "/organisms/bacteria",
-    description: "Webpage for all bacteria.",
-    target: "_self",
-  },
-  {
-    title: "Browse All",
-    href: "/organisms/all",
-    description: "Webpage for all organisms.",
-    target: "_self",
-  },
+}
+
+// The major CEPI taxa, linked by NCBI taxon id. `navbar-links.test.ts` checks the ids against
+// `virusFamilies`. Literal hrefs keep `@/lib/views/hrefs` (and the data-api modules behind it)
+// out of the navbar bundle that ships on every page.
+const featuredVirusItems: OrganismLink[] = [
+  { title: "Bunyaviricetes", href: "/taxonomy/3151693" },
+  { title: "Coronaviridae", href: "/taxonomy/11118" },
+  { title: "Filoviridae", href: "/taxonomy/11266" },
+  { title: "Orthomyxoviridae", href: "/taxonomy/11308" },
+  { title: "Paramyxoviridae", href: "/taxonomy/11158" },
+  { title: "Pneumoviridae", href: "/taxonomy/11244" },
+];
+
+// Bacteria are not featured; they stay reachable from here and through Browse all.
+const browseOrganismItems: OrganismLink[] = [
+  { title: "All Viruses", href: "/organisms/viruses" },
+  { title: "All Bacteria", href: "/organisms/bacteria" },
+  { title: "Browse all", href: "/organisms/all" },
+];
+
+// The flat list, in menu order, for renderers that do not group (the mobile sheet).
+const organismItems: OrganismLink[] = [
+  ...featuredVirusItems,
+  ...browseOrganismItems,
 ];
 
 /**
@@ -354,4 +358,11 @@ export interface NavSection {
 }
 
 export type { WorkspaceNavItem, WorkspaceNavSection };
-export { resourcesItems, organismItems, serviceItems, workspaceNavItems };
+export {
+  resourcesItems,
+  organismItems,
+  featuredVirusItems,
+  browseOrganismItems,
+  serviceItems,
+  workspaceNavItems,
+};

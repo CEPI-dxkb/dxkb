@@ -61,9 +61,71 @@ describe("MobileSheetNavigation", () => {
 
     await user.click(screen.getByRole("button", { name: "Resources4" }));
 
-    expect(screen.getByRole("link", { name: "Documentation" })).toHaveAttribute(
-      "target",
-      "_blank",
+    const docs = screen.getByRole("link", { name: /Documentation/ });
+    expect(docs).toHaveAccessibleName(/Documentation \(opens in a new tab\)/);
+    expect(docs).toHaveAttribute("target", "_blank");
+    expect(docs).toHaveAttribute("rel", "noopener noreferrer");
+  });
+
+  it("lists the structure prediction services as external links", async () => {
+    const user = userEvent.setup();
+    render(<MobileSheetNavigation {...props} />);
+
+    await user.click(screen.getByRole("button", { name: /Services\d+/ }));
+    await user.click(
+      screen.getByRole("button", { name: "Structure Prediction" }),
     );
+
+    const links = {
+      "Protein Structure Prediction": "PredictStructure",
+      StabiliNNator: "StabiliNNator",
+      FrustraMPNN: "FrustraMPNN",
+      "Structure Sequence Prediction": "StructureSequencePrediction",
+      "Stability Prediction": "StabilityPrediction",
+    };
+    for (const [name, appId] of Object.entries(links)) {
+      const link = screen.getByRole("link", { name: new RegExp(`^${name}`) });
+      expect(link).toHaveAccessibleName(`${name} (opens in a new tab)`);
+      expect(link).toHaveAttribute(
+        "href",
+        `https://www.dxkb.org/app/${appId}`,
+      );
+      expect(link).toHaveAttribute("target", "_blank");
+      expect(link).toHaveAttribute("rel", "noopener noreferrer");
+      expectIconAfterLabel(link, name);
+    }
+  });
+
+  it("lists Mobile Element Detection under Metagenomics", async () => {
+    const user = userEvent.setup();
+    render(<MobileSheetNavigation {...props} />);
+
+    await user.click(screen.getByRole("button", { name: /Services\d+/ }));
+    await user.click(screen.getByRole("button", { name: "Metagenomics" }));
+
+    const link = screen.getByRole("link", {
+      name: /^Mobile Element Detection/,
+    });
+    expect(link).toHaveAccessibleName(
+      "Mobile Element Detection (opens in a new tab)",
+    );
+    expect(link).toHaveAttribute(
+      "href",
+      "https://www.dxkb.org/app/MobileElementDetection",
+    );
+    expect(link).toHaveAttribute("target", "_blank");
+    expect(link).toHaveAttribute("rel", "noopener noreferrer");
+    expectIconAfterLabel(link, "Mobile Element Detection");
   });
 });
+
+function expectIconAfterLabel(link: HTMLElement, label: string) {
+  const icon = link.querySelector("svg.lucide-external-link");
+  expect(icon).toHaveAttribute("aria-hidden", "true");
+  const children = Array.from(link.childNodes);
+  const labelIndex = children.findIndex((node) => node.textContent === label);
+  expect(labelIndex).toBeGreaterThanOrEqual(0);
+  expect(children.findIndex((node) => node === icon)).toBeGreaterThan(
+    labelIndex,
+  );
+}

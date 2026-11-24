@@ -1,3 +1,6 @@
+import { readFileSync } from "node:fs";
+import path from "node:path";
+
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
@@ -5,6 +8,7 @@ import type { OrganismGeoDistribution } from "@/lib/services/organisms/types";
 
 import { GeoDistributionClient } from "../geo-distribution-client";
 import { MapTooltip } from "../map-tooltip";
+import type { TopologyLike } from "../topology-utils";
 
 interface QueryState {
   data: unknown;
@@ -40,19 +44,48 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ refresh: vi.fn() }),
 }));
 
-vi.mock("../choropleth-svg", () => ({
-  ChoroplethSvg: ({
-    mapState,
-    onSelectState,
-  }: {
-    mapState: { view: string };
-    onSelectState?: (fips: string, name: string) => void;
-  }) => (
-    <div data-testid="map-view" data-can-drill={onSelectState ? "yes" : "no"}>
-      {mapState.view}
-    </div>
-  ),
-}));
+const zoomToCountryMock = vi.fn((_name: string) => true);
+
+vi.mock("../choropleth-svg", async () => {
+  const { forwardRef, useImperativeHandle } = await import("react");
+  return {
+    ChoroplethSvg: forwardRef(function ChoroplethSvgMock(
+      {
+        mapState,
+        onSelectState,
+      }: {
+        mapState: { view: string };
+        onSelectState?: (fips: string, name: string) => void;
+      },
+      ref,
+    ) {
+      useImperativeHandle(ref, () => ({
+        reset: vi.fn(),
+        zoomToCountry: (name: string) => zoomToCountryMock(name),
+      }));
+      return (
+        <div data-testid="map-view" data-can-drill={onSelectState ? "yes" : "no"}>
+          {mapState.view}
+        </div>
+      );
+    }),
+  };
+});
+
+const worldTopo = JSON.parse(
+  readFileSync(path.join(process.cwd(), "public/maps/countries-110m.json"), "utf8"),
+) as TopologyLike;
+
+function loadWorldTopology() {
+  useQueryMock.mockImplementation((options: unknown) => ({
+    data:
+      (options as { queryKey: string[] }).queryKey[1] === "world-topo"
+        ? worldTopo
+        : null,
+    error: null,
+    isLoading: false,
+  }));
+}
 
 // One state is enough for the hidden state select to have an option to pick.
 const illinoisTopology = {
@@ -112,17 +145,17 @@ function distribution({
   };
 }
 
-describe("GeoDistributionClient", () => {
-  // `clearMocks` only clears call history, so a test that overrides the query
-  // mock must not leak its implementation into later tests.
-  afterEach(() => {
-    useQueryMock.mockImplementation(() => ({
-      data: null,
-      error: null,
-      isLoading: false,
-    }));
-  });
+// `clearMocks` only clears call history, so a test that overrides the query
+// mock must not leak its implementation into later tests.
+afterEach(() => {
+  useQueryMock.mockImplementation(() => ({
+    data: null,
+    error: null,
+    isLoading: false,
+  }));
+});
 
+describe("GeoDistributionClient", () => {
   it("describes an empty map region as having no data", () => {
     render(
       <MapTooltip
@@ -621,5 +654,42 @@ describe("GeoDistributionClient", () => {
       "data-can-drill",
       "yes",
     );
+  });
+});
+
+describe("Zoom to country wiring", () => {
+  it("offers the countries with data once the world map has loaded, and zooms on a pick", async () => {
+    loadWorldTopology();
+    const user = userEvent.setup();
+    render(
+      <GeoDistributionClient
+        data={distribution({ countryData: { "South Korea": 3, "Russian Federation": 1, Germany: 0 } })}
+        accent="bacteria"
+      />,
+    );
+    await user.click(screen.getByRole("combobox", { name: "Zoom to country" }));
+    expect(
+      (await screen.findAllByRole("option")).map((option) => option.textContent),
+    ).toEqual(["Russia", "South Korea"]);
+    // Russia's data key is "Russian Federation": the call must carry the topology name.
+    await user.click(screen.getByRole("option", { name: "Russia" }));
+    expect(zoomToCountryMock).toHaveBeenCalledWith("Russia");
+  });
+
+  it("has no country Select before the world map loads", () => {
+    render(<GeoDistributionClient data={distribution()} accent="bacteria" />);
+    expect(
+      screen.queryByRole("combobox", { name: "Zoom to country" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("drops the country Select when the United States view is chosen", () => {
+    loadWorldTopology();
+    render(<GeoDistributionClient data={distribution()} accent="bacteria" />);
+    expect(screen.getByRole("combobox", { name: "Zoom to country" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "United States" }));
+    expect(
+      screen.queryByRole("combobox", { name: "Zoom to country" }),
+    ).not.toBeInTheDocument();
   });
 });

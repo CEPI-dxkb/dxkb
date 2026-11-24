@@ -31,19 +31,24 @@ interface MapControlsProps {
   mapState: GeoMapState;
   stateOptions: StateOption[];
   stateViewAvailable: boolean;
+  countryOptions: string[];
   onViewChange: (view: GeoMapView) => void;
   onSelectState: (fips: string, name: string) => void;
+  onZoomToCountry: (name: string) => void;
 }
 
 export function MapControls({
   mapState,
   stateOptions,
   stateViewAvailable,
+  countryOptions,
   onViewChange,
   onSelectState,
+  onZoomToCountry,
 }: MapControlsProps) {
   const isStateView = mapState.view === "state";
   const stateSelectShown = isStateView && stateOptions.length > 0;
+  const showCountrySelect = mapState.view === "world" && countryOptions.length > 0;
 
   return (
     <TooltipProvider>
@@ -63,6 +68,31 @@ export function MapControls({
             State
           </PillButton>
         </div>
+
+        {showCountrySelect && (
+          <Select
+            items={countryOptions.map((name) => ({ value: name, label: name }))}
+            // Always cleared: the map also zooms by click, wheel, pan and Reset, so a kept pick
+            // would go stale, and a re-pick of the same country must still fire.
+            value=""
+            onValueChange={(value) => {
+              if (value) onZoomToCountry(value);
+            }}
+          >
+            <SelectTrigger density="compact" className="h-7 min-w-40" aria-label="Zoom to country">
+              <SelectValue placeholder="Zoom to country…" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectGroup>
+                {countryOptions.map((name) => (
+                  <SelectItem key={name} value={name}>
+                    {name}
+                  </SelectItem>
+                ))}
+              </SelectGroup>
+            </SelectContent>
+          </Select>
+        )}
 
         {/* Hidden by max-width and opacity, which leave it in the tab order, so
             it is inert too: a keyboard user must not pick a state from it. */}

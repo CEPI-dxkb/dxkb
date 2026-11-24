@@ -1,25 +1,50 @@
 import { fireEvent, render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 
 import { stateViewUnavailableReason } from "../county-availability";
 import { MapControls } from "../map-controls";
+import type { GeoMapState } from "../types";
 
-function renderControls(stateViewAvailable: boolean) {
-  const onViewChange = vi.fn();
-  render(
-    <MapControls
-      mapState={{ view: "us", selectedStateFips: null, selectedStateName: null }}
-      stateOptions={[]}
-      stateViewAvailable={stateViewAvailable}
-      onViewChange={onViewChange}
-      onSelectState={vi.fn()}
-    />,
-  );
-  return onViewChange;
+const worldState: GeoMapState = {
+  view: "world",
+  selectedStateFips: null,
+  selectedStateName: null,
+};
+
+function renderControls(
+  overrides: Partial<React.ComponentProps<typeof MapControls>> = {},
+) {
+  const props = {
+    mapState: worldState,
+    stateOptions: [{ fips: "17", name: "Illinois" }],
+    stateViewAvailable: true,
+    countryOptions: ["Brazil", "Germany", "Italy"],
+    onViewChange: vi.fn(),
+    onSelectState: vi.fn(),
+    onZoomToCountry: vi.fn(),
+    ...overrides,
+  };
+  render(<MapControls {...props} />);
+  return props;
 }
 
+const countrySelect = () =>
+  screen.queryByRole("combobox", { name: "Zoom to country" });
+
 describe("MapControls State pill", () => {
+  function renderPills(stateViewAvailable: boolean) {
+    const onViewChange = vi.fn();
+    renderControls({
+      mapState: { ...worldState, view: "us" },
+      stateOptions: [],
+      stateViewAvailable,
+      onViewChange,
+    });
+    return onViewChange;
+  }
+
   it("opens the State view when county data exists", () => {
-    const onViewChange = renderControls(true);
+    const onViewChange = renderPills(true);
     const pill = screen.getByRole("button", { name: "State" });
 
     expect(pill).toBeEnabled();
@@ -30,7 +55,7 @@ describe("MapControls State pill", () => {
   });
 
   it("is disabled and described when there is no county data", () => {
-    const onViewChange = renderControls(false);
+    const onViewChange = renderPills(false);
     const pill = screen.getByRole("button", { name: "State" });
 
     expect(pill).toBeDisabled();
@@ -41,7 +66,7 @@ describe("MapControls State pill", () => {
   });
 
   it("keeps World and United States usable either way", () => {
-    const onViewChange = renderControls(false);
+    const onViewChange = renderPills(false);
 
     fireEvent.click(screen.getByRole("button", { name: "World" }));
     fireEvent.click(screen.getByRole("button", { name: "United States" }));
@@ -57,19 +82,14 @@ describe("MapControls state select", () => {
     view: "world" | "us" | "state",
     options = stateOptions,
   ) {
-    render(
-      <MapControls
-        mapState={{
-          view,
-          selectedStateFips: view === "state" ? "17" : null,
-          selectedStateName: view === "state" ? "Illinois" : null,
-        }}
-        stateOptions={options}
-        stateViewAvailable
-        onViewChange={vi.fn()}
-        onSelectState={vi.fn()}
-      />,
-    );
+    renderControls({
+      mapState: {
+        view,
+        selectedStateFips: view === "state" ? "17" : null,
+        selectedStateName: view === "state" ? "Illinois" : null,
+      },
+      stateOptions: options,
+    });
     return screen.getByRole("combobox", { name: "View state" });
   }
 
@@ -86,5 +106,45 @@ describe("MapControls state select", () => {
 
   it("is reachable in the State view once state options exist", () => {
     expect(renderSelect("state").closest("[inert]")).toBeNull();
+  });
+});
+
+describe("MapControls country Select", () => {
+  it("shows in the World view, named for assistive tech", () => {
+    renderControls();
+    expect(countrySelect()).toBeInTheDocument();
+    expect(countrySelect()).toHaveTextContent("Zoom to country…");
+  });
+
+  it.each(["us", "state"] as const)("is not mounted in the %s view", (view) => {
+    renderControls({ mapState: { ...worldState, view } });
+    expect(countrySelect()).not.toBeInTheDocument();
+  });
+
+  it("is not mounted when no country has data", () => {
+    renderControls({ countryOptions: [] });
+    expect(countrySelect()).not.toBeInTheDocument();
+  });
+
+  it("lists the options and reports the picked name", async () => {
+    const user = userEvent.setup();
+    const props = renderControls();
+    await user.click(screen.getByRole("combobox", { name: "Zoom to country" }));
+    expect(
+      (await screen.findAllByRole("option")).map((option) => option.textContent),
+    ).toEqual(["Brazil", "Germany", "Italy"]);
+    await user.click(screen.getByRole("option", { name: "Germany" }));
+    expect(props.onZoomToCountry).toHaveBeenCalledWith("Germany");
+  });
+
+  it("fires again when the same country is picked twice (value stays cleared)", async () => {
+    const user = userEvent.setup();
+    const props = renderControls();
+    for (let pick = 0; pick < 2; pick += 1) {
+      await user.click(screen.getByRole("combobox", { name: "Zoom to country" }));
+      await user.click(await screen.findByRole("option", { name: "Germany" }));
+    }
+    expect(props.onZoomToCountry).toHaveBeenCalledTimes(2);
+    expect(countrySelect()).toHaveTextContent("Zoom to country…");
   });
 });

@@ -2,7 +2,7 @@
 
 import { CustomProjection } from "@visx/geo";
 import { geoMercator } from "@visx/vendor/d3-geo";
-import type { RefObject } from "react";
+import { useEffect, type RefObject } from "react";
 
 import type { OrganismGeoDistribution } from "@/lib/services/organisms/types";
 
@@ -12,7 +12,13 @@ import {
   type HoverLeave,
 } from "./choropleth-path";
 import type { ColorScale } from "./color-scale";
-import { featureName, type CountyFeature } from "./topology-utils";
+import {
+  countyDataKey,
+  featureName,
+  unmatchedCountyNames,
+  warnUnmatchedCounties,
+  type CountyFeature,
+} from "./topology-utils";
 
 interface StateCountiesLayerProps {
   countyFeatures: CountyFeature[];
@@ -37,6 +43,18 @@ export function StateCountiesLayer({
   onHoverLeave,
   selectedStateName,
 }: StateCountiesLayerProps) {
+  useEffect(() => {
+    if (!selectedStateName) return;
+    warnUnmatchedCounties(
+      selectedStateName,
+      unmatchedCountyNames(
+        data.countyData,
+        selectedStateName,
+        countyFeatures.map((feature) => featureName(feature.properties)),
+      ),
+    );
+  }, [countyFeatures, data.countyData, selectedStateName]);
+
   const projection = () => geoMercator();
 
   return (
@@ -51,7 +69,7 @@ export function StateCountiesLayer({
       {({ features }) =>
         features.map(({ feature, path }) => {
           const name = featureName(feature.properties);
-          const key = selectedStateName ? `${selectedStateName}|${name}` : name;
+          const key = countyDataKey(selectedStateName, name);
           const count = data.countyData[key] ?? 0;
           const meta = data.countyMeta[key] ?? {
             count: 0,

@@ -23,6 +23,44 @@ export function featureName(feature: NamedFeatureProps | undefined): string {
   return feature.name ?? feature.NAME ?? "";
 }
 
+/** The key `countyData` and `countyMeta` use for a county: the state is part of it because county names repeat across states. */
+export function countyDataKey(
+  stateName: string | null,
+  countyName: string,
+): string {
+  return stateName ? `${stateName}|${countyName}` : countyName;
+}
+
+/** The counties `countyData` holds for a state that no map county is called, which therefore draw grey. */
+export function unmatchedCountyNames(
+  countyData: Record<string, number>,
+  stateName: string,
+  mapCountyNames: readonly string[],
+): string[] {
+  const prefix = `${stateName}|`;
+  const known = new Set(mapCountyNames);
+  return Object.keys(countyData)
+    .filter((key) => key.startsWith(prefix))
+    .map((key) => key.slice(prefix.length))
+    .filter((name) => !known.has(name));
+}
+
+const warnedUnmatchedCounties = new Set<string>();
+
+/** One warning per distinct (state, names) for the page's lifetime: the layer re-renders on every hover. */
+export function warnUnmatchedCounties(
+  stateName: string,
+  names: readonly string[],
+): void {
+  if (names.length === 0) return;
+  const signature = `${stateName}|${names.join("|")}`;
+  if (warnedUnmatchedCounties.has(signature)) return;
+  warnedUnmatchedCounties.add(signature);
+  console.warn(
+    `[geo-distribution] county names in ${stateName} match no county on the map and draw grey (${String(names.length)}): ${names.join(", ")}`,
+  );
+}
+
 // Features spanning the antimeridian (Alaska's Aleutians West) make
 // geoMercator().fitExtent() produce a near-global bounding box.
 export function crossesAntimeridian(feature: GeoJSON.Feature): boolean {

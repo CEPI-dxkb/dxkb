@@ -57,6 +57,11 @@ export interface OrganismGeoDistribution {
   stateMeta: Record<string, OrganismGeoLocationMeta>;
   countyData: Record<string, number>;
   countyMeta: Record<string, OrganismGeoLocationMeta>;
+  /**
+   * Why the state to county counts could not be read, condensed for display. Absent when that
+   * query answered, even with no rows, so an error is never mistaken for "no county data".
+   */
+  countyError?: string;
 }
 
 export interface SerotypeYear {

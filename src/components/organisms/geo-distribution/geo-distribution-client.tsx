@@ -16,7 +16,7 @@ import {
 } from "./choropleth-svg";
 import { ColorLegend } from "./color-legend";
 import { makeGeoColorScale } from "./color-scale";
-import { hasCountyData } from "./county-availability";
+import { isStateViewAvailable } from "./county-availability";
 import { MapControls } from "./map-controls";
 import { describeEmptyView, MapEmptyState } from "./map-empty-state";
 import { MapTooltip } from "./map-tooltip";
@@ -87,13 +87,15 @@ export function GeoDistributionClient({
     defaultMapState(data),
   );
 
-  // The State view only has something to draw when some county has genomes.
-  const stateViewAvailable = hasCountyData(data);
+  // The State view has something to show when some county has genomes, or
+  // when the county query failed (it shows the failure and its Retry).
+  const stateViewAvailable = isStateViewAvailable(data);
 
   // The component is keyed by scope, so a refresh of the same scope can hand
-  // this instance data whose county pivot failed while the stored view is
+  // this instance data with no county genomes while the stored view is
   // "state". The stored view is left alone (the State view shows again if the
-  // counties return); what renders never is the State view without counties.
+  // counties return); what renders never is the State view without counties
+  // or a county failure to show.
   const mapState =
     storedMapState.view === "state" && !stateViewAvailable
       ? defaultMapState(data)

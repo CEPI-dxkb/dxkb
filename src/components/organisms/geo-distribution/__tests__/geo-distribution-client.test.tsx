@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import type { OrganismGeoDistribution } from "@/lib/services/organisms/types";
@@ -34,6 +34,10 @@ vi.mock("@visx/tooltip", () => ({
     showTooltip: vi.fn(),
     hideTooltip: vi.fn(),
   }),
+}));
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ refresh: vi.fn() }),
 }));
 
 vi.mock("../choropleth-svg", () => ({
@@ -292,6 +296,108 @@ describe("GeoDistributionClient", () => {
     );
   });
 
+  it("says the county query failed instead of that the state has no counties", () => {
+    render(
+      <GeoDistributionClient
+        data={{
+          ...distribution({ stateData: { Illinois: 420 } }),
+          countyError: "The BV-BRC data service is unavailable (HTTP 503 Service Unavailable: busy).",
+        }}
+        accent="bacteria"
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "State" }));
+
+    const status = screen.getByRole("status");
+    expect(status).toHaveTextContent("County data could not be loaded.");
+    expect(status).toHaveTextContent(
+      "The BV-BRC data service is unavailable (HTTP 503 Service Unavailable: busy).",
+    );
+    expect(status).not.toHaveTextContent("No county-level data");
+    expect(within(status).getByRole("button", { name: "Retry" })).toBeInTheDocument();
+  });
+
+  it("keeps the State pill enabled when the county query failed, so its failure can be opened", () => {
+    render(
+      <GeoDistributionClient
+        data={{
+          ...distribution({ stateData: { Illinois: 420 } }),
+          countyError: "county failed",
+        }}
+        accent="bacteria"
+      />,
+    );
+
+    const pill = screen.getByRole("button", { name: "State" });
+    expect(pill).toBeEnabled();
+    expect(pill).not.toHaveAccessibleDescription(
+      "County-level data is not available for this taxon.",
+    );
+    expect(screen.getByTestId("map-view")).toHaveAttribute(
+      "data-can-drill",
+      "yes",
+    );
+
+    fireEvent.click(pill);
+
+    expect(screen.getByTestId("map-view")).toHaveTextContent(/^state$/);
+    const status = screen.getByRole("status");
+    expect(status).toHaveTextContent("County data could not be loaded.");
+    expect(status).toHaveTextContent("county failed");
+    expect(within(status).getByRole("button", { name: "Retry" })).toBeInTheDocument();
+  });
+
+  it("stays on the county failure when a refresh fails the county query", () => {
+    const { rerender } = render(
+      <GeoDistributionClient
+        data={distribution({
+          stateData: { Illinois: 420 },
+          countyData: { "Illinois|Cook": 50 },
+        })}
+        accent="bacteria"
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "State" }));
+
+    rerender(
+      <GeoDistributionClient
+        data={{
+          ...distribution({ stateData: { Illinois: 420 } }),
+          countyError: "county failed",
+        }}
+        accent="bacteria"
+      />,
+    );
+
+    expect(screen.getByTestId("map-view")).toHaveTextContent(/^state$/);
+    const status = screen.getByRole("status");
+    expect(status).toHaveTextContent("County data could not be loaded.");
+    expect(within(status).getByRole("button", { name: "Retry" })).toBeInTheDocument();
+  });
+
+  it("holds the county failure back while the county map is loading", () => {
+    useQueryMock.mockImplementation((options: unknown) => ({
+      data: null,
+      error: null,
+      isLoading:
+        (options as { queryKey: string[] }).queryKey[1] === "counties-topo",
+    }));
+    render(
+      <GeoDistributionClient
+        data={{
+          ...distribution({ stateData: { Illinois: 420 } }),
+          countyError: "county failed",
+        }}
+        accent="bacteria"
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "State" }));
+
+    expect(screen.getByRole("status")).toBeEmptyDOMElement();
+  });
+
   it("says nothing in a state that has county data", () => {
     render(
       <GeoDistributionClient
@@ -456,7 +562,7 @@ describe("GeoDistributionClient", () => {
       expect(screen.getByTestId("map-view")).toHaveTextContent("state");
 
       // Same scope, same mounted instance: a retry re-renders the server
-      // component, and a county pivot that failed is swallowed as `{}`.
+      // component, and the county pivot answers with no county genomes.
       rerender(
         <GeoDistributionClient
           data={distribution({ stateData, countyData: {} })}

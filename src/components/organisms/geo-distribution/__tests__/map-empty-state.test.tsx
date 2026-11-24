@@ -1,12 +1,18 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 
 import type { OrganismGeoDistribution } from "@/lib/services/organisms/types";
 
 import { describeEmptyView, MapEmptyState } from "../map-empty-state";
 import type { GeoMapState } from "../types";
 
+const refresh = vi.hoisted(() => vi.fn());
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ refresh }),
+}));
+
 function distribution(
   stateData: Record<string, number> = {},
+  countyError?: string,
 ): OrganismGeoDistribution {
   return {
     countryData: {},
@@ -15,6 +21,7 @@ function distribution(
     stateMeta: {},
     countyData: {},
     countyMeta: {},
+    ...(countyError ? { countyError } : {}),
   };
 }
 
@@ -60,6 +67,28 @@ describe("describeEmptyView", () => {
       description: "No genome count is available for Illinois.",
     });
   });
+
+  it("says the county query failed, with the upstream message, when the state has genomes", () => {
+    expect(
+      describeEmptyView(
+        illinois,
+        distribution({ Illinois: 420 }, "The BV-BRC data service is unavailable (HTTP 503 Service Unavailable: busy)."),
+      ),
+    ).toEqual({
+      title: "County data could not be loaded.",
+      description: "The BV-BRC data service is unavailable (HTTP 503 Service Unavailable: busy).",
+      failed: true,
+    });
+  });
+
+  it("does not blame the county query for a state without genomes", () => {
+    expect(
+      describeEmptyView(illinois, distribution({ Texas: 9 }, "county failed")),
+    ).toEqual({
+      title: "No data for Illinois.",
+      description: "No genome count is available for Illinois.",
+    });
+  });
 });
 
 describe("MapEmptyState", () => {
@@ -89,5 +118,29 @@ describe("MapEmptyState", () => {
     render(<MapEmptyState message={null} />);
 
     expect(screen.getByRole("status")).toHaveClass("pointer-events-none");
+  });
+
+  it("shows a failed message as a destructive alert with a Retry the pointer can reach", async () => {
+    render(
+      <MapEmptyState
+        message={{
+          title: "County data could not be loaded.",
+          description: "county failed",
+          failed: true,
+        }}
+      />,
+    );
+
+    const status = screen.getByRole("status");
+    expect(status).toHaveTextContent("County data could not be loaded.");
+    expect(status).toHaveTextContent("county failed");
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    const retry = within(status).getByRole("button", { name: "Retry" });
+    expect(retry.closest(".pointer-events-auto")).not.toBeNull();
+
+    fireEvent.click(retry);
+    await waitFor(() => {
+      expect(refresh).toHaveBeenCalledTimes(1);
+    });
   });
 });

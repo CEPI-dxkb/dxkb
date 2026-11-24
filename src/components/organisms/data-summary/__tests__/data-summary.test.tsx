@@ -1,5 +1,6 @@
 import {
   act,
+  cleanup,
   fireEvent,
   render,
   screen,
@@ -81,6 +82,17 @@ async function renderServer(node: Promise<React.ReactElement>) {
   });
   return rendered;
 }
+
+/** A failed count shows no alert row, no lead text and no Retry button. */
+function expectNoCountAlert() {
+  expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  expect(screen.queryByText(/could not be loaded/)).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: /Retry/ })).not.toBeInTheDocument();
+}
+
+beforeEach(() => {
+  refresh.mockReset();
+});
 
 describe("DataSummary", () => {
   it("renders all KPI cards with formatted values", async () => {
@@ -209,7 +221,7 @@ describe("DataSummary", () => {
     expect(requests).toHaveLength(2);
   });
 
-  it("marks only the PDB tile unavailable, with the original message and a Retry, when the structure count fails", async () => {
+  it("marks only the PDB tile unavailable, with the original message behind a retrying Unavailable, when the structure count fails", async () => {
     server.use(
       http.get(`${baseUrl}/data/summary_by_taxon/2`, () =>
         HttpResponse.json(summaryBody(1337420)),
@@ -222,10 +234,12 @@ describe("DataSummary", () => {
 
     await renderServer(DataSummary({ taxonIds: [2], pathname }));
 
-    expect(screen.getByTestId("organism-kpi-pdb")).toHaveTextContent(
-      "Unavailable",
-    );
-    expect(screen.getAllByText("Unavailable")).toHaveLength(1);
+    const pdbTile = screen.getByTestId("organism-kpi-pdb");
+    const pdb = within(pdbTile).getByRole("button", { name: /^Unavailable$/ });
+    expect(screen.getAllByRole("button", { name: /^Unavailable$/ })).toHaveLength(1);
+    // A failed tile is not a link; the tiles that loaded keep theirs.
+    expect(within(pdbTile).queryByRole("link")).not.toBeInTheDocument();
+    expect(screen.getAllByRole("link")).toHaveLength(3);
     const expected: Record<string, string> = {
       count: "1,300,000",
       uniqueFamily: "391",
@@ -237,18 +251,67 @@ describe("DataSummary", () => {
     for (const [key, value] of Object.entries(expected)) {
       expect(screen.getByTestId(`organism-kpi-${key}`)).toHaveTextContent(value);
     }
-    expect(screen.getByRole("alert")).toHaveTextContent(
-      "Some counts could not be loaded: PDB structures: The BV-BRC data service is unavailable (HTTP 503 Service Unavailable: BV-BRC overloaded).",
-    );
-    expect(screen.getByRole("alert")).not.toHaveTextContent("protein_structure");
+    const reason =
+      "PDB structures: The BV-BRC data service is unavailable (HTTP 503 Service Unavailable: BV-BRC overloaded).";
+    expect(pdb).toHaveAccessibleDescription(`Click to retry. ${reason}`);
+    expect(pdb).not.toHaveAccessibleDescription(/protein_structure/);
+    expect(pdbTile.querySelector("[title]")).toBeNull();
+    expect(
+      within(pdbTile).getByText(
+        `Experimentally determined structures (AlphaFold predictions excluded). Could not load: ${reason} Click Unavailable to retry.`,
+      ),
+    ).toHaveClass("sr-only");
+    expectNoCountAlert();
 
-    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+    fireEvent.click(pdb);
     await waitFor(() => {
       expect(refresh).toHaveBeenCalledTimes(1);
     });
   });
 
-  it("shows no alert when every count loads", async () => {
+  it("loads the PDB count again when its Unavailable is clicked, instead of the cached failure", async () => {
+    let structureRequests = 0;
+    server.use(
+      http.get(`${baseUrl}/data/summary_by_taxon/2`, () =>
+        HttpResponse.json(summaryBody(1337420)),
+      ),
+      http.get(`${baseUrl}/protein_structure/`, () => {
+        structureRequests += 1;
+        return structureRequests === 1
+          ? HttpResponse.text("BV-BRC overloaded", { status: 503 })
+          : HttpResponse.json({ response: { numFound: 68_899, docs: [] } });
+      }),
+    );
+    serveGenomeCounts({ 2: 1_300_000 });
+
+    await renderServer(DataSummary({ taxonIds: [2], pathname }));
+    // A render inside the retry window still gets the cached failure.
+    cleanup();
+    await renderServer(DataSummary({ taxonIds: [2], pathname }));
+    expect(structureRequests).toBe(1);
+
+    fireEvent.click(
+      within(screen.getByTestId("organism-kpi-pdb")).getByRole("button", {
+        name: /^Unavailable$/,
+      }),
+    );
+    await waitFor(() => {
+      expect(refresh).toHaveBeenCalledTimes(1);
+    });
+
+    // What the refresh renders: the forgotten failure is fetched again.
+    cleanup();
+    await renderServer(DataSummary({ taxonIds: [2], pathname }));
+    await waitFor(() => {
+      expect(screen.getByTestId("organism-kpi-pdb")).toHaveTextContent("68,899");
+    });
+    expect(structureRequests).toBe(2);
+    expect(
+      screen.getByRole("link", { name: /^PDB Structures\b/ }),
+    ).toBeInTheDocument();
+  });
+
+  it("shows no alert and no Unavailable when every count loads", async () => {
     server.use(
       http.get(`${baseUrl}/data/summary_by_taxon/2`, () =>
         HttpResponse.json(summaryBody(1337420)),
@@ -260,6 +323,9 @@ describe("DataSummary", () => {
     await renderServer(DataSummary({ taxonIds: [2], pathname }));
 
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /^Unavailable/ }),
+    ).not.toBeInTheDocument();
   });
 
   it("marks PDB unavailable, not the other root's count, when only one root's structure count fails", async () => {
@@ -282,12 +348,14 @@ describe("DataSummary", () => {
     await renderServer(DataSummary({ taxonIds: [131567, 10239], pathname }));
 
     const pdb = screen.getByTestId("organism-kpi-pdb");
-    expect(pdb).toHaveTextContent("Unavailable");
+    expect(
+      within(pdb).getByRole("button", { name: /^Unavailable$/ }),
+    ).toHaveAccessibleDescription(/BV-BRC overloaded/);
     expect(pdb).not.toHaveTextContent("79,938");
     expect(screen.getByTestId("organism-kpi-count")).toHaveTextContent(
       "16,300,000",
     );
-    expect(screen.getByRole("alert")).toHaveTextContent("BV-BRC overloaded");
+    expectNoCountAlert();
   });
 
   it("rejects when the genome count fails, like a failed summary", async () => {

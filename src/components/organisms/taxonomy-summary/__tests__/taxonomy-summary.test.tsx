@@ -6,6 +6,7 @@ import {
   waitFor,
   within,
 } from "@testing-library/react";
+import { Suspense } from "react";
 import { vi } from "vitest";
 
 const { refresh } = vi.hoisted(() => ({ refresh: vi.fn() }));
@@ -17,15 +18,20 @@ vi.mock("@/lib/services/organisms/summary", () => ({
 // React's `cache` is a passthrough in Vitest, so the tile and the header sharing
 // one count request cannot be observed here; going through `getTaxonGenomeCount`
 // is what shares it on the server.
+vi.mock("@/components/organisms/shared/forget-failed-counts", () => ({
+  forgetFailedCounts: vi.fn(() => Promise.resolve()),
+}));
 vi.mock("@/lib/services/organisms/genome-count", () => ({
   getTaxonGenomeCount: vi.fn(),
 }));
 
 import { TaxonomySummary } from "../taxonomy-summary";
+import { forgetFailedCounts } from "@/components/organisms/shared/forget-failed-counts";
 import { UpstreamError } from "@/lib/api/upstream-failure";
 import { getTaxonGenomeCount } from "@/lib/services/organisms/genome-count";
 import { fetchOrganismSummary } from "@/lib/services/organisms/summary";
 import { setTestSession } from "@/test-helpers/api-route-helpers";
+import { createPendingNavigation } from "@/test-helpers/pending-navigation";
 
 const brucellaTaxon = {
   taxonId: 234,
@@ -46,6 +52,36 @@ async function renderServer(node: Promise<React.ReactElement>) {
   });
   return rendered;
 }
+
+/** The tile's retrying Unavailable count; throws when the tile shows something else. */
+function unavailableIn(id: string) {
+  return within(screen.getByTestId(`taxon-stat-${id}`)).getByRole("button", {
+    name: /^Unavailable/,
+  });
+}
+
+/** The failed tile's description (its tooltip and sr-only text): the original one, the reason, and how to retry. */
+function expectFailedDescription(id: string, description: string, reason: string) {
+  const tile = screen.getByTestId(`taxon-stat-${id}`);
+  expect(
+    within(tile).getByText(
+      `${description}. Could not load: ${reason} Click Unavailable to retry.`,
+    ),
+  ).toHaveClass("sr-only");
+  expect(tile.querySelector("[title]")).toBeNull();
+}
+
+/** A failed count shows no alert row, no lead text and no Retry button. */
+function expectNoCountAlert() {
+  expect(screen.queryByRole("alert")).toBeNull();
+  expect(screen.queryByText(/could not be loaded/)).toBeNull();
+  expect(screen.queryByRole("button", { name: /Retry/ })).toBeNull();
+}
+
+beforeEach(() => {
+  refresh.mockReset();
+  vi.mocked(forgetFailedCounts).mockClear();
+});
 
 describe("TaxonomySummary", () => {
   it("renders all metrics when summary fetch succeeds and taxon prop is provided", async () => {
@@ -139,19 +175,87 @@ describe("TaxonomySummary", () => {
     await renderServer(TaxonomySummary({ taxonId: 234, taxon: brucellaTaxon }));
 
     expect(screen.getByText("Brucella")).toBeInTheDocument();
-    expect(screen.getAllByText("Unavailable")).toHaveLength(3);
+    expect(screen.getAllByRole("button", { name: /^Unavailable$/ })).toHaveLength(3);
     expect(screen.queryByText("-")).toBeNull();
     const genomes = screen.getByTestId("taxon-stat-genomes");
     expect(within(genomes).getByText("1,909")).toBeInTheDocument();
-    expect(screen.getByRole("alert")).toHaveTextContent(
-      "Taxon counts could not be loaded: The BV-BRC data service is unavailable (HTTP 503 Service Unavailable: Site Maintenance — We’ll be back soon!).",
+    expectNoCountAlert();
+    const reason =
+      "The BV-BRC data service is unavailable (HTTP 503 Service Unavailable: Site Maintenance — We’ll be back soon!).";
+    for (const id of ["species", "cds", "pdb"]) {
+      const button = unavailableIn(id);
+      expect(button).toHaveAccessibleDescription(`Click to retry. ${reason}`);
+      expect(button).not.toHaveAccessibleDescription(/summary_by_taxon/);
+      // A failed tile is not a link: its button would nest inside one.
+      expect(
+        within(screen.getByTestId(`taxon-stat-${id}`)).queryByRole("link"),
+      ).toBeNull();
+    }
+    expectFailedDescription("species", "Unique taxonomy species", reason);
+    expectFailedDescription("cds", "Coding sequences", reason);
+    expectFailedDescription(
+      "pdb",
+      "Experimentally determined structures (AlphaFold predictions excluded)",
+      reason,
     );
-    expect(screen.getByRole("alert")).not.toHaveTextContent("summary_by_taxon");
+    // The genome count loaded, so its tile keeps its link.
+    expect(within(genomes).getByRole("link")).toHaveAttribute(
+      "href",
+      "/taxonomy/234?tab=genomes",
+    );
 
-    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+    fireEvent.click(unavailableIn("cds"));
     await waitFor(() => {
       expect(refresh).toHaveBeenCalledTimes(1);
     });
+    // The retry first forgets this taxon's cached failed counts.
+    expect(forgetFailedCounts).toHaveBeenCalledWith([234]);
+    expect(
+      vi.mocked(forgetFailedCounts).mock.invocationCallOrder[0],
+    ).toBeLessThan(refresh.mock.invocationCallOrder[0]);
+  });
+
+  it("disables and spins every failed count while a retry is pending", async () => {
+    vi.mocked(fetchOrganismSummary).mockRejectedValueOnce(new Error("summary down"));
+    vi.mocked(getTaxonGenomeCount).mockRejectedValueOnce(new Error("count down"));
+    const navigation = createPendingNavigation();
+    refresh.mockImplementation(() => {
+      navigation.arm();
+    });
+
+    const summary = await TaxonomySummary({ taxonId: 234, taxon: brucellaTaxon });
+    await act(async () => {
+      render(
+        <Suspense fallback={null}>
+          {summary}
+          <navigation.Suspender />
+        </Suspense>,
+      );
+      await Promise.resolve();
+    });
+    await act(() => {
+      fireEvent.click(unavailableIn("species"));
+      return Promise.resolve();
+    });
+    await waitFor(() => {
+      expect(refresh).toHaveBeenCalledTimes(1);
+    });
+
+    const buttons = screen.getAllByRole("button", { name: /^Unavailable$/ });
+    expect(buttons).toHaveLength(4);
+    for (const button of buttons) {
+      expect(button).toHaveAttribute("aria-disabled", "true");
+      expect(button).toHaveAttribute("aria-busy", "true");
+      expect(button.querySelector('svg[aria-hidden="true"]')).not.toBeNull();
+    }
+    expect(screen.queryByRole("status")).toBeNull();
+    // A second click while retrying neither forgets nor refreshes again.
+    await act(() => {
+      fireEvent.click(unavailableIn("cds"));
+      return Promise.resolve();
+    });
+    expect(forgetFailedCounts).toHaveBeenCalledTimes(1);
+    expect(refresh).toHaveBeenCalledTimes(1);
   });
 
   it("says every count is unavailable when the summary and the genome count both fail", async () => {
@@ -160,10 +264,18 @@ describe("TaxonomySummary", () => {
 
     await renderServer(TaxonomySummary({ taxonId: 234, taxon: brucellaTaxon }));
 
-    expect(screen.getAllByText("Unavailable")).toHaveLength(4);
-    const genomes = screen.getByTestId("taxon-stat-genomes");
-    expect(within(genomes).getByText("Unavailable")).toBeInTheDocument();
-    expect(screen.getByRole("alert")).toHaveTextContent("summary down");
+    expect(screen.getAllByRole("button", { name: /^Unavailable$/ })).toHaveLength(4);
+    // Each tile gives its own count's reason.
+    expect(unavailableIn("genomes")).toHaveAccessibleDescription(
+      "Click to retry. count down",
+    );
+    for (const id of ["species", "cds", "pdb"]) {
+      expect(unavailableIn(id)).toHaveAccessibleDescription(
+        "Click to retry. summary down",
+      );
+    }
+    expect(screen.queryAllByRole("link")).toHaveLength(0);
+    expectNoCountAlert();
   });
 
   it("shows the lineage-less-Deprecated count, not the summary's count or the taxon record's", async () => {
@@ -227,11 +339,21 @@ describe("TaxonomySummary", () => {
     await renderServer(TaxonomySummary({ taxonId: 234, taxon: brucellaTaxon }));
 
     const genomes = screen.getByTestId("taxon-stat-genomes");
-    expect(within(genomes).getByText("Unavailable")).toBeInTheDocument();
-    expect(screen.getByText("7")).toBeInTheDocument();
-    expect(screen.getByRole("alert")).toHaveTextContent(
-      "count service did not respond",
+    expect(unavailableIn("genomes")).toHaveAccessibleDescription(
+      "Click to retry. count service did not respond",
     );
+    expectFailedDescription(
+      "genomes",
+      "Assembled genome records",
+      "count service did not respond.",
+    );
+    expect(within(genomes).queryByRole("link")).toBeNull();
+    expect(screen.getAllByRole("button", { name: /^Unavailable$/ })).toHaveLength(1);
+    expect(screen.getByText("7")).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: /^Protein Coding Genes \(CDS\)/ }),
+    ).toBeInTheDocument();
+    expectNoCountAlert();
   });
 
   it("marks only the PDB tile unavailable, with the structure count's reason, when just that count fails", async () => {
@@ -257,12 +379,24 @@ describe("TaxonomySummary", () => {
 
     await renderServer(TaxonomySummary({ taxonId: 234, taxon: brucellaTaxon }));
 
+    const pdb = await within(screen.getByTestId("taxon-stat-pdb")).findByRole(
+      "button",
+      { name: /^Unavailable$/ },
+    );
+    expect(pdb).toHaveAccessibleDescription(
+      "Click to retry. PDB structures: The BV-BRC data service did not respond (timed out after 60 s).",
+    );
+    expectFailedDescription(
+      "pdb",
+      "Experimentally determined structures (AlphaFold predictions excluded)",
+      "PDB structures: The BV-BRC data service did not respond (timed out after 60 s).",
+    );
+    expect(screen.getAllByRole("button", { name: /^Unavailable$/ })).toHaveLength(1);
     expect(
-      await within(screen.getByTestId("taxon-stat-pdb")).findByText(
-        "Unavailable",
-      ),
-    ).toBeInTheDocument();
-    expect(screen.getAllByText("Unavailable")).toHaveLength(1);
+      within(screen.getByTestId("taxon-stat-pdb")).queryByRole("link"),
+    ).toBeNull();
+    // The tiles that loaded keep their links.
+    expect(screen.getAllByRole("link")).toHaveLength(2);
     expect(
       within(screen.getByTestId("taxon-stat-species")).getByText("4"),
     ).toBeInTheDocument();
@@ -272,10 +406,7 @@ describe("TaxonomySummary", () => {
     expect(
       within(screen.getByTestId("taxon-stat-genomes")).getByText("1,909"),
     ).toBeInTheDocument();
-    expect(await screen.findByRole("alert")).toHaveTextContent(
-      "Taxon counts could not be loaded: PDB structures: The BV-BRC data service did not respond (timed out after 60 s).",
-    );
-    expect(screen.getByRole("button", { name: "Retry" })).toBeInTheDocument();
+    expectNoCountAlert();
   });
 
   it("renders every other tile while the PDB count is still pending, with no alert", async () => {
@@ -301,7 +432,8 @@ describe("TaxonomySummary", () => {
     expect(
       within(screen.getByTestId("taxon-stat-genomes")).getByText("1,909"),
     ).toBeInTheDocument();
-    expect(screen.queryByRole("alert")).toBeNull();
+    expect(within(pdb).getByRole("link")).toBeInTheDocument();
+    expectNoCountAlert();
   });
 
   it("renders summary metrics and '-' for taxon fields when taxon prop is null", async () => {

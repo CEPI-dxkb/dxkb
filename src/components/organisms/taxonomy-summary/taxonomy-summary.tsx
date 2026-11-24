@@ -1,9 +1,7 @@
-import {
-  PdbCountAlert,
-  PdbCountValue,
-  unavailableCount,
-} from "@/components/organisms/shared/pdb-count";
-import { SectionRetryButton } from "@/components/organisms/shared/section-retry-button";
+import { CountRetryScope } from "@/components/organisms/shared/count-retry-scope";
+import { failedCountDescription } from "@/components/organisms/shared/failed-count";
+import { PdbStatTile } from "@/components/organisms/shared/pdb-count";
+import { UnavailableCount } from "@/components/organisms/shared/unavailable-count";
 import { StatTile, type StatTileProps } from "@/components/organisms/stat-tile/stat-tile";
 import { readSession } from "@/lib/auth/server/session";
 import { getTaxonGenomeCount } from "@/lib/services/organisms/genome-count";
@@ -15,6 +13,10 @@ import { overviewTabHref, taxonomyHref } from "@/lib/views/hrefs";
 
 /** `formatUserFacingErrorMessage` fallback for a failure that says nothing. */
 const genericSummaryErrorMessage = "the summary service did not answer.";
+
+function formatReason(reason: unknown): string {
+  return formatUserFacingErrorMessage(reason, genericSummaryErrorMessage);
+}
 
 /** Settles a promise into a tagged result so one failed count does not take the other tiles down. */
 function settle<T>(promise: Promise<T>) {
@@ -28,6 +30,25 @@ function formatCount(value: number | null | undefined): string {
   return value === null || value === undefined
     ? "-"
     : numberFormatter.format(value);
+}
+
+type Metric = Omit<StatTileProps, "className" | "valueClassName" | "testId">;
+type CountTile = Omit<Metric, "value">;
+
+/**
+ * A count's tile: its figure in the tile as given (linked when it has an
+ * `href`), or, when the count failed, a retrying `UnavailableCount` in an
+ * unlinked tile (the button cannot nest inside the link) whose description
+ * says why.
+ */
+function countMetric(tile: CountTile, figure: string, reason: string | null): Metric {
+  if (reason === null) return { ...tile, value: figure };
+  return {
+    ...tile,
+    href: undefined,
+    description: failedCountDescription(tile.description, reason),
+    value: <UnavailableCount reason={reason} />,
+  };
 }
 
 export async function TaxonomySummary({
@@ -53,94 +74,88 @@ export async function TaxonomySummary({
     throw summaryResult.reason;
   }
 
-  // The PDB count is not awaited (a slow cross-collection join): its tile and
-  // its own alert stream in after the rest.
-  const failure =
-    summaryResult.status === "rejected"
-      ? summaryResult
-      : genomeCountResult.status === "rejected"
-        ? genomeCountResult
-        : null;
-  // A failed count reads as Unavailable with a reason, not as "no data".
-  const summaryError = failure
-    ? formatUserFacingErrorMessage(failure.reason, genericSummaryErrorMessage)
-    : null;
-  const summaryCount = (value: number | null | undefined): string =>
-    summaryResult.status === "rejected" ? unavailableCount : formatCount(value);
+  // A failed count reads as a retrying Unavailable carrying its own count's
+  // reason, not as "no data". The PDB count is not awaited (a slow
+  // cross-collection join): its tile streams in after the rest.
+  const summaryReason =
+    summaryResult.status === "rejected" ? formatReason(summaryResult.reason) : null;
   const genomeCount =
-    genomeCountResult.status === "fulfilled"
-      ? formatCount(genomeCountResult.value)
-      : unavailableCount;
+    genomeCountResult.status === "fulfilled" ? genomeCountResult.value : null;
+  const genomeReason =
+    genomeCountResult.status === "rejected"
+      ? formatReason(genomeCountResult.reason)
+      : null;
 
   const base = taxonomyHref(taxonId);
-  const metrics: Omit<
-    StatTileProps,
-    "className" | "valueClassName" | "testId"
-  >[] = [
+  const pdbTile: CountTile = {
+    id: "pdb",
+    label: "3D Protein Structures (PDB)",
+    description: "Experimentally determined structures (AlphaFold predictions excluded)",
+    href: overviewTabHref(base, "protein-structures", {
+      rql: "ne(method,Predicted)",
+    }),
+  };
+  const metrics: Metric[] = [
     { id: "taxon-id", label: "Taxon ID", value: taxon ? String(taxon.taxonId) : String(taxonId), description: "NCBI taxonomy identifier" },
     { id: "taxon-name", label: "Taxon Name", value: taxon?.taxonName ?? "-", description: "Scientific name of the taxon" },
     { id: "taxon-rank", label: "Taxon Rank", value: taxon?.taxonRank ? taxon.taxonRank.charAt(0).toUpperCase() + taxon.taxonRank.slice(1) : "-", description: "Taxonomic rank" },
-    { id: "species", label: "Species", value: summaryCount(summary?.uniqueSpecies), description: "Unique taxonomy species" },
-    {
-      id: "genomes",
-      label: "Genomes / Segments",
-      value: genomeCount,
-      description: "Assembled genome records",
-      href: overviewTabHref(base, "genomes"),
-    },
-    {
-      id: "cds",
-      label: "Protein Coding Genes (CDS)",
-      value: summaryCount(summary?.cds),
-      description: "Coding sequences",
-      href: overviewTabHref(base, "features", { feature_type: "CDS" }),
-    },
-    {
-      id: "pdb",
-      label: "3D Protein Structures (PDB)",
-      value: summary ? <PdbCountValue pdb={summary.pdb} /> : unavailableCount,
-      description: "Experimentally determined structures (AlphaFold predictions excluded)",
-      href: overviewTabHref(base, "protein-structures", {
-        rql: "ne(method,Predicted)",
-      }),
-    },
+    countMetric(
+      { id: "species", label: "Species", description: "Unique taxonomy species" },
+      formatCount(summary?.uniqueSpecies),
+      summaryReason,
+    ),
+    countMetric(
+      {
+        id: "genomes",
+        label: "Genomes / Segments",
+        description: "Assembled genome records",
+        href: overviewTabHref(base, "genomes"),
+      },
+      formatCount(genomeCount),
+      genomeReason,
+    ),
+    countMetric(
+      {
+        id: "cds",
+        label: "Protein Coding Genes (CDS)",
+        description: "Coding sequences",
+        href: overviewTabHref(base, "features", { feature_type: "CDS" }),
+      },
+      formatCount(summary?.cds),
+      summaryReason,
+    ),
   ];
 
-  const tiles = (
-    <div className="flex flex-wrap gap-1.5">
-      {metrics.map((metric) => (
-        <StatTile
-          key={metric.id}
-          {...metric}
-          testId={`taxon-stat-${metric.id}`}
-          className="min-w-min grow basis-32"
-          valueClassName="wrap-break-word"
-        />
-      ))}
-    </div>
-  );
-
   return (
-    <div className="flex flex-col gap-1.5">
-      {tiles}
-      {summaryError ? (
-        <div
-          role="alert"
-          className="flex flex-wrap items-center gap-2 text-xs text-destructive"
-        >
-          <p>Taxon counts could not be loaded: {summaryError}</p>
-          <SectionRetryButton />
-        </div>
-      ) : null}
-      {summary ? (
-        <PdbCountAlert
-          pdb={summary.pdb}
-          lead="Taxon counts could not be loaded"
-          formatReason={(reason) =>
-            formatUserFacingErrorMessage(reason, genericSummaryErrorMessage)
-          }
-        />
-      ) : null}
-    </div>
+    <CountRetryScope taxonIds={[taxonId]}>
+      <div className="flex flex-wrap gap-1.5">
+        {metrics.map((metric) => (
+          <StatTile
+            key={metric.id}
+            {...metric}
+            testId={`taxon-stat-${metric.id}`}
+            className="min-w-min grow basis-32"
+            valueClassName="wrap-break-word"
+          />
+        ))}
+        {summary ? (
+          <PdbStatTile
+            {...pdbTile}
+            pdb={summary.pdb}
+            formatReason={formatReason}
+            testId="taxon-stat-pdb"
+            className="min-w-min grow basis-32"
+            valueClassName="wrap-break-word"
+          />
+        ) : (
+          <StatTile
+            {...countMetric(pdbTile, "-", summaryReason)}
+            testId="taxon-stat-pdb"
+            className="min-w-min grow basis-32"
+            valueClassName="wrap-break-word"
+          />
+        )}
+      </div>
+    </CountRetryScope>
   );
 }

@@ -23,7 +23,7 @@ interface UsStatesLayerProps {
   isDraggingRef: RefObject<boolean>;
   onHoverEnter: HoverEnter;
   onHoverLeave: HoverLeave;
-  onSelectState: (fips: string, name: string) => void;
+  onSelectState?: ((fips: string, name: string) => void) | undefined;
 }
 
 export function UsStatesLayer({
@@ -59,7 +59,7 @@ export function UsStatesLayer({
               pathD={path ?? ""}
               fill={colorScale(count)}
               strokeWidth={1}
-              cursor="pointer"
+              cursor={onSelectState ? "pointer" : "default"}
               isDraggingRef={isDraggingRef}
               payload={{
                 view: "us",
@@ -70,10 +70,14 @@ export function UsStatesLayer({
               }}
               onHoverEnter={onHoverEnter}
               onHoverLeave={onHoverLeave}
-              onClick={() => {
-                const fips = String(feature.id ?? "").padStart(2, "0");
-                if (fips) onSelectState(fips, name);
-              }}
+              onClick={
+                onSelectState
+                  ? () => {
+                      const fips = String(feature.id ?? "").padStart(2, "0");
+                      if (fips) onSelectState(fips, name);
+                    }
+                  : undefined
+              }
             />
           );
         })

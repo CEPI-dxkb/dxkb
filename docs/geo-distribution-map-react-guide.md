@@ -467,6 +467,7 @@ interface MapState {
   │
   ├── <MapControls>            ← World / United States / State buttons
   │     ├── view toggle buttons
+  │     ├── country dropdown (visible in world view)
   │     ├── state dropdown (visible in state view)
   │     └── zoom +/−/⟲ buttons
   │

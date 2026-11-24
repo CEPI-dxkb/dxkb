@@ -257,7 +257,7 @@ describe("CommandPalette", () => {
         /StabiliNNator/,
         /FrustraMPNN/,
         /Structure Sequence Prediction/,
-        /^Stability Prediction$/,
+        /^Stability Prediction\b/,
       ]) {
         expect(screen.getByRole("option", { name })).toBeInTheDocument();
       }
@@ -284,9 +284,23 @@ describe("CommandPalette", () => {
       await openPalette();
 
       const user = userEvent.setup();
-      await user.click(
-        screen.getByRole("option", { name: /Protein Structure Prediction/ }),
+      const option = screen.getByRole("option", {
+        name: /Protein Structure Prediction/,
+      });
+      expect(option).toHaveAccessibleName(
+        "Protein Structure Prediction (opens in a new tab)",
       );
+      const icon = option.querySelector("svg.lucide-external-link");
+      expect(icon).toHaveAttribute("aria-hidden", "true");
+      const children = Array.from(option.childNodes);
+      const labelIndex = children.findIndex(
+        (node) => node.textContent === "Protein Structure Prediction",
+      );
+      expect(labelIndex).toBeGreaterThanOrEqual(0);
+      expect(children.findIndex((node) => node === icon)).toBeGreaterThan(
+        labelIndex,
+      );
+      await user.click(option);
 
       expect(openSpy).toHaveBeenCalledWith(
         "https://www.dxkb.org/app/PredictStructure",

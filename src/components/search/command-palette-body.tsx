@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   Briefcase,
+  ExternalLink,
   Folder,
   Home,
   LogIn,
@@ -239,6 +240,16 @@ export function CommandPaletteBody({
                     }}
                   >
                     <span>{item.title}</span>
+                    {item.target === "_blank" && (
+                      <>
+                        <ExternalLink
+                          className="size-3 text-muted-foreground"
+                          aria-hidden="true"
+                        />
+                        {" "}
+                        <span className="sr-only">(opens in a new tab)</span>
+                      </>
+                    )}
                   </CommandItem>
                 ))}
               </CommandGroup>

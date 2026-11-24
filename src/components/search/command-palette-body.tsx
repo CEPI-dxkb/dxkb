@@ -244,6 +244,7 @@ export function CommandPaletteBody({
                       <>
                         <ExternalLink
                           className="size-3 text-muted-foreground"
+                          strokeWidth={2.75}
                           aria-hidden="true"
                         />
                         {" "}

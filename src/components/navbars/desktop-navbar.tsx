@@ -127,6 +127,7 @@ const DesktopNavbar = () => {
                                   {item.target === "_blank" && (
                                     <ExternalLink
                                       className="size-3 shrink-0 text-muted-foreground"
+                                      strokeWidth={2.75}
                                       aria-hidden="true"
                                     />
                                   )}

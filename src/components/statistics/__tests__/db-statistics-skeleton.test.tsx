@@ -15,7 +15,7 @@ describe("DBStatisticsSkeleton", () => {
     const grid = container.querySelector(".grid");
     expect(grid).not.toBeNull();
     expect(grid?.className).toContain("grid-cols-2");
-    expect(grid?.className).toContain("md:grid-cols-4");
+    expect(grid?.className).toContain("lg:grid-cols-4");
 
     const placeholders = container.querySelectorAll('[data-testid="db-statistics-skeleton-cell"]');
     expect(placeholders).toHaveLength(8);

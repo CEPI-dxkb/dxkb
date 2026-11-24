@@ -101,6 +101,36 @@ describe("SearchBar", () => {
     });
   });
 
+  describe("Advanced Search collapse", () => {
+    it("keeps the plain label unless the bar asks to collapse", () => {
+      renderSearchBar({ showAdvanced: true });
+      const trigger = screen.getByRole("button", { name: "Advanced Search" });
+      expect(trigger).not.toHaveAttribute("title");
+      // With no collapse the label is a bare text node of the button, and the
+      // chevron is the only icon: no SlidersHorizontal to swap in.
+      expect(trigger.querySelectorAll("svg")).toHaveLength(1);
+      expect(trigger.querySelector("svg.lucide-sliders-horizontal")).toBeNull();
+      expect(trigger.querySelector(".sr-only")).toBeNull();
+    });
+
+    it("collapses the label to an icon by container width, and keeps the accessible name", () => {
+      renderSearchBar({ showAdvanced: true, collapseAdvanced: true });
+      const trigger = screen.getByRole("button", { name: "Advanced Search" });
+      expect(trigger).toHaveAttribute("title", "Advanced Search");
+      // jsdom evaluates no container query, so the classes are what is checked:
+      // visually hidden below @md, shown from @md up.
+      expect(screen.getByText("Advanced Search")).toHaveClass(
+        "sr-only",
+        "@md:not-sr-only",
+      );
+      // The icon takes the label's place below @md and goes away from @md up.
+      const icon = trigger.querySelector("svg.lucide-sliders-horizontal");
+      expect(icon).not.toBeNull();
+      expect(icon).toHaveAttribute("aria-hidden", "true");
+      expect(icon).toHaveClass("@md:hidden");
+    });
+  });
+
   describe("form submission", () => {
     it("does not navigate when input is empty", () => {
       renderSearchBar();

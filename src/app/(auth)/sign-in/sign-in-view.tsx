@@ -6,6 +6,7 @@ import { useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { useAuthActions } from "@/lib/auth/provider";
 import { safePostAuthDestination } from "@/lib/auth/redirect";
+import { authLinkHref, signInPrompt } from "@/lib/auth/sign-in-prompt";
 import { Button } from "@/components/ui/button";
 import {
   InputGroup,
@@ -45,6 +46,8 @@ function SigninForm() {
   const { signIn } = useAuthActions();
   const searchParams = useSearchParams();
   const redirectTo = searchParams.get("redirect") || "/";
+  const prompt = signInPrompt(redirectTo);
+  const signUpHref = authLinkHref("/sign-up", redirectTo);
 
   const form = useForm({
     defaultValues: {
@@ -78,7 +81,7 @@ function SigninForm() {
             Sign in to DXKB
           </CardTitle>
           <CardDescription className="text-center">
-            Enter your DXKB credentials to access your workspace
+            {prompt ?? "Enter your DXKB credentials to access your workspace"}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -194,7 +197,7 @@ function SigninForm() {
             <p className="text-sm text-muted-foreground">
               Don&apos;t have an account?{" "}
               <Link
-                href="/sign-up"
+                href={signUpHref}
                 className="font-medium text-primary transition-colors duration-300 hover:font-medium hover:text-secondary dark:text-link dark:hover:text-foreground"
               >
                 Sign up on DXKB

@@ -19,7 +19,7 @@ import {
   NavigationMenuList,
   NavigationMenuTrigger,
 } from "@/components/ui/navigation-menu";
-import { Search } from "lucide-react";
+import { ExternalLink, Search } from "lucide-react";
 import { openCommandPalette } from "@/components/search/command-palette-events";
 import { SearchBar } from "@/components/search/search-bar";
 import { Button } from "@/components/ui/button";
@@ -131,6 +131,13 @@ const DesktopNavbar = () => {
                                   }
                                 >
                                   {item.title}
+                                  {item.target === "_blank" && (
+                                    <ExternalLink
+                                      className="size-3 shrink-0 text-muted-foreground"
+                                      strokeWidth={2.75}
+                                      aria-hidden="true"
+                                    />
+                                  )}
                                 </NavigationMenuLink>
                               ))}
                             </div>

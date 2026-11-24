@@ -17,7 +17,7 @@ import type { OrganismGeoDistribution } from "@/lib/services/organisms/types";
 import { cn } from "@/lib/utils";
 
 import type { HoverEnter, HoverLeave, HoverPayload } from "./choropleth-path";
-import type { ColorScale } from "./color-scale";
+import { isUsaTopoName, type ColorScale } from "./color-scale";
 import {
   countryFitPadding,
   countryZoomMs,
@@ -30,6 +30,7 @@ import { StateCountiesLayer } from "./state-counties-layer";
 import {
   crossesAntimeridian,
   extractFeatures,
+  featureName,
   type CountryFeature,
   type CountyFeature,
   type StateFeature,
@@ -40,8 +41,11 @@ import { WorldCountriesLayer } from "./world-countries-layer";
 import type { GeoMapState } from "./types";
 import {
   animateTransform,
+  countryBounds,
   fitTransform,
   prefersReducedMotion,
+  worldMapScale,
+  worldProjection,
   type Bounds,
   type Viewport,
   type ZoomLimits,
@@ -51,6 +55,11 @@ export type { HoverPayload } from "./choropleth-path";
 
 export interface ChoroplethHandle {
   reset: () => void;
+  // Zooms the World view to a country by its topology name (what `data-region` holds). Starts
+  // the same animated fit a click does. Returns false, and does nothing, for an unknown
+  // name, the USA (a click opens the US view instead), another view, an unloaded map, or a
+  // country with no measurable bounds.
+  zoomToCountry: (name: string) => boolean;
 }
 
 interface ChoroplethSvgProps {
@@ -223,19 +232,6 @@ export const ChoroplethSvg = forwardRef<ChoroplethHandle, ChoroplethSvgProps>(
       [width, height],
     );
 
-    // The parent calls reset() on a view switch: it stays instant, and it stops a running
-    // country zoom first so its frames cannot keep writing that country onto the new view.
-    useImperativeHandle(
-      ref,
-      () => ({
-        reset: () => {
-          stopZoomAnimation(cancelZoomRef);
-          zoomImperativeRef.current?.reset();
-        },
-      }),
-      [],
-    );
-
     const zoomToBounds = (bounds: Bounds) => {
       onLeaveMap();
       const viewport = { width, height };
@@ -256,6 +252,29 @@ export const ChoroplethSvg = forwardRef<ChoroplethHandle, ChoroplethSvgProps>(
     const countryFeatures: CountryFeature[] = worldTopo
       ? extractFeatures(worldTopo, "countries")
       : [];
+
+    // The parent calls reset() on a view switch: it stays instant, and it stops a running
+    // country zoom first so its frames cannot keep writing that country onto the new view.
+    // No deps array: zoomToCountry reads the current viewport, view and topology, which a
+    // memoized handle would freeze at their first values.
+    useImperativeHandle(ref, () => ({
+      reset: () => {
+        stopZoomAnimation(cancelZoomRef);
+        zoomImperativeRef.current?.reset();
+      },
+      zoomToCountry: (name: string) => {
+        if (mapState.view !== "world" || isUsaTopoName(name)) return false;
+        const feature = countryFeatures.find(
+          (candidate) => featureName(candidate.properties) === name,
+        );
+        if (!feature) return false;
+        const bounds = countryBounds(worldProjection(width, height), feature);
+        if (!bounds) return false;
+        zoomToBounds(bounds);
+        return true;
+      },
+    }));
+
     const fips = mapState.selectedStateFips;
     const countyFeatures: CountyFeature[] =
       countyTopo && fips
@@ -282,7 +301,7 @@ export const ChoroplethSvg = forwardRef<ChoroplethHandle, ChoroplethSvgProps>(
           ];
 
     const albersScale = height * 1.55;
-    const worldScale = Math.min(width / 6.3, height * 0.29);
+    const worldScale = worldMapScale(width, height);
 
     return (
       <div

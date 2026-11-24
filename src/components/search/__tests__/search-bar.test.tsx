@@ -101,6 +101,27 @@ describe("SearchBar", () => {
     });
   });
 
+  describe("Advanced Search collapse", () => {
+    it("keeps the plain label unless the bar asks to collapse", () => {
+      renderSearchBar({ showAdvanced: true });
+      const trigger = screen.getByRole("button", { name: "Advanced Search" });
+      expect(trigger).not.toHaveAttribute("title");
+      expect(screen.getByText("Advanced Search")).not.toHaveClass("sr-only");
+    });
+
+    it("collapses the label to an icon by container width, and keeps the accessible name", () => {
+      renderSearchBar({ showAdvanced: true, collapseAdvanced: true });
+      const trigger = screen.getByRole("button", { name: "Advanced Search" });
+      expect(trigger).toHaveAttribute("title", "Advanced Search");
+      // jsdom evaluates no container query, so the classes are what is checked:
+      // visually hidden below @md, shown from @md up.
+      expect(screen.getByText("Advanced Search")).toHaveClass(
+        "sr-only",
+        "@md:not-sr-only",
+      );
+    });
+  });
+
   describe("form submission", () => {
     it("does not navigate when input is empty", () => {
       renderSearchBar();

@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 
 import type { OrganismGeoDistribution } from "@/lib/services/organisms/types";
 
@@ -6,7 +7,7 @@ import { GeoDistributionClient } from "../geo-distribution-client";
 import { MapTooltip } from "../map-tooltip";
 
 interface QueryState {
-  data: null;
+  data: unknown;
   error: Error | null;
   isLoading: boolean;
 }
@@ -40,10 +41,56 @@ vi.mock("next/navigation", () => ({
 }));
 
 vi.mock("../choropleth-svg", () => ({
-  ChoroplethSvg: ({ mapState }: { mapState: { view: string } }) => (
-    <div data-testid="map-view">{mapState.view}</div>
+  ChoroplethSvg: ({
+    mapState,
+    onSelectState,
+  }: {
+    mapState: { view: string };
+    onSelectState?: (fips: string, name: string) => void;
+  }) => (
+    <div data-testid="map-view" data-can-drill={onSelectState ? "yes" : "no"}>
+      {mapState.view}
+    </div>
   ),
 }));
+
+// One state is enough for the hidden state select to have an option to pick.
+const illinoisTopology = {
+  type: "Topology",
+  arcs: [
+    [
+      [0, 0],
+      [1, 0],
+      [1, 1],
+      [0, 1],
+      [0, 0],
+    ],
+  ],
+  objects: {
+    states: {
+      type: "GeometryCollection",
+      geometries: [
+        {
+          type: "Polygon",
+          id: "17",
+          properties: { name: "Illinois" },
+          arcs: [[0]],
+        },
+      ],
+    },
+  },
+};
+
+function serveStatesTopology() {
+  useQueryMock.mockImplementation((options: unknown) => ({
+    data:
+      (options as { queryKey: string[] }).queryKey[1] === "states-topo"
+        ? illinoisTopology
+        : null,
+    error: null,
+    isLoading: false,
+  }));
+}
 
 function distribution({
   countryData = { "South Korea": 3 },
@@ -318,7 +365,10 @@ describe("GeoDistributionClient", () => {
     }));
     render(
       <GeoDistributionClient
-        data={distribution({ stateData: { Illinois: 420 } })}
+        data={distribution({
+          stateData: { Illinois: 420 },
+          countyData: { "Texas|Harris": 9 },
+        })}
         accent="bacteria"
       />,
     );
@@ -340,7 +390,10 @@ describe("GeoDistributionClient", () => {
     });
     render(
       <GeoDistributionClient
-        data={distribution({ stateData: { Illinois: 420 } })}
+        data={distribution({
+          stateData: { Illinois: 420 },
+          countyData: { "Texas|Harris": 9 },
+        })}
         accent="bacteria"
       />,
     );
@@ -348,5 +401,167 @@ describe("GeoDistributionClient", () => {
     fireEvent.click(screen.getByRole("button", { name: "State" }));
 
     expect(screen.getByRole("status")).toBeEmptyDOMElement();
+  });
+
+  it("disables the State pill and blocks state drill-down when no county has genomes", () => {
+    render(
+      <GeoDistributionClient
+        data={distribution({ stateData: { Illinois: 420 } })}
+        accent="bacteria"
+      />,
+    );
+
+    const pill = screen.getByRole("button", { name: "State" });
+    expect(pill).toBeDisabled();
+    expect(pill).toHaveAccessibleDescription(
+      "County-level data is not available for this taxon.",
+    );
+    expect(screen.getByTestId("map-view")).toHaveAttribute(
+      "data-can-drill",
+      "no",
+    );
+
+    // A disabled button never fires click, so this guard only matters if the
+    // pill's own disabled state ever regresses; handleViewChange also returns
+    // early (defense in depth), and the next test covers the path that does
+    // reach the client.
+    fireEvent.click(pill);
+    expect(screen.getByTestId("map-view")).toHaveTextContent("us");
+  });
+
+  it("keeps the state-select guard closed while the State view is gated", async () => {
+    serveStatesTopology();
+    render(
+      <GeoDistributionClient
+        data={distribution({ stateData: { Illinois: 420 } })}
+        accent="bacteria"
+      />,
+    );
+    const user = userEvent.setup();
+
+    // In a browser the hidden select is `inert`, so nobody can reach it. jsdom
+    // does not implement `inert`, which lets this test pick a state anyway and
+    // check the `handleSelectState` guard behind it (defense in depth).
+    await user.click(screen.getByRole("combobox", { name: "View state" }));
+    await user.click(await screen.findByRole("option", { name: "Illinois" }));
+
+    expect(screen.getByTestId("map-view")).toHaveTextContent("us");
+  });
+
+  it("lets the state-select guard through once a county has genomes", async () => {
+    serveStatesTopology();
+    render(
+      <GeoDistributionClient
+        data={distribution({
+          stateData: { Illinois: 420 },
+          countyData: { "Texas|Harris": 9 },
+        })}
+        accent="bacteria"
+      />,
+    );
+    const user = userEvent.setup();
+
+    // jsdom ignores `inert`, so the select is reachable from the US view here;
+    // in a browser it is only usable in the State view. This checks that
+    // `handleSelectState` opens a state when the view is not gated.
+    await user.click(screen.getByRole("combobox", { name: "View state" }));
+    await user.click(await screen.findByRole("option", { name: "Illinois" }));
+
+    expect(screen.getByTestId("map-view")).toHaveTextContent("state");
+  });
+
+  it.each<{
+    name: string;
+    stateData: Record<string, number>;
+    fallbackView: string;
+    fallbackPill: string;
+  }>([
+    {
+      name: "the United States view when a state has genomes",
+      stateData: { Illinois: 420 },
+      fallbackView: "us",
+      fallbackPill: "United States",
+    },
+    {
+      name: "the World view when no state has genomes",
+      stateData: {},
+      fallbackView: "world",
+      fallbackPill: "World",
+    },
+  ])(
+    "leaves the State view for $name when a refresh drops the county data",
+    ({ stateData, fallbackView, fallbackPill }) => {
+      const { rerender } = render(
+        <GeoDistributionClient
+          data={distribution({
+            stateData: { Illinois: 420 },
+            countyData: { "Texas|Harris": 9 },
+          })}
+          accent="bacteria"
+        />,
+      );
+      fireEvent.click(screen.getByRole("button", { name: "State" }));
+      expect(screen.getByTestId("map-view")).toHaveTextContent("state");
+
+      // Same scope, same mounted instance: a retry re-renders the server
+      // component, and a county pivot that failed is swallowed as `{}`.
+      rerender(
+        <GeoDistributionClient
+          data={distribution({ stateData, countyData: {} })}
+          accent="bacteria"
+        />,
+      );
+
+      expect(screen.getByTestId("map-view")).toHaveTextContent(
+        new RegExp(`^${fallbackView}$`),
+      );
+      expect(screen.getByRole("button", { name: fallbackPill })).toHaveAttribute(
+        "aria-pressed",
+        "true",
+      );
+      const statePill = screen.getByRole("button", { name: "State" });
+      expect(statePill).toBeDisabled();
+      expect(statePill).toHaveAttribute("aria-pressed", "false");
+    },
+  );
+
+  it("shows the State view again when the county data returns", () => {
+    const withCounties = distribution({
+      stateData: { Illinois: 420 },
+      countyData: { "Texas|Harris": 9 },
+    });
+    const { rerender } = render(
+      <GeoDistributionClient data={withCounties} accent="bacteria" />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "State" }));
+
+    rerender(
+      <GeoDistributionClient
+        data={distribution({ stateData: { Illinois: 420 } })}
+        accent="bacteria"
+      />,
+    );
+    expect(screen.getByTestId("map-view")).toHaveTextContent(/^us$/);
+
+    rerender(<GeoDistributionClient data={withCounties} accent="bacteria" />);
+    expect(screen.getByTestId("map-view")).toHaveTextContent(/^state$/);
+  });
+
+  it("lets a state be drilled into once any county has genomes", () => {
+    render(
+      <GeoDistributionClient
+        data={distribution({
+          stateData: { Illinois: 420 },
+          countyData: { "Texas|Harris": 9 },
+        })}
+        accent="bacteria"
+      />,
+    );
+
+    expect(screen.getByRole("button", { name: "State" })).toBeEnabled();
+    expect(screen.getByTestId("map-view")).toHaveAttribute(
+      "data-can-drill",
+      "yes",
+    );
   });
 });

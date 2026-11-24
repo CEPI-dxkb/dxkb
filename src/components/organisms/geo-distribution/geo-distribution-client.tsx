@@ -16,6 +16,7 @@ import {
 } from "./choropleth-svg";
 import { ColorLegend } from "./color-legend";
 import { makeGeoColorScale } from "./color-scale";
+import { hasCountyData } from "./county-availability";
 import { MapControls } from "./map-controls";
 import { describeEmptyView, MapEmptyState } from "./map-empty-state";
 import { MapTooltip } from "./map-tooltip";
@@ -58,6 +59,20 @@ function visibleCounts(
     .map(([, count]) => count);
 }
 
+/**
+ * The view a taxon opens on, and the one the State view gives way to when its
+ * county data goes away: the US map if any state has genomes, else the world.
+ */
+function defaultMapState(data: OrganismGeoDistribution): GeoMapState {
+  return {
+    view: Object.values(data.stateData).some((count) => count > 0)
+      ? "us"
+      : "world",
+    selectedStateFips: null,
+    selectedStateName: null,
+  };
+}
+
 async function fetchTopoJson(url: string): Promise<TopologyLike> {
   const response = await fetch(url);
   if (!response.ok) throw new Error(`${url}: ${String(response.status)}`);
@@ -68,13 +83,21 @@ export function GeoDistributionClient({
   data,
   accent,
 }: GeoDistributionClientProps) {
-  const [mapState, setMapState] = useState<GeoMapState>({
-    view: Object.values(data.stateData).some((count) => count > 0)
-      ? "us"
-      : "world",
-    selectedStateFips: null,
-    selectedStateName: null,
-  });
+  const [storedMapState, setMapState] = useState<GeoMapState>(() =>
+    defaultMapState(data),
+  );
+
+  // The State view only has something to draw when some county has genomes.
+  const stateViewAvailable = hasCountyData(data);
+
+  // The component is keyed by scope, so a refresh of the same scope can hand
+  // this instance data whose county pivot failed while the stored view is
+  // "state". The stored view is left alone (the State view shows again if the
+  // counties return); what renders never is the State view without counties.
+  const mapState =
+    storedMapState.view === "state" && !stateViewAvailable
+      ? defaultMapState(data)
+      : storedMapState;
 
   const containerRef = useRef<HTMLDivElement>(null);
   const choroplethRef = useRef<ChoroplethHandle>(null);
@@ -161,6 +184,7 @@ export function GeoDistributionClient({
   } = useTooltip<HoverPayload>();
 
   const handleViewChange = (view: GeoMapView) => {
+    if (view === "state" && !stateViewAvailable) return;
     setMapState((prev) => {
       if (view === "us") {
         return { view: "us", selectedStateFips: null, selectedStateName: null };
@@ -184,6 +208,7 @@ export function GeoDistributionClient({
   };
 
   const handleSelectState = (fips: string, name: string) => {
+    if (!stateViewAvailable) return;
     setMapState({
       view: "state",
       selectedStateFips: fips,
@@ -232,6 +257,7 @@ export function GeoDistributionClient({
         <MapControls
           mapState={mapState}
           stateOptions={stateOptions}
+          stateViewAvailable={stateViewAvailable}
           onViewChange={handleViewChange}
           onSelectState={handleSelectState}
         />
@@ -246,7 +272,7 @@ export function GeoDistributionClient({
             data={data}
             colorScale={colorScale.fill}
             mapState={mapState}
-            onSelectState={handleSelectState}
+            onSelectState={stateViewAvailable ? handleSelectState : undefined}
             onSwitchToUs={() => {
               handleViewChange("us");
             }}

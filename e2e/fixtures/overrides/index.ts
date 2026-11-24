@@ -79,3 +79,6 @@ export {
 // The count the Taxonomy header, the organism landing tiles and the search
 // chip show, keyed by taxon id; specs read it here, never from src/lib.
 export { taxonGenomeCounts } from "@/lib/e2e-fixtures/records";
+// The taxon the loopback answers with empty county pivots, as the Data API
+// does, so its map's State view is unavailable.
+export { noCountyTaxonId } from "@/lib/e2e-fixtures/records";

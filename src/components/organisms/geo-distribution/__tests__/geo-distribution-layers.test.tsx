@@ -119,6 +119,51 @@ describe("UsStatesLayer", () => {
       payload: { genera: {}, hosts: {} },
     });
   });
+
+  it("is not drillable when no onSelectState is given", () => {
+    render(
+      <UsStatesLayer
+        stateFeatures={[makeFeature("Texas")]}
+        scale={800}
+        width={960}
+        height={560}
+        data={emptyGeoData}
+        colorScale={colorScale}
+        isDraggingRef={makeRef(false)}
+        onHoverEnter={noop as never}
+        onHoverLeave={noop}
+      />,
+    );
+
+    expect(mockChoroplethPath.mock.calls[0][0]).toMatchObject({
+      cursor: "default",
+      onClick: undefined,
+    });
+  });
+
+  it("drills into a state on click when onSelectState is given", () => {
+    const onSelectState = vi.fn();
+    render(
+      <UsStatesLayer
+        stateFeatures={[makeFeature("Texas")]}
+        scale={800}
+        width={960}
+        height={560}
+        data={emptyGeoData}
+        colorScale={colorScale}
+        isDraggingRef={makeRef(false)}
+        onHoverEnter={noop as never}
+        onHoverLeave={noop}
+        onSelectState={onSelectState}
+      />,
+    );
+
+    const props = mockChoroplethPath.mock.calls[0][0];
+    expect(props.cursor).toBe("pointer");
+    props.onClick?.();
+    // makeFeature gives every feature id "1", which the layer pads to "01".
+    expect(onSelectState).toHaveBeenCalledWith("01", "Texas");
+  });
 });
 
 describe("StateCountiesLayer", () => {

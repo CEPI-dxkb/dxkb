@@ -15,6 +15,7 @@ import {
   findTaxonGenomeCount,
   genomeFeatureRecord,
   genomeRecord,
+  noCountyTaxonId,
   proteinStructureRecords,
   serologyRecord,
   strainRecords,
@@ -934,10 +935,15 @@ function maybeBvBrcWebsite(
       if (pivotKey === "collection_year,serovar") {
         return { kind: "ok", body: solrSerotypePivot() };
       }
+      // The real Data API has no county values, so this taxon answers with
+      // empty county pivots, as production does; every other taxon keeps
+      // the invented counties the State-view specs drill into.
+      const countyFixtures =
+        rawTaxonId === noCountyTaxonId ? [] : countyGeoFixtures;
       if (pivotKey === "state_province,county,genus") {
         return {
           kind: "ok",
-          body: solrStateCountyGenusPivot(countyGeoFixtures),
+          body: solrStateCountyGenusPivot(countyFixtures),
         };
       }
       if (pivot.tertiary) {
@@ -947,7 +953,7 @@ function maybeBvBrcWebsite(
         };
       }
       if (pivotKey === "state_province,county") {
-        return { kind: "ok", body: solrStateCountyPivot(countyGeoFixtures) };
+        return { kind: "ok", body: solrStateCountyPivot(countyFixtures) };
       }
       return { kind: "ok", body: solrPivot(pivot.primary, pivot.secondary) };
     }

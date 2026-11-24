@@ -57,7 +57,7 @@ interface ChoroplethSvgProps {
   data: OrganismGeoDistribution;
   colorScale: ColorScale;
   mapState: GeoMapState;
-  onSelectState: (fips: string, name: string) => void;
+  onSelectState?: ((fips: string, name: string) => void) | undefined;
   onSwitchToUs: () => void;
   worldTopo: TopologyLike | null;
   worldTopoLoading: boolean;

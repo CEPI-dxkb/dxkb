@@ -1,78 +1,61 @@
 import { Suspense, use } from "react";
-import { SectionRetryButton } from "@/components/organisms/shared/section-retry-button";
+import { failedCountDescription } from "@/components/organisms/shared/failed-count";
+import { UnavailableCount } from "@/components/organisms/shared/unavailable-count";
+import {
+  StatTile,
+  type StatTileProps,
+} from "@/components/organisms/stat-tile/stat-tile";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { CountResult } from "@/lib/services/organisms/types";
 import { numberFormatter } from "@/lib/services/organisms/utils";
 
-/** What the PDB tile shows for a count whose load failed. */
-export const unavailableCount = "Unavailable";
+interface PdbStatTileProps extends Omit<StatTileProps, "value"> {
+  pdb: Promise<CountResult>;
+  /** The failure's reason, as the tile's Unavailable gives it. */
+  formatReason: (reason: unknown) => string;
+}
 
-function PdbValue({ pdb }: { pdb: Promise<CountResult> }) {
+function SettledPdbStatTile({ pdb, formatReason, ...tile }: PdbStatTileProps) {
   const result = use(pdb);
-  return result.status === "fulfilled"
-    ? numberFormatter.format(result.value)
-    : unavailableCount;
+  if (result.status === "fulfilled") {
+    return <StatTile {...tile} value={numberFormatter.format(result.value)} />;
+  }
+  // Unlinked: the Unavailable button cannot sit inside the tile's link.
+  const reason = formatReason(result.reason);
+  return (
+    <StatTile
+      {...tile}
+      href={undefined}
+      description={failedCountDescription(tile.description, reason)}
+      value={<UnavailableCount reason={reason} />}
+    />
+  );
 }
 
 /**
- * The PDB tile's figure. The structure join takes about 23 s cold for large
- * taxa, so the tile has its own `Suspense` boundary: the other tiles render
- * without waiting for it, and this one holds a skeleton until the count
- * settles. A failed count reads as Unavailable, never as a number; the reason
- * is `PdbCountAlert`'s.
+ * The PDB tile. The structure join takes about 23 s cold for large taxa, so
+ * the tile has its own `Suspense` boundary: the other tiles render without
+ * waiting for it, and this one holds a skeleton until the count settles. A
+ * loaded count is a number in the linked tile; a failed one is never a number
+ * but an `UnavailableCount` (with its reason, and a retry) in an unlinked
+ * tile, so it needs a `CountRetryScope` around it.
  */
-export function PdbCountValue({ pdb }: { pdb: Promise<CountResult> }) {
+export function PdbStatTile({ pdb, formatReason, ...tile }: PdbStatTileProps) {
   return (
     <Suspense
       fallback={
-        <>
-          <Skeleton className="h-5.5 w-16" />
-          <span className="sr-only">Loading</span>
-        </>
+        <StatTile
+          {...tile}
+          value={
+            <>
+              <Skeleton className="h-5.5 w-16" />
+              <span className="sr-only">Loading</span>
+            </>
+          }
+        />
       }
     >
-      <PdbValue pdb={pdb} />
-    </Suspense>
-  );
-}
-
-function PdbAlert({
-  pdb,
-  lead,
-  formatReason,
-}: {
-  pdb: Promise<CountResult>;
-  lead: string;
-  formatReason: (reason: unknown) => string;
-}) {
-  const result = use(pdb);
-  if (result.status === "fulfilled") return null;
-  return (
-    <div
-      role="alert"
-      className="flex flex-wrap items-center gap-2 text-xs text-destructive"
-    >
-      <p>
-        {lead}: {formatReason(result.reason)}
-      </p>
-      <SectionRetryButton />
-    </div>
-  );
-}
-
-/**
- * The reason a PDB count failed, with a Retry, in the PDB tile's own boundary
- * (nothing renders while the count is pending or when it loaded).
- */
-export function PdbCountAlert(props: {
-  pdb: Promise<CountResult>;
-  /** What the alert says could not be loaded, before the reason. */
-  lead: string;
-  formatReason: (reason: unknown) => string;
-}) {
-  return (
-    <Suspense fallback={null}>
-      <PdbAlert {...props} />
+      <SettledPdbStatTile {...tile} pdb={pdb} formatReason={formatReason} />
     </Suspense>
   );
 }

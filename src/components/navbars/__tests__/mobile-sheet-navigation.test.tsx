@@ -49,4 +49,45 @@ describe("MobileSheetNavigation", () => {
       "_blank",
     );
   });
+
+  it("lists the structure prediction services as external links", async () => {
+    const user = userEvent.setup();
+    render(<MobileSheetNavigation {...props} />);
+
+    await user.click(screen.getByRole("button", { name: /Services\d+/ }));
+    await user.click(
+      screen.getByRole("button", { name: "Structure Prediction" }),
+    );
+
+    const links = {
+      "Protein Structure Prediction": "PredictStructure",
+      StabiliNNator: "StabiliNNator",
+      FrustraMPNN: "FrustraMPNN",
+      "Structure Sequence Prediction": "StructureSequencePrediction",
+      "Stability Prediction": "StabilityPrediction",
+    };
+    for (const [name, appId] of Object.entries(links)) {
+      const link = screen.getByRole("link", { name });
+      expect(link).toHaveAttribute(
+        "href",
+        `https://www.dxkb.org/app/${appId}`,
+      );
+      expect(link).toHaveAttribute("target", "_blank");
+    }
+  });
+
+  it("lists Mobile Element Detection under Metagenomics", async () => {
+    const user = userEvent.setup();
+    render(<MobileSheetNavigation {...props} />);
+
+    await user.click(screen.getByRole("button", { name: /Services\d+/ }));
+    await user.click(screen.getByRole("button", { name: "Metagenomics" }));
+
+    const link = screen.getByRole("link", { name: "Mobile Element Detection" });
+    expect(link).toHaveAttribute(
+      "href",
+      "https://www.dxkb.org/app/MobileElementDetection",
+    );
+    expect(link).toHaveAttribute("target", "_blank");
+  });
 });

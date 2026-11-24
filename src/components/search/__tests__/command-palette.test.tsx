@@ -244,6 +244,59 @@ describe("CommandPalette", () => {
 
       openSpy.mockRestore();
     });
+
+    it("typing 'struct' lists the five structure prediction services", async () => {
+      renderPalette();
+      await openPalette();
+
+      const user = userEvent.setup();
+      await user.type(screen.getByRole("combobox"), "struct");
+
+      for (const name of [
+        /Protein Structure Prediction/,
+        /StabiliNNator/,
+        /FrustraMPNN/,
+        /Structure Sequence Prediction/,
+        /^Stability Prediction$/,
+      ]) {
+        expect(screen.getByRole("option", { name })).toBeInTheDocument();
+      }
+      expect(
+        screen.queryByRole("option", { name: /BLAST/ }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("typing 'mobile' finds Mobile Element Detection", async () => {
+      renderPalette();
+      await openPalette();
+
+      const user = userEvent.setup();
+      await user.type(screen.getByRole("combobox"), "mobile");
+
+      expect(
+        screen.getByRole("option", { name: /Mobile Element Detection/ }),
+      ).toBeInTheDocument();
+    });
+
+    it("legacy-page items open in a new tab instead of router.push", async () => {
+      const openSpy = vi.spyOn(window, "open").mockImplementation(() => null);
+      renderPalette();
+      await openPalette();
+
+      const user = userEvent.setup();
+      await user.click(
+        screen.getByRole("option", { name: /Protein Structure Prediction/ }),
+      );
+
+      expect(openSpy).toHaveBeenCalledWith(
+        "https://www.dxkb.org/app/PredictStructure",
+        "_blank",
+        "noopener,noreferrer",
+      );
+      expect(mockPush).not.toHaveBeenCalled();
+
+      openSpy.mockRestore();
+    });
   });
 
   describe("search submission", () => {

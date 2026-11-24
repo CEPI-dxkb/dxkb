@@ -59,6 +59,14 @@ const organismItems: {
   },
 ];
 
+/**
+ * DXKB has no native page for these services yet, so they open the legacy app
+ * pages. Once this app is served at www.dxkb.org these links 404: change the
+ * host here (the tests also pin the full URLs) or replace them with native
+ * service pages.
+ */
+const legacyAppOrigin = "https://www.dxkb.org/app";
+
 const serviceItems = {
   genomics: {
     title: "Genomics",
@@ -135,6 +143,36 @@ const serviceItems = {
       },
     ],
   },
+  structurePrediction: {
+    title: "Structure Prediction",
+    items: [
+      {
+        title: "Protein Structure Prediction",
+        href: `${legacyAppOrigin}/PredictStructure`,
+        target: "_blank",
+      },
+      {
+        title: "StabiliNNator",
+        href: `${legacyAppOrigin}/StabiliNNator`,
+        target: "_blank",
+      },
+      {
+        title: "FrustraMPNN",
+        href: `${legacyAppOrigin}/FrustraMPNN`,
+        target: "_blank",
+      },
+      {
+        title: "Structure Sequence Prediction",
+        href: `${legacyAppOrigin}/StructureSequencePrediction`,
+        target: "_blank",
+      },
+      {
+        title: "Stability Prediction",
+        href: `${legacyAppOrigin}/StabilityPrediction`,
+        target: "_blank",
+      },
+    ],
+  },
   utilities: {
     title: "Utilities",
     items: [
@@ -162,6 +200,11 @@ const serviceItems = {
         title: "Taxonomic Classification",
         href: "/services/taxonomic-classification",
         target: "_self",
+      },
+      {
+        title: "Mobile Element Detection",
+        href: `${legacyAppOrigin}/MobileElementDetection`,
+        target: "_blank",
       },
     ],
   },

@@ -80,7 +80,7 @@ function SigninForm() {
           <CardTitle variant="page" className="text-center">
             Sign in to DXKB
           </CardTitle>
-          <CardDescription className="text-center">
+          <CardDescription variant="balanced" className="text-center">
             {prompt ?? "Enter your DXKB credentials to access your workspace"}
           </CardDescription>
         </CardHeader>

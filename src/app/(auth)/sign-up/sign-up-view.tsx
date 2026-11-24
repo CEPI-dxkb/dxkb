@@ -59,7 +59,7 @@ function SignupForm() {
           <CardTitle variant="page" className="text-center">
             Create an account
           </CardTitle>
-          <CardDescription className="text-center">
+          <CardDescription variant="balanced" className="text-center">
             {prompt ?? "Enter your information to create your account"}
           </CardDescription>
         </CardHeader>

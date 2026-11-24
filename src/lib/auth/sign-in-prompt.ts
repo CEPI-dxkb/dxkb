@@ -29,11 +29,12 @@ const serviceTitles: ReadonlyMap<string, string> = new Map(
 /**
  * A name from the `redirect` (attacker-controllable) is shown inside a trusted
  * sentence, so it loses control and format characters (NUL, newlines, bidi
- * overrides) and keeps one space between words.
+ * overrides) and double-quote characters, so the name cannot close the quotes
+ * it is shown in, and keeps one space between words.
  */
 function cleanName(segment: string): string {
   return segment
-    .replace(/[\p{Cc}\p{Cf}]/gu, "")
+    .replace(/[\p{Cc}\p{Cf}"“”]/gu, "")
     .replace(/\s+/gu, " ")
     .trim();
 }
@@ -46,6 +47,11 @@ function shortName(name: string): string {
     : name;
 }
 
+/** A name taken from the URL is quoted so it reads as data, not as part of the sentence. */
+function quotedName(name: string): string {
+  return `“${shortName(name)}”`;
+}
+
 /** The cleaned last segment, or null when there is none or nothing is left of it. */
 function lastName(segments: readonly string[]): string | null {
   const last = segments.at(-1);
@@ -56,7 +62,7 @@ function lastName(segments: readonly string[]): string | null {
 /** "the <last segment> folder", or null when the path has no usable last segment. */
 function lastFolder(segments: readonly string[]): string | null {
   const name = lastName(segments);
-  return name === null ? null : `the ${shortName(name)} folder`;
+  return name === null ? null : `the ${quotedName(name)} folder`;
 }
 
 /** `/workspace/home/…` carries no username, so it is the signed-in user's own home. */
@@ -65,7 +71,7 @@ function ownHomePhrase(path: readonly string[]): string | null {
   const name = lastName(path);
   if (name === null) return null;
   if (path.length === 1 && ownGroupFolders.has(name)) return `your ${name}`;
-  return `your ${shortName(name)} folder`;
+  return `your ${quotedName(name)} folder`;
 }
 
 /** After the username: whose it is cannot be known signed out, so no "your". */

@@ -44,32 +44,32 @@ describe("signInPrompt", () => {
     ["/workspace/home", "your Home workspace directory"],
     ["/workspace/home/Genome%20Groups", "your Genome Groups"],
     ["/workspace/home/Feature%20Groups", "your Feature Groups"],
-    ["/workspace/home/Genome%20Groups/Sub", "your Sub folder"],
-    ["/workspace/home/My%20Reads", "your My Reads folder"],
-    ["/workspace/home/100%", "your 100% folder"],
+    ["/workspace/home/Genome%20Groups/Sub", "your “Sub” folder"],
+    ["/workspace/home/My%20Reads", "your “My Reads” folder"],
+    ["/workspace/home/100%", "your “100%” folder"],
     ["/workspace/shared", "your workspaces"],
-    ["/workspace/shared/ws1/data", "the data folder"],
+    ["/workspace/shared/ws1/data", "the “data” folder"],
     ["/workspace/public", "the Public Workspaces page"],
     ["/workspace/public/alice@bvbrc", "this public workspace"],
     [
       "/workspace/public/ARWattam@patricbrc.org/BV-BRC%20Workshop",
-      "the BV-BRC Workshop folder",
+      "the “BV-BRC Workshop” folder",
     ],
     ["/workspace/workshop", "the BV-BRC Workshop page"],
     ["/workspace/alice@bvbrc", "this workspace"],
     ["/workspace/alice@bvbrc/home", "the Home workspace directory"],
     [
       "/workspace/alice@bvbrc/home/Genome%20Groups",
-      "the Genome Groups folder",
+      "the “Genome Groups” folder",
     ],
-    ["/workspace/alice@bvbrc/shared-folder/x", "the x folder"],
+    ["/workspace/alice@bvbrc/shared-folder/x", "the “x” folder"],
   ])("names the workspace page %s", (redirect, phrase) => {
     expect(signInPrompt(redirect)).toBe(to(phrase));
   });
 
   it("shortens a very long folder name", () => {
     expect(signInPrompt(`/workspace/home/${"a".repeat(80)}`)).toBe(
-      to(`your ${"a".repeat(59)}… folder`),
+      to(`your “${"a".repeat(59)}…” folder`),
     );
   });
 
@@ -78,27 +78,37 @@ describe("signInPrompt", () => {
 
     expect(
       signInPrompt(`/workspace/home/${encodeURIComponent(emoji.repeat(70))}`),
-    ).toBe(to(`your ${emoji.repeat(59)}… folder`));
+    ).toBe(to(`your “${emoji.repeat(59)}…” folder`));
   });
 
   it.each([
-    ["a bidi override", "/workspace/home/a%E2%80%AEb", "your ab folder"],
-    ["a NUL", "/workspace/home/a%00b", "your ab folder"],
-    ["a newline", "/workspace/home/a%0Ab", "your ab folder"],
-    ["a run of spaces", "/workspace/home/a%20%20%20b", "your a b folder"],
+    ["a bidi override", "/workspace/home/a%E2%80%AEb", "your “ab” folder"],
+    ["a NUL", "/workspace/home/a%00b", "your “ab” folder"],
+    ["a newline", "/workspace/home/a%0Ab", "your “ab” folder"],
+    ["a run of spaces", "/workspace/home/a%20%20%20b", "your “a b” folder"],
+    [
+      "a curly closing quote",
+      "/workspace/home/a%E2%80%9D%20b%E2%80%9C",
+      "your “a b” folder",
+    ],
+    ["straight quotes", "/workspace/home/%22x%22", "your “x” folder"],
   ])("cleans %s out of a folder name: %s", (_name, redirect, phrase) => {
     expect(signInPrompt(redirect)).toBe(to(phrase));
   });
 
   it.each([
-    ["your own folder", "/workspace/home/%E2%80%AE"],
-    ["a shared folder", "/workspace/shared/ws1/%E2%80%AE"],
-  ])(
-    "falls back to the generic sentence for %s named only by a bidi control",
-    (_name, redirect) => {
-      expect(signInPrompt(redirect)).toBe(generic);
-    },
-  );
+    ["your own folder named only by a bidi control", "/workspace/home/%E2%80%AE"],
+    [
+      "a shared folder named only by a bidi control",
+      "/workspace/shared/ws1/%E2%80%AE",
+    ],
+    [
+      "a name of only quotes",
+      "/workspace/home/%22%E2%80%9C%E2%80%9D",
+    ],
+  ])("falls back to the generic sentence for %s", (_name, redirect) => {
+    expect(signInPrompt(redirect)).toBe(generic);
+  });
 
   it.each([
     "/services",

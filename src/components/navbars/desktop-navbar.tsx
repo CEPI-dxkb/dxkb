@@ -174,8 +174,9 @@ const DesktopNavbar = () => {
             avatar, it pushes the navbar wider than the window, so the page scrolls sideways. Below that
             a button opens the command palette instead. The wrapper is a container so the bar can drop
             the "Advanced Search" label for an icon when what is left of the row is narrow (a signed-in
-            header, whose right-hand group is up to 350px): the text field keeps about 120px at 1280px
-            instead of 50px. */}
+            header with jobs, where the job pill widens the right-hand group): the text field keeps
+            around 150px at 1280px with all four job groups, instead of the 50-115px it had when the
+            label never collapsed. */}
         {!isHome && (
           <div className="@container hidden flex-1 items-center justify-end px-2 xl:flex">
             <SearchBar className="max-w-250" showAdvanced collapseAdvanced />

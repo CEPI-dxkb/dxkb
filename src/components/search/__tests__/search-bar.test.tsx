@@ -106,7 +106,11 @@ describe("SearchBar", () => {
       renderSearchBar({ showAdvanced: true });
       const trigger = screen.getByRole("button", { name: "Advanced Search" });
       expect(trigger).not.toHaveAttribute("title");
-      expect(screen.getByText("Advanced Search")).not.toHaveClass("sr-only");
+      // With no collapse the label is a bare text node of the button, and the
+      // chevron is the only icon: no SlidersHorizontal to swap in.
+      expect(trigger.querySelectorAll("svg")).toHaveLength(1);
+      expect(trigger.querySelector("svg.lucide-sliders-horizontal")).toBeNull();
+      expect(trigger.querySelector(".sr-only")).toBeNull();
     });
 
     it("collapses the label to an icon by container width, and keeps the accessible name", () => {
@@ -119,6 +123,11 @@ describe("SearchBar", () => {
         "sr-only",
         "@md:not-sr-only",
       );
+      // The icon takes the label's place below @md and goes away from @md up.
+      const icon = trigger.querySelector("svg.lucide-sliders-horizontal");
+      expect(icon).not.toBeNull();
+      expect(icon).toHaveAttribute("aria-hidden", "true");
+      expect(icon).toHaveClass("@md:hidden");
     });
   });
 

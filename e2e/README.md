@@ -273,6 +273,8 @@ The committed sets are currently a patchwork. This is the measured per-file stat
 
 **The `jobs` snapshot now waits for its two fixture rows and masks its live timestamp.** The Chromium and WebKit Darwin baselines have been refreshed to the loaded state. The Linux and Firefox Darwin baselines still predate that deterministic contract and must be refreshed in native CI; until then they can remain green under the browser-level tolerance despite showing stale content. The `jobs` layout also depends on the wall clock: the masked `Last updated: <toLocaleTimeString()>` text measures 138.75–154.16 px on macOS against its fixed 144 px (`w-36`) span, so for most times of day it wraps to two lines, grows the counts row from 28 px to 32 px and pushes the table down 4 px, which is why neither Darwin `jobs` baseline was refreshed for `v0.5.0`.
 
+**The signed-in header baselines show the old "Advanced Search" label.** The firefox and webkit `-darwin` baselines for `workspace`, `genome-assembly` and `jobs` predate the collapsed "Advanced Search" label (DXKBCORE-376), which now shows as an icon in a signed-in header whose job pill is visible. They still pass inside the 5% tolerance, and the next refresh should treat the header-search diff in them as expected. Chromium `-darwin` was refreshed for the new label.
+
 **`-webkit-darwin` is ahead of `-webkit-linux`.** Seven of the eight webkit darwin baselines were refreshed to match head; the linux set was not, and cannot be from a Mac. Both need the same CI run as firefox.
 
 **Firefox cannot be regenerated locally at all**: `browserType.launch: Timeout 180000ms exceeded` with `sandbox_extension_issue_file_to_process … Operation not permitted`, reproducible on an untouched route. Both firefox sets need a CI run.

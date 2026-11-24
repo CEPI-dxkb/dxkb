@@ -31,6 +31,7 @@ interface SearchBarProps {
   size?: "default" | "lg";
   showIcon?: boolean;
   showAdvanced?: boolean;
+  collapseAdvanced?: boolean;
 }
 
 function extractKeywordQuery(raw: string): string {
@@ -79,6 +80,7 @@ function SearchBarForm({
   size = "default",
   showIcon = true,
   showAdvanced = false,
+  collapseAdvanced = false,
 }: SearchBarProps & { initialType?: string }) {
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -162,7 +164,9 @@ function SearchBarForm({
           )}
         </div>
       </div>
-      {showAdvanced && <AdvancedSearchDropdown variant="button" />}
+      {showAdvanced && (
+        <AdvancedSearchDropdown variant="button" collapsible={collapseAdvanced} />
+      )}
     </form>
   );
 }

@@ -22,6 +22,7 @@ export function MobileNavLink({ href, target, children }: MobileNavLinkProps) {
         <>
           <ExternalLink
             className="size-3 text-muted-foreground transition-colors group-hover/link:text-secondary"
+            strokeWidth={2.75}
             aria-hidden="true"
           />{" "}
           <span className="sr-only">(opens in a new tab)</span>

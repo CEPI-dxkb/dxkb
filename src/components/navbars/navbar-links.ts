@@ -33,31 +33,43 @@ const resourcesItems: {
   },
 ];
 
-const organismItems: {
+interface OrganismLink {
   title: string;
   href: string;
-  description: string;
-  target: "_self" | "_blank";
-}[] = [
-  {
-    title: "Viruses",
-    href: "/organisms/viruses",
-    description: "Webpage for all viruses.",
-    target: "_self",
-  },
-  {
-    title: "Bacteria",
-    href: "/organisms/bacteria",
-    description: "Webpage for all bacteria.",
-    target: "_self",
-  },
-  {
-    title: "Browse All",
-    href: "/organisms/all",
-    description: "Webpage for all organisms.",
-    target: "_self",
-  },
+}
+
+// The major CEPI taxa, linked by NCBI taxon id. `navbar-links.test.ts` checks the ids against
+// `virusFamilies`. Literal hrefs keep `@/lib/views/hrefs` (and the data-api modules behind it)
+// out of the navbar bundle that ships on every page.
+const featuredVirusItems: OrganismLink[] = [
+  { title: "Bunyaviricetes", href: "/taxonomy/3151693" },
+  { title: "Coronaviridae", href: "/taxonomy/11118" },
+  { title: "Filoviridae", href: "/taxonomy/11266" },
+  { title: "Orthomyxoviridae", href: "/taxonomy/11308" },
+  { title: "Paramyxoviridae", href: "/taxonomy/11158" },
+  { title: "Pneumoviridae", href: "/taxonomy/11244" },
 ];
+
+// Bacteria are not featured; they stay reachable from here and through Browse all.
+const browseOrganismItems: OrganismLink[] = [
+  { title: "All Viruses", href: "/organisms/viruses" },
+  { title: "All Bacteria", href: "/organisms/bacteria" },
+  { title: "Browse all", href: "/organisms/all" },
+];
+
+// The flat list, in menu order, for renderers that do not group (the mobile sheet).
+const organismItems: OrganismLink[] = [
+  ...featuredVirusItems,
+  ...browseOrganismItems,
+];
+
+/**
+ * DXKB has no native page for these services yet, so they open the legacy app
+ * pages. Once this app is served at www.dxkb.org these links 404: change the
+ * host here (the tests also pin the full URLs) or replace them with native
+ * service pages.
+ */
+const legacyAppOrigin = "https://www.dxkb.org/app";
 
 const serviceItems = {
   genomics: {
@@ -135,6 +147,36 @@ const serviceItems = {
       },
     ],
   },
+  structurePrediction: {
+    title: "Structure Prediction",
+    items: [
+      {
+        title: "Protein Structure Prediction",
+        href: `${legacyAppOrigin}/PredictStructure`,
+        target: "_blank",
+      },
+      {
+        title: "StabiliNNator",
+        href: `${legacyAppOrigin}/StabiliNNator`,
+        target: "_blank",
+      },
+      {
+        title: "FrustraMPNN",
+        href: `${legacyAppOrigin}/FrustraMPNN`,
+        target: "_blank",
+      },
+      {
+        title: "Structure Sequence Prediction",
+        href: `${legacyAppOrigin}/StructureSequencePrediction`,
+        target: "_blank",
+      },
+      {
+        title: "Stability Prediction",
+        href: `${legacyAppOrigin}/StabilityPrediction`,
+        target: "_blank",
+      },
+    ],
+  },
   utilities: {
     title: "Utilities",
     items: [
@@ -162,6 +204,11 @@ const serviceItems = {
         title: "Taxonomic Classification",
         href: "/services/taxonomic-classification",
         target: "_self",
+      },
+      {
+        title: "Mobile Element Detection",
+        href: `${legacyAppOrigin}/MobileElementDetection`,
+        target: "_blank",
       },
     ],
   },
@@ -311,4 +358,11 @@ export interface NavSection {
 }
 
 export type { WorkspaceNavItem, WorkspaceNavSection };
-export { resourcesItems, organismItems, serviceItems, workspaceNavItems };
+export {
+  resourcesItems,
+  organismItems,
+  featuredVirusItems,
+  browseOrganismItems,
+  serviceItems,
+  workspaceNavItems,
+};

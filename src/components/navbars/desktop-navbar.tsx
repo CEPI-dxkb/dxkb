@@ -6,7 +6,8 @@ import { usePathname } from "next/navigation";
 
 import {
   resourcesItems,
-  organismItems,
+  featuredVirusItems,
+  browseOrganismItems,
   serviceItems,
   type NavSection,
 } from "@/components/navbars/navbar-links";
@@ -74,18 +75,24 @@ const DesktopNavbar = () => {
                   Organisms
                 </NavigationMenuTrigger>
                 <NavigationMenuContent>
-                  <ul className="grid w-56 gap-3 p-4">
-                    {organismItems.map((organism) => (
-                      <ListItem
-                        key={organism.title}
-                        title={organism.title}
-                        href={organism.href}
-                        target={organism.target}
-                      >
-                        {organism.description}
-                      </ListItem>
-                    ))}
-                  </ul>
+                  <div className="grid grid-cols-3 gap-2 p-2 lg:w-140">
+                    <div className="col-span-2">
+                      <h4 className="my-0.5 rounded-md bg-primary p-2 text-sm font-bold text-white">
+                        Featured viruses
+                      </h4>
+                      <div className="grid auto-cols-fr grid-flow-col grid-rows-3">
+                        <OrganismLinks items={featuredVirusItems} />
+                      </div>
+                    </div>
+                    <div>
+                      <h4 className="my-0.5 rounded-md bg-primary p-2 text-sm font-bold text-white">
+                        Browse
+                      </h4>
+                      <div className="grid">
+                        <OrganismLinks items={browseOrganismItems} />
+                      </div>
+                    </div>
+                  </div>
                 </NavigationMenuContent>
               </NavigationMenuItem>
 
@@ -127,6 +134,7 @@ const DesktopNavbar = () => {
                                   {item.target === "_blank" && (
                                     <ExternalLink
                                       className="size-3 shrink-0 text-muted-foreground"
+                                      strokeWidth={2.75}
                                       aria-hidden="true"
                                     />
                                   )}
@@ -246,6 +254,22 @@ const DesktopNavbar = () => {
     </header>
   );
 };
+
+function OrganismLinks({
+  items,
+}: {
+  items: { title: string; href: string }[];
+}) {
+  return items.map((item) => (
+    <NavigationMenuLink
+      key={item.href}
+      render={<Link href={item.href} />}
+      variant="workspace-nav"
+    >
+      {item.title}
+    </NavigationMenuLink>
+  ));
+}
 
 function ListItem({
   title,

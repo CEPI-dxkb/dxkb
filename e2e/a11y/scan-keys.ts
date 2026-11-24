@@ -10,6 +10,8 @@ import { scanTargets } from "./routes";
  */
 export const nonRouteScanKeys: readonly string[] = [
   "taxonomy-metadata-distributions",
+  "taxonomy-geo-map-world",
+  "taxonomy-geo-map-world-select-open",
   "command-palette",
   "auspice-picker",
   "auspice-viewer-host",

@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 
 import { act, fireEvent, render, screen } from "@testing-library/react";
-import { createRef } from "react";
+import { createRef, type ComponentPropsWithoutRef } from "react";
 
 import type { OrganismGeoDistribution } from "@/lib/services/organisms/types";
 
@@ -326,5 +326,161 @@ describe("ChoroplethSvg country zoom (animated)", () => {
     expect(readTransform()).not.toBe(identity);
     advance(1000);
     expect(readTransform()).toBe(identity);
+  });
+});
+
+describe("ChoroplethSvg zoomToCountry (reduced motion)", () => {
+  function renderWithHandle(
+    props: ComponentPropsWithoutRef<typeof ChoroplethSvg> = makeProps(),
+  ) {
+    const ref = createRef<ChoroplethHandle>();
+    const view = render(<ChoroplethSvg ref={ref} {...props} />);
+    return { ref, props, ...view };
+  }
+
+  it("lands on the same transform as clicking the country", () => {
+    const { ref } = renderWithHandle();
+    fireEvent.click(regionPath("Germany"));
+    const clicked = readTransform();
+    expect(clicked).not.toBe(identity);
+    act(() => {
+      ref.current?.reset();
+    });
+    expect(readTransform()).toBe(identity);
+
+    let started = false;
+    act(() => {
+      started = ref.current?.zoomToCountry("Germany") ?? false;
+    });
+    expect(started).toBe(true);
+    expect(readTransform()).toBe(clicked);
+  });
+
+  it("matches the click for a multipolygon country (France drops French Guiana)", () => {
+    const { ref } = renderWithHandle();
+    fireEvent.click(regionPath("France"));
+    const clicked = readTransform();
+    act(() => {
+      ref.current?.reset();
+    });
+    act(() => {
+      ref.current?.zoomToCountry("France");
+    });
+    expect(readTransform()).toBe(clicked);
+  });
+
+  it("hides the tooltip like a click does", () => {
+    const { ref, props } = renderWithHandle();
+    act(() => {
+      ref.current?.zoomToCountry("Germany");
+    });
+    expect(props.onLeaveMap).toHaveBeenCalled();
+  });
+
+  it("uses the current viewport after a resize", () => {
+    const { ref } = renderWithHandle();
+    act(() => {
+      for (const callback of resizeObservers) {
+        callback(
+          [{ contentRect: { width: 900, height: 600 } } as ResizeObserverEntry],
+          {} as ResizeObserver,
+        );
+      }
+    });
+    fireEvent.click(regionPath("Germany"));
+    const clicked = readTransform();
+    act(() => {
+      ref.current?.reset();
+    });
+    act(() => {
+      ref.current?.zoomToCountry("Germany");
+    });
+    expect(readTransform()).toBe(clicked);
+  });
+
+  it("does nothing and returns false for the USA", () => {
+    const { ref, props } = renderWithHandle();
+    let started = true;
+    act(() => {
+      started = ref.current?.zoomToCountry("United States of America") ?? true;
+    });
+    expect(started).toBe(false);
+    expect(props.onSwitchToUs).not.toHaveBeenCalled();
+    expect(readTransform()).toBe(identity);
+  });
+
+  it("does nothing and returns false for an unknown name", () => {
+    const { ref } = renderWithHandle();
+    let started = true;
+    act(() => {
+      started = ref.current?.zoomToCountry("Atlantis") ?? true;
+    });
+    expect(started).toBe(false);
+    expect(readTransform()).toBe(identity);
+  });
+
+  it("does nothing once the view has left World, though it was World at mount", () => {
+    const props = makeProps();
+    const { ref, rerender } = renderWithHandle(props);
+    // The handle must read the current view, not the one it was created with.
+    rerender(
+      <ChoroplethSvg
+        ref={ref}
+        {...props}
+        mapState={{ ...props.mapState, view: "us" as const }}
+      />,
+    );
+    let started = true;
+    act(() => {
+      started = ref.current?.zoomToCountry("Germany") ?? true;
+    });
+    expect(started).toBe(false);
+    expect(readTransform()).toBe(identity);
+    expect(props.onLeaveMap).not.toHaveBeenCalled();
+  });
+
+  it("does nothing before the world topology has loaded, then zooms once it has", () => {
+    const props = makeProps();
+    const { ref, rerender } = renderWithHandle({ ...props, worldTopo: null });
+    let started = true;
+    act(() => {
+      started = ref.current?.zoomToCountry("Germany") ?? true;
+    });
+    expect(started).toBe(false);
+    expect(readTransform()).toBe(identity);
+    expect(props.onLeaveMap).not.toHaveBeenCalled();
+
+    // The handle must read the topology that has arrived since, not the one at mount.
+    rerender(<ChoroplethSvg ref={ref} {...props} worldTopo={worldTopo} />);
+    act(() => {
+      started = ref.current?.zoomToCountry("Germany") ?? false;
+    });
+    expect(started).toBe(true);
+    expect(readTransform()).not.toBe(identity);
+    expect(readScale()).toBeGreaterThan(5);
+    expect(props.onLeaveMap).toHaveBeenCalled();
+  });
+});
+
+describe("ChoroplethSvg zoomToCountry (animated)", () => {
+  beforeEach(() => {
+    reducedMotion = false;
+    vi.useFakeTimers();
+  });
+
+  it("animates like a click and stops on a Zoom in press", () => {
+    const ref = createRef<ChoroplethHandle>();
+    render(<ChoroplethSvg ref={ref} {...makeProps()} />);
+    act(() => {
+      ref.current?.zoomToCountry("Germany");
+    });
+    expect(readTransform()).toBe(identity);
+    advance(200);
+    const midway = readScale();
+    expect(midway).toBeGreaterThan(1);
+    fireEvent.click(screen.getByRole("button", { name: "Zoom in" }));
+    const pressed = readTransform();
+    advance(1000);
+    expect(readTransform()).toBe(pressed);
   });
 });

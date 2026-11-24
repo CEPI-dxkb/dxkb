@@ -1,4 +1,4 @@
-import { geoPath, type GeoProjection } from "@visx/vendor/d3-geo";
+import { geoNaturalEarth1, geoPath, type GeoProjection } from "@visx/vendor/d3-geo";
 import { interpolateZoom } from "@visx/vendor/d3-interpolate";
 import type { TransformMatrix } from "@visx/zoom";
 
@@ -135,6 +135,23 @@ export function countryBounds(
     );
     return Math.min(countryGapFactor * longestSide, maxReach);
   });
+}
+
+// The scale the World layer draws at (WorldCountriesLayer's <NaturalEarth scale>), shared
+// here so the layer and a programmatic zoom use one scale. The translate is not shared:
+// `[width / 2, height / 2]` is written in WorldCountriesLayer and again below, and the
+// click-vs-handle parity tests in choropleth-svg-zoom.test.tsx are what keep the two
+// projections from drifting apart.
+export function worldMapScale(width: number, height: number): number {
+  return Math.min(width / 6.3, height * 0.29);
+}
+
+// The projection <NaturalEarth scale translate> builds for the World layer: the same
+// projection a click on a country measures with (see the note above on what guards it).
+export function worldProjection(width: number, height: number): GeoProjection {
+  return geoNaturalEarth1()
+    .scale(worldMapScale(width, height))
+    .translate([width / 2, height / 2]);
 }
 
 function clampScale(value: number, limits: ZoomLimits): number {

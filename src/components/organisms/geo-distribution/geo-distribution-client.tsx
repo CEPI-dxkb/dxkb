@@ -17,9 +17,11 @@ import {
 import { ColorLegend } from "./color-legend";
 import { makeGeoColorScale } from "./color-scale";
 import { isStateViewAvailable } from "./county-availability";
+import { countryZoomOptions } from "./country-zoom-options";
 import { MapControls } from "./map-controls";
 import { describeEmptyView, MapEmptyState } from "./map-empty-state";
 import { MapTooltip } from "./map-tooltip";
+import { extractFeatures } from "./topology-utils";
 import type { GeoDistributionAccent, GeoMapState, GeoMapView } from "./types";
 
 interface GeoDistributionClientProps {
@@ -169,6 +171,13 @@ export function GeoDistributionClient({
     stateOptions.sort((a, b) => a.name.localeCompare(b.name));
   }
 
+  const countryOptions = worldTopo
+    ? countryZoomOptions(
+        extractFeatures(worldTopo, "countries"),
+        data.countryData,
+      )
+    : [];
+
   const counts = visibleCounts(
     data,
     mapState,
@@ -220,6 +229,10 @@ export function GeoDistributionClient({
     choroplethRef.current?.reset();
   };
 
+  const handleZoomToCountry = (name: string) => {
+    choroplethRef.current?.zoomToCountry(name);
+  };
+
   const handleHoverChange = (
     payload: HoverPayload | null,
     event: ReactPointerEvent<SVGPathElement>,
@@ -251,7 +264,12 @@ export function GeoDistributionClient({
       : null;
 
   return (
-    <Card variant="panel" className="h-full" size="sm">
+    <Card
+      variant="panel"
+      className="h-full"
+      size="sm"
+      data-testid="geo-distribution"
+    >
       <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2 pb-3">
         <h2 className="text-lg leading-snug font-medium">
           Geographic Distribution
@@ -260,8 +278,10 @@ export function GeoDistributionClient({
           mapState={mapState}
           stateOptions={stateOptions}
           stateViewAvailable={stateViewAvailable}
+          countryOptions={countryOptions}
           onViewChange={handleViewChange}
           onSelectState={handleSelectState}
+          onZoomToCountry={handleZoomToCountry}
         />
       </CardHeader>
       <CardContent

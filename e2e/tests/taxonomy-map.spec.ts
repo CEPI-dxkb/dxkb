@@ -179,6 +179,68 @@ test.describe("taxonomy geographic distribution map", () => {
     await expect(mapGroup).toHaveAttribute("transform", identityTransform);
   });
 
+  test("a keyboard user zooms to a country from the Zoom to country Select", async ({ page }) => {
+    const { mapSection, svg, mapGroup, worldPill } = await openWorldMap(page);
+    const countrySelect = mapSection.getByRole("combobox", { name: "Zoom to country" });
+    const resetZoom = mapSection.getByRole("button", { name: "Reset zoom" });
+    // The popup portals outside the map card. Base UI lists the options a moment before it
+    // moves focus onto one; a key typed in that gap reaches the trigger, whose Enter closes
+    // the popup without picking. Keys are sent once focus is in the list, as a person's are.
+    const focusedOption = page.getByRole("option").and(page.locator(":focus"));
+
+    // Keyboard only, from a focused Select: Enter opens the list, type-ahead moves to
+    // Italy, Enter commits it.
+    const pickItalyByKeyboard = async () => {
+      await page.keyboard.press("Enter");
+      await expect(focusedOption).toBeVisible();
+      await page.keyboard.type("Ital");
+      await page.keyboard.press("Enter");
+    };
+
+    // Reach the Select as a keyboard user does: from the World pill, Tab passes the United
+    // States and State pills, then lands on the Select.
+    await worldPill.focus();
+    for (const pill of ["United States", "State"]) {
+      await page.keyboard.press("Tab");
+      await expect(mapSection.getByRole("button", { name: pill, exact: true })).toBeFocused();
+    }
+    await page.keyboard.press("Tab");
+    await expect(countrySelect).toBeFocused();
+    await pickItalyByKeyboard();
+
+    await expect.poll(async () => scaleOf(await mapGroup.getAttribute("transform"))).toBeGreaterThan(5);
+    const italy = svg.locator('path[data-region="Italy"]');
+    await expect
+      .poll(async () => {
+        const [country, map] = await Promise.all([italy.boundingBox(), svg.boundingBox()]);
+        if (!country || !map) return false;
+        const slack = 1;
+        return (
+          country.x >= map.x - slack &&
+          country.y >= map.y - slack &&
+          country.x + country.width <= map.x + map.width + slack &&
+          country.y + country.height <= map.y + map.height + slack
+        );
+      })
+      .toBe(true);
+    // Focus stays on the Select and the view is still World.
+    await expect(countrySelect).toBeFocused();
+    await expect(worldPill).toHaveAttribute("aria-pressed", "true");
+
+    // The collapsed State Select is inert, so the next Tab skips its hidden "View state"
+    // trigger and lands on the map's Zoom in button.
+    await page.keyboard.press("Tab");
+    await expect(mapSection.getByRole("button", { name: "Zoom in" })).toBeFocused();
+
+    await resetZoom.click();
+    await expect(mapGroup).toHaveAttribute("transform", identityTransform);
+    // The same pick works again after Reset.
+    await countrySelect.focus();
+    await pickItalyByKeyboard();
+    await expect.poll(async () => scaleOf(await mapGroup.getAttribute("transform"))).toBeGreaterThan(5);
+    await expect(countrySelect).toBeFocused();
+  });
+
   test("dragging the world map from a country pans it and does not zoom to the country", async ({ page }) => {
     const { svg, mapGroup, worldPill } = await openWorldMap(page);
     const brazil = svg.locator('path[data-region="Brazil"]');

@@ -318,6 +318,48 @@ test.describe("a11y component surfaces", () => {
     );
   });
 
+  test("taxonomy geo map World view has no blocking a11y violations with the country Select closed and open", async ({
+    page,
+    context,
+  }) => {
+    await context.clearCookies();
+    await applyBackendMocks(page, {
+      overrides: [...workspaceOverrides, ...a11yBackendOverrides],
+    });
+    await page.goto("/taxonomy/234");
+
+    const geoMap = page.getByTestId("geo-distribution");
+    await geoMap
+      .getByRole("heading", { level: 2, name: "Geographic Distribution" })
+      .waitFor({ timeout: 10_000 });
+    // The mocked data has state counts, so the page opens on the US view, where the
+    // country Select is absent. A map path in the DOM means hydration has finished.
+    await geoMap
+      .locator("path")
+      .first()
+      .waitFor({ state: "attached", timeout: 15_000 });
+    await geoMap.getByRole("button", { name: "World" }).click();
+    await geoMap
+      .locator('path[data-region="Italy"]')
+      .waitFor({ state: "attached", timeout: 15_000 });
+    await page.waitForLoadState("networkidle");
+
+    const closed = await scanPage(page, {
+      include: '[data-testid="geo-distribution"]',
+    });
+    assertNoBlockingViolations(closed, "taxonomy-geo-map-world", "dxkb-light");
+
+    await geoMap.getByRole("combobox", { name: "Zoom to country" }).click();
+    await page.getByRole("option", { name: "Italy" }).waitFor();
+    // The popup portals outside the map card, so the open scan covers the body.
+    const open = await scanPage(page, { include: "body" });
+    assertNoBlockingViolations(
+      open,
+      "taxonomy-geo-map-world-select-open",
+      "dxkb-light",
+    );
+  });
+
   test("command palette (open) has no blocking a11y violations", async ({
     page,
   }) => {

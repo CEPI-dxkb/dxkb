@@ -281,11 +281,33 @@ function ListItem({
   href: string;
   target?: "_self" | "_blank";
 }) {
+  const isExternal = target === "_blank";
+
   return (
     <li {...props}>
-      <NavigationMenuLink render={<Link href={href} target={target} />}>
+      <NavigationMenuLink
+        render={
+          isExternal ? (
+            <a href={href} target="_blank" rel="noopener noreferrer" />
+          ) : (
+            <Link href={href} />
+          )
+        }
+      >
         <div className="flex flex-col gap-1 text-sm">
-          <div className="leading-none font-medium">{title}</div>
+          <div className="flex items-center gap-2 leading-none font-medium">
+            {title}
+            {isExternal && (
+              <>
+                <ExternalLink
+                  className="size-3 shrink-0 text-muted-foreground"
+                  strokeWidth={2.75}
+                  aria-hidden="true"
+                />{" "}
+                <span className="sr-only">(opens in a new tab)</span>
+              </>
+            )}
+          </div>
           <div className="line-clamp-2 text-muted-foreground">{children}</div>
         </div>
       </NavigationMenuLink>

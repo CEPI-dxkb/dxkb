@@ -22,6 +22,16 @@ describe("MobileWorkspaceSection", () => {
       "href",
       "/workspace/alice@bvbrc/home",
     );
+    expect(screen.getByRole("link", { name: "My Workspaces" })).toHaveAttribute(
+      "href",
+      "/workspace/alice@bvbrc",
+    );
+    expect(
+      screen.getByRole("link", { name: "My Genome Groups" }),
+    ).toHaveAttribute("href", "/workspace/alice@bvbrc/home/Genome%20Groups");
+    expect(
+      screen.getByRole("link", { name: "My Feature Groups" }),
+    ).toHaveAttribute("href", "/workspace/alice@bvbrc/home/Feature%20Groups");
     expect(screen.getByRole("link", { name: "My Jobs" })).toHaveAttribute(
       "href",
       "/jobs",
@@ -56,6 +66,22 @@ describe("MobileWorkspaceSection", () => {
     expect(screen.getByRole("link", { name: "Home" })).toHaveAttribute(
       "href",
       "/sign-in?redirect=/workspace",
+    );
+    expect(screen.getByRole("link", { name: "My Workspaces" })).toHaveAttribute(
+      "href",
+      "/sign-in?redirect=/workspace/shared",
+    );
+    expect(
+      screen.getByRole("link", { name: "My Genome Groups" }),
+    ).toHaveAttribute(
+      "href",
+      "/sign-in?redirect=/workspace/home/Genome%2520Groups",
+    );
+    expect(
+      screen.getByRole("link", { name: "My Feature Groups" }),
+    ).toHaveAttribute(
+      "href",
+      "/sign-in?redirect=/workspace/home/Feature%2520Groups",
     );
     expect(screen.getByRole("link", { name: "My Jobs" })).toHaveAttribute(
       "href",

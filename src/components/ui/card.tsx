@@ -69,11 +69,27 @@ function CardTitle({
   )
 }
 
-function CardDescription({ className, ...props }: React.ComponentProps<"div">) {
+const cardDescriptionVariants = cva("text-sm text-muted-foreground", {
+  variants: {
+    variant: {
+      default: "",
+      balanced: "text-balance",
+    },
+  },
+  defaultVariants: {
+    variant: "default",
+  },
+})
+
+function CardDescription({
+  className,
+  variant,
+  ...props
+}: React.ComponentProps<"div"> & VariantProps<typeof cardDescriptionVariants>) {
   return (
     <div
       data-slot="card-description"
-      className={cn("text-sm text-muted-foreground", className)}
+      className={cn(cardDescriptionVariants({ variant }), className)}
       {...props}
     />
   )

@@ -51,6 +51,8 @@ describe("workspace catch-all redirects", () => {
     ["a space", ["my folder"], "/my%20folder"],
     ["a slash inside one segment", ["a/b"], "/a%2Fb"],
     ["a literal percent", ["100%done"], "/100%25done"],
+    ["the Genome Groups folder", ["Genome Groups"], "/Genome%20Groups"],
+    ["the Feature Groups folder", ["Feature Groups"], "/Feature%20Groups"],
   ])(
     "home: encodes %s exactly once in the redirect target",
     async (_name, segments, expectedSuffix) => {

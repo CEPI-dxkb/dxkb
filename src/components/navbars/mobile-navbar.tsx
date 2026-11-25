@@ -88,8 +88,8 @@ const useMobileNavbar = () => {
 
   return (
     <header className="flex flex-col bg-primary lg:hidden">
-      <div className="flex items-center justify-between p-4 text-primary-foreground">
-        <div className="flex items-center gap-4">
+      <div className="flex h-16 items-center justify-between px-3 text-primary-foreground sm:px-4">
+        <div className="flex items-center gap-2 sm:gap-4">
           <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
             <SheetTrigger
               render={(triggerProps) => (
@@ -138,15 +138,16 @@ const useMobileNavbar = () => {
               priority
             />
           </Link>
-          <span className="mt-0 self-start text-2xs font-semibold text-white/90 italic">
+          <span className="mt-0 self-start text-2xs font-semibold text-white/90 italic max-sm:hidden">
             v{process.env.NEXT_PUBLIC_APP_VERSION}
           </span>
         </div>
 
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center space-x-1 sm:space-x-2">
           <Button
             variant="ghost-inverse"
-            size="sm"
+            size="header-icon"
+            className="max-sm:hidden"
             onClick={openCommandPalette}
             aria-label="Open command palette"
             aria-keyshortcuts="Meta+K Control+K"
@@ -156,7 +157,7 @@ const useMobileNavbar = () => {
           {!isHome && (
             <Button
               variant="ghost-inverse"
-              size="sm"
+              size="header-icon"
               onClick={() => {
                 setIsSearchOpen(!isSearchOpen);
               }}
@@ -212,7 +213,7 @@ const useMobileNavbar = () => {
           inert={!isSearchOpen ? true : undefined}
         >
           <div className="overflow-hidden">
-            <div className="px-4 pb-4">
+            <div className="px-4 pb-3">
               <SearchBar showAdvanced />
             </div>
           </div>

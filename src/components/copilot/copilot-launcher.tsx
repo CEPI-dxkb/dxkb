@@ -22,7 +22,7 @@ export function CopilotLauncher({ compact = false }: { compact?: boolean }) {
   return (
     <Button
       variant={compact ? "ghost-inverse" : "inverse-outline"}
-      size={compact ? "sm" : "pill"}
+      size={compact ? "header-icon" : "pill"}
       aria-label={label}
       aria-expanded={isOpen && !minimized}
       title={working ? `${copilotName} is writing an answer` : label}

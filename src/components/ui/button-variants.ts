@@ -64,6 +64,10 @@ export const buttonVariants = cva(
           "h-8 gap-1.5 px-2.5 has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2",
         xs: "h-6 gap-1 rounded-[min(var(--radius-md),10px)] px-2 text-xs in-data-[slot=button-group]:rounded-lg has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 [&_svg:not([class*='size-'])]:size-3",
         sm: "h-7 gap-1 rounded-[min(var(--radius-md),12px)] px-2.5 text-[0.8rem] in-data-[slot=button-group]:rounded-lg has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 [&_svg:not([class*='size-'])]:size-3.5",
+        // `sm` from the sm breakpoint up and square below it, where the hamburger header's icon
+        // buttons need the room on a phone.
+        "header-icon":
+          "h-7 gap-1 rounded-[min(var(--radius-md),12px)] px-1.5 text-[0.8rem] in-data-[slot=button-group]:rounded-lg sm:px-2.5 [&_svg:not([class*='size-'])]:size-3.5",
         lg: "h-9 gap-1.5 px-2.5 has-data-[icon=inline-end]:pr-3 has-data-[icon=inline-start]:pl-3",
         icon: "size-8",
         "icon-2xs":
@@ -87,7 +91,8 @@ export const buttonVariants = cva(
         rail: "h-auto gap-0 rounded-[min(var(--radius-md),12px)] px-1 py-2 text-[0.8rem] in-data-[slot=button-group]:rounded-lg has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 [&_svg:not([class*='size-'])]:size-3.5",
         nav: "h-8 gap-1.5 px-2 has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2 aria-disabled:text-muted-foreground aria-[current=page]:font-semibold",
         xl: "h-12.5 gap-1.5 px-2.5 has-data-[icon=inline-end]:pr-3 has-data-[icon=inline-start]:pl-3",
-        pill: "h-8 gap-2 rounded-full px-3 has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2",
+        // Tighter below the sm breakpoint, where the hamburger header's job pill shares a phone row.
+        pill: "h-8 gap-1.5 rounded-full px-2 has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2 sm:gap-2 sm:px-3",
         "pill-lg":
           "h-12 gap-2 rounded-full pr-3 pl-4 has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2",
         pager:

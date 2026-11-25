@@ -156,7 +156,7 @@ function SearchBarForm({
           {showIcon && (
             <button
               type="submit"
-              className="absolute top-1/2 left-3 -translate-y-1/2 transform cursor-pointer text-primary transition-colors hover:text-primary/80 dark:text-link dark:hover:text-foreground"
+              className="absolute top-1/2 left-2.5 flex size-6 -translate-y-1/2 transform cursor-pointer items-center justify-center text-primary transition-colors hover:text-primary/80 dark:text-link dark:hover:text-foreground"
               aria-label="Search"
             >
               <Search size={18} />

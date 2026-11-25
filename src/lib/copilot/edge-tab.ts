@@ -12,10 +12,10 @@ import type {
 export const tabTopMin = 0.08;
 export const tabTopMax = 0.94;
 /**
- * The tab is centred on its top, so it also never rises above this many px: the navbar (72px) plus
+ * The tab is centred on its top, so it also never rises above this many px: the navbar (64px) plus
  * half the tab (32px) and a gap, so on a short window it still stays off the navbar's avatar.
  */
-export const tabMinTopPx = 112;
+export const tabMinTopPx = 104;
 /** How far ArrowUp / ArrowDown move the tab, as a fraction of the window height. */
 export const tabKeyStep = 0.05;
 /** A press that moves less than this (px) is a click, not a drag. */

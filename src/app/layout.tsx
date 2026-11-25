@@ -68,7 +68,7 @@ export default async function RootLayout({
             <Toaster
               richColors
               position="top-right"
-              offset={{ top: "4rem" }}
+              offset={{ top: "4.5rem" }}
               duration={3000}
               // A "\n" in a description is a line break, not a space.
               toastOptions={{ classNames: { description: "whitespace-pre-line" } }}

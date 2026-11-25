@@ -7,9 +7,13 @@ import { createQueryClientWrapper } from "@/test-helpers/react";
 
 import { SignupView } from "../sign-up-view";
 
+const searchParamsRef = vi.hoisted(() => ({
+  current: new URLSearchParams(),
+}));
+
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ refresh: vi.fn(), push: vi.fn(), replace: vi.fn() }),
-  useSearchParams: () => new URLSearchParams(),
+  useSearchParams: () => searchParamsRef.current,
 }));
 
 // jsdom does not lay out, so it has no scrollIntoView.
@@ -36,6 +40,7 @@ async function fillSignupForm() {
 
 describe("SignupView", () => {
   beforeEach(() => {
+    searchParamsRef.current = new URLSearchParams();
     scrollIntoView.mockClear();
     server.use(
       http.post("*/api/auth/sign-up/email", () =>
@@ -92,5 +97,37 @@ describe("SignupView", () => {
       expect(scrollIntoView).toHaveBeenCalledTimes(2);
     });
     expect(screen.getByRole("alert")).toHaveFocus();
+  });
+
+  it("keeps the usual description and a bare sign-in link without a redirect", () => {
+    render(<SignupView />, { wrapper: createQueryClientWrapper() });
+
+    expect(
+      screen.getByText("Enter your information to create your account"),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Sign in" })).toHaveAttribute(
+      "href",
+      "/sign-in",
+    );
+  });
+
+  it("names what the user was opening and carries the redirect to sign-in", () => {
+    searchParamsRef.current = new URLSearchParams({
+      redirect: "/workspace/home/Genome%20Groups",
+    });
+    render(<SignupView />, { wrapper: createQueryClientWrapper() });
+
+    expect(
+      screen.getByText(
+        "To access your Genome Groups, you must sign in or create an account.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText("Enter your information to create your account"),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Sign in" })).toHaveAttribute(
+      "href",
+      "/sign-in?redirect=/workspace/home/Genome%2520Groups",
+    );
   });
 });

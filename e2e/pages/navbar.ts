@@ -72,6 +72,43 @@ export class Navbar {
     await this.page.keyboard.press("Escape");
   }
 
+  // The visible header's height in px (both headers are in the DOM and CSS shows one).
+  async height(): Promise<number | undefined> {
+    return (await this.header().boundingBox())?.height;
+  }
+
+  // Controls in the visible header smaller than `min` px in either direction (WCAG 2.5.8
+  // target size), as "<name> <w>x<h>". It measures every matching control, including clipped or
+  // `inert` ones (the closed mobile search row's submit button reports its full layout size), and
+  // skips only elements of 1px or less. `skip` is a CSS selector for controls to leave out.
+  async controlsSmallerThan(min: number, skip?: string): Promise<string[]> {
+    return this.header().evaluate(
+      (header, args) => {
+        const controls = header.querySelectorAll<HTMLElement>(
+          "a[href], button, input, select, [role='button'], [role='combobox']",
+        );
+        return Array.from(controls).flatMap((el) => {
+          if (args.skip && el.matches(args.skip)) return [];
+          const { width, height } = el.getBoundingClientRect();
+          // Base UI draws a hidden 1px input beside its switches and radios: nothing to operate.
+          // This also drops `display: none` controls (0x0), e.g. the desktop search bar below xl.
+          if (width <= 1 || height <= 1) return [];
+          if (width >= args.min && height >= args.min) return [];
+          const name = el.getAttribute("aria-label") ?? el.innerText.trim().slice(0, 30);
+          return [
+            `${name || el.tagName} ${String(Math.round(width))}x${String(Math.round(height))}`,
+          ];
+        });
+      },
+      { min, skip },
+    );
+  }
+
+  // The hamburger header's search toggle; its name flips to "Close search" once open.
+  mobileSearchToggle(): Locator {
+    return this.headerControl("button", /^(open|close) search$/i);
+  }
+
   private headerControl(
     role: "link" | "button",
     name: string | RegExp,

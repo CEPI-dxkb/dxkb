@@ -53,7 +53,7 @@ const DesktopNavbar = () => {
 
   return (
     <header className="hidden flex-col bg-primary text-white lg:flex">
-      <div className="flex h-18 items-center justify-between p-4">
+      <div className="flex h-16 items-center justify-between px-4">
         <div className="flex shrink-0 items-center space-x-2">
           <Link id="dxkb-logo-desktop" href="/" className="shrink-0">
             <Logo

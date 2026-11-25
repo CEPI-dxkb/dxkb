@@ -88,7 +88,7 @@ const useMobileNavbar = () => {
 
   return (
     <header className="flex flex-col bg-primary lg:hidden">
-      <div className="flex items-center justify-between p-4 text-primary-foreground">
+      <div className="flex h-16 items-center justify-between px-4 text-primary-foreground">
         <div className="flex items-center gap-4">
           <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
             <SheetTrigger
@@ -212,7 +212,7 @@ const useMobileNavbar = () => {
           inert={!isSearchOpen ? true : undefined}
         >
           <div className="overflow-hidden">
-            <div className="px-4 pb-4">
+            <div className="px-4 pb-3">
               <SearchBar showAdvanced />
             </div>
           </div>

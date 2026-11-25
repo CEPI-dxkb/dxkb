@@ -39,7 +39,7 @@ describe("tabPlacementAt", () => {
   });
 
   it("clamps a drop near the top or bottom", () => {
-    // On an 800px window the navbar floor (112px) is above the 8% limit.
+    // On an 800px window the navbar floor (104px) is above the 8% limit.
     expect(tabPlacementAt({ x: 900, y: 0 }, viewport).top).toBeCloseTo(tabMinTopPx / 800);
     expect(tabPlacementAt({ x: 900, y: 800 }, viewport).top).toBe(tabTopMax);
   });
@@ -58,10 +58,10 @@ describe("tabPlacementForKey", () => {
   });
 
   it("moves from where the tab is drawn when it is held under the navbar", () => {
-    // Saved at 0.08, drawn at 112 / 600 = 0.1867: the next ArrowDown moves it a full step.
+    // Saved at 0.08, drawn at 104 / 600 = 0.1733: the next ArrowDown moves it a full step.
     const held = { side: "right", top: 0.08 } as const;
-    expect(tabPlacementForKey(held, "ArrowDown", 600)?.top).toBeCloseTo(112 / 600 + 0.05);
-    expect(tabPlacementForKey(held, "ArrowUp", 600)?.top).toBeCloseTo(112 / 600);
+    expect(tabPlacementForKey(held, "ArrowDown", 600)?.top).toBeCloseTo(104 / 600 + 0.05);
+    expect(tabPlacementForKey(held, "ArrowUp", 600)?.top).toBeCloseTo(104 / 600);
   });
 
   it("switches edges with Left and Right, keeping the height", () => {

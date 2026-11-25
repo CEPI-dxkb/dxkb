@@ -300,7 +300,10 @@ interface WorkspaceNavItem {
   requiresAuth: boolean;
   /**
    * Fallback href for unauthenticated users; defaults to
-   * `/sign-in?redirect=/workspace`.
+   * `/sign-in?redirect=/workspace`. The username is unknown signed out, so an
+   * item with its own page points at a username-less route
+   * (`/workspace/shared`, `/workspace/home/<folder>`) that redirects to the
+   * owner's path after sign-in; otherwise every item would land on Home.
    */
   signInRedirect?: string;
 }
@@ -326,6 +329,7 @@ const workspaceNavItems: Record<string, WorkspaceNavSection> = {
         title: "My Workspaces",
         href: (u) => `/workspace/${u}`,
         requiresAuth: true,
+        signInRedirect: `/sign-in?redirect=${encodeQueryComponent("/workspace/shared")}`,
       },
       {
         title: "Public Workspaces",
@@ -360,11 +364,13 @@ const workspaceNavItems: Record<string, WorkspaceNavSection> = {
         title: "My Genome Groups",
         href: (u) => `/workspace/${u}/home/Genome%20Groups`,
         requiresAuth: true,
+        signInRedirect: `/sign-in?redirect=${encodeQueryComponent("/workspace/home/Genome%20Groups")}`,
       },
       {
         title: "My Feature Groups",
         href: (u) => `/workspace/${u}/home/Feature%20Groups`,
         requiresAuth: true,
+        signInRedirect: `/sign-in?redirect=${encodeQueryComponent("/workspace/home/Feature%20Groups")}`,
       },
     ],
   },

@@ -14,6 +14,7 @@ import {
 import { useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { safePostAuthDestination } from "@/lib/auth/redirect";
+import { authLinkHref, signInPrompt } from "@/lib/auth/sign-in-prompt";
 import { formatUserFacingErrorMessage } from "@/lib/utils";
 import { Loader2 } from "lucide-react";
 import { AuthSubmitError } from "../auth-submit-error";
@@ -27,6 +28,8 @@ function SignupForm() {
   const { signUp } = useAuthActions();
   const searchParams = useSearchParams();
   const redirectTo = searchParams.get("redirect") || "/";
+  const prompt = signInPrompt(redirectTo);
+  const signInHref = authLinkHref("/sign-in", redirectTo);
 
   const form = useSignupForm(async (value) => {
     setIsSubmitting(true);
@@ -56,8 +59,8 @@ function SignupForm() {
           <CardTitle variant="page" className="text-center">
             Create an account
           </CardTitle>
-          <CardDescription className="text-center">
-            Enter your information to create your account
+          <CardDescription variant="balanced" className="text-center">
+            {prompt ?? "Enter your information to create your account"}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -81,7 +84,7 @@ function SignupForm() {
             <div className="text-center text-sm">
               Already have an account?{" "}
               <Link
-                href="/sign-in"
+                href={signInHref}
                 className="font-medium text-primary hover:underline dark:text-link"
               >
                 Sign in

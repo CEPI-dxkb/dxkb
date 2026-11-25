@@ -220,6 +220,8 @@ describe("CommandPalette", () => {
       await openPalette();
 
       const blast = screen.getByRole("option", { name: /BLAST/ });
+      expect(blast).not.toHaveTextContent("(opens in a new tab)");
+      expect(blast.querySelector("svg.lucide-external-link")).toBeNull();
       const user = userEvent.setup();
       await user.click(blast);
 
@@ -232,6 +234,13 @@ describe("CommandPalette", () => {
       await openPalette();
 
       const measles = screen.getByRole("option", { name: /Measles 2025/ });
+      expect(measles).toHaveAccessibleName(
+        /Measles 2025 \(opens in a new tab\)/,
+      );
+      expect(measles.querySelector("svg.lucide-external-link")).toHaveAttribute(
+        "aria-hidden",
+        "true",
+      );
       const user = userEvent.setup();
       await user.click(measles);
 

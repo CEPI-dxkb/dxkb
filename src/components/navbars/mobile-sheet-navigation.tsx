@@ -1,3 +1,4 @@
+import { Fragment } from "react";
 import {
   BookOpen,
   Bug,
@@ -8,10 +9,13 @@ import {
 
 import { MobileDecoratedSubSection } from "@/components/navbars/mobile-decorated-subsection";
 import { MobileNavLink } from "@/components/navbars/mobile-nav-link";
+import { MobileSubSectionLabel } from "@/components/navbars/mobile-subsection-label";
 import { MobileSubSectionTrigger } from "@/components/navbars/mobile-subsection-trigger";
 import { MobileWorkspaceSection } from "@/components/navbars/mobile-workspace-section";
 import {
-  organismItems,
+  browseOrganismItems,
+  dataTypeItems,
+  featuredVirusItems,
   resourcesItems,
   serviceItems,
   workspaceNavItems,
@@ -35,6 +39,16 @@ interface MobileSheetNavigationProps {
   recentFolders: RecentFolder[];
   wsUsername: string;
 }
+
+const browseGroups = [
+  { title: "Viruses", items: featuredVirusItems },
+  { title: "Organisms", items: browseOrganismItems },
+  { title: "Data types", items: dataTypeItems },
+];
+const totalBrowseItems = browseGroups.reduce(
+  (count, group) => count + group.items.length,
+  0,
+);
 
 function SectionTrigger({
   icon: Icon,
@@ -103,15 +117,20 @@ export function MobileSheetNavigation({
 
       <nav className="flex flex-col pb-6">
         <Collapsible>
-          <SectionTrigger icon={Bug} count={organismItems.length}>
-            Organisms
+          <SectionTrigger icon={Bug} count={totalBrowseItems}>
+            Browse
           </SectionTrigger>
           <CollapsibleContent className="*:data-[slot=collapsible-divider]:hidden">
             <div className="flex flex-col px-5 pt-2 pb-3">
-              {organismItems.map((item) => (
-                <MobileNavLink key={item.href} href={item.href}>
-                  {item.title}
-                </MobileNavLink>
+              {browseGroups.map((group) => (
+                <Fragment key={group.title}>
+                  <MobileSubSectionLabel>{group.title}</MobileSubSectionLabel>
+                  {group.items.map((item) => (
+                    <MobileNavLink key={item.href} href={item.href}>
+                      {item.title}
+                    </MobileNavLink>
+                  ))}
+                </Fragment>
               ))}
             </div>
           </CollapsibleContent>

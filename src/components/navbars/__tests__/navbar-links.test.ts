@@ -1,10 +1,11 @@
 import { virusFamilies } from "@/components/organisms/virus-families/virus-families-data";
+import { searchTypes } from "@/constants/search-info";
 import { taxonomyHref } from "@/lib/views/hrefs";
 
 import {
   browseOrganismItems,
+  dataTypeItems,
   featuredVirusItems,
-  organismItems,
 } from "../navbar-links";
 
 const familyCards = virusFamilies.flatMap((column) =>
@@ -23,25 +24,15 @@ const cepiTaxaNames = [
 ];
 
 describe("organism menu items", () => {
-  it("lists the major CEPI taxa, then All Viruses, All Bacteria and Browse all", () => {
-    expect(organismItems.map((item) => item.title)).toEqual([
-      ...cepiTaxaNames,
-      "All Viruses",
-      "All Bacteria",
-      "Browse all",
-    ]);
+  it("features the major CEPI taxa", () => {
+    expect(featuredVirusItems.map((item) => item.title)).toEqual(cepiTaxaNames);
   });
 
-  it("groups them as the featured taxa and the browse links, in the same order", () => {
-    expect(featuredVirusItems.map((item) => item.title)).toEqual(cepiTaxaNames);
+  it("lists All Viruses, All Bacteria and Browse all as the browse links", () => {
     expect(browseOrganismItems.map((item) => item.title)).toEqual([
       "All Viruses",
       "All Bacteria",
       "Browse all",
-    ]);
-    expect(organismItems).toEqual([
-      ...featuredVirusItems,
-      ...browseOrganismItems,
     ]);
   });
 
@@ -68,7 +59,9 @@ describe("organism menu items", () => {
   });
 
   it("gives every entry a unique href", () => {
-    const hrefs = organismItems.map((item) => item.href);
+    const hrefs = [...featuredVirusItems, ...browseOrganismItems].map(
+      (item) => item.href,
+    );
 
     expect(new Set(hrefs).size).toBe(hrefs.length);
   });
@@ -80,5 +73,43 @@ describe("organism menu items", () => {
     expect(featuredVirusItems.map((item) => item.href)).not.toContain(
       taxonomyHref(2),
     );
+  });
+});
+
+describe("data type menu items", () => {
+  it("lists the ten list routes in the header search selector's order", () => {
+    const fromSelector = searchTypes
+      .filter((type) => type.id !== "everything")
+      .map((type) => ({
+        id: type.id,
+        title: type.typeTitle,
+        href: type.route.status === "canonical" ? `/${type.route.segment}` : "",
+      }));
+
+    expect(fromSelector).toHaveLength(10);
+    expect(dataTypeItems).toEqual(fromSelector);
+  });
+
+  it("links the bare list routes, not search or advanced-search forms", () => {
+    expect(dataTypeItems.map((item) => item.href)).toEqual([
+      "/genome",
+      "/strain",
+      "/feature",
+      "/domains-and-motifs",
+      "/epitope",
+      "/protein-structure",
+      "/surveillance",
+      "/serology",
+      "/taxonomy",
+      "/experiment",
+    ]);
+  });
+
+  it("gives every entry a unique id, title and href", () => {
+    for (const key of ["id", "title", "href"] as const) {
+      const values = dataTypeItems.map((item) => item[key]);
+
+      expect(new Set(values).size, key).toBe(values.length);
+    }
   });
 });

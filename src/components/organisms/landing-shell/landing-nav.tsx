@@ -104,6 +104,7 @@ export function LandingNav<Key extends string>({
               <span
                 key={item.key}
                 tabIndex={0}
+                className="cursor-not-allowed"
                 aria-label={
                   item.disabledReason
                     ? `${item.label}: ${item.disabledReason}`

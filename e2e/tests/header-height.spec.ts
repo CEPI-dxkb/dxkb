@@ -18,11 +18,6 @@ const minTarget = 24;
 // 320 and 375 are phones; 768 is where DXKBCORE-376's no-clipping contract starts.
 const widths = [320, 375, 768, 1023, 1024, 1280, 1536];
 const pages = ["/", "/organisms/bacteria"];
-// Below 768px the row overflows (signed out at 320 and 375, signed in at 320) and flex
-// squeezes the logo link under 24px. That is a separate ticket, so the logo link is left
-// out of the target check below 768px.
-const logoLink = "#dxkb-logo-desktop, #dxkb-logo-mobile";
-const logoFloorWidth = 768;
 
 async function expectCompactHeader(page: Page, width: number) {
   const navbar = new Navbar(page);
@@ -31,11 +26,12 @@ async function expectCompactHeader(page: Page, width: number) {
     headerHeight,
   );
   expect(
-    await navbar.controlsSmallerThan(
-      minTarget,
-      width < logoFloorWidth ? logoLink : undefined,
-    ),
+    await navbar.controlsSmallerThan(minTarget),
     `header controls under ${String(minTarget)}px at ${String(width)}px`,
+  ).toEqual([]);
+  expect(
+    await navbar.controlsOutsideViewport(),
+    `header controls outside the viewport at ${String(width)}px`,
   ).toEqual([]);
 }
 
@@ -49,8 +45,12 @@ async function expectCompactMobileSearch(page: Page) {
     .poll(() => navbar.height(), { message: "header height with search open" })
     .toBe(headerHeightWithMobileSearch);
   expect(
-    await navbar.controlsSmallerThan(minTarget, logoLink),
+    await navbar.controlsSmallerThan(minTarget),
     `header controls under ${String(minTarget)}px with search open`,
+  ).toEqual([]);
+  expect(
+    await navbar.controlsOutsideViewport(),
+    "header controls outside the viewport with search open",
   ).toEqual([]);
 }
 

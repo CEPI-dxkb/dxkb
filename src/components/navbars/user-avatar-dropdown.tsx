@@ -48,7 +48,7 @@ export function UserAvatarDropdown() {
 
   return (
     <>
-      <div className="flex items-center space-x-2 rounded-md p-1 hover:bg-foreground/10">
+      <div className="flex items-center space-x-2 rounded-md p-0 hover:bg-foreground/10 sm:p-1">
         <div className="size-8 shrink-0 overflow-hidden rounded-full **:data-[slot=dropdown-menu-trigger]:size-full **:data-[slot=dropdown-menu-trigger]:min-w-0">
           <DropdownMenu modal={false}>
             <DropdownMenuTrigger

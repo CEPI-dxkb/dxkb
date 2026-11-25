@@ -1,7 +1,8 @@
-import { act, render, screen } from "@testing-library/react";
+import { act, render, screen, within } from "@testing-library/react";
 import { Suspense } from "react";
 import { createPendingNavigation } from "@/test-helpers/pending-navigation";
 import userEvent from "@testing-library/user-event";
+import type { OrganismLandingNavItem } from "@/components/organisms/types";
 
 const pushSpy = vi.fn();
 const pendingNavigation = createPendingNavigation();
@@ -181,6 +182,108 @@ it("does not navigate to a disabled item", async () => {
 
   await userEvent.click(screen.getByRole("button", { name: "Phylogeny" }));
   expect(pushSpy).not.toHaveBeenCalled();
+});
+
+it("swaps in the streamed rail and refuses a tab the data check disabled", async () => {
+  let resolveRail: (items: readonly OrganismLandingNavItem[]) => void = () =>
+    undefined;
+  const streamedNavItems = new Promise<readonly OrganismLandingNavItem[]>(
+    (resolve) => {
+      resolveRail = resolve;
+    },
+  );
+
+  // An awaited act lets React retry the suspended rail once the promise settles.
+  await act(async () => {
+    render(
+      <Suspense fallback={null}>
+        <LandingShellClient
+          displayName="Brucella"
+          activeView="overview"
+          defaultView="overview"
+          navItems={navItems}
+          streamedNavItems={streamedNavItems}
+        >
+          <div />
+        </LandingShellClient>
+      </Suspense>,
+    );
+    await Promise.resolve();
+  });
+
+  // Policy-only rail first: Genomes is selectable.
+  expect(screen.getByRole("button", { name: "Genomes" })).not.toHaveAttribute(
+    "aria-disabled",
+  );
+
+  // Then the streamed rail replaces it.
+  await act(async () => {
+    resolveRail([
+      { key: "overview", label: "Overview", icon: null },
+      {
+        key: "genomes",
+        label: "Genomes",
+        icon: null,
+        enabled: false,
+        disabledReason: "No genomes for this taxon.",
+      },
+    ]);
+    await Promise.resolve();
+  });
+  expect(screen.getByRole("button", { name: "Genomes" })).toHaveAttribute(
+    "aria-disabled",
+    "true",
+  );
+  screen.getByRole("button", { name: "Genomes" }).click();
+  expect(pushSpy).not.toHaveBeenCalled();
+});
+
+it("keeps the mobile sheet open across the streamed swap", async () => {
+  let resolveRail: (items: readonly OrganismLandingNavItem[]) => void = () =>
+    undefined;
+  const streamedNavItems = new Promise<readonly OrganismLandingNavItem[]>(
+    (resolve) => {
+      resolveRail = resolve;
+    },
+  );
+
+  render(
+    <Suspense fallback={null}>
+      <LandingShellClient
+        displayName="Brucella"
+        activeView="overview"
+        defaultView="overview"
+        navItems={navItems}
+        streamedNavItems={streamedNavItems}
+      >
+        <div />
+      </LandingShellClient>
+    </Suspense>,
+  );
+
+  await userEvent.click(screen.getByRole("button", { name: /Views: Overview/ }));
+  expect(screen.getByRole("dialog")).toBeInTheDocument();
+
+  await act(async () => {
+    resolveRail([
+      { key: "overview", label: "Overview", icon: null },
+      {
+        key: "genomes",
+        label: "Genomes",
+        icon: null,
+        enabled: false,
+        disabledReason: "No genomes for this taxon.",
+      },
+    ]);
+    await Promise.resolve();
+  });
+
+  const dialog = screen.getByRole("dialog");
+  expect(dialog).toBeInTheDocument();
+  // The sheet now shows the streamed rail.
+  expect(
+    within(dialog).getByRole("button", { name: "Genomes" }),
+  ).toHaveAttribute("aria-disabled", "true");
 });
 
 it("uses the parent flex boundary for both fill and scroll views", () => {

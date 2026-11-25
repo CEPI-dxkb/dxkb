@@ -19,6 +19,8 @@ import { firstSearchParam } from "@/lib/views/search-params";
 
 import { getSharedPhyloManifest } from "@/lib/taxon-view/phylo-manifest";
 import type { PhyloManifest } from "@/lib/taxon-view/tab-context";
+import { getSharedTabAvailability } from "@/lib/taxon-view/tab-availability";
+import { applyTabAvailability } from "@/lib/taxon-view/tab-policy";
 
 import { buildTaxonomyConfig } from "./_config";
 import { TaxonUnavailable } from "./taxon-unavailable";
@@ -136,6 +138,11 @@ export default async function TaxonomyPage({ params, searchParams }: TaxonomyPag
   const phyloManifest = await phyloManifestPromise;
 
   const { config, navItems } = taxonomyViews(taxonId, taxon, phyloManifest);
+  // Never rejects. Streamed so the counts never hold the page: the rail first
+  // shows the policy gates alone, then the data check disables empty tabs.
+  const streamedViews = getSharedTabAvailability(taxonId).then((availability) =>
+    applyTabAvailability(navItems, availability),
+  );
 
   return (
     <OrganismLandingShell
@@ -143,6 +150,7 @@ export default async function TaxonomyPage({ params, searchParams }: TaxonomyPag
       views={navItems}
       activeViewKey={tab}
       tabParam={tab ?? null}
+      streamedViews={streamedViews}
       headerContent={
         <TaxonBreadcrumb
           taxon={taxon}

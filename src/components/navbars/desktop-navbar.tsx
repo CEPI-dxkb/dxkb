@@ -8,6 +8,7 @@ import {
   resourcesItems,
   featuredVirusItems,
   browseOrganismItems,
+  dataTypeItems,
   serviceItems,
   type NavSection,
 } from "@/components/navbars/navbar-links";
@@ -21,6 +22,7 @@ import {
 } from "@/components/ui/navigation-menu";
 import { ExternalLink, Search } from "lucide-react";
 import { openCommandPalette } from "@/components/search/command-palette-events";
+import { searchTypeIcon } from "@/components/search/all-types/search-type-icon";
 import { SearchBar } from "@/components/search/search-bar";
 import { Button } from "@/components/ui/button";
 import { buttonVariants } from "@/components/ui/button-variants";
@@ -43,6 +45,9 @@ const serviceColumns = [
   serviceEntries.slice(0, Math.ceil(serviceEntries.length / 2)),
   serviceEntries.slice(Math.ceil(serviceEntries.length / 2)),
 ];
+
+const menuHeadingClass =
+  "my-0.5 rounded-md bg-primary p-2 text-sm font-bold text-white";
 
 const DesktopNavbar = () => {
   const { isAuthenticated, user } = useAuth();
@@ -70,26 +75,41 @@ const DesktopNavbar = () => {
 
           <NavigationMenu className="hidden w-full items-center justify-between lg:flex">
             <NavigationMenuList>
-              <NavigationMenuItem id="organisms-nav">
+              <NavigationMenuItem id="browse-nav">
                 <NavigationMenuTrigger variant="inverse">
-                  Organisms
+                  Browse
                 </NavigationMenuTrigger>
                 <NavigationMenuContent>
-                  <div className="grid grid-cols-3 gap-2 p-2 lg:w-140">
-                    <div className="col-span-2">
-                      <h4 className="my-0.5 rounded-md bg-primary p-2 text-sm font-bold text-white">
-                        Featured viruses
-                      </h4>
-                      <div className="grid auto-cols-fr grid-flow-col grid-rows-3">
-                        <OrganismLinks items={featuredVirusItems} />
+                  <div className="grid grid-cols-2 gap-2 p-2 lg:w-115">
+                    <div>
+                      <h4 className={menuHeadingClass}>Viruses</h4>
+                      <div className="grid">
+                        <MenuLinks items={featuredVirusItems} />
+                      </div>
+                      <h4 className={menuHeadingClass}>Organisms</h4>
+                      <div className="grid">
+                        <MenuLinks items={browseOrganismItems} />
                       </div>
                     </div>
                     <div>
-                      <h4 className="my-0.5 rounded-md bg-primary p-2 text-sm font-bold text-white">
-                        Browse
-                      </h4>
+                      <h4 className={menuHeadingClass}>Data types</h4>
                       <div className="grid">
-                        <OrganismLinks items={browseOrganismItems} />
+                        {dataTypeItems.map((item) => (
+                          <NavigationMenuLink
+                            key={item.href}
+                            render={<Link href={item.href} />}
+                            variant="workspace-nav"
+                          >
+                            <span className="flex items-center gap-2">
+                              <span className="text-muted-foreground">
+                                {searchTypeIcon(item.id)}
+                              </span>
+                              <span className="min-w-0 truncate">
+                                {item.title}
+                              </span>
+                            </span>
+                          </NavigationMenuLink>
+                        ))}
                       </div>
                     </div>
                   </div>
@@ -255,7 +275,7 @@ const DesktopNavbar = () => {
   );
 };
 
-function OrganismLinks({
+function MenuLinks({
   items,
 }: {
   items: { title: string; href: string }[];
@@ -281,11 +301,33 @@ function ListItem({
   href: string;
   target?: "_self" | "_blank";
 }) {
+  const isExternal = target === "_blank";
+
   return (
     <li {...props}>
-      <NavigationMenuLink render={<Link href={href} target={target} />}>
+      <NavigationMenuLink
+        render={
+          isExternal ? (
+            <a href={href} target="_blank" rel="noopener noreferrer" />
+          ) : (
+            <Link href={href} />
+          )
+        }
+      >
         <div className="flex flex-col gap-1 text-sm">
-          <div className="leading-none font-medium">{title}</div>
+          <div className="flex items-center gap-2 leading-none font-medium">
+            {title}
+            {isExternal && (
+              <>
+                <ExternalLink
+                  className="size-3 shrink-0 text-muted-foreground"
+                  strokeWidth={2.75}
+                  aria-hidden="true"
+                />{" "}
+                <span className="sr-only">(opens in a new tab)</span>
+              </>
+            )}
+          </div>
           <div className="line-clamp-2 text-muted-foreground">{children}</div>
         </div>
       </NavigationMenuLink>

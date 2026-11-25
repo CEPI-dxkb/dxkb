@@ -22,6 +22,7 @@ import { encodeQueryComponent } from "@/lib/url";
 import { encodeWorkspaceSegment } from "@/lib/services/workspace/path-utils";
 import { workspaceUsername } from "@/lib/services/workspace/path-utils";
 import {
+  dataTypeItems,
   serviceItems,
   type NavSection,
 } from "@/components/navbars/navbar-links";
@@ -225,6 +226,20 @@ export function CommandPaletteBody({
                   </CommandItem>
                 </>
               )}
+            </CommandGroup>
+
+            <CommandGroup heading="Data types">
+              {dataTypeItems.map((item) => (
+                <CommandItem
+                  key={item.href}
+                  value={`Data types ${item.title}`}
+                  onSelect={() => {
+                    navigate(item.href);
+                  }}
+                >
+                  <span>{item.title}</span>
+                </CommandItem>
+              ))}
             </CommandGroup>
 
             {(

@@ -16,7 +16,7 @@ import {
   hasSurveillance,
   isBacteria,
 } from "./predicates";
-import type { TabContext } from "./tab-context";
+import type { TabAvailability, TabContext } from "./tab-context";
 
 const extraViewDescriptors: readonly DefaultViewDescriptor[] = [
   { key: "strains", label: "Strains", icon: viewIcons.strains },
@@ -94,5 +94,39 @@ export function resolveTabs(
       view.layout = override.layout;
     }
     return view;
+  });
+}
+
+// Reasons for a tab whose data check came back definitely empty. A tab absent
+// here has no data gate: Genomes (a signed-in user's private genomes are not in
+// the anonymous count) and the genome-joined tabs (too slow to count).
+const dataGateReasons: Partial<Record<OrganismViewKey, string>> = {
+  epitopes: "No epitopes for this taxon.",
+  experiments: "No experiments for this taxon.",
+  strains: "No strains for this taxon.",
+  surveillance: "No surveillance data for this taxon.",
+  serology: "No serology data for this taxon.",
+};
+
+/**
+ * Layers the data check over resolved tabs. A tab a policy gate already
+ * disabled keeps that gate's reason; only a definite `absent` disables a tab,
+ * so `unknown` and a failed read (`null`) leave it enabled.
+ */
+export function applyTabAvailability(
+  views: readonly OrganismLandingView[],
+  availability: TabAvailability | null,
+): OrganismLandingView[] {
+  if (!availability) return [...views];
+  return views.map((view) => {
+    const reason = dataGateReasons[view.key];
+    if (
+      !reason ||
+      view.enabled === false ||
+      availability[view.key] !== "absent"
+    ) {
+      return view;
+    }
+    return { ...view, enabled: false, disabledReason: reason };
   });
 }

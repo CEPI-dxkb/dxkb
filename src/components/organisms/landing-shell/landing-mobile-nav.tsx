@@ -42,11 +42,16 @@ export function LandingMobileNav<Key extends string>({
   onOpenChange,
 }: LandingMobileNavProps<Key>) {
   const [ownOpen, setOwnOpen] = useState(false);
+  const [explainedKey, setExplainedKey] = useState<Key | null>(null);
   const open = controlledOpen ?? ownOpen;
   const setOpen = (next: boolean) => {
     setOwnOpen(next);
+    if (!next) setExplainedKey(null);
     onOpenChange?.(next);
   };
+  const explained = items.find(
+    (item) => item.key === explainedKey && item.enabled === false,
+  );
   const active = items.find((item) => item.key === activeView) ?? items[0];
   const hidden = useHideOnScroll(open);
 
@@ -96,6 +101,19 @@ export function LandingMobileNav<Key extends string>({
           <div className="px-4 pt-4 pb-2">
             <SheetTitle variant="label">{title}</SheetTitle>
           </div>
+          <p
+            role="status"
+            className="px-4 text-sm text-muted-foreground"
+          >
+            {explained?.disabledReason && (
+              <>
+                <span className="font-semibold text-foreground">
+                  {explained.label}:
+                </span>{" "}
+                {explained.disabledReason}
+              </>
+            )}
+          </p>
           <div className="grid grid-cols-4 gap-1.5 overflow-y-auto p-3 pb-8">
             {items.map((item) => {
               const isActive = item.key === activeView;
@@ -108,8 +126,14 @@ export function LandingMobileNav<Key extends string>({
                   aria-disabled={isDisabled || undefined}
                   title={isDisabled ? item.disabledReason : undefined}
                   onClick={() => {
-                    if (isDisabled) return;
+                    if (isDisabled) {
+                      setExplainedKey(item.key);
+                      return;
+                    }
                     select(item.key);
+                  }}
+                  onFocus={() => {
+                    if (isDisabled) setExplainedKey(item.key);
                   }}
                   className={cn(
                     "flex aspect-square flex-col items-center justify-center gap-1.5 rounded-lg border p-1 text-center transition-colors",

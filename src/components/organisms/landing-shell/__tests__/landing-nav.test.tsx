@@ -148,6 +148,8 @@ describe("LandingNav — disabled tabs", () => {
     render(
       <LandingNav items={withDisabled} activeView="overview" collapsed onChange={vi.fn()} onCollapseToggle={vi.fn()} />,
     );
-    expect(screen.getByLabelText(/No phylogenetic tree available/)).toBeInTheDocument();
+    const wrapperSpan = screen.getByLabelText(/No phylogenetic tree available/);
+    expect(wrapperSpan).toBeInTheDocument();
+    expect(wrapperSpan).toHaveClass("cursor-not-allowed");
   });
 });

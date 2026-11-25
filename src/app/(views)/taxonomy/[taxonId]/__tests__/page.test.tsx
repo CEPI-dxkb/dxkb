@@ -1,14 +1,20 @@
 import { http, HttpResponse } from "msw";
-import { render, screen, within } from "@testing-library/react";
+import { act, render, screen, within } from "@testing-library/react";
 
 import TaxonomyPage, { generateMetadata } from "../page";
 import { TaxonomyNotFoundError } from "@/lib/services/organisms/taxonomy";
 import { server } from "@/test-helpers/msw-server";
 import { connectTimeout, maintenancePage } from "@/test-helpers/upstream-failures";
 
-const { getSharedOrganismTaxonomyMock, metadataSpy, notFoundSpy } = vi.hoisted(
+const {
+  getSharedOrganismTaxonomyMock,
+  getSharedTabAvailabilityMock,
+  metadataSpy,
+  notFoundSpy,
+} = vi.hoisted(
   () => ({
     getSharedOrganismTaxonomyMock: vi.fn(),
+    getSharedTabAvailabilityMock: vi.fn(),
     metadataSpy: vi.fn(),
     notFoundSpy: vi.fn(() => {
       throw new Error("NEXT_NOT_FOUND");
@@ -26,6 +32,11 @@ vi.mock("@/lib/services/organisms/taxonomy", async () => {
       getSharedOrganismTaxonomyMock(...args) as unknown,
   };
 });
+
+vi.mock("@/lib/taxon-view/tab-availability", () => ({
+  getSharedTabAvailability: (...args: unknown[]) =>
+    getSharedTabAvailabilityMock(...args) as unknown,
+}));
 
 const bacterialTaxon = {
   taxonId: 234,
@@ -59,6 +70,8 @@ const fungalTaxon = {
 
 beforeEach(() => {
   getSharedOrganismTaxonomyMock.mockResolvedValue(bacterialTaxon);
+  getSharedTabAvailabilityMock.mockReset();
+  getSharedTabAvailabilityMock.mockResolvedValue(null);
 });
 
 vi.mock(
@@ -86,6 +99,15 @@ vi.mock("@/components/organisms/taxon-views/sequences", () => ({
   makeSequencesView: () =>
     function SequencesView() {
       return <div data-testid="sequences-view" />;
+    },
+}));
+
+// The real view needs a TanStack Query provider; stub the factory to stay on
+// tab routing.
+vi.mock("@/components/organisms/taxon-views/experiments", () => ({
+  makeExperimentsView: () =>
+    function ExperimentsView() {
+      return <div data-testid="experiments-view" />;
     },
 }));
 
@@ -257,6 +279,66 @@ describe("TaxonomyPage", () => {
     },
   );
 
+  describe("streamed tab availability", () => {
+    // An awaited act lets React retry the suspended rails once the stream
+    // settles.
+    async function renderPage(tab?: string) {
+      const node = await TaxonomyPage({
+        params: Promise.resolve({ taxonId: "234" }),
+        searchParams: Promise.resolve(tab ? { tab } : {}),
+      });
+      await act(async () => {
+        render(node);
+        await Promise.resolve();
+      });
+    }
+
+    function desktopRail() {
+      return screen.getByRole("navigation", { name: "Organism views" });
+    }
+
+    it("disables a tab the data check found empty, once the stream resolves", async () => {
+      getSharedTabAvailabilityMock.mockResolvedValue({ experiments: "absent" });
+
+      await renderPage();
+
+      expect(getSharedTabAvailabilityMock).toHaveBeenCalledWith(234);
+      expect(
+        within(desktopRail()).getByRole("button", { name: "Experiments" }),
+      ).toHaveAttribute("aria-disabled", "true");
+      expect(
+        within(desktopRail()).getByLabelText(
+          "Experiments: No experiments for this taxon.",
+        ),
+      ).toBeInTheDocument();
+      expect(
+        within(desktopRail()).getByRole("button", { name: "Genomes" }),
+      ).not.toHaveAttribute("aria-disabled");
+    });
+
+    it("disables no tab when the data check failed", async () => {
+      await renderPage();
+
+      expect(
+        within(desktopRail()).getByRole("button", { name: "Experiments" }),
+      ).not.toHaveAttribute("aria-disabled");
+      expect(
+        within(desktopRail()).getByRole("button", { name: "Genomes" }),
+      ).not.toHaveAttribute("aria-disabled");
+    });
+
+    it("still opens a tab named by ?tab= that the data check found empty", async () => {
+      getSharedTabAvailabilityMock.mockResolvedValue({ experiments: "absent" });
+
+      await renderPage("experiments");
+
+      expect(screen.getByTestId("experiments-view")).toBeInTheDocument();
+      expect(
+        within(desktopRail()).getByRole("button", { name: "Experiments" }),
+      ).toHaveAttribute("aria-disabled", "true");
+    });
+  });
+
   it("calls notFound when the lookup throws TaxonomyNotFoundError", async () => {
     notFoundSpy.mockClear();
     getSharedOrganismTaxonomyMock.mockRejectedValueOnce(
@@ -270,6 +352,7 @@ describe("TaxonomyPage", () => {
       }),
     ).rejects.toThrow("NEXT_NOT_FOUND");
     expect(notFoundSpy).toHaveBeenCalled();
+    expect(getSharedTabAvailabilityMock).not.toHaveBeenCalled();
   });
 
   describe("generateMetadata", () => {
@@ -372,6 +455,7 @@ describe("TaxonomyPage", () => {
         "/taxonomy",
       );
       expect(notFoundSpy).not.toHaveBeenCalled();
+      expect(getSharedTabAvailabilityMock).not.toHaveBeenCalled();
     });
 
     it("renders a cold taxon unavailable without a request once two outages opened the breaker", async () => {
@@ -462,6 +546,7 @@ describe("TaxonomyPage", () => {
           searchParams: Promise.resolve({}),
         }),
       ).rejects.toThrow("NEXT_NOT_FOUND");
+      expect(getSharedTabAvailabilityMock).not.toHaveBeenCalled();
     });
 
     it("throws a configuration error to the boundary instead of rendering its env var name", async () => {

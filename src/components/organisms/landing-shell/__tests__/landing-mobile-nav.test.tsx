@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Blocks, Dna } from "lucide-react";
 
@@ -165,5 +165,57 @@ describe("LandingMobileNav — disabled tabs", () => {
     expect(phylogeny).toHaveAttribute("aria-disabled", "true");
     await userEvent.click(phylogeny);
     expect(onChange).not.toHaveBeenCalled();
+  });
+});
+
+describe("LandingMobileNav — disabled tile reasons", () => {
+  const disabledItems = [
+    { key: "overview", label: "Overview", icon: <Blocks /> },
+    {
+      key: "experiments",
+      label: "Experiments",
+      icon: <Dna />,
+      enabled: false,
+      disabledReason: "No experiments for this taxon.",
+    },
+  ] as OrganismLandingNavItem[];
+
+  it("states the reason in a status line when a disabled tile is tapped", async () => {
+    const onChange = vi.fn();
+    render(<LandingMobileNav items={disabledItems} activeView="overview" onChange={onChange} />);
+    await userEvent.click(screen.getByRole("button", { name: /Views:/ }));
+
+    await userEvent.click(await screen.findByRole("button", { name: /Experiments/ }));
+
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Experiments: No experiments for this taxon.",
+    );
+    expect(onChange).not.toHaveBeenCalled();
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+  });
+
+  it("states the reason when a disabled tile takes keyboard focus", async () => {
+    render(<LandingMobileNav items={disabledItems} activeView="overview" onChange={vi.fn()} />);
+    await userEvent.click(screen.getByRole("button", { name: /Views:/ }));
+
+    const tile = await screen.findByRole("button", { name: /Experiments/ });
+    act(() => {
+      tile.focus();
+    });
+
+    expect(screen.getByRole("status")).toHaveTextContent("No experiments for this taxon.");
+  });
+
+  it("shows no status text until a disabled tile is chosen, and clears it on close", async () => {
+    render(<LandingMobileNav items={disabledItems} activeView="overview" onChange={vi.fn()} />);
+    await userEvent.click(screen.getByRole("button", { name: /Views:/ }));
+    expect(screen.getByRole("status")).toBeEmptyDOMElement();
+
+    await userEvent.click(await screen.findByRole("button", { name: /Experiments/ }));
+    expect(screen.getByRole("status")).not.toBeEmptyDOMElement();
+
+    await userEvent.keyboard("{Escape}");
+    await userEvent.click(screen.getByRole("button", { name: /Views:/ }));
+    expect(screen.getByRole("status")).toBeEmptyDOMElement();
   });
 });

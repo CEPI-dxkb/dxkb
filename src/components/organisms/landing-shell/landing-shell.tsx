@@ -15,6 +15,30 @@ interface OrganismLandingShellProps {
   /** The raw `tab` search param the page was rendered for (null: none); apart from `activeViewKey` because a legacy `?view=` link opens a view without a `tab`. */
   tabParam: string | null;
   headerContent?: ReactNode;
+  /**
+   * Views that replace `views` in the rail once they resolve (a data check
+   * that disables empty tabs). The active view is still chosen from `views`.
+   * Must not reject. The streamed items are filtered by
+   * `config.hideDisabledTabs` while the active view is chosen from `views`, so
+   * a caller that sets `hideDisabledTabs` must not stream a gate that can
+   * disable the tab it is opened on.
+   */
+  streamedViews?: Promise<readonly OrganismLandingView[]>;
+}
+
+function toNavItems(
+  views: readonly OrganismLandingView[],
+  hideDisabledTabs: boolean | undefined,
+): OrganismLandingNavItem[] {
+  return (
+    hideDisabledTabs ? views.filter((view) => view.enabled !== false) : views
+  ).map(({ key, label, icon, enabled, disabledReason }) => ({
+    key,
+    label,
+    icon,
+    enabled,
+    disabledReason,
+  }));
 }
 
 function isOrganismViewKey(
@@ -30,6 +54,7 @@ export function OrganismLandingShell({
   activeViewKey,
   tabParam,
   headerContent,
+  streamedViews,
 }: OrganismLandingShellProps) {
   const defaultView = config.defaultView ?? "overview";
   const visibleViews = config.hideDisabledTabs
@@ -42,15 +67,7 @@ export function OrganismLandingShell({
     visibleViews.find((view) => view.key === requestedKey && view.enabled !== false) ??
     visibleViews.find((view) => view.enabled !== false) ??
     visibleViews.at(0);
-  const navItems: OrganismLandingNavItem[] = visibleViews.map(
-    ({ key, label, icon, enabled, disabledReason }) => ({
-      key,
-      label,
-      icon,
-      enabled,
-      disabledReason,
-    }),
-  );
+  const navItems = toNavItems(views, config.hideDisabledTabs);
   if (!activeView) return null;
   const ActiveViewComponent = activeView.Component;
 
@@ -60,6 +77,9 @@ export function OrganismLandingShell({
       activeView={activeView.key}
       defaultView={defaultView}
       navItems={navItems}
+      streamedNavItems={streamedViews?.then((resolved) =>
+        toNavItems(resolved, config.hideDisabledTabs),
+      )}
       headerContent={headerContent}
       layout={activeView.layout ?? "scroll"}
       tabParam={tabParam}

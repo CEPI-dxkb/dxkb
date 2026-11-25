@@ -188,6 +188,63 @@ describe("OrganismLandingShell — hideDisabledTabs", () => {
   });
 });
 
+describe("OrganismLandingShell — streamedViews", () => {
+  const genomesDisabled = Promise.resolve([
+    view("overview"),
+    view("genomes", false),
+  ]);
+
+  // An awaited act lets React retry the suspended rail once the promise settles.
+  async function renderStreamed(
+    hideDisabledTabs: boolean,
+    activeViewKey?: OrganismViewKey,
+  ) {
+    await act(async () => {
+      render(
+        <OrganismLandingShell
+          config={{
+            displayName: "T",
+            taxonId: 1,
+            accent: "all",
+            metadataFields: [],
+            defaultView: "overview",
+            hideDisabledTabs,
+          }}
+          views={[view("overview"), view("genomes")]}
+          streamedViews={genomesDisabled}
+          activeViewKey={activeViewKey}
+          tabParam={activeViewKey ?? null}
+        />,
+      );
+      await Promise.resolve();
+    });
+  }
+
+  function desktopGenomes() {
+    return within(
+      screen.getByRole("navigation", { name: "Organism views" }),
+    ).queryByRole("button", { name: "genomes" });
+  }
+
+  it("disables a streamed tab in the rail but still opens it from the policy-only views", async () => {
+    await renderStreamed(false, "genomes");
+
+    expect(desktopGenomes()).toHaveAttribute("aria-disabled", "true");
+    expect(screen.getByTestId("view-genomes")).toBeInTheDocument();
+  });
+
+  it("drops a streamed disabled tab when hideDisabledTabs is true", async () => {
+    await renderStreamed(true);
+
+    expect(desktopGenomes()).toBeNull();
+    expect(
+      within(
+        screen.getByRole("navigation", { name: "Organism views" }),
+      ).getByRole("button", { name: "overview" }),
+    ).toBeInTheDocument();
+  });
+});
+
 describe("OrganismLandingShell — tabParam", () => {
   function SearchProbe() {
     return <output>{useTabContentSearchParams().toString()}</output>;

@@ -1,7 +1,14 @@
 "use client";
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useOptimistic, useTransition, type ReactNode } from "react";
+import {
+  Suspense,
+  use,
+  useOptimistic,
+  useState,
+  useTransition,
+  type ReactNode,
+} from "react";
 import { useViewNavCollapsed } from "@/hooks/use-view-nav-collapsed";
 import { restoreHistoryScroll } from "@/lib/history-scroll-restoration";
 import { deleteChildCollectionParams } from "@/lib/views/child-collection-state";
@@ -25,6 +32,12 @@ interface LandingShellClientProps {
   activeView: OrganismViewKey;
   defaultView: OrganismViewKey;
   navItems: readonly OrganismLandingNavItem[];
+  /**
+   * Nav items that replace `navItems` once they resolve, for a rail whose
+   * availability needs a slow lookup; only the rail suspends, showing
+   * `navItems` meanwhile. Must not reject.
+   */
+  streamedNavItems?: Promise<readonly OrganismLandingNavItem[]>;
   headerContent?: ReactNode;
   /** "scroll": the region scrolls (doc-style); "fill": a bounded box the view fills (table views own their scroll). */
   layout?: "scroll" | "fill";
@@ -33,11 +46,22 @@ interface LandingShellClientProps {
   children: ReactNode;
 }
 
+function ResolvedNavItems({
+  items,
+  children,
+}: {
+  items: Promise<readonly OrganismLandingNavItem[]>;
+  children: (items: readonly OrganismLandingNavItem[]) => ReactNode;
+}) {
+  return children(use(items));
+}
+
 export function LandingShellClient({
   displayName,
   activeView: serverActiveView,
   defaultView,
   navItems,
+  streamedNavItems,
   headerContent,
   layout = "scroll",
   tabParam,
@@ -49,9 +73,15 @@ export function LandingShellClient({
   const [isPending, startTransition] = useTransition();
   const [optimisticView, setOptimisticView] = useOptimistic(serverActiveView);
   const { collapsed: navCollapsed, toggle: toggleNav } = useViewNavCollapsed();
+  // The streamed items swap the mobile rail for a new one, so the shell holds
+  // the sheet's open state and a sheet opened while they load stays open.
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
-  function handleViewChange(nextView: OrganismViewKey) {
-    const target = navItems.find((item) => item.key === nextView);
+  function handleViewChange(
+    nextView: OrganismViewKey,
+    shown: readonly OrganismLandingNavItem[],
+  ) {
+    const target = shown.find((item) => item.key === nextView);
     if (target?.enabled === false) return;
 
     const params = new URLSearchParams(searchParams.toString());
@@ -79,6 +109,18 @@ export function LandingShellClient({
     });
   }
 
+  // Each rail suspends on its own; the fallback is the same rail over `navItems`.
+  const rail = (
+    render: (shown: readonly OrganismLandingNavItem[]) => ReactNode,
+  ) =>
+    streamedNavItems ? (
+      <Suspense fallback={render(navItems)}>
+        <ResolvedNavItems items={streamedNavItems}>{render}</ResolvedNavItems>
+      </Suspense>
+    ) : (
+      render(navItems)
+    );
+
   const content =
     tabParam === undefined ? (
       children
@@ -89,21 +131,31 @@ export function LandingShellClient({
   return (
     <>
       <div className="lg:hidden">
-        <LandingMobileNav
-          items={navItems}
-          activeView={optimisticView}
-          onChange={handleViewChange}
-        />
+        {rail((shown) => (
+          <LandingMobileNav
+            items={shown}
+            activeView={optimisticView}
+            onChange={(view) => {
+              handleViewChange(view, shown);
+            }}
+            open={streamedNavItems ? mobileNavOpen : undefined}
+            onOpenChange={streamedNavItems ? setMobileNavOpen : undefined}
+          />
+        ))}
       </div>
       <div className="mx-auto flex min-h-0 w-full max-w-none flex-1 flex-row gap-3 px-2 sm:px-3 lg:px-4">
         <div className="hidden lg:block">
-          <LandingNav
-            items={navItems}
-            activeView={optimisticView}
-            collapsed={navCollapsed}
-            onChange={handleViewChange}
-            onCollapseToggle={toggleNav}
-          />
+          {rail((shown) => (
+            <LandingNav
+              items={shown}
+              activeView={optimisticView}
+              collapsed={navCollapsed}
+              onChange={(view) => {
+                handleViewChange(view, shown);
+              }}
+              onCollapseToggle={toggleNav}
+            />
+          ))}
         </div>
         <section
           aria-busy={isPending || undefined}

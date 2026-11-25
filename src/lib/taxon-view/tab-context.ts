@@ -1,3 +1,4 @@
+import type { OrganismViewKey } from "@/components/organisms/types";
 import type { OrganismTaxonomy } from "@/lib/services/organisms/types";
 
 import type { CuratedLists } from "./curated-lists";
@@ -5,6 +6,11 @@ import type { CuratedLists } from "./curated-lists";
 export interface PhyloManifest {
   trees: Record<string, unknown>;
 }
+
+/** `absent` is a definite zero; a read that failed or came back malformed is `unknown`, which never disables a tab. */
+export type TabDataStatus = "present" | "absent" | "unknown";
+
+export type TabAvailability = Partial<Record<OrganismViewKey, TabDataStatus>>;
 
 export interface TabContext {
   taxonomy: {

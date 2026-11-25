@@ -82,3 +82,6 @@ export { taxonGenomeCounts } from "@/lib/e2e-fixtures/records";
 // The taxon the loopback answers with empty county pivots, as the Data API
 // does, so its map's State view is unavailable.
 export { noCountyTaxonId } from "@/lib/e2e-fixtures/records";
+// The taxon the loopback answers with zero experiments, so its Experiments
+// rail tab is disabled by the data check.
+export { e2eNoExperimentsTaxonId } from "@/lib/e2e-fixtures/records";

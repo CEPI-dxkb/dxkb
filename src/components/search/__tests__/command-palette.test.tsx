@@ -266,6 +266,34 @@ describe("CommandPalette", () => {
       ).not.toBeInTheDocument();
     });
 
+    it("typing 'data types' lists the ten data types", async () => {
+      renderPalette();
+      await openPalette();
+
+      const user = userEvent.setup();
+      await user.type(screen.getByRole("combobox"), "data types");
+
+      // The "Search for …" item also shows while there is input.
+      const dataTypes = screen
+        .getAllByRole("option")
+        .filter((option) => !option.textContent.startsWith("Search for"));
+      expect(dataTypes).toHaveLength(10);
+      expect(
+        screen.getByRole("option", { name: /Protein Structures/ }),
+      ).toBeInTheDocument();
+    });
+
+    it("selecting a data type opens its list", async () => {
+      renderPalette();
+      await openPalette();
+
+      const user = userEvent.setup();
+      await user.type(screen.getByRole("combobox"), "epitope");
+      await user.click(screen.getByRole("option", { name: /Epitopes/ }));
+
+      expect(mockPush).toHaveBeenCalledWith("/epitope");
+    });
+
     it("typing 'mobile' finds Mobile Element Detection", async () => {
       renderPalette();
       await openPalette();

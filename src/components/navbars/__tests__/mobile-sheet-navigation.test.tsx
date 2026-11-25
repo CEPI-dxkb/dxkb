@@ -2,7 +2,11 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { MobileSheetNavigation } from "../mobile-sheet-navigation";
-import { organismItems } from "../navbar-links";
+import {
+  browseOrganismItems,
+  dataTypeItems,
+  featuredVirusItems,
+} from "../navbar-links";
 
 const props = {
   favoritePaths: ["/alice@bvbrc/home/Favorite Folder"],
@@ -21,7 +25,7 @@ describe("MobileSheetNavigation", () => {
     render(<MobileSheetNavigation {...props} />);
 
     expect(screen.getByRole("navigation")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Organisms9" })).toHaveAttribute(
+    expect(screen.getByRole("button", { name: "Browse19" })).toHaveAttribute(
       "aria-expanded",
       "false",
     );
@@ -39,20 +43,28 @@ describe("MobileSheetNavigation", () => {
     );
   });
 
-  it("lists the CEPI taxa, All Viruses, All Bacteria and Browse all in the Organisms section", async () => {
+  it("groups the CEPI taxa, the organism links and the data types in the Browse section", async () => {
     const user = userEvent.setup();
     render(<MobileSheetNavigation {...props} />);
 
-    await user.click(screen.getByRole("button", { name: "Organisms9" }));
+    await user.click(screen.getByRole("button", { name: "Browse19" }));
 
-    // Every other section is collapsed, so the navigation's visible links are the Organisms items.
+    // Every other section is collapsed, so the navigation's visible links are the Browse items.
+    const expectedItems = [
+      ...featuredVirusItems,
+      ...browseOrganismItems,
+      ...dataTypeItems,
+    ];
     const links = within(screen.getByRole("navigation")).getAllByRole("link");
     expect(links.map((link) => link.getAttribute("href"))).toEqual(
-      organismItems.map((item) => item.href),
+      expectedItems.map((item) => item.href),
     );
     expect(links.map((link) => link.textContent)).toEqual(
-      organismItems.map((item) => item.title),
+      expectedItems.map((item) => item.title),
     );
+    for (const label of ["Viruses", "Organisms", "Data types"]) {
+      expect(screen.getByText(label)).toBeInTheDocument();
+    }
   });
 
   it("retains external-link behavior for sheet destinations", async () => {

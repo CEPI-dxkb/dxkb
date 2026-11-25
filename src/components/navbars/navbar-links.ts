@@ -33,7 +33,7 @@ const resourcesItems: {
   },
 ];
 
-interface OrganismLink {
+interface MenuLink {
   title: string;
   href: string;
 }
@@ -41,7 +41,7 @@ interface OrganismLink {
 // The major CEPI taxa, linked by NCBI taxon id. `navbar-links.test.ts` checks the ids against
 // `virusFamilies`. Literal hrefs keep `@/lib/views/hrefs` (and the data-api modules behind it)
 // out of the navbar bundle that ships on every page.
-const featuredVirusItems: OrganismLink[] = [
+const featuredVirusItems: MenuLink[] = [
   { title: "Bunyaviricetes", href: "/taxonomy/3151693" },
   { title: "Coronaviridae", href: "/taxonomy/11118" },
   { title: "Filoviridae", href: "/taxonomy/11266" },
@@ -51,16 +51,40 @@ const featuredVirusItems: OrganismLink[] = [
 ];
 
 // Bacteria are not featured; they stay reachable from here and through Browse all.
-const browseOrganismItems: OrganismLink[] = [
+const browseOrganismItems: MenuLink[] = [
   { title: "All Viruses", href: "/organisms/viruses" },
   { title: "All Bacteria", href: "/organisms/bacteria" },
   { title: "Browse all", href: "/organisms/all" },
 ];
 
-// The flat list, in menu order, for renderers that do not group (the mobile sheet).
-const organismItems: OrganismLink[] = [
-  ...featuredVirusItems,
-  ...browseOrganismItems,
+interface DataTypeLink extends MenuLink {
+  /** The search type id (`SearchType.id`), which `searchTypeIcon` maps to the type's icon. */
+  id: string;
+}
+
+// The data-type list routes, in the order of the header search selector (`searchTypes` in
+// `@/constants/search-info`; `navbar-links.test.ts` checks that the two stay in step). Literal
+// hrefs for the same reason as the organism links above. `/genome` opens on recently completed
+// genomes and `/feature` on annotation=PATRIC: those are the list pages' own defaults.
+const dataTypeItems: DataTypeLink[] = [
+  { id: "genome", title: "Genomes", href: "/genome" },
+  { id: "strain", title: "Strains", href: "/strain" },
+  { id: "genome_feature", title: "Features", href: "/feature" },
+  {
+    id: "protein_feature",
+    title: "Domains and Motifs",
+    href: "/domains-and-motifs",
+  },
+  { id: "epitope", title: "Epitopes", href: "/epitope" },
+  {
+    id: "protein_structure",
+    title: "Protein Structures",
+    href: "/protein-structure",
+  },
+  { id: "surveillance", title: "Surveillance", href: "/surveillance" },
+  { id: "serology", title: "Serology", href: "/serology" },
+  { id: "taxonomy", title: "Taxa", href: "/taxonomy" },
+  { id: "experiment", title: "Experiments", href: "/experiment" },
 ];
 
 /**
@@ -360,9 +384,9 @@ export interface NavSection {
 export type { WorkspaceNavItem, WorkspaceNavSection };
 export {
   resourcesItems,
-  organismItems,
   featuredVirusItems,
   browseOrganismItems,
+  dataTypeItems,
   serviceItems,
   workspaceNavItems,
 };

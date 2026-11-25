@@ -3,7 +3,11 @@ import userEvent from "@testing-library/user-event";
 
 import { AuthBoundary } from "@/lib/auth/provider";
 import DesktopNavbar from "../desktop-navbar";
-import { organismItems } from "../navbar-links";
+import {
+  browseOrganismItems,
+  dataTypeItems,
+  featuredVirusItems,
+} from "../navbar-links";
 
 vi.mock("next/navigation", () => ({
   usePathname: () => "/",
@@ -26,8 +30,8 @@ vi.mock("@/components/jobs/job-status-pill", () => ({
   JobStatusPill: () => null,
 }));
 
-describe("DesktopNavbar Organisms menu", () => {
-  it("groups the CEPI taxa under Featured viruses and the browse links under Browse", async () => {
+describe("DesktopNavbar Browse menu", () => {
+  it("groups the CEPI taxa, the organism links and the data types in one panel", async () => {
     const user = userEvent.setup();
     render(
       <AuthBoundary user={null}>
@@ -35,7 +39,7 @@ describe("DesktopNavbar Organisms menu", () => {
       </AuthBoundary>,
     );
 
-    await user.click(screen.getByRole("button", { name: "Organisms" }));
+    await user.click(screen.getByRole("button", { name: "Browse" }));
 
     const first = await screen.findByRole("link", { name: "Bunyaviricetes" });
     const menu = first.closest<HTMLElement>(
@@ -46,14 +50,31 @@ describe("DesktopNavbar Organisms menu", () => {
 
     expect(
       content.getAllByRole("heading").map((heading) => heading.textContent),
-    ).toEqual(["Featured viruses", "Browse"]);
+    ).toEqual(["Viruses", "Organisms", "Data types"]);
 
+    const expectedItems = [
+      ...featuredVirusItems,
+      ...browseOrganismItems,
+      ...dataTypeItems,
+    ];
     const links = content.getAllByRole("link");
     expect(links.map((link) => link.getAttribute("href"))).toEqual(
-      organismItems.map((item) => item.href),
+      expectedItems.map((item) => item.href),
     );
-    organismItems.forEach((item, index) => {
+    expectedItems.forEach((item, index) => {
       expect(links[index]).toHaveAccessibleName(item.title);
     });
+  });
+
+  it("no longer offers an Organisms trigger", () => {
+    render(
+      <AuthBoundary user={null}>
+        <DesktopNavbar />
+      </AuthBoundary>,
+    );
+
+    expect(
+      screen.queryByRole("button", { name: "Organisms" }),
+    ).not.toBeInTheDocument();
   });
 });

@@ -54,6 +54,8 @@ export const upstreamTimeoutMs = {
   dataApiGenomeFeature: 150_000,
   /** The search's optional per-taxon genome counts: past this the results answer without them. */
   dataApiSearchGenomeCounts: 5_000,
+  /** The taxon page's per-tab "has data" counts: past this the rail keeps every tab enabled. */
+  dataApiTabAvailability: 5_000,
   workspace: 30_000,
   jobService: 30_000,
   fileStorage: 30_000,

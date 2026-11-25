@@ -3,9 +3,12 @@ import type { ComponentType } from "react";
 import { buildTabContext } from "../tab-context";
 import type { PhyloManifest } from "../tab-context";
 import { getCuratedLists } from "../curated-lists";
-import { resolveTabs } from "../tab-policy";
+import { applyTabAvailability, resolveTabs } from "../tab-policy";
 import type { OrganismTaxonomy } from "@/lib/services/organisms/types";
-import type { OrganismViewKey } from "@/components/organisms/types";
+import type {
+  OrganismLandingView,
+  OrganismViewKey,
+} from "@/components/organisms/types";
 
 function tax(over: Partial<OrganismTaxonomy>): OrganismTaxonomy {
   return {
@@ -126,5 +129,68 @@ describe("resolveTabs — doc §5 truth table (conditional tabs only)", () => {
 
   it("Fungi (4751) — baseline only (doc §7.5)", () => {
     expect(condEnabled(tax({ taxonId: 4751, lineageNames: ["Eukaryota", "Fungi"], lineageIds: [2759, 4751] }))).toEqual([]);
+  });
+});
+
+function resolved(taxon: OrganismTaxonomy): OrganismLandingView[] {
+  return resolveTabs(buildTabContext(taxon, null, getCuratedLists()));
+}
+
+describe("applyTabAvailability", () => {
+  it("disables a baseline tab that is definitely empty and says so", () => {
+    const views = applyTabAvailability(resolved(tax({})), {
+      experiments: "absent",
+    });
+    expect(views.find((view) => view.key === "experiments")).toMatchObject({
+      enabled: false,
+      disabledReason: "No experiments for this taxon.",
+    });
+  });
+
+  it("leaves a tab enabled when its status is present or unknown", () => {
+    const views = applyTabAvailability(resolved(tax({})), {
+      experiments: "unknown",
+      epitopes: "present",
+    });
+    expect(views.find((view) => view.key === "experiments")?.enabled).toBe(
+      true,
+    );
+    expect(views.find((view) => view.key === "epitopes")?.enabled).toBe(true);
+  });
+
+  it("disables a conditional tab whose policy gate passed but whose data is empty", () => {
+    const orthomyxo = tax({ lineageNames: ["Viruses", "Orthomyxoviridae"] });
+    const views = applyTabAvailability(resolved(orthomyxo), {
+      strains: "absent",
+    });
+    expect(views.find((view) => view.key === "strains")).toMatchObject({
+      enabled: false,
+      disabledReason: "No strains for this taxon.",
+    });
+  });
+
+  it("keeps a policy gate's own reason when the tab is also empty", () => {
+    const coronavirus = tax({ lineageNames: ["Viruses", "Coronaviridae"] });
+    const views = applyTabAvailability(resolved(coronavirus), {
+      strains: "absent",
+    });
+    expect(views.find((view) => view.key === "strains")).toMatchObject({
+      enabled: false,
+      disabledReason: "Strains apply to segmented-genome viruses.",
+    });
+  });
+
+  it("never gates a tab that has no data gate (Genomes, genome-joined tabs)", () => {
+    const views = applyTabAvailability(resolved(tax({})), {
+      genomes: "absent",
+      sequences: "absent",
+    });
+    expect(views.find((view) => view.key === "genomes")?.enabled).toBe(true);
+    expect(views.find((view) => view.key === "sequences")?.enabled).toBe(true);
+  });
+
+  it("changes nothing when the availability read failed (null)", () => {
+    const views = resolved(tax({}));
+    expect(applyTabAvailability(views, null)).toEqual(views);
   });
 });

@@ -1004,6 +1004,16 @@ export const taxonGenomeCounts: Record<string, number> = {
  */
 export const noCountyTaxonId = "1763";
 
+/**
+ * The one taxon whose batched tab-availability read (`POST data/query`) the
+ * loopback answers with zero experiments, as the Data API does for some real
+ * taxa, so `/taxonomy/11974` renders its Experiments tab disabled with "No
+ * experiments for this taxon." Every other taxon, and every other probe for
+ * this one, answers one row. Caliciviridae, which the taxonomy specs already
+ * load; none of them opens its Experiments tab.
+ */
+export const e2eNoExperimentsTaxonId = "11974";
+
 /** Lookups return `undefined` for an unknown taxon; `table[id]` would type as present because `noUncheckedIndexedAccess` is off. */
 export function findOrganismTaxonomyRecord(
   taxonId: string,

@@ -18,7 +18,10 @@ interface OrganismLandingShellProps {
   /**
    * Views that replace `views` in the rail once they resolve (a data check
    * that disables empty tabs). The active view is still chosen from `views`.
-   * Must not reject.
+   * Must not reject. The streamed items are filtered by
+   * `config.hideDisabledTabs` while the active view is chosen from `views`, so
+   * a caller that sets `hideDisabledTabs` must not stream a gate that can
+   * disable the tab it is opened on.
    */
   streamedViews?: Promise<readonly OrganismLandingView[]>;
 }

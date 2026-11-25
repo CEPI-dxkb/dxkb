@@ -352,6 +352,7 @@ describe("TaxonomyPage", () => {
       }),
     ).rejects.toThrow("NEXT_NOT_FOUND");
     expect(notFoundSpy).toHaveBeenCalled();
+    expect(getSharedTabAvailabilityMock).not.toHaveBeenCalled();
   });
 
   describe("generateMetadata", () => {
@@ -454,6 +455,7 @@ describe("TaxonomyPage", () => {
         "/taxonomy",
       );
       expect(notFoundSpy).not.toHaveBeenCalled();
+      expect(getSharedTabAvailabilityMock).not.toHaveBeenCalled();
     });
 
     it("renders a cold taxon unavailable without a request once two outages opened the breaker", async () => {
@@ -544,6 +546,7 @@ describe("TaxonomyPage", () => {
           searchParams: Promise.resolve({}),
         }),
       ).rejects.toThrow("NEXT_NOT_FOUND");
+      expect(getSharedTabAvailabilityMock).not.toHaveBeenCalled();
     });
 
     it("throws a configuration error to the boundary instead of rendering its env var name", async () => {

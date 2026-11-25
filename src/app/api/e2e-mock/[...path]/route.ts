@@ -8,6 +8,7 @@ import {
   bacteriaSummaryRecord,
   bacterialGenomeRecord,
   brucellaPpiTotal,
+  e2eNoExperimentsTaxonId,
   epitopeRecord,
   experimentRecord,
   findOrganismSummaryRecord,
@@ -1165,6 +1166,104 @@ async function maybeDataDownloadPost(
   });
 }
 
+interface MultiQueryEntry {
+  dataType: string;
+  query: string;
+}
+
+// The probes of the taxon page's tab-availability read, spelled out here
+// rather than imported from `src/lib/taxon-view/tab-availability.ts`, so a
+// product change to its keys or queries fails the loopback instead of being
+// answered by it. Any other multi-query (the all-types search's type matches
+// and `taxonGenomes:<id>` counts) has no fixture.
+const tabAvailabilityKeys: readonly string[] = [
+  "epitopes",
+  "experiments",
+  "strains",
+  "surveillance",
+  "serology",
+];
+const tabAvailabilityQueryPattern =
+  /^eq\(taxon_lineage_ids,\d+\)&select\(\w+\)&limit\(1\)$/;
+const tabAvailabilityShape = `{ ${tabAvailabilityKeys.join(", ")}: { dataType, accept, query: eq(taxon_lineage_ids,<id>)&select(<field>)&limit(1) } }`;
+
+/** Why the body is not the tab-availability read, or `undefined` when it is. */
+function findTabAvailabilityProblem(
+  body: Record<string, unknown>,
+): string | undefined {
+  const keys = Object.keys(body);
+  if (keys.length === 0) return "the body has no entries";
+  for (const key of keys) {
+    if (!tabAvailabilityKeys.includes(key)) {
+      return `key '${key}' is not a tab-availability probe (${tabAvailabilityKeys.join(", ")})`;
+    }
+    const entry = body[key] as Partial<MultiQueryEntry> | null;
+    if (
+      !entry ||
+      typeof entry.dataType !== "string" ||
+      typeof entry.query !== "string"
+    ) {
+      return `entry '${key}' is not a { dataType, accept, query } object`;
+    }
+    if (!tabAvailabilityQueryPattern.test(entry.query)) {
+      return `the query of '${key}' is not eq(taxon_lineage_ids,<id>)&select(<field>)&limit(1)`;
+    }
+  }
+  return undefined;
+}
+
+/**
+ * The taxon page's tab-availability read (`POST data/query/`) and nothing else
+ * that is a multi-query: every probe finds one row, except the experiments of
+ * {@link e2eNoExperimentsTaxonId}, which finds none. The body has no JSON-RPC
+ * `method`, so this answers before the RPC dispatch; any other body for this
+ * path stays a diagnostic 400 naming the expected shape.
+ */
+async function maybeTabAvailabilityPost(
+  path: string,
+  request: NextRequest,
+): Promise<NextResponse | null> {
+  const segments = path.split("/").filter(Boolean);
+  if (segments.length !== 2 || segments[0] !== "data" || segments[1] !== "query")
+    return null;
+  const body: unknown = await request.clone().json().catch(() => null);
+  if (!body || typeof body !== "object" || Array.isArray(body)) {
+    return unhandledResponse(
+      "unhandled data/query POST",
+      `expected the tab-availability multi-query ${tabAvailabilityShape}; the body is not a JSON object`,
+      { path },
+    );
+  }
+  const queries = body as Record<string, unknown>;
+  const problem = findTabAvailabilityProblem(queries);
+  if (problem !== undefined) {
+    return unhandledResponse(
+      "unhandled data/query POST",
+      `${problem}; no fixture for this multi-query, only ${tabAvailabilityShape}`,
+      { path },
+    );
+  }
+  const noExperimentsClause = `eq(taxon_lineage_ids,${e2eNoExperimentsTaxonId})`;
+  return NextResponse.json(
+    Object.fromEntries(
+      Object.entries(queries as Record<string, MultiQueryEntry>).map(
+        ([key, { dataType, query }]) => [
+          key,
+          {
+            result: buildLoopbackSolrEnvelope([], {
+              numFound:
+                dataType === "experiment" &&
+                query.split("&").includes(noExperimentsClause)
+                  ? 0
+                  : 1,
+            }),
+          },
+        ],
+      ),
+    ),
+  );
+}
+
 export async function POST(
   request: NextRequest,
   context: { params: Promise<{ path: string[] }> },
@@ -1207,6 +1306,9 @@ export async function POST(
 
   const downloadResponse = await maybeDataDownloadPost(path, request);
   if (downloadResponse) return downloadResponse;
+
+  const tabAvailabilityResponse = await maybeTabAvailabilityPost(path, request);
+  if (tabAvailabilityResponse) return tabAvailabilityResponse;
 
   const endpoint = path.split("/").filter(Boolean).join("/");
   if (rpcMethod === undefined) {

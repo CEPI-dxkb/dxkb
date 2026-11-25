@@ -23,6 +23,12 @@ deliberately avoids legacy code so the rules stand on their own.
 > class/order distinction from §5 is pinned by a regression test in
 > `predicates.test.ts`.
 >
+> A second, data-driven layer sits on top of those gates (DXKBCORE-394, §4.6):
+> Epitopes, Experiments, Strains, Surveillance and Serology are also disabled when
+> the taxon has no rows in that tab's own data (`tab-availability.ts`). The page
+> streams that check, so the rail first shows the policy gates alone and then
+> greys out the empty tabs.
+>
 > Of the bacterial cluster, only **AMR Phenotypes** and **Interactions** are
 > implemented as tabs today; Specialty Genes, Pathways and Subsystems were removed
 > from the strip until they have real views. AMR Phenotypes lists `genome_amr`
@@ -193,6 +199,66 @@ mirrors reality: present exactly when there's a tree to show. The non-inheritanc
 is deliberate (a family-level tree isn't necessarily the right tree for one
 species), though whether that's the desired product behavior is a fair question to
 revisit (§6).
+
+### 4.6 Data-availability gate (per-taxon count)
+
+The rules above decide which tabs *could* apply to a taxon. A tab that applies
+can still be empty: a taxon may have no epitopes, or no experiments, in the
+database. Opening such a tab shows an empty table, so the rail checks the data
+and disables a tab whose data is definitely absent, with the reason in its
+tooltip (for example "No experiments for this taxon.").
+
+- **Which tabs.** Five tabs, each counted on its own resource with its own
+  lineage clause, `eq(taxon_lineage_ids,<id>)`: Epitopes, Experiments, Strains,
+  Surveillance and Serology. The set is `availabilityProbes` in
+  `src/lib/taxon-view/tab-availability.ts`, and the reason text for each is in
+  `dataGateReasons` in `src/lib/taxon-view/tab-policy.tsx`.
+- **One batched query.** The page sends a single multi-query,
+  `POST <DATA_API_URL>/query/`, with one entry per probe of the form
+  `eq(taxon_lineage_ids,<id>)&select(<id field>)&limit(1)`. The answer carries a
+  `numFound` for each entry, so five counts cost one round trip. The result is
+  kept in the shared `taxon-tab-availability` cache (one hour fresh, anonymous
+  and shared by every visitor, since the data changes only with the nightly
+  loads).
+- **Three states.** Each tab ends up `present` (`numFound > 0`), `absent`
+  (`numFound` is exactly 0) or `unknown` (the entry is missing or malformed). Only
+  `absent` disables a tab.
+- **Fail-open.** If the read fails or runs past its 5 second budget, the whole
+  result is `null` and every tab stays enabled. An outage (a 5xx response, a
+  timeout or a connection failure) is logged once per load by the loader and
+  cached for a short retry window. The Data API repository reports any status
+  other than 401, 403, 404 and 429 as a 5xx, so a 400 also counts as an outage. A
+  circuit breaker stops further calls while the Data API is clearly down: a 503,
+  a 504, or a 502 `service_unavailable` (an unreachable host), except a dropped
+  connection (`ECONNRESET`, `EPIPE`, `UND_ERR_SOCKET` or `UND_ERR_CLOSED`), which
+  can be one stale keep-alive socket on a healthy host; and any outage that took
+  at least half of the budget, since a host that slow is struggling. Any other
+  failed read, such as a 401, 403, 404 or 429, an unconfigured Data API or a bug,
+  is not cached. `getSharedTabAvailability` logs it
+  (`taxonomy/<id>: tab availability failed`) and returns `null`, so the feature
+  never switches off without a trace. A wrong "disabled" would hide real data,
+  while a missing check only costs the visitor an empty table, so the check never
+  blocks or disables anything on uncertainty.
+- **Policy reasons win.** A tab that a policy gate from §4.1 to §4.5 already
+  disabled keeps that gate's reason. The data check never replaces it; it only
+  disables tabs that were enabled.
+- **What is not counted, and why.** Genomes is excluded because the count is
+  anonymous: a signed-in user's private genomes are not in it, so a count of 0
+  would disable a tab that has data for that user. The tabs that read genome-level
+  rows through a genome join (Sequences, Features, Protein Structures, Domains and
+  Motifs, AMR Phenotypes and Interactions) are excluded because the join scales
+  with the taxon's genome count, so even a `limit(1)` can take minutes on a large
+  taxon. This app has no separate Proteins tab (`taxonTabOrder` in
+  `tab-policy.tsx` lists none), so none is left out for it. A tab with no entry in
+  `dataGateReasons` has no data gate. The known gap is a taxon that has genomes
+  but no rows for one of those tabs: the tab stays enabled and shows an empty
+  table.
+- **The rail is streamed.** The taxon page does not await
+  `getSharedTabAvailability`. It passes a promise of the data-checked views to
+  `OrganismLandingShell` as `streamedViews`, and the rail shows the policy gates
+  immediately and then swaps to the data-checked tabs once the promise resolves.
+  The active tab is still chosen from the unchecked views, so a link to a tab that
+  turns out to be empty still opens it.
 
 ---
 
@@ -370,18 +436,25 @@ When you port them:
 
 ## 8. Quick reference
 
-**Baseline (always shown):** Overview, Taxonomy, Genomes, Sequences, Features,
-Proteins, Protein Structures, Domains and Motifs, Epitopes, Experiments.
+**Baseline (always shown by the policy gates):** Overview, Taxonomy, Genomes,
+Sequences, Features, Proteins, Protein Structures, Domains and Motifs, Epitopes,
+Experiments. Epitopes and Experiments are then disabled when the data check
+(§4.6) finds no rows for the taxon.
 
 **Conditional tabs and their gates:**
 
-| Tab(s) | Group | Gate (data source) | Inherits down lineage? |
-|--------|-------|--------------------|:----------------------:|
-| AMR, Specialty Genes, Pathways, Subsystems, Interactions, Phylogeny (bact.) | organism-kind | `lineage_names` contains `Bacteria` | yes |
-| Strains | organism-kind | `lineage_names` contains `Orthomyxoviridae` or `Bunyaviricetes` | yes |
-| Surveillance, Serology | curated cohort | `lineage_names` contains a curated pathogen name | yes |
-| SFVT | curated cohort | a `lineage_ids` entry is on the curated SFVT list | yes |
-| Phylogeny (viral) | data availability | `taxon_id` is a key in the remote tree manifest | **no (exact id)** |
+| Tab(s) | Group | Gate (data source) | Inherits down lineage? | Data check (§4.6) |
+|--------|-------|--------------------|:----------------------:|:-----------------:|
+| AMR, Specialty Genes, Pathways, Subsystems, Interactions, Phylogeny (bact.) | organism-kind | `lineage_names` contains `Bacteria` | yes | no |
+| Strains | organism-kind | `lineage_names` contains `Orthomyxoviridae` or `Bunyaviricetes` | yes | yes |
+| Surveillance, Serology | curated cohort | `lineage_names` contains a curated pathogen name | yes | yes |
+| SFVT | curated cohort | a `lineage_ids` entry is on the curated SFVT list | yes | no |
+| Phylogeny (viral) | data availability | `taxon_id` is a key in the remote tree manifest | **no (exact id)** | no (the manifest is the check) |
+| Epitopes, Experiments | baseline | none (always a candidate) | n/a | yes |
+
+The "Data check" column marks the tabs that are also disabled when the taxon has
+no rows for them: one batched `limit(1)` count per taxon, fail-open, and a policy
+gate's reason wins over it.
 
 **The three questions, kept separate:** what the organism *is* (taxonomy) · whether
 a product was *built* for it (curation) · whether the artifact *exists* now

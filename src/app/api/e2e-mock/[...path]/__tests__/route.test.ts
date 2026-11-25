@@ -9,6 +9,7 @@ import { server } from "@/test-helpers/msw-server";
 import { genomeDownloadTsv } from "@/lib/e2e-fixtures/downloads";
 import {
   brucellaPpiTotal,
+  e2eNoExperimentsTaxonId,
   findOrganismSummaryRecord,
   findTaxonGenomeCount,
   noCountyTaxonId,
@@ -17,6 +18,7 @@ import {
   experimentalStructureRql,
   fetchExperimentalStructureCount,
 } from "@/lib/services/organisms/structure-count";
+import { tabAvailabilityQueries } from "@/lib/taxon-view/tab-availability";
 import { DELETE, GET, POST, PUT } from "../route";
 
 interface RouteContext {
@@ -1494,6 +1496,186 @@ describe("api/e2e-mock catch-all — data downloads", () => {
     expect((await resp.json()) as unknown).toMatchObject({
       error: "e2e-mock: unhandled data download",
       reason: expect.stringContaining("data core 'epitope'") as unknown,
+    });
+  });
+});
+
+interface TabAvailabilityAnswer {
+  result: { response: { numFound: number; docs: unknown[] } };
+}
+
+/** The batched tab-availability read the taxon page streams its rail from. */
+async function postTabAvailability(
+  taxonId: string,
+): Promise<Record<string, TabAvailabilityAnswer>> {
+  const resp = await POST(
+    mockNextRequest({
+      method: "POST",
+      url: "http://localhost:3020/api/e2e-mock/data/query/",
+      body: tabAvailabilityQueries(Number(taxonId)),
+    }),
+    ctx(["data", "query"]),
+  );
+  expect(resp.status).toBe(200);
+  return (await resp.json()) as Record<string, TabAvailabilityAnswer>;
+}
+
+describe("api/e2e-mock catch-all — taxon tab availability", () => {
+  beforeEach(() => {
+    process.env.E2E_MOCK_ENABLED = "1";
+  });
+
+  it("answers zero experiments for the chosen taxon and one row for every other probe", async () => {
+    const answer = await postTabAvailability(e2eNoExperimentsTaxonId);
+
+    expect(answer.experiments.result.response).toEqual({
+      numFound: 0,
+      docs: [],
+    });
+    expect(
+      Object.entries(answer)
+        .filter(([key]) => key !== "experiments")
+        .map(([key, entry]) => [key, entry.result.response.numFound]),
+    ).toEqual([
+      ["epitopes", 1],
+      ["strains", 1],
+      ["surveillance", 1],
+      ["serology", 1],
+    ]);
+  });
+
+  it.each(["234", "11520", `${e2eNoExperimentsTaxonId}0`])(
+    "answers one experiment for taxon %s",
+    async (taxonId) => {
+      const answer = await postTabAvailability(taxonId);
+
+      expect(answer.experiments.result.response.numFound).toBe(1);
+    },
+  );
+
+  /** Sends `init` as a `POST data/query/` request and returns the status and JSON body, with the loopback's rejection log (`console.error`) silenced for the call. */
+  async function postQueryRejected(
+    init: { body?: unknown; rawBody?: BodyInit },
+  ): Promise<{ status: number; json: Record<string, unknown> }> {
+    const spy = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const resp = await POST(
+      mockNextRequest({
+        method: "POST",
+        url: "http://localhost:3020/api/e2e-mock/data/query/",
+        ...init,
+      }),
+      ctx(["data", "query"]),
+    );
+    spy.mockRestore();
+    return {
+      status: resp.status,
+      json: (await resp.json()) as Record<string, unknown>,
+    };
+  }
+
+  const probeQuery = "eq(taxon_lineage_ids,1)&select(exp_id)&limit(1)";
+
+  it("rejects a probe entry that is not an object, naming the key", async () => {
+    const { status, json } = await postQueryRejected({
+      body: { experiments: probeQuery },
+    });
+
+    expect(status).toBe(400);
+    expect(json).toMatchObject({
+      error: "e2e-mock: unhandled data/query POST",
+      reason: expect.stringContaining("'experiments'") as unknown,
+    });
+  });
+
+  it.each([
+    ["non-JSON text", { rawBody: "not json" }],
+    ["a JSON array", { body: [] }],
+    ["JSON null", { body: null }],
+    ["an empty object", { body: {} }],
+  ])("rejects %s as a diagnostic 400", async (_label, init) => {
+    const { status, json } = await postQueryRejected(init);
+
+    expect(status).toBe(400);
+    expect(json).toMatchObject({
+      error: "e2e-mock: unhandled data/query POST",
+      path: "data/query",
+    });
+  });
+
+  // The all-types search sends multi-queries too (`src/app/api/data/search/route.ts`):
+  // answering those with one empty row each would be an invented success.
+  it.each([
+    [
+      "a search type match",
+      "genome",
+      {
+        dataType: "genome",
+        accept: "application/solr+json",
+        query: "keyword(influenza)&limit(10)",
+      },
+      "key 'genome'",
+    ],
+    [
+      "a taxon genome count",
+      "taxonGenomes:1",
+      {
+        dataType: "genome",
+        accept: "application/solr+json",
+        query: probeQuery,
+      },
+      "key 'taxonGenomes:1'",
+    ],
+    [
+      "a probe key with a keyword query",
+      "epitopes",
+      {
+        dataType: "epitope",
+        accept: "application/solr+json",
+        query: "keyword(influenza)&select(epitope_id)&limit(1)",
+      },
+      "query of 'epitopes'",
+    ],
+    [
+      "a probe key with a composite lineage",
+      "epitopes",
+      {
+        dataType: "epitope",
+        accept: "application/solr+json",
+        query:
+          "or(eq(taxon_lineage_ids,1),eq(taxon_lineage_ids,2))&select(epitope_id)&limit(1)",
+      },
+      "query of 'epitopes'",
+    ],
+  ])(
+    "rejects %s, which is not a tab-availability probe",
+    async (_label, key, entry, expectedReason) => {
+      const { status, json } = await postQueryRejected({
+        body: { [key]: entry },
+      });
+
+      expect(status).toBe(400);
+      expect(json).toMatchObject({
+        error: "e2e-mock: unhandled data/query POST",
+        reason: expect.stringContaining(expectedReason) as unknown,
+      });
+    },
+  );
+
+  it("rejects a body that mixes a probe with a search entry", async () => {
+    const { status, json } = await postQueryRejected({
+      body: {
+        ...tabAvailabilityQueries(Number(e2eNoExperimentsTaxonId)),
+        genome: {
+          dataType: "genome",
+          accept: "application/solr+json",
+          query: "keyword(influenza)&limit(10)",
+        },
+      },
+    });
+
+    expect(status).toBe(400);
+    expect(json).toMatchObject({
+      reason: expect.stringContaining("key 'genome'") as unknown,
     });
   });
 });

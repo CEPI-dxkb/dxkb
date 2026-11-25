@@ -103,7 +103,7 @@ export function LandingMobileNav<Key extends string>({
           </div>
           <p
             role="status"
-            className="px-4 text-sm text-muted-foreground empty:hidden"
+            className="px-4 text-sm text-muted-foreground"
           >
             {explained?.disabledReason && (
               <>

@@ -120,14 +120,23 @@ const tabAvailabilityCache = createSharedCache<number, TabAvailability>({
 /**
  * A taxon's per-tab availability, or `null` when the read failed: the caller
  * then leaves every tab enabled. Never rejects, so a stream of it cannot break
- * the page.
+ * the page. An outage is logged once by the loader; any other failure (a kept
+ * 401/403/404/429, a missing `DATA_API_URL`, a bug) is logged here, because the
+ * cache does not cache it and logs a non-cacheable failure only on a background
+ * refresh, so the feature would otherwise switch off without a trace.
  */
 export async function getSharedTabAvailability(
   taxonId: number,
 ): Promise<TabAvailability | null> {
   try {
     return await tabAvailabilityCache.get(taxonId);
-  } catch {
+  } catch (error) {
+    if (!isUpstreamOutageError(error, upstreamServices.dataApi)) {
+      console.error(
+        `taxonomy/${String(taxonId)}: tab availability failed`,
+        error,
+      );
+    }
     return null;
   }
 }
